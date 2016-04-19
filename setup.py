@@ -14,6 +14,10 @@ setup(name='splitio-client',
                         'six>=1.10.0',
                         'future>=0.15.2',
                         'futures>=3.0.5'],
+      tests_require=[
+          'mock',
+          'nose'
+      ],
       classifiers=[
           'Development Status :: 2 - Pre-Alpha',
           'Environment :: Console',
