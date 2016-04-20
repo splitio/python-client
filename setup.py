@@ -2,6 +2,8 @@
 
 from distutils.core import setup
 
+tests_require = ['mock', 'nose']
+
 setup(name='splitio-client',
       version='0.0.1',
       description='Split.io Python Client',
@@ -14,10 +16,8 @@ setup(name='splitio-client',
                         'six>=1.10.0',
                         'future>=0.15.2',
                         'futures>=3.0.5'],
-      tests_require=[
-          'mock',
-          'nose'
-      ],
+      tests_require=tests_require,
+      extras_require={'test': tests_require},
       classifiers=[
           'Development Status :: 2 - Pre-Alpha',
           'Environment :: Console',
