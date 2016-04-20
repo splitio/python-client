@@ -1,7 +1,11 @@
 """Unit tests for the api module"""
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import mock
+try:
+    from unittest import mock
+except NameError:
+    # Python 2
+    import mock
 
 from requests.exceptions import RequestException, HTTPError
 from unittest import TestCase

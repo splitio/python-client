@@ -1,7 +1,11 @@
 """Unit tests for the segments module"""
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import mock
+try:
+    from unittest import mock
+except NameError:
+    # Python 2
+    import mock
 
 from unittest import TestCase
 
