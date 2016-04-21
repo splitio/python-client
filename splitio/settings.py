@@ -2,7 +2,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 
-SDK_API_BASE_URL = 'https://sdk-loadtesting.split.io/api'
+SDK_API_BASE_URL = 'https://sdk.split.io/api'
 
 SEGMENT_CHANGES_URL_TEMPLATE = '{base_url}/segmentChanges/{segment_name}/'
 SPLIT_CHANGES_URL_TEMPLATE = '{base_url}/splitChanges/'
