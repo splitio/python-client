@@ -39,6 +39,19 @@ class Segment(object):
         return key in self._key_set
 
 
+class DummySegmentFetcher(object):
+    """A segment fetcher that returns empty segments. Useful for testing"""
+    def get_segment(self, name):
+        """
+        Fetches an empty segment
+        :param name: The segment name
+        :type name: unicode
+        :return: An empty segment
+        :rtype: Segment
+        """
+        return Segment(name)
+
+
 class SelfRefreshingSegmentFetcher(object):
     def __init__(self, segment_change_fetcher, interval=60, max_workers=5):
         """

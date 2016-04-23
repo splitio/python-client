@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 try:
     from unittest import mock
-except NameError:
+except ImportError:
     # Python 2
     import mock
 
