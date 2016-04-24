@@ -10,7 +10,7 @@ except ImportError:
 from unittest import TestCase
 
 from splitio.splits import (SplitFetcher, SelfRefreshingSplitFetcher, SplitChangeFetcher,
-                            ApiSplitChangeFetcher, SplitsParser)
+                            ApiSplitChangeFetcher, SplitParser)
 from splitio.test.utils import MockUtilsMixin
 
 
@@ -356,6 +356,117 @@ class ApiSplitChangeFetcherTests(TestCase):
             self.fetcher.fetch_from_backend(self.some_since)
 
 
-class SplitsParserTests(TestCase, MockUtilsMixin):
+class SplitParserParseTests(TestCase, MockUtilsMixin):
     def setUp(self):
-        pass
+        self.some_split = mock.MagicMock()
+        self.some_segment_fetcher = mock.MagicMock()
+
+        self.parser = SplitParser(self.some_segment_fetcher)
+        self.internal_parse_mock = self.patch_object(self.parser, '_parse')
+
+    def test_parse_calls_internal_parse(self):
+        """Tests that parse calls _parse"""
+        self.parser.parse(self.some_split)
+        self.internal_parse_mock.assert_called_once_with(self.some_split)
+
+    def test_parse_returns_none_if_internal_parse_raises_an_exception(self):
+        """Tests that parse returns None if _parse raises an exception"""
+        self.internal_parse_mock.side_effect = Exception()
+        self.assertIsNone(self.parser.parse(self.some_split))
+
+
+class SplitParserInternalParseTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.some_split = mock.MagicMock()
+        self.some_segment_fetcher = mock.MagicMock()
+
+        self.partition_mock = self.patch('splitio.splits.Partition')
+        self.partition_mock_side_effect = [mock.MagicMock() for _ in range(3)]
+        self.partition_mock.side_effect = self.partition_mock_side_effect
+
+        self.condition_mock = self.patch('splitio.splits.Condition')
+        self.condition_mock_side_effect = [mock.MagicMock() for _ in range(2)]
+        self.condition_mock.side_effect = self.condition_mock_side_effect
+
+        self.split_mock = self.patch('splitio.splits.Split')
+        self.parser = SplitParser(self.some_segment_fetcher)
+        self.parse_matcher_group_mock = self.patch_object(self.parser, '_parse_matcher_group')
+        self.parse_matcher_group_mock_side_effect = [mock.MagicMock() for _ in range(2)]
+        self.parse_matcher_group_mock.side_effect = self.parse_matcher_group_mock_side_effect
+
+        self.partition_0 = {'treatment': mock.MagicMock(), 'size': mock.MagicMock()}
+        self.partition_1 = {'treatment': mock.MagicMock(), 'size': mock.MagicMock()}
+        self.partition_2 = {'treatment': mock.MagicMock(), 'size': mock.MagicMock()}
+
+        self.matcher_group_0 = mock.MagicMock()
+        self.matcher_group_1 = mock.MagicMock()
+
+        self.some_split = {
+            'status': 'ACTIVE',
+            'name': mock.MagicMock(),
+            'seed': mock.MagicMock(),
+            'killed': mock.MagicMock(),
+            'defaultTreatment': mock.MagicMock(),
+            'conditions': [
+                {
+                    'matcherGroup': self.matcher_group_0,
+                    'partitions': [
+
+                        self.partition_0
+                    ]
+                },
+                {
+                    'matcherGroup': self.matcher_group_1,
+                    'partitions': [
+                        self.partition_1,
+                        self.partition_2
+                    ]
+                }
+            ]
+        }
+
+    def test_returns_none_if_status_is_not_active(self):
+        """Tests that _parse returns None if split is not ACTIVE"""
+        self.assertIsNone(self.parser._parse({'status': 'ARCHIVED'}))
+
+    def test_creates_partition_on_each_condition_partition(self):
+        """Test that _parse calls Partition constructor on each partition"""
+        self.parser._parse(self.some_split)
+
+        self.assertListEqual(
+            [mock.call(self.partition_0['treatment'], self.partition_0['size']),
+             mock.call(self.partition_1['treatment'], self.partition_1['size']),
+             mock.call(self.partition_2['treatment'], self.partition_2['size'])],
+            self.partition_mock.call_args_list
+        )
+
+    def test_calls_parse_matcher_group_on_each_matcher_group(self):
+        """Tests that _parse calls _parse_matcher_group on each matcher group"""
+        self.parser._parse(self.some_split)
+
+        self.assertListEqual(
+            [mock.call(self.matcher_group_0),
+             mock.call(self.matcher_group_1)],
+            self.parse_matcher_group_mock.call_args_list
+        )
+
+    def test_creates_condition_on_each_condition(self):
+        """Tests that _parse calls Condition constructor on each condition"""
+        self.parser._parse(self.some_split)
+
+        self.assertListEqual(
+            [mock.call(self.parse_matcher_group_mock_side_effect[0],
+                       [self.partition_mock_side_effect[0]]),
+             mock.call(self.parse_matcher_group_mock_side_effect[1],
+                       [self.partition_mock_side_effect[1], self.partition_mock_side_effect[2]])],
+            self.condition_mock.call_args_list
+        )
+
+    def test_creates_split(self):
+        """Tests that _parse calls Split constructor"""
+        self.parser._parse(self.some_split)
+
+        self.split_mock.assert_called_once_with(self.some_split['name'], self.some_split['seed'],
+                                                self.some_split['killed'],
+                                                self.some_split['defaultTreatment'],
+                                                self.condition_mock_side_effect)

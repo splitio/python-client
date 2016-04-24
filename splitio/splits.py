@@ -406,7 +406,7 @@ class ApiSplitChangeFetcher(SplitChangeFetcher):
             raise e
 
 
-class SplitsParser(object):
+class SplitParser(object):
     def __init__(self, segment_fetcher):
         """
         A parser for the response of the splitChanges.
@@ -446,23 +446,13 @@ class SplitsParser(object):
 
         parsed_conditions = []
         for condition in split['conditions']:
-            parsed_partitions = [self._parse_partition(partition)
+            parsed_partitions = [Partition(partition['treatment'], partition['size'])
                                  for partition in condition['partitions']]
             combining_matcher = self._parse_matcher_group(condition['matcherGroup'])
             parsed_conditions.append(Condition(combining_matcher, parsed_partitions))
 
         return Split(split['name'], split['seed'], split['killed'],
                      split['defaultTreatment'], parsed_conditions)
-
-    def _parse_partition(self, partition):
-        """
-        Parses a partition
-        :param partition: A dictionary with a JSON representation of a partition
-        :type partition: dict
-        :return: The parsed partition
-        :rtype: Partition
-        """
-        return Partition(partition['treatment'], partition['size'])
 
     def _parse_matcher_group(self, matcher_group):
         """
