@@ -9,7 +9,8 @@ except ImportError:
 
 from unittest import TestCase
 
-from splitio.splits import SplitFetcher, SelfRefreshingSplitFetcher
+from splitio.splits import (SplitFetcher, SelfRefreshingSplitFetcher, SplitChangeFetcher,
+                            ApiSplitChangeFetcher, SplitsParser)
 from splitio.test.utils import MockUtilsMixin
 
 
@@ -299,3 +300,62 @@ class SelfRefreshingSplitFetcherTimerRefreshTests(TestCase, MockUtilsMixin):
 
         self.assertTrue(self.fetcher.stopped)
 
+
+class SplitChangeFetcherTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.some_since = mock.MagicMock()
+        self.fetcher = SplitChangeFetcher()
+        self.fetch_from_backend_mock = self.patch_object(self.fetcher, 'fetch_from_backend')
+
+    def test_fetch_calls_fetch_from_backend(self):
+        """Tests that fetch calls fetch_from_backend"""
+        self.fetcher.fetch(self.some_since)
+        self.fetch_from_backend_mock.assert_called_once_with(self.some_since)
+
+    def test_fetch_returns_fetch_from_backend_result(self):
+        """Tests that fetch returns fetch_from_backend call return"""
+        self.assertEqual(self.fetch_from_backend_mock.return_value,
+                         self.fetcher.fetch(self.some_since))
+
+    def test_fetch_doesnt_raise_an_exception_fetch_from_backend_raises_one(self):
+        """Tests that fetch doesn't raise an exception if fetch_from_backend does"""
+        self.fetch_from_backend_mock.side_effect = Exception()
+
+        try:
+            self.fetcher.fetch(self.some_since)
+        except:
+            self.fail('Unexpected exception raised')
+
+    def test_fetch_returns_empty_response_if_fetch_from_backend_raises_an_exception(self):
+        """Tests that fetch returns fetch_from_backend call return"""
+        self.fetch_from_backend_mock.side_effect = Exception()
+        self.assertDictEqual({'since': self.some_since, 'till': self.some_since, 'splits': []},
+                             self.fetcher.fetch(self.some_since))
+
+
+class ApiSplitChangeFetcherTests(TestCase):
+    def setUp(self):
+        self.some_since = mock.MagicMock()
+        self.some_api = mock.MagicMock()
+        self.fetcher = ApiSplitChangeFetcher(self.some_api)
+
+    def test_fetch_from_backend_calls_api_split_changes(self):
+        """Tests that fetch_from_backend calls api split_changes"""
+        self.fetcher.fetch_from_backend(self.some_since)
+        self.some_api.split_changes.assert_called_once_with(self.some_since)
+
+    def test_fetch_from_backend_returns_api_split_changes_result(self):
+        """Tests that fetch_from_backend returns api split_changes call result"""
+        self.assertEqual(self.some_api.split_changes.return_value,
+                         self.fetcher.fetch_from_backend(self.some_since))
+
+    def test_fetch_from_backend_raises_exception_if_api_split_changes_does(self):
+        """Tests that fetch_from_backend raises an exception if split_changes does"""
+        self.some_api.split_changes.side_effect = Exception()
+        with self.assertRaises(Exception):
+            self.fetcher.fetch_from_backend(self.some_since)
+
+
+class SplitsParserTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        pass
