@@ -342,7 +342,7 @@ class GreaterThanOrEqualToMatcher(CompareMatcher, GreaterOrEqualToCompareMixin, 
         return '>= {compare_to}'.format(compare_to=self._compare_to)
 
 
-class LesshanOrEqualToMatcher(CompareMatcher, LessThanOrEqualToCompareMixin, ForDataTypeMixin):
+class LessThanOrEqualToMatcher(CompareMatcher, LessThanOrEqualToCompareMixin, ForDataTypeMixin):
     MATCHER_FOR_DATA_TYPE = {
         DataType.DATETIME: 'DateTimeLessThanOrEqualToMatcher',
         DataType.NUMBER: 'NumberLessThanOrEqualToMatcher'
