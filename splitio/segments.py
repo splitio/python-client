@@ -41,7 +41,7 @@ class Segment(object):
 
 class DummySegmentFetcher(object):
     """A segment fetcher that returns empty segments. Useful for testing"""
-    def get_segment(self, name):
+    def fetch(self, name):
         """
         Fetches an empty segment
         :param name: The segment name
@@ -68,7 +68,7 @@ class SelfRefreshingSegmentFetcher(object):
         self._interval = interval
         self._segments = dict()
 
-    def get_segment(self, name):
+    def fetch(self, name):
         """
         Fetch self refreshing segment
         :param name: The name of the segment
