@@ -12,7 +12,7 @@ from unittest import TestCase
 from splitio.splits import (SplitFetcher, SelfRefreshingSplitFetcher, SplitChangeFetcher,
                             ApiSplitChangeFetcher, SplitParser)
 from splitio.matchers import (AndCombiner, AllKeysMatcher, UserDefinedSegmentMatcher,
-                              WhitelistMatcher)
+                              WhitelistMatcher, AttributeMatcher)
 from splitio.test.utils import MockUtilsMixin
 
 
@@ -544,6 +544,8 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
             'splitio.splits.GreaterThanOrEqualToMatcher')
         self.less_than_or_equal_to_matcher_mock = self.patch(
             'splitio.splits.LessThanOrEqualToMatcher')
+        self.between_matcher_mock = self.patch(
+            'splitio.splits.BetweenMatcher')
 
         self.some_in_segment_matcher = {
             'matcherType': 'IN_SEGMENT',
@@ -562,6 +564,13 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
             'GREATER_THAN_OR_EQUAL_TO')
         self.some_less_than_or_equal_to_matcher = self._get_unary_number_matcher(
             'LESS_THAN_OR_EQUAL_TO')
+        self.some_between_matcher = {
+            'matcherType': 'BETWEEN',
+            'betweenMatcherData': {
+                'start': mock.MagicMock(),
+                'end': mock.MagicMock(),
+            }
+        }
 
     def _get_unary_number_matcher(self, matcher_type):
         return {
@@ -611,7 +620,7 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
     def test_parse_matcher_greater_than_or_equal_to_calls_equal_to_matcher_for_data_type(self):
         """
         Tests that _parse_matcher_greater_than_or_equal_to calls
-        GreaterThanOrEqualTo.for_data_type
+        GreaterThanOrEqualToMatcher.for_data_type
         """
         self.parser._parse_matcher_greater_than_or_equal_to(
             self.some_greater_than_or_equal_to_matcher)
@@ -622,7 +631,7 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
     def test_parse_matcher_greater_than_or_equal_to_returns_equal_to_matcher(self):
         """
         Tests that _parse_matcher_greater_than_or_equal_to returns the result of calling
-        GreaterThanOrEqualTo.for_data_type
+        GreaterThanOrEqualToMatcher.for_data_type
         """
         self.assertEqual(
             self.greater_than_or_equal_to_matcher_mock.for_data_type.return_value,
@@ -632,7 +641,7 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
     def test_parse_matcher_less_than_or_equal_to_calls_equal_to_matcher_for_data_type(self):
         """
         Tests that _parse_matcher_less_than_or_equal_to calls
-        LessThanOrEqualTo.for_data_type
+        LessThanOrEqualToMatcher.for_data_type
         """
         self.parser._parse_matcher_less_than_or_equal_to(
             self.some_less_than_or_equal_to_matcher)
@@ -640,13 +649,122 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
             self.get_matcher_data_data_type_mock.return_value,
             self.some_less_than_or_equal_to_matcher['unaryNumericMatcherData']['value'])
 
-
     def test_parse_matcher_less_than_or_equal_to_returns_equal_to_matcher(self):
         """
         Tests that _parse_matcher_less_than_or_equal_to returns the result of calling
-        LessThanOrEqualTo.for_data_type
+        LessThanOrEqualToMatcher.for_data_type
         """
         self.assertEqual(
             self.less_than_or_equal_to_matcher_mock.for_data_type.return_value,
             self.parser._parse_matcher_less_than_or_equal_to(
                 self.some_less_than_or_equal_to_matcher))
+
+    def test_parse_matcher_between_calls_between_matcher_for_data_type(self):
+        """Tests that _parse_matcher_between calls BetweenMatcher.for_data_type"""
+        self.parser._parse_matcher_between(self.some_between_matcher)
+        self.between_matcher_mock.for_data_type.assert_called_once_with(
+            self.get_matcher_data_data_type_mock.return_value,
+            self.some_between_matcher['betweenMatcherData']['start'],
+            self.some_between_matcher['betweenMatcherData']['end'])
+
+    def test_parse_matcher_between_returns_between_matcher(self):
+        """
+        Tests that _parse_matcher_between returns the result of calling
+        BetweenMatcher.for_data_type
+        """
+        self.assertEqual(self.between_matcher_mock.for_data_type.return_value,
+                         self.parser._parse_matcher_between(self.some_between_matcher))
+
+
+class SplitParserParseMatcherTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.some_segment_fetcher = mock.MagicMock()
+        self.some_matcher = mock.MagicMock()
+
+        self.parser = SplitParser(self.some_segment_fetcher)
+
+        self.parse_matcher_all_keys_mock = self.patch_object(self.parser,
+                                                             '_parse_matcher_all_keys')
+        self.parse_matcher_in_segment_mock = self.patch_object(self.parser,
+                                                               '_parse_matcher_in_segment')
+        self.parse_matcher_whitelist_mock = self.patch_object(self.parser,
+                                                              '_parse_matcher_whitelist')
+        self.parse_matcher_equal_to_mock = self.patch_object(self.parser,
+                                                             '_parse_matcher_equal_to')
+        self.parse_matcher_greater_than_or_equal_to_mock = self.patch_object(
+            self.parser, '_parse_matcher_greater_than_or_equal_to')
+        self.parse_matcher_less_than_or_equal_to_mock = self.patch_object(
+            self.parser, '_parse_matcher_less_than_or_equal_to')
+        self.parse_matcher_between_mock = self.patch_object(self.parser, '_parse_matcher_between')
+
+        self.parser._parse_matcher_fake = mock.MagicMock()
+
+    def _get_matcher(self, matcher_type):
+        return {
+            'matcherType': matcher_type,
+            'negate': mock.MagicMock(),
+            'keySelector': {
+                'attribute': mock.MagicMock()
+            }
+        }
+
+    def test_calls_parse_matcher_all_keys(self):
+        """Test that _parse_matcher calls _parse_matcher_all_keys on ALL_KEYS matcher"""
+        matcher = self._get_matcher('ALL_KEYS')
+        self.parser._parse_matcher(matcher)
+        self.parse_matcher_all_keys_mock.assert_called_once_with(matcher)
+
+    def test_calls_parse_matcher_in_segment(self):
+        """Test that _parse_matcher calls _parse_matcher_in_segment on IN_SEGMENT matcher"""
+        matcher = self._get_matcher('IN_SEGMENT')
+        self.parser._parse_matcher(matcher)
+        self.parse_matcher_in_segment_mock.assert_called_once_with(matcher)
+
+    def test_calls_parse_matcher_whitelist(self):
+        """Test that _parse_matcher calls _parse_matcher_in_segment on WHITELIST matcher"""
+        matcher = self._get_matcher('WHITELIST')
+        self.parser._parse_matcher(matcher)
+        self.parse_matcher_whitelist_mock.assert_called_once_with(matcher)
+
+    def test_calls_parse_matcher_equal_to(self):
+        """Test that _parse_matcher calls _parse_matcher_equal_to on EQUAL_TO matcher"""
+        matcher = self._get_matcher('EQUAL_TO')
+        self.parser._parse_matcher(matcher)
+        self.parse_matcher_equal_to_mock.assert_called_once_with(matcher)
+
+    def test_calls_parse_matcher_greater_than_or_equal_to(self):
+        """
+        Test that _parse_matcher calls _parse_matcher_greater_than_or_equal_to on
+        GREATER_THAN_OR_EQUAL_TO matcher
+        """
+        matcher = self._get_matcher('GREATER_THAN_OR_EQUAL_TO')
+        self.parser._parse_matcher(matcher)
+        self.parse_matcher_greater_than_or_equal_to_mock.assert_called_once_with(matcher)
+
+    def test_calls_parse_matcher_less_than_or_equal_to(self):
+        """
+        Test that _parse_matcher calls _parse_matcher_less_than_or_equal_to on
+        LESS_THAN_OR_EQUAL_TO matcher
+        """
+        matcher = self._get_matcher('LESS_THAN_OR_EQUAL_TO')
+        self.parser._parse_matcher(matcher)
+        self.parse_matcher_less_than_or_equal_to_mock.assert_called_once_with(matcher)
+
+    def test_calls_parse_matcher_between(self):
+        """Test that _parse_matcher calls _parse_between on BETWEEN matcher"""
+        matcher = self._get_matcher('BETWEEN')
+        self.parser._parse_matcher(matcher)
+        self.parse_matcher_between_mock.assert_called_once_with(matcher)
+
+    def test_raises_exception_if_parse_method_returns_none(self):
+        """
+        Tests that _parse_matcher raises an exception if the specific parse method returns None
+        """
+        self.parser._parse_matcher_fake.return_value = None
+        with self.assertRaises(ValueError):
+            self.parser._parse_matcher(self._get_matcher('FAKE'))
+
+    def test_returns_attribute_matcher(self):
+        """Tests that _parse_matcher returns an AttributeMatcher"""
+        self.assertIsInstance(self.parser._parse_matcher(self._get_matcher('FAKE')),
+                              AttributeMatcher)
