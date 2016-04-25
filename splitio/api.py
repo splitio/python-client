@@ -117,4 +117,4 @@ class SdkApi(object):
             'since': since
         }
 
-        self._get(url, params)
+        return self._get(url, params)
