@@ -626,7 +626,8 @@ class SplitParser(object):
         matcher_type = matcher['matcherType']
 
         try:
-            matcher_parse_method = getattr(self, '_parse_matcher_{}'.format(matcher_type.lower()))
+            matcher_parse_method = getattr(
+                self, '_parse_matcher_{}'.format(matcher_type.strip().lower()))
             delegate = matcher_parse_method(matcher)
         except AttributeError:
             raise ValueError('Invalid matcher type: {}'.format(matcher_type))
