@@ -20,9 +20,9 @@ class MockUtilsMixin(object):
             self.some_mock = self.patch('some.module.function')
             self.some_function = self.patch_object(self.obj, 'some_method')
     """
-    def patch_builtin(self, name, a_mock):
-        return mock.patch(
-            ('builtins.{}' if version_info >= (3,) else '__builtin__.{}').format(name), a_mock)
+    def patch_builtin(self, name, *args, **kwargs):
+        return self.patch(('builtins.{}' if version_info >= (3,) else '__builtin__.{}').format(
+            name), *args, **kwargs)
 
     def patch(self, *args, **kwargs):
         patcher = mock.patch(*args, **kwargs)
