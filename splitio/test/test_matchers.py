@@ -13,11 +13,18 @@ from splitio.matchers import (AndCombiner, CombiningMatcher, AllKeysMatcher, Neg
                               AttributeMatcher, BetweenMatcher, DateTimeBetweenMatcher,
                               NumberBetweenMatcher, DataType, EqualToCompareMixin,
                               GreaterOrEqualToCompareMixin, LessThanOrEqualToCompareMixin,
-                              CompareMatcher, UserDefinedSegmentMatcher, WhitelistMatcher)
+                              CompareMatcher, UserDefinedSegmentMatcher, WhitelistMatcher,
+                              DateEqualToMatcher, NumberEqualToMatcher, EqualToMatcher,
+                              DateTimeGreaterThanOrEqualToMatcher,
+                              NumberGreaterThanOrEqualToMatcher, GreaterThanOrEqualToMatcher,
+                              DateTimeLessThanOrEqualToMatcher, NumberLessThanOrEqualToMatcher,
+                              LessThanOrEqualToMatcher)
+from splitio.transformers import (AsDateHourMinuteTimestampTransformMixin, AsNumberTransformMixin,
+                                  AsDateTimestampTransformMixin)
 from splitio.test.utils import MockUtilsMixin
 
 
-class AndCombinerTests(TestCase):
+class AndCombinerTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.some_key = mock.MagicMock()
         self.some_attributes = mock.MagicMock()
@@ -57,6 +64,13 @@ class AndCombinerTests(TestCase):
         matchers[0].match.assert_called_once_with(self.some_key, self.some_attributes)
         matchers[1].match.assert_called_once_with(self.some_key, self.some_attributes)
         matchers[2].match.assert_not_called()
+
+    def test_returns_result_of_calling_all(self):
+        """Tests that combine stops checking after the first false"""
+        matchers = [mock.MagicMock(), mock.MagicMock(), mock.MagicMock()]
+        all_mock = self.patch_builtin('all')
+        self.assertEqual(all_mock.return_value, self.combiner.combine(matchers, self.some_key,
+                                                                      self.some_attributes))
 
 
 class CombiningMatcherTests(TestCase):
@@ -444,3 +458,123 @@ class WhitelistMatcherTests(TestCase, MockUtilsMixin):
         """
         self.assertEqual(self.whitelist_frozenset.__contains__.return_value,
                          self.matcher.match(self.some_key))
+
+
+class DateTimeBetweenMatcherTests(TestCase):
+    def setUp(self):
+        self.some_start = mock.MagicMock()
+        self.some_end = mock.MagicMock()
+        self.matcher = DateTimeBetweenMatcher(self.some_start, self.some_end)
+
+    def test_matcher_is_between_matcher(self):
+        """Tests that DateTimeBetweenMatcher is a BetweenMatcher"""
+        self.assertIsInstance(self.matcher, BetweenMatcher)
+
+    def test_matcher_is_between_matcher(self):
+        """Tests that DateTimeBetweenMatcher is a AsDateHourMinuteTimestampTransformMixin"""
+        self.assertIsInstance(self.matcher, AsDateHourMinuteTimestampTransformMixin)
+
+
+class NumberBetweenMatcherTests(TestCase):
+    def setUp(self):
+        self.some_start = mock.MagicMock()
+        self.some_end = mock.MagicMock()
+        self.matcher = NumberBetweenMatcher(self.some_start, self.some_end)
+
+    def test_matcher_is_between_matcher(self):
+        """Tests that NumberBetweenMatcher is a BetweenMatcher"""
+        self.assertIsInstance(self.matcher, BetweenMatcher)
+
+    def test_matcher_is_between_matcher(self):
+        """Tests that NumberBetweenMatcher is a AsNumberTransformMixin"""
+        self.assertIsInstance(self.matcher, AsNumberTransformMixin)
+
+
+class DateEqualToMatcherTests(TestCase):
+    def setUp(self):
+        self.some_compare_to = mock.MagicMock()
+        self.matcher = DateEqualToMatcher(self.some_compare_to)
+
+    def test_matcher_is_between_matcher(self):
+        """Tests that DateEqualToMatcher is a EqualToMatcher"""
+        self.assertIsInstance(self.matcher, EqualToMatcher)
+
+    def test_matcher_is_between_matcher(self):
+        """Tests that DateEqualToMatcher is a AsDateTimestampTransformMixin"""
+        self.assertIsInstance(self.matcher, AsDateTimestampTransformMixin)
+
+
+class NumberToMatcherTests(TestCase):
+    def setUp(self):
+        self.some_compare_to = mock.MagicMock()
+        self.matcher = NumberEqualToMatcher(self.some_compare_to)
+
+    def test_matcher_is_between_matcher(self):
+        """Tests that NumberEqualToMatcher is a EqualToMatcher"""
+        self.assertIsInstance(self.matcher, EqualToMatcher)
+
+    def test_matcher_is_between_matcher(self):
+        """Tests that NumberEqualToMatcher is a AsNumberTransformMixin"""
+        self.assertIsInstance(self.matcher, AsNumberTransformMixin)
+
+
+class DateTimeGreaterThanOrEqualToMatcherTests(TestCase):
+    def setUp(self):
+        self.some_compare_to = mock.MagicMock()
+        self.matcher = DateTimeGreaterThanOrEqualToMatcher(self.some_compare_to)
+
+    def test_matcher_is_between_matcher(self):
+        """Tests that DateTimeGreaterThanOrEqualToMatcher is a GreaterThanOrEqualToMatcher"""
+        self.assertIsInstance(self.matcher, GreaterThanOrEqualToMatcher)
+
+    def test_matcher_is_between_matcher(self):
+        """
+        Tests that DateTimeGreaterThanOrEqualToMatcher is a
+        AsDateHourMinuteTimestampTransformMixin
+        """
+        self.assertIsInstance(self.matcher, AsDateHourMinuteTimestampTransformMixin)
+
+
+class NumberGreaterThanOrEqualToMatcherTests(TestCase):
+    def setUp(self):
+        self.some_compare_to = mock.MagicMock()
+        self.matcher = NumberGreaterThanOrEqualToMatcher(self.some_compare_to)
+
+    def test_matcher_is_between_matcher(self):
+        """Tests that NumberGreaterThanOrEqualToMatcher is a GreaterThanOrEqualToMatcher"""
+        self.assertIsInstance(self.matcher, GreaterThanOrEqualToMatcher)
+
+    def test_matcher_is_between_matcher(self):
+        """Tests that NumberGreaterThanOrEqualToMatcher is a AsNumberTransformMixin"""
+        self.assertIsInstance(self.matcher, AsNumberTransformMixin)
+
+
+class DateTimeLessThanOrEqualToMatcherTests(TestCase):
+    def setUp(self):
+        self.some_compare_to = mock.MagicMock()
+        self.matcher = DateTimeLessThanOrEqualToMatcher(self.some_compare_to)
+
+    def test_matcher_is_between_matcher(self):
+        """Tests that DateTimeLessThanOrEqualToMatcher is a LessThanOrEqualToMatcher"""
+        self.assertIsInstance(self.matcher, GreaterThanOrEqualToMatcher)
+
+    def test_matcher_is_between_matcher(self):
+        """
+        Tests that DateTimeLessThanOrEqualToMatcher is a
+        AsDateHourMinuteTimestampTransformMixin
+        """
+        self.assertIsInstance(self.matcher, AsDateHourMinuteTimestampTransformMixin)
+
+
+class NumberLessThanOrEqualToMatcherTests(TestCase):
+    def setUp(self):
+        self.some_compare_to = mock.MagicMock()
+        self.matcher = NumberLessThanOrEqualToMatcher(self.some_compare_to)
+
+    def test_matcher_is_between_matcher(self):
+        """Tests that NumberLessThanOrEqualToMatcher is a LessThanOrEqualToMatcher"""
+        self.assertIsInstance(self.matcher, LessThanOrEqualToMatcher)
+
+    def test_matcher_is_between_matcher(self):
+        """Tests that NumberLessThanOrEqualToMatcher is a AsNumberTransformMixin"""
+        self.assertIsInstance(self.matcher, AsNumberTransformMixin)
