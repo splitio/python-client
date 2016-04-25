@@ -562,7 +562,7 @@ class SplitParser(object):
         delegate = EqualToMatcher.for_data_type(data_type, matcher_data.get('value', None))
         return delegate
 
-    def _parse_matcher_greather_than_or_equal_to(self, matcher):
+    def _parse_matcher_greater_than_or_equal_to(self, matcher):
         """
         Parses a GREATER_THAN_OR_EQUAL_TO matcher
         :param matcher: A dictionary with the JSON representation of a GREATER_THAN_OR_EQUAL_TO
