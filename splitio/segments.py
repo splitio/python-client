@@ -158,7 +158,6 @@ class SelfRefreshingSegment(Segment):
                 while True:
                     response = segment._segment_change_fetcher.fetch(segment._name,
                                                                      segment._change_number)
-
                     if segment._change_number >= response['till']:
                         return
 
@@ -179,7 +178,7 @@ class SelfRefreshingSegment(Segment):
                     if not segment._greedy:
                         return
         except:
-            segment._logger('Exception caught refreshing segment')
+            segment._logger.exception('Exception caught refreshing segment')
             segment._stopped = True
 
     @staticmethod
@@ -207,7 +206,7 @@ class SelfRefreshingSegment(Segment):
             timer.daemon = True
             timer.start()
         except:
-            segment._logger('Exception caught refreshing timer')
+            segment._logger.exception('Exception caught refreshing timer')
             segment._stopped = True
 
 
