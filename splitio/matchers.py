@@ -30,7 +30,7 @@ class AndCombiner(object):
         if not matchers:
             return False
 
-        all(matcher.match(key, attributes) for matcher in matchers)
+        return all(matcher.match(key, attributes) for matcher in matchers)
 
     @python_2_unicode_compatible
     def __str__(self):
@@ -50,7 +50,7 @@ class CombiningMatcher(object):
         self._combiner = combiner
         self._delegates = tuple(delegates)
 
-    def match(self, key, attributes):
+    def match(self, key, attributes=None):
         """
         Tests whether there is a match for the given key and attributes
         :param key: Key to match
@@ -121,7 +121,7 @@ class NegatableMatcher(object):
     @python_2_unicode_compatible
     def __str__(self):
         return '{negate}{delegate}'.format(
-            negate='not ' if not self._negate else '',
+            negate='not ' if self._negate else '',
             delegate=self._delegate
         )
 
@@ -141,7 +141,7 @@ class AttributeMatcher(object):
         self._attribute = attribute
         self._matcher = NegatableMatcher(negate, matcher)
 
-    def match(self, key, attributes):
+    def match(self, key, attributes=None):
         """
         Matches against the value of an attribute associated with the provided key
         :param key: The key to match
@@ -370,19 +370,19 @@ class DateTimeGreaterThanOrEqualToMatcher(GreaterThanOrEqualToMatcher,
 
 
 class NumberGreaterThanOrEqualToMatcher(GreaterThanOrEqualToMatcher,
-                                        AsDateHourMinuteTimestampTransformMixin):
+                                        AsNumberTransformMixin):
     def __init__(self, compare_to):
         super(NumberGreaterThanOrEqualToMatcher, self).__init__(compare_to, DataType.NUMBER)
 
 
-class DateTimeLessThanOrEqualToMatcher(GreaterThanOrEqualToMatcher,
+class DateTimeLessThanOrEqualToMatcher(LessThanOrEqualToMatcher,
                                        AsDateHourMinuteTimestampTransformMixin):
     def __init__(self, compare_to):
         super(DateTimeLessThanOrEqualToMatcher, self).__init__(compare_to, DataType.DATETIME)
 
 
-class NumberLessThanOrEqualToMatcher(GreaterThanOrEqualToMatcher,
-                                     AsDateHourMinuteTimestampTransformMixin):
+class NumberLessThanOrEqualToMatcher(LessThanOrEqualToMatcher,
+                                     AsNumberTransformMixin):
     def __init__(self, compare_to):
         super(NumberLessThanOrEqualToMatcher, self).__init__(compare_to, DataType.NUMBER)
 
@@ -412,7 +412,7 @@ class UserDefinedSegmentMatcher(object):
 
     @python_2_unicode_compatible
     def __str__(self):
-        return 'in segment {segment_name}'.format(segment_name=self._segment.segment_name)
+        return 'in segment {segment_name}'.format(segment_name=self._segment.name)
 
 
 class WhitelistMatcher(object):
@@ -436,6 +436,6 @@ class WhitelistMatcher(object):
 
     @python_2_unicode_compatible
     def __str__(self):
-        return 'in whitelist [{whitelist]]'.format(
+        return 'in whitelist [{whitelist}]'.format(
             whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
         )
