@@ -306,7 +306,8 @@ class SelfRefreshingSplitFetcher(SplitFetcher):
             return
 
         try:
-            thread = Thread(target=SelfRefreshingSplitFetcher._refresh_splits)
+            thread = Thread(target=SelfRefreshingSplitFetcher._refresh_splits,
+                            args=(split_fetcher,))
             thread.daemon = True
             thread.start()
         except:

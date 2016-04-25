@@ -255,7 +255,8 @@ class SelfRefreshingSplitFetcherTimerRefreshTests(TestCase, MockUtilsMixin):
         """Tests that _timer_refresh creates and starts a Thread with _refresh_splits target"""
         SelfRefreshingSplitFetcher._timer_refresh(self.fetcher)
 
-        self.thread_mock.assert_called_once_with(target=SelfRefreshingSplitFetcher._refresh_splits)
+        self.thread_mock.assert_called_once_with(target=SelfRefreshingSplitFetcher._refresh_splits,
+                                                 args=(self.fetcher,))
         self.thread_mock.return_value.start.assert_called_once_with()
 
     def test_timer_created_and_started_with_timer_refresh(self):
