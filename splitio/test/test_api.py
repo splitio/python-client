@@ -11,7 +11,8 @@ from requests.exceptions import RequestException, HTTPError
 from unittest import TestCase
 
 from splitio.api import SdkApi
-from splitio.settings import SDK_VERSION, SDK_API_BASE_URL, SPLIT_CHANGES_URL_TEMPLATE
+from splitio.settings import (SDK_VERSION, SDK_API_BASE_URL, SPLIT_CHANGES_URL_TEMPLATE,
+                              SEGMENT_CHANGES_URL_TEMPLATE)
 from splitio.test.utils import MockUtilsMixin
 
 
@@ -204,3 +205,66 @@ class TestSdkApiSplitChanges(TestCase, MockUtilsMixin):
 
         with self.assertRaises(Exception):
             self.api.split_changes(self.some_since)
+
+    def test_returns_get_result(self):
+        """Tests that the method returns the result of calling get"""
+        self.assertEqual(self.get_mock.return_value, self.api.split_changes(self.some_since))
+
+
+class TestSdkApiSegmentChanges(TestCase, MockUtilsMixin):
+    def setUp(self):
+        super(TestSdkApiSegmentChanges, self).setUp()
+
+        self.some_api_key = mock.MagicMock()
+        self.some_name = 'some_name'
+        self.some_since = mock.MagicMock()
+
+        self.api = SdkApi(self.some_api_key)
+
+        self.get_mock = self.patch_object(self.api, '_get')
+
+    def test_default_segment_changes_url_is_used(self):
+        """Tests that the default segment changes endpoint url is used if sdk_api_base_url hasn't
+        been set"""
+        self.api.segment_changes(self.some_name, self.some_since)
+
+        expected_url = SEGMENT_CHANGES_URL_TEMPLATE.format(
+            base_url=SDK_API_BASE_URL,
+            segment_name=self.some_name
+        )
+
+        self.get_mock.assert_called_once_with(expected_url, mock.ANY)
+
+    def test_rebased_segment_changes_url_is_used(self):
+        """Tests that if sdk_api_base_url has been set, it is used as the base for the url of the
+        request"""
+
+        some_sdk_api_url_base = 'some_sdk_api_url_base'
+        self.api._sdk_api_url_base = some_sdk_api_url_base
+        self.api.segment_changes(self.some_name, self.some_since)
+
+        expected_url = SEGMENT_CHANGES_URL_TEMPLATE.format(
+            base_url=some_sdk_api_url_base,
+            segment_name=self.some_name
+        )
+
+        self.get_mock.assert_called_once_with(expected_url, mock.ANY)
+
+    def test_proper_params_are_used(self):
+        """Tests that the request to the segment changes endpoint is made with the proper
+        parameters"""
+        self.api.segment_changes(self.some_name, self.some_since)
+
+        self.get_mock.assert_called_once_with(mock.ANY, {'since': self.some_since})
+
+    def test_exceptions_from_get_are_raised(self):
+        """Tests that any exceptions raised from calling _get are not handled with the call"""
+        self.get_mock.side_effect = Exception()
+
+        with self.assertRaises(Exception):
+            self.api.segment_changes(self.some_name, self.some_since)
+
+    def test_returns_get_result(self):
+        """Tests that the method returns the result of calling get"""
+        self.assertEqual(self.get_mock.return_value, self.api.segment_changes(self.some_name,
+                                                                              self.some_since))
