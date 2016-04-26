@@ -360,7 +360,7 @@ class SegmentChangeFetcherTests(TestCase, MockUtilsMixin):
         except:
             self.fail('Unexpected exception raised')
 
-    def test_fetch_calls_fetch_from_backend(self):
+    def test_returns_empty_segment_if_backend_raises_an_exception(self):
         """
         Tests that if fetch_from_backend raises an exception, an empty segment change is returned
         """
