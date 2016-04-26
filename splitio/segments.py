@@ -8,16 +8,15 @@ from threading import Timer, RLock
 
 
 class Segment(object):
-    def __init__(self, name, key_set=None):
+    def __init__(self, name):
         """
-        Basic implementation of an immutable Split.io Segment.
+        Basic interface of a Segment.
         :param name: The name of the segment
         :type name: unicode
         :param key_set: Set of keys contained by the segment
         :type key_set: list
         """
         self._name = name
-        self._key_set = frozenset(key_set) if key_set is not None else frozenset()
         self._logger = logging.getLogger(self.__class__.__name__)
 
     @property
@@ -27,6 +26,30 @@ class Segment(object):
         :rtype: unicode
         """
         return self._name
+
+    def contains(self, key):
+        """
+        Tests whether a key is in a segment
+        :param key: The key to test
+        :type key: unicode
+        :return: True if the key is contained by the segment, False otherwise
+        :rtype: boolean
+        """
+        raise NotImplementedError()
+
+
+class InMemorySegment(Segment):
+    def __init__(self, name, key_set=None):
+        """
+        An implementation of a Segment that holds keys in set in memory.
+        :param name: The name of the segment
+        :type name: unicode
+        :param key_set: Set of keys contained by the segment
+        :type key_set: list
+        """
+        super(InMemorySegment, self).__init__(name)
+        self._key_set = frozenset(key_set) if key_set is not None else frozenset()
+        self._logger = logging.getLogger(self.__class__.__name__)
 
     def contains(self, key):
         """
@@ -88,13 +111,13 @@ class SelfRefreshingSegmentFetcher(object):
         return segment
 
 
-class SelfRefreshingSegment(Segment):
+class SelfRefreshingSegment(InMemorySegment):
     def __init__(self, name, segment_change_fetcher, executor, interval, greedy=True,
                  change_number=-1, key_set=None):
         """
         A segment implementation that refreshes itself periodically using a ThreadPoolExecutor.
         :param name: The name of the segment
-        :type name: unicode
+        :type name: str
         :param segment_change_fetcher: The segment change fetcher implementation
         :type segment_change_fetcher: SegmentChangeFetcher
         :param executor: A ThreadPoolExecutor that'll run the refreshing process
@@ -208,6 +231,43 @@ class SelfRefreshingSegment(Segment):
         except:
             segment._logger.exception('Exception caught refreshing timer')
             segment._stopped = True
+
+
+class CacheBasedSegmentFetcher(object):
+    def __init__(self, segment_cache):
+        """
+        A segment fetcher based on a segments cache
+        :param segment_cache: The segment cache to use
+        :type segment_cache: SegmentCache
+        """
+        self._segment_cache = segment_cache
+
+    def fetch(self, name):
+        """
+        Fetch cache based segment
+        :param name: The name of the segment
+        :type name: unicode
+        :return: A segment for the given name
+        :rtype: Segment
+        """
+        segment = CacheBasedSegment(name, self._segment_cache)
+        return segment
+
+
+class CacheBasedSegment(Segment):
+    def __init__(self, name, segment_cache):
+        """
+        A SegmentCached based implementation of a Segment
+        :param name: The name of the segment
+        :type name: str
+        :param segment_cache: The segment cache backend
+        :type segment_cache: SegmentCache
+        """
+        super(CacheBasedSegment, self).__init__(name)
+        self._segment_cache = segment_cache
+
+    def contains(self, key):
+        return self._segment_cache.is_in_segment(self._name, key)
 
 
 class SegmentChangeFetcher(object):
