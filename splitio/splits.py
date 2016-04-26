@@ -136,6 +136,32 @@ class Partition(object):
 
 
 class SplitFetcher(object):
+    def __init__(self):
+        """
+        The interface for a SplitFetcher. It provides access to Split implementations.
+        """
+        self._logger = logging.getLogger(self.__class__.__name__)
+
+    def fetch(self, feature):
+        """
+        Fetches the split for a given feature
+        :param feature: The name of the feature
+        :type feature: str
+        :return: A split associated with the feature
+        :rtype: Split
+        """
+        raise NotImplementedError()
+
+    def fetch_all(self):
+        """
+        Feches all splits
+        :return: All the know splits so far
+        :rtype: list
+        """
+        raise NotImplementedError()
+
+
+class InMemorySplitFetcher(SplitFetcher):
     def __init__(self, splits=None):
         """
         A basic implementation of a split fetcher. It's responsible for providing access to the
@@ -143,7 +169,7 @@ class SplitFetcher(object):
         :param splits: An optional dictionary of feature to split entries
         :type splits: dict
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
+        super(InMemorySplitFetcher, self).__init__()
         self._splits = splits if splits is not None else dict()
 
     def fetch(self, feature):
@@ -164,12 +190,8 @@ class SplitFetcher(object):
         """
         return list(self._splits.values())
 
-    def force_refresh(self):
-        """Forces a refresh of all splits"""
-        pass  # Do nothing on the basic implementation
 
-
-class SelfRefreshingSplitFetcher(SplitFetcher):
+class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
     def __init__(self, split_change_fetcher, split_parser, interval=30, greedy=True,
                  change_number=-1, splits=None):
         """
@@ -321,6 +343,23 @@ class SelfRefreshingSplitFetcher(SplitFetcher):
         except:
             split_fetcher._logger.exception('Exception caught refreshing timer')
             split_fetcher._stopped = True
+
+
+class CacheBasedSplitFetcher(SplitFetcher):
+    def __init__(self, split_cache):
+        """
+        A cache based SplitFetcher implementation
+        :param split_cache: The split cache
+        :type split_cache: SplitCache
+        :param split_parser: The split parser
+        :type split_parser: SplitParser
+        """
+        super(SelfRefreshingSplitFetcher, self).__init__()
+
+        self._split_cache = split_cache
+
+    def fetch(self, feature):
+        return self._split_cache.get_split(feature)
 
 
 class SplitChangeFetcher(object):

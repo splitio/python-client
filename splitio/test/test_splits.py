@@ -9,14 +9,14 @@ except ImportError:
 
 from unittest import TestCase
 
-from splitio.splits import (SplitFetcher, SelfRefreshingSplitFetcher, SplitChangeFetcher,
+from splitio.splits import (InMemorySplitFetcher, SelfRefreshingSplitFetcher, SplitChangeFetcher,
                             ApiSplitChangeFetcher, SplitParser)
 from splitio.matchers import (AndCombiner, AllKeysMatcher, UserDefinedSegmentMatcher,
                               WhitelistMatcher, AttributeMatcher)
 from splitio.test.utils import MockUtilsMixin
 
 
-class SplitFetcherTests(TestCase):
+class InMemorySplitFetcherTests(TestCase):
     def setUp(self):
         self.some_feature = mock.MagicMock()
         self.some_splits = mock.MagicMock()
@@ -24,7 +24,7 @@ class SplitFetcherTests(TestCase):
                                                                       mock.MagicMock(),
                                                                       mock.MagicMock()]
 
-        self.fetcher = SplitFetcher(self.some_splits)
+        self.fetcher = InMemorySplitFetcher(self.some_splits)
 
     def test_fetch_calls_get_on_splits(self):
         """Test that fetch calls get on splits"""
