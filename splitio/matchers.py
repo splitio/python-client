@@ -156,14 +156,12 @@ class AttributeMatcher(object):
         if self._attribute is None:
             return self._matcher.match(key)
 
-        if attributes is None:
+        if attributes is None or \
+                self._attribute not in attributes or \
+                attributes[self._attribute] is None:
             return False
 
-        value = attributes.get(self._attribute)
-        if value is None:
-            return False
-
-        return self._matcher.match(value)
+        return self._matcher.match(attributes[self._attribute])
 
     @python_2_unicode_compatible
     def __str__(self):
