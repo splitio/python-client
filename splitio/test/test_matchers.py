@@ -154,7 +154,10 @@ class AttributeMatcherTests(TestCase, MockUtilsMixin):
         self.some_attribute = mock.MagicMock()
         self.some_key = mock.MagicMock()
 
+        self.some_attribute_value = mock.MagicMock()
         self.some_attributes = mock.MagicMock()
+        self.some_attributes.__contains__.return_value = True
+        self.some_attributes.__getitem__.return_value = self.some_attribute_value
 
         self.some_matcher = mock.MagicMock()
         self.some_negate = mock.MagicMock()
@@ -177,23 +180,24 @@ class AttributeMatcherTests(TestCase, MockUtilsMixin):
         """
         self.assertFalse(self.matcher.match(self.some_key, None))
 
-    def test_match_returns_false_attribute_value_is_none(self):
+    def test_match_returns_false_attribute_is_not_in_attributes(self):
         """
-        Tests that match returns None if the value of the attribute is None
+        Tests that match returns False if the attribute is not in the attributes dictionary
         """
-        self.some_attributes.get.return_value = None
-
+        self.some_attributes.__contains__.return_value = None
         self.assertFalse(self.matcher.match(self.some_key, self.some_attributes))
 
-    def test_match_calls_negatable_matcher_match_with_attribute_if_attributes_is_not_none(self):
+    def test_match_returns_false_attribute_value_is_none(self):
         """
-        Tests that match calls the negatable matcher match method with the supplied key if
-        attributes is None
+        Tests that match returns False if the value of the attribute is None
         """
-        self.matcher.match(self.some_key, self.some_attributes)
+        self.some_attributes.__getitem__.return_value = None
+        self.assertFalse(self.matcher.match(self.some_key, self.some_attributes))
 
-        self.negatable_matcher_mock.match.assert_called_once_with(
-            self.some_attributes.get.return_value)
+    def test_match_calls_negatable_matcher_match_with_attribute_value(self):
+        """Tests that match calls match on the negatable matcher is the attribute value as key"""
+        self.matcher.match(self.some_key, self.some_attributes)
+        self.negatable_matcher_mock.match.assert_called_once_with(self.some_attribute_value)
 
     def test_match_returns_result_negatable_matcher_match(self):
         """
