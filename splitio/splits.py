@@ -73,10 +73,10 @@ class Split(object):
     def __str__(self):
         return 'name: {name}, seed: {seed}, killed: {killed}, ' \
                'default treatment: {default_treatment}, ' \
-               'conditions: {conditions}'.format(
-                    name=self._name, seed=self._seed, killed=self._killed,
-                    default_treatment=self._default_treatment,
-                    conditions=','.join(map(str, self._conditions)))
+               'conditions: {conditions}'.format(name=self._name, seed=self._seed,
+                                                 killed=self._killed,
+                                                 default_treatment=self._default_treatment,
+                                                 conditions=','.join(map(str, self._conditions)))
 
 
 class Condition(object):
@@ -315,7 +315,7 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
             split_fetcher._stopped = True
         finally:
             split_fetcher._logger.info('split fetch before: %s, after: %s', change_number_before,
-                                  split_fetcher._change_number)
+                                       split_fetcher._change_number)
 
     @staticmethod
     def _timer_refresh(split_fetcher):
@@ -680,4 +680,3 @@ class SplitParser(object):
             attribute = matcher['keySelector']['attribute']
 
         return AttributeMatcher(attribute, delegate, matcher.get('negate', False))
-

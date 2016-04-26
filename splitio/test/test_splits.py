@@ -509,6 +509,7 @@ class SplitParserParseMatcherGroupTests(TestCase, MockUtilsMixin):
         self.parser._parse_matcher_group(self.some_matcher_group)
         self.combining_matcher_mock.assert_called_once_with(self.parse_combiner_mock.return_value,
                                                             self.parse_matcher_side_effect)
+
     def test_returns_combining_matcher(self):
         """Tests that _parse_matcher_group returns a CombiningMatcher"""
         self.assertEqual(self.combining_matcher_mock.return_value,
@@ -601,7 +602,7 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
     def test_parse_matcher_whitelist_returns_whitelist_matcher(self):
         """Tests that _parse_matcher_whitelist returns a WhitelistMatcher"""
         self.assertIsInstance(self.parser._parse_matcher_whitelist(self.some_whitelist_matcher),
-                      WhitelistMatcher)
+                              WhitelistMatcher)
 
     def test_parse_matcher_equal_to_calls_equal_to_matcher_for_data_type(self):
         """Tests that _parse_matcher_equal_to calls EqualToMatcher.for_data_type"""
