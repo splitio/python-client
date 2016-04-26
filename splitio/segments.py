@@ -39,6 +39,19 @@ class Segment(object):
         return key in self._key_set
 
 
+class DummySegmentFetcher(object):
+    """A segment fetcher that returns empty segments. Useful for testing"""
+    def fetch(self, name):
+        """
+        Fetches an empty segment
+        :param name: The segment name
+        :type name: unicode
+        :return: An empty segment
+        :rtype: Segment
+        """
+        return Segment(name)
+
+
 class SelfRefreshingSegmentFetcher(object):
     def __init__(self, segment_change_fetcher, interval=60, max_workers=5):
         """
@@ -55,7 +68,7 @@ class SelfRefreshingSegmentFetcher(object):
         self._interval = interval
         self._segments = dict()
 
-    def get_segment(self, name):
+    def fetch(self, name):
         """
         Fetch self refreshing segment
         :param name: The name of the segment
@@ -145,7 +158,6 @@ class SelfRefreshingSegment(Segment):
                 while True:
                     response = segment._segment_change_fetcher.fetch(segment._name,
                                                                      segment._change_number)
-
                     if segment._change_number >= response['till']:
                         return
 
@@ -166,7 +178,7 @@ class SelfRefreshingSegment(Segment):
                     if not segment._greedy:
                         return
         except:
-            segment._logger('Exception caught refreshing segment')
+            segment._logger.exception('Exception caught refreshing segment')
             segment._stopped = True
 
     @staticmethod
@@ -194,7 +206,7 @@ class SelfRefreshingSegment(Segment):
             timer.daemon = True
             timer.start()
         except:
-            segment._logger('Exception caught refreshing timer')
+            segment._logger.exception('Exception caught refreshing timer')
             segment._stopped = True
 
 

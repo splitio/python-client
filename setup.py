@@ -4,11 +4,11 @@ from setuptools import setup
 from sys import version_info
 
 tests_require = ['nose']
-install_requires = ['arrow>=0.7.0', 'requests>=2.9.1']
+install_requires = ['arrow>=0.7.0', 'requests>=2.9.1', 'future>=0.15.2']
 
 if version_info < (3,):
     tests_require += ['mock']
-    install_requires += ['six>=1.10.0', 'future>=0.15.2', 'futures>=3.0.5']
+    install_requires += ['six>=1.10.0', 'futures>=3.0.5']
 
 setup(name='splitio-client',
       version='0.0.1',

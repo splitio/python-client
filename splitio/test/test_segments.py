@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 try:
     from unittest import mock
-except NameError:
+except ImportError:
     # Python 2
     import mock
 
@@ -62,7 +62,7 @@ class SelfRefreshingSegmentFetcherTests(TestCase, MockUtilsMixin):
         self.segments_mock.__contains__.return_value = True
         self.segments_mock.__getitem__.return_value = self.some_segment
 
-        segment = self.segment_fetcher.get_segment(self.some_name)
+        segment = self.segment_fetcher.fetch(self.some_name)
 
         self.assertEqual(self.some_segment, segment)
 
@@ -71,7 +71,7 @@ class SelfRefreshingSegmentFetcherTests(TestCase, MockUtilsMixin):
         self.segments_mock.__contains__.return_value = True
         self.segments_mock.__getitem__.return_value = self.some_segment
 
-        self.segment_fetcher.get_segment(self.some_name)
+        self.segment_fetcher.fetch(self.some_name)
 
         self.self_refreshing_segment_mock.assert_not_called()
 
@@ -79,7 +79,7 @@ class SelfRefreshingSegmentFetcherTests(TestCase, MockUtilsMixin):
         """Tests that if a segment is not cached the SelfRefreshingSegment constructor is called"""
         self.segments_mock.__contains__.return_value = False
 
-        self.segment_fetcher.get_segment(self.some_name)
+        self.segment_fetcher.fetch(self.some_name)
 
         self.self_refreshing_segment_mock.assert_called_once_with(self.some_name,
                                                                   self.segment_change_fetcher_mock,
@@ -90,7 +90,7 @@ class SelfRefreshingSegmentFetcherTests(TestCase, MockUtilsMixin):
         """Tests that if a segment is not cached the a new segment is inserted into the cache"""
         self.segments_mock.__contains__.return_value = False
 
-        self.segment_fetcher.get_segment(self.some_name)
+        self.segment_fetcher.fetch(self.some_name)
 
         self.segments_mock.__setitem__.assert_called_once_with(
             self.some_name, self.self_refreshing_segment_mock.return_value)
@@ -99,7 +99,7 @@ class SelfRefreshingSegmentFetcherTests(TestCase, MockUtilsMixin):
         """Tests that start() is called on the newly created segment"""
         self.segments_mock.__contains__.return_value = False
 
-        self.segment_fetcher.get_segment(self.some_name)
+        self.segment_fetcher.fetch(self.some_name)
 
         self.self_refreshing_segment_mock.return_value.start.assert_called_once_with()
 
@@ -107,7 +107,7 @@ class SelfRefreshingSegmentFetcherTests(TestCase, MockUtilsMixin):
         """Tests that the newly created segment is returned"""
         self.segments_mock.__contains__.return_value = False
 
-        segment = self.segment_fetcher.get_segment(self.some_name)
+        segment = self.segment_fetcher.fetch(self.some_name)
 
         self.assertEqual(self.self_refreshing_segment_mock.return_value, segment)
 
