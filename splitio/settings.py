@@ -8,3 +8,13 @@ SEGMENT_CHANGES_URL_TEMPLATE = '{base_url}/segmentChanges/{segment_name}/'
 SPLIT_CHANGES_URL_TEMPLATE = '{base_url}/splitChanges/'
 
 SDK_VERSION = 'python-0.0.1'
+
+DEFAULT_CONFIG = {
+    'connectionTimeout': 1500,
+    'readTimeout': 1500,
+    'featuresRefreshRate': 30,
+    'segmentsRefreshRate': 60,
+    'metricsRefreshRate': 60,
+    'impressionsRefreshRate': 60,
+    'randomizeIntervals': False
+}
