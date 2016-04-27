@@ -271,7 +271,7 @@ class BetweenMatcherTests(TestCase, MockUtilsMixin):
 
         self.transform_mock.assert_called_once_with(self.some_key)
 
-    def test_match_calls_transform_on_key(self):
+    def test_match_returns_none_if_transform_returns_none(self):
         """Tests that match returns None if transform returns None"""
         self.transform_mock.side_effect = None
         self.transform_mock.return_value = None
@@ -474,7 +474,7 @@ class DateTimeBetweenMatcherTests(TestCase):
         """Tests that DateTimeBetweenMatcher is a BetweenMatcher"""
         self.assertIsInstance(self.matcher, BetweenMatcher)
 
-    def test_matcher_is_between_matcher(self):
+    def test_matcher_is_has_proper_transform_mixin(self):
         """Tests that DateTimeBetweenMatcher is a AsDateHourMinuteTimestampTransformMixin"""
         self.assertIsInstance(self.matcher, AsDateHourMinuteTimestampTransformMixin)
 
@@ -489,7 +489,7 @@ class NumberBetweenMatcherTests(TestCase):
         """Tests that NumberBetweenMatcher is a BetweenMatcher"""
         self.assertIsInstance(self.matcher, BetweenMatcher)
 
-    def test_matcher_is_between_matcher(self):
+    def test_matcher_has_proper_transform_mixin(self):
         """Tests that NumberBetweenMatcher is a AsNumberTransformMixin"""
         self.assertIsInstance(self.matcher, AsNumberTransformMixin)
 
@@ -503,7 +503,7 @@ class DateEqualToMatcherTests(TestCase):
         """Tests that DateEqualToMatcher is a EqualToMatcher"""
         self.assertIsInstance(self.matcher, EqualToMatcher)
 
-    def test_matcher_is_between_matcher(self):
+    def test_matcher_has_proper_transform_mixin(self):
         """Tests that DateEqualToMatcher is a AsDateTimestampTransformMixin"""
         self.assertIsInstance(self.matcher, AsDateTimestampTransformMixin)
 
@@ -517,7 +517,7 @@ class NumberToMatcherTests(TestCase):
         """Tests that NumberEqualToMatcher is a EqualToMatcher"""
         self.assertIsInstance(self.matcher, EqualToMatcher)
 
-    def test_matcher_is_between_matcher(self):
+    def test_matcher_has_proper_transform_mixin(self):
         """Tests that NumberEqualToMatcher is a AsNumberTransformMixin"""
         self.assertIsInstance(self.matcher, AsNumberTransformMixin)
 
@@ -531,7 +531,7 @@ class DateTimeGreaterThanOrEqualToMatcherTests(TestCase):
         """Tests that DateTimeGreaterThanOrEqualToMatcher is a GreaterThanOrEqualToMatcher"""
         self.assertIsInstance(self.matcher, GreaterThanOrEqualToMatcher)
 
-    def test_matcher_is_between_matcher(self):
+    def test_matcher_has_proper_transform_mixin(self):
         """
         Tests that DateTimeGreaterThanOrEqualToMatcher is a
         AsDateHourMinuteTimestampTransformMixin
@@ -548,7 +548,7 @@ class NumberGreaterThanOrEqualToMatcherTests(TestCase):
         """Tests that NumberGreaterThanOrEqualToMatcher is a GreaterThanOrEqualToMatcher"""
         self.assertIsInstance(self.matcher, GreaterThanOrEqualToMatcher)
 
-    def test_matcher_is_between_matcher(self):
+    def test_matcher_has_proper_transform_mixin(self):
         """Tests that NumberGreaterThanOrEqualToMatcher is a AsNumberTransformMixin"""
         self.assertIsInstance(self.matcher, AsNumberTransformMixin)
 
@@ -560,9 +560,9 @@ class DateTimeLessThanOrEqualToMatcherTests(TestCase):
 
     def test_matcher_is_between_matcher(self):
         """Tests that DateTimeLessThanOrEqualToMatcher is a LessThanOrEqualToMatcher"""
-        self.assertIsInstance(self.matcher, GreaterThanOrEqualToMatcher)
+        self.assertIsInstance(self.matcher, LessThanOrEqualToMatcher)
 
-    def test_matcher_is_between_matcher(self):
+    def test_matcher_has_proper_transform_mixin(self):
         """
         Tests that DateTimeLessThanOrEqualToMatcher is a
         AsDateHourMinuteTimestampTransformMixin
@@ -579,6 +579,6 @@ class NumberLessThanOrEqualToMatcherTests(TestCase):
         """Tests that NumberLessThanOrEqualToMatcher is a LessThanOrEqualToMatcher"""
         self.assertIsInstance(self.matcher, LessThanOrEqualToMatcher)
 
-    def test_matcher_is_between_matcher(self):
+    def test_matcher_has_proper_transform_mixin(self):
         """Tests that NumberLessThanOrEqualToMatcher is a AsNumberTransformMixin"""
         self.assertIsInstance(self.matcher, AsNumberTransformMixin)

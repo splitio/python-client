@@ -1,0 +1,69 @@
+"""Unit tests for the cache module"""
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+try:
+    from unittest import mock
+except ImportError:
+    # Python 2
+    import mock
+
+from unittest import TestCase
+
+from splitio.cache import InMemorySplitCache, InMemorySegmentCache
+from splitio.test.utils import MockUtilsMixin
+
+
+class InMemorySegmentCacheTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.some_segment_name = mock.MagicMock()
+        self.segment_cache = InMemorySegmentCache()
+        self.entries_mock = self.patch_object(self.segment_cache, '_entries')
+        self.existing_entries = {'some_key_1', 'some_key_2'}
+        self.entries_mock.__getitem__.return_value = self.existing_entries
+
+    def test_add_to_segment_sets_keys_to_union(self):
+        """Tests that add_to_segment sets keys to union of old and new keys"""
+        self.segment_cache.add_to_segment(self.some_segment_name, {'some_key_2', 'some_key_3'})
+        self.entries_mock.__setitem__.assert_called_once_with(
+            self.some_segment_name, {'some_key_1', 'some_key_2', 'some_key_3'})
+
+    def test_remove_from_segment_set_keys_to_difference(self):
+        """Tests that remove_from_segment sets keys to difference of old and new keys"""
+        self.segment_cache.remove_from_segment(self.some_segment_name,
+                                               {'some_key_2', 'some_key_3'})
+        self.entries_mock.__setitem__.assert_called_once_with(
+            self.some_segment_name, {'some_key_1'})
+
+    def test_is_in_segment_calls_in_on_entries(self):
+        """Tests that is_in_segment checks if key in internal set"""
+        self.assertTrue(self.segment_cache.is_in_segment(self.some_segment_name, 'some_key_1'))
+        self.assertFalse(self.segment_cache.is_in_segment(self.some_segment_name, 'some_key_3'))
+
+
+class InMemorySplitCacheTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.some_split_name = mock.MagicMock()
+        self.some_split = mock.MagicMock()
+        self.split_cache = InMemorySplitCache()
+        self.entries_mock = self.patch_object(self.split_cache, '_entries')
+
+    def test_add_split_calls_entries_setitem(self):
+        """Tests that add_split calls __setitem__ on entries"""
+        self.split_cache.add_split(self.some_split_name, self.some_split)
+        self.entries_mock.__setitem__.assert_called_once_with(self.some_split_name,
+                                                              self.some_split)
+
+    def test_remove_split_calls_entries_pop(self):
+        """Tests that remove_split calls pop on entries"""
+        self.split_cache.remove_split(self.some_split_name)
+        self.entries_mock.pop.assert_called_once_with(self.some_split_name, None)
+
+    def test_get_split_calls_get(self):
+        """Tests that get_split calls get on entries"""
+        self.split_cache.get_split(self.some_split_name)
+        self.entries_mock.get.assert_called_once_with(self.some_split_name, None)
+
+    def test_get_split_returns_get_result(self):
+        """Tests that get_split returns the result of calling get on entries"""
+        self.assertEqual(self.entries_mock.get.return_value,
+                         self.split_cache.get_split(self.some_split_name))
