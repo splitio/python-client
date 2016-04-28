@@ -1,3 +1,4 @@
+"""A module for Split.io SDK API clients"""
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import logging
@@ -8,7 +9,7 @@ from splitio.api import SdkApi
 from splitio.splitters import Splitter
 from splitio.splits import SelfRefreshingSplitFetcher, SplitParser, ApiSplitChangeFetcher
 from splitio.segments import ApiSegmentChangeFetcher, SelfRefreshingSegmentFetcher
-from splitio.settings import DEFAULT_CONFIG, SDK_API_BASE_URL
+from splitio.settings import DEFAULT_CONFIG, SDK_API_BASE_URL, MAX_INTERVAL
 from splitio.treatments import CONTROL
 
 
@@ -141,8 +142,8 @@ class SelfRefreshingClient(Client):
         if config is not None:
             self._config.update(config)
 
-        segment_fetcher_interval = max(180, self._config['segmentsRefreshRate'])
-        split_fetcher_interval = max(180, self._config['featuresRefreshRate'])
+        segment_fetcher_interval = min(MAX_INTERVAL, self._config['segmentsRefreshRate'])
+        split_fetcher_interval = min(MAX_INTERVAL, self._config['featuresRefreshRate'])
 
         if self._config['randomizeIntervals']:
             self._segment_fetcher_interval = randomize_interval(segment_fetcher_interval)
@@ -173,9 +174,11 @@ class SelfRefreshingClient(Client):
                                                        interval=self._segment_fetcher_interval)
         split_change_fetcher = ApiSplitChangeFetcher(sdk_api)
         split_parser = SplitParser(segment_fetcher)
-        self._split_fetcher = SelfRefreshingSplitFetcher(split_change_fetcher, split_parser,
-                                                         interval=self._split_fetcher_interval)
-        self._split_fetcher.start()
+        split_fetcher = SelfRefreshingSplitFetcher(split_change_fetcher, split_parser,
+                                                   interval=self._split_fetcher_interval)
+        split_fetcher.start()
+
+        return split_fetcher
 
     def get_split_fetcher(self):
         """

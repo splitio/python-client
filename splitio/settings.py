@@ -18,3 +18,5 @@ DEFAULT_CONFIG = {
     'impressionsRefreshRate': 60,
     'randomizeIntervals': False
 }
+
+MAX_INTERVAL = 180
