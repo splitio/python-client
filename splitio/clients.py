@@ -7,8 +7,10 @@ from random import randint
 
 from splitio.api import SdkApi
 from splitio.splitters import Splitter
-from splitio.splits import SelfRefreshingSplitFetcher, SplitParser, ApiSplitChangeFetcher
-from splitio.segments import ApiSegmentChangeFetcher, SelfRefreshingSegmentFetcher
+from splitio.splits import (SelfRefreshingSplitFetcher, SplitParser, ApiSplitChangeFetcher,
+                            JSONFileSplitFetcher)
+from splitio.segments import (ApiSegmentChangeFetcher, SelfRefreshingSegmentFetcher,
+                              JSONFileSegmentFetcher)
 from splitio.settings import DEFAULT_CONFIG, SDK_API_BASE_URL, MAX_INTERVAL
 from splitio.treatments import CONTROL
 
@@ -177,6 +179,47 @@ class SelfRefreshingClient(Client):
         split_fetcher = SelfRefreshingSplitFetcher(split_change_fetcher, split_parser,
                                                    interval=self._split_fetcher_interval)
         split_fetcher.start()
+
+        return split_fetcher
+
+    def get_split_fetcher(self):
+        """
+        Get the split fetcher implementation for the client.
+        :return: The split fetcher
+        :rtype: SplitFetcher
+        """
+        if self._split_fetcher is None:
+            self._split_fetcher = self._build_split_fetcher()
+
+        return self._split_fetcher
+
+
+class JSONFileClient(Client):
+    def __init__(self, segment_changes_file_name, split_changes_file_name):
+        """
+        A Client implementation that uses responses from the segmentChanges and splitChanges
+        resources to provide access to splits. It is intended to be used on integration
+        tests only.
+
+        :param segment_changes_file_name: The name of the file with the segmentChanges response
+        :type segment_changes_file_name: str
+        :param split_changes_file_name: The name of the file with the splitChanges response
+        :type split_changes_file_name: str
+        """
+        super(JSONFileClient, self).__init__()
+        self._segment_changes_file_name = segment_changes_file_name
+        self._split_changes_file_name = split_changes_file_name
+        self._split_fetcher = None
+
+    def _build_split_fetcher(self):
+        """
+        Build the json backed split fetcher
+        :return: The json backed split fetcher
+        :rtype: SelfRefreshingSplitFetcher
+        """
+        segment_fetcher = JSONFileSegmentFetcher(self._segment_changes_file_name)
+        split_parser = SplitParser(segment_fetcher)
+        split_fetcher = JSONFileSplitFetcher(self._split_changes_file_name, split_parser)
 
         return split_fetcher
 

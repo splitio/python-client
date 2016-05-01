@@ -7,14 +7,17 @@ except ImportError:
     # Python 2
     import mock
 
-from string import printable
-from random import randint, choice
-from sys import maxint
+from collections import Counter
+from math import sqrt
+from json import loads
+from os.path import join, dirname
+from random import randint
 from unittest import TestCase, skip
 
+from splitio.splits import Partition
 from splitio.splitters import Splitter
 from splitio.treatments import CONTROL
-from splitio.test.utils import MockUtilsMixin
+from splitio.test.utils import MockUtilsMixin, random_alphanumeric_string
 
 
 class SplitterGetTreatmentTests(TestCase, MockUtilsMixin):
@@ -105,17 +108,73 @@ class SplitterGetTreatmentForBucket(TestCase):
                          self.splitter.get_treatment_for_bucket(33, self.some_partitions))
 
 
-@skip
 class SplitterHashKeyTests(TestCase):
     def setUp(self):
         self.splitter = Splitter()
 
-    # TODO Write hash unit tests
+    def test_with_sample_data(self):
+        """
+        Tests hash_key against expected values using alphanumeric values
+        """
+        with open(join(dirname(__file__), 'sample-data.jsonl')) as f:
+            for line in map(loads, f):
+                seed, key, hash_, bucket = line
+                self.assertEqual(int(hash_), self.splitter.hash_key(key, int(seed)))
+
+    @skip
+    def test_with_non_alpha_numeric_sample_data(self):
+        """
+        Tests hash_key against expected values using non alphanumeric values
+        """
+        with open(join(dirname(__file__), 'sample-data-non-alpha-numeric.jsonl')) as f:
+            for line in map(loads, f):
+                seed, key, hash_, bucket = line
+                self.assertEqual(int(hash_), self.splitter.hash_key(key, int(seed)))
 
 
-@skip
 class SplitterGetBucketUnitTests(TestCase):
     def setUp(self):
         self.splitter = Splitter()
 
-    # TODO Write get_bucket unit tests
+    def test_with_sample_data(self):
+        """
+        Tests hash_key against expected values using alphanumeric values
+        """
+        with open(join(dirname(__file__), 'sample-data.jsonl')) as f:
+            for line in map(loads, f):
+                seed, key, hash_, bucket = line
+                self.assertEqual(int(bucket), self.splitter.get_bucket(int(hash_)))
+
+    def test_with_non_alpha_numeric_sample_data(self):
+        """
+        Tests hash_key against expected values using non alphanumeric values
+        """
+        with open(join(dirname(__file__), 'sample-data-non-alpha-numeric.jsonl')) as f:
+            for line in map(loads, f):
+                seed, key, hash_, bucket = line
+                self.assertEqual(int(bucket), self.splitter.get_bucket(int(hash_)))
+
+
+class SplitterGetTreatmentDistributionTests(TestCase):
+    def setUp(self):
+        self.splitter = Splitter()
+
+    def test_1_percent_treatments_evenly_distributed(self):
+        """Test that get_treatment distributes treatments according to partitions"""
+        seed = randint(-2147483649, 2147483648)
+        partitions = [Partition(mock.MagicMock(), 1) for _ in range(100)]
+        n = 100000
+        p = 0.01
+
+        treatments = [self.splitter.get_treatment(random_alphanumeric_string(randint(16, 32)),
+                                                  seed, partitions) for _ in range(n)]
+        counter = Counter(treatments)
+
+        mean = n * p
+        stddev = sqrt(mean * (1 - p))
+
+        count_min = int(mean - 4 * stddev)
+        count_max = int(mean + 4 * stddev)
+
+        for count in counter.values():
+            self.assertTrue(count_min <= count <= count_max)
