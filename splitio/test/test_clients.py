@@ -8,8 +8,11 @@ except ImportError:
     import mock
 
 from unittest import TestCase
+from os.path import dirname, join
 
-from splitio.clients import Client, SelfRefreshingClient, randomize_interval
+import arrow
+
+from splitio.clients import Client, SelfRefreshingClient, randomize_interval, JSONFileClient
 from splitio.settings import DEFAULT_CONFIG, SDK_API_BASE_URL, MAX_INTERVAL
 from splitio.treatments import CONTROL
 from splitio.test.utils import MockUtilsMixin
@@ -283,7 +286,8 @@ class SelfRefreshingClientBuildSplitFetcherTests(TestCase, MockUtilsMixin):
         self.some_api_key = mock.MagicMock()
         self.client = SelfRefreshingClient(self.some_api_key)
 
-        self.segment_fetcher_interval_mock = self.patch_object(self.client, '_segment_fetcher_interval')
+        self.segment_fetcher_interval_mock = self.patch_object(self.client,
+                                                               '_segment_fetcher_interval')
         self.split_fetcher_interval_mock = self.patch_object(self.client, '_split_fetcher_interval')
         self.connection_timeout_mock = self.patch_object(self.client, '_connection_timeout')
         self.read_timeout_mock = self.patch_object(self.client, '_read_timeout')
@@ -377,3 +381,662 @@ class SelfRefreshingGetSplitFetcherTests(TestCase, MockUtilsMixin):
         self.client._split_fetcher = some_split_fetcher
         self.assertEqual(some_split_fetcher, self.client.get_split_fetcher())
 
+
+class JSONFileClientIntegrationTests(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.segment_changes_file_name = join(dirname(__file__), 'segmentChanges.json')
+        cls.split_changes_file_name = join(dirname(__file__), 'splitChanges.json')
+        cls.client = JSONFileClient(cls.segment_changes_file_name, cls.split_changes_file_name)
+        cls.on_treatment = 'on'
+        cls.off_treatment = 'off'
+        cls.some_key = 'some_key'
+        cls.fake_id_in_segment = 'fake_id_1'
+        cls.fake_id_not_in_segment = 'foobar'
+        cls.fake_id_on_key = 'fake_id_on'
+        cls.fake_id_off_key = 'fake_id_off'
+        cls.fake_id_some_treatment_key = 'fake_id_some_treatment'
+        cls.attribute_name = 'some_attribute'
+        cls.unknown_feature_name = 'foobar'
+        cls.in_between_datetime = arrow.get(2016, 4, 25, 16, 0).timestamp * 1000
+        cls.not_in_between_datetime = arrow.get(2015, 4, 25, 16, 0).timestamp * 1000
+        cls.in_between_number = 42
+        cls.not_in_between_number = 85
+        cls.equal_to_datetime = arrow.get(2016, 4, 25, 16, 0).timestamp * 1000
+        cls.not_equal_to_datetime = arrow.get(2015, 4, 25, 16, 0).timestamp * 1000
+        cls.equal_to_number = 50
+        cls.not_equal_to_number = 85
+        cls.greater_than_or_equal_to_datetime = arrow.get(2016, 4, 25, 16, 0).timestamp * 1000
+        cls.not_greater_than_or_equal_to_datetime = arrow.get(2015, 4, 25, 16, 0).timestamp * 1000
+        cls.greater_than_or_equal_to_number = 50
+        cls.not_greater_than_or_equal_to_number = 32
+        cls.less_than_or_equal_to_datetime = arrow.get(2015, 4, 25, 16, 0).timestamp * 1000
+        cls.not_less_than_or_equal_to_datetime = arrow.get(2016, 4, 25, 16, 0).timestamp * 1000
+        cls.less_than_or_equal_to_number = 32
+        cls.not_less_than_or_equal_to_number = 50
+        cls.multi_condition_equal_to_number = 42
+        cls.multi_condition_not_equal_to_number = 85
+        cls.in_whitelist = 'bitsy'
+        cls.not_in_whitelist = 'foobar'
+
+    #
+    # basic tests
+    #
+
+    def test_no_key_returns_control(self):
+        """
+        Tests that get_treatment returns control treatment if the key is None
+        """
+        self.assertEqual(CONTROL, self.client.get_treatment(
+            None, 'test_in_segment'))
+
+    def test_unknown_feature_returns_control(self):
+        """
+        Tests that get_treatment returns control treatment if feature is unknown
+        """
+        self.assertEqual(CONTROL, self.client.get_treatment(
+            self.some_key, self.unknown_feature_name))
+
+    #
+    # test_between_datetime tests
+    #
+
+    def test_test_between_datetime_include_on_user(self):
+        """
+        Test that get_treatment returns on for the test_between_datetime feature using the user key
+        included for on treatment
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_on_key, 'test_between_datetime',
+            {self.attribute_name: self.in_between_datetime}))
+
+    def test_test_between_datetime_include_on_user_no_attribute_match(self):
+        """
+        Test that get_treatment returns on for the test_between_datetime feature using the user key
+        included for on treatment even while there is no attribute match
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_on_key, 'test_between_datetime',
+            {self.attribute_name: self.not_in_between_datetime}))
+
+    def test_test_between_datetime_include_off_user(self):
+        """
+        Test that get_treatment returns off for the test_between_datetime feature using the user key
+        included for off treatment
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.fake_id_off_key, 'test_between_datetime',
+            {self.attribute_name: self.in_between_datetime}))
+
+    def test_test_between_datetime_some_key_attribute_match(self):
+        """
+        Test that get_treatment returns on for the test_between_datetime feature using the some key
+        while the attribute matches (100% for on treatment)
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.some_key, 'test_between_datetime',
+            {self.attribute_name: self.in_between_datetime}))
+
+    def test_test_between_datetime_some_key_no_attribute_match(self):
+        """
+        Test that get_treatment returns off for the test_between_datetime feature using the some key
+        while the attribute doesn't match (100% for on treatment)
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.some_key, 'test_between_datetime',
+            {self.attribute_name: self.not_in_between_datetime}))
+
+    def test_test_between_datetime_some_key_no_attributes(self):
+        """
+        Test that get_treatment returns off for the test_between_datetime feature using the some key
+        and no attributes
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.some_key, 'test_between_datetime'))
+
+    #
+    # test_between_number tests
+    #
+
+    def test_test_between_number_include_on_user(self):
+        """
+        Test that get_treatment returns on for the test_between_number feature using the user key
+        included for on treatment
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_on_key, 'test_between_number',
+            {self.attribute_name: self.in_between_number}))
+
+    def test_test_between_number_include_on_user_no_attribute_match(self):
+        """
+        Test that get_treatment returns on for the test_between_number feature using the user key
+        included for on treatment even while there is no attribute match
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_on_key, 'test_between_number',
+            {self.attribute_name: self.not_in_between_number}))
+
+    def test_test_between_number_include_off_user(self):
+        """
+        Test that get_treatment returns off for the test_between_number feature using the user key
+        included for off treatment
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.fake_id_off_key, 'test_between_number',
+            {self.attribute_name: self.in_between_number}))
+
+    def test_test_between_number_some_key_attribute_match(self):
+        """
+        Test that get_treatment returns on for the test_between_number feature using the some key
+        while the attribute matches (100% for on treatment)
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.some_key, 'test_between_number',
+            {self.attribute_name: self.in_between_number}))
+
+    def test_test_between_number_some_key_no_attribute_match(self):
+        """
+        Test that get_treatment returns off for the test_between_number feature using the some key
+        while the attribute doesn't match (100% for on treatment)
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.some_key, 'test_between_number',
+            {self.attribute_name: self.not_in_between_number}))
+
+    def test_test_between_number_some_key_no_attributes(self):
+        """
+        Test that get_treatment returns off for the test_between_number feature using the some key
+        and no attributes
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.some_key, 'test_between_number'))
+
+    #
+    # test_equal_to_datetime tests
+    #
+
+    def test_test_equal_to_datetime_include_on_user(self):
+        """
+        Test that get_treatment returns on for the test_equal_to_datetime feature using the user key
+        included for on treatment
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_on_key, 'test_equal_to_datetime',
+            {self.attribute_name: self.equal_to_datetime}))
+
+    def test_test_equal_to_datetime_include_on_user_no_attribute_match(self):
+        """
+        Test that get_treatment returns on for the test_equal_to_datetime feature using the user key
+        included for on treatment even while there is no attribute match
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_on_key, 'test_equal_to_datetime',
+            {self.attribute_name: self.not_equal_to_datetime}))
+
+    def test_test_equal_to_datetime_include_off_user(self):
+        """
+        Test that get_treatment returns off for the test_equal_to_datetime feature using the user
+        key included for off treatment
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.fake_id_off_key, 'test_equal_to_datetime',
+            {self.attribute_name: self.equal_to_datetime}))
+
+    def test_test_equal_to_datetime_some_key_attribute_match(self):
+        """
+        Test that get_treatment returns on for the test_equal_to_datetime feature using the some key
+        while the attribute matches (100% for on treatment)
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.some_key, 'test_equal_to_datetime',
+            {self.attribute_name: self.equal_to_datetime}))
+
+    def test_test_equal_to_datetime_some_key_no_attribute_match(self):
+        """
+        Test that get_treatment returns off for the test_equal_to_datetime feature using the some
+        key while the attribute doesn't match (100% for on treatment)
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.some_key, 'test_equal_to_datetime',
+            {self.attribute_name: self.not_equal_to_datetime}))
+
+    def test_test_equal_to_datetime_some_key_no_attributes(self):
+        """
+        Test that get_treatment returns off for the test_equal_to_datetime feature using the some
+        key and no attributes
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.some_key, 'test_equal_to_datetime'))
+
+    #
+    # test_equal_to_number tests
+    #
+
+    def test_test_equal_to_number_include_on_user(self):
+        """
+        Test that get_treatment returns on for the test_equal_to_number feature using the user key
+        included for on treatment
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_on_key, 'test_equal_to_number',
+            {self.attribute_name: self.equal_to_number}))
+
+    def test_test_equal_to_number_include_on_user_no_attribute_match(self):
+        """
+        Test that get_treatment returns on for the test_equal_to_number feature using the user key
+        included for on treatment even while there is no attribute match
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_on_key, 'test_equal_to_number',
+            {self.attribute_name: self.not_equal_to_number}))
+
+    def test_test_equal_to_number_include_off_user(self):
+        """
+        Test that get_treatment returns off for the test_equal_to_number feature using the user key
+        included for off treatment
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.fake_id_off_key, 'test_equal_to_number',
+            {self.attribute_name: self.equal_to_number}))
+
+    def test_test_equal_to_number_some_key_attribute_match(self):
+        """
+        Test that get_treatment returns on for the test_equal_to_number feature using the some key
+        while the attribute matches (100% for on treatment)
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.some_key, 'test_equal_to_number',
+            {self.attribute_name: self.equal_to_number}))
+
+    def test_test_equal_to_number_some_key_no_attribute_match(self):
+        """
+        Test that get_treatment returns off for the test_equal_to_number feature using the some key
+        while the attribute doesn't match (100% for on treatment)
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.some_key, 'test_equal_to_number',
+            {self.attribute_name: self.not_equal_to_number}))
+
+    def test_test_equal_to_number_some_key_no_attributes(self):
+        """
+        Test that get_treatment returns off for the test_equal_to_number feature using the some key
+        and no attributes
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.some_key, 'test_equal_to_number'))
+
+    #
+    # test_greater_than_or_equal_to_datetime tests
+    #
+
+    def test_test_greater_than_or_equal_to_datetime_include_on_user(self):
+        """
+        Test that get_treatment returns on for the test_greater_than_or_equal_to_datetime feature
+        using the user key included for on treatment
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_on_key, 'test_greatr_than_or_equal_to_datetime',
+            {self.attribute_name: self.greater_than_or_equal_to_datetime}))
+
+    def test_test_greater_than_or_equal_to_datetime_include_on_user_no_attribute_match(self):
+        """
+        Test that get_treatment returns on for the test_greater_than_or_equal_to_datetime feature
+        using the user key included for on treatment even while there is no attribute match
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_on_key, 'test_greatr_than_or_equal_to_datetime',
+            {self.attribute_name: self.not_greater_than_or_equal_to_datetime}))
+
+    def test_test_greater_than_or_equal_to_datetime_include_off_user(self):
+        """
+        Test that get_treatment returns off for the test_greater_than_or_equal_to_datetime feature
+        using the user key included for off treatment
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.fake_id_off_key, 'test_greatr_than_or_equal_to_datetime',
+            {self.attribute_name: self.greater_than_or_equal_to_datetime}))
+
+    def test_test_greater_than_or_equal_to_datetime_some_key_attribute_match(self):
+        """
+        Test that get_treatment returns on for the test_greater_than_or_equal_to_datetime feature
+        using the some key while the attribute matches (100% for on treatment)
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.some_key, 'test_greatr_than_or_equal_to_datetime',
+            {self.attribute_name: self.greater_than_or_equal_to_datetime}))
+
+    def test_test_greater_than_or_equal_to_datetime_some_key_no_attribute_match(self):
+        """
+        Test that get_treatment returns off for the test_greater_than_or_equal_to_datetime feature
+        using the some key while the attribute doesn't match (100% for on treatment)
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.some_key, 'test_greatr_than_or_equal_to_datetime',
+            {self.attribute_name: self.not_greater_than_or_equal_to_datetime}))
+
+    def test_test_greater_than_or_equal_to_datetime_some_key_no_attributes(self):
+        """
+        Test that get_treatment returns off for the test_greater_than_or_equal_to_datetime feature
+        using the some key and no attributes
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.some_key, 'test_greatr_than_or_equal_to_datetime'))
+
+    #
+    # test_greater_than_or_equal_to_number tests
+    #
+
+    def test_test_greater_than_or_equal_to_number_include_on_user(self):
+        """
+        Test that get_treatment returns on for the test_greater_than_or_equal_to_number feature
+        using the user key included for on treatment
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_on_key, 'test_greatr_than_or_equal_to_number',
+            {self.attribute_name: self.greater_than_or_equal_to_number}))
+
+    def test_test_greater_than_or_equal_to_number_include_on_user_no_attribute_match(self):
+        """
+        Test that get_treatment returns on for the test_greater_than_or_equal_to_number feature
+        using the user key included for on treatment even while there is no attribute match
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_on_key, 'test_greatr_than_or_equal_to_number',
+            {self.attribute_name: self.not_greater_than_or_equal_to_number}))
+
+    def test_test_greater_than_or_equal_to_number_include_off_user(self):
+        """
+        Test that get_treatment returns off for the test_greater_than_or_equal_to_number feature
+        using the user key included for off treatment
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.fake_id_off_key, 'test_greatr_than_or_equal_to_number',
+            {self.attribute_name: self.greater_than_or_equal_to_datetime}))
+
+    def test_test_greater_than_or_equal_to_number_some_key_attribute_match(self):
+        """
+        Test that get_treatment returns on for the test_greater_than_or_equal_to_number feature
+        using the some key while the attribute matches (100% for on treatment)
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.some_key, 'test_greatr_than_or_equal_to_number',
+            {self.attribute_name: self.greater_than_or_equal_to_datetime}))
+
+    def test_test_greater_than_or_equal_to_number_some_key_no_attribute_match(self):
+        """
+        Test that get_treatment returns off for the test_greater_than_or_equal_to_number feature
+        using the some key while the attribute doesn't match (100% for on treatment)
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.some_key, 'test_greatr_than_or_equal_to_number',
+            {self.attribute_name: self.not_greater_than_or_equal_to_number}))
+
+    def test_test_greater_than_or_equal_to_number_some_key_no_attributes(self):
+        """
+        Test that get_treatment returns off for the test_greater_than_or_equal_to_number feature
+        using the some key and no attributes
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.some_key, 'test_greatr_than_or_equal_to_number'))
+
+    #
+    # test_less_than_or_equal_to_datetime tests
+    #
+
+    def test_test_less_than_or_equal_to_datetime_include_on_user(self):
+        """
+        Test that get_treatment returns on for the test_less_than_or_equal_to_datetime feature
+        using the user key included for on treatment
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_on_key, 'test_less_than_or_equal_to_datetime',
+            {self.attribute_name: self.less_than_or_equal_to_datetime}))
+
+    def test_test_less_than_or_equal_to_datetime_include_on_user_no_attribute_match(self):
+        """
+        Test that get_treatment returns on for the test_less_than_or_equal_to_datetime feature
+        using the user key included for on treatment even while there is no attribute match
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_on_key, 'test_less_than_or_equal_to_datetime',
+            {self.attribute_name: self.not_less_than_or_equal_to_datetime}))
+
+    def test_test_less_than_or_equal_to_datetime_include_off_user(self):
+        """
+        Test that get_treatment returns off for the test_less_than_or_equal_to_datetime feature
+        using the user key included for off treatment
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.fake_id_off_key, 'test_less_than_or_equal_to_datetime',
+            {self.attribute_name: self.less_than_or_equal_to_datetime}))
+
+    def test_test_less_than_or_equal_to_datetime_some_key_attribute_match(self):
+        """
+        Test that get_treatment returns on for the test_less_than_or_equal_to_datetime feature
+        using the some key while the attribute matches (100% for on treatment)
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.some_key, 'test_less_than_or_equal_to_datetime',
+            {self.attribute_name: self.less_than_or_equal_to_datetime}))
+
+    def test_test_less_than_or_equal_to_datetime_some_key_no_attribute_match(self):
+        """
+        Test that get_treatment returns off for the test_less_than_or_equal_to_datetime feature
+        using the some key while the attribute doesn't match (100% for on treatment)
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.some_key, 'test_less_than_or_equal_to_datetime',
+            {self.attribute_name: self.not_less_than_or_equal_to_datetime}))
+
+    def test_test_less_than_or_equal_to_datetime_some_key_no_attributes(self):
+        """
+        Test that get_treatment returns off for the test_less_than_or_equal_to_datetime feature
+        using the some key and no attributes
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.some_key, 'test_less_than_or_equal_to_datetime'))
+
+    #
+    # test_in_segment tests
+    #
+
+    def test_test_in_segment_include_on_user(self):
+        """
+        Test that get_treatment returns on for the test_in_segment feature using the user key
+        included for on treatment
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_on_key, 'test_in_segment'))
+
+    def test_test_in_segment_include_off_user(self):
+        """
+        Test that get_treatment returns off for the test_in_segment feature using the user key
+        included for off treatment
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.fake_id_off_key, 'test_in_segment'))
+
+    def test_test_in_segment_in_segment_key(self):
+        """
+        Test that get_treatment returns on for the test_in_segment feature using a key in the
+        segment
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_in_segment, 'test_in_segment'))
+
+    def test_test_in_segment_not_in_segment_key(self):
+        """
+        Test that get_treatment returns off for the test_in_segment feature using a key not in the
+        segment
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.fake_id_not_in_segment, 'test_in_segment'))
+
+    #
+    # test_in_segment_multi_treatment tests
+    #
+
+    def test_test_in_segment_multi_treatment_include_on_user(self):
+        """
+        Test that get_treatment returns on for the test_in_segment_multi_treatment feature using
+        the user key included for on treatment
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_on_key, 'test_in_segment_multi_treatment'))
+
+    def test_test_in_segment_multi_treatment_include_off_user(self):
+        """
+        Test that get_treatment returns off for the test_in_segment_multi_treatment feature using
+        the user key included for off treatment
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.fake_id_off_key, 'test_in_segment_multi_treatment'))
+
+    def test_test_in_segment_multi_treatment_include_some_treatment_user(self):
+        """
+        Test that get_treatment returns on for the test_in_segment_multi_treatment feature using
+        the user key included for some_treatment treatment
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_on_key, 'test_in_segment_multi_treatment'))
+
+    def test_test_in_segment_multi_treatment_in_segment_key(self):
+        """
+        Test that get_treatment returns on for the test_in_segment_multi_treatment feature using a
+        key in the segment
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_in_segment, 'test_in_segment_multi_treatment'))
+
+    def test_test_in_segment_multi_treatment_not_in_segment_key(self):
+        """
+        Test that get_treatment returns off for the test_in_segment_multi_treatment feature using a
+        key not in the segment
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.fake_id_not_in_segment, 'test_in_segment_multi_treatment'))
+
+    #
+    # test_multi_condition tests
+    #
+
+    def test_test_multi_condition_include_on_user(self):
+        """
+        Test that get_treatment returns on for the test_multi_condition feature using the user key
+        included for on treatment
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_on_key, 'test_multi_condition',
+            {self.attribute_name: self.multi_condition_not_equal_to_number}))
+
+    def test_test_multi_condition_include_off_user(self):
+        """
+        Test that get_treatment returns off for the test_multi_condition feature using the user key
+        included for off treatment
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.fake_id_off_key, 'test_multi_condition',
+            {self.attribute_name: self.multi_condition_equal_to_number}))
+
+    def test_test_multi_condition_in_segment_key_no_attribute_match(self):
+        """
+        Test that get_treatment returns on for the test_multi_condition feature using a key in the
+        segment
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_in_segment, 'test_multi_condition',
+            {self.attribute_name: self.multi_condition_not_equal_to_number}))
+
+    def test_test_multi_condition_not_in_segment_key_attribute_match(self):
+        """
+        Test that get_treatment returns on for the test_multi_condition feature using a key not in
+        the segment
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_not_in_segment, 'test_multi_condition',
+            {self.attribute_name: self.multi_condition_equal_to_number}))
+
+    def test_test_multi_condition_not_in_segment_key_no_attribute_match(self):
+        """
+        Test that get_treatment returns off for the test_multi_condition feature using a key not in
+        the segment
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.fake_id_not_in_segment, 'test_multi_condition',
+            {self.attribute_name: self.multi_condition_not_equal_to_number}))
+
+    #
+    # test_whitelist tests
+    #
+
+    def test_test_whitelist_include_on_user(self):
+        """
+        Test that get_treatment returns on for the test_whitelist feature using the user key
+        included for on treatment
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_on_key, 'test_whitelist',
+            {self.attribute_name: self.not_in_whitelist}))
+
+    def test_test_whitelist_include_off_user(self):
+        """
+        Test that get_treatment returns off for the test_whitelist feature using the user key
+        included for off treatment
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.fake_id_off_key, 'test_whitelist',
+            {self.attribute_name: self.not_in_whitelist}))
+
+    def test_test_whitelist_in_whitelist(self):
+        """
+        Test that get_treatment returns on for the test_whitelist feature using an attribute
+        in the whitelist
+        """
+        self.assertEqual(self.on_treatment, self.client.get_treatment(
+            self.fake_id_in_segment, 'test_whitelist',
+            {self.attribute_name: self.in_whitelist}))
+
+    def test_test_whitelist_not_in_whitelist(self):
+        """
+        Test that get_treatment returns off for the test_whitelist feature using an attribute not
+        in the whitelist
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.fake_id_not_in_segment, 'test_whitelist',
+            {self.attribute_name: self.not_in_whitelist}))
+
+    #
+    # test_killed tests
+    #
+
+    def test_test_killed_include_on_user(self):
+        """
+        Test that get_treatment returns off for the test_killed feature using the user key
+        included for on treatment
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.fake_id_on_key, 'test_killed'))
+
+    def test_test_killed_include_off_user(self):
+        """
+        Test that get_treatment returns off for the test_killed feature using the user key
+        included for off treatment
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.fake_id_off_key, 'test_killed'))
+
+    def test_test_killed_in_segment_key(self):
+        """
+        Test that get_treatment returns off for the test_killed feature using a key in the
+        segment
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.fake_id_in_segment, 'test_killed'))
+
+    def test_test_killed_not_in_segment_key(self):
+        """
+        Test that get_treatment returns off for the test_killed feature using a key not in the
+        segment
+        """
+        self.assertEqual(self.off_treatment, self.client.get_treatment(
+            self.fake_id_not_in_segment, 'test_killed'))

@@ -5,6 +5,12 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 from splitio.treatments import CONTROL
 
 
+def as_int32(value):
+    if not -2147483649 <= value <= 2147483648:
+        return (value + 2147483648) % 4294967296 - 2147483648
+    return value
+
+
 class Splitter(object):
     """
     The class responsible for selecting a treatment given a key, a feature seed and condition
@@ -43,10 +49,10 @@ class Splitter(object):
         """
         h = 0
 
-        for c in key:
-            h = 31 * h + ord(c)
+        for c in map(ord, key):
+            h = as_int32(as_int32(31 * as_int32(h)) + c)
 
-        return h ^ seed
+        return int(as_int32(h ^ as_int32(seed)))
 
     def get_bucket(self, key_hash):
         """
@@ -56,7 +62,7 @@ class Splitter(object):
         :return: The bucked for a hash
         :rtype: int
         """
-        return abs(key_hash % 100) + 1
+        return abs(key_hash) % 100 + 1
 
     def get_treatment_for_bucket(self, bucket, partitions):
         """
