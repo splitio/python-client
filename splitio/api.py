@@ -3,7 +3,6 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import requests
 
-
 from splitio.settings import SDK_API_BASE_URL, SDK_VERSION
 
 _SEGMENT_CHANGES_URL_TEMPLATE = '{base_url}/segmentChanges/{segment_name}/'
@@ -124,7 +123,7 @@ class SdkApi(object):
         :rtype: dict
         """
         url = _SEGMENT_CHANGES_URL_TEMPLATE.format(base_url=self._sdk_api_url_base,
-                                                       segment_name=segment_name)
+                                                   segment_name=segment_name)
         params = {
             'since': since
         }
@@ -132,8 +131,8 @@ class SdkApi(object):
         return self._get(url, params)
 
     def test_impressions(self, test_impressions_data):
-        """Makes a request to the testImpressions endpoint. The method takes a dictionary with the test (feature) name
-        and a list of impressions:
+        """Makes a request to the testImpressions endpoint. The method takes a dictionary with the
+        test (feature) name and a list of impressions:
 
         {
            "testName": str,  # name of the test (feature),
@@ -150,12 +149,12 @@ class SdkApi(object):
         :param test_impressions_data: Data of the impressions of a test (feature)
         :type test_impressions_data: dict
         """
-        url = self.TEST_IMPRESSIONS_URL_TEMPLATE.format(base_url=self._sdk_api_url_base)
+        url = _TEST_IMPRESSIONS_URL_TEMPLATE.format(base_url=self._sdk_api_url_base)
         return self._post(url, test_impressions_data)
 
     def metrics_times(self, times_data):
-        """Makes a request to the times metrics endpoint. The method takes a list of dictionaries with the latencies
-        seen for each metric:
+        """Makes a request to the times metrics endpoint. The method takes a list of dictionaries
+        with the latencies seen for each metric:
 
         [
             {
@@ -174,9 +173,9 @@ class SdkApi(object):
         url = _METRICS_URL_TEMPLATE.format(base_url=self._sdk_api_url_base, endpoint='times')
         return self._post(url, times_data)
 
-    def metrics_times(self, counters_data):
-        """Makes a request to the counters metrics endpoint. The method takes a list of dictionaries with the deltas
-        for the counts for each metric:
+    def metrics_counters(self, counters_data):
+        """Makes a request to the counters metrics endpoint. The method takes a list of dictionaries
+        with the deltas for the counts for each metric:
 
         [
             {
@@ -196,8 +195,8 @@ class SdkApi(object):
         return self._post(url, counters_data)
 
     def metrics_gauge(self, gauge_data):
-        """Makes a request to the gauge metrics endpoint. The method takes a list of dictionaries with the values
-        for the gauge of each metric:
+        """Makes a request to the gauge metrics endpoint. The method takes a list of dictionaries
+        with the values for the gauge of each metric:
 
         [
             {

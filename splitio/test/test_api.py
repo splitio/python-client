@@ -8,7 +8,7 @@ except ImportError:
     import mock
 
 from requests.exceptions import RequestException, HTTPError
-from unittest import TestCase
+from unittest import TestCase, skip
 
 from splitio.api import (SdkApi, _SEGMENT_CHANGES_URL_TEMPLATE, _SPLIT_CHANGES_URL_TEMPLATE,
                          _TEST_IMPRESSIONS_URL_TEMPLATE, _METRICS_URL_TEMPLATE)
@@ -174,9 +174,8 @@ class SdkApiPostTests(TestCase, MockUtilsMixin):
         """Tests that the request is made with the proper headers"""
         self.api._post(self.some_url, self.some_data)
 
-        self.requests_post_mock.assert_called_once_with(mock.ANY, json=mock.ANY,
-                                                        headers=self.build_headers_mock.return_value,
-                                                        timeout=mock.ANY)
+        self.requests_post_mock.assert_called_once_with(
+            mock.ANY, json=mock.ANY, headers=self.build_headers_mock.return_value, timeout=mock.ANY)
 
     def test_url_parameter_is_used(self):
         """Tests that the request is made with the supplied url"""
@@ -336,3 +335,156 @@ class SdkApiSegmentChangesTests(TestCase, MockUtilsMixin):
         """Tests that the method returns the result of calling get"""
         self.assertEqual(self.get_mock.return_value, self.api.segment_changes(self.some_name,
                                                                               self.some_since))
+
+
+class SdkApiTestImpressionsTest(TestCase, MockUtilsMixin):
+    def setUp(self):
+        super(SdkApiTestImpressionsTest, self).setUp()
+
+        self.some_api_key = mock.MagicMock()
+        self.some_test_impressions_data = mock.MagicMock()
+
+        self.api = SdkApi(self.some_api_key)
+
+        self.post_mock = self.patch_object(self.api, '_post')
+
+    def test_default_test_impressions_url_is_used(self):
+        """Tests that the default test impressions endpoint url is used if sdk_api_base_url hasn't
+        been set"""
+        self.api.test_impressions(self.some_test_impressions_data)
+
+        expected_url = _TEST_IMPRESSIONS_URL_TEMPLATE.format(
+            base_url=SDK_API_BASE_URL
+        )
+
+        self.post_mock.assert_called_once_with(expected_url, mock.ANY)
+
+    def test_rebased_test_impressions_url_is_used(self):
+        """Tests that if sdk_api_base_url has been set, it is used as the base for the url of the
+        request"""
+
+        some_sdk_api_url_base = 'some_sdk_api_url_base'
+        self.api._sdk_api_url_base = some_sdk_api_url_base
+        self.api.test_impressions(self.some_test_impressions_data)
+
+        expected_url = _TEST_IMPRESSIONS_URL_TEMPLATE.format(
+            base_url=some_sdk_api_url_base
+        )
+
+        self.post_mock.assert_called_once_with(expected_url, mock.ANY)
+
+    def test_proper_params_are_used(self):
+        """Tests that the request to the test impressions endpoint is made with the proper
+        parameters"""
+        self.api.test_impressions(self.some_test_impressions_data)
+
+        self.post_mock.assert_called_once_with(mock.ANY, self.some_test_impressions_data)
+
+    def test_exceptions_from_get_are_raised(self):
+        """Tests that any exceptions raised from calling _post are not handled with the call"""
+        self.post_mock.side_effect = Exception()
+
+        with self.assertRaises(Exception):
+            self.api.test_impressions(self.some_test_impressions_data)
+
+    def test_returns_post_result(self):
+        """Tests that the method returns the result of calling post"""
+        self.assertEqual(self.post_mock.return_value,
+                         self.api.test_impressions(self.some_test_impressions_data))
+
+
+class SdkApiMetricsTest(MockUtilsMixin):
+    def setUp(self):
+        super(SdkApiMetricsTest, self).setUp()
+
+        self.some_api_key = mock.MagicMock()
+        self.some_data = mock.MagicMock()
+
+        self.api = SdkApi(self.some_api_key)
+
+        self.post_mock = self.patch_object(self.api, '_post')
+
+    def _get_endpoint(self):
+        raise NotImplementedError()
+
+    def _call_method(self, *args, **kwargs):
+        raise NotImplementedError()
+
+    def test_default_metrics_url_is_used(self):
+        """Tests that the default metrics endpoint url is used if sdk_api_base_url hasn't been
+        set"""
+        self._call_method(self.some_data)
+
+        expected_url = _METRICS_URL_TEMPLATE.format(
+            base_url=SDK_API_BASE_URL,
+            endpoint=self._get_endpoint()
+        )
+
+        self.post_mock.assert_called_once_with(expected_url, mock.ANY)
+
+    def test_rebased_test_impressions_url_is_used(self):
+        """Tests that if sdk_api_base_url has been set, it is used as the base for the url of the
+        request"""
+
+        some_sdk_api_url_base = 'some_sdk_api_url_base'
+        self.api._sdk_api_url_base = some_sdk_api_url_base
+        self._call_method(self.some_data)
+
+        expected_url = _METRICS_URL_TEMPLATE.format(
+            base_url=some_sdk_api_url_base,
+            endpoint=self._get_endpoint()
+        )
+
+        self.post_mock.assert_called_once_with(expected_url, mock.ANY)
+
+    def test_proper_params_are_used(self):
+        """Tests that the request to the metrics times endpoint is made with the proper
+        parameters"""
+        self._call_method(self.some_data)
+
+        self.post_mock.assert_called_once_with(mock.ANY, self.some_data)
+
+    def test_exceptions_from_get_are_raised(self):
+        """Tests that any exceptions raised from calling _post are not handled with the call"""
+        self.post_mock.side_effect = Exception()
+
+        with self.assertRaises(Exception):
+            self._call_method(self.some_data)
+
+    def test_returns_get_result(self):
+        """Tests that the method returns the result of calling post"""
+        self.assertEqual(self.post_mock.return_value,
+                         self._call_method(self.some_data))
+
+
+class SdkApiMetricsTimesTest(SdkApiMetricsTest, TestCase):
+    def setUp(self):
+        super(SdkApiMetricsTimesTest, self).setUp()
+
+    def _get_endpoint(self):
+        return 'times'
+
+    def _call_method(self, *args, **kwargs):
+        return self.api.metrics_times(*args, **kwargs)
+
+
+class SdkApiMetricsCountersTest(SdkApiMetricsTest, TestCase):
+    def setUp(self):
+        super(SdkApiMetricsCountersTest, self).setUp()
+
+    def _get_endpoint(self):
+        return 'counters'
+
+    def _call_method(self, *args, **kwargs):
+        return self.api.metrics_counters(*args, **kwargs)
+
+
+class SdkApiMetricsGaugeTest(SdkApiMetricsTest, TestCase):
+    def setUp(self):
+        super(SdkApiMetricsGaugeTest, self).setUp()
+
+    def _get_endpoint(self):
+        return 'gauge'
+
+    def _call_method(self, *args, **kwargs):
+        return self.api.metrics_gauge(*args, **kwargs)

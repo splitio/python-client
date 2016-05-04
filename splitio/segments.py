@@ -226,7 +226,12 @@ class SelfRefreshingSegment(InMemorySegment):
         try:
             segment._executor.submit(SelfRefreshingSegment._refresh_segment, segment)
 
-            timer = Timer(segment._interval, SelfRefreshingSegment._timer_refresh, (segment,))
+            if hasattr(segment._interval, '__call__'):
+                interval = segment._interval()
+            else:
+                interval = segment._interval
+
+            timer = Timer(interval, SelfRefreshingSegment._timer_refresh, (segment,))
             timer.daemon = True
             timer.start()
         except:

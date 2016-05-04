@@ -3,9 +3,12 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import logging
 
+import arrow
+
 from random import randint
 
 from splitio.api import SdkApi
+from splitio.impressions import (TreatmentLog, AsyncTreatmentLog, SelfUpdatingTreatmentLog)
 from splitio.splitters import Splitter
 from splitio.splits import (SelfRefreshingSplitFetcher, SplitParser, ApiSplitChangeFetcher,
                             JSONFileSplitFetcher)
@@ -17,32 +20,39 @@ from splitio.treatments import CONTROL
 
 class Client(object):
     def __init__(self):
-        """
-        Basic interface of a Client. Specific implementations need to override the
+        """Basic interface of a Client. Specific implementations need to override the
         get_split_fetcher method (and optionally the get_splitter method).
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self._splitter = None
+        self._treatment_log = None
 
     def get_split_fetcher(self):
-        """
-        Retrieve the split fetcher implementation. Subclasses need to override this method.
+        """Get the split fetcher implementation. Subclasses need to override this method.
         :return: The split fetcher implementation.
         :rtype: SplitFetcher
         """
         raise NotImplementedError()
 
     def get_splitter(self):
-        """
-        Retrieve the splitter implementation. A default Splitter is returned, but subclasses are
-        free to override this method and use their own.
-        :return: The splitter implementation
+        """Get the splitter implementation.
+        :return: The splitter implementation.
         :rtype: Splitter
         """
         if self._splitter is None:
             self._splitter = Splitter()
 
         return self._splitter
+
+    def get_treatment_log(self):
+        """Get the treatment log implementation.
+        :return: The treatment log implementation.
+        :rtype: TreatmentLog
+        """
+        if self._treatment_log is None:
+            self._treatment_log = TreatmentLog()
+
+        return self._treatment_log
 
     def get_treatment(self, key, feature, attributes=None):
         """
@@ -62,17 +72,25 @@ class Client(object):
             return CONTROL
 
         try:
-            # TODO record start
+            start = arrow.utcnow().timestamp * 1000
 
             split = self.get_split_fetcher().fetch(feature)
             treatment = self._get_treatment_for_split(split, key, attributes)
 
-            # TODO record end
+            self._record_stats(key, feature, treatment, start, 'sdk.getTreatment')
 
             return treatment
         except:
             self._logger.exception('Exception caught getting treatment for feature')
             return CONTROL
+
+    def _record_stats(self, key, feature, treatment, start, operation):
+        try:
+            end = arrow.utcnow().timestamp * 1000
+            self.get_treatment_log().log(key, feature, treatment, end)
+            # TODO record metrics
+        except:
+            self._logger.exception('Exception caught recording impressions and metrics')
 
     def _get_treatment_for_split(self, split, key, attributes=None):
         """
@@ -146,19 +164,25 @@ class SelfRefreshingClient(Client):
 
         segment_fetcher_interval = min(MAX_INTERVAL, self._config['segmentsRefreshRate'])
         split_fetcher_interval = min(MAX_INTERVAL, self._config['featuresRefreshRate'])
+        impressions_interval = min(MAX_INTERVAL, self._config['impressionsRefreshRate'])
 
         if self._config['randomizeIntervals']:
             self._segment_fetcher_interval = randomize_interval(segment_fetcher_interval)
             self._split_fetcher_interval = randomize_interval(split_fetcher_interval)
+            self._impressions_interval = randomize_interval(impressions_interval)
         else:
             self._segment_fetcher_interval = segment_fetcher_interval
             self._split_fetcher_interval = split_fetcher_interval
+            self._impressions_interval = impressions_interval
 
         self._connection_timeout = self._config['connectionTimeout']
         self._read_timeout = self._config['readTimeout']
 
         self._sdk_api_url_base = sdk_api_base_url if sdk_api_base_url is not None \
             else SDK_API_BASE_URL
+        self._sdk_api = SdkApi(self._api_key, sdk_api_base_url=self._sdk_api_url_base,
+                               connect_timeout=self._connection_timeout,
+                               read_timeout=self._read_timeout)
         self._split_fetcher = None
 
     def _build_split_fetcher(self):
@@ -167,14 +191,10 @@ class SelfRefreshingClient(Client):
         :return: The self refreshing split fetcher
         :rtype: SelfRefreshingSplitFetcher
         """
-        sdk_api = SdkApi(self._api_key, sdk_api_base_url=self._sdk_api_url_base,
-                         connect_timeout=self._connection_timeout,
-                         read_timeout=self._read_timeout)
-
-        segment_change_fetcher = ApiSegmentChangeFetcher(sdk_api)
+        segment_change_fetcher = ApiSegmentChangeFetcher(self._sdk_api)
         segment_fetcher = SelfRefreshingSegmentFetcher(segment_change_fetcher,
                                                        interval=self._segment_fetcher_interval)
-        split_change_fetcher = ApiSplitChangeFetcher(sdk_api)
+        split_change_fetcher = ApiSplitChangeFetcher(self._sdk_api)
         split_parser = SplitParser(segment_fetcher)
         split_fetcher = SelfRefreshingSplitFetcher(split_change_fetcher, split_parser,
                                                    interval=self._split_fetcher_interval)
@@ -192,6 +212,19 @@ class SelfRefreshingClient(Client):
             self._split_fetcher = self._build_split_fetcher()
 
         return self._split_fetcher
+
+    def get_treatment_log(self):
+        """Get the treatment log implementation.
+        :return: The treatment log implementation.
+        :rtype: TreatmentLog
+        """
+        if self._treatment_log is None:
+            self_updating_treatment_log = SelfUpdatingTreatmentLog(
+                self._sdk_api, interval=self._impressions_interval)
+            self._treatment_log = AsyncTreatmentLog(self_updating_treatment_log)
+            self_updating_treatment_log.start()
+
+        return self._treatment_log
 
 
 class JSONFileClient(Client):
@@ -233,3 +266,13 @@ class JSONFileClient(Client):
             self._split_fetcher = self._build_split_fetcher()
 
         return self._split_fetcher
+
+    def get_treatment_log(self):
+        """Get the treatment log implementation.
+        :return: The treatment log implementation.
+        :rtype: TreatmentLog
+        """
+        if self._treatment_log is None:
+            self._treatment_log = AsyncTreatmentLog(TreatmentLog())
+
+        return self._treatment_log

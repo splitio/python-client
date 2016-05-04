@@ -297,10 +297,11 @@ class SelfRefreshingSegmentRefreshSegmentTests(TestCase, MockUtilsMixin):
 class SelfRefreshingSegmentTimerRefreshTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.segment = mock.MagicMock()
+        self.segment._interval = mock.NonCallableMagicMock()
         self.segment._stopped = False
         self.timer_mock = self.patch('splitio.segments.Timer')
 
-    def test_calls_executor_submitif_not_stopped(self):
+    def test_calls_executor_submit_if_not_stopped(self):
         """Tests that if the segment refresh is not stopped, a call to the executor submit method
         is made"""
         SelfRefreshingSegment._timer_refresh(self.segment)
@@ -317,7 +318,18 @@ class SelfRefreshingSegmentTimerRefreshTests(TestCase, MockUtilsMixin):
                                                 (self.segment,))
         self.timer_mock.return_value.start.assert_called_once_with()
 
-    def test_doesnt_call_executor_submitif_stopped(self):
+    def test_new_timer_created_if_not_stopped_with_random_interval(self):
+        """Tests that if the segment refresh is not stopped, a new Timer is created and started
+        calling the interval"""
+        self.segment._interval = mock.MagicMock()
+        SelfRefreshingSegment._timer_refresh(self.segment)
+
+        self.timer_mock.assert_called_once_with(self.segment._interval.return_value,
+                                                SelfRefreshingSegment._timer_refresh,
+                                                (self.segment,))
+        self.timer_mock.return_value.start.assert_called_once_with()
+
+    def test_doesnt_call_executor_submit_if_stopped(self):
         """Tests that if the segment refresh is stopped, no call to the executor submit method is
         made"""
         self.segment._stopped = True

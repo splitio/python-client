@@ -244,7 +244,7 @@ class SelfRefreshingSplitFetcherTimerRefreshTests(TestCase, MockUtilsMixin):
         self.timer_mock = self.patch('splitio.splits.Timer')
         self.some_split_change_fetcher = mock.MagicMock()
         self.some_split_parser = mock.MagicMock()
-        self.some_interval = mock.MagicMock()
+        self.some_interval = mock.NonCallableMagicMock()
 
         self.fetcher = SelfRefreshingSplitFetcher(self.some_split_change_fetcher,
                                                   self.some_split_parser,
@@ -264,6 +264,17 @@ class SelfRefreshingSplitFetcherTimerRefreshTests(TestCase, MockUtilsMixin):
         SelfRefreshingSplitFetcher._timer_refresh(self.fetcher)
 
         self.timer_mock.assert_called_once_with(self.some_interval,
+                                                SelfRefreshingSplitFetcher._timer_refresh,
+                                                (self.fetcher,))
+        self.timer_mock.return_value.start.assert_called_once_with()
+
+    def test_timer_created_and_started_with_timer_refresh_with_random_interval(self):
+        """Tests that _timer_refresh creates and starts a Timer with _timer_refresh target with
+        random interval"""
+        self.fetcher._interval = mock.MagicMock()
+        SelfRefreshingSplitFetcher._timer_refresh(self.fetcher)
+
+        self.timer_mock.assert_called_once_with(self.fetcher._interval.return_value,
                                                 SelfRefreshingSplitFetcher._timer_refresh,
                                                 (self.fetcher,))
         self.timer_mock.return_value.start.assert_called_once_with()
