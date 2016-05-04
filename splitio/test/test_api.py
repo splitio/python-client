@@ -8,7 +8,7 @@ except ImportError:
     import mock
 
 from requests.exceptions import RequestException, HTTPError
-from unittest import TestCase, skip
+from unittest import TestCase
 
 from splitio.api import (SdkApi, _SEGMENT_CHANGES_URL_TEMPLATE, _SPLIT_CHANGES_URL_TEMPLATE,
                          _TEST_IMPRESSIONS_URL_TEMPLATE, _METRICS_URL_TEMPLATE)

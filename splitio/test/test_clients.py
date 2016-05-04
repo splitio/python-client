@@ -35,11 +35,17 @@ class ClientTests(TestCase, MockUtilsMixin):
         self.some_split.conditions.__iter__.return_value = self.some_conditions
         self.client = Client()
         self.get_split_fetcher_mock = self.patch_object(self.client, 'get_split_fetcher')
+        self.record_stats_mock = self.patch_object(self.client, '_record_stats')
         self.splitter_mock = self.patch('splitio.clients.Splitter')
+        self.treatment_log_mock = self.patch('splitio.clients.TreatmentLog')
 
     def test_get_splitter_returns_a_splitter(self):
         """Test that get_splitter returns a splitter"""
         self.assertEqual(self.splitter_mock.return_value, self.client.get_splitter())
+
+    def test_get_treatment_log_returns_treatment_log(self):
+        """Test that get_splitter returns a treatment_log"""
+        self.assertEqual(self.treatment_log_mock.return_value, self.client.get_treatment_log())
 
     def test_get_treatment_returns_control_if_key_is_none(self):
         """Test that get_treatment returns CONTROL treatment if key is None"""
@@ -148,6 +154,44 @@ class ClientTests(TestCase, MockUtilsMixin):
         self.client._get_treatment_for_split(self.some_split, self.some_key, self.some_attributes)
         self.splitter_mock.return_value.get_treatment.assert_called_once_with(
             self.some_key, self.some_split.seed, self.some_conditions[1].partitions)
+
+    def test_get_treatment_calls_record_stats(self):
+        """Test that get_treatment calls get_split_fetcher"""
+        get_treatment_for_split_mock = self.patch_object(self.client, '_get_treatment_for_split')
+        self.client.get_treatment(self.some_key, self.some_feature, self.some_attributes)
+        self.record_stats_mock.assert_called_once_with(self.some_key, self.some_feature,
+                                                       get_treatment_for_split_mock.return_value,
+                                                       mock.ANY, 'sdk.getTreatment')
+
+
+class ClientRecordStatsTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.some_key = mock.MagicMock()
+        self.some_feature = mock.MagicMock()
+        self.some_treatment = mock.MagicMock()
+        self.some_start = 123456000
+        self.some_operation = mock.MagicMock()
+
+        self.client = Client()
+        self.get_treatment_log_mock = self.patch_object(self.client, 'get_treatment_log')
+        self.arrow_mock = self.patch('splitio.clients.arrow')
+        self.arrow_mock.utcnow.return_value.timestamp = 123457
+
+    def test_record_stats_calls_treatment_log_log(self):
+        """Test that _record_stats calls log on the treatment log"""
+        self.client._record_stats(self.some_key, self.some_feature, self.some_treatment,
+                                  self.some_start, self.some_operation)
+        self.get_treatment_log_mock.return_value.log.assert_called_once_with(
+            self.some_key, self.some_feature, self.some_treatment, 123457000)
+
+    def test_record_stats_doesnt_raise_an_exception_if_log_does(self):
+        """Test that _record_stats doesn't raise an exception if log does"""
+        self.get_treatment_log_mock.return_value.log.side_effect = Exception()
+        try:
+            self.client._record_stats(self.some_key, self.some_feature, self.some_treatment,
+                                      self.some_start, self.some_operation)
+        except:
+            self.fail('Unexpected exception raised')
 
 
 class RandomizeIntervalTests(TestCase, MockUtilsMixin):
