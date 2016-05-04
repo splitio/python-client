@@ -119,6 +119,25 @@ class TreatmentLogTests(TestCase, MockUtilsMixin):
                                self.some_time)
         self.log_mock.assert_not_called()
 
+    def test_log_doesnt_call_internal_log_if_count_eq_max_count(self):
+        """Tests that log doesn't call _log if maximum number of impressions has been reached"""
+        self.patch('splitio.impressions.TreatmentLog.count', new_callable=mock.PropertyMock,
+                   return_value=5)
+        self.treatment_log.max_count = 5
+        self.treatment_log.log(self.some_key, self.some_feature_name, self.some_treatment,
+                               self.some_time)
+        self.log_mock.assert_not_called()
+
+    def test_log_call_internal_log_if_count_lt_max_count(self):
+        """Tests that log calls _log if maximum number of impressions has not been reached"""
+        self.patch('splitio.impressions.TreatmentLog.count', new_callable=mock.PropertyMock,
+                   return_value=4)
+        self.treatment_log.max_count = 5
+        self.treatment_log.log(self.some_key, self.some_feature_name, self.some_treatment,
+                               self.some_time)
+        self.log_mock.assert_called_once_with(self.some_key, self.some_feature_name,
+                                              self.some_treatment, self.some_time)
+
 
 class LoggerBasedTreatmentLogTests(TestCase, MockUtilsMixin):
     def setUp(self):
