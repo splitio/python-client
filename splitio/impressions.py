@@ -39,13 +39,14 @@ def build_impressions_data(impressions):
 
 
 class TreatmentLog(object):
-    def __init__(self, ignore_impressions=False):
+    def __init__(self, max_count=-1, ignore_impressions=False):
         """A log for impressions. Specific implementations need to override the log and
         fetch_all_and_clear methods.
         :param ignore_impressions: Whether to ignore log requests
         :type ignore_impressions: bool
         """
         self._logger = logging.getLogger(self.__class__.__name__)
+        self._max_count = max_count
         self._ignore_impressions = ignore_impressions
 
     @property
@@ -63,6 +64,30 @@ class TreatmentLog(object):
         :type ignore_impressions: bool
         """
         self._ignore_impressions = ignore_impressions
+
+    @property
+    def max_count(self):
+        """
+        :return: Max number of stored impressions allowed
+        :rtype: int
+        """
+        self._max_count
+
+    @max_count.setter
+    def max_count(self, max_count):
+        """Sets the max number of stored impressions allowed
+        :param max_count: Max number of stored impressions allowed
+        :type max_count: int
+        """
+        self._max_count = max_count
+
+    @property
+    def count(self):
+        """
+        :return: How many impressions haven't been sent to the server yet
+        :rtype: int
+        """
+        return 0
 
     def fetch_all_and_clear(self):
         """Fetch all logged impressions and clear the log.
@@ -96,7 +121,12 @@ class TreatmentLog(object):
         :type time: int
         """
         if not self._ignore_impressions:
-            self._log(key, feature_name, treatment, time)
+            if self._max_count < 0 or self.count < self._max_count:
+                self._log(key, feature_name, treatment, time)
+            else:
+                self._logger.warning('Impression wasn\'t logged as maximum number was reached. '
+                                     'key = %s, feature_name = %s, treatment = %s, time = %s', key,
+                                     feature_name, treatment, time)
 
 
 class LoggerBasedTreatmentLog(TreatmentLog):
@@ -123,15 +153,25 @@ class LoggerBasedTreatmentLog(TreatmentLog):
 
 
 class InMemoryTreatmentLog(TreatmentLog):
-    def __init__(self, ignore_impressions=False):
+    def __init__(self, max_count=-1, ignore_impressions=False):
         """A thread safe impressions log implementation that stores the impressions in memory.
         Access to the impressions storage is synchronized with a re-entrant lock.
         :param ignore_impressions: Whether to ignore log requests
         :type ignore_impressions: bool
         """
-        super(InMemoryTreatmentLog, self).__init__(ignore_impressions=ignore_impressions)
+        super(InMemoryTreatmentLog, self).__init__(max_count=max_count,
+                                                   ignore_impressions=ignore_impressions)
         self._impressions = defaultdict(list)
         self._rlock = RLock()
+        self._count = 0
+
+    @property
+    def count(self):
+        """
+        :return: How many impressions haven't been sent to the server yet
+        :rtype: int
+        """
+        return self._count
 
     def fetch_all_and_clear(self):
         """Fetch all logged impressions and clear the log.
@@ -141,6 +181,7 @@ class InMemoryTreatmentLog(TreatmentLog):
         with self._rlock:
             existing_impressions = deepcopy(self._impressions)
             self._impressions = defaultdict(list)
+            self._count = 0
 
         return existing_impressions
 
@@ -158,10 +199,11 @@ class InMemoryTreatmentLog(TreatmentLog):
         with self._rlock:
             self._impressions[feature_name].append(
                 Impression(key=key, feature_name=feature_name, treatment=treatment, time=time))
+            self._count += 1
 
 
 class CacheBasedTreatmentLog(TreatmentLog):
-    def __init__(self, impressions_cache, ignore_impressions=False):
+    def __init__(self, impressions_cache, max_count=-1, ignore_impressions=False):
         """A cache based impressions log implementation.
         :param impressions_cache: An impressions cache
         :type impressions_cache: ImpressionsCache
@@ -179,7 +221,9 @@ class CacheBasedTreatmentLog(TreatmentLog):
         return self._impressions_cache.fetch_all_and_clear()
 
     def _log(self, key, feature_name, treatment, time):
-        """Logs an impression.
+        """Logs an impression. Since the actual cache implementation may not allow for easily
+        counting existing keys, the max count enforcement would be up the specific cache
+        implementation.
         :param key: The key of the impression
         :type key: str
         :param feature_name: The name of the feature of the impression
@@ -194,7 +238,7 @@ class CacheBasedTreatmentLog(TreatmentLog):
 
 
 class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
-    def __init__(self, api, interval=180, ignore_impressions=False):
+    def __init__(self, api, interval=180, max_count=-1, ignore_impressions=False):
         """An impressions implementation that sends the in impressions stored periodically to the
         Split.io back-end.
         :param api: The SDK api client
@@ -202,7 +246,8 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         :param interval: Optional update interval (Default: 180s)
         :type interval: int
         """
-        super(SelfUpdatingTreatmentLog, self).__init__(ignore_impressions=ignore_impressions)
+        super(SelfUpdatingTreatmentLog, self).__init__(max_count=max_count,
+                                                       ignore_impressions=ignore_impressions)
         self._api = api
         self._interval = interval
         self._stopped = True

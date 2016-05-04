@@ -247,7 +247,8 @@ class SelfRefreshingClientInitTests(TestCase, MockUtilsMixin):
             'segmentsRefreshRate': 32,
             'metricsRefreshRate': 33,
             'impressionsRefreshRate': 34,
-            'randomizeIntervals': False
+            'randomizeIntervals': False,
+            'maxImpressionsLogSize': -1
         }
 
     def test_sets_api_key(self):
@@ -426,6 +427,55 @@ class SelfRefreshingGetSplitFetcherTests(TestCase, MockUtilsMixin):
         some_split_fetcher = mock.MagicMock()
         self.client._split_fetcher = some_split_fetcher
         self.assertEqual(some_split_fetcher, self.client.get_split_fetcher())
+
+
+class SelfRefreshingClientGetTreatmentLogTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.sdk_api_mock = self.patch('splitio.clients.SdkApi')
+        self.self_updating_treatment_log_mock = self.patch(
+            'splitio.clients.SelfUpdatingTreatmentLog')
+        self.aync_treatment_log_mock = self.patch(
+            'splitio.clients.AsyncTreatmentLog')
+        self.some_api_key = mock.MagicMock()
+        self.client = SelfRefreshingClient(self.some_api_key)
+
+    def test_doesnt_call_constructors_if_treatment_log_is_not_none(self):
+        """Tests that get_treatment_log doesn't call any constructors if _treatment_log is not
+        None"""
+        self.client._treatment_log = mock.MagicMock()
+        self.client.get_treatment_log()
+        self.self_updating_treatment_log_mock.assert_not_called()
+        self.aync_treatment_log_mock.assert_not_called()
+
+    def test_returns_existing_treatment_log_if_treatment_log_is_not_none(self):
+        """Tests that get_treatment_log returns the value of _treatment_log if _treatment_log is
+        not None"""
+        some_treatment_log = mock.MagicMock()
+        self.client._treatment_log = some_treatment_log
+        self.assertEqual(some_treatment_log, self.client.get_treatment_log())
+
+    def test_calls_self_updating_treatment_log_constructor(self):
+        """Tests that get_treatment_log calls SelfUpdatingTreatmentLog constructor"""
+        self.client.get_treatment_log()
+        self.self_updating_treatment_log_mock.assert_called_once_with(
+            self.client._sdk_api, max_count=self.client._max_impressions_log_size,
+            interval=self.client._impressions_interval)
+
+    def test_calls_async_treatment_log_constructor(self):
+        """Tests that get_treatment_log calls AsyncTreatmentLog constructor"""
+        self.client.get_treatment_log()
+        self.aync_treatment_log_mock.assert_called_once_with(
+            self.self_updating_treatment_log_mock.return_value)
+
+    def test_sets_treatment_log_to_async_treatment_log(self):
+        """Tests that get_treatment_log sets _treatment_log to an AsyncTreatmentLog"""
+        self.client.get_treatment_log()
+        self.assertEqual(self.aync_treatment_log_mock.return_value,
+                         self.client._treatment_log)
+
+    def test_returns_async_treatment_log(self):
+        """Tests that get_treatment_log returns an AsyncTreatmentLog"""
+        self.assertEqual(self.aync_treatment_log_mock.return_value, self.client.get_treatment_log())
 
 
 class JSONFileClientIntegrationTests(TestCase):

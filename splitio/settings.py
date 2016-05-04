@@ -13,7 +13,8 @@ DEFAULT_CONFIG = {
     'segmentsRefreshRate': 60,
     'metricsRefreshRate': 60,
     'impressionsRefreshRate': 60,
-    'randomizeIntervals': False
+    'randomizeIntervals': False,
+    'maxImpressionsLogSize': -1
 }
 
 MAX_INTERVAL = 180

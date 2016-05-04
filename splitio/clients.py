@@ -177,6 +177,7 @@ class SelfRefreshingClient(Client):
 
         self._connection_timeout = self._config['connectionTimeout']
         self._read_timeout = self._config['readTimeout']
+        self._max_impressions_log_size = self._config['maxImpressionsLogSize']
 
         self._sdk_api_url_base = sdk_api_base_url if sdk_api_base_url is not None \
             else SDK_API_BASE_URL
@@ -220,7 +221,8 @@ class SelfRefreshingClient(Client):
         """
         if self._treatment_log is None:
             self_updating_treatment_log = SelfUpdatingTreatmentLog(
-                self._sdk_api, interval=self._impressions_interval)
+                self._sdk_api, max_count=self._max_impressions_log_size,
+                interval=self._impressions_interval)
             self._treatment_log = AsyncTreatmentLog(self_updating_treatment_log)
             self_updating_treatment_log.start()
 
