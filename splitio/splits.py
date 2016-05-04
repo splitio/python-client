@@ -360,7 +360,12 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
             split_fetcher._logger.exception('Exception caught starting splits update thread')
 
         try:
-            timer = Timer(split_fetcher._interval, SelfRefreshingSplitFetcher._timer_refresh,
+            if hasattr(split_fetcher._interval, '__call__'):
+                interval = split_fetcher._interval()
+            else:
+                interval = split_fetcher._interval
+
+            timer = Timer(interval, SelfRefreshingSplitFetcher._timer_refresh,
                           (split_fetcher,))
             timer.daemon = True
             timer.start()

@@ -190,7 +190,8 @@ class RandomizeIntervalTests(TestCase, MockUtilsMixin):
 
 class SelfRefreshingClientInitTests(TestCase, MockUtilsMixin):
     def setUp(self):
-        self.randomize_interval_side_effect = [mock.MagicMock(), mock.MagicMock()]
+        self.sdk_api_mock = self.patch('splitio.clients.SdkApi')
+        self.randomize_interval_side_effect = [mock.MagicMock(), mock.MagicMock(), mock.MagicMock()]
         self.randomize_interval_mock = self.patch(
             'splitio.clients.randomize_interval', side_effect=self.randomize_interval_side_effect)
         self.some_api_key = mock.MagicMock()
@@ -249,6 +250,7 @@ class SelfRefreshingClientInitTests(TestCase, MockUtilsMixin):
         self.assertDictEqual(self.some_config, client._config)
         self.assertEqual(MAX_INTERVAL, client._split_fetcher_interval)
         self.assertEqual(MAX_INTERVAL, client._segment_fetcher_interval)
+        self.assertEqual(MAX_INTERVAL, client._impressions_interval)
 
     def test_randomizes_intervales_if_randomize_intervals_is_true(self):
         """
@@ -258,10 +260,12 @@ class SelfRefreshingClientInitTests(TestCase, MockUtilsMixin):
         client = SelfRefreshingClient(self.some_api_key, config=self.some_config)
 
         self.assertListEqual([mock.call(self.some_config['segmentsRefreshRate']),
-                              mock.call(self.some_config['featuresRefreshRate'])],
+                              mock.call(self.some_config['featuresRefreshRate']),
+                              mock.call(self.some_config['impressionsRefreshRate'])],
                              self.randomize_interval_mock.call_args_list)
         self.assertEqual(self.randomize_interval_side_effect[0], client._segment_fetcher_interval)
         self.assertEqual(self.randomize_interval_side_effect[1], client._split_fetcher_interval)
+        self.assertEqual(self.randomize_interval_side_effect[2], client._impressions_interval)
 
     def test_sets_custom_sdk_api_base_url(self):
         """
@@ -270,6 +274,15 @@ class SelfRefreshingClientInitTests(TestCase, MockUtilsMixin):
         client = SelfRefreshingClient(self.some_api_key,
                                       sdk_api_base_url=self.some_sdk_api_url_base)
         self.assertEqual(self.some_sdk_api_url_base, client._sdk_api_url_base)
+
+    def test_builds_sdk_api(self):
+        """Tests that __init__ calls the SdkApi constructor"""
+        client = SelfRefreshingClient(self.some_api_key,
+                                      sdk_api_base_url=self.some_sdk_api_url_base)
+        self.sdk_api_mock.assert_called_once_with(self.some_api_key,
+                                                  sdk_api_base_url=self.some_sdk_api_url_base,
+                                                  connect_timeout=client._connection_timeout,
+                                                  read_timeout=client._read_timeout)
 
 
 class SelfRefreshingClientBuildSplitFetcherTests(TestCase, MockUtilsMixin):
@@ -291,17 +304,6 @@ class SelfRefreshingClientBuildSplitFetcherTests(TestCase, MockUtilsMixin):
         self.split_fetcher_interval_mock = self.patch_object(self.client, '_split_fetcher_interval')
         self.connection_timeout_mock = self.patch_object(self.client, '_connection_timeout')
         self.read_timeout_mock = self.patch_object(self.client, '_read_timeout')
-        self.sdk_api_url_base_mock = self.patch_object(self.client, '_sdk_api_url_base')
-
-    def test_builds_sdk_api(self):
-        """Tests that _build_split_fetcher calls the SdkApi constructor"""
-        self.client._build_split_fetcher()
-        self.sdk_api_mock.assert_called_once_with(
-            self.some_api_key,
-            sdk_api_base_url=self.sdk_api_url_base_mock,
-            connect_timeout=self.connection_timeout_mock,
-            read_timeout=self.read_timeout_mock
-        )
 
     def test_builds_segment_change_fetcher(self):
         """Tests that _build_split_fetcher calls the ApiSegmentChangeFetcher constructor"""
