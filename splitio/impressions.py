@@ -6,7 +6,7 @@ import logging
 from collections import namedtuple, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-from threading import RLock, Thread, Timer
+from threading import RLock, Timer
 
 from six import iteritems
 
@@ -39,14 +39,13 @@ def build_impressions_data(impressions):
 
 
 class TreatmentLog(object):
-    def __init__(self, max_count=-1, ignore_impressions=False):
+    def __init__(self, ignore_impressions=False):
         """A log for impressions. Specific implementations need to override the log and
         fetch_all_and_clear methods.
         :param ignore_impressions: Whether to ignore log requests
         :type ignore_impressions: bool
         """
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._max_count = max_count
         self._ignore_impressions = ignore_impressions
 
     @property
@@ -64,30 +63,6 @@ class TreatmentLog(object):
         :type ignore_impressions: bool
         """
         self._ignore_impressions = ignore_impressions
-
-    @property
-    def max_count(self):
-        """
-        :return: Max number of stored impressions allowed
-        :rtype: int
-        """
-        self._max_count
-
-    @max_count.setter
-    def max_count(self, max_count):
-        """Sets the max number of stored impressions allowed
-        :param max_count: Max number of stored impressions allowed
-        :type max_count: int
-        """
-        self._max_count = max_count
-
-    @property
-    def count(self):
-        """
-        :return: How many impressions haven't been sent to the server yet
-        :rtype: int
-        """
-        return 0
 
     def fetch_all_and_clear(self):
         """Fetch all logged impressions and clear the log.
@@ -120,13 +95,11 @@ class TreatmentLog(object):
         :param time: The time of the impression in milliseconds since the epoch
         :type time: int
         """
+        if key is None or feature_name is None or treatment is None or time is None or time <= 0:
+            return
+
         if not self._ignore_impressions:
-            if self._max_count < 0 or self.count < self._max_count:
-                self._log(key, feature_name, treatment, time)
-            else:
-                self._logger.warning('Impression wasn\'t logged as maximum number was reached. '
-                                     'key = %s, feature_name = %s, treatment = %s, time = %s', key,
-                                     feature_name, treatment, time)
+            self._log(key, feature_name, treatment, time)
 
 
 class LoggerBasedTreatmentLog(TreatmentLog):
@@ -156,22 +129,31 @@ class InMemoryTreatmentLog(TreatmentLog):
     def __init__(self, max_count=-1, ignore_impressions=False):
         """A thread safe impressions log implementation that stores the impressions in memory.
         Access to the impressions storage is synchronized with a re-entrant lock.
+        :param max_count: Max number of impressions per feature before eviction
+        :type max_count: int
         :param ignore_impressions: Whether to ignore log requests
         :type ignore_impressions: bool
         """
-        super(InMemoryTreatmentLog, self).__init__(max_count=max_count,
-                                                   ignore_impressions=ignore_impressions)
+        super(InMemoryTreatmentLog, self).__init__(ignore_impressions=ignore_impressions)
+        self._max_count = max_count
         self._impressions = defaultdict(list)
         self._rlock = RLock()
-        self._count = 0
 
     @property
-    def count(self):
+    def max_count(self):
         """
-        :return: How many impressions haven't been sent to the server yet
+        :return: Max number of stored impressions allowed
         :rtype: int
         """
-        return self._count
+        return self._max_count
+
+    @max_count.setter
+    def max_count(self, max_count):
+        """Sets the max number of stored impressions allowed
+        :param max_count: Max number of stored impressions allowed
+        :type max_count: int
+        """
+        self._max_count = max_count
 
     def fetch_all_and_clear(self):
         """Fetch all logged impressions and clear the log.
@@ -181,9 +163,18 @@ class InMemoryTreatmentLog(TreatmentLog):
         with self._rlock:
             existing_impressions = deepcopy(self._impressions)
             self._impressions = defaultdict(list)
-            self._count = 0
 
         return existing_impressions
+
+    def _notify_eviction(self, feature_name, feature_impressions):
+        """Notifies that the max count was reached for a feature. This gives the opportunity to
+        subclasses to do something about the eviction
+        :param feature_name: The name of the feature
+        :type feature_name: str
+        :param feature_impressions: The evicted impressions
+        :type feature_impressions: list
+        """
+        pass  # Do nothing
 
     def _log(self, key, feature_name, treatment, time):
         """Logs an impression.
@@ -194,16 +185,23 @@ class InMemoryTreatmentLog(TreatmentLog):
         :param treatment: The treatment of the impression
         :type treatment: str
         :param time: Timestamp as milliseconds from epoch of the impression
-        :return: int
+        :type time: int
         """
+        impression = Impression(key=key, feature_name=feature_name, treatment=treatment, time=time)
         with self._rlock:
-            self._impressions[feature_name].append(
-                Impression(key=key, feature_name=feature_name, treatment=treatment, time=time))
-            self._count += 1
+            feature_impressions = self._impressions[feature_name]
+
+            if self._max_count < 0 or len(feature_impressions) < self._max_count:
+                feature_impressions.append(impression)
+            else:
+                self._logger.warning('Count limit for feature treatment log reached. '
+                                     'Clearing impressions for feature.')
+                self._impressions[feature_name] = [impression]
+                self._notify_eviction(feature_name, feature_impressions)
 
 
 class CacheBasedTreatmentLog(TreatmentLog):
-    def __init__(self, impressions_cache, max_count=-1, ignore_impressions=False):
+    def __init__(self, impressions_cache, ignore_impressions=False):
         """A cache based impressions log implementation.
         :param impressions_cache: An impressions cache
         :type impressions_cache: ImpressionsCache
@@ -238,19 +236,26 @@ class CacheBasedTreatmentLog(TreatmentLog):
 
 
 class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
-    def __init__(self, api, interval=180, max_count=-1, ignore_impressions=False):
+    def __init__(self, api, interval=180, max_workers=5, max_count=-1, ignore_impressions=False):
         """An impressions implementation that sends the in impressions stored periodically to the
         Split.io back-end.
         :param api: The SDK api client
         :type api: SdkApi
         :param interval: Optional update interval (Default: 180s)
         :type interval: int
+        :param max_workers: The max number of workers used to update impressions
+        :type max_workers: int
+        :param max_count: Max number of impressions per feature before eviction
+        :type max_count: int
+        :param ignore_impressions: Whether to ignore log requests
+        :type ignore_impressions: bool
         """
         super(SelfUpdatingTreatmentLog, self).__init__(max_count=max_count,
                                                        ignore_impressions=ignore_impressions)
         self._api = api
         self._interval = interval
         self._stopped = True
+        self._thread_pool_executor = ThreadPoolExecutor(max_workers=max_workers)
 
     @property
     def stopped(self):
@@ -277,6 +282,24 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         SelfUpdatingTreatmentLog._timer_refresh(self)
 
     @staticmethod
+    def _update_evictions(treatment_log, feature_name, feature_impressions):
+        """Sends evicted impressions to the Split.io back-end.
+        :param treatment_log: A self updating impressions object
+        :type treatment_log: SelfUpdatingImpressions
+        :param feature_name: The name of the feature
+        :type feature_name: str
+        :param feature_impressions: The evicted impressions
+        :type feature_impressions: list
+        """
+        try:
+            test_impressions_data = build_impressions_data({feature_name: feature_impressions})
+            for feature_test_impressions_data in test_impressions_data:
+                treatment_log._api.test_impressions(feature_test_impressions_data)
+        except:
+            treatment_log._logger.exception('Exception caught updating evicted impressions')
+            treatment_log._stopped = True
+
+    @staticmethod
     def _update_impressions(treatment_log):
         """Sends the impressions stored back to the Split.io back-end
         :param treatment_log: A self updating impressions object
@@ -291,6 +314,23 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
             treatment_log._logger.exception('Exception caught updating impressions')
             treatment_log._stopped = True
 
+    def _notify_eviction(self, feature_name, feature_impressions):
+        """Notifies that the max count was reached for a feature. The evicted impressions are going
+        to be sent to the back-end.
+        :param feature_name: The name of the feature
+        :type feature_name: str
+        :param feature_impressions: The evicted impressions
+        :type feature_impressions: list
+        """
+        if feature_name is None or feature_impressions is None or len(feature_impressions) == 0:
+            return
+
+        try:
+            self._thread_pool_executor.submit(SelfUpdatingTreatmentLog._update_evictions,
+                                              self, feature_name, feature_impressions)
+        except:
+            self._logger.exception('Exception caught starting evicted impressions update thread')
+
     @staticmethod
     def _timer_refresh(treatment_log):
         """Responsible for setting the periodic calls to _update_impressions using a Timer thread.
@@ -301,10 +341,9 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
             return
 
         try:
-            thread = Thread(target=SelfUpdatingTreatmentLog._update_impressions,
-                            args=(treatment_log,))
-            thread.daemon = True
-            thread.start()
+            print('!!', treatment_log._thread_pool_executor)
+            treatment_log._thread_pool_executor.submit(SelfUpdatingTreatmentLog._update_impressions,
+                                                       treatment_log)
         except:
             treatment_log._logger.exception('Exception caught starting impressions update thread')
 
