@@ -92,7 +92,7 @@ class TreatmentLogTests(TestCase, MockUtilsMixin):
         self.some_key = mock.MagicMock()
         self.some_feature_name = mock.MagicMock()
         self.some_treatment = mock.MagicMock()
-        self.some_time = mock.MagicMock()
+        self.some_time = 123456
         self.treatment_log = TreatmentLog()
         self.log_mock = self.patch_object(self.treatment_log, '_log')
 
@@ -119,24 +119,30 @@ class TreatmentLogTests(TestCase, MockUtilsMixin):
                                self.some_time)
         self.log_mock.assert_not_called()
 
-    def test_log_doesnt_call_internal_log_if_count_eq_max_count(self):
-        """Tests that log doesn't call _log if maximum number of impressions has been reached"""
-        self.patch('splitio.impressions.TreatmentLog.count', new_callable=mock.PropertyMock,
-                   return_value=5)
-        self.treatment_log.max_count = 5
-        self.treatment_log.log(self.some_key, self.some_feature_name, self.some_treatment,
-                               self.some_time)
+    def test_log_doesnt_call_internal_log_if_key_is_none(self):
+        """Tests that log doesn't call _log if key is None"""
+        self.treatment_log.log(None, self.some_feature_name, self.some_treatment, self.some_time)
         self.log_mock.assert_not_called()
 
-    def test_log_call_internal_log_if_count_lt_max_count(self):
-        """Tests that log calls _log if maximum number of impressions has not been reached"""
-        self.patch('splitio.impressions.TreatmentLog.count', new_callable=mock.PropertyMock,
-                   return_value=4)
-        self.treatment_log.max_count = 5
-        self.treatment_log.log(self.some_key, self.some_feature_name, self.some_treatment,
-                               self.some_time)
-        self.log_mock.assert_called_once_with(self.some_key, self.some_feature_name,
-                                              self.some_treatment, self.some_time)
+    def test_log_doesnt_call_internal_log_if_feature_name_is_none(self):
+        """Tests that log doesn't call _log if feature name is None"""
+        self.treatment_log.log(self.some_key, None, self.some_treatment, self.some_time)
+        self.log_mock.assert_not_called()
+
+    def test_log_doesnt_call_internal_log_if_treatment_is_none(self):
+        """Tests that log doesn't call _log if treatment is None"""
+        self.treatment_log.log(self.some_key, self.some_feature_name, None, self.some_time)
+        self.log_mock.assert_not_called()
+
+    def test_log_doesnt_call_internal_log_if_time_is_none(self):
+        """Tests that log doesn't call _log if time is None"""
+        self.treatment_log.log(self.some_key, self.some_feature_name, self.some_treatment, None)
+        self.log_mock.assert_not_called()
+
+    def test_log_doesnt_call_internal_log_if_time_is_lt_0(self):
+        """Tests that log doesn't call _log if time is less than 0"""
+        self.treatment_log.log(self.some_key, self.some_feature_name, self.some_treatment, -1)
+        self.log_mock.assert_not_called()
 
 
 class LoggerBasedTreatmentLogTests(TestCase, MockUtilsMixin):
@@ -145,13 +151,13 @@ class LoggerBasedTreatmentLogTests(TestCase, MockUtilsMixin):
         self.some_feature_name = mock.MagicMock()
         self.some_treatment = mock.MagicMock()
         self.some_time = mock.MagicMock()
+        self.logger_mock = self.patch('splitio.impressions.logging.getLogger').return_value
         self.treatment_log = LoggerBasedTreatmentLog()
-        self.logger_mock = self.patch_object(self.treatment_log, '_logger')
 
     def test_log_calls_logger_info(self):
         """Tests that log calls logger info"""
-        self.treatment_log.log(self.some_key, self.some_feature_name, self.some_treatment,
-                               self.some_time)
+        self.treatment_log._log(self.some_key, self.some_feature_name, self.some_treatment,
+                                self.some_time)
         self.logger_mock.info.assert_called_once_with(mock.ANY, self.some_feature_name,
                                                       self.some_key, self.some_treatment,
                                                       self.some_time)
@@ -172,6 +178,7 @@ class InMemoryTreatmentLogTests(TestCase, MockUtilsMixin):
                                            side_effect=self.defaultdict_mock_side_effect)
         self.rlock_mock = self.patch('splitio.impressions.RLock')
         self.treatment_log = InMemoryTreatmentLog()
+        self.notify_eviction_mock = self.patch_object(self.treatment_log, '_notify_eviction')
 
     def test_impressions_is_defaultdict(self):
         """Tests that impressions is a defaultdict"""
@@ -191,7 +198,7 @@ class InMemoryTreatmentLogTests(TestCase, MockUtilsMixin):
         self.treatment_log.fetch_all_and_clear()
         self.assertEqual(self.defaultdict_mock_side_effect[1], self.treatment_log._impressions)
 
-    def test_call_appends_impression_to_feature_entry(self):
+    def test_log_calls_appends_impression_to_feature_entry(self):
         """Tests that _log appends an impression to the feature name entry in the impressions
         dictionary"""
         self.treatment_log._log(self.some_key, self.some_feature_name, self.some_treatment,
@@ -201,6 +208,29 @@ class InMemoryTreatmentLogTests(TestCase, MockUtilsMixin):
         impressions.__getitem__.return_value.append.assert_called_once_with(
             Impression(key=self.some_key, feature_name=self.some_feature_name,
                        treatment=self.some_treatment, time=self.some_time))
+
+    def test_log_resets_impressions_if_max_count_reached(self):
+        """Tests that _log resets impressions if max_count is reached"""
+        self.treatment_log._max_count = 5
+        impressions = self.treatment_log._impressions
+        impressions.__getitem__.return_value.__len__.return_value = 10
+        self.treatment_log._log(self.some_key, self.some_feature_name, self.some_treatment,
+                                self.some_time)
+        impressions.__setitem__.assert_called_once_with(
+            self.some_feature_name, [Impression(key=self.some_key,
+                                                feature_name=self.some_feature_name,
+                                                treatment=self.some_treatment,
+                                                time=self.some_time)])
+
+    def test_log_calls__notify_eviction_if_max_count_reached(self):
+        """Tests that _log calls _notify_eviction if max_count is reached"""
+        self.treatment_log._max_count = 5
+        impressions = self.treatment_log._impressions
+        impressions.__getitem__.return_value.__len__.return_value = 10
+        self.treatment_log._log(self.some_key, self.some_feature_name, self.some_treatment,
+                                self.some_time)
+        self.notify_eviction_mock.assert_called_once_with(self.some_feature_name,
+                                                          impressions.__getitem__.return_value)
 
 
 class CacheBasedTreatmentLogTests(TestCase):
@@ -262,15 +292,14 @@ class SelfUpdatingTreatmentLogTests(TestCase, MockUtilsMixin):
 class SelfUpdatingTreatmentLogTimerRefreshTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.timer_mock = self.patch('splitio.impressions.Timer')
-        self.thread_mock = self.patch('splitio.impressions.Thread')
         self.some_treatment_log = mock.MagicMock()
         self.some_treatment_log._stopped = False
 
-    def test_doesnt_create_thread_if_stopped(self):
-        """Test that _timer_refresh doesn't create a worker thread if it is stopped"""
+    def test_doesnt_call_submit_if_stopped(self):
+        """Test that _timer_refresh doesn't call submit on the executor pool if it is stopped"""
         self.some_treatment_log._stopped = True
         SelfUpdatingTreatmentLog._timer_refresh(self.some_treatment_log)
-        self.thread_mock.assert_not_called()
+        self.some_treatment_log._thread_pool_executor.submit.assert_not_called()
 
     def test_doesnt_create_timer_if_stopped(self):
         """Test that _timer_refresh doesn't refresh the timer it is stopped"""
@@ -278,16 +307,11 @@ class SelfUpdatingTreatmentLogTimerRefreshTests(TestCase, MockUtilsMixin):
         SelfUpdatingTreatmentLog._timer_refresh(self.some_treatment_log)
         self.timer_mock.assert_not_called()
 
-    def test_creates_thread(self):
-        """Test that _timer_refresh creates a worker thread if it is not stopped"""
+    def test_calls_submit(self):
+        """Test that _timer_refresh calls submit on the executor pool if it is not stopped"""
         SelfUpdatingTreatmentLog._timer_refresh(self.some_treatment_log)
-        self.thread_mock.assert_called_once_with(
-            target=SelfUpdatingTreatmentLog._update_impressions, args=(self.some_treatment_log,))
-
-    def test_starts_thread(self):
-        """Test that _timer_refresh starts the worker thread if it is not stopped"""
-        SelfUpdatingTreatmentLog._timer_refresh(self.some_treatment_log)
-        self.thread_mock.return_value.start.assert_called_once_with()
+        self.some_treatment_log._thread_pool_executor.submit.assert_called_once_with(
+            SelfUpdatingTreatmentLog._update_impressions, self.some_treatment_log)
 
     def test_creates_timer_with_fixed_interval(self):
         """Test that _timer_refresh creates a timer with fixed interval if it isn't callable if it
@@ -307,9 +331,9 @@ class SelfUpdatingTreatmentLogTimerRefreshTests(TestCase, MockUtilsMixin):
                                                 (self.some_treatment_log,))
 
     def test_creates_even_if_worker_thread_raises_exception(self):
-        """Test that _timer_refresh creates a timer even if an exception is raised creating the
-        worker thread"""
-        self.thread_mock.side_effect = Exception()
+        """Test that _timer_refresh creates a timer even if an exception is raised submiting to the
+        executor pool"""
+        self.some_treatment_log._thread_pool_executor.submit.side_effect = Exception()
         SelfUpdatingTreatmentLog._timer_refresh(self.some_treatment_log)
         self.timer_mock.assert_called_once_with(self.some_treatment_log._interval.return_value,
                                                 SelfUpdatingTreatmentLog._timer_refresh,
@@ -326,6 +350,72 @@ class SelfUpdatingTreatmentLogTimerRefreshTests(TestCase, MockUtilsMixin):
         self.timer_mock.side_effect = Exception
         SelfUpdatingTreatmentLog._timer_refresh(self.some_treatment_log)
         self.assertTrue(self.some_treatment_log.stopped)
+
+
+class SelfUpdatingTreatmentLogNotifyEvictionTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.some_api = mock.MagicMock()
+        self.some_feature_name = mock.MagicMock()
+        self.some_feature_impressions = [mock.MagicMock()]
+        self.thread_pool_executor_mock = self.patch('splitio.impressions.ThreadPoolExecutor')
+        self.treatment_log = SelfUpdatingTreatmentLog(self.some_api)
+
+    def test_doesnt_call_submit_if_feature_name_is_none(self):
+        """Test that _notify_eviction doesn't call the executor submit if feature_name is None"""
+        self.treatment_log._notify_eviction(None, self.some_feature_impressions)
+        self.thread_pool_executor_mock.return_value.submit.assert_not_called()
+
+    def test_doesnt_call_submit_if_feature_impressions_is_none(self):
+        """Test that _notify_eviction doesn't call the executor submit if feature_impressions is
+        None"""
+        self.treatment_log._notify_eviction(self.some_feature_name, None)
+        self.thread_pool_executor_mock.return_value.submit.assert_not_called()
+
+    def test_doesnt_call_submit_if_feature_impressions_is_empty(self):
+        """Test that _notify_eviction doesn't call the executor submit if feature_impressions is
+        empty"""
+        self.treatment_log._notify_eviction(self.some_feature_name, [])
+        self.thread_pool_executor_mock.return_value.submit.assert_not_called()
+
+    def test_calls_submit(self):
+        """Test that _notify_eviction calls submit on the executor"""
+        self.treatment_log._notify_eviction(self.some_feature_name, self.some_feature_impressions)
+        self.thread_pool_executor_mock.return_value.submit.assert_called_once_with(
+            SelfUpdatingTreatmentLog._update_evictions, self.treatment_log, self.some_feature_name,
+            self.some_feature_impressions)
+
+
+class SelfUpdatingTreatmentLogUpdateEvictionsTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.some_feature_name = mock.MagicMock()
+        self.some_feature_impressions = [mock.MagicMock()]
+        self.build_impressions_data_mock = self.patch(
+            'splitio.impressions.build_impressions_data', return_value=[mock.MagicMock()])
+        self.some_treatment_log = mock.MagicMock()
+
+    def test_calls_build_impressions_data(self):
+        """Test that _update_impressions calls build_impressions_data_mock"""
+        SelfUpdatingTreatmentLog._update_evictions(self.some_treatment_log, self.some_feature_name,
+                                                   self.some_feature_impressions)
+        self.build_impressions_data_mock.assert_called_once_with(
+            {self.some_feature_name: self.some_feature_impressions})
+
+    def test_calls_test_impressions(self):
+        """Test that _update_impressions calls test_impressions on the API client"""
+        SelfUpdatingTreatmentLog._update_evictions(self.some_treatment_log, self.some_feature_name,
+                                                   self.some_feature_impressions)
+        self.some_treatment_log._api.test_impressions.assert_called_once_with(
+            self.build_impressions_data_mock.return_value[0])
+
+    def test_doesnt_raise_exceptions(self):
+        """Test that _update_impressions doesn't raise exceptions when the API client does"""
+        self.some_treatment_log._api.test_impressions.side_effect = Exception()
+        try:
+            SelfUpdatingTreatmentLog._update_evictions(self.some_treatment_log,
+                                                       self.some_feature_name,
+                                                       self.some_feature_impressions)
+        except:
+            self.fail('Unexpected exception raised')
 
 
 class AsyncTreatmentLogTests(TestCase, MockUtilsMixin):
