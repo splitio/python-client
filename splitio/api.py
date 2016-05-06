@@ -209,8 +209,8 @@ class SdkApi(object):
             },
             ...
         ]
-        :param counters_data: Data for the metrics gauge
-        :type counters_data: list
+        :param gauge_data: Data for the metrics gauge
+        :type gauge_data: list
         """
         url = _METRICS_URL_TEMPLATE.format(base_url=self._sdk_api_url_base, endpoint='gauge')
         return self._post(url, gauge_data)

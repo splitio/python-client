@@ -263,17 +263,13 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
     def change_number(self):
         return self._change_number
 
-    def force_refresh(self):
-        """Forces a refresh of the splits"""
-        SelfRefreshingSplitFetcher._refresh_splits(self)
-
     def start(self):
         """Starts the self-refreshing processes of the splits"""
         if not self._stopped:
             return
 
         self._stopped = False
-        SelfRefreshingSplitFetcher._timer_refresh(self)
+        self._timer_refresh()
 
     def _update_splits_from_change_fetcher_response(self, response):
         """
@@ -308,70 +304,57 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
         if len(removed_features) > 0:
             self._logger.info('Deleted features: %s', removed_features)
 
-    @staticmethod
-    def _refresh_splits(split_fetcher):
-        """
-        The actual split fetcher refresh process. This method had to be static due to some
-        limitations on Timer.
-        :param segment: A self refreshing split fetcher
-        :type segment: SelfRefreshingSplitFetcher
-        """
-        change_number_before = split_fetcher._change_number
+    def refresh_splits(self):
+        """The actual split fetcher refresh process."""
+        change_number_before = self._change_number
 
         try:
-            with split_fetcher._rlock:
+            with self._rlock:
                 while True:
-                    response = split_fetcher._split_change_fetcher.fetch(
-                        split_fetcher._change_number)
+                    response = self._split_change_fetcher.fetch(
+                        self._change_number)
 
-                    if split_fetcher._change_number >= response['till']:
+                    if self._change_number >= response['till']:
                         return
 
                     if 'splits' in response and len(response['splits']) > 0:
-                        split_fetcher._update_splits_from_change_fetcher_response(response)
+                        self._update_splits_from_change_fetcher_response(response)
 
-                    split_fetcher._change_number = response['till']
+                        self._change_number = response['till']
 
-                    if not split_fetcher._greedy:
+                    if not self._greedy:
                         return
         except:
-            split_fetcher._logger.info('Exception caught refreshing splits')
-            split_fetcher._stopped = True
+            self._logger.info('Exception caught refreshing splits')
+            self._stopped = True
         finally:
-            split_fetcher._logger.info('split fetch before: %s, after: %s', change_number_before,
-                                       split_fetcher._change_number)
+            self._logger.info('split fetch before: %s, after: %s', change_number_before,
+                              self._change_number)
 
-    @staticmethod
-    def _timer_refresh(split_fetcher):
-        """
-        Responsible for setting the periodic calls to _refresh_splits using a Timer thread.
-        :param split_fetcher: A self refreshing split fetcher
-        :type split_fetcher: SelfRefreshingSplitFetcher
-        """
-        if split_fetcher._stopped:
+    def _timer_refresh(self):
+        """Responsible for setting the periodic calls to _refresh_splits using a Timer thread"""
+        if self._stopped:
             return
 
         try:
-            thread = Thread(target=SelfRefreshingSplitFetcher._refresh_splits,
-                            args=(split_fetcher,))
+            thread = Thread(target=self.refresh_splits)
             thread.daemon = True
             thread.start()
         except:
-            split_fetcher._logger.exception('Exception caught starting splits update thread')
+            self._logger.exception('Exception caught starting splits update thread')
 
         try:
-            if hasattr(split_fetcher._interval, '__call__'):
-                interval = split_fetcher._interval()
+            if hasattr(self._interval, '__call__'):
+                interval = self._interval()
             else:
-                interval = split_fetcher._interval
+                interval = self._interval
 
-            timer = Timer(interval, SelfRefreshingSplitFetcher._timer_refresh,
-                          (split_fetcher,))
+            timer = Timer(interval, self._timer_refresh)
             timer.daemon = True
             timer.start()
         except:
-            split_fetcher._logger.exception('Exception caught refreshing timer')
-            split_fetcher._stopped = True
+            self._logger.exception('Exception caught refreshing timer')
+            self._stopped = True
 
 
 class CacheBasedSplitFetcher(SplitFetcher):
