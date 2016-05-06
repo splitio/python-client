@@ -293,8 +293,7 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         """
         try:
             test_impressions_data = build_impressions_data({feature_name: feature_impressions})
-            for feature_test_impressions_data in test_impressions_data:
-                treatment_log._api.test_impressions(feature_test_impressions_data)
+            treatment_log._api.test_impressions(test_impressions_data)
         except:
             treatment_log._logger.exception('Exception caught updating evicted impressions')
             treatment_log._stopped = True
