@@ -279,13 +279,10 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
             return
 
         self._stopped = False
-        SelfUpdatingTreatmentLog._timer_refresh(self)
+        self._timer_refresh()
 
-    @staticmethod
-    def _update_evictions(treatment_log, feature_name, feature_impressions):
+    def _update_evictions(self, feature_name, feature_impressions):
         """Sends evicted impressions to the Split.io back-end.
-        :param treatment_log: A self updating impressions object
-        :type treatment_log: SelfUpdatingImpressions
         :param feature_name: The name of the feature
         :type feature_name: str
         :param feature_impressions: The evicted impressions
@@ -293,25 +290,21 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         """
         try:
             test_impressions_data = build_impressions_data({feature_name: feature_impressions})
-            treatment_log._api.test_impressions(test_impressions_data)
+            self._api.test_impressions(test_impressions_data)
         except:
-            treatment_log._logger.exception('Exception caught updating evicted impressions')
-            treatment_log._stopped = True
+            self._logger.exception('Exception caught updating evicted impressions')
+            self._stopped = True
 
-    @staticmethod
-    def _update_impressions(treatment_log):
-        """Sends the impressions stored back to the Split.io back-end
-        :param treatment_log: A self updating impressions object
-        :type treatment_log: SelfUpdatingImpressions
-        """
+    def _update_impressions(self):
+        """Sends the impressions stored back to the Split.io back-end"""
         try:
-            impressions_by_feature = treatment_log.fetch_all_and_clear()
+            impressions_by_feature = self.fetch_all_and_clear()
             test_impressions_data = build_impressions_data(impressions_by_feature)
             for feature_test_impressions_data in test_impressions_data:
-                treatment_log._api.test_impressions(feature_test_impressions_data)
+                self._api.test_impressions(feature_test_impressions_data)
         except:
-            treatment_log._logger.exception('Exception caught updating impressions')
-            treatment_log._stopped = True
+            self._logger.exception('Exception caught updating impressions')
+            self._stopped = True
 
     def _notify_eviction(self, feature_name, feature_impressions):
         """Notifies that the max count was reached for a feature. The evicted impressions are going
@@ -325,40 +318,34 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
             return
 
         try:
-            self._thread_pool_executor.submit(SelfUpdatingTreatmentLog._update_evictions,
-                                              self, feature_name, feature_impressions)
+            self._thread_pool_executor.submit(self._update_evictions, feature_name,
+                                              feature_impressions)
         except:
             self._logger.exception('Exception caught starting evicted impressions update thread')
 
-    @staticmethod
-    def _timer_refresh(treatment_log):
+    def _timer_refresh(self):
         """Responsible for setting the periodic calls to _update_impressions using a Timer thread.
-        :param treatment_log: A self updating traeatment log object
-        :type treatment_log: SelfUpdatingTreatmentLog
         """
-        if treatment_log._stopped:
+        if self._stopped:
             return
 
         try:
-            print('!!', treatment_log._thread_pool_executor)
-            treatment_log._thread_pool_executor.submit(SelfUpdatingTreatmentLog._update_impressions,
-                                                       treatment_log)
+            self._thread_pool_executor.submit(self._update_impressions)
         except:
-            treatment_log._logger.exception('Exception caught starting impressions update thread')
+            self._logger.exception('Exception caught starting impressions update thread')
 
         try:
-            if hasattr(treatment_log._interval, '__call__'):
-                interval = treatment_log._interval()
+            if hasattr(self._interval, '__call__'):
+                interval = self._interval()
             else:
-                interval = treatment_log._interval
+                interval = self._interval
 
-            timer = Timer(interval, SelfUpdatingTreatmentLog._timer_refresh,
-                          (treatment_log,))
+            timer = Timer(interval, self._timer_refresh)
             timer.daemon = True
             timer.start()
         except:
-            treatment_log._logger.exception('Exception caught refreshing timer')
-            treatment_log._stopped = True
+            self._logger.exception('Exception caught refreshing timer')
+            self._stopped = True
 
 
 class AsyncTreatmentLog(TreatmentLog):
@@ -373,11 +360,6 @@ class AsyncTreatmentLog(TreatmentLog):
         self._impressions_log = impressions_log
         self._thread_pool_executor = ThreadPoolExecutor(max_workers=max_workers)
 
-    @staticmethod
-    def _log_fn(impressions_log, key, feature_name, treatment, time):
-        """Execute the blocking log call"""
-        impressions_log.log(key, feature_name, treatment, time)
-
     def log(self, key, feature_name, treatment, time):
         """Logs an impression asynchronously.
         :param key: The key of the impression
@@ -390,7 +372,7 @@ class AsyncTreatmentLog(TreatmentLog):
         :return: int
         """
         try:
-            self._thread_pool_executor.submit(AsyncTreatmentLog._log_fn, self._impressions_log, key,
-                                              feature_name, treatment, time)
+            self._thread_pool_executor.submit(self._impressions_log.log, key, feature_name,
+                                              treatment, time)
         except:
             self._logger.exception('Exception caught logging impression asynchronously')

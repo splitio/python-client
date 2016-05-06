@@ -51,29 +51,20 @@ class InMemorySplitFetcherTests(TestCase):
 class SelfRefreshingSplitFetcherTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.rlock_mock = self.patch('splitio.splits.RLock')
-        self.refresh_splits_mock = self.patch(
-            'splitio.splits.SelfRefreshingSplitFetcher._refresh_splits')
-        self.timer_refresh_mock = self.patch(
-            'splitio.splits.SelfRefreshingSplitFetcher._timer_refresh')
-
         self.some_split_change_fetcher = mock.MagicMock()
         self.some_split_parser = mock.MagicMock()
 
         self.fetcher = SelfRefreshingSplitFetcher(self.some_split_change_fetcher,
                                                   self.some_split_parser)
-
-    def test_force_refresh_calls_refresh_splits(self):
-        """Tests that force_refresh calls _refresh_splits"""
-        self.fetcher.force_refresh()
-
-        self.refresh_splits_mock.assert_called_once_with(self.fetcher)
+        self.refresh_splits_mock = self.patch_object(self.fetcher, 'refresh_splits')
+        self.timer_refresh_mock = self.patch_object(self.fetcher, '_timer_refresh')
 
     def test_start_calls_timer_refresh_if_stopped(self):
         """Tests that if stopped is True, start calls _timer_refresh"""
         self.fetcher.stopped = True
         self.fetcher.start()
 
-        self.timer_refresh_mock.assert_called_once_with(self.fetcher)
+        self.timer_refresh_mock.assert_called_once_with()
 
     def test_start_sets_stopped_False_if_stopped(self):
         """Tests that if stopped is True, start sets it to True"""
@@ -169,7 +160,7 @@ class SelfRefreshingSplitFetcherRefreshSplitsTests(TestCase, MockUtilsMixin):
         Tests that if greedy is True _refresh_splits calls fetch on split_change_fetcher until
         change_number >= till
         """
-        SelfRefreshingSplitFetcher._refresh_splits(self.fetcher)
+        self.fetcher.refresh_splits()
 
         self.assertListEqual(
             [mock.call(-1), mock.call(1), mock.call(2)],
@@ -180,7 +171,7 @@ class SelfRefreshingSplitFetcherRefreshSplitsTests(TestCase, MockUtilsMixin):
         Tests that if greedy is False _refresh_splits calls fetch on split_change_fetcher once
         """
         self.fetcher._greedy = False
-        SelfRefreshingSplitFetcher._refresh_splits(self.fetcher)
+        self.fetcher.refresh_splits()
         self.some_split_change_fetcher.fetch.assert_called_once_with(-1)
 
     def test_calls_update_splits_from_change_fetcher_response_on_each_response_if_greedy(self):
@@ -188,7 +179,7 @@ class SelfRefreshingSplitFetcherRefreshSplitsTests(TestCase, MockUtilsMixin):
         Tests that if greedy is True _refresh_splits calls
         _update_splits_from_change_fetcher_response on all responses from split change fetcher
         """
-        SelfRefreshingSplitFetcher._refresh_splits(self.fetcher)
+        self.fetcher.refresh_splits()
         self.assertListEqual(
             [mock.call(self.response_0), mock.call(self.response_1)],
             self.update_splits_from_change_fetcher_response_mock.call_args_list)
@@ -199,7 +190,7 @@ class SelfRefreshingSplitFetcherRefreshSplitsTests(TestCase, MockUtilsMixin):
         _update_splits_from_change_fetcher_response once
         """
         self.fetcher._greedy = False
-        SelfRefreshingSplitFetcher._refresh_splits(self.fetcher)
+        self.fetcher.refresh_splits()
         self.update_splits_from_change_fetcher_response_mock.assert_called_once_with(
             self.response_0)
 
@@ -208,7 +199,7 @@ class SelfRefreshingSplitFetcherRefreshSplitsTests(TestCase, MockUtilsMixin):
         Tests that _refresh_splits sets change_number to the largest value of "till" in the
         response of the split_change_fetcher fetch response.
         """
-        SelfRefreshingSplitFetcher._refresh_splits(self.fetcher)
+        self.fetcher.refresh_splits()
         self.assertEqual(2, self.fetcher.change_number)
 
     def test_stop_set_true_on_exception(self):
@@ -219,7 +210,7 @@ class SelfRefreshingSplitFetcherRefreshSplitsTests(TestCase, MockUtilsMixin):
             self.response_0,
             Exception()
         ]
-        SelfRefreshingSplitFetcher._refresh_splits(self.fetcher)
+        self.fetcher.refresh_splits()
         self.assertTrue(self.fetcher.stopped)
 
     def test_change_number_set_value_till_latest_successful_iteration(self):
@@ -231,7 +222,7 @@ class SelfRefreshingSplitFetcherRefreshSplitsTests(TestCase, MockUtilsMixin):
             self.response_0,
             Exception()
         ]
-        SelfRefreshingSplitFetcher._refresh_splits(self.fetcher)
+        self.fetcher.refresh_splits()
         self.assertEqual(1, self.fetcher.change_number)
 
 
@@ -253,43 +244,39 @@ class SelfRefreshingSplitFetcherTimerRefreshTests(TestCase, MockUtilsMixin):
 
     def test_thread_created_and_started_with_refresh_splits(self):
         """Tests that _timer_refresh creates and starts a Thread with _refresh_splits target"""
-        SelfRefreshingSplitFetcher._timer_refresh(self.fetcher)
+        self.fetcher._timer_refresh()
 
-        self.thread_mock.assert_called_once_with(target=SelfRefreshingSplitFetcher._refresh_splits,
-                                                 args=(self.fetcher,))
+        self.thread_mock.assert_called_once_with(target=self.fetcher.refresh_splits)
         self.thread_mock.return_value.start.assert_called_once_with()
 
     def test_timer_created_and_started_with_timer_refresh(self):
         """Tests that _timer_refresh creates and starts a Timer with _timer_refresh target"""
-        SelfRefreshingSplitFetcher._timer_refresh(self.fetcher)
+        self.fetcher._timer_refresh()
 
-        self.timer_mock.assert_called_once_with(self.some_interval,
-                                                SelfRefreshingSplitFetcher._timer_refresh,
-                                                (self.fetcher,))
+        self.timer_mock.assert_called_once_with(self.some_interval, self.fetcher._timer_refresh)
         self.timer_mock.return_value.start.assert_called_once_with()
 
     def test_timer_created_and_started_with_timer_refresh_with_random_interval(self):
         """Tests that _timer_refresh creates and starts a Timer with _timer_refresh target with
         random interval"""
         self.fetcher._interval = mock.MagicMock()
-        SelfRefreshingSplitFetcher._timer_refresh(self.fetcher)
+        self.fetcher._timer_refresh()
 
         self.timer_mock.assert_called_once_with(self.fetcher._interval.return_value,
-                                                SelfRefreshingSplitFetcher._timer_refresh,
-                                                (self.fetcher,))
+                                                self.fetcher._timer_refresh)
         self.timer_mock.return_value.start.assert_called_once_with()
 
     def test_no_thread_created_if_stopped(self):
         """Tests that _timer_refresh doesn't create a Thread if it is stopped"""
         self.fetcher.stopped = True
-        SelfRefreshingSplitFetcher._timer_refresh(self.fetcher)
+        self.fetcher._timer_refresh()
 
         self.thread_mock.assert_not_called()
 
     def test_no_timer_created_if_stopped(self):
-        """Tests that _timer_refresh doesn't create a Timerif it is stopped"""
+        """Tests that _timer_refresh doesn't create a Timer if it is stopped"""
         self.fetcher.stopped = True
-        SelfRefreshingSplitFetcher._timer_refresh(self.fetcher)
+        self.fetcher._timer_refresh()
 
         self.timer_mock.assert_not_called()
 
@@ -300,17 +287,15 @@ class SelfRefreshingSplitFetcherTimerRefreshTests(TestCase, MockUtilsMixin):
         """
         self.thread_mock.return_value = None
         self.thread_mock.side_effect = Exception()
-        SelfRefreshingSplitFetcher._timer_refresh(self.fetcher)
+        self.fetcher._timer_refresh()
 
-        self.timer_mock.assert_called_once_with(self.some_interval,
-                                                SelfRefreshingSplitFetcher._timer_refresh,
-                                                (self.fetcher,))
+        self.timer_mock.assert_called_once_with(self.some_interval, self.fetcher._timer_refresh)
 
     def test_stops_if_timer_raises_exception(self):
         """Tests that _timer_refresh sets stop to True if the Timer setup raises an exception"""
         self.timer_mock.return_value = None
         self.timer_mock.side_effect = Exception()
-        SelfRefreshingSplitFetcher._timer_refresh(self.fetcher)
+        self.fetcher._timer_refresh()
 
         self.assertTrue(self.fetcher.stopped)
 
