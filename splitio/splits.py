@@ -5,6 +5,7 @@ import logging
 
 from builtins import dict
 from enum import Enum
+from json import load
 from requests.exceptions import HTTPError
 from threading import Thread, Timer, RLock
 
@@ -189,6 +190,29 @@ class InMemorySplitFetcher(SplitFetcher):
         :rtype: list
         """
         return list(self._splits.values())
+
+
+class JSONFileSplitFetcher(InMemorySplitFetcher):
+    def __init__(self, file_name, split_parser, splits=None):
+        """
+        A split fetcher that gets the split information from a file with the JSON response of a call
+        to the splitChanges resource.
+        :param file_name: Name of the file with the splitChanges response
+        :type file_name: str
+        :param split_parser: The parser used to parse the responses
+        :type split_parser: SplitParser
+        :param splits: An optional dictionary of feature to split entries
+        :type splits: dict
+        """
+        super(JSONFileSplitFetcher, self).__init__(splits=splits)
+
+        self._split_parser = split_parser
+        with open(file_name) as f:
+            self._json = load(f)
+
+            for split_change in self._json['splits']:
+                parsed_split = self._split_parser.parse(split_change)
+                self._splits[parsed_split.name] = parsed_split
 
 
 class SelfRefreshingSplitFetcher(InMemorySplitFetcher):

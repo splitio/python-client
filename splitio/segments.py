@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import logging
 
 from concurrent.futures import ThreadPoolExecutor
+from json import load
 from threading import Timer, RLock
 
 
@@ -233,6 +234,32 @@ class SelfRefreshingSegment(InMemorySegment):
             segment._stopped = True
 
 
+class JSONFileSegmentFetcher(object):
+    def __init__(self, file_name):
+        """
+        A segment fetcher that retrieves the information from a file with the JSON response of a
+        segmentChanges resource.
+        :param file_name: The name of the file
+        :type file_name: str
+        """
+        with open(file_name) as f:
+            self._json = load(f)
+
+        self._added = frozenset(self._json['added'])
+        self._removed = frozenset(self._json['removed'])
+
+    def fetch(self, name):
+        """
+        Fetch in memory segment
+        :param name: The name of the segment
+        :type name: str
+        :return: A segment for the given name
+        :rtype: Segment
+        """
+        segment = InMemorySegment(name, self._added - self._removed)
+        return segment
+
+
 class CacheBasedSegmentFetcher(object):
     def __init__(self, segment_cache):
         """
@@ -246,7 +273,7 @@ class CacheBasedSegmentFetcher(object):
         """
         Fetch cache based segment
         :param name: The name of the segment
-        :type name: unicode
+        :type name: str
         :return: A segment for the given name
         :rtype: Segment
         """
