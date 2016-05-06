@@ -390,7 +390,7 @@ class SelfUpdatingTreatmentLogUpdateEvictionsTests(TestCase, MockUtilsMixin):
         self.some_feature_name = mock.MagicMock()
         self.some_feature_impressions = [mock.MagicMock()]
         self.build_impressions_data_mock = self.patch(
-            'splitio.impressions.build_impressions_data', return_value=[mock.MagicMock()])
+            'splitio.impressions.build_impressions_data')
         self.some_treatment_log = mock.MagicMock()
 
     def test_calls_build_impressions_data(self):
@@ -405,7 +405,7 @@ class SelfUpdatingTreatmentLogUpdateEvictionsTests(TestCase, MockUtilsMixin):
         SelfUpdatingTreatmentLog._update_evictions(self.some_treatment_log, self.some_feature_name,
                                                    self.some_feature_impressions)
         self.some_treatment_log._api.test_impressions.assert_called_once_with(
-            self.build_impressions_data_mock.return_value[0])
+            self.build_impressions_data_mock.return_value)
 
     def test_doesnt_raise_exceptions(self):
         """Test that _update_impressions doesn't raise exceptions when the API client does"""
