@@ -8,6 +8,7 @@ import arrow
 from random import randint
 
 from splitio.api import SdkApi
+from splitio.metrics import (Metrics, AsyncMetrics, ApiMetrics, SDK_GET_TREATMENT)
 from splitio.impressions import (TreatmentLog, AsyncTreatmentLog, SelfUpdatingTreatmentLog)
 from splitio.splitters import Splitter
 from splitio.splits import (SelfRefreshingSplitFetcher, SplitParser, ApiSplitChangeFetcher,
@@ -26,6 +27,7 @@ class Client(object):
         self._logger = logging.getLogger(self.__class__.__name__)
         self._splitter = None
         self._treatment_log = None
+        self._metrics = None
 
     def get_split_fetcher(self):
         """Get the split fetcher implementation. Subclasses need to override this method.
@@ -54,6 +56,16 @@ class Client(object):
 
         return self._treatment_log
 
+    def get_metrics(self):
+        """Get the metrics implementation.
+        :return: The metrics implementation.
+        :rtype: Metrics
+        """
+        if self._metrics is None:
+            self._metrics = Metrics()
+
+        return self._metrics
+
     def get_treatment(self, key, feature, attributes=None):
         """
         Get the treatment for a feature and key, with an optional dictionary of attributes. This
@@ -77,7 +89,7 @@ class Client(object):
             split = self.get_split_fetcher().fetch(feature)
             treatment = self._get_treatment_for_split(split, key, attributes)
 
-            self._record_stats(key, feature, treatment, start, 'sdk.getTreatment')
+            self._record_stats(key, feature, treatment, start, SDK_GET_TREATMENT)
 
             return treatment
         except:
@@ -88,7 +100,7 @@ class Client(object):
         try:
             end = arrow.utcnow().timestamp * 1000
             self.get_treatment_log().log(key, feature, treatment, end)
-            # TODO record metrics
+            self.get_metrics().time(operation, arrow.utcnow().timestamp * 1000 - start)
         except:
             self._logger.exception('Exception caught recording impressions and metrics')
 
@@ -175,6 +187,9 @@ class SelfRefreshingClient(Client):
             self._split_fetcher_interval = split_fetcher_interval
             self._impressions_interval = impressions_interval
 
+        self._metrics_max_time_between_calls = min(MAX_INTERVAL, self._config['metricsRefreshRate'])
+        self._metrics_max_call_count = self._config['maxMetricsCallsBeforeFlush']
+
         self._connection_timeout = self._config['connectionTimeout']
         self._read_timeout = self._config['readTimeout']
         self._max_impressions_log_size = self._config['maxImpressionsLogSize']
@@ -228,6 +243,18 @@ class SelfRefreshingClient(Client):
 
         return self._treatment_log
 
+    def get_metrics(self):
+        """Get the metrics implementation.
+        :return: The metrics implementation.
+        :rtype: Metrics
+        """
+        if self._metrics is None:
+            api_metrics = ApiMetrics(self._sdk_api, max_call_count=self._metrics_max_call_count,
+                                     max_time_between_calls=self._metrics_max_time_between_calls)
+            self._metrics = AsyncMetrics(api_metrics)
+
+        return self._metrics
+
 
 class JSONFileClient(Client):
     def __init__(self, segment_changes_file_name, split_changes_file_name):
@@ -278,3 +305,13 @@ class JSONFileClient(Client):
             self._treatment_log = AsyncTreatmentLog(TreatmentLog())
 
         return self._treatment_log
+
+    def get_metrics(self):
+        """Get the metrics implementation.
+        :return: The metrics implementation.
+        :rtype: Metrics
+        """
+        if self._metrics is None:
+            self._metrics = AsyncMetrics(Metrics())
+
+        return self._metrics
