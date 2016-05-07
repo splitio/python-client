@@ -217,7 +217,7 @@ class InMemoryMetrics(Metrics):
             self._time_metrics[operation].add_latency_millis(time_in_ms)
             self._time_call_count += 1
 
-            old_call_time = self._count_last_call_time
+            old_call_time = self._time_last_call_time
             self._time_last_call_time = arrow.utcnow().timestamp
             if (self._time_call_count == self._max_call_count > 0) or \
                     self._time_last_call_time - old_call_time > self._max_time_between_calls > 0:
@@ -243,7 +243,7 @@ class InMemoryMetrics(Metrics):
             self._gauge_metrics[gauge] = value
             self._gauge_call_count += 1
 
-            old_call_time = self._count_last_call_time
+            old_call_time = self._gauge_last_call_time
             self._gauge_last_call_time = arrow.utcnow().timestamp
             if (self._gauge_call_count == self._max_call_count > 0) or \
                     self._gauge_last_call_time - old_call_time > self._max_time_between_calls > 0:
