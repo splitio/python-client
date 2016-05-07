@@ -14,7 +14,8 @@ DEFAULT_CONFIG = {
     'metricsRefreshRate': 60,
     'impressionsRefreshRate': 60,
     'randomizeIntervals': False,
-    'maxImpressionsLogSize': -1
+    'maxImpressionsLogSize': -1,
+    'maxMetricsCallsBeforeFlush': 1000
 }
 
 MAX_INTERVAL = 180
