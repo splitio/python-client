@@ -248,7 +248,8 @@ class SelfRefreshingClientInitTests(TestCase, MockUtilsMixin):
             'metricsRefreshRate': 33,
             'impressionsRefreshRate': 34,
             'randomizeIntervals': False,
-            'maxImpressionsLogSize': -1
+            'maxImpressionsLogSize': -1,
+            'maxMetricsCallsBeforeFlush': -1
         }
 
     def test_sets_api_key(self):
