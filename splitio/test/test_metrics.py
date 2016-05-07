@@ -9,7 +9,8 @@ except ImportError:
 
 from unittest import TestCase
 
-from splitio.metrics import LatencyTracker, InMemoryMetrics
+from splitio.metrics import (LatencyTracker, InMemoryMetrics,build_metrics_counter_data,
+                             build_metrics_times_data, build_metrics_gauge_data, ApiMetrics)
 from splitio.test.utils import MockUtilsMixin
 
 
@@ -408,14 +409,14 @@ class InMemoryMetricsGaugeTests(TestCase, MockUtilsMixin):
         self.assertEqual(0, self.metrics._count_call_count)
 
     def test_increases_counter_by_delta(self):
-        """Test that the counter is increased by delta"""
+        """Test that the gauge is set to value"""
         self.metrics.gauge(self.some_gauge, self.some_value)
         self.defaultdict_side_effect[2].__setitem__.assert_called_once_with(
             self.some_gauge,
             self.some_value)
 
     def test_increases_call_count(self):
-        """Test that the call counte is increased by one"""
+        """Test that the call count is increased by one"""
         self.metrics.gauge(self.some_gauge, self.some_value)
         self.assertEqual(1, self.metrics._gauge_call_count)
 
@@ -498,3 +499,119 @@ class InMemoryMetricsGaugeTests(TestCase, MockUtilsMixin):
         self.metrics.gauge(self.some_gauge, self.some_value)
         self.assertEqual(4, self.metrics._gauge_call_count)
 
+
+class BuildMetricsCounterDataTests(TestCase):
+    def test_works_with_empty_data(self):
+        """Test that build_metrics_counter_data works with empty data"""
+        self.assertListEqual([], build_metrics_counter_data(dict()))
+
+    def test_works_with_non_empty_data(self):
+        """Tests that build_metrics_counter_data works with non-empty data"""
+        count_metrics = {'some_name': mock.MagicMock(), 'some_other_name': mock.MagicMock()}
+        self.assertListEqual(
+            [{'name': 'some_name', 'delta': count_metrics['some_name']},
+             {'name': 'some_other_name', 'delta': count_metrics['some_other_name']}],
+            sorted(build_metrics_counter_data(count_metrics), key=lambda d:d['name'])
+        )
+
+
+class BuildMetricsTimeDataTests(TestCase):
+    def test_works_with_empty_data(self):
+        """Test that build_metrics_time_data works with empty data"""
+        self.assertListEqual([], build_metrics_times_data(dict()))
+
+    def test_works_with_non_empty_data(self):
+        """Tests that build_metrics_counter_data works with non-empty data"""
+        times_metrics = {'some_name': mock.MagicMock(), 'some_other_name': mock.MagicMock()}
+        self.assertListEqual(
+            [{'name': 'some_name',
+              'latencies': times_metrics['some_name'].get_latencies.return_value},
+             {'name': 'some_other_name',
+              'latencies': times_metrics['some_other_name'].get_latencies.return_value}],
+            sorted(build_metrics_times_data(times_metrics), key=lambda d:d['name'])
+        )
+
+
+class BuildMetricsGagueDataTests(TestCase):
+    def test_works_with_empty_data(self):
+        """Test that build_metrics_gauge_data works with empty data"""
+        self.assertListEqual([], build_metrics_gauge_data(dict()))
+
+    def test_works_with_non_empty_data(self):
+        """Tests that build_metrics_gauge_data works with non-empty data"""
+        gauge_metrics = {'some_name': mock.MagicMock(), 'some_other_name': mock.MagicMock()}
+        self.assertListEqual(
+            [{'name': 'some_name', 'value': gauge_metrics['some_name']},
+             {'name': 'some_other_name', 'value': gauge_metrics['some_other_name']}],
+            sorted(build_metrics_gauge_data(gauge_metrics), key=lambda d:d['name'])
+        )
+
+
+class ApiMetricsApiUpdateTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.some_count_metrics = mock.MagicMock()
+        self.some_time_metrics = mock.MagicMock()
+        self.some_gauge_metrics = mock.MagicMock()
+        self.some_api = mock.MagicMock()
+        self.rlock_mock = self.patch('splitio.metrics.RLock')
+        self.thread_pool_executor_mock = self.patch('splitio.metrics.ThreadPoolExecutor')
+        self.build_metrics_counter_data_mock = self.patch(
+            'splitio.metrics.build_metrics_counter_data')
+        self.build_metrics_times_data_mock = self.patch(
+            'splitio.metrics.build_metrics_times_data')
+        self.build_metrics_gauge_data_mock = self.patch(
+            'splitio.metrics.build_metrics_gauge_data')
+        self.metrics = ApiMetrics(self.some_api, count_metrics=self.some_count_metrics,
+                                  time_metrics=self.some_time_metrics,
+                                  gauge_metrics=self.some_gauge_metrics)
+
+    def test_update_count_fn_resets_count_metrics(self):
+        """Test that update_count_fn resets count metrics"""
+        self.metrics._update_count_fn()
+        self.assertDictEqual(dict(), self.metrics._count_metrics)
+
+    def test_update_count_fn_calls_metrics_counters(self):
+        """Test that update_count_fn calls metrics_counters"""
+        self.metrics._update_count_fn()
+        self.some_api.metrics_counters.assert_called_once_with(
+            self.build_metrics_counter_data_mock.return_value)
+
+    def test_update_count_fn_sets_ignore_if_metrics_counters_raises_exception(self):
+        """Test that if metrics_counters raises an exception ignore_metrics is set to True"""
+        self.some_api.metrics_counters.side_effect = Exception()
+        self.metrics._update_count_fn()
+        self.assertTrue(self.metrics._ignore_metrics)
+
+    def test_update_time_fn_resets_time_metrics(self):
+        """Test that update_count_fn resets time metrics"""
+        self.metrics._update_time_fn()
+        self.assertDictEqual(dict(), self.metrics._time_metrics)
+
+    def test_update_time_fn_calls_metrics_counters(self):
+        """Test that update_count_fn calls metrics_times"""
+        self.metrics._update_time_fn()
+        self.some_api.metrics_times.assert_called_once_with(
+            self.build_metrics_times_data_mock.return_value)
+
+    def test_update_time_fn_sets_ignore_if_metrics_counters_raises_exception(self):
+        """Test that if metrics_times raises an exception ignore_metrics is set to True"""
+        self.some_api.metrics_times.side_effect = Exception()
+        self.metrics._update_time_fn()
+        self.assertTrue(self.metrics._ignore_metrics)
+
+    def test_update_gauge_fn_resets_time_metrics(self):
+        """Test that _update_gauge_fn resets gauge metrics"""
+        self.metrics._update_gauge_fn()
+        self.assertDictEqual(dict(), self.metrics._gauge_metrics)
+
+    def test_update_gauge_fn_calls_metrics_counters(self):
+        """Test that _update_gauge_fn calls metrics_times"""
+        self.metrics._update_gauge_fn()
+        self.some_api.metrics_gauge.assert_called_once_with(
+            self.build_metrics_gauge_data_mock.return_value)
+
+    def test_update_gauge_fn_sets_ignore_if_metrics_counters_raises_exception(self):
+        """Test that if metrics_gauge raises an exception ignore_metrics is set to True"""
+        self.some_api.metrics_gauge.side_effect = Exception()
+        self.metrics._update_gauge_fn()
+        self.assertTrue(self.metrics._ignore_metrics)
