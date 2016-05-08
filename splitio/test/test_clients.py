@@ -38,6 +38,7 @@ class ClientTests(TestCase, MockUtilsMixin):
         self.record_stats_mock = self.patch_object(self.client, '_record_stats')
         self.splitter_mock = self.patch('splitio.clients.Splitter')
         self.treatment_log_mock = self.patch('splitio.clients.TreatmentLog')
+        self.metrics_mock = self.patch('splitio.clients.Metrics')
 
     def test_get_splitter_returns_a_splitter(self):
         """Test that get_splitter returns a splitter"""
@@ -46,6 +47,10 @@ class ClientTests(TestCase, MockUtilsMixin):
     def test_get_treatment_log_returns_treatment_log(self):
         """Test that get_splitter returns a treatment_log"""
         self.assertEqual(self.treatment_log_mock.return_value, self.client.get_treatment_log())
+
+    def test_get_metrics_return_metrics(self):
+        """Test that get_metrics returns a metrics object"""
+        self.assertEqual(self.metrics_mock.return_value, self.client.get_metrics())
 
     def test_get_treatment_returns_control_if_key_is_none(self):
         """Test that get_treatment returns CONTROL treatment if key is None"""
@@ -174,6 +179,7 @@ class ClientRecordStatsTests(TestCase, MockUtilsMixin):
 
         self.client = Client()
         self.get_treatment_log_mock = self.patch_object(self.client, 'get_treatment_log')
+        self.get_metrics_mock = self.patch_object(self.client, 'get_metrics')
         self.arrow_mock = self.patch('splitio.clients.arrow')
         self.arrow_mock.utcnow.return_value.timestamp = 123457
 
@@ -192,6 +198,13 @@ class ClientRecordStatsTests(TestCase, MockUtilsMixin):
                                       self.some_start, self.some_operation)
         except:
             self.fail('Unexpected exception raised')
+
+    def test_record_stats_calls_metrics_time(self):
+        """Test that _record_stats calls time on the metrics object"""
+        self.client._record_stats(self.some_key, self.some_feature, self.some_treatment,
+                                  self.some_start, self.some_operation)
+        self.get_metrics_mock.return_value.time.assert_called_once_with(
+            self.some_operation, 1000)
 
 
 class RandomizeIntervalTests(TestCase, MockUtilsMixin):
