@@ -9,8 +9,9 @@ except ImportError:
 
 from unittest import TestCase
 
-from splitio.metrics import (LatencyTracker, InMemoryMetrics,build_metrics_counter_data,
-                             build_metrics_times_data, build_metrics_gauge_data, ApiMetrics)
+from splitio.metrics import (LatencyTracker, InMemoryMetrics, build_metrics_counter_data,
+                             build_metrics_times_data, build_metrics_gauge_data, ApiMetrics,
+                             AsyncMetrics)
 from splitio.test.utils import MockUtilsMixin
 
 
@@ -511,7 +512,7 @@ class BuildMetricsCounterDataTests(TestCase):
         self.assertListEqual(
             [{'name': 'some_name', 'delta': count_metrics['some_name']},
              {'name': 'some_other_name', 'delta': count_metrics['some_other_name']}],
-            sorted(build_metrics_counter_data(count_metrics), key=lambda d:d['name'])
+            sorted(build_metrics_counter_data(count_metrics), key=lambda d: d['name'])
         )
 
 
@@ -528,7 +529,7 @@ class BuildMetricsTimeDataTests(TestCase):
               'latencies': times_metrics['some_name'].get_latencies.return_value},
              {'name': 'some_other_name',
               'latencies': times_metrics['some_other_name'].get_latencies.return_value}],
-            sorted(build_metrics_times_data(times_metrics), key=lambda d:d['name'])
+            sorted(build_metrics_times_data(times_metrics), key=lambda d: d['name'])
         )
 
 
@@ -543,11 +544,11 @@ class BuildMetricsGagueDataTests(TestCase):
         self.assertListEqual(
             [{'name': 'some_name', 'value': gauge_metrics['some_name']},
              {'name': 'some_other_name', 'value': gauge_metrics['some_other_name']}],
-            sorted(build_metrics_gauge_data(gauge_metrics), key=lambda d:d['name'])
+            sorted(build_metrics_gauge_data(gauge_metrics), key=lambda d: d['name'])
         )
 
 
-class ApiMetricsApiUpdateTests(TestCase, MockUtilsMixin):
+class ApiMetricsTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.some_count_metrics = mock.MagicMock()
         self.some_time_metrics = mock.MagicMock()
@@ -615,3 +616,52 @@ class ApiMetricsApiUpdateTests(TestCase, MockUtilsMixin):
         self.some_api.metrics_gauge.side_effect = Exception()
         self.metrics._update_gauge_fn()
         self.assertTrue(self.metrics._ignore_metrics)
+
+    def test_update_count_calls_submit(self):
+        """Test that update_count calls thread pool executor submit"""
+        self.metrics.update_count()
+        self.thread_pool_executor_mock.return_value.submit.assert_called_once_with(
+            self.metrics._update_count_fn)
+
+    def test_update_time_calls_submit(self):
+        """Test that update_time calls thread pool executor submit"""
+        self.metrics.update_time()
+        self.thread_pool_executor_mock.return_value.submit.assert_called_once_with(
+            self.metrics._update_time_fn)
+
+    def test_update_gauge_calls_submit(self):
+        """Test that update_gauge calls thread pool executor submit"""
+        self.metrics.update_gauge()
+        self.thread_pool_executor_mock.return_value.submit.assert_called_once_with(
+            self.metrics._update_gauge_fn)
+
+
+class AsyncMetricsTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.some_counter = mock.MagicMock()
+        self.some_delta = mock.MagicMock()
+        self.some_operation = mock.MagicMock()
+        self.some_time_in_ms = mock.MagicMock()
+        self.some_gauge = mock.MagicMock()
+        self.some_value = mock.MagicMock()
+        self.some_delegate_metrics = mock.MagicMock()
+        self.thread_pool_executor_mock = self.patch('splitio.metrics.ThreadPoolExecutor')
+        self.metrics = AsyncMetrics(self.some_delegate_metrics)
+
+    def test_count_calls_submit_with_delegate_count(self):
+        """Test that count calls submit with the delegate count"""
+        self.metrics.count(self.some_counter, self.some_delta)
+        self.thread_pool_executor_mock.return_value.submit.assert_called_once_with(
+            self.some_delegate_metrics.count, self.some_counter, self.some_delta)
+
+    def test_time_calls_submit_with_delegate_time(self):
+        """Test that time calls submit with the delegate time"""
+        self.metrics.time(self.some_operation, self.some_time_in_ms)
+        self.thread_pool_executor_mock.return_value.submit.assert_called_once_with(
+            self.some_delegate_metrics.time, self.some_operation, self.some_time_in_ms)
+
+    def test_guage_calls_submit_with_delegate_guage(self):
+        """Test that gauge calls submit with the delegate gauge"""
+        self.metrics.gauge(self.some_gauge, self.some_value)
+        self.thread_pool_executor_mock.return_value.submit.assert_called_once_with(
+            self.some_delegate_metrics.gauge, self.some_gauge, self.some_value)
