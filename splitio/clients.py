@@ -100,7 +100,7 @@ class Client(object):
         try:
             end = arrow.utcnow().timestamp * 1000
             self.get_treatment_log().log(key, feature, treatment, end)
-            self.get_metrics().time(operation, arrow.utcnow().timestamp * 1000 - start)
+            self.get_metrics().time(operation, end - start)
         except:
             self._logger.exception('Exception caught recording impressions and metrics')
 
