@@ -8,7 +8,7 @@ install_requires = ['arrow>=0.7.0', 'requests>=2.9.1', 'future>=0.15.2']
 
 if version_info < (3,):
     tests_require += ['mock']
-    install_requires += ['six>=1.10.0', 'futures>=3.0.5']
+    install_requires += ['six>=1.10.0', 'futures>=3.0.5', 'enum34>=1.1.5']
 
 setup(name='splitio-client',
       version='0.0.1',
@@ -29,4 +29,8 @@ setup(name='splitio-client',
           'Programming Language :: Python :: 3',
           'Topic :: Software Development :: Libraries'
       ],
-      packages=['splitio'])
+      packages=['splitio'],
+      py_modules=['splitio.api', 'splitio.cache', 'splitio.clients', 'splitio.impressions',
+                  'splitio.matchers', 'splitio.metrics', 'splitio.segments', 'splitio.settings',
+                  'splitio.splits', 'splitio.splitters', 'splitio.transformers',
+                  'splitio.treatments'])
