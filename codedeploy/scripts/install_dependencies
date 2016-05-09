@@ -1,5 +1,5 @@
 #!/bin/bash
-#Version 3
+#Version 1
 InstanceID=`curl -s "http://169.254.169.254/latest/meta-data/instance-id"`
 ROLE=`aws --region us-east-1 ec2 describe-tags --filters Name=resource-id,Values=$InstanceID Name=key,Values=Role --output=text | awk {'print $5'}`
 
