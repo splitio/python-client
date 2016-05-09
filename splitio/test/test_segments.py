@@ -78,7 +78,7 @@ class SelfRefreshingSegmentFetcherTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.some_name = mock.MagicMock()
         self.some_interval = mock.MagicMock()
-        self.some_max_workers = mock.MagicMock()
+        self.some_max_workers = 5
         self.some_segment = mock.MagicMock()
 
         self.segment_change_fetcher_mock = mock.MagicMock()
