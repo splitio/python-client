@@ -157,6 +157,7 @@ class InMemoryMetricsCountTests(TestCase, MockUtilsMixin):
         self.some_delta = 5
         self.rlock_mock = self.patch('splitio.metrics.RLock')
         self.arrow_mock = self.patch('splitio.metrics.arrow')
+        self.arrow_mock.utcnow.return_value.timestamp = 1234567
         self.defaultdict_side_effect = [mock.MagicMock(), mock.MagicMock(), mock.MagicMock()]
         self.defaultdict_side_effect[0].__getitem__.return_value = 3
         self.defaultdict_mock = self.patch('splitio.metrics.defaultdict',
@@ -274,6 +275,7 @@ class InMemoryMetricsTimeTests(TestCase, MockUtilsMixin):
         self.some_time_in_ms = mock.MagicMock()
         self.rlock_mock = self.patch('splitio.metrics.RLock')
         self.arrow_mock = self.patch('splitio.metrics.arrow')
+        self.arrow_mock.utcnow.return_value.timestamp = 1234567
         self.defaultdict_side_effect = [mock.MagicMock(), mock.MagicMock(), mock.MagicMock()]
         self.latency_tracker_mock = self.defaultdict_side_effect[1].__getitem__.return_value
         self.defaultdict_mock = self.patch('splitio.metrics.defaultdict',
@@ -391,6 +393,7 @@ class InMemoryMetricsGaugeTests(TestCase, MockUtilsMixin):
         self.some_value = mock.MagicMock()
         self.rlock_mock = self.patch('splitio.metrics.RLock')
         self.arrow_mock = self.patch('splitio.metrics.arrow')
+        self.arrow_mock.utcnow.return_value.timestamp = 1234567
         self.defaultdict_side_effect = [mock.MagicMock(), mock.MagicMock(), mock.MagicMock()]
         self.defaultdict_mock = self.patch('splitio.metrics.defaultdict',
                                            side_effect=self.defaultdict_side_effect)
