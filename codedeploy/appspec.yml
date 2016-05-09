@@ -1,0 +1,18 @@
+version: 0.0
+os: linux
+files:
+  - source: / 
+    destination: /tmp
+hooks:
+  BeforeInstall:
+    - location: scripts/stop_server
+      timeout: 60
+      runas: root
+  AfterInstall:
+    - location: scripts/install_dependencies
+      timeout: 60
+      runas: root
+  ApplicationStart:
+    - location: scripts/start_server
+      timeout: 60
+      runas: root
