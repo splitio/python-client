@@ -7,6 +7,7 @@ from copy import deepcopy
 from threading import RLock
 
 from splitio.segments import Segment
+from splitio.splits import SplitFetcher
 
 
 class SplitCache(object):
@@ -289,3 +290,17 @@ class CacheBasedSegment(Segment):
     def contains(self, key):
         return self._segment_cache.is_in_segment(self._name, key)
 
+
+class CacheBasedSplitFetcher(SplitFetcher):
+    def __init__(self, split_cache):
+        """
+        A cache based SplitFetcher implementation
+        :param split_cache: The split cache
+        :type split_cache: SplitCache
+        """
+        super(CacheBasedSplitFetcher, self).__init__()
+
+        self._split_cache = split_cache
+
+    def fetch(self, feature):
+        return self._split_cache.get_split(feature)

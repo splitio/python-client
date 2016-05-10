@@ -10,7 +10,7 @@ except ImportError:
 from unittest import TestCase
 
 from splitio.cache import (InMemorySplitCache, InMemorySegmentCache, InMemoryImpressionsCache,
-                           CacheBasedSegment, CacheBasedSegmentFetcher)
+                           CacheBasedSegment, CacheBasedSegmentFetcher, CacheBasedSplitFetcher)
 from splitio.test.utils import MockUtilsMixin
 
 
@@ -170,3 +170,20 @@ class CacheBasedSegmentTests(TestCase, MockUtilsMixin):
         """Test that contains returns the result of calling segment_cache is_in_segment method"""
         self.assertEqual(self.some_segment_cache.is_in_segment.return_value,
                          self.segment.contains(self.some_key))
+
+
+class CacheBasedSplitFetcherTests(TestCase):
+    def setUp(self):
+        self.some_feature = mock.MagicMock()
+        self.some_split_cache = mock.MagicMock()
+        self.split_fetcher = CacheBasedSplitFetcher(split_cache=self.some_split_cache)
+
+    def test_fetch_calls_get_split(self):
+        """Test that fetch calls get_split on the split cache"""
+        self.split_fetcher.fetch(self.some_feature)
+        self.some_split_cache.get_split.assert_called_once_with(self.some_feature)
+
+    def test_fetch_results_get_split_result(self):
+        """Test that fetch returns the result of calling get split on the cache"""
+        self.assertEqual(self.some_split_cache.get_split.return_value,
+                         self.split_fetcher.fetch(self.some_feature))
