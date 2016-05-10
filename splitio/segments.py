@@ -14,11 +14,8 @@ class Segment(object):
         Basic interface of a Segment.
         :param name: The name of the segment
         :type name: unicode
-        :param key_set: Set of keys contained by the segment
-        :type key_set: list
         """
         self._name = name
-        self._logger = logging.getLogger(self.__class__.__name__)
 
     @property
     def name(self):
@@ -36,21 +33,39 @@ class Segment(object):
         :return: True if the key is contained by the segment, False otherwise
         :rtype: boolean
         """
-        raise NotImplementedError()
+        return False
 
 
 class InMemorySegment(Segment):
-    def __init__(self, name, key_set=None):
+    def __init__(self, name, change_number=-1, key_set=None):
         """
         An implementation of a Segment that holds keys in set in memory.
         :param name: The name of the segment
-        :type name: unicode
+        :type name: str
+        :param change_number: The change number for the segment
+        :type name: int
         :param key_set: Set of keys contained by the segment
         :type key_set: list
         """
         super(InMemorySegment, self).__init__(name)
+        self._change_number = change_number
         self._key_set = frozenset(key_set) if key_set is not None else frozenset()
-        self._logger = logging.getLogger(self.__class__.__name__)
+
+    @property
+    def key_set(self):
+        return self._key_set
+
+    @key_set.setter
+    def key_set(self, key_set):
+        self._key_set = key_set
+
+    @property
+    def change_number(self):
+        return self._change_number
+
+    @change_number.setter
+    def change_number(self, change_number):
+        self._change_number = change_number
 
     def contains(self, key):
         """
@@ -112,8 +127,8 @@ class SelfRefreshingSegmentFetcher(object):
 
 
 class SelfRefreshingSegment(InMemorySegment):
-    def __init__(self, name, segment_change_fetcher, executor, interval, greedy=True,
-                 change_number=-1, key_set=None):
+    def __init__(self, name, segment_change_fetcher, executor, interval, change_number=-1,
+                 greedy=True, key_set=None):
         """
         A segment implementation that refreshes itself periodically using a ThreadPoolExecutor.
         :param name: The name of the segment
@@ -124,15 +139,15 @@ class SelfRefreshingSegment(InMemorySegment):
         :type executor: ThreadPoolExecutor
         :param interval: An integer or callable that'll define the refreshing interval
         :type interval: int
-        :param greedy: Request all changes until they are exhausted
-        :type greedy: bool
         :param change_number: An integer with the initial value for the "since" API argument
         :type change_number: int
+        :param greedy: Request all changes until they are exhausted
+        :type greedy: bool
         :param key_set: An optional initial set of keys
         :type key_set: list
         """
-        super(SelfRefreshingSegment, self).__init__(name, key_set=key_set)
-        self._change_number = change_number
+        super(SelfRefreshingSegment, self).__init__(name, change_number=change_number,
+                                                    key_set=key_set)
         self._segment_change_fetcher = segment_change_fetcher
         self._executor = executor
         self._interval = interval
@@ -242,45 +257,8 @@ class JSONFileSegmentFetcher(object):
         :return: A segment for the given name
         :rtype: Segment
         """
-        segment = InMemorySegment(name, self._added - self._removed)
+        segment = InMemorySegment(name, key_set=self._added - self._removed)
         return segment
-
-
-class CacheBasedSegmentFetcher(object):
-    def __init__(self, segment_cache):
-        """
-        A segment fetcher based on a segments cache
-        :param segment_cache: The segment cache to use
-        :type segment_cache: SegmentCache
-        """
-        self._segment_cache = segment_cache
-
-    def fetch(self, name):
-        """
-        Fetch cache based segment
-        :param name: The name of the segment
-        :type name: str
-        :return: A segment for the given name
-        :rtype: Segment
-        """
-        segment = CacheBasedSegment(name, self._segment_cache)
-        return segment
-
-
-class CacheBasedSegment(Segment):
-    def __init__(self, name, segment_cache):
-        """
-        A SegmentCached based implementation of a Segment
-        :param name: The name of the segment
-        :type name: str
-        :param segment_cache: The segment cache backend
-        :type segment_cache: SegmentCache
-        """
-        super(CacheBasedSegment, self).__init__(name)
-        self._segment_cache = segment_cache
-
-    def contains(self, key):
-        return self._segment_cache.is_in_segment(self._name, key)
 
 
 class SegmentChangeFetcher(object):

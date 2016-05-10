@@ -6,6 +6,8 @@ from collections import defaultdict
 from copy import deepcopy
 from threading import RLock
 
+from splitio.segments import Segment
+
 
 class SplitCache(object):
     """
@@ -60,9 +62,9 @@ class SplitCache(object):
 class SegmentCache(object):
     """
     The basic interface for a Segment cache. It should be able to store and retrieve Segment
-    instances, as well as keeping track of the change number.
+    information, as well as keeping track of the change number.
     """
-    def add_to_segment(self, segment_name, segment_keys):
+    def add_keys_to_segment(self, segment_name, segment_keys):
         """
         Adds a set of keys to a segment
         :param segment_name: Name of the segment
@@ -72,12 +74,22 @@ class SegmentCache(object):
         """
         raise NotImplementedError()
 
-    def remove_from_segment(self, segment_name, segment_keys):
+    def remove_keys_from_segment(self, segment_name, segment_keys):
         """
         Removes a set of keys from a segment
         :param segment_name: Name of the segment
         :type segment_name: str
         :param segment_keys: Keys to remove from the segment
+        :type segment_keys: list
+        """
+        raise NotImplementedError()
+
+    def set_segment_keys(self, segment_name, segment_keys):
+        """
+        Set the keys of a segment
+        :param segment_name: Name of the segment
+        :type segment_name: str
+        :param segment_keys: Keys to of the segment
         :type segment_keys: list
         """
         raise NotImplementedError()
@@ -94,17 +106,21 @@ class SegmentCache(object):
         """
         raise NotImplementedError()
 
-    def set_change_number(self, change_number):
+    def set_change_number(self, segment_name, change_number):
         """
         Sets the value for the change number
+        :param segment_name: Name of the segment
+        :type segment_name: str
         :param change_number: The change number
         :type change_number: int
         """
         raise NotImplementedError()
 
-    def get_change_number(self):
+    def get_change_number(self, segment_name):
         """
-        Retrieves the value of the change number
+        Retrieves the value of the change number of a segment
+        :param segment_name: Name of the segment
+        :type segment_name: str
         :return: The current change number value, -1 otherwise
         :rtype: int
         """
@@ -140,35 +156,30 @@ class InMemorySplitCache(SplitCache):
 
 
 class InMemorySegmentCache(SegmentCache):
-    def __init__(self, change_number=-1, entries=None):
-        """
-        A SegmentCache implementation that stores segments in a dictionary.
-        :param change_number: Initial value for the change number.
-        :type change_number: int
-        :param entries: Initial set of dictionary entries
-        :type entries: dict
-        """
-        self._change_number = change_number
-        self._entries = defaultdict(set)
-        if entries is not None:
-            self._entries.update(entries)
+    def __init__(self):
+        """A SegmentCache implementation that stores segments in a dictionary"""
+        self._entries = defaultdict(lambda: {'change_number': -1, 'key_set': frozenset()})
 
-    def add_to_segment(self, segment_name, segment_keys):
-        existing_segment_keys = self._entries[segment_name]
-        self._entries[segment_name] = existing_segment_keys | set(segment_keys)
+    def add_keys_to_segment(self, segment_name, segment_keys):
+        segment = self._entries[segment_name]
+        segment['key_set'] = segment['key_set'] | frozenset(segment_keys)
 
-    def remove_from_segment(self, segment_name, segment_keys):
-        existing_segment_keys = self._entries[segment_name]
-        self._entries[segment_name] = existing_segment_keys - set(segment_keys)
+    def remove_keys_from_segment(self, segment_name, segment_keys):
+        segment = self._entries[segment_name]
+        segment['key_set'] = segment['key_set'] - frozenset(segment_keys)
+
+    def set_segment_keys(self, segment_name, segment_keys):
+        segment = self._entries[segment_name]
+        segment['key_set'] = set(segment_keys)
 
     def is_in_segment(self, segment_name, key):
-        return key in self._entries[segment_name]
+        return key in self._entries[segment_name]['key_set']
 
-    def set_change_number(self, change_number):
-        self._change_number = change_number
+    def set_change_number(self, segment_name, change_number):
+        self._entries[segment_name]['change_number'] = change_number
 
-    def get_change_number(self):
-        return self._change_number
+    def get_change_number(self, segment_name):
+        return self._entries[segment_name]['change_number']
 
 
 class ImpressionsCache(object):
@@ -240,3 +251,41 @@ class InMemoryImpressionsCache(ImpressionsCache):
             self.clear()
 
         return impressions
+
+
+class CacheBasedSegmentFetcher(object):
+    def __init__(self, segment_cache):
+        """
+        A segment fetcher based on a segments cache
+        :param segment_cache: The segment cache to use
+        :type segment_cache: SegmentCache
+        """
+        self._segment_cache = segment_cache
+
+    def fetch(self, name):
+        """
+        Fetch cache based segment
+        :param name: The name of the segment
+        :type name: str
+        :return: A segment for the given name
+        :rtype: Segment
+        """
+        segment = CacheBasedSegment(name, self._segment_cache)
+        return segment
+
+
+class CacheBasedSegment(Segment):
+    def __init__(self, name, segment_cache):
+        """
+        A SegmentCached based implementation of a Segment
+        :param name: The name of the segment
+        :type name: str
+        :param segment_cache: The segment cache backend
+        :type segment_cache: SegmentCache
+        """
+        super(CacheBasedSegment, self).__init__(name)
+        self._segment_cache = segment_cache
+
+    def contains(self, key):
+        return self._segment_cache.is_in_segment(self._name, key)
+
