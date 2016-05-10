@@ -10,8 +10,7 @@ except ImportError:
 from unittest import TestCase
 
 from splitio.segments import (InMemorySegment, SelfRefreshingSegmentFetcher, SelfRefreshingSegment,
-                              SegmentChangeFetcher, ApiSegmentChangeFetcher, CacheBasedSegment,
-                              CacheBasedSegmentFetcher)
+                              SegmentChangeFetcher, ApiSegmentChangeFetcher)
 from splitio.test.utils import MockUtilsMixin
 
 
@@ -29,7 +28,7 @@ class InMemorySegmentTests(TestCase):
 
     def test_key_set_is_initialized(self):
         """Tests that the segments can be initialized to a specific key_set"""
-        segment = InMemorySegment(self.some_name, self.some_key_set)
+        segment = InMemorySegment(self.some_name, key_set=self.some_key_set)
         self.assertSetEqual(set(self.some_key_set), segment._key_set)
 
     def test_contains_calls_in(self):
@@ -40,38 +39,6 @@ class InMemorySegmentTests(TestCase):
         segment.contains(self.some_key)
 
         self.key_set_mock.__contains__.assert_called_once_with(self.some_key)
-
-
-class CacheBasedSegmentFetcherTests(TestCase, MockUtilsMixin):
-    def setUp(self):
-        self.some_segment_name = mock.MagicMock()
-        self.some_segment_cache = mock.MagicMock()
-        self.segment_fetcher = CacheBasedSegmentFetcher(self.some_segment_cache)
-
-    def test_fetch_creates_cache_based_segment(self):
-        segment = self.segment_fetcher.fetch(self.some_segment_name)
-        self.assertIsInstance(segment, CacheBasedSegment)
-        self.assertEqual(self.some_segment_cache, segment._segment_cache)
-        self.assertEqual(self.some_segment_name, segment.name)
-
-
-class CacheBasedSegmentTests(TestCase, MockUtilsMixin):
-    def setUp(self):
-        self.some_key = mock.MagicMock()
-        self.some_name = mock.MagicMock()
-        self.some_segment_cache = mock.MagicMock()
-        self.segment = CacheBasedSegment(self.some_name, self.some_segment_cache)
-
-    def test_contains_calls_segment_cache_is_in_segment(self):
-        """Test that contains calls segment_cache is_in_segment method"""
-        self.segment.contains(self.some_key)
-        self.some_segment_cache.is_in_segment.assert_called_once_with(self.some_name,
-                                                                      self.some_key)
-
-    def test_contains_returns_segment_cache_is_in_segment_results(self):
-        """Test that contains returns the result of calling segment_cache is_in_segment method"""
-        self.assertEqual(self.some_segment_cache.is_in_segment.return_value,
-                         self.segment.contains(self.some_key))
 
 
 class SelfRefreshingSegmentFetcherTests(TestCase, MockUtilsMixin):

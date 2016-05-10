@@ -9,7 +9,8 @@ except ImportError:
 
 from unittest import TestCase
 
-from splitio.cache import InMemorySplitCache, InMemorySegmentCache, InMemoryImpressionsCache
+from splitio.cache import (InMemorySplitCache, InMemorySegmentCache, InMemoryImpressionsCache,
+                           CacheBasedSegment, CacheBasedSegmentFetcher)
 from splitio.test.utils import MockUtilsMixin
 
 
@@ -19,21 +20,25 @@ class InMemorySegmentCacheTests(TestCase, MockUtilsMixin):
         self.some_change_number = mock.MagicMock()
         self.segment_cache = InMemorySegmentCache()
         self.entries_mock = self.patch_object(self.segment_cache, '_entries')
-        self.existing_entries = {'some_key_1', 'some_key_2'}
+        self.existing_entries = {'key_set': {'some_key_1', 'some_key_2'}}
         self.entries_mock.__getitem__.return_value = self.existing_entries
 
-    def test_add_to_segment_sets_keys_to_union(self):
-        """Tests that add_to_segment sets keys to union of old and new keys"""
-        self.segment_cache.add_to_segment(self.some_segment_name, {'some_key_2', 'some_key_3'})
-        self.entries_mock.__setitem__.assert_called_once_with(
-            self.some_segment_name, {'some_key_1', 'some_key_2', 'some_key_3'})
+    def test_add_keys_to_segment_sets_keys_to_union(self):
+        """Tests that add_keys_to_segment sets keys to union of old and new keys"""
+        self.segment_cache.add_keys_to_segment(self.some_segment_name, {'some_key_2', 'some_key_3'})
+        self.assertSetEqual({'some_key_1', 'some_key_2', 'some_key_3'},
+                            self.existing_entries['key_set'])
 
-    def test_remove_from_segment_set_keys_to_difference(self):
+    def test_set_segment_keys_sets_keys(self):
+        """Tests that set_segment_keys sets keys for a segment"""
+        self.segment_cache.set_segment_keys(self.some_segment_name, {'some_key_2', 'some_key_3'})
+        self.assertSetEqual({'some_key_2', 'some_key_3'}, self.existing_entries['key_set'])
+
+    def test_remove_keys_from_segment_set_keys_to_difference(self):
         """Tests that remove_from_segment sets keys to difference of old and new keys"""
-        self.segment_cache.remove_from_segment(self.some_segment_name,
-                                               {'some_key_2', 'some_key_3'})
-        self.entries_mock.__setitem__.assert_called_once_with(
-            self.some_segment_name, {'some_key_1'})
+        self.segment_cache.remove_keys_from_segment(self.some_segment_name,
+                                                    {'some_key_2', 'some_key_3'})
+        self.assertSetEqual({'some_key_1'}, self.existing_entries['key_set'])
 
     def test_is_in_segment_calls_in_on_entries(self):
         """Tests that is_in_segment checks if key in internal set"""
@@ -133,3 +138,35 @@ class InMemoryImpressionsCacheTests(TestCase, MockUtilsMixin):
         result = self.impressions_cache.fetch_all_and_clear()
         self.deepcopy_mock.assert_called_once_with(self.impressions_mock)
         self.assertEqual(self.deepcopy_mock.return_value, result)
+
+
+class CacheBasedSegmentFetcherTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.some_segment_name = mock.MagicMock()
+        self.some_segment_cache = mock.MagicMock()
+        self.segment_fetcher = CacheBasedSegmentFetcher(self.some_segment_cache)
+
+    def test_fetch_creates_cache_based_segment(self):
+        segment = self.segment_fetcher.fetch(self.some_segment_name)
+        self.assertIsInstance(segment, CacheBasedSegment)
+        self.assertEqual(self.some_segment_cache, segment._segment_cache)
+        self.assertEqual(self.some_segment_name, segment.name)
+
+
+class CacheBasedSegmentTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.some_key = mock.MagicMock()
+        self.some_name = mock.MagicMock()
+        self.some_segment_cache = mock.MagicMock()
+        self.segment = CacheBasedSegment(self.some_name, self.some_segment_cache)
+
+    def test_contains_calls_segment_cache_is_in_segment(self):
+        """Test that contains calls segment_cache is_in_segment method"""
+        self.segment.contains(self.some_key)
+        self.some_segment_cache.is_in_segment.assert_called_once_with(self.some_name,
+                                                                      self.some_key)
+
+    def test_contains_returns_segment_cache_is_in_segment_results(self):
+        """Test that contains returns the result of calling segment_cache is_in_segment method"""
+        self.assertEqual(self.some_segment_cache.is_in_segment.return_value,
+                         self.segment.contains(self.some_key))
