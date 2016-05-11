@@ -12,7 +12,8 @@ from os.path import dirname, join
 
 import arrow
 
-from splitio.clients import Client, SelfRefreshingClient, randomize_interval, JSONFileClient
+from splitio.clients import (Client, SelfRefreshingClient, randomize_interval, JSONFileClient,
+                             LocalhostEnvironmentClient)
 from splitio.settings import DEFAULT_CONFIG, SDK_API_BASE_URL, MAX_INTERVAL
 from splitio.treatments import CONTROL
 from splitio.test.utils import MockUtilsMixin
@@ -1150,3 +1151,79 @@ class JSONFileClientIntegrationTests(TestCase):
         """
         self.assertEqual(self.off_treatment, self.client.get_treatment(
             self.fake_id_not_in_segment, 'test_killed'))
+
+
+class LocalhostEnvironmentClientTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.in_memory_split_fetcher_mock = self.patch('splitio.clients.InMemorySplitFetcher')
+        self.client = LocalhostEnvironmentClient()
+        self.parse_split_file_mock = self.patch_object(self.client, '_parse_split_file')
+
+    def test_build_split_fetcher_calls_parse_split_file(self):
+        """
+        Tests that _build_split_fetcher calls _parse_split_file
+        """
+        self.client._build_split_fetcher()
+        self.parse_split_file_mock.assert_called_once_with(self.client._split_definition_file_name)
+
+    def test_build_split_fetcher_calls_in_memory_split_fetcher_constructor(self):
+        """
+        Tests that _build_split_fetcher calls InMemorySplitFetcher constructor
+        """
+        self.client._build_split_fetcher()
+        self.in_memory_split_fetcher_mock.assert_called_once_with(
+            splits=self.parse_split_file_mock.return_value)
+
+    def test_build_split_fetcher_returns_in_memory_split_fetcher(self):
+        """
+        Tests that _build_split_fetcher returns an InMemorySplitFetcher
+        """
+        self.assertEqual(self.in_memory_split_fetcher_mock.return_value,
+                         self.client._build_split_fetcher())
+
+
+class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.some_file_name = mock.MagicMock()
+        self.all_keys_split_side_effect = [mock.MagicMock(), mock.MagicMock()]
+        self.all_keys_split_mock = self.patch('splitio.clients.AllKeysSplit',
+                                              side_effect=self.all_keys_split_side_effect)
+        self.client = LocalhostEnvironmentClient()
+        self.open_mock = self.patch_builtin('open')
+
+    def test_skips_comment_lines(self):
+        """Test that _parse_split_file skips comment lines"""
+        self.open_mock.return_value.__enter__.return_value.__iter__.return_value = [
+            '#feature treatment']
+        self.client._parse_split_file(self.some_file_name)
+        self.all_keys_split_mock.assert_not_called()
+
+    def test_skips_illegal_lines(self):
+        """Test that _parse_split_file skips illegal lines"""
+        self.open_mock.return_value.__enter__.return_value.__iter__.return_value = [
+            '!feature treat$ment']
+        self.client._parse_split_file(self.some_file_name)
+        self.all_keys_split_mock.assert_not_called()
+
+    def test_parses_definition_lines(self):
+        """Test that _parse_split_file skips comment lines"""
+        self.open_mock.return_value.__enter__.return_value.__iter__.return_value = [
+            'feature1 treatment1', 'feature2 treatment2']
+        self.client._parse_split_file(self.some_file_name)
+        self.assertListEqual([mock.call('feature1', 'treatment1'),
+                              mock.call('feature2', 'treatment2')],
+                             self.all_keys_split_mock.call_args_list)
+
+    def test_returns_dict_with_parsed_splits(self):
+        """Test that _parse_split_file skips comment lines"""
+        self.open_mock.return_value.__enter__.return_value.__iter__.return_value = [
+            'feature1 treatment1', 'feature2 treatment2']
+        self.assertDictEqual({'feature1': self.all_keys_split_side_effect[0],
+                              'feature2': self.all_keys_split_side_effect[1]},
+                             self.client._parse_split_file(self.some_file_name))
+
+    def test_raises_value_error_if_ioerror_is_raised(self):
+        """Raises a ValueError if an IOError is raised"""
+        self.open_mock.side_effect = IOError()
+        with self.assertRaises(ValueError):
+            self.client._parse_split_file(self.some_file_name)
