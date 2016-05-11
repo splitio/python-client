@@ -9,6 +9,8 @@ from os.path import expanduser, join
 from random import randint
 from re import compile
 
+from future.utils import raise_from
+
 from splitio.api import SdkApi
 from splitio.metrics import (Metrics, AsyncMetrics, ApiMetrics, SDK_GET_TREATMENT)
 from splitio.impressions import (TreatmentLog, AsyncTreatmentLog, SelfUpdatingTreatmentLog)
@@ -347,6 +349,17 @@ class LocalhostEnvironmentClient(Client):
         else:
             self._split_definition_file_name = split_definition_file_name
 
+    def get_split_fetcher(self):
+        """
+        Get the split fetcher implementation for the client.
+        :return: The split fetcher
+        :rtype: SplitFetcher
+        """
+        if self._split_fetcher is None:
+            self._split_fetcher = self._build_split_fetcher()
+
+        return self._split_fetcher
+
     def _build_split_fetcher(self):
         """
         Build the in memory split fetcher using the local environment split definition file
@@ -361,22 +374,26 @@ class LocalhostEnvironmentClient(Client):
     def _parse_split_file(self, file_name):
         splits = dict()
 
-        with open(file_name) as f:
-            for line in f:
-                if line.strip() == '':
-                    continue
+        try:
+            with open(file_name) as f:
+                for line in f:
+                    if line.strip() == '':
+                        continue
 
-                comment_match = LocalhostEnvironmentClient._COMMENT_LINE_RE.match(line)
-                if comment_match:
-                    continue
+                    comment_match = LocalhostEnvironmentClient._COMMENT_LINE_RE.match(line)
+                    if comment_match:
+                        continue
 
-                definition_match = LocalhostEnvironmentClient._DEFINITION_LINE_RE.match(line)
-                if definition_match:
-                    splits[definition_match.group('feature')] = AllKeysSplit(
-                        definition_match.group('feature'), definition_match.group('treatment'))
-                    continue
+                    definition_match = LocalhostEnvironmentClient._DEFINITION_LINE_RE.match(line)
+                    if definition_match:
+                        splits[definition_match.group('feature')] = AllKeysSplit(
+                            definition_match.group('feature'), definition_match.group('treatment'))
+                        continue
 
-                self._logger.warning('Invalid line on localhost environment split definition. '
-                                     'line = %s', line)
+                    self._logger.warning('Invalid line on localhost environment split definition. '
+                                         'line = %s', line)
 
-        return splits
+            return splits
+        except IOError as e:
+            raise_from(ValueError('There was a problem with '
+                                  'the splits definition file "{}"'.format(file_name)), e)

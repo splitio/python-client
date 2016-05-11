@@ -1221,3 +1221,9 @@ class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
         self.assertDictEqual({'feature1': self.all_keys_split_side_effect[0],
                               'feature2': self.all_keys_split_side_effect[1]},
                              self.client._parse_split_file(self.some_file_name))
+
+    def test_raises_value_error_if_ioerror_is_raised(self):
+        """Raises a ValueError if an IOError is raised"""
+        self.open_mock.side_effect = IOError()
+        with self.assertRaises(ValueError):
+            self.client._parse_split_file(self.some_file_name)
