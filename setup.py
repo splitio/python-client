@@ -3,7 +3,7 @@
 from setuptools import setup
 from sys import version_info
 
-tests_require = ['nose']
+tests_require = ['nose', 'coverage']
 install_requires = ['arrow>=0.7.0', 'requests>=2.9.1', 'future>=0.15.2']
 
 if version_info < (3,):
