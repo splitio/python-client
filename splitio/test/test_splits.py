@@ -10,7 +10,7 @@ except ImportError:
 from unittest import TestCase
 
 from splitio.splits import (InMemorySplitFetcher, SelfRefreshingSplitFetcher, SplitChangeFetcher,
-                            ApiSplitChangeFetcher, SplitParser)
+                            ApiSplitChangeFetcher, SplitParser, AllKeysSplit)
 from splitio.matchers import (AndCombiner, AllKeysMatcher, UserDefinedSegmentMatcher,
                               WhitelistMatcher, AttributeMatcher)
 from splitio.test.utils import MockUtilsMixin
@@ -766,3 +766,30 @@ class SplitParserParseMatcherTests(TestCase, MockUtilsMixin):
         """Tests that _parse_matcher returns an AttributeMatcher"""
         self.assertIsInstance(self.parser._parse_matcher(self._get_matcher('FAKE')),
                               AttributeMatcher)
+
+
+class AllKeysSplitTests(TestCase):
+    def setUp(self):
+        self.some_name = mock.MagicMock()
+        self.some_treatment = mock.MagicMock()
+        self.split = AllKeysSplit(self.some_name, self.some_treatment)
+
+    def test_single_condition(self):
+        """Tests that it as a single condition"""
+        self.assertEqual(1, len(self.split.conditions))
+
+    def test_condition_as_all_keys_matcher(self):
+        """Tests that the condition is an all keys matcher"""
+        self.assertIsInstance(self.split.conditions[0].matcher, AllKeysMatcher)
+
+    def test_condition_has_single_partition(self):
+        """Tests that the condition has a single partition"""
+        self.assertEqual(1, len(self.split.conditions[0].partitions))
+
+    def test_partition_is_100_percent(self):
+        """Tests that the partition has a size 100"""
+        self.assertEqual(100, self.split.conditions[0].partitions[0].size)
+
+    def test_partition_has_treatment(self):
+        """Tests that the partition has the set treatment"""
+        self.assertEqual(self.some_treatment, self.split.conditions[0].partitions[0].treatment)
