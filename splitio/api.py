@@ -3,9 +3,12 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import requests
 
+from splitio.settings import SDK_API_BASE_URL, SDK_VERSION
 
-from splitio.settings import (SDK_API_BASE_URL, SEGMENT_CHANGES_URL_TEMPLATE,
-                              SPLIT_CHANGES_URL_TEMPLATE, SDK_VERSION)
+_SEGMENT_CHANGES_URL_TEMPLATE = '{base_url}/segmentChanges/{segment_name}/'
+_SPLIT_CHANGES_URL_TEMPLATE = '{base_url}/splitChanges/'
+_TEST_IMPRESSIONS_URL_TEMPLATE = '{base_url}/testImpressions/'
+_METRICS_URL_TEMPLATE = '{base_url}/metrics/{endpoint}/'
 
 
 class SdkApi(object):
@@ -82,6 +85,14 @@ class SdkApi(object):
 
         return response.json()
 
+    def _post(self, url, data):
+        headers = self._build_headers()
+
+        response = requests.post(url, json=data, headers=headers, timeout=self._timeout)
+        response.raise_for_status()
+
+        return response.status_code
+
     def split_changes(self, since):
         """Makes a request to the splitChanges endpoint.
         :param since: An integer that indicates when was the endpoint last called. It is usually
@@ -89,10 +100,10 @@ class SdkApi(object):
                       "till" of the response of a previous call, which will only return the changes
                       since that call.
         :type since: int
-        :return:
+        :return: Changes seen on splits
         :rtype: dict
         """
-        url = SPLIT_CHANGES_URL_TEMPLATE.format(base_url=self._sdk_api_url_base)
+        url = _SPLIT_CHANGES_URL_TEMPLATE.format(base_url=self._sdk_api_url_base)
         params = {
             'since': since
         }
@@ -108,13 +119,98 @@ class SdkApi(object):
                       "till" of the response of a previous call, which will only return the changes
                       since that call.
         :type since: int
-        :return:
+        :return: Changes seen on segments
         :rtype: dict
         """
-        url = SEGMENT_CHANGES_URL_TEMPLATE.format(base_url=self._sdk_api_url_base,
-                                                  segment_name=segment_name)
+        url = _SEGMENT_CHANGES_URL_TEMPLATE.format(base_url=self._sdk_api_url_base,
+                                                   segment_name=segment_name)
         params = {
             'since': since
         }
 
         return self._get(url, params)
+
+    def test_impressions(self, test_impressions_data):
+        """Makes a request to the testImpressions endpoint. The method takes a dictionary with the
+        test (feature) name and a list of impressions:
+
+        {
+           "testName": str,  # name of the test (feature),
+           "impressions": [
+                {
+                    "keyName" : str,  # name of the key that saw this feature
+                    "treatment" : str,  # the treatment e.g. "on" or "off"
+                    "time" : int  # the timestamp (in ms) when this happened.
+                },
+                ...
+           ]
+        }
+
+        :param test_impressions_data: Data of the impressions of a test (feature)
+        :type test_impressions_data: dict
+        """
+        url = _TEST_IMPRESSIONS_URL_TEMPLATE.format(base_url=self._sdk_api_url_base)
+        return self._post(url, test_impressions_data)
+
+    def metrics_times(self, times_data):
+        """Makes a request to the times metrics endpoint. The method takes a list of dictionaries
+        with the latencies seen for each metric:
+
+        [
+            {
+                "name": str,  # name of the metric
+                "latencies": [int, int, int, ...]  # latencies seen
+            },
+            {
+                "name": str,  # name of the metric
+                "latencies": [int, int, int, ...]  # latencies seen
+            },
+            ...
+        ]
+        :param times_data: Data for the metrics times
+        :type times_data: list
+        """
+        url = _METRICS_URL_TEMPLATE.format(base_url=self._sdk_api_url_base, endpoint='times')
+        return self._post(url, times_data)
+
+    def metrics_counters(self, counters_data):
+        """Makes a request to the counters metrics endpoint. The method takes a list of dictionaries
+        with the deltas for the counts for each metric:
+
+        [
+            {
+                "name": str,  # name of the metric
+                "delta": int  # count delta
+            },
+            {
+                "name": str,  # name of the metric
+                "delta": int  # count delta
+            },
+            ...
+        ]
+        :param counters_data: Data for the metrics counters
+        :type counters_data: list
+        """
+        url = _METRICS_URL_TEMPLATE.format(base_url=self._sdk_api_url_base, endpoint='counters')
+        return self._post(url, counters_data)
+
+    def metrics_gauge(self, gauge_data):
+        """Makes a request to the gauge metrics endpoint. The method takes a list of dictionaries
+        with the values for the gauge of each metric:
+
+        [
+            {
+                "name": str,  # name of the metric
+                "value": float  # gauge value
+            },
+            {
+                "name": str,  # name of the metric
+                "value": float  # gauge value
+            },
+            ...
+        ]
+        :param gauge_data: Data for the metrics gauge
+        :type gauge_data: list
+        """
+        url = _METRICS_URL_TEMPLATE.format(base_url=self._sdk_api_url_base, endpoint='gauge')
+        return self._post(url, gauge_data)

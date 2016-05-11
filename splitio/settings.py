@@ -4,9 +4,6 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 SDK_API_BASE_URL = 'https://sdk.split.io/api'
 
-SEGMENT_CHANGES_URL_TEMPLATE = '{base_url}/segmentChanges/{segment_name}/'
-SPLIT_CHANGES_URL_TEMPLATE = '{base_url}/splitChanges/'
-
 SDK_VERSION = 'python-0.0.1'
 
 DEFAULT_CONFIG = {
@@ -16,7 +13,8 @@ DEFAULT_CONFIG = {
     'segmentsRefreshRate': 60,
     'metricsRefreshRate': 60,
     'impressionsRefreshRate': 60,
-    'randomizeIntervals': False
+    'randomizeIntervals': False,
+    'maxImpressionsLogSize': -1
 }
 
 MAX_INTERVAL = 180

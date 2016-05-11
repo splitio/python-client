@@ -106,7 +106,6 @@ class SelfRefreshingSegmentFetcher(object):
         segment = SelfRefreshingSegment(name, self._segment_change_fetcher, self._executor,
                                         self._interval)
         self._segments[name] = segment
-
         segment.start()
 
         return segment
@@ -157,81 +156,68 @@ class SelfRefreshingSegment(InMemorySegment):
         """
         self._stopped = stopped
 
-    def force_refresh(self):
-        """Forces a refresh of the segment"""
-        SelfRefreshingSegment._refresh_segment(self)
-
     def start(self):
         """Starts the self-refreshing processes of the segment"""
         if not self._stopped:
             return
 
         self._stopped = False
-        SelfRefreshingSegment._timer_refresh(self)
+        self._timer_refresh()
 
-    @staticmethod
-    def _refresh_segment(segment):
-        """
-        The actual segment refresh process. This method had to be static due to some limitations
-        on Timer and ThreadPoolExecutor.
-        :param segment: A self refreshing segment
-        :type segment: SelfRefreshingSegment
-        """
+    def refresh_segment(self):
+        """The actual segment refresh process."""
         try:
-            with segment._rlock:
+            with self._rlock:
                 while True:
-                    response = segment._segment_change_fetcher.fetch(segment._name,
-                                                                     segment._change_number)
-                    if segment._change_number >= response['till']:
+                    response = self._segment_change_fetcher.fetch(self._name,
+                                                                  self._change_number)
+                    if self._change_number >= response['till']:
                         return
 
                     if len(response['added']) > 0 or len(response['removed']) > 0:
-                        segment._logger.info('%s added %s', segment._name,
-                                             SelfRefreshingSegment._summarize_changes(
-                                                 response['added']))
-                        segment._logger.info('%s removed %s', segment._name,
-                                             SelfRefreshingSegment._summarize_changes(
-                                                 response['removed']))
+                        self._logger.info('%s added %s', self._name,
+                                          self._summarize_changes(response['added']))
+                        self._logger.info('%s removed %s', self._name,
+                                          self._summarize_changes(response['removed']))
 
-                        new_key_set = (segment._key_set | frozenset(response['added'])) -\
+                        new_key_set = (self._key_set | frozenset(response['added'])) -\
                             frozenset(response['removed'])
-                        segment._key_set = new_key_set
+                        self._key_set = new_key_set
 
-                    segment._change_number = response['till']
+                    self._change_number = response['till']
 
-                    if not segment._greedy:
+                    if not self._greedy:
                         return
         except:
-            segment._logger.exception('Exception caught refreshing segment')
-            segment._stopped = True
+            self._logger.exception('Exception caught refreshing segment')
+            self._stopped = True
 
-    @staticmethod
-    def _summarize_changes(changes):
+    def _summarize_changes(self, changes):
         """Summarize the changes received from the segment change fetcher."""
         return '[{summary}{others}]'.format(
             summary=','.join(changes[:min(3, len(changes))]),
             others=',... {} others'.format(3 - len(changes)) if len(changes) > 3 else ''
         )
 
-    @staticmethod
-    def _timer_refresh(segment):
-        """
-        Responsible for setting the periodic calls to _refresh_segment using a Timer thread.
-        :param segment: A self refreshing segment
-        :type segment: SelfRefreshingSegment
-        """
-        if segment._stopped:
+    def _timer_refresh(self):
+        """Responsible for setting the periodic calls to _refresh_segment using a Timer thread."""
+        if self._stopped:
             return
 
         try:
-            segment._executor.submit(SelfRefreshingSegment._refresh_segment, segment)
+            self._executor.submit(self.refresh_segment)
 
-            timer = Timer(segment._interval, SelfRefreshingSegment._timer_refresh, (segment,))
+            if hasattr(self._interval, '__call__'):
+                interval = self._interval()
+            else:
+                interval = self._interval
+
+            timer = Timer(interval, self._timer_refresh)
             timer.daemon = True
             timer.start()
         except:
-            segment._logger.exception('Exception caught refreshing timer')
-            segment._stopped = True
+            self._logger.exception('Exception caught refreshing timer')
+            self._stopped = True
 
 
 class JSONFileSegmentFetcher(object):

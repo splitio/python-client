@@ -78,7 +78,7 @@ class SelfRefreshingSegmentFetcherTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.some_name = mock.MagicMock()
         self.some_interval = mock.MagicMock()
-        self.some_max_workers = mock.MagicMock()
+        self.some_max_workers = 5
         self.some_segment = mock.MagicMock()
 
         self.segment_change_fetcher_mock = mock.MagicMock()
@@ -154,25 +154,15 @@ class SelfRefreshingSegmentTests(TestCase, MockUtilsMixin):
 
         self.rlock_mock = self.patch('splitio.segments.RLock')
 
-        self.refresh_segment_mock = self.patch(
-            'splitio.segments.SelfRefreshingSegment._refresh_segment')
-        self.timer_refresh_mock = self.patch(
-            'splitio.segments.SelfRefreshingSegment._timer_refresh')
-
         self.segment = SelfRefreshingSegment(self.some_name, self.some_segment_change_fetcher,
                                              self.some_executor, self.some_interval)
+        self.refresh_segment_mock = self.patch_object(self.segment, 'refresh_segment')
+        self.timer_refresh_mock = self.patch_object(self.segment, '_timer_refresh')
 
     def test_greedy_by_default(self):
         """Tests that _greedy is set to True by default"""
 
         self.assertTrue(self.segment._greedy)
-
-    def test_force_refresh_calls_refresh_segment(self):
-        """Tests that force_refresh calls _refresh_segment"""
-
-        self.segment.force_refresh()
-
-        self.refresh_segment_mock.assert_called_once_with(self.segment)
 
     def test_start_calls_timer_refresh_if_not_already_started(self):
         """Tests that start calls _refresh_timer if it hasn't already been started"""
@@ -180,7 +170,7 @@ class SelfRefreshingSegmentTests(TestCase, MockUtilsMixin):
 
         self.segment.start()
 
-        self.timer_refresh_mock.assert_called_once_with(self.segment)
+        self.timer_refresh_mock.assert_called_once_with()
 
     def test_start_sets_stopped_to_false(self):
         """Tests that start sets stopped to False if it hasn't been started"""
@@ -201,12 +191,9 @@ class SelfRefreshingSegmentTests(TestCase, MockUtilsMixin):
 
 class SelfRefreshingSegmentRefreshSegmentTests(TestCase, MockUtilsMixin):
     def setUp(self):
-        self.segment = mock.MagicMock()
-        self.segment._change_number = -1
-        self.segment._greedy = True
-        self.segment._key_set = frozenset(['user_id_1', 'user_id_2', 'user_id_3',
-                                           'user_id_4', 'user_id_5'])
-        self.segment._segment_change_fetcher.fetch.side_effect = [  # Two updates
+        self.some_name = mock.MagicMock()
+        self.some_segment_change_fetcher = mock.MagicMock()
+        self.some_segment_change_fetcher.fetch.side_effect = [  # Two updates
             {
                 'name': 'some_name',
                 'added': ['user_id_6'],
@@ -229,13 +216,21 @@ class SelfRefreshingSegmentRefreshSegmentTests(TestCase, MockUtilsMixin):
                 'till': 2
             }
         ]
+        self.some_executor = mock.MagicMock()
+        self.some_interval = mock.MagicMock()
+        self.some_key_set = frozenset(['user_id_1', 'user_id_2', 'user_id_3',
+                                       'user_id_4', 'user_id_5'])
+
+        self.segment = SelfRefreshingSegment(self.some_name, self.some_segment_change_fetcher,
+                                             self.some_executor, self.some_interval,
+                                             key_set=self.some_key_set)
 
     def test_refreshes_key_set_with_all_changes_on_greedy(self):
         """
-        Tests that _refresh_segment updates the key set properly consuming all changes if greedy is
+        Tests that refresh_segment updates the key set properly consuming all changes if greedy is
         set
         """
-        SelfRefreshingSegment._refresh_segment(self.segment)
+        self.segment.refresh_segment()
 
         self.assertSetEqual(
             {'user_id_3', 'user_id_5', 'user_id_6', 'user_id_7'},
@@ -244,12 +239,12 @@ class SelfRefreshingSegmentRefreshSegmentTests(TestCase, MockUtilsMixin):
 
     def test_refreshes_key_set_with_all_changes_on_non_greedy(self):
         """
-        Tests that _refresh_segment updates the key set properly consuming all changes if greedy is
+        Tests that refresh_segment updates the key set properly consuming all changes if greedy is
         not set
         """
         self.segment._greedy = False
 
-        SelfRefreshingSegment._refresh_segment(self.segment)
+        self.segment.refresh_segment()
 
         self.assertSetEqual(
             {'user_id_3', 'user_id_4', 'user_id_5', 'user_id_6'},
@@ -258,13 +253,13 @@ class SelfRefreshingSegmentRefreshSegmentTests(TestCase, MockUtilsMixin):
 
     def test_key_set_is_not_updated_if_no_changes_were_received(self):
         """
-        Tests that _refresh_segment doesn't update key set if no changes are received from the
+        Tests that refresh_segment doesn't update key set if no changes are received from the
         server
         """
         original_key_set = self.segment._key_set
 
         self.segment._change_number = 2
-        self.segment._segment_change_fetcher.fetch.side_effect = [
+        self.some_segment_change_fetcher.fetch.side_effect = [
             {
                 'name': 'some_name',
                 'added': [],
@@ -274,7 +269,7 @@ class SelfRefreshingSegmentRefreshSegmentTests(TestCase, MockUtilsMixin):
             }
         ]
 
-        SelfRefreshingSegment._refresh_segment(self.segment)
+        self.segment.refresh_segment()
 
         self.assertEqual(
             original_key_set,
@@ -283,10 +278,10 @@ class SelfRefreshingSegmentRefreshSegmentTests(TestCase, MockUtilsMixin):
 
     def test_updates_change_number(self):
         """
-        Tests that _refresh_segment updates the change number with the last "till" value from the
+        Tests that refresh_segment updates the change number with the last "till" value from the
         response of the segment change fetcher
         """
-        SelfRefreshingSegment._refresh_segment(self.segment)
+        self.segment.refresh_segment()
 
         self.assertEqual(
             2,
@@ -296,39 +291,52 @@ class SelfRefreshingSegmentRefreshSegmentTests(TestCase, MockUtilsMixin):
 
 class SelfRefreshingSegmentTimerRefreshTests(TestCase, MockUtilsMixin):
     def setUp(self):
-        self.segment = mock.MagicMock()
-        self.segment._stopped = False
         self.timer_mock = self.patch('splitio.segments.Timer')
 
-    def test_calls_executor_submitif_not_stopped(self):
+        self.some_name = mock.MagicMock()
+        self.some_segment_change_fetcher = mock.MagicMock()
+        self.some_executor = mock.MagicMock()
+        self.some_interval = mock.MagicMock()
+        self.segment = SelfRefreshingSegment(self.some_name, self.some_segment_change_fetcher,
+                                             self.some_executor, self.some_interval)
+        self.segment._stopped = False
+
+    def test_calls_executor_submit_if_not_stopped(self):
         """Tests that if the segment refresh is not stopped, a call to the executor submit method
         is made"""
-        SelfRefreshingSegment._timer_refresh(self.segment)
+        self.segment._timer_refresh()
 
-        self.segment._executor.submit.assert_called_once_with(
-            SelfRefreshingSegment._refresh_segment, self.segment)
+        self.some_executor.submit.assert_called_once_with(self.segment.refresh_segment)
 
     def test_new_timer_created_if_not_stopped(self):
         """Tests that if the segment refresh is not stopped, a new Timer is created and started"""
-        SelfRefreshingSegment._timer_refresh(self.segment)
+        self.segment._timer_refresh()
 
-        self.timer_mock.assert_called_once_with(self.segment._interval,
-                                                SelfRefreshingSegment._timer_refresh,
-                                                (self.segment,))
+        self.timer_mock.assert_called_once_with(self.segment._interval.return_value,
+                                                self.segment._timer_refresh)
         self.timer_mock.return_value.start.assert_called_once_with()
 
-    def test_doesnt_call_executor_submitif_stopped(self):
+    def test_new_timer_created_if_not_stopped_with_random_interval(self):
+        """Tests that if the segment refresh is not stopped, a new Timer is created and started
+        calling the interval"""
+        self.segment._timer_refresh()
+
+        self.timer_mock.assert_called_once_with(self.some_interval.return_value,
+                                                self.segment._timer_refresh)
+        self.timer_mock.return_value.start.assert_called_once_with()
+
+    def test_doesnt_call_executor_submit_if_stopped(self):
         """Tests that if the segment refresh is stopped, no call to the executor submit method is
         made"""
         self.segment._stopped = True
-        SelfRefreshingSegment._timer_refresh(self.segment)
+        self.segment._timer_refresh()
 
-        self.segment._executor.submit.assert_not_called()
+        self.some_executor.submit.assert_not_called()
 
     def test_new_timer_not_created_if_stopped(self):
         """Tests that if the segment refresh is stopped, no new Timer is created"""
         self.segment._stopped = True
-        SelfRefreshingSegment._timer_refresh(self.segment)
+        self.segment._timer_refresh()
 
         self.timer_mock.assert_not_called()
 

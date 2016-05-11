@@ -3,6 +3,8 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 
 from collections import defaultdict
+from copy import deepcopy
+from threading import RLock
 
 
 class SplitCache(object):
@@ -167,3 +169,74 @@ class InMemorySegmentCache(SegmentCache):
 
     def get_change_number(self):
         return self._change_number
+
+
+class ImpressionsCache(object):
+    """The basic interface for an Impressions cache."""
+    def add_impression(self, impression):
+        """Add an impression to a feature
+        :param impression: An impression
+        :type impression: Impression
+        """
+        raise NotImplementedError()
+
+    def fetch_all(self):
+        """ List all impressions.
+        :return: A list of Impression tuples
+        :rtype: list
+        """
+        raise NotImplementedError()
+
+    def clear(self):
+        """Clears all impressions."""
+        raise NotImplementedError()
+
+    def fetch_all_and_clear(self):
+        """ List all impressions and clear the cache.
+        :return: A list of Impression tuples
+        :rtype: list
+        """
+        raise NotImplementedError()
+
+
+class InMemoryImpressionsCache(ImpressionsCache):
+    def __init__(self, impressions):
+        """An in memory implementation of an Impressions cache.
+        :param impressions: Initial set of impressions
+        :type impressions: dict
+        """
+        self._impressions = defaultdict(list)
+        if impressions is not None:
+            self._impressions.update(impressions)
+            self._rlock = RLock()
+
+    def add_impression(self, impression):
+        """Add an impression to a feature
+        :param impression: An impression
+        :type impression: Impression
+        """
+        with self._rlock:
+            self._impressions[impression.feature].append(impression)
+
+    def fetch_all(self):
+        """ List all impressions.
+        :return: A list of Impression tuples
+        :rtype: dict
+        """
+        return deepcopy(self._impressions)
+
+    def clear(self):
+        """Clears all impressions."""
+        with self._rlock:
+            self._impressions = defaultdict(list)
+
+    def fetch_all_and_clear(self):
+        """ List all impressions and clear the cache.
+        :return: A list of Impression tuples
+        :rtype: list
+        """
+        with self._rlock:
+            impressions = self.fetch_all()
+            self.clear()
+
+        return impressions
