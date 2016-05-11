@@ -254,6 +254,7 @@ class SelfRefreshingClientInitTests(TestCase, MockUtilsMixin):
             'splitio.clients.randomize_interval', side_effect=self.randomize_interval_side_effect)
         self.some_api_key = mock.MagicMock()
         self.some_sdk_api_url_base = mock.MagicMock()
+        self.some_events_api_url_base = mock.MagicMock()
         self.some_config = {
             'connectionTimeout': mock.MagicMock(),
             'readTimeout': mock.MagicMock(),
@@ -283,7 +284,6 @@ class SelfRefreshingClientInitTests(TestCase, MockUtilsMixin):
         self.assertEqual(DEFAULT_CONFIG['readTimeout'], client._read_timeout)
         self.assertEqual(DEFAULT_CONFIG['featuresRefreshRate'], client._split_fetcher_interval)
         self.assertEqual(DEFAULT_CONFIG['segmentsRefreshRate'], client._segment_fetcher_interval)
-        self.assertEqual(SDK_API_BASE_URL, client._sdk_api_url_base)
 
     def test_sets_custom_config_if_given(self):
         """
@@ -327,20 +327,14 @@ class SelfRefreshingClientInitTests(TestCase, MockUtilsMixin):
         self.assertEqual(self.randomize_interval_side_effect[1], client._split_fetcher_interval)
         self.assertEqual(self.randomize_interval_side_effect[2], client._impressions_interval)
 
-    def test_sets_custom_sdk_api_base_url(self):
-        """
-        Tests that __init__ sets custom sdk_api_base_url value, if given
-        """
-        client = SelfRefreshingClient(self.some_api_key,
-                                      sdk_api_base_url=self.some_sdk_api_url_base)
-        self.assertEqual(self.some_sdk_api_url_base, client._sdk_api_url_base)
-
     def test_builds_sdk_api(self):
         """Tests that __init__ calls the SdkApi constructor"""
         client = SelfRefreshingClient(self.some_api_key,
-                                      sdk_api_base_url=self.some_sdk_api_url_base)
+                                      sdk_api_base_url=self.some_sdk_api_url_base,
+                                      events_api_base_url=self.some_events_api_url_base)
         self.sdk_api_mock.assert_called_once_with(self.some_api_key,
                                                   sdk_api_base_url=self.some_sdk_api_url_base,
+                                                  events_api_base_url=self.some_events_api_url_base,
                                                   connect_timeout=client._connection_timeout,
                                                   read_timeout=client._read_timeout)
 

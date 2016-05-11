@@ -150,7 +150,7 @@ def randomize_interval(value):
 
 
 class SelfRefreshingClient(Client):
-    def __init__(self, api_key, config=None, sdk_api_base_url=None):
+    def __init__(self, api_key, config=None, sdk_api_base_url=None, events_api_base_url=None):
         """
         A Client implementation that refreshes itself at regular intervals. The config parameter
         is a dictionary that allows you to control the behaviour of the client. The following
@@ -168,8 +168,10 @@ class SelfRefreshingClient(Client):
         :type api_key: str
         :param config: The configuration dictionary
         :type config: dict
-        :param sdk_api_base_url: An override for the default base URL.
+        :param sdk_api_base_url: An override for the default API base URL.
         :type sdk_api_base_url: str
+        :param events_api_base_url: An override for the default events base URL.
+        :type events_api_base_url: str
         """
         super(SelfRefreshingClient, self).__init__()
         self._api_key = api_key
@@ -198,9 +200,8 @@ class SelfRefreshingClient(Client):
         self._read_timeout = self._config['readTimeout']
         self._max_impressions_log_size = self._config['maxImpressionsLogSize']
 
-        self._sdk_api_url_base = sdk_api_base_url if sdk_api_base_url is not None \
-            else SDK_API_BASE_URL
-        self._sdk_api = SdkApi(self._api_key, sdk_api_base_url=self._sdk_api_url_base,
+        self._sdk_api = SdkApi(self._api_key, sdk_api_base_url=sdk_api_base_url,
+                               events_api_base_url=events_api_base_url,
                                connect_timeout=self._connection_timeout,
                                read_timeout=self._read_timeout)
         self._split_fetcher = None

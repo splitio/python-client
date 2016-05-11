@@ -12,7 +12,7 @@ from unittest import TestCase
 
 from splitio.api import (SdkApi, _SEGMENT_CHANGES_URL_TEMPLATE, _SPLIT_CHANGES_URL_TEMPLATE,
                          _TEST_IMPRESSIONS_URL_TEMPLATE, _METRICS_URL_TEMPLATE)
-from splitio.settings import SDK_VERSION, SDK_API_BASE_URL
+from splitio.settings import SDK_VERSION, SDK_API_BASE_URL, EVENTS_API_BASE_URL
 from splitio.test.utils import MockUtilsMixin
 
 
@@ -354,7 +354,7 @@ class SdkApiTestImpressionsTest(TestCase, MockUtilsMixin):
         self.api.test_impressions(self.some_test_impressions_data)
 
         expected_url = _TEST_IMPRESSIONS_URL_TEMPLATE.format(
-            base_url=SDK_API_BASE_URL
+            base_url=EVENTS_API_BASE_URL
         )
 
         self.post_mock.assert_called_once_with(expected_url, mock.ANY)
@@ -363,12 +363,12 @@ class SdkApiTestImpressionsTest(TestCase, MockUtilsMixin):
         """Tests that if sdk_api_base_url has been set, it is used as the base for the url of the
         request"""
 
-        some_sdk_api_url_base = 'some_sdk_api_url_base'
-        self.api._sdk_api_url_base = some_sdk_api_url_base
+        some_events_api_url_base = 'some_events_api_url_base'
+        self.api._events_api_url_base = some_events_api_url_base
         self.api.test_impressions(self.some_test_impressions_data)
 
         expected_url = _TEST_IMPRESSIONS_URL_TEMPLATE.format(
-            base_url=some_sdk_api_url_base
+            base_url=some_events_api_url_base
         )
 
         self.post_mock.assert_called_once_with(expected_url, mock.ANY)
@@ -416,7 +416,7 @@ class SdkApiMetricsTest(MockUtilsMixin):
         self._call_method(self.some_data)
 
         expected_url = _METRICS_URL_TEMPLATE.format(
-            base_url=SDK_API_BASE_URL,
+            base_url=EVENTS_API_BASE_URL,
             endpoint=self._get_endpoint()
         )
 
@@ -426,12 +426,12 @@ class SdkApiMetricsTest(MockUtilsMixin):
         """Tests that if sdk_api_base_url has been set, it is used as the base for the url of the
         request"""
 
-        some_sdk_api_url_base = 'some_sdk_api_url_base'
-        self.api._sdk_api_url_base = some_sdk_api_url_base
+        some_events_api_url_base = 'some_events_api_url_base'
+        self.api._events_api_url_base = some_events_api_url_base
         self._call_method(self.some_data)
 
         expected_url = _METRICS_URL_TEMPLATE.format(
-            base_url=some_sdk_api_url_base,
+            base_url=some_events_api_url_base,
             endpoint=self._get_endpoint()
         )
 
