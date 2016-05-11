@@ -5,14 +5,16 @@ import logging
 
 import arrow
 
+from os.path import expanduser, join
 from random import randint
+from re import compile
 
 from splitio.api import SdkApi
 from splitio.metrics import (Metrics, AsyncMetrics, ApiMetrics, SDK_GET_TREATMENT)
 from splitio.impressions import (TreatmentLog, AsyncTreatmentLog, SelfUpdatingTreatmentLog)
 from splitio.splitters import Splitter
 from splitio.splits import (SelfRefreshingSplitFetcher, SplitParser, ApiSplitChangeFetcher,
-                            JSONFileSplitFetcher)
+                            JSONFileSplitFetcher, InMemorySplitFetcher, AllKeysSplit)
 from splitio.segments import (ApiSegmentChangeFetcher, SelfRefreshingSegmentFetcher,
                               JSONFileSegmentFetcher)
 from splitio.settings import DEFAULT_CONFIG, SDK_API_BASE_URL, MAX_INTERVAL
@@ -315,3 +317,66 @@ class JSONFileClient(Client):
             self._metrics = AsyncMetrics(Metrics())
 
         return self._metrics
+
+
+class LocalhostEnvironmentClient(Client):
+    _COMMENT_LINE_RE = compile('^#.*$')
+    _DEFINITION_LINE_RE = compile('^(?<![^#])(?P<feature>[\w_]+)\s+(?P<treatment>[\w_]+)$')
+
+    def __init__(self, split_definition_file_name=None):
+        """
+        A client implementation that builds its configuration from a split definition file. By
+        default the definition is taken from $HOME/.split but the file name can be supplied as
+        argument as well.
+
+        The definition file has the following syntax:
+
+        file: (comment | split_line)+
+        comment : '#' string*\n
+        split_line : feature_name ' ' treatment\n
+        feature_name : string
+        treatment : string
+
+        :param split_definition_file_name: Name of the definition file (Optional)
+        :type split_definition_file_name: str
+        """
+        super(LocalhostEnvironmentClient, self).__init__()
+
+        if split_definition_file_name is None:
+            self._split_definition_file_name = join(expanduser('~'), '.split')
+        else:
+            self._split_definition_file_name = split_definition_file_name
+
+    def _build_split_fetcher(self):
+        """
+        Build the in memory split fetcher using the local environment split definition file
+        :return: The in memory split fetcher
+        :rtype: InMemorySplitFetcher
+        """
+        splits = self._parse_split_file(self._split_definition_file_name)
+        split_fetcher = InMemorySplitFetcher(splits=splits)
+
+        return split_fetcher
+
+    def _parse_split_file(self, file_name):
+        splits = dict()
+
+        with open(file_name) as f:
+            for line in f:
+                if line.strip() == '':
+                    continue
+
+                comment_match = LocalhostEnvironmentClient._COMMENT_LINE_RE.match(line)
+                if comment_match:
+                    continue
+
+                definition_match = LocalhostEnvironmentClient._DEFINITION_LINE_RE.match(line)
+                if definition_match:
+                    splits[definition_match.group('feature')] = AllKeysSplit(
+                        definition_match.group('feature'), definition_match.group('treatment'))
+                    continue
+
+                self._logger.warning('Invalid line on localhost environment split definition. '
+                                     'line = %s', line)
+
+        return splits

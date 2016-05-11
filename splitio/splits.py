@@ -80,6 +80,20 @@ class Split(object):
                                                  conditions=','.join(map(str, self._conditions)))
 
 
+class AllKeysSplit(Split):
+    def __init__(self, name, treatment):
+        """
+        A split implementation that matches everything to a single treatment.
+        :param name: Name of the feature
+        :type name: str
+        :param treatment: The treatment for the feature
+        :type treatment: str
+        """
+        super(AllKeysSplit, self).__init__(
+            name, None, False, treatment,
+            [Condition(AllKeysMatcher(), [Partition(treatment, 100)])])
+
+
 class Condition(object):
     def __init__(self, matcher, partitions):
         """
