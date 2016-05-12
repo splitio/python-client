@@ -200,7 +200,7 @@ class ImpressionsCache(object):
 
 
 class InMemoryImpressionsCache(ImpressionsCache):
-    def __init__(self, impressions):
+    def __init__(self, impressions=None):
         """An in memory implementation of an Impressions cache.
         :param impressions: Initial set of impressions
         :type impressions: dict
@@ -208,7 +208,7 @@ class InMemoryImpressionsCache(ImpressionsCache):
         self._impressions = defaultdict(list)
         if impressions is not None:
             self._impressions.update(impressions)
-            self._rlock = RLock()
+        self._rlock = RLock()
 
     def add_impression(self, impression):
         """Add an impression to a feature
