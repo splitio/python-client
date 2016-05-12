@@ -626,17 +626,44 @@ class ApiMetricsTests(TestCase, MockUtilsMixin):
         self.thread_pool_executor_mock.return_value.submit.assert_called_once_with(
             self.metrics._update_count_fn)
 
+    def test_update_count_doesnt_raise_exceptions(self):
+        """Test that update_count doesn't raise an exception when submit does"""
+        self.thread_pool_executor_mock.return_value.submit.side_effect = Exception()
+
+        try:
+            self.metrics.update_count()
+        except:
+            self.fail('Unexpected exception raised')
+
     def test_update_time_calls_submit(self):
         """Test that update_time calls thread pool executor submit"""
         self.metrics.update_time()
         self.thread_pool_executor_mock.return_value.submit.assert_called_once_with(
             self.metrics._update_time_fn)
 
+    def test_update_time_doesnt_raise_exceptions(self):
+        """Test that update_time doesn't raise an exception when submit does"""
+        self.thread_pool_executor_mock.return_value.submit.side_effect = Exception()
+
+        try:
+            self.metrics.update_time()
+        except:
+            self.fail('Unexpected exception raised')
+
     def test_update_gauge_calls_submit(self):
         """Test that update_gauge calls thread pool executor submit"""
         self.metrics.update_gauge()
         self.thread_pool_executor_mock.return_value.submit.assert_called_once_with(
             self.metrics._update_gauge_fn)
+
+    def test_update_gauge_doesnt_raise_exceptions(self):
+        """Test that update_gauge doesn't raise an exception when submit does"""
+        self.thread_pool_executor_mock.return_value.submit.side_effect = Exception()
+
+        try:
+            self.metrics.update_gauge()
+        except:
+            self.fail('Unexpected exception raised')
 
 
 class AsyncMetricsTests(TestCase, MockUtilsMixin):
@@ -657,14 +684,38 @@ class AsyncMetricsTests(TestCase, MockUtilsMixin):
         self.thread_pool_executor_mock.return_value.submit.assert_called_once_with(
             self.some_delegate_metrics.count, self.some_counter, self.some_delta)
 
+    def test_count_doesnt_raise_exceptions_if_submit_does(self):
+        """Test that count doesnt't raise an exception even if submit does"""
+        self.thread_pool_executor_mock.return_value.submit.side_effect = Exception()
+        try:
+            self.metrics.count(self.some_counter, self.some_delta)
+        except:
+            self.fail('Unexpected exception raised')
+
     def test_time_calls_submit_with_delegate_time(self):
         """Test that time calls submit with the delegate time"""
         self.metrics.time(self.some_operation, self.some_time_in_ms)
         self.thread_pool_executor_mock.return_value.submit.assert_called_once_with(
             self.some_delegate_metrics.time, self.some_operation, self.some_time_in_ms)
 
+    def test_time_doesnt_raise_exceptions_if_submit_does(self):
+        """Test that time doesnt't raise an exception even if submit does"""
+        self.thread_pool_executor_mock.return_value.submit.side_effect = Exception()
+        try:
+            self.metrics.time(self.some_operation, self.some_time_in_ms)
+        except:
+            self.fail('Unexpected exception raised')
+
     def test_guage_calls_submit_with_delegate_guage(self):
         """Test that gauge calls submit with the delegate gauge"""
         self.metrics.gauge(self.some_gauge, self.some_value)
         self.thread_pool_executor_mock.return_value.submit.assert_called_once_with(
             self.some_delegate_metrics.gauge, self.some_gauge, self.some_value)
+
+    def test_gauge_doesnt_raise_exceptions_if_submit_does(self):
+        """Test that gauge doesnt't raise an exception even if submit does"""
+        self.thread_pool_executor_mock.return_value.submit.side_effect = Exception()
+        try:
+            self.metrics.gauge(self.some_gauge, self.some_value)
+        except:
+            self.fail('Unexpected exception raised')
