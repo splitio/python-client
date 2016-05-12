@@ -14,7 +14,7 @@ import arrow
 
 from splitio.clients import (Client, SelfRefreshingClient, randomize_interval, JSONFileClient,
                              LocalhostEnvironmentClient)
-from splitio.settings import DEFAULT_CONFIG, SDK_API_BASE_URL, MAX_INTERVAL
+from splitio.settings import DEFAULT_CONFIG, MAX_INTERVAL
 from splitio.treatments import CONTROL
 from splitio.test.utils import MockUtilsMixin
 

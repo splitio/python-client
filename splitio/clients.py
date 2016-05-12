@@ -19,7 +19,7 @@ from splitio.splits import (SelfRefreshingSplitFetcher, SplitParser, ApiSplitCha
                             JSONFileSplitFetcher, InMemorySplitFetcher, AllKeysSplit)
 from splitio.segments import (ApiSegmentChangeFetcher, SelfRefreshingSegmentFetcher,
                               JSONFileSegmentFetcher)
-from splitio.settings import DEFAULT_CONFIG, SDK_API_BASE_URL, MAX_INTERVAL
+from splitio.settings import DEFAULT_CONFIG, MAX_INTERVAL
 from splitio.treatments import CONTROL
 
 

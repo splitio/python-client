@@ -384,6 +384,41 @@ class SelfUpdatingTreatmentLogNotifyEvictionTests(TestCase, MockUtilsMixin):
             self.some_feature_impressions)
 
 
+class SelfUpdatingTreatmentLogUpdateImpressionsTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.some_api = mock.MagicMock()
+        self.some_interval = mock.MagicMock()
+        self.build_impressions_data_mock = self.patch(
+            'splitio.impressions.build_impressions_data',
+            return_value=[mock.MagicMock(), mock.MagicMock()])
+        self.treatment_log = SelfUpdatingTreatmentLog(self.some_api, interval=self.some_interval)
+        self.fetch_all_and_clear_mock = self.patch_object(
+            self.treatment_log, 'fetch_all_and_clear')
+
+    def test_calls_fetch_all_and_clear(self):
+        """Test that _update_impressions call fetch_all_and_clear"""
+        self.treatment_log._update_impressions()
+        self.fetch_all_and_clear_mock.assert_called_once_with()
+
+    def test_calls_build_impressions_data(self):
+        """Test that _update_impressions call build_impressions_data"""
+        self.treatment_log._update_impressions()
+        self.build_impressions_data_mock.assert_called_once_with(
+            self.fetch_all_and_clear_mock.return_value)
+
+    def test_calls_test_impressions(self):
+        """Test that _update_impressions call test_impressions on the api"""
+        self.treatment_log._update_impressions()
+        self.some_api.test_impressions.assert_called_once_with(
+            self.build_impressions_data_mock.return_value)
+
+    def test_doesnt_call_test_impressions_with_empty_data(self):
+        """Test that _update_impressions doesn't call test_impressions on the api"""
+        self.build_impressions_data_mock.return_value = []
+        self.treatment_log._update_impressions()
+        self.some_api.test_impressions.assert_not_called()
+
+
 class SelfUpdatingTreatmentLogUpdateEvictionsTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.some_api = mock.MagicMock()
@@ -391,23 +426,30 @@ class SelfUpdatingTreatmentLogUpdateEvictionsTests(TestCase, MockUtilsMixin):
         self.some_feature_name = mock.MagicMock()
         self.some_feature_impressions = [mock.MagicMock()]
         self.build_impressions_data_mock = self.patch(
-            'splitio.impressions.build_impressions_data')
+            'splitio.impressions.build_impressions_data',
+            return_value=[mock.MagicMock(), mock.MagicMock()])
         self.treatment_log = SelfUpdatingTreatmentLog(self.some_api, interval=self.some_interval)
 
     def test_calls_build_impressions_data(self):
-        """Test that _update_impressions calls build_impressions_data_mock"""
+        """Test that _update_evictions calls build_impressions_data_mock"""
         self.treatment_log._update_evictions(self.some_feature_name, self.some_feature_impressions)
         self.build_impressions_data_mock.assert_called_once_with(
             {self.some_feature_name: self.some_feature_impressions})
 
     def test_calls_test_impressions(self):
-        """Test that _update_impressions calls test_impressions on the API client"""
+        """Test that _update_evictions calls test_impressions on the API client"""
         self.treatment_log._update_evictions(self.some_feature_name, self.some_feature_impressions)
         self.some_api.test_impressions.assert_called_once_with(
             self.build_impressions_data_mock.return_value)
 
+    def test_doesnt_call_test_impressions_if_data_is_empty(self):
+        """Test that _update_evictions calls test_impressions on the API client"""
+        self.build_impressions_data_mock.return_value = []
+        self.treatment_log._update_evictions(self.some_feature_name, self.some_feature_impressions)
+        self.some_api.test_impressions.assert_not_called()
+
     def test_doesnt_raise_exceptions(self):
-        """Test that _update_impressions doesn't raise exceptions when the API client does"""
+        """Test that _update_evictions doesn't raise exceptions when the API client does"""
         self.some_api.test_impressions.side_effect = Exception()
         try:
             self.treatment_log._update_evictions(self.some_feature_name,
