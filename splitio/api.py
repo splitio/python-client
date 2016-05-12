@@ -7,7 +7,7 @@ from splitio.settings import SDK_API_BASE_URL, EVENTS_API_BASE_URL, SDK_VERSION
 
 _SEGMENT_CHANGES_URL_TEMPLATE = '{base_url}/segmentChanges/{segment_name}/'
 _SPLIT_CHANGES_URL_TEMPLATE = '{base_url}/splitChanges/'
-_TEST_IMPRESSIONS_URL_TEMPLATE = '{base_url}/testImpressions/'
+_TEST_IMPRESSIONS_URL_TEMPLATE = '{base_url}/testImpressions/bulk/'
 _METRICS_URL_TEMPLATE = '{base_url}/metrics/{endpoint}/'
 
 
@@ -140,17 +140,19 @@ class SdkApi(object):
         """Makes a request to the testImpressions endpoint. The method takes a dictionary with the
         test (feature) name and a list of impressions:
 
-        {
-           "testName": str,  # name of the test (feature),
-           "impressions": [
-                {
-                    "keyName" : str,  # name of the key that saw this feature
-                    "treatment" : str,  # the treatment e.g. "on" or "off"
-                    "time" : int  # the timestamp (in ms) when this happened.
-                },
-                ...
-           ]
-        }
+        [
+            {
+               "testName": str,  # name of the test (feature),
+               "impressions": [
+                    {
+                        "keyName" : str,  # name of the key that saw this feature
+                        "treatment" : str,  # the treatment e.g. "on" or "off"
+                        "time" : int  # the timestamp (in ms) when this happened.
+                    },
+                    ...
+               ]
+            }
+        ]
 
         :param test_impressions_data: Data of the impressions of a test (feature)
         :type test_impressions_data: dict

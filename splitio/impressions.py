@@ -16,8 +16,8 @@ Impression = namedtuple('Impression', ['key', 'feature_name', 'treatment', 'time
 def build_impressions_data(impressions):
     """Builds a list of dictionaries that can be used with the test_impressions API endpoint from
     a dictionary of lists of impressions grouped by feature name.
-    :param impressions: List of impression tuples
-    :type impressions: list
+    :param impressions: Dict of impression tuples
+    :type impressions: dict
     :return: List of dictionaries with impressions data for each feature
     :rtype: list
     """
@@ -158,7 +158,7 @@ class InMemoryTreatmentLog(TreatmentLog):
     def fetch_all_and_clear(self):
         """Fetch all logged impressions and clear the log.
         :return: The logged impressions
-        :rtype: list
+        :rtype: dict
         """
         with self._rlock:
             existing_impressions = deepcopy(self._impressions)
@@ -290,7 +290,9 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         """
         try:
             test_impressions_data = build_impressions_data({feature_name: feature_impressions})
-            self._api.test_impressions(test_impressions_data)
+
+            if len(test_impressions_data) > 0:
+                self._api.test_impressions(test_impressions_data)
         except:
             self._logger.exception('Exception caught updating evicted impressions')
             self._stopped = True
@@ -300,8 +302,9 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         try:
             impressions_by_feature = self.fetch_all_and_clear()
             test_impressions_data = build_impressions_data(impressions_by_feature)
-            for feature_test_impressions_data in test_impressions_data:
-                self._api.test_impressions(feature_test_impressions_data)
+
+            if len(test_impressions_data) > 0:
+                self._api.test_impressions(test_impressions_data)
         except:
             self._logger.exception('Exception caught updating impressions')
             self._stopped = True
