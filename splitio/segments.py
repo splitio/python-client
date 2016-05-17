@@ -154,6 +154,7 @@ class SelfRefreshingSegment(InMemorySegment):
         self._greedy = greedy
         self._stopped = True
         self._rlock = RLock()
+        self._logger = logging.getLogger(self.__class__.__name__)
 
     @property
     def stopped(self):
@@ -353,3 +354,40 @@ class ApiSegmentChangeFetcher(SegmentChangeFetcher):
 
     def fetch_from_backend(self, name, since):
         return self._api.segment_changes(name, since)
+
+
+class CacheBasedSegmentFetcher(object):
+    def __init__(self, segment_cache):
+        """
+        A segment fetcher based on a segments cache
+        :param segment_cache: The segment cache to use
+        :type segment_cache: SegmentCache
+        """
+        self._segment_cache = segment_cache
+
+    def fetch(self, name):
+        """
+        Fetch cache based segment
+        :param name: The name of the segment
+        :type name: str
+        :return: A segment for the given name
+        :rtype: Segment
+        """
+        segment = CacheBasedSegment(name, self._segment_cache)
+        return segment
+
+
+class CacheBasedSegment(Segment):
+    def __init__(self, name, segment_cache):
+        """
+        A SegmentCached based implementation of a Segment
+        :param name: The name of the segment
+        :type name: str
+        :param segment_cache: The segment cache backend
+        :type segment_cache: SegmentCache
+        """
+        super(CacheBasedSegment, self).__init__(name)
+        self._segment_cache = segment_cache
+
+    def contains(self, key):
+        return self._segment_cache.is_in_segment(self._name, key)
