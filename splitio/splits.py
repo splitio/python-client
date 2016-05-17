@@ -689,3 +689,18 @@ class SplitParser(object):
             attribute = matcher['keySelector']['attribute']
 
         return AttributeMatcher(attribute, delegate, matcher.get('negate', False))
+
+
+class CacheBasedSplitFetcher(SplitFetcher):
+    def __init__(self, split_cache):
+        """
+        A cache based SplitFetcher implementation
+        :param split_cache: The split cache
+        :type split_cache: SplitCache
+        """
+        super(CacheBasedSplitFetcher, self).__init__()
+
+        self._split_cache = split_cache
+
+    def fetch(self, feature):
+        return self._split_cache.get_split(feature)
