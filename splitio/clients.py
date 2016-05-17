@@ -33,7 +33,7 @@ class Client(object):
         self._treatment_log = None
         self._metrics = None
 
-    def get_split_fetcher(self):
+    def get_split_fetcher(self):  # pragma: no cover
         """Get the split fetcher implementation. Subclasses need to override this method.
         :return: The split fetcher implementation.
         :rtype: SplitFetcher
