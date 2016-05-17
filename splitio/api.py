@@ -155,7 +155,7 @@ class SdkApi(object):
         ]
 
         :param test_impressions_data: Data of the impressions of a test (feature)
-        :type test_impressions_data: dict
+        :type test_impressions_data: list
         """
         url = _TEST_IMPRESSIONS_URL_TEMPLATE.format(base_url=self._events_api_url_base)
         return self._post(url, test_impressions_data)
