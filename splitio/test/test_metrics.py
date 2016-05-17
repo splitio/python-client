@@ -11,7 +11,7 @@ from unittest import TestCase
 
 from splitio.metrics import (LatencyTracker, InMemoryMetrics, build_metrics_counter_data,
                              build_metrics_times_data, build_metrics_gauge_data, ApiMetrics,
-                             AsyncMetrics)
+                             AsyncMetrics, get_latency_bucket_index)
 from splitio.test.utils import MockUtilsMixin
 
 
@@ -21,64 +21,64 @@ class LatencyTrackerFindIndexTests(TestCase):
 
     def test_works_with_0(self):
         """Test that _find_index works with 0"""
-        self.assertEqual(0, self.latency_tracker._find_index(0))
+        self.assertEqual(0, get_latency_bucket_index(0))
 
     def test_works_with_max(self):
         """Test that _find_index works with max_latency"""
-        self.assertEqual(22, self.latency_tracker._find_index(7481828))
+        self.assertEqual(22, get_latency_bucket_index(7481828))
 
     def test_works_with_values_over_max(self):
         """Test that _find_index works with values_over_max_latency"""
-        self.assertEqual(22, self.latency_tracker._find_index(7481829))
-        self.assertEqual(22, self.latency_tracker._find_index(8481829))
+        self.assertEqual(22, get_latency_bucket_index(7481829))
+        self.assertEqual(22, get_latency_bucket_index(8481829))
 
     def test_works_with_values_between_0_and_max(self):
         """Test that _find_index works with values between 0 and max"""
-        self.assertEqual(0, self.latency_tracker._find_index(500))
-        self.assertEqual(0, self.latency_tracker._find_index(1000))
-        self.assertEqual(1, self.latency_tracker._find_index(1250))
-        self.assertEqual(1, self.latency_tracker._find_index(1500))
-        self.assertEqual(2, self.latency_tracker._find_index(2000))
-        self.assertEqual(2, self.latency_tracker._find_index(2250))
-        self.assertEqual(3, self.latency_tracker._find_index(3000))
-        self.assertEqual(3, self.latency_tracker._find_index(3375))
-        self.assertEqual(4, self.latency_tracker._find_index(4000))
-        self.assertEqual(4, self.latency_tracker._find_index(5063))
-        self.assertEqual(5, self.latency_tracker._find_index(6000))
-        self.assertEqual(5, self.latency_tracker._find_index(7594))
-        self.assertEqual(6, self.latency_tracker._find_index(10000))
-        self.assertEqual(6, self.latency_tracker._find_index(11391))
-        self.assertEqual(7, self.latency_tracker._find_index(15000))
-        self.assertEqual(7, self.latency_tracker._find_index(17086))
-        self.assertEqual(8, self.latency_tracker._find_index(20000))
-        self.assertEqual(8, self.latency_tracker._find_index(25629))
-        self.assertEqual(9, self.latency_tracker._find_index(30000))
-        self.assertEqual(9, self.latency_tracker._find_index(38443))
-        self.assertEqual(10, self.latency_tracker._find_index(50000))
-        self.assertEqual(10, self.latency_tracker._find_index(57665))
-        self.assertEqual(11, self.latency_tracker._find_index(80000))
-        self.assertEqual(11, self.latency_tracker._find_index(86498))
-        self.assertEqual(12, self.latency_tracker._find_index(100000))
-        self.assertEqual(12, self.latency_tracker._find_index(129746))
-        self.assertEqual(13, self.latency_tracker._find_index(150000))
-        self.assertEqual(13, self.latency_tracker._find_index(194620))
-        self.assertEqual(14, self.latency_tracker._find_index(200000))
-        self.assertEqual(14, self.latency_tracker._find_index(291929))
-        self.assertEqual(15, self.latency_tracker._find_index(300000))
-        self.assertEqual(15, self.latency_tracker._find_index(437894))
-        self.assertEqual(16, self.latency_tracker._find_index(500000))
-        self.assertEqual(16, self.latency_tracker._find_index(656841))
-        self.assertEqual(17, self.latency_tracker._find_index(800000))
-        self.assertEqual(17, self.latency_tracker._find_index(985261))
-        self.assertEqual(18, self.latency_tracker._find_index(1000000))
-        self.assertEqual(18, self.latency_tracker._find_index(1477892))
-        self.assertEqual(19, self.latency_tracker._find_index(2000000))
-        self.assertEqual(19, self.latency_tracker._find_index(2216838))
-        self.assertEqual(20, self.latency_tracker._find_index(2500000))
-        self.assertEqual(20, self.latency_tracker._find_index(3325257))
-        self.assertEqual(21, self.latency_tracker._find_index(4000000))
-        self.assertEqual(21, self.latency_tracker._find_index(4987885))
-        self.assertEqual(22, self.latency_tracker._find_index(6000000))
+        self.assertEqual(0, get_latency_bucket_index(500))
+        self.assertEqual(0, get_latency_bucket_index(1000))
+        self.assertEqual(1, get_latency_bucket_index(1250))
+        self.assertEqual(1, get_latency_bucket_index(1500))
+        self.assertEqual(2, get_latency_bucket_index(2000))
+        self.assertEqual(2, get_latency_bucket_index(2250))
+        self.assertEqual(3, get_latency_bucket_index(3000))
+        self.assertEqual(3, get_latency_bucket_index(3375))
+        self.assertEqual(4, get_latency_bucket_index(4000))
+        self.assertEqual(4, get_latency_bucket_index(5063))
+        self.assertEqual(5, get_latency_bucket_index(6000))
+        self.assertEqual(5, get_latency_bucket_index(7594))
+        self.assertEqual(6, get_latency_bucket_index(10000))
+        self.assertEqual(6, get_latency_bucket_index(11391))
+        self.assertEqual(7, get_latency_bucket_index(15000))
+        self.assertEqual(7, get_latency_bucket_index(17086))
+        self.assertEqual(8, get_latency_bucket_index(20000))
+        self.assertEqual(8, get_latency_bucket_index(25629))
+        self.assertEqual(9, get_latency_bucket_index(30000))
+        self.assertEqual(9, get_latency_bucket_index(38443))
+        self.assertEqual(10, get_latency_bucket_index(50000))
+        self.assertEqual(10, get_latency_bucket_index(57665))
+        self.assertEqual(11, get_latency_bucket_index(80000))
+        self.assertEqual(11, get_latency_bucket_index(86498))
+        self.assertEqual(12, get_latency_bucket_index(100000))
+        self.assertEqual(12, get_latency_bucket_index(129746))
+        self.assertEqual(13, get_latency_bucket_index(150000))
+        self.assertEqual(13, get_latency_bucket_index(194620))
+        self.assertEqual(14, get_latency_bucket_index(200000))
+        self.assertEqual(14, get_latency_bucket_index(291929))
+        self.assertEqual(15, get_latency_bucket_index(300000))
+        self.assertEqual(15, get_latency_bucket_index(437894))
+        self.assertEqual(16, get_latency_bucket_index(500000))
+        self.assertEqual(16, get_latency_bucket_index(656841))
+        self.assertEqual(17, get_latency_bucket_index(800000))
+        self.assertEqual(17, get_latency_bucket_index(985261))
+        self.assertEqual(18, get_latency_bucket_index(1000000))
+        self.assertEqual(18, get_latency_bucket_index(1477892))
+        self.assertEqual(19, get_latency_bucket_index(2000000))
+        self.assertEqual(19, get_latency_bucket_index(2216838))
+        self.assertEqual(20, get_latency_bucket_index(2500000))
+        self.assertEqual(20, get_latency_bucket_index(3325257))
+        self.assertEqual(21, get_latency_bucket_index(4000000))
+        self.assertEqual(21, get_latency_bucket_index(4987885))
+        self.assertEqual(22, get_latency_bucket_index(6000000))
 
 
 class LatencyTrackerTests(TestCase, MockUtilsMixin):
@@ -87,13 +87,13 @@ class LatencyTrackerTests(TestCase, MockUtilsMixin):
         self.some_micros = 1000000
         self.some_latencies = list(range(23))
         self.latency_tracker = LatencyTracker()
-        self.find_index_mock = self.patch_object(self.latency_tracker, '_find_index',
-                                                 return_value=5)
+        self.get_latency_bucket_index_mock = self.patch(
+            'splitio.metrics.get_latency_bucket_index', return_value=5)
 
-    def test_add_latency_millis_calls_find_index(self):
+    def test_add_latency_millis_calls_get_latency_bucket_index(self):
         """Test that add_latency_millis calls _find_index"""
         self.latency_tracker.add_latency_millis(self.some_millis)
-        self.find_index_mock.assert_called_once_with(self.some_millis * 1000)
+        self.get_latency_bucket_index_mock.assert_called_once_with(self.some_millis * 1000)
 
     def test_add_latency_millis_sets_right_element(self):
         """Test that add_latency_millis adds 1 to the right element"""
@@ -101,10 +101,10 @@ class LatencyTrackerTests(TestCase, MockUtilsMixin):
         self.assertListEqual([0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                              self.latency_tracker._latencies)
 
-    def test_add_latency_micros_calls_find_index(self):
+    def test_add_latency_micros_calls_get_latency_bucket_index(self):
         """Test that add_latency_micros calls _find_index"""
         self.latency_tracker.add_latency_micros(self.some_micros)
-        self.find_index_mock.assert_called_once_with(self.some_micros)
+        self.get_latency_bucket_index_mock.assert_called_once_with(self.some_micros)
 
     def test_add_latency_micros_sets_right_element(self):
         """Test that add_latency_micros adds 1 to the right element"""
@@ -125,28 +125,28 @@ class LatencyTrackerGetBucketTests(TestCase, MockUtilsMixin):
         self.some_latency_micros = 1000000
         self.some_latencies = [mock.MagicMock() for _ in range(23)]
         self.latency_tracker = LatencyTracker(latencies=self.some_latencies)
-        self.find_index_mock = self.patch_object(self.latency_tracker, '_find_index',
-                                                 return_value=5)
+        self.get_latency_bucket_index_mock = self.patch(
+            'splitio.metrics.get_latency_bucket_index', return_value=5)
 
-    def test_get_bucket_for_latency_millis_calls_find_index(self):
+    def test_get_bucket_for_latency_millis_calls_get_latency_bucket_index(self):
         """Test that get_bucket_for_latency_millis calls _find_index"""
         self.latency_tracker.get_bucket_for_latency_millis(self.some_latency_millis)
-        self.find_index_mock.assert_called_once_with(self.some_latency_millis * 1000)
+        self.get_latency_bucket_index_mock.assert_called_once_with(self.some_latency_millis * 1000)
 
     def test_get_bucket_for_latency_millis_returns_right_element(self):
         """Test that get_bucket_for_latency_millis returns the right element"""
-        self.assertEqual(self.some_latencies[self.find_index_mock.return_value],
+        self.assertEqual(self.some_latencies[self.get_latency_bucket_index_mock.return_value],
                          self.latency_tracker.get_bucket_for_latency_millis(
                              self.some_latency_millis))
 
-    def test_get_bucket_for_latency_micros_calls_find_index(self):
+    def test_get_bucket_for_latency_micros_calls_get_latency_bucket_index(self):
         """Test that get_bucket_for_latency_micros calls _find_index"""
         self.latency_tracker.get_bucket_for_latency_micros(self.some_latency_micros)
-        self.find_index_mock.assert_called_once_with(self.some_latency_micros)
+        self.get_latency_bucket_index_mock.assert_called_once_with(self.some_latency_micros)
 
     def test_get_bucket_for_latency_micros_returns_right_element(self):
         """Test that get_bucket_for_latency_micros returns the right element"""
-        self.assertEqual(self.some_latencies[self.find_index_mock.return_value],
+        self.assertEqual(self.some_latencies[self.get_latency_bucket_index_mock.return_value],
                          self.latency_tracker.get_bucket_for_latency_micros(
                              self.some_latency_micros))
 
