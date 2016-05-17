@@ -6,11 +6,8 @@ from collections import defaultdict
 from copy import deepcopy
 from threading import RLock
 
-from splitio.segments import Segment
-from splitio.splits import SplitFetcher
 
-
-class SplitCache(object):
+class SplitCache(object):  # pragma: no cover
     """
     The basic interface for a Split cache. It should be able to store and retrieve Split
     instances, as well as keeping track of the change number.
@@ -23,7 +20,7 @@ class SplitCache(object):
         :param split: The split to store
         :type split: Split
         """
-        raise NotImplementedError()
+        pass  # Do nothing
 
     def remove_split(self, split_name):
         """
@@ -31,7 +28,7 @@ class SplitCache(object):
         :param split_name: Name of the split (feature)
         :type split_name: str
         """
-        raise NotImplementedError()
+        pass  # Do nothing
 
     def get_split(self, split_name):
         """
@@ -41,7 +38,7 @@ class SplitCache(object):
         :return: The split under the name if it exists, None otherwise
         :rtype: Split
         """
-        raise NotImplementedError()
+        return None
 
     def set_change_number(self, change_number):
         """
@@ -49,7 +46,7 @@ class SplitCache(object):
         :param change_number: The change number
         :type change_number: int
         """
-        raise NotImplementedError()
+        pass  # Do nothing
 
     def get_change_number(self):
         """
@@ -57,10 +54,10 @@ class SplitCache(object):
         :return: The current change number value, -1 otherwise
         :rtype: int
         """
-        raise NotImplementedError()
+        return -1
 
 
-class SegmentCache(object):
+class SegmentCache(object):  # pragma: no cover
     """
     The basic interface for a Segment cache. It should be able to store and retrieve Segment
     information, as well as keeping track of the change number.
@@ -73,7 +70,7 @@ class SegmentCache(object):
         :param segment_keys: Keys to add to the segment
         :type segment_keys: list
         """
-        raise NotImplementedError()
+        pass  # Do nothing
 
     def remove_keys_from_segment(self, segment_name, segment_keys):
         """
@@ -83,17 +80,7 @@ class SegmentCache(object):
         :param segment_keys: Keys to remove from the segment
         :type segment_keys: list
         """
-        raise NotImplementedError()
-
-    def set_segment_keys(self, segment_name, segment_keys):
-        """
-        Set the keys of a segment
-        :param segment_name: Name of the segment
-        :type segment_name: str
-        :param segment_keys: Keys to of the segment
-        :type segment_keys: list
-        """
-        raise NotImplementedError()
+        pass  # Do nothing
 
     def is_in_segment(self, segment_name, key):
         """
@@ -105,7 +92,7 @@ class SegmentCache(object):
         :return: True if the key is in the segment, False otherwise
         :rtype: bool
         """
-        raise NotImplementedError()
+        return False
 
     def set_change_number(self, segment_name, change_number):
         """
@@ -115,7 +102,7 @@ class SegmentCache(object):
         :param change_number: The change number
         :type change_number: int
         """
-        raise NotImplementedError()
+        pass  # Do nothing
 
     def get_change_number(self, segment_name):
         """
@@ -125,7 +112,7 @@ class SegmentCache(object):
         :return: The current change number value, -1 otherwise
         :rtype: int
         """
-        raise NotImplementedError()
+        return -1
 
 
 class InMemorySplitCache(SplitCache):
@@ -169,10 +156,6 @@ class InMemorySegmentCache(SegmentCache):
         segment = self._entries[segment_name]
         segment['key_set'] = segment['key_set'] - frozenset(segment_keys)
 
-    def set_segment_keys(self, segment_name, segment_keys):
-        segment = self._entries[segment_name]
-        segment['key_set'] = set(segment_keys)
-
     def is_in_segment(self, segment_name, key):
         return key in self._entries[segment_name]['key_set']
 
@@ -183,35 +166,37 @@ class InMemorySegmentCache(SegmentCache):
         return self._entries[segment_name]['change_number']
 
 
-class ImpressionsCache(object):
+class ImpressionsCache(object):  # pragma: no cover
     """The basic interface for an Impressions cache."""
     def add_impression(self, impression):
         """Add an impression to a feature
         :param impression: An impression
         :type impression: Impression
+        :return: How many impressions have been added so far
+        :rtype: int
         """
-        raise NotImplementedError()
+        pass  # Do nothing
 
     def fetch_all(self):
         """ List all impressions.
         :return: A list of Impression tuples
         :rtype: list
         """
-        raise NotImplementedError()
+        return []
 
     def clear(self):
         """Clears all impressions."""
-        raise NotImplementedError()
+        pass  # Do nothing
 
     def fetch_all_and_clear(self):
         """ List all impressions and clear the cache.
         :return: A list of Impression tuples
         :rtype: list
         """
-        raise NotImplementedError()
+        return []
 
 
-class InMemoryImpressionsCache(ImpressionsCache):
+class InMemoryImpressionsCache(ImpressionsCache):  # pragma: no cover
     def __init__(self, impressions=None):
         """An in memory implementation of an Impressions cache.
         :param impressions: Initial set of impressions
@@ -254,53 +239,91 @@ class InMemoryImpressionsCache(ImpressionsCache):
         return impressions
 
 
-class CacheBasedSegmentFetcher(object):
-    def __init__(self, segment_cache):
+class MetricsCache(object):  # pragma: no cover
+    """A default implementation of a Metrics cache."""
+    def set_count(self, counter, value):
+        """Sets a counter value.
+        :param counter: Name of the counter
+        :type counter: str
+        :param value: Value for the counter
+        :type value: 1
         """
-        A segment fetcher based on a segments cache
-        :param segment_cache: The segment cache to use
-        :type segment_cache: SegmentCache
+        pass  # Do nothing
+
+    def increment_count(self, counter, delta=1):
+        """Increments the value of a counter by a given value.
+        :param counter: Name of the counter
+        :type counter: str
+        :param delta: The value to be added to the counter
+        :type delta: int
         """
-        self._segment_cache = segment_cache
+        pass  # Do nothing
 
-    def fetch(self, name):
+    def get_count(self, counter):
         """
-        Fetch cache based segment
-        :param name: The name of the segment
-        :type name: str
-        :return: A segment for the given name
-        :rtype: Segment
+        :param counter: Name of the counter
+        :type counter: str
+        :return: The current value of the counter
+        :rtype: int
         """
-        segment = CacheBasedSegment(name, self._segment_cache)
-        return segment
+        return 0
 
-
-class CacheBasedSegment(Segment):
-    def __init__(self, name, segment_cache):
+    def set_gauge(self, gauge, value):
+        """Sets the value of a gauge.
+        :param gauge: The name of the gauge
+        :type gauge: str
+        :param value: The value of the gauge
+        :type value: float
         """
-        A SegmentCached based implementation of a Segment
-        :param name: The name of the segment
-        :type name: str
-        :param segment_cache: The segment cache backend
-        :type segment_cache: SegmentCache
+        pass  # Do nothing
+
+    def get_gauge(self, gauge):
         """
-        super(CacheBasedSegment, self).__init__(name)
-        self._segment_cache = segment_cache
-
-    def contains(self, key):
-        return self._segment_cache.is_in_segment(self._name, key)
-
-
-class CacheBasedSplitFetcher(SplitFetcher):
-    def __init__(self, split_cache):
+        :param gauge: The name of the gauge
+        :type gauge: str
+        :return: The current value of the gauge
+        :rtype: float
         """
-        A cache based SplitFetcher implementation
-        :param split_cache: The split cache
-        :type split_cache: SplitCache
+        return 0
+
+    def set_latency_bucket_counter(self, operation, bucket_index, value):
+        """Sets the value of a bucket of a latency tracker for an operation.
+        :param operation: The name of the operation
+        :type operation: str
+        :param bucket_index: The index for the latency bucket
+        :type bucket_index: int
+        :param value: The new value for the bucket
+        :type value: int
         """
-        super(CacheBasedSplitFetcher, self).__init__()
+        pass  # Do nothing
 
-        self._split_cache = split_cache
+    def increment_latency_bucket_counter(self, operation, bucket_index, delta=1):
+        """Increments the value of a bucket of a latency tracker for an operation
+        :param operation: The name of the operation
+        :type operation: str
+        :param bucket_index: The index for the latency bucket
+        :type bucket_index: int
+        :param delta: The value to add to the bucket
+        :type delta: int
+        """
+        pass  # Do nothing
 
-    def fetch(self, feature):
-        return self._split_cache.get_split(feature)
+    def get_latency_bucket_counter(self, operation, bucket_index):
+        """
+        :param operation: The name of the operation
+        :type operation: str
+        :param bucket_index: The index for the latency bucket
+        :type bucket_index: int
+        :return: The current value of a bucket of a latency tracker
+        :rtype: int
+        """
+        return 0
+
+    def get_latency(self, operation):
+        """
+        :param operation: The name of the operation
+        :type operation: str
+        :return: All the buckets of a latency tracker
+        :rtype: list
+        """
+        return [0] * 23
