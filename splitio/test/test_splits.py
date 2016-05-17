@@ -10,7 +10,8 @@ except ImportError:
 from unittest import TestCase
 
 from splitio.splits import (InMemorySplitFetcher, SelfRefreshingSplitFetcher, SplitChangeFetcher,
-                            ApiSplitChangeFetcher, SplitParser, AllKeysSplit)
+                            ApiSplitChangeFetcher, SplitParser, AllKeysSplit,
+                            CacheBasedSplitFetcher)
 from splitio.matchers import (AndCombiner, AllKeysMatcher, UserDefinedSegmentMatcher,
                               WhitelistMatcher, AttributeMatcher)
 from splitio.test.utils import MockUtilsMixin
@@ -793,3 +794,20 @@ class AllKeysSplitTests(TestCase):
     def test_partition_has_treatment(self):
         """Tests that the partition has the set treatment"""
         self.assertEqual(self.some_treatment, self.split.conditions[0].partitions[0].treatment)
+
+
+class CacheBasedSplitFetcherTests(TestCase):
+    def setUp(self):
+        self.some_feature = mock.MagicMock()
+        self.some_split_cache = mock.MagicMock()
+        self.split_fetcher = CacheBasedSplitFetcher(split_cache=self.some_split_cache)
+
+    def test_fetch_calls_get_split(self):
+        """Test that fetch calls get_split on the split cache"""
+        self.split_fetcher.fetch(self.some_feature)
+        self.some_split_cache.get_split.assert_called_once_with(self.some_feature)
+
+    def test_fetch_results_get_split_result(self):
+        """Test that fetch returns the result of calling get split on the cache"""
+        self.assertEqual(self.some_split_cache.get_split.return_value,
+                         self.split_fetcher.fetch(self.some_feature))
