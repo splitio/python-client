@@ -96,29 +96,6 @@ class TreatmentLogTests(TestCase, MockUtilsMixin):
         self.treatment_log = TreatmentLog()
         self.log_mock = self.patch_object(self.treatment_log, '_log')
 
-    def test_ignore_impressions_false_by_default(self):
-        """Tests that ignore impressions is False by default"""
-        self.assertFalse(self.treatment_log.ignore_impressions)
-
-    def test_fetch_all_and_clear_returns_empty_dict(self):
-        """Tests that the default implementation of fetch_all_and_clear returns an empty dict"""
-        self.assertEqual(dict(), self.treatment_log.fetch_all_and_clear())
-
-    def test_log_calls_internal_log_if_ignore_impressions_is_false(self):
-        """Tests that log calls _log if ignore impressions is False"""
-        self.treatment_log.ignore_impressions = False
-        self.treatment_log.log(self.some_key, self.some_feature_name, self.some_treatment,
-                               self.some_time)
-        self.log_mock.assert_called_once_with(self.some_key, self.some_feature_name,
-                                              self.some_treatment, self.some_time)
-
-    def test_log_doesnt_call_internal_log_if_ignore_impressions_is_true(self):
-        """Tests that log doesn't call _log if ignore impressions is True"""
-        self.treatment_log.ignore_impressions = True
-        self.treatment_log.log(self.some_key, self.some_feature_name, self.some_treatment,
-                               self.some_time)
-        self.log_mock.assert_not_called()
-
     def test_log_doesnt_call_internal_log_if_key_is_none(self):
         """Tests that log doesn't call _log if key is None"""
         self.treatment_log.log(None, self.some_feature_name, self.some_treatment, self.some_time)
@@ -241,17 +218,6 @@ class CacheBasedTreatmentLogTests(TestCase):
         self.some_time = mock.MagicMock()
         self.some_impressions_cache = mock.MagicMock()
         self.treatment_log = CacheBasedTreatmentLog(self.some_impressions_cache)
-
-    def test_fetch_all_and_clear_calls_cache_fetch_all_and_clear(self):
-        """Tests that fetch_all_and_clear calls the cache fetch_all_and_clear"""
-        self.treatment_log.fetch_all_and_clear()
-        self.some_impressions_cache.fetch_all_and_clear.assert_called_once_with()
-
-    def test_fetch_all_and_clear_returns_result_cache_fetch_all_and_clear(self):
-        """Tests that fetch_all_and_clear returns the result of calling the cache
-        fetch_all_and_clear"""
-        self.assertEqual(self.some_impressions_cache.fetch_all_and_clear.return_value,
-                         self.treatment_log.fetch_all_and_clear())
 
     def test_log_calls_cache_add_impression(self):
         """Tests that _log calls add_impression on cache"""
@@ -478,11 +444,12 @@ class AsyncTreatmentLogTests(TestCase, MockUtilsMixin):
             self.some_delegate_treatment_log.log, self.some_key, self.some_feature_name,
             self.some_treatment, self.some_time)
 
-    def test_log_doenst_raise_exceptions_if_submit_does(self):
+    def test_log_doesnt_raise_exceptions_if_submit_does(self):
         """Tests that log doesn't raise exceptions when submit does"""
         self.thread_pool_executor_mock.return_value.submit.side_effect = Exception()
-        try:
-            self.treatment_log.log(self.some_key, self.some_feature_name, self.some_treatment,
-                                   self.some_time)
-        except:
-            self.fail('Unexpected exception raised')
+        self.treatment_log.log(self.some_key, self.some_feature_name, self.some_treatment,
+                               self.some_time)
+        #
+        # try:
+        # except:
+        #     self.fail('Unexpected exception raised')
