@@ -476,15 +476,51 @@ class SelfRefreshingClientGetTreatmentLogTests(TestCase, MockUtilsMixin):
         self.aync_treatment_log_mock.assert_called_once_with(
             self.self_updating_treatment_log_mock.return_value)
 
-    def test_sets_treatment_log_to_async_treatment_log(self):
-        """Tests that get_treatment_log sets _treatment_log to an AsyncTreatmentLog"""
-        self.client.get_treatment_log()
-        self.assertEqual(self.aync_treatment_log_mock.return_value,
-                         self.client._treatment_log)
-
     def test_returns_async_treatment_log(self):
         """Tests that get_treatment_log returns an AsyncTreatmentLog"""
         self.assertEqual(self.aync_treatment_log_mock.return_value, self.client.get_treatment_log())
+
+
+class SelfRefreshingClientGetMetricsTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.sdk_api_mock = self.patch('splitio.clients.SdkApi')
+        self.api_metrics_mock = self.patch(
+            'splitio.clients.ApiMetrics')
+        self.aync_metrics_mock = self.patch(
+            'splitio.clients.AsyncMetrics')
+        self.some_api_key = mock.MagicMock()
+        self.client = SelfRefreshingClient(self.some_api_key)
+
+    def test_doesnt_call_constructors_if_metrics_is_not_none(self):
+        """Tests that get_metrics doesn't call any constructors if _metrics is not
+        None"""
+        self.client._metrics = mock.MagicMock()
+        self.client.get_metrics()
+        self.api_metrics_mock.assert_not_called()
+        self.aync_metrics_mock.assert_not_called()
+
+    def test_returns_existing_metrics_if_metrics_is_not_none(self):
+        """Tests that get_metrics returns the value of _metrics if it is not None"""
+        some_metrics = mock.MagicMock()
+        self.client._metrics = some_metrics
+        self.assertEqual(some_metrics, self.client.get_metrics())
+
+    def test_calls_api_metrics_constructor(self):
+        """Tests that get_metrics calls ApiMetrics constructor"""
+        self.client.get_metrics()
+        self.api_metrics_mock.assert_called_once_with(
+            self.client._sdk_api, max_call_count=self.client._metrics_max_call_count,
+            max_time_between_calls=self.client._metrics_max_time_between_calls)
+
+    def test_calls_async_metrics_constructor(self):
+        """Tests that get_metrics calls AsyncMetrics constructor"""
+        self.client.get_metrics()
+        self.aync_metrics_mock.assert_called_once_with(
+            self.api_metrics_mock.return_value)
+
+    def test_returns_async_treatment_log(self):
+        """Tests that get_metrics returns an AsyncMetrics"""
+        self.assertEqual(self.aync_metrics_mock.return_value, self.client.get_metrics())
 
 
 class JSONFileClientIntegrationTests(TestCase):
