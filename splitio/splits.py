@@ -704,7 +704,7 @@ class SplitParser(object):
             matcher_parse_method = getattr(
                 self, '_parse_matcher_{}'.format(matcher_type.strip().lower()))
             delegate = matcher_parse_method(matcher, block_until_ready=block_until_ready)
-        except AttributeError as e:
+        except AttributeError:
             raise ValueError('Invalid matcher type: {}'.format(matcher_type))
 
         if delegate is None:

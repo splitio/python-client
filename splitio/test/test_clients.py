@@ -276,7 +276,7 @@ class SelfRefreshingClientInitTests(TestCase, MockUtilsMixin):
         self.build_split_fetcher_mock.assert_called_once_with()
         self.assertEqual(self.build_split_fetcher_mock.return_value, client._split_fetcher)
 
-    def test_calls_build_split_fetcher(self):
+    def test_calls_build_build_treatment_log(self):
         """Test that __init__ calls _build_treatment_log"""
         client = SelfRefreshingClient(self.some_api_key)
         self.build_treatment_log_mock.assert_called_once_with()
@@ -294,9 +294,9 @@ class SelfRefreshingClientInitTests(TestCase, MockUtilsMixin):
         self.build_metrics_mock.assert_called_once_with()
         self.assertEqual(self.build_metrics_mock.return_value, client._metrics)
 
-    def test_calls_build_metrics(self):
+    def test_calls_start(self):
         """Test that __init__ calls _start"""
-        client = SelfRefreshingClient(self.some_api_key)
+        SelfRefreshingClient(self.some_api_key)
         self.start_mock.assert_called_once_with()
 
 
