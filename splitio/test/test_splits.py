@@ -643,7 +643,7 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
     def test_parse_matcher_in_segment_calls_segment_fetcher_fetch_block(self):
         """Tests that _parse_matcher_in_segment calls segment_fetcher fetch method with supploed
         value for block_until_ready"""
-        some_block_until_ready=mock.MagicMock()
+        some_block_until_ready = mock.MagicMock()
         self.parser._parse_matcher_in_segment(self.some_in_segment_matcher,
                                               block_until_ready=some_block_until_ready)
         self.some_segment_fetcher.fetch.assert_called_once_with(
