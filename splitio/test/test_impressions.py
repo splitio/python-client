@@ -296,7 +296,7 @@ class SelfUpdatingTreatmentLogTimerRefreshTests(TestCase, MockUtilsMixin):
         self.timer_mock.assert_called_once_with(self.treatment_log._interval.return_value,
                                                 self.treatment_log._timer_refresh)
 
-    def test_creates_even_if_worker_thread_raises_exception(self):
+    def test_creates_timer_even_if_worker_thread_raises_exception(self):
         """Test that _timer_refresh creates a timer even if an exception is raised submiting to the
         executor pool"""
         self.thread_pool_executor.return_value.submit.side_effect = Exception()

@@ -34,24 +34,16 @@ class ClientTests(TestCase, MockUtilsMixin):
         self.some_split = mock.MagicMock()
         self.some_split.killed = False
         self.some_split.conditions.__iter__.return_value = self.some_conditions
+        self.splitter_mock = self.patch('splitio.clients.Splitter')
         self.client = Client()
         self.get_split_fetcher_mock = self.patch_object(self.client, 'get_split_fetcher')
+        self.get_treatment_log_mock = self.patch_object(self.client, 'get_treatment_log')
+        self.get_metrics = self.patch_object(self.client, 'get_metrics')
         self.record_stats_mock = self.patch_object(self.client, '_record_stats')
-        self.splitter_mock = self.patch('splitio.clients.Splitter')
-        self.treatment_log_mock = self.patch('splitio.clients.TreatmentLog')
-        self.metrics_mock = self.patch('splitio.clients.Metrics')
 
     def test_get_splitter_returns_a_splitter(self):
         """Test that get_splitter returns a splitter"""
         self.assertEqual(self.splitter_mock.return_value, self.client.get_splitter())
-
-    def test_get_treatment_log_returns_treatment_log(self):
-        """Test that get_splitter returns a treatment_log"""
-        self.assertEqual(self.treatment_log_mock.return_value, self.client.get_treatment_log())
-
-    def test_get_metrics_return_metrics(self):
-        """Test that get_metrics returns a metrics object"""
-        self.assertEqual(self.metrics_mock.return_value, self.client.get_metrics())
 
     def test_get_treatment_returns_control_if_key_is_none(self):
         """Test that get_treatment returns CONTROL treatment if key is None"""
@@ -248,13 +240,82 @@ class RandomizeIntervalTests(TestCase, MockUtilsMixin):
 
 class SelfRefreshingClientInitTests(TestCase, MockUtilsMixin):
     def setUp(self):
-        self.sdk_api_mock = self.patch('splitio.clients.SdkApi')
+        self.init_config_mock = self.patch('splitio.clients.SelfRefreshingClient._init_config')
+        self.build_sdk_api_mock = self.patch('splitio.clients.SelfRefreshingClient._build_sdk_api')
+        self.build_split_fetcher_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_split_fetcher')
+        self.build_treatment_log_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_treatment_log')
+        self.build_metrics_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_metrics')
+        self.start_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._start')
+
+        self.some_api_key = mock.MagicMock()
+        self.some_config = mock.MagicMock()
+
+    def test_sets_api_key(self):
+        """Test that __init__ sets api key to the given value"""
+        client = SelfRefreshingClient(self.some_api_key)
+        self.assertEqual(self.some_api_key, client._api_key)
+
+    def test_calls_init_config(self):
+        """Test that __init__ calls _init_config with the given config"""
+        SelfRefreshingClient(self.some_api_key, config=self.some_config)
+        self.init_config_mock.assert_called_once_with(self.some_config)
+
+    def test_calls_build_sdk_api(self):
+        """Test that __init__ calls _build_sdk_api"""
+        client = SelfRefreshingClient(self.some_api_key)
+        self.build_sdk_api_mock.assert_called_once_with()
+        self.assertEqual(self.build_sdk_api_mock.return_value, client._sdk_api)
+
+    def test_calls_build_split_fetcher(self):
+        """Test that __init__ calls _build_split_fetcher"""
+        client = SelfRefreshingClient(self.some_api_key)
+        self.build_split_fetcher_mock.assert_called_once_with()
+        self.assertEqual(self.build_split_fetcher_mock.return_value, client._split_fetcher)
+
+    def test_calls_build_split_fetcher(self):
+        """Test that __init__ calls _build_treatment_log"""
+        client = SelfRefreshingClient(self.some_api_key)
+        self.build_treatment_log_mock.assert_called_once_with()
+        self.assertEqual(self.build_treatment_log_mock.return_value, client._treatment_log)
+
+    def test_calls_build_treatment_log(self):
+        """Test that __init__ calls _build_treatment_log"""
+        client = SelfRefreshingClient(self.some_api_key)
+        self.build_treatment_log_mock.assert_called_once_with()
+        self.assertEqual(self.build_treatment_log_mock.return_value, client._treatment_log)
+
+    def test_calls_build_metrics(self):
+        """Test that __init__ calls _build_metrics"""
+        client = SelfRefreshingClient(self.some_api_key)
+        self.build_metrics_mock.assert_called_once_with()
+        self.assertEqual(self.build_metrics_mock.return_value, client._metrics)
+
+    def test_calls_build_metrics(self):
+        """Test that __init__ calls _start"""
+        client = SelfRefreshingClient(self.some_api_key)
+        self.start_mock.assert_called_once_with()
+
+
+class SelfRefreshingClientInitConfigTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.build_sdk_api_mock = self.patch('splitio.clients.SelfRefreshingClient._build_sdk_api')
+        self.build_split_fetcher_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_split_fetcher')
+        self.build_treatment_log_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_treatment_log')
+        self.build_metrics_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_metrics')
+        self.start_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._start')
+        self.some_api_key = mock.MagicMock()
         self.randomize_interval_side_effect = [mock.MagicMock(), mock.MagicMock(), mock.MagicMock()]
         self.randomize_interval_mock = self.patch(
             'splitio.clients.randomize_interval', side_effect=self.randomize_interval_side_effect)
-        self.some_api_key = mock.MagicMock()
-        self.some_sdk_api_url_base = mock.MagicMock()
-        self.some_events_api_url_base = mock.MagicMock()
+
         self.some_config = {
             'connectionTimeout': mock.MagicMock(),
             'readTimeout': mock.MagicMock(),
@@ -264,37 +325,21 @@ class SelfRefreshingClientInitTests(TestCase, MockUtilsMixin):
             'impressionsRefreshRate': 34,
             'randomizeIntervals': False,
             'maxImpressionsLogSize': -1,
-            'maxMetricsCallsBeforeFlush': -1
+            'maxMetricsCallsBeforeFlush': -1,
+            'ready': 10
         }
 
-    def test_sets_api_key(self):
-        """
-        Tests that __init__ sets api key to the given value
-        """
-        client = SelfRefreshingClient(self.some_api_key)
-        self.assertEqual(self.some_api_key, client._api_key)
+        self.client = SelfRefreshingClient(self.some_api_key)
 
-    def test_sets_default_config_if_config_is_none(self):
-        """
-        Tests that __init__ sets the config values to their defaults if no custom config is given
-        """
-        client = SelfRefreshingClient(self.some_api_key)
-        self.assertDictEqual(DEFAULT_CONFIG, client._config)
-        self.assertEqual(DEFAULT_CONFIG['connectionTimeout'], client._connection_timeout)
-        self.assertEqual(DEFAULT_CONFIG['readTimeout'], client._read_timeout)
-        self.assertEqual(DEFAULT_CONFIG['featuresRefreshRate'], client._split_fetcher_interval)
-        self.assertEqual(DEFAULT_CONFIG['segmentsRefreshRate'], client._segment_fetcher_interval)
+    def test_if_config_is_none_uses_default(self):
+        """Test that if config is None _init_config uses the defaults"""
+        self.client._init_config(config=None)
+        self.assertDictEqual(DEFAULT_CONFIG, self.client._config)
 
-    def test_sets_custom_config_if_given(self):
-        """
-        Tests that __init__ sets the config values to the values given in the config parameter
-        """
-        client = SelfRefreshingClient(self.some_api_key, config=self.some_config)
-        self.assertDictEqual(self.some_config, client._config)
-        self.assertEqual(self.some_config['connectionTimeout'], client._connection_timeout)
-        self.assertEqual(self.some_config['readTimeout'], client._read_timeout)
-        self.assertEqual(self.some_config['featuresRefreshRate'], client._split_fetcher_interval)
-        self.assertEqual(self.some_config['segmentsRefreshRate'], client._segment_fetcher_interval)
+    def test_it_uses_supplied_config(self):
+        """Test that if config is not None, it uses the supplied config"""
+        self.client._init_config(config=self.some_config)
+        self.assertDictEqual(self.some_config, self.client._config)
 
     def test_forces_interval_max_on_intervals(self):
         """
@@ -306,42 +351,63 @@ class SelfRefreshingClientInitTests(TestCase, MockUtilsMixin):
             'metricsRefreshRate': MAX_INTERVAL + 30,
             'impressionsRefreshRate': MAX_INTERVAL + 40
         })
-        client = SelfRefreshingClient(self.some_api_key, config=self.some_config)
-        self.assertDictEqual(self.some_config, client._config)
-        self.assertEqual(MAX_INTERVAL, client._split_fetcher_interval)
-        self.assertEqual(MAX_INTERVAL, client._segment_fetcher_interval)
-        self.assertEqual(MAX_INTERVAL, client._impressions_interval)
+        self.client._init_config(config=self.some_config)
+        self.assertEqual(MAX_INTERVAL, self.client._split_fetcher_interval)
+        self.assertEqual(MAX_INTERVAL, self.client._segment_fetcher_interval)
+        self.assertEqual(MAX_INTERVAL, self.client._impressions_interval)
 
     def test_randomizes_intervales_if_randomize_intervals_is_true(self):
         """
         Tests that __init__ calls randomize_interval on intervals if randomizeIntervals is True
         """
         self.some_config['randomizeIntervals'] = True
-        client = SelfRefreshingClient(self.some_api_key, config=self.some_config)
-
+        self.client._init_config(config=self.some_config)
         self.assertListEqual([mock.call(self.some_config['segmentsRefreshRate']),
                               mock.call(self.some_config['featuresRefreshRate']),
                               mock.call(self.some_config['impressionsRefreshRate'])],
                              self.randomize_interval_mock.call_args_list)
-        self.assertEqual(self.randomize_interval_side_effect[0], client._segment_fetcher_interval)
-        self.assertEqual(self.randomize_interval_side_effect[1], client._split_fetcher_interval)
-        self.assertEqual(self.randomize_interval_side_effect[2], client._impressions_interval)
+        self.assertEqual(self.randomize_interval_side_effect[0],
+                         self.client._segment_fetcher_interval)
+        self.assertEqual(self.randomize_interval_side_effect[1],
+                         self.client._split_fetcher_interval)
+        self.assertEqual(self.randomize_interval_side_effect[2],
+                         self.client._impressions_interval)
 
-    def test_builds_sdk_api(self):
-        """Tests that __init__ calls the SdkApi constructor"""
-        client = SelfRefreshingClient(self.some_api_key,
-                                      sdk_api_base_url=self.some_sdk_api_url_base,
-                                      events_api_base_url=self.some_events_api_url_base)
-        self.sdk_api_mock.assert_called_once_with(self.some_api_key,
-                                                  sdk_api_base_url=self.some_sdk_api_url_base,
-                                                  events_api_base_url=self.some_events_api_url_base,
-                                                  connect_timeout=client._connection_timeout,
-                                                  read_timeout=client._read_timeout)
+
+class SelfRefreshingClientBuildSdkApiTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.sdk_api_mock = self.patch('splitio.clients.SdkApi')
+        self.build_split_fetcher_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_split_fetcher')
+        self.build_treatment_log_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_treatment_log')
+        self.build_metrics_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_metrics')
+        self.start_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._start')
+        self.some_api_key = mock.MagicMock()
+        self.client = SelfRefreshingClient(self.some_api_key)
+
+    def test_calls_sdk_api_constructor(self):
+        """Test that _build_sdk_api calls SdkApi constructor"""
+        self.sdk_api_mock.assert_called_once_with(
+            self.some_api_key, sdk_api_base_url=self.client._sdk_api_base_url,
+            events_api_base_url=self.client._events_api_base_url,
+            connect_timeout=self.client._connection_timeout, read_timeout=self.client._read_timeout
+        )
 
 
 class SelfRefreshingClientBuildSplitFetcherTests(TestCase, MockUtilsMixin):
     def setUp(self):
-        self.sdk_api_mock = self.patch('splitio.clients.SdkApi')
+        self.build_sdk_api_mock = self.patch('splitio.clients.SelfRefreshingClient._build_sdk_api')
+        self.build_treatment_log_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_treatment_log')
+        self.build_metrics_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_metrics')
+        self.start_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._start')
+        self.some_api_key = mock.MagicMock()
+
         self.api_segment_change_fetcher_mock = self.patch('splitio.clients.ApiSegmentChangeFetcher')
         self.self_refreshing_segment_fetcher_mock = self.patch(
             'splitio.clients.SelfRefreshingSegmentFetcher')
@@ -353,46 +419,32 @@ class SelfRefreshingClientBuildSplitFetcherTests(TestCase, MockUtilsMixin):
         self.some_api_key = mock.MagicMock()
         self.client = SelfRefreshingClient(self.some_api_key)
 
-        self.segment_fetcher_interval_mock = self.patch_object(self.client,
-                                                               '_segment_fetcher_interval')
-        self.split_fetcher_interval_mock = self.patch_object(self.client, '_split_fetcher_interval')
-        self.connection_timeout_mock = self.patch_object(self.client, '_connection_timeout')
-        self.read_timeout_mock = self.patch_object(self.client, '_read_timeout')
-
     def test_builds_segment_change_fetcher(self):
         """Tests that _build_split_fetcher calls the ApiSegmentChangeFetcher constructor"""
-        self.client._build_split_fetcher()
-        self.api_segment_change_fetcher_mock.assert_called_once_with(self.sdk_api_mock.return_value)
+        self.api_segment_change_fetcher_mock.assert_called_once_with(
+            self.build_sdk_api_mock.return_value)
 
     def test_builds_segment_fetcher(self):
         """Tests that _build_split_fetcher calls the SelfRefreshingSegmentFetcher constructor"""
-        self.client._build_split_fetcher()
         self.self_refreshing_segment_fetcher_mock.assert_called_once_with(
             self.api_segment_change_fetcher_mock.return_value,
-            interval=self.segment_fetcher_interval_mock)
+            interval=self.client._segment_fetcher_interval)
 
     def test_builds_split_change_fetcher(self):
         """Tests that _build_split_fetcher calls the ApiSplitChangeFetcher constructor"""
-        self.client._build_split_fetcher()
-        self.api_split_change_fetcher_mock.assert_called_once_with(self.sdk_api_mock.return_value)
+        self.api_split_change_fetcher_mock.assert_called_once_with(
+            self.build_sdk_api_mock.return_value)
 
     def test_builds_split_parser(self):
         """Tests that _build_split_fetcher calls the SplitParser constructor"""
-        self.client._build_split_fetcher()
         self.split_parser_mock.assert_called_once_with(
             self.self_refreshing_segment_fetcher_mock.return_value)
 
     def test_builds_split_fetcher(self):
         """Tests that _build_split_fetcher calls the SplitParser constructor"""
-        self.client._build_split_fetcher()
         self.self_refreshing_split_fetcher_mock.assert_called_once_with(
             self.api_split_change_fetcher_mock.return_value, self.split_parser_mock.return_value,
-            interval=self.split_fetcher_interval_mock)
-
-    def test_starts_split_fetcher(self):
-        """Tests that _build_split_fetcher calls start on the SelfRefreshingSplitFetcher"""
-        self.client._build_split_fetcher()
-        self.self_refreshing_split_fetcher_mock.return_value.start.assert_called_once_with()
+            interval=self.client._split_fetcher_interval)
 
     def test_returns_split_fetcher(self):
         """Tests that _build_split_fetcher returns the result of calling the
@@ -401,46 +453,17 @@ class SelfRefreshingClientBuildSplitFetcherTests(TestCase, MockUtilsMixin):
                          self.client._build_split_fetcher())
 
 
-class SelfRefreshingGetSplitFetcherTests(TestCase, MockUtilsMixin):
+class SelfRefreshingClientBuildTreatmentLogTests(TestCase, MockUtilsMixin):
     def setUp(self):
+        self.build_sdk_api_mock = self.patch('splitio.clients.SelfRefreshingClient._build_sdk_api')
+        self.build_split_fetcher_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_split_fetcher')
+        self.build_metrics_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_metrics')
+        self.start_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._start')
         self.some_api_key = mock.MagicMock()
-        self.client = SelfRefreshingClient(self.some_api_key)
 
-        self.build_split_fetcher_mock = self.patch_object(self.client, '_build_split_fetcher')
-
-    def test_calls_build_split_fetcher_if_split_fetcher_is_none(self):
-        """Tests that get_split_fetcher calls _build_split_fetcher if _split_fetcher is None"""
-        self.client.get_split_fetcher()
-        self.build_split_fetcher_mock.assert_called_once_with()
-
-    def test_sets_split_fetcher_to_result_of_calling_build_split_fetcher(self):
-        """Tests that get_split_fetcher sets _split_fetcher to the result of calling
-        _build_split_fetcher if it is None"""
-        self.client.get_split_fetcher()
-        self.assertEqual(self.build_split_fetcher_mock.return_value, self.client._split_fetcher)
-
-    def test_doesnt_call_build_split_fetcher_if_split_fetcher_is_not_none(self):
-        """
-        Tests that get_split_fetcher doesn't call _build_split_fetcher if _split_fetcher is not
-        None
-        """
-        some_split_fetcher = mock.MagicMock()
-        self.client._split_fetcher = some_split_fetcher
-        self.client.get_split_fetcher()
-        self.build_split_fetcher_mock.assert_not_called()
-
-    def test_returns_the_value_of_split_fetcher(self):
-        """
-        Tests that get_split_fetcher returns the value of _split_fetcher
-        """
-        some_split_fetcher = mock.MagicMock()
-        self.client._split_fetcher = some_split_fetcher
-        self.assertEqual(some_split_fetcher, self.client.get_split_fetcher())
-
-
-class SelfRefreshingClientGetTreatmentLogTests(TestCase, MockUtilsMixin):
-    def setUp(self):
-        self.sdk_api_mock = self.patch('splitio.clients.SdkApi')
         self.self_updating_treatment_log_mock = self.patch(
             'splitio.clients.SelfUpdatingTreatmentLog')
         self.aync_treatment_log_mock = self.patch(
@@ -448,42 +471,34 @@ class SelfRefreshingClientGetTreatmentLogTests(TestCase, MockUtilsMixin):
         self.some_api_key = mock.MagicMock()
         self.client = SelfRefreshingClient(self.some_api_key)
 
-    def test_doesnt_call_constructors_if_treatment_log_is_not_none(self):
-        """Tests that get_treatment_log doesn't call any constructors if _treatment_log is not
-        None"""
-        self.client._treatment_log = mock.MagicMock()
-        self.client.get_treatment_log()
-        self.self_updating_treatment_log_mock.assert_not_called()
-        self.aync_treatment_log_mock.assert_not_called()
-
-    def test_returns_existing_treatment_log_if_treatment_log_is_not_none(self):
-        """Tests that get_treatment_log returns the value of _treatment_log if _treatment_log is
-        not None"""
-        some_treatment_log = mock.MagicMock()
-        self.client._treatment_log = some_treatment_log
-        self.assertEqual(some_treatment_log, self.client.get_treatment_log())
-
     def test_calls_self_updating_treatment_log_constructor(self):
-        """Tests that get_treatment_log calls SelfUpdatingTreatmentLog constructor"""
-        self.client.get_treatment_log()
+        """Tests that _build_treatment_log calls SelfUpdatingTreatmentLog constructor"""
         self.self_updating_treatment_log_mock.assert_called_once_with(
             self.client._sdk_api, max_count=self.client._max_impressions_log_size,
             interval=self.client._impressions_interval)
 
     def test_calls_async_treatment_log_constructor(self):
-        """Tests that get_treatment_log calls AsyncTreatmentLog constructor"""
-        self.client.get_treatment_log()
+        """Tests that _build_treatment_log calls AsyncTreatmentLog constructor"""
         self.aync_treatment_log_mock.assert_called_once_with(
             self.self_updating_treatment_log_mock.return_value)
 
     def test_returns_async_treatment_log(self):
-        """Tests that get_treatment_log returns an AsyncTreatmentLog"""
-        self.assertEqual(self.aync_treatment_log_mock.return_value, self.client.get_treatment_log())
+        """Tests that _build_treatment_log returns an AsyncTreatmentLog"""
+        self.assertEqual(self.aync_treatment_log_mock.return_value,
+                         self.client._build_treatment_log())
 
 
-class SelfRefreshingClientGetMetricsTests(TestCase, MockUtilsMixin):
+class SelfRefreshingClientBuildMetricsTests(TestCase, MockUtilsMixin):
     def setUp(self):
-        self.sdk_api_mock = self.patch('splitio.clients.SdkApi')
+        self.build_sdk_api_mock = self.patch('splitio.clients.SelfRefreshingClient._build_sdk_api')
+        self.build_split_fetcher_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_split_fetcher')
+        self.build_treatment_log_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_treatment_log')
+        self.start_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._start')
+        self.some_api_key = mock.MagicMock()
+
         self.api_metrics_mock = self.patch(
             'splitio.clients.ApiMetrics')
         self.aync_metrics_mock = self.patch(
@@ -491,36 +506,20 @@ class SelfRefreshingClientGetMetricsTests(TestCase, MockUtilsMixin):
         self.some_api_key = mock.MagicMock()
         self.client = SelfRefreshingClient(self.some_api_key)
 
-    def test_doesnt_call_constructors_if_metrics_is_not_none(self):
-        """Tests that get_metrics doesn't call any constructors if _metrics is not
-        None"""
-        self.client._metrics = mock.MagicMock()
-        self.client.get_metrics()
-        self.api_metrics_mock.assert_not_called()
-        self.aync_metrics_mock.assert_not_called()
-
-    def test_returns_existing_metrics_if_metrics_is_not_none(self):
-        """Tests that get_metrics returns the value of _metrics if it is not None"""
-        some_metrics = mock.MagicMock()
-        self.client._metrics = some_metrics
-        self.assertEqual(some_metrics, self.client.get_metrics())
-
     def test_calls_api_metrics_constructor(self):
-        """Tests that get_metrics calls ApiMetrics constructor"""
-        self.client.get_metrics()
+        """Tests that _build_metrics calls ApiMetrics constructor"""
         self.api_metrics_mock.assert_called_once_with(
             self.client._sdk_api, max_call_count=self.client._metrics_max_call_count,
             max_time_between_calls=self.client._metrics_max_time_between_calls)
 
     def test_calls_async_metrics_constructor(self):
-        """Tests that get_metrics calls AsyncMetrics constructor"""
-        self.client.get_metrics()
+        """Tests that _build_metrics calls AsyncMetrics constructor"""
         self.aync_metrics_mock.assert_called_once_with(
             self.api_metrics_mock.return_value)
 
     def test_returns_async_treatment_log(self):
-        """Tests that get_metrics returns an AsyncMetrics"""
-        self.assertEqual(self.aync_metrics_mock.return_value, self.client.get_metrics())
+        """Tests that _build_metrics returns an AsyncMetrics"""
+        self.assertEqual(self.aync_metrics_mock.return_value, self.client._build_metrics())
 
 
 class JSONFileClientIntegrationTests(TestCase):
@@ -1183,43 +1182,17 @@ class JSONFileClientIntegrationTests(TestCase):
             self.fake_id_not_in_segment, 'test_killed'))
 
 
-class LocalhostEnvironmentClientTests(TestCase, MockUtilsMixin):
-    def setUp(self):
-        self.in_memory_split_fetcher_mock = self.patch('splitio.clients.InMemorySplitFetcher')
-        self.client = LocalhostEnvironmentClient()
-        self.parse_split_file_mock = self.patch_object(self.client, '_parse_split_file')
-
-    def test_build_split_fetcher_calls_parse_split_file(self):
-        """
-        Tests that _build_split_fetcher calls _parse_split_file
-        """
-        self.client._build_split_fetcher()
-        self.parse_split_file_mock.assert_called_once_with(self.client._split_definition_file_name)
-
-    def test_build_split_fetcher_calls_in_memory_split_fetcher_constructor(self):
-        """
-        Tests that _build_split_fetcher calls InMemorySplitFetcher constructor
-        """
-        self.client._build_split_fetcher()
-        self.in_memory_split_fetcher_mock.assert_called_once_with(
-            splits=self.parse_split_file_mock.return_value)
-
-    def test_build_split_fetcher_returns_in_memory_split_fetcher(self):
-        """
-        Tests that _build_split_fetcher returns an InMemorySplitFetcher
-        """
-        self.assertEqual(self.in_memory_split_fetcher_mock.return_value,
-                         self.client._build_split_fetcher())
-
-
 class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.some_file_name = mock.MagicMock()
         self.all_keys_split_side_effect = [mock.MagicMock(), mock.MagicMock()]
         self.all_keys_split_mock = self.patch('splitio.clients.AllKeysSplit',
                                               side_effect=self.all_keys_split_side_effect)
-        self.client = LocalhostEnvironmentClient()
+        self.build_split_fetcher_mock = self.patch(
+            'splitio.test.test_clients.LocalhostEnvironmentClient._build_split_fetcher')
+
         self.open_mock = self.patch_builtin('open')
+        self.client = LocalhostEnvironmentClient()
 
     def test_skips_comment_lines(self):
         """Test that _parse_split_file skips comment lines"""

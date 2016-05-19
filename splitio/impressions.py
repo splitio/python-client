@@ -186,8 +186,6 @@ class CacheBasedTreatmentLog(TreatmentLog):
         """A cache based impressions log implementation.
         :param impressions_cache: An impressions cache
         :type impressions_cache: ImpressionsCache
-        :param ignore_impressions: Whether to ignore log requests
-        :type ignore_impressions: bool
         """
         super(CacheBasedTreatmentLog, self).__init__()
         self._impressions_cache = impressions_cache
@@ -326,16 +324,20 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
 
 
 class AsyncTreatmentLog(TreatmentLog):
-    def __init__(self, impressions_log, max_workers=5):
+    def __init__(self, delegate, max_workers=5):
         """A treatment log implementation that uses threads to execute the actual logging onto a
         delegate log to avoid blocking the caller.
-        :param impressions_log: The delegate impression log
-        :type impressions_log: ImpressionLog
+        :param delegate: The delegate impression log
+        :type delegate: ImpressionLog
         :param max_workers: How many workers to use for logging
         """
         super(AsyncTreatmentLog, self).__init__()
-        self._impressions_log = impressions_log
+        self._delegate = delegate
         self._thread_pool_executor = ThreadPoolExecutor(max_workers=max_workers)
+
+    @property
+    def delegate(self):
+        return self._delegate
 
     def log(self, key, feature_name, treatment, time):
         """Logs an impression asynchronously.
@@ -349,7 +351,7 @@ class AsyncTreatmentLog(TreatmentLog):
         :return: int
         """
         try:
-            self._thread_pool_executor.submit(self._impressions_log.log, key, feature_name,
+            self._thread_pool_executor.submit(self._delegate.log, key, feature_name,
                                               treatment, time)
         except:
             self._logger.exception('Exception caught logging impression asynchronously')

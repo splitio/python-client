@@ -8,6 +8,7 @@ import arrow
 from os.path import expanduser, join
 from random import randint
 from re import compile
+from threading import Event, Thread
 
 from future.utils import raise_from
 
@@ -29,9 +30,7 @@ class Client(object):
         get_split_fetcher method (and optionally the get_splitter method).
         """
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._splitter = None
-        self._treatment_log = None
-        self._metrics = None
+        self._splitter = Splitter()
 
     def get_split_fetcher(self):  # pragma: no cover
         """Get the split fetcher implementation. Subclasses need to override this method.
@@ -45,30 +44,21 @@ class Client(object):
         :return: The splitter implementation.
         :rtype: Splitter
         """
-        if self._splitter is None:
-            self._splitter = Splitter()
-
         return self._splitter
 
-    def get_treatment_log(self):
+    def get_treatment_log(self):  # pragma: no cover
         """Get the treatment log implementation.
         :return: The treatment log implementation.
         :rtype: TreatmentLog
         """
-        if self._treatment_log is None:
-            self._treatment_log = TreatmentLog()
+        raise NotImplementedError()
 
-        return self._treatment_log
-
-    def get_metrics(self):
+    def get_metrics(self):  # pragma: no cover
         """Get the metrics implementation.
         :return: The metrics implementation.
         :rtype: Metrics
         """
-        if self._metrics is None:
-            self._metrics = Metrics()
-
-        return self._metrics
+        raise NotImplementedError()
 
     def get_treatment(self, key, feature, attributes=None):
         """
@@ -174,8 +164,19 @@ class SelfRefreshingClient(Client):
         :type events_api_base_url: str
         """
         super(SelfRefreshingClient, self).__init__()
-        self._api_key = api_key
 
+        self._api_key = api_key
+        self._sdk_api_base_url = sdk_api_base_url
+        self._events_api_base_url = events_api_base_url
+
+        self._init_config(config)
+        self._sdk_api = self._build_sdk_api()
+        self._split_fetcher = self._build_split_fetcher()
+        self._treatment_log = self._build_treatment_log()
+        self._metrics = self._build_metrics()
+        self._start()
+
+    def _init_config(self, config=None):
         self._config = dict(DEFAULT_CONFIG)
         if config is not None:
             self._config.update(config)
@@ -199,12 +200,12 @@ class SelfRefreshingClient(Client):
         self._connection_timeout = self._config['connectionTimeout']
         self._read_timeout = self._config['readTimeout']
         self._max_impressions_log_size = self._config['maxImpressionsLogSize']
+        self._ready = self._config['ready']
 
-        self._sdk_api = SdkApi(self._api_key, sdk_api_base_url=sdk_api_base_url,
-                               events_api_base_url=events_api_base_url,
-                               connect_timeout=self._connection_timeout,
-                               read_timeout=self._read_timeout)
-        self._split_fetcher = None
+    def _build_sdk_api(self):
+        return SdkApi(self._api_key, sdk_api_base_url=self._sdk_api_base_url,
+                      events_api_base_url=self._events_api_base_url,
+                      connect_timeout=self._connection_timeout, read_timeout=self._read_timeout)
 
     def _build_split_fetcher(self):
         """
@@ -219,9 +220,48 @@ class SelfRefreshingClient(Client):
         split_parser = SplitParser(segment_fetcher)
         split_fetcher = SelfRefreshingSplitFetcher(split_change_fetcher, split_parser,
                                                    interval=self._split_fetcher_interval)
-        split_fetcher.start()
-
         return split_fetcher
+
+    def _build_treatment_log(self):
+        """Build the treatment log implementation.
+        :return: The treatment log implementation.
+        :rtype: TreatmentLog
+        """
+        self_updating_treatment_log = SelfUpdatingTreatmentLog(
+            self._sdk_api, max_count=self._max_impressions_log_size,
+            interval=self._impressions_interval)
+        return AsyncTreatmentLog(self_updating_treatment_log)
+
+    def _build_metrics(self):
+        """Build the metrics implementation.
+        :return: The metrics implementation.
+        :rtype: Metrics
+        """
+        api_metrics = ApiMetrics(self._sdk_api, max_call_count=self._metrics_max_call_count,
+                                 max_time_between_calls=self._metrics_max_time_between_calls)
+        return AsyncMetrics(api_metrics)
+
+    def _start(self):
+        self._treatment_log.delegate.start()
+
+        if self._ready > 0:
+            event = Event()
+
+            thread = Thread(target=self._fetch_splits, args=(event,))
+            thread.daemon = True
+            thread.start()
+
+            flag_set = event.wait(self._ready / 1000.0)
+            if not flag_set:
+                self._logger.info('Timeout reached. Returning client in partial state.')
+        else:
+            self._split_fetcher.start()
+
+    def _fetch_splits(self, event):
+        """Fetches the split and segment information blocking until it is done."""
+        self._split_fetcher.refresh_splits(block_until_ready=True)
+        self._split_fetcher.start(delayed_update=True)
+        event.set()
 
     def get_split_fetcher(self):
         """
@@ -229,9 +269,6 @@ class SelfRefreshingClient(Client):
         :return: The split fetcher
         :rtype: SplitFetcher
         """
-        if self._split_fetcher is None:
-            self._split_fetcher = self._build_split_fetcher()
-
         return self._split_fetcher
 
     def get_treatment_log(self):
@@ -239,13 +276,6 @@ class SelfRefreshingClient(Client):
         :return: The treatment log implementation.
         :rtype: TreatmentLog
         """
-        if self._treatment_log is None:
-            self_updating_treatment_log = SelfUpdatingTreatmentLog(
-                self._sdk_api, max_count=self._max_impressions_log_size,
-                interval=self._impressions_interval)
-            self._treatment_log = AsyncTreatmentLog(self_updating_treatment_log)
-            self_updating_treatment_log.start()
-
         return self._treatment_log
 
     def get_metrics(self):
@@ -253,11 +283,6 @@ class SelfRefreshingClient(Client):
         :return: The metrics implementation.
         :rtype: Metrics
         """
-        if self._metrics is None:
-            api_metrics = ApiMetrics(self._sdk_api, max_call_count=self._metrics_max_call_count,
-                                     max_time_between_calls=self._metrics_max_time_between_calls)
-            self._metrics = AsyncMetrics(api_metrics)
-
         return self._metrics
 
 
@@ -276,7 +301,9 @@ class JSONFileClient(Client):
         super(JSONFileClient, self).__init__()
         self._segment_changes_file_name = segment_changes_file_name
         self._split_changes_file_name = split_changes_file_name
-        self._split_fetcher = None
+        self._split_fetcher = self._build_split_fetcher()
+        self._treatment_log = TreatmentLog()
+        self._metrics = Metrics()
 
     def _build_split_fetcher(self):
         """
@@ -296,9 +323,6 @@ class JSONFileClient(Client):
         :return: The split fetcher
         :rtype: SplitFetcher
         """
-        if self._split_fetcher is None:
-            self._split_fetcher = self._build_split_fetcher()
-
         return self._split_fetcher
 
     def get_treatment_log(self):
@@ -306,9 +330,6 @@ class JSONFileClient(Client):
         :return: The treatment log implementation.
         :rtype: TreatmentLog
         """
-        if self._treatment_log is None:
-            self._treatment_log = AsyncTreatmentLog(TreatmentLog())
-
         return self._treatment_log
 
     def get_metrics(self):
@@ -316,9 +337,6 @@ class JSONFileClient(Client):
         :return: The metrics implementation.
         :rtype: Metrics
         """
-        if self._metrics is None:
-            self._metrics = AsyncMetrics(Metrics())
-
         return self._metrics
 
 
@@ -349,6 +367,9 @@ class LocalhostEnvironmentClient(Client):
             self._split_definition_file_name = join(expanduser('~'), '.split')
         else:
             self._split_definition_file_name = split_definition_file_name
+        self._split_fetcher = self._build_split_fetcher()
+        self._treatment_log = TreatmentLog()
+        self._metrics = Metrics()
 
     def get_split_fetcher(self):
         """
@@ -356,9 +377,6 @@ class LocalhostEnvironmentClient(Client):
         :return: The split fetcher
         :rtype: SplitFetcher
         """
-        if self._split_fetcher is None:
-            self._split_fetcher = self._build_split_fetcher()
-
         return self._split_fetcher
 
     def _build_split_fetcher(self):
@@ -393,8 +411,21 @@ class LocalhostEnvironmentClient(Client):
 
                     self._logger.warning('Invalid line on localhost environment split definition. '
                                          'line = %s', line)
-
             return splits
         except IOError as e:
             raise_from(ValueError('There was a problem with '
                                   'the splits definition file "{}"'.format(file_name)), e)
+
+    def get_treatment_log(self):
+        """Get the treatment log implementation.
+        :return: The treatment log implementation.
+        :rtype: TreatmentLog
+        """
+        return self._treatment_log
+
+    def get_metrics(self):
+        """Get the metrics implementation.
+        :return: The metrics implementation.
+        :rtype: Metrics
+        """
+        return self._metrics

@@ -78,13 +78,15 @@ class InMemorySegment(Segment):
         return key in self._key_set
 
 
-class DummySegmentFetcher(object):
-    """A segment fetcher that returns empty segments. Useful for testing"""
-    def fetch(self, name):
+class SegmentFetcher(object):
+    """Basic segment fetcher interface."""
+    def fetch(self, name, block_until_ready=False):
         """
         Fetches an empty segment
         :param name: The segment name
         :type name: unicode
+        :param block_until_ready: Whether to wait until all the data is available
+        :type block_until_ready: bool
         :return: An empty segment
         :rtype: Segment
         """
@@ -107,11 +109,13 @@ class SelfRefreshingSegmentFetcher(object):
         self._interval = interval
         self._segments = dict()
 
-    def fetch(self, name):
+    def fetch(self, name, block_until_ready=False):
         """
         Fetch self refreshing segment
         :param name: The name of the segment
         :type name: unicode
+        :param block_until_ready: Whether to wait until all the data is available
+        :type block_until_ready: bool
         :return: A segment for the given name
         :rtype: Segment
         """
@@ -121,7 +125,12 @@ class SelfRefreshingSegmentFetcher(object):
         segment = SelfRefreshingSegment(name, self._segment_change_fetcher, self._executor,
                                         self._interval)
         self._segments[name] = segment
-        segment.start()
+
+        if block_until_ready:
+            segment.refresh_segment()
+            segment.start(delayed_update=True)
+        else:
+            segment.start()
 
         return segment
 
@@ -172,13 +181,20 @@ class SelfRefreshingSegment(InMemorySegment):
         """
         self._stopped = stopped
 
-    def start(self):
-        """Starts the self-refreshing processes of the segment"""
+    def start(self, delayed_update=False):
+        """Starts the self-refreshing processes of the segment.
+        :param delayed_update: Whether to delay the update until the interval has passed
+        :type delayed_update: bool
+        """
         if not self._stopped:
             return
 
         self._stopped = False
-        self._timer_refresh()
+
+        if delayed_update:
+            self._timer_start()
+        else:
+            self._timer_refresh()
 
     def refresh_segment(self):
         """The actual segment refresh process."""
@@ -215,14 +231,8 @@ class SelfRefreshingSegment(InMemorySegment):
             others=',... {} others'.format(3 - len(changes)) if len(changes) > 3 else ''
         )
 
-    def _timer_refresh(self):
-        """Responsible for setting the periodic calls to _refresh_segment using a Timer thread."""
-        if self._stopped:
-            return
-
+    def _timer_start(self):
         try:
-            self._executor.submit(self.refresh_segment)
-
             if hasattr(self._interval, '__call__'):
                 interval = self._interval()
             else:
@@ -232,11 +242,23 @@ class SelfRefreshingSegment(InMemorySegment):
             timer.daemon = True
             timer.start()
         except:
+            self._logger.exception('Exception caught starting timer')
+            self._stopped = True
+
+    def _timer_refresh(self):
+        """Responsible for setting the periodic calls to _refresh_segment using a Timer thread."""
+        if self._stopped:
+            return
+
+        try:
+            self._executor.submit(self.refresh_segment)
+            self._timer_start()
+        except:
             self._logger.exception('Exception caught refreshing timer')
             self._stopped = True
 
 
-class JSONFileSegmentFetcher(object):
+class JSONFileSegmentFetcher(SegmentFetcher):
     def __init__(self, file_name):
         """
         A segment fetcher that retrieves the information from a file with the JSON response of a
@@ -250,11 +272,13 @@ class JSONFileSegmentFetcher(object):
         self._added = frozenset(self._json['added'])
         self._removed = frozenset(self._json['removed'])
 
-    def fetch(self, name):
+    def fetch(self, name, block_until_ready=False):
         """
         Fetch in memory segment
         :param name: The name of the segment
         :type name: str
+        :param block_until_ready: Whether to wait until all the data is available
+        :type block_until_ready: bool
         :return: A segment for the given name
         :rtype: Segment
         """
@@ -356,7 +380,7 @@ class ApiSegmentChangeFetcher(SegmentChangeFetcher):
         return self._api.segment_changes(name, since)
 
 
-class CacheBasedSegmentFetcher(object):
+class CacheBasedSegmentFetcher(SegmentFetcher):
     def __init__(self, segment_cache):
         """
         A segment fetcher based on a segments cache
@@ -365,11 +389,13 @@ class CacheBasedSegmentFetcher(object):
         """
         self._segment_cache = segment_cache
 
-    def fetch(self, name):
+    def fetch(self, name, block_until_ready=False):
         """
         Fetch cache based segment
         :param name: The name of the segment
         :type name: str
+        :param block_until_ready: Whether to wait until all the data is available
+        :type block_until_ready: bool
         :return: A segment for the given name
         :rtype: Segment
         """

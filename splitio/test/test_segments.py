@@ -96,14 +96,6 @@ class SelfRefreshingSegmentFetcherTests(TestCase, MockUtilsMixin):
         self.segments_mock.__setitem__.assert_called_once_with(
             self.some_name, self.self_refreshing_segment_mock.return_value)
 
-    def test_start_is_called_in_new_segment(self):
-        """Tests that start() is called on the newly created segment"""
-        self.segments_mock.__contains__.return_value = False
-
-        self.segment_fetcher.fetch(self.some_name)
-
-        self.self_refreshing_segment_mock.return_value.start.assert_called_once_with()
-
     def test_new_segment_is_returned(self):
         """Tests that the newly created segment is returned"""
         self.segments_mock.__contains__.return_value = False
