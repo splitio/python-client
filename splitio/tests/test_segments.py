@@ -12,7 +12,7 @@ from unittest import TestCase
 from splitio.segments import (InMemorySegment, SelfRefreshingSegmentFetcher, SelfRefreshingSegment,
                               SegmentChangeFetcher, ApiSegmentChangeFetcher,
                               CacheBasedSegmentFetcher, CacheBasedSegment)
-from splitio.test.utils import MockUtilsMixin
+from splitio.tests.utils import MockUtilsMixin
 
 
 class InMemorySegmentTests(TestCase):

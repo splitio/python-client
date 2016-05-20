@@ -17,7 +17,7 @@ from unittest import TestCase, skip
 from splitio.splits import Partition
 from splitio.splitters import Splitter
 from splitio.treatments import CONTROL
-from splitio.test.utils import MockUtilsMixin, random_alphanumeric_string
+from splitio.tests.utils import MockUtilsMixin, random_alphanumeric_string
 
 
 class SplitterGetTreatmentTests(TestCase, MockUtilsMixin):

@@ -13,7 +13,7 @@ from unittest import TestCase
 from splitio.api import (SdkApi, _SEGMENT_CHANGES_URL_TEMPLATE, _SPLIT_CHANGES_URL_TEMPLATE,
                          _TEST_IMPRESSIONS_URL_TEMPLATE, _METRICS_URL_TEMPLATE)
 from splitio.settings import SDK_VERSION, SDK_API_BASE_URL, EVENTS_API_BASE_URL
-from splitio.test.utils import MockUtilsMixin
+from splitio.tests.utils import MockUtilsMixin
 
 
 class SdkApiBuildHeadersTests(TestCase):

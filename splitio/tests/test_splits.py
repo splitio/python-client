@@ -14,7 +14,7 @@ from splitio.splits import (InMemorySplitFetcher, SelfRefreshingSplitFetcher, Sp
                             CacheBasedSplitFetcher)
 from splitio.matchers import (AndCombiner, AllKeysMatcher, UserDefinedSegmentMatcher,
                               WhitelistMatcher, AttributeMatcher)
-from splitio.test.utils import MockUtilsMixin
+from splitio.tests.utils import MockUtilsMixin
 
 
 class InMemorySplitFetcherTests(TestCase):
