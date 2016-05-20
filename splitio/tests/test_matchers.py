@@ -21,7 +21,7 @@ from splitio.matchers import (AndCombiner, CombiningMatcher, AllKeysMatcher, Neg
                               LessThanOrEqualToMatcher)
 from splitio.transformers import (AsDateHourMinuteTimestampTransformMixin, AsNumberTransformMixin,
                                   AsDateTimestampTransformMixin)
-from splitio.test.utils import MockUtilsMixin
+from splitio.tests.utils import MockUtilsMixin
 
 
 class AndCombinerTests(TestCase, MockUtilsMixin):

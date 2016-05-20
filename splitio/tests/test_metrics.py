@@ -12,7 +12,7 @@ from unittest import TestCase
 from splitio.metrics import (LatencyTracker, InMemoryMetrics, build_metrics_counter_data,
                              build_metrics_times_data, build_metrics_gauge_data, ApiMetrics,
                              AsyncMetrics, get_latency_bucket_index)
-from splitio.test.utils import MockUtilsMixin
+from splitio.tests.utils import MockUtilsMixin
 
 
 class LatencyTrackerFindIndexTests(TestCase):

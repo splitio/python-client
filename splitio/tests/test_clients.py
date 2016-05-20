@@ -16,7 +16,7 @@ from splitio.clients import (Client, SelfRefreshingClient, randomize_interval, J
                              LocalhostEnvironmentClient)
 from splitio.settings import DEFAULT_CONFIG, MAX_INTERVAL
 from splitio.treatments import CONTROL
-from splitio.test.utils import MockUtilsMixin
+from splitio.tests.utils import MockUtilsMixin
 
 
 class ClientTests(TestCase, MockUtilsMixin):
@@ -1189,7 +1189,7 @@ class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
         self.all_keys_split_mock = self.patch('splitio.clients.AllKeysSplit',
                                               side_effect=self.all_keys_split_side_effect)
         self.build_split_fetcher_mock = self.patch(
-            'splitio.test.test_clients.LocalhostEnvironmentClient._build_split_fetcher')
+            'splitio.tests.test_clients.LocalhostEnvironmentClient._build_split_fetcher')
 
         self.open_mock = self.patch_builtin('open')
         self.client = LocalhostEnvironmentClient()

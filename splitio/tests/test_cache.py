@@ -10,7 +10,7 @@ except ImportError:
 from unittest import TestCase
 
 from splitio.cache import (InMemorySplitCache, InMemorySegmentCache, InMemoryImpressionsCache)
-from splitio.test.utils import MockUtilsMixin
+from splitio.tests.utils import MockUtilsMixin
 
 
 class InMemorySegmentCacheTests(TestCase, MockUtilsMixin):

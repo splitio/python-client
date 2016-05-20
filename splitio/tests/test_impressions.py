@@ -13,7 +13,7 @@ from splitio.impressions import (Impression, build_impressions_data, TreatmentLo
                                  LoggerBasedTreatmentLog, InMemoryTreatmentLog,
                                  CacheBasedTreatmentLog, SelfUpdatingTreatmentLog,
                                  AsyncTreatmentLog)
-from splitio.test.utils import MockUtilsMixin
+from splitio.tests.utils import MockUtilsMixin
 
 
 class BuildImpressionsDataTests(TestCase):
