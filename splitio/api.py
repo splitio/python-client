@@ -3,17 +3,18 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import requests
 
-from splitio.settings import SDK_API_BASE_URL, SDK_VERSION
+from splitio.settings import SDK_API_BASE_URL, EVENTS_API_BASE_URL, SDK_VERSION
 
 _SEGMENT_CHANGES_URL_TEMPLATE = '{base_url}/segmentChanges/{segment_name}/'
 _SPLIT_CHANGES_URL_TEMPLATE = '{base_url}/splitChanges/'
-_TEST_IMPRESSIONS_URL_TEMPLATE = '{base_url}/testImpressions/'
+_TEST_IMPRESSIONS_URL_TEMPLATE = '{base_url}/testImpressions/bulk/'
 _METRICS_URL_TEMPLATE = '{base_url}/metrics/{endpoint}/'
 
 
 class SdkApi(object):
-    def __init__(self, api_key, sdk_api_base_url=None, split_sdk_machine_name=None,
-                 split_sdk_machine_ip=None, connect_timeout=1500, read_timeout=1000):
+    def __init__(self, api_key, sdk_api_base_url=None, events_api_base_url=None,
+                 split_sdk_machine_name=None, split_sdk_machine_ip=None, connect_timeout=1500,
+                 read_timeout=1000):
         """Provides access to the Split.io SDK RESTful API
 
         :param api_key: The API key generated on the admin interface
@@ -21,6 +22,9 @@ class SdkApi(object):
         :param sdk_api_base_url: An optional string used to override the default API base url.
                                  Useful for testing or to change the target environment.
         :type sdk_api_base_url: str
+        :param events_api_base_url: An optional string used to override the default events API base
+                                    url. Useful for testing or to change the target environment.
+        :type events_api_base_url: str
         :param split_sdk_machine_name: An optional value for the SplitSDKMachineName header. It can
                                        be a function instead of a string if it has to be evaluated
                                        at request time
@@ -37,6 +41,8 @@ class SdkApi(object):
         self._api_key = api_key
         self._sdk_api_url_base = sdk_api_base_url if sdk_api_base_url is not None \
             else SDK_API_BASE_URL
+        self._events_api_url_base = events_api_base_url if events_api_base_url is not None \
+            else EVENTS_API_BASE_URL
         self._split_sdk_machine_name = split_sdk_machine_name
         self._split_sdk_machine_ip = split_sdk_machine_ip
         self._timeout = (connect_timeout, read_timeout)
@@ -134,22 +140,24 @@ class SdkApi(object):
         """Makes a request to the testImpressions endpoint. The method takes a dictionary with the
         test (feature) name and a list of impressions:
 
-        {
-           "testName": str,  # name of the test (feature),
-           "impressions": [
-                {
-                    "keyName" : str,  # name of the key that saw this feature
-                    "treatment" : str,  # the treatment e.g. "on" or "off"
-                    "time" : int  # the timestamp (in ms) when this happened.
-                },
-                ...
-           ]
-        }
+        [
+            {
+               "testName": str,  # name of the test (feature),
+               "impressions": [
+                    {
+                        "keyName" : str,  # name of the key that saw this feature
+                        "treatment" : str,  # the treatment e.g. "on" or "off"
+                        "time" : int  # the timestamp (in ms) when this happened.
+                    },
+                    ...
+               ]
+            }
+        ]
 
         :param test_impressions_data: Data of the impressions of a test (feature)
         :type test_impressions_data: dict
         """
-        url = _TEST_IMPRESSIONS_URL_TEMPLATE.format(base_url=self._sdk_api_url_base)
+        url = _TEST_IMPRESSIONS_URL_TEMPLATE.format(base_url=self._events_api_url_base)
         return self._post(url, test_impressions_data)
 
     def metrics_times(self, times_data):
@@ -170,7 +178,7 @@ class SdkApi(object):
         :param times_data: Data for the metrics times
         :type times_data: list
         """
-        url = _METRICS_URL_TEMPLATE.format(base_url=self._sdk_api_url_base, endpoint='times')
+        url = _METRICS_URL_TEMPLATE.format(base_url=self._events_api_url_base, endpoint='times')
         return self._post(url, times_data)
 
     def metrics_counters(self, counters_data):
@@ -191,7 +199,7 @@ class SdkApi(object):
         :param counters_data: Data for the metrics counters
         :type counters_data: list
         """
-        url = _METRICS_URL_TEMPLATE.format(base_url=self._sdk_api_url_base, endpoint='counters')
+        url = _METRICS_URL_TEMPLATE.format(base_url=self._events_api_url_base, endpoint='counters')
         return self._post(url, counters_data)
 
     def metrics_gauge(self, gauge_data):
@@ -212,5 +220,5 @@ class SdkApi(object):
         :param gauge_data: Data for the metrics gauge
         :type gauge_data: list
         """
-        url = _METRICS_URL_TEMPLATE.format(base_url=self._sdk_api_url_base, endpoint='gauge')
+        url = _METRICS_URL_TEMPLATE.format(base_url=self._events_api_url_base, endpoint='gauge')
         return self._post(url, gauge_data)

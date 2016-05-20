@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 
 SDK_API_BASE_URL = 'https://sdk.split.io/api'
+EVENTS_API_BASE_URL = 'https://events.split.io/api'
 
 SDK_VERSION = 'python-0.0.1'
 
