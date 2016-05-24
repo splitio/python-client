@@ -13,6 +13,7 @@ from threading import Event, Thread
 from future.utils import raise_from
 
 from splitio.api import SdkApi
+from splitio.exceptions import TimeoutException
 from splitio.metrics import (Metrics, AsyncMetrics, ApiMetrics, SDK_GET_TREATMENT)
 from splitio.impressions import (TreatmentLog, AsyncTreatmentLog, SelfUpdatingTreatmentLog)
 from splitio.splitters import Splitter
@@ -153,6 +154,8 @@ class SelfRefreshingClient(Client):
         * metricsRefreshRate: The refresh rate for metrics (Default: 60s)
         * impressionsRefreshRate: The refresh rate for impressions (Default: 60s)
         * randomizeIntervals: Whether to randomize the refres intervals (Default: False)
+        * ready: How long to wait (in seconds) for the client to be initialized. 0 to return
+          immediately without waiting. (Default: 0s)
 
         :param api_key: The API key provided by Split.io
         :type api_key: str
@@ -251,9 +254,10 @@ class SelfRefreshingClient(Client):
             thread.daemon = True
             thread.start()
 
-            flag_set = event.wait(self._ready / 1000.0)
+            flag_set = event.wait(self._ready)
             if not flag_set:
                 self._logger.info('Timeout reached. Returning client in partial state.')
+                raise TimeoutException()
         else:
             self._split_fetcher.start()
 
