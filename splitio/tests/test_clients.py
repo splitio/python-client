@@ -14,6 +14,7 @@ import arrow
 
 from splitio.clients import (Client, SelfRefreshingClient, randomize_interval, JSONFileClient,
                              LocalhostEnvironmentClient)
+from splitio.exceptions import TimeoutException
 from splitio.settings import DEFAULT_CONFIG, MAX_INTERVAL
 from splitio.treatments import CONTROL
 from splitio.tests.utils import MockUtilsMixin
@@ -298,6 +299,108 @@ class SelfRefreshingClientInitTests(TestCase, MockUtilsMixin):
         """Test that __init__ calls _start"""
         SelfRefreshingClient(self.some_api_key)
         self.start_mock.assert_called_once_with()
+
+
+class SelfRefreshingClientStartTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.event_mock = self.patch('splitio.clients.Event')
+        self.event_mock.return_value.wait.return_value = True
+        self.thread_mock = self.patch('splitio.clients.Thread')
+        self.build_sdk_api_mock = self.patch('splitio.clients.SelfRefreshingClient._build_sdk_api')
+        self.build_split_fetcher_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_split_fetcher')
+        self.build_treatment_log_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_treatment_log')
+        self.build_metrics_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_metrics')
+        self.fetch_splits_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._fetch_splits')
+
+        self.some_api_key = mock.MagicMock()
+
+    def test_calls_start_on_treatment_log_delegate(self):
+        """Test that _start calls start on the treatment log delegate"""
+        SelfRefreshingClient(self.some_api_key, config={'ready': 0})
+        self.build_treatment_log_mock.return_value.delegate.start.assert_called_once_with()
+
+    def test_calls_start_on_treatment_log_delegate_with_timeout(self):
+        """Test that _start calls start on the treatment log delegate when a timeout is given"""
+        SelfRefreshingClient(self.some_api_key, config={'ready': 10})
+        self.build_treatment_log_mock.return_value.delegate.start.assert_called_once_with()
+
+    def test_no_event_or_thread_created_if_timeout_is_zero(self):
+        """Test that if timeout is zero, no threads or events are created"""
+        SelfRefreshingClient(self.some_api_key, config={'ready': 0})
+        self.event_mock.assert_not_called()
+        self.thread_mock.assert_not_called()
+
+    def test_split_fetcher_start_called_if_timeout_is_zero(self):
+        """Test that if timeout is zero, start is called on the split fetcher"""
+        SelfRefreshingClient(self.some_api_key, config={'ready': 0})
+        self.build_split_fetcher_mock.assert_called_once_with()
+
+    def test_event_created_if_timeout_is_non_zero(self):
+        """Test that if timeout is non-zero, an event is created"""
+        SelfRefreshingClient(self.some_api_key, config={'ready': 10})
+        self.event_mock.assert_called_once_with()
+
+    def test_wait_is_called_on_event_if_timeout_is_non_zero(self):
+        """Test that if timeout is non-zero, wait is called on the event"""
+        SelfRefreshingClient(self.some_api_key, config={'ready': 10})
+        self.event_mock.return_value.wait.asser_called_once_with(10)
+
+    def test_thread_created_if_timeout_is_non_zero(self):
+        """Test that if timeout is non-zero, a thread with target _fetch_splits is created"""
+        SelfRefreshingClient(self.some_api_key, config={'ready': 10})
+        self.thread_mock.assert_called_once_with(target=self.fetch_splits_mock,
+                                                 args=(self.event_mock.return_value,))
+        self.thread_mock.return_value.start.asser_called_once_with()
+
+    def test_if_event_flag_is_not_set_an_exception_is_raised(self):
+        """Test that if the event flag is not set, a TimeoutException is raised"""
+        self.event_mock.return_value.wait.return_value = False
+        with self.assertRaises(TimeoutException):
+            SelfRefreshingClient(self.some_api_key, config={'ready': 10})
+
+    def test_if_event_flag_is_set_an_exception_is_not_raised(self):
+        """Test that if the event flag is set, a TimeoutException is not raised"""
+        try:
+            SelfRefreshingClient(self.some_api_key, config={'ready': 10})
+        except:
+            self.fail('An unexpected exception was raised')
+
+
+class SelfRefreshingClientFetchSplitsTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.some_event = mock.MagicMock()
+        self.build_sdk_api_mock = self.patch('splitio.clients.SelfRefreshingClient._build_sdk_api')
+        self.build_split_fetcher_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_split_fetcher')
+        self.build_treatment_log_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_treatment_log')
+        self.build_metrics_mock = self.patch(
+            'splitio.clients.SelfRefreshingClient._build_metrics')
+
+        self.some_api_key = mock.MagicMock()
+        self.client = SelfRefreshingClient(self.some_api_key, config={'ready': 10})
+        self.build_split_fetcher_mock.reset_mock()
+
+    def test_calls_refresh_splits_on_split_fetcher(self):
+        """Test that _fetch_splits calls refresh_splits on split_fetcher"""
+        self.client._fetch_splits(self.some_event)
+        self.build_split_fetcher_mock.return_value.refresh_splits.assert_called_once_with(
+            block_until_ready=True)
+
+    def test_calls_start_on_split_fetcher(self):
+        """Test that _fetch_splits calls start on split_fetcher"""
+        self.client._fetch_splits(self.some_event)
+        self.build_split_fetcher_mock.return_value.start.assert_called_once_with(
+            delayed_update=True)
+
+    def test_calls_set_on_event(self):
+        """Test that _fetch_splits calls set on event"""
+        self.client._fetch_splits(self.some_event)
+        self.some_event.set.assert_called_once_with()
 
 
 class SelfRefreshingClientInitConfigTests(TestCase, MockUtilsMixin):
