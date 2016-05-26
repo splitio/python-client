@@ -150,7 +150,7 @@ class Partition(object):
         return '{size}%:{treatment}'.format(size=self._size, treatment=self._treatment)
 
 
-class SplitFetcher(object):
+class SplitFetcher(object):  # pragma: no cover
     def __init__(self):
         """
         The interface for a SplitFetcher. It provides access to Split implementations.
@@ -277,19 +277,28 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
     def change_number(self):
         return self._change_number
 
-    def start(self):
-        """Starts the self-refreshing processes of the splits"""
+    def start(self, delayed_update=False):
+        """Starts the self-refreshing processes of the splits
+        :param delayed_update: Whether to delay the update until the interval has passed
+        :type delayed_update: bool
+        """
         if not self._stopped:
             return
 
         self._stopped = False
-        self._timer_refresh()
 
-    def _update_splits_from_change_fetcher_response(self, response):
+        if delayed_update:
+            self._timer_start()
+        else:
+            self._timer_refresh()
+
+    def _update_splits_from_change_fetcher_response(self, response, block_until_ready=False):
         """
         Updates the splits from the response of the split_change_fetcher
         :param response: A JSON with the response of split_change_fetcher.fetch()
         :type response: dict
+        :param block_until_ready: Whether to block until all data is available
+        :param block_until_ready: bool
         """
         added_features = []
         removed_features = []
@@ -300,7 +309,8 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
                 removed_features.append(split_change['name'])
                 continue
 
-            parsed_split = self._split_parser.parse(split_change)
+            parsed_split = self._split_parser.parse(split_change,
+                                                    block_until_ready=block_until_ready)
             if parsed_split is None:
                 self._logger.warning(
                     'We could not parse the split definition for %s. '
@@ -318,8 +328,11 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
         if len(removed_features) > 0:
             self._logger.info('Deleted features: %s', removed_features)
 
-    def refresh_splits(self):
-        """The actual split fetcher refresh process."""
+    def refresh_splits(self, block_until_ready=False):
+        """The actual split fetcher refresh process.
+        :param block_until_ready: Whether to block until all data is available
+        :param block_until_ready: bool
+        """
         change_number_before = self._change_number
 
         try:
@@ -332,8 +345,8 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
                         return
 
                     if 'splits' in response and len(response['splits']) > 0:
-                        self._update_splits_from_change_fetcher_response(response)
-
+                        self._update_splits_from_change_fetcher_response(
+                            response, block_until_ready=block_until_ready)
                         self._change_number = response['till']
 
                     if not self._greedy:
@@ -345,18 +358,7 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
             self._logger.info('split fetch before: %s, after: %s', change_number_before,
                               self._change_number)
 
-    def _timer_refresh(self):
-        """Responsible for setting the periodic calls to _refresh_splits using a Timer thread"""
-        if self._stopped:
-            return
-
-        try:
-            thread = Thread(target=self.refresh_splits)
-            thread.daemon = True
-            thread.start()
-        except:
-            self._logger.exception('Exception caught starting splits update thread')
-
+    def _timer_start(self):
         try:
             if hasattr(self._interval, '__call__'):
                 interval = self._interval()
@@ -370,22 +372,19 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
             self._logger.exception('Exception caught refreshing timer')
             self._stopped = True
 
+    def _timer_refresh(self):
+        """Responsible for setting the periodic calls to _refresh_splits using a Timer thread"""
+        if self._stopped:
+            return
 
-class CacheBasedSplitFetcher(SplitFetcher):
-    def __init__(self, split_cache):
-        """
-        A cache based SplitFetcher implementation
-        :param split_cache: The split cache
-        :type split_cache: SplitCache
-        :param split_parser: The split parser
-        :type split_parser: SplitParser
-        """
-        super(SelfRefreshingSplitFetcher, self).__init__()
+        try:
+            thread = Thread(target=self.refresh_splits)
+            thread.daemon = True
+            thread.start()
+        except:
+            self._logger.exception('Exception caught starting splits update thread')
 
-        self._split_cache = split_cache
-
-    def fetch(self, feature):
-        return self._split_cache.get_split(feature)
+        self._timer_start()
 
 
 class SplitChangeFetcher(object):
@@ -482,7 +481,7 @@ class SplitParser(object):
         self._logger = logging.getLogger(self.__class__.__name__)
         self._segment_fetcher = segment_fetcher
 
-    def parse(self, split):
+    def parse(self, split, block_until_ready=False):
         """
         Parse a "split" item of the response of the splitChanges endpoint.
 
@@ -490,20 +489,24 @@ class SplitParser(object):
         exception. If theres a problem with the process, it'll return None.
         :param split: A dictionary with a parsed JSON of a split item
         :type split: dict
+        :param block_until_ready: Whether to block until all data is available
+        :param block_until_ready:
         :return: A parsed split
         :rtype: Split
         """
         try:
-            return self._parse(split)
+            return self._parse(split, block_until_ready=block_until_ready)
         except:
             self._logger.exception('Exception caught parsing split')
             return None
 
-    def _parse(self, split):
+    def _parse(self, split, block_until_ready=False):
         """
         Parse a "split" item of the response of the splitChanges endpoint.
         :param split: A dictionary with a parsed JSON of a split item
         :type split: dict
+        :param block_until_ready: Whether to block until all data is available
+        :param block_until_ready:
         :return: A parsed split
         :rtype: Split
         """
@@ -514,24 +517,28 @@ class SplitParser(object):
         for condition in split['conditions']:
             parsed_partitions = [Partition(partition['treatment'], partition['size'])
                                  for partition in condition['partitions']]
-            combining_matcher = self._parse_matcher_group(condition['matcherGroup'])
+            combining_matcher = self._parse_matcher_group(condition['matcherGroup'],
+                                                          block_until_ready=block_until_ready)
             parsed_conditions.append(Condition(combining_matcher, parsed_partitions))
 
         return Split(split['name'], split['seed'], split['killed'],
                      split['defaultTreatment'], parsed_conditions)
 
-    def _parse_matcher_group(self, matcher_group):
+    def _parse_matcher_group(self, matcher_group, block_until_ready=False):
         """
         Parses a matcher group
         :param matcher_group: A list of dictionaries with the JSON representation of a matcher
         :type matcher_group: list
+        :param block_until_ready: Whether to block until all data is available
+        :param block_until_ready:
         :return: A combining matcher
         :rtype: CombiningMatcher
         """
         if 'matchers' not in matcher_group or len(matcher_group['matchers']) == 0:
             raise ValueError('Missing or empty matchers')
 
-        delegates = [self._parse_matcher(matcher) for matcher in matcher_group['matchers']]
+        delegates = [self._parse_matcher(matcher, block_until_ready=block_until_ready)
+                     for matcher in matcher_group['matchers']]
         combiner = self._parse_combiner(matcher_group['combiner'])
 
         return CombiningMatcher(combiner, delegates)
@@ -565,7 +572,7 @@ class SplitParser(object):
             raise ValueError('Invalid data type value: {}'.format(matcher_data.get(
                 'dataType', None)))
 
-    def _parse_combiner(self, combiner):
+    def _parse_combiner(self, combiner, *args, **kwargs):
         """
         Parses a combiner
         :param combiner: The identifier of a combiner
@@ -578,7 +585,7 @@ class SplitParser(object):
 
         raise ValueError('Invalid combiner type: {}'.format(combiner))
 
-    def _parse_matcher_all_keys(self, matcher):
+    def _parse_matcher_all_keys(self, matcher, *args, **kwargs):
         """
         Parses an ALL_KEYS matcher
         :param matcher: A dictionary with the JSON representation of an ALL_KEYS matcher
@@ -589,7 +596,7 @@ class SplitParser(object):
         delegate = AllKeysMatcher()
         return delegate
 
-    def _parse_matcher_in_segment(self, matcher):
+    def _parse_matcher_in_segment(self, matcher, block_until_ready=False, *args, **kwargs):
         """
         Parses an IN_SEGMENT matcher
         :param matcher: A dictionary with the JSON representation of an IN_SEGMENT matcher
@@ -598,11 +605,12 @@ class SplitParser(object):
         :rtype: UserDefinedSegmentMatcher
         """
         matcher_data = self._get_matcher_attribute('userDefinedSegmentMatcherData', matcher)
-        segment = self._segment_fetcher.fetch(matcher_data['segmentName'])
+        segment = self._segment_fetcher.fetch(matcher_data['segmentName'],
+                                              block_until_ready=block_until_ready)
         delegate = UserDefinedSegmentMatcher(segment)
         return delegate
 
-    def _parse_matcher_whitelist(self, matcher):
+    def _parse_matcher_whitelist(self, matcher, *args, **kwargs):
         """
         Parses a WHITELIST matcher
         :param matcher: A dictionary with the JSON representation of a WHITELIST matcher
@@ -614,7 +622,7 @@ class SplitParser(object):
         delegate = WhitelistMatcher(matcher_data['whitelist'])
         return delegate
 
-    def _parse_matcher_equal_to(self, matcher):
+    def _parse_matcher_equal_to(self, matcher, *args, **kwargs):
         """
         Parses an EQUAL_TO matcher
         :param matcher: A dictionary with the JSON representation of an EQUAL_TO matcher
@@ -628,7 +636,7 @@ class SplitParser(object):
         delegate = EqualToMatcher.for_data_type(data_type, matcher_data.get('value', None))
         return delegate
 
-    def _parse_matcher_greater_than_or_equal_to(self, matcher):
+    def _parse_matcher_greater_than_or_equal_to(self, matcher, *args, **kwargs):
         """
         Parses a GREATER_THAN_OR_EQUAL_TO matcher
         :param matcher: A dictionary with the JSON representation of a GREATER_THAN_OR_EQUAL_TO
@@ -644,7 +652,7 @@ class SplitParser(object):
                                                              matcher_data.get('value', None))
         return delegate
 
-    def _parse_matcher_less_than_or_equal_to(self, matcher):
+    def _parse_matcher_less_than_or_equal_to(self, matcher, *args, **kwargs):
         """
         Parses a LESS_THAN_OR_EQUAL_TO matcher
         :param matcher: A dictionary with the JSON representation of an LESS_THAN_OR_EQUAL_TO
@@ -661,7 +669,7 @@ class SplitParser(object):
                                                           matcher_data['value'])
         return delegate
 
-    def _parse_matcher_between(self, matcher):
+    def _parse_matcher_between(self, matcher, *args, **kwargs):
         """
         Parses a BETWEEN matcher
         :param matcher: A dictionary with the JSON representation of an BETWEEN matcher
@@ -677,11 +685,13 @@ class SplitParser(object):
                                                 matcher_data.get('end', None))
         return delegate
 
-    def _parse_matcher(self, matcher):
+    def _parse_matcher(self, matcher, block_until_ready=False):
         """
         Parses a matcher
-        :param matcher: A dictionary with the JSON representtion of a matcher
+        :param matcher: A dictionary with the JSON representation of a matcher
         :type matcher: dict
+        :param block_until_ready: Whether to block until all data is available
+        :param block_until_ready:
         :return: A parsed attribute matcher (with a delegate dependent on type)
         :rtype: AttributeMatcher
         """
@@ -693,7 +703,7 @@ class SplitParser(object):
         try:
             matcher_parse_method = getattr(
                 self, '_parse_matcher_{}'.format(matcher_type.strip().lower()))
-            delegate = matcher_parse_method(matcher)
+            delegate = matcher_parse_method(matcher, block_until_ready=block_until_ready)
         except AttributeError:
             raise ValueError('Invalid matcher type: {}'.format(matcher_type))
 
@@ -706,3 +716,18 @@ class SplitParser(object):
             attribute = matcher['keySelector']['attribute']
 
         return AttributeMatcher(attribute, delegate, matcher.get('negate', False))
+
+
+class CacheBasedSplitFetcher(SplitFetcher):
+    def __init__(self, split_cache):
+        """
+        A cache based SplitFetcher implementation
+        :param split_cache: The split cache
+        :type split_cache: SplitCache
+        """
+        super(CacheBasedSplitFetcher, self).__init__()
+
+        self._split_cache = split_cache
+
+    def fetch(self, feature):
+        return self._split_cache.get_split(feature)

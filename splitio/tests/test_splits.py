@@ -10,10 +10,11 @@ except ImportError:
 from unittest import TestCase
 
 from splitio.splits import (InMemorySplitFetcher, SelfRefreshingSplitFetcher, SplitChangeFetcher,
-                            ApiSplitChangeFetcher, SplitParser, AllKeysSplit)
+                            ApiSplitChangeFetcher, SplitParser, AllKeysSplit,
+                            CacheBasedSplitFetcher)
 from splitio.matchers import (AndCombiner, AllKeysMatcher, UserDefinedSegmentMatcher,
                               WhitelistMatcher, AttributeMatcher)
-from splitio.test.utils import MockUtilsMixin
+from splitio.tests.utils import MockUtilsMixin
 
 
 class InMemorySplitFetcherTests(TestCase):
@@ -107,10 +108,22 @@ class SelfRefreshingSplitFetcherUpdateSplitsFromChangeFetcherResponseTests(TestC
         self.some_splits.pop.assert_called_once_with(self.split_to_remove['name'], None)
 
     def test_split_parser_parse_is_called_for_split_to_add(self):
-        """Tests that parse is called on split_parser with the split to add"""
+        """Tests that parse is called on split_parser with the split to add with the default value
+        for block_until_ready"""
         self.fetcher._update_splits_from_change_fetcher_response(self.some_response)
 
-        self.some_split_parser.parse.assert_called_once_with(self.split_to_add)
+        self.some_split_parser.parse.assert_called_once_with(self.split_to_add,
+                                                             block_until_ready=False)
+
+    def test_split_parser_parse_is_called_for_split_to_add_with_block_until_ready(self):
+        """Tests that parse is called on split_parser with the split to add with the supplied value
+        for block_until_ready"""
+        some_block_until_ready = mock.MagicMock()
+        self.fetcher._update_splits_from_change_fetcher_response(
+            self.some_response, block_until_ready=some_block_until_ready)
+
+        self.some_split_parser.parse.assert_called_once_with(
+            self.split_to_add, block_until_ready=some_block_until_ready)
 
     def test_setitem_is_called_with_parsed_split_to_add(self):
         """Tests that pop is called on splits for removed features"""
@@ -178,21 +191,49 @@ class SelfRefreshingSplitFetcherRefreshSplitsTests(TestCase, MockUtilsMixin):
         """
         Tests that if greedy is True _refresh_splits calls
         _update_splits_from_change_fetcher_response on all responses from split change fetcher
+        with the default value for block_until_ready
         """
         self.fetcher.refresh_splits()
         self.assertListEqual(
-            [mock.call(self.response_0), mock.call(self.response_1)],
+            [mock.call(self.response_0, block_until_ready=False),
+             mock.call(self.response_1, block_until_ready=False)],
+            self.update_splits_from_change_fetcher_response_mock.call_args_list)
+
+    def test_calls_update_splits_from_change_fetcher_response_on_each_response_greedy_block(self):
+        """
+        Tests that if greedy is True _refresh_splits calls
+        _update_splits_from_change_fetcher_response on all responses from split change fetcher
+        with the supplied value for block_until_ready
+        """
+        some_block_until_ready = mock.MagicMock()
+        self.fetcher.refresh_splits(block_until_ready=some_block_until_ready)
+        self.assertListEqual(
+            [mock.call(self.response_0, block_until_ready=some_block_until_ready),
+             mock.call(self.response_1, block_until_ready=some_block_until_ready)],
             self.update_splits_from_change_fetcher_response_mock.call_args_list)
 
     def test_calls_update_splits_from_change_fetcher_response_once_if_non_greedy(self):
         """
         Tests that if greedy is False _refresh_splits calls
-        _update_splits_from_change_fetcher_response once
+        _update_splits_from_change_fetcher_response once with the default value for
+        block_until_ready
         """
         self.fetcher._greedy = False
         self.fetcher.refresh_splits()
         self.update_splits_from_change_fetcher_response_mock.assert_called_once_with(
-            self.response_0)
+            self.response_0, block_until_ready=False)
+
+    def test_calls_update_splits_from_change_fetcher_response_once_if_non_greedy_blocking(self):
+        """
+        Tests that if greedy is False _refresh_splits calls
+        _update_splits_from_change_fetcher_response once with the supplied value for
+        block_until_ready
+        """
+        some_block_until_ready = mock.MagicMock()
+        self.fetcher._greedy = False
+        self.fetcher.refresh_splits(block_until_ready=some_block_until_ready)
+        self.update_splits_from_change_fetcher_response_mock.assert_called_once_with(
+            self.response_0, block_until_ready=some_block_until_ready)
 
     def test_sets_change_number_to_latest_value_of_till_response(self):
         """
@@ -229,10 +270,7 @@ class SelfRefreshingSplitFetcherRefreshSplitsTests(TestCase, MockUtilsMixin):
 class SelfRefreshingSplitFetcherTimerRefreshTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.rlock_mock = self.patch('splitio.splits.RLock')
-        self.refresh_splits_thread = mock.MagicMock()
-        self.timer_refresh_thread = mock.MagicMock()
         self.thread_mock = self.patch('splitio.splits.Thread')
-        self.timer_mock = self.patch('splitio.splits.Timer')
         self.some_split_change_fetcher = mock.MagicMock()
         self.some_split_parser = mock.MagicMock()
         self.some_interval = mock.NonCallableMagicMock()
@@ -240,64 +278,41 @@ class SelfRefreshingSplitFetcherTimerRefreshTests(TestCase, MockUtilsMixin):
         self.fetcher = SelfRefreshingSplitFetcher(self.some_split_change_fetcher,
                                                   self.some_split_parser,
                                                   interval=self.some_interval)
+        self.timer_start_mock = self.patch_object(self.fetcher, '_timer_start')
         self.fetcher.stopped = False
 
     def test_thread_created_and_started_with_refresh_splits(self):
         """Tests that _timer_refresh creates and starts a Thread with _refresh_splits target"""
         self.fetcher._timer_refresh()
-
         self.thread_mock.assert_called_once_with(target=self.fetcher.refresh_splits)
         self.thread_mock.return_value.start.assert_called_once_with()
 
-    def test_timer_created_and_started_with_timer_refresh(self):
+    def test_calls_timer_start(self):
         """Tests that _timer_refresh creates and starts a Timer with _timer_refresh target"""
         self.fetcher._timer_refresh()
-
-        self.timer_mock.assert_called_once_with(self.some_interval, self.fetcher._timer_refresh)
-        self.timer_mock.return_value.start.assert_called_once_with()
-
-    def test_timer_created_and_started_with_timer_refresh_with_random_interval(self):
-        """Tests that _timer_refresh creates and starts a Timer with _timer_refresh target with
-        random interval"""
-        self.fetcher._interval = mock.MagicMock()
-        self.fetcher._timer_refresh()
-
-        self.timer_mock.assert_called_once_with(self.fetcher._interval.return_value,
-                                                self.fetcher._timer_refresh)
-        self.timer_mock.return_value.start.assert_called_once_with()
+        self.timer_start_mock.assert_called_once_with()
 
     def test_no_thread_created_if_stopped(self):
         """Tests that _timer_refresh doesn't create a Thread if it is stopped"""
         self.fetcher.stopped = True
         self.fetcher._timer_refresh()
-
         self.thread_mock.assert_not_called()
 
-    def test_no_timer_created_if_stopped(self):
-        """Tests that _timer_refresh doesn't create a Timer if it is stopped"""
+    def test_timer_start_not_called_if_stopped(self):
+        """Tests that _timer_refresh doesn't call start_tiemer if it is stopped"""
         self.fetcher.stopped = True
         self.fetcher._timer_refresh()
+        self.timer_start_mock.assert_not_called()
 
-        self.timer_mock.assert_not_called()
-
-    def test_timer_created_if_thread_raises_exception(self):
+    def test_timer_start_called_if_thread_raises_exception(self):
         """
-        Tests that _timer_refresh creates and starts a Timer even if the _refresh_splits thread
+        Tests that _timer_refresh calls timer_start even if the _refresh_splits thread
         setup raises an exception
         """
         self.thread_mock.return_value = None
         self.thread_mock.side_effect = Exception()
         self.fetcher._timer_refresh()
-
-        self.timer_mock.assert_called_once_with(self.some_interval, self.fetcher._timer_refresh)
-
-    def test_stops_if_timer_raises_exception(self):
-        """Tests that _timer_refresh sets stop to True if the Timer setup raises an exception"""
-        self.timer_mock.return_value = None
-        self.timer_mock.side_effect = Exception()
-        self.fetcher._timer_refresh()
-
-        self.assertTrue(self.fetcher.stopped)
+        self.timer_start_mock.assert_called_once_with()
 
 
 class SplitChangeFetcherTests(TestCase, MockUtilsMixin):
@@ -364,9 +379,16 @@ class SplitParserParseTests(TestCase, MockUtilsMixin):
         self.internal_parse_mock = self.patch_object(self.parser, '_parse')
 
     def test_parse_calls_internal_parse(self):
-        """Tests that parse calls _parse"""
+        """Tests that parse calls _parse with block_until_ready as False"""
         self.parser.parse(self.some_split)
-        self.internal_parse_mock.assert_called_once_with(self.some_split)
+        self.internal_parse_mock.assert_called_once_with(self.some_split,
+                                                         block_until_ready=False)
+
+    def test_parse_calls_internal_parse_with_block_until_ready(self):
+        """Tests that parse calls _parse passing the value of block_until_ready"""
+        self.parser.parse(self.some_split, block_until_ready=True)
+        self.internal_parse_mock.assert_called_once_with(self.some_split,
+                                                         block_until_ready=True)
 
     def test_parse_returns_none_if_internal_parse_raises_an_exception(self):
         """Tests that parse returns None if _parse raises an exception"""
@@ -440,12 +462,25 @@ class SplitParserInternalParseTests(TestCase, MockUtilsMixin):
         )
 
     def test_calls_parse_matcher_group_on_each_matcher_group(self):
-        """Tests that _parse calls _parse_matcher_group on each matcher group"""
+        """Tests that _parse calls _parse_matcher_group on each matcher group with the default
+        value for block_until_ready"""
         self.parser._parse(self.some_split)
 
         self.assertListEqual(
-            [mock.call(self.matcher_group_0),
-             mock.call(self.matcher_group_1)],
+            [mock.call(self.matcher_group_0, block_until_ready=False),
+             mock.call(self.matcher_group_1, block_until_ready=False)],
+            self.parse_matcher_group_mock.call_args_list
+        )
+
+    def test_calls_parse_matcher_group_on_each_matcher_group_with_block_until_ready(self):
+        """Tests that _parse calls _parse_matcher_group on each matcher group with the passed
+        value for block_until_ready"""
+        some_block_until_ready = mock.MagicMock()
+        self.parser._parse(self.some_split, block_until_ready=some_block_until_ready)
+
+        self.assertListEqual(
+            [mock.call(self.matcher_group_0, block_until_ready=some_block_until_ready),
+             mock.call(self.matcher_group_1, block_until_ready=some_block_until_ready)],
             self.parse_matcher_group_mock.call_args_list
         )
 
@@ -490,9 +525,22 @@ class SplitParserParseMatcherGroupTests(TestCase, MockUtilsMixin):
         }
 
     def test_calls_parse_matcher_on_each_matcher(self):
-        """Tests that _parse_matcher_group calls _parse_matcher on each matcher"""
+        """Tests that _parse_matcher_group calls _parse_matcher on each matcher with the default
+        value for block_until_ready"""
         self.parser._parse_matcher_group(self.some_matcher_group)
-        self.assertListEqual([mock.call(self.some_matchers[0]), mock.call(self.some_matchers[1])],
+        self.assertListEqual([mock.call(self.some_matchers[0], block_until_ready=False),
+                              mock.call(self.some_matchers[1], block_until_ready=False)],
+                             self.parse_matcher_mock.call_args_list)
+
+    def test_calls_parse_matcher_with_block_until_ready_parameter(self):
+        """Tests that _parse_matcher_group calls _parse_matcher on each matcher"""
+        some_block_until_ready = mock.MagicMock
+        self.parser._parse_matcher_group(self.some_matcher_group,
+                                         block_until_ready=some_block_until_ready)
+        self.assertListEqual([mock.call(self.some_matchers[0],
+                                        block_until_ready=some_block_until_ready),
+                              mock.call(self.some_matchers[1],
+                                        block_until_ready=some_block_until_ready)],
                              self.parse_matcher_mock.call_args_list)
 
     def test_calls_parse_combiner_on_combiner(self):
@@ -585,10 +633,22 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
                               AllKeysMatcher)
 
     def test_parse_matcher_in_segment_calls_segment_fetcher_fetch(self):
-        """Tests that _parse_matcher_in_segment calls segment_fetcher fetch method"""
+        """Tests that _parse_matcher_in_segment calls segment_fetcher fetch method with default
+        value for block_until_ready"""
         self.parser._parse_matcher_in_segment(self.some_in_segment_matcher)
         self.some_segment_fetcher.fetch.assert_called_once_with(
-            self.some_in_segment_matcher['userDefinedSegmentMatcherData']['segmentName'])
+            self.some_in_segment_matcher['userDefinedSegmentMatcherData']['segmentName'],
+            block_until_ready=False)
+
+    def test_parse_matcher_in_segment_calls_segment_fetcher_fetch_block(self):
+        """Tests that _parse_matcher_in_segment calls segment_fetcher fetch method with supploed
+        value for block_until_ready"""
+        some_block_until_ready = mock.MagicMock()
+        self.parser._parse_matcher_in_segment(self.some_in_segment_matcher,
+                                              block_until_ready=some_block_until_ready)
+        self.some_segment_fetcher.fetch.assert_called_once_with(
+            self.some_in_segment_matcher['userDefinedSegmentMatcherData']['segmentName'],
+            block_until_ready=some_block_until_ready)
 
     def test_parse_matcher_in_segment_returns_user_defined_segment_matcher(self):
         """Tests that _parse_matcher_in_segment calls segment_fetcher fetch method"""
@@ -710,25 +770,25 @@ class SplitParserParseMatcherTests(TestCase, MockUtilsMixin):
         """Test that _parse_matcher calls _parse_matcher_all_keys on ALL_KEYS matcher"""
         matcher = self._get_matcher('ALL_KEYS')
         self.parser._parse_matcher(matcher)
-        self.parse_matcher_all_keys_mock.assert_called_once_with(matcher)
+        self.parse_matcher_all_keys_mock.assert_called_once_with(matcher, block_until_ready=False)
 
     def test_calls_parse_matcher_in_segment(self):
         """Test that _parse_matcher calls _parse_matcher_in_segment on IN_SEGMENT matcher"""
         matcher = self._get_matcher('IN_SEGMENT')
         self.parser._parse_matcher(matcher)
-        self.parse_matcher_in_segment_mock.assert_called_once_with(matcher)
+        self.parse_matcher_in_segment_mock.assert_called_once_with(matcher, block_until_ready=False)
 
     def test_calls_parse_matcher_whitelist(self):
         """Test that _parse_matcher calls _parse_matcher_in_segment on WHITELIST matcher"""
         matcher = self._get_matcher('WHITELIST')
         self.parser._parse_matcher(matcher)
-        self.parse_matcher_whitelist_mock.assert_called_once_with(matcher)
+        self.parse_matcher_whitelist_mock.assert_called_once_with(matcher, block_until_ready=False)
 
     def test_calls_parse_matcher_equal_to(self):
         """Test that _parse_matcher calls _parse_matcher_equal_to on EQUAL_TO matcher"""
         matcher = self._get_matcher('EQUAL_TO')
         self.parser._parse_matcher(matcher)
-        self.parse_matcher_equal_to_mock.assert_called_once_with(matcher)
+        self.parse_matcher_equal_to_mock.assert_called_once_with(matcher, block_until_ready=False)
 
     def test_calls_parse_matcher_greater_than_or_equal_to(self):
         """
@@ -737,7 +797,8 @@ class SplitParserParseMatcherTests(TestCase, MockUtilsMixin):
         """
         matcher = self._get_matcher('GREATER_THAN_OR_EQUAL_TO')
         self.parser._parse_matcher(matcher)
-        self.parse_matcher_greater_than_or_equal_to_mock.assert_called_once_with(matcher)
+        self.parse_matcher_greater_than_or_equal_to_mock.assert_called_once_with(
+            matcher, block_until_ready=False)
 
     def test_calls_parse_matcher_less_than_or_equal_to(self):
         """
@@ -746,13 +807,14 @@ class SplitParserParseMatcherTests(TestCase, MockUtilsMixin):
         """
         matcher = self._get_matcher('LESS_THAN_OR_EQUAL_TO')
         self.parser._parse_matcher(matcher)
-        self.parse_matcher_less_than_or_equal_to_mock.assert_called_once_with(matcher)
+        self.parse_matcher_less_than_or_equal_to_mock.assert_called_once_with(
+            matcher, block_until_ready=False)
 
     def test_calls_parse_matcher_between(self):
         """Test that _parse_matcher calls _parse_between on BETWEEN matcher"""
         matcher = self._get_matcher('BETWEEN')
         self.parser._parse_matcher(matcher)
-        self.parse_matcher_between_mock.assert_called_once_with(matcher)
+        self.parse_matcher_between_mock.assert_called_once_with(matcher, block_until_ready=False)
 
     def test_raises_exception_if_parse_method_returns_none(self):
         """
@@ -793,3 +855,20 @@ class AllKeysSplitTests(TestCase):
     def test_partition_has_treatment(self):
         """Tests that the partition has the set treatment"""
         self.assertEqual(self.some_treatment, self.split.conditions[0].partitions[0].treatment)
+
+
+class CacheBasedSplitFetcherTests(TestCase):
+    def setUp(self):
+        self.some_feature = mock.MagicMock()
+        self.some_split_cache = mock.MagicMock()
+        self.split_fetcher = CacheBasedSplitFetcher(split_cache=self.some_split_cache)
+
+    def test_fetch_calls_get_split(self):
+        """Test that fetch calls get_split on the split cache"""
+        self.split_fetcher.fetch(self.some_feature)
+        self.some_split_cache.get_split.assert_called_once_with(self.some_feature)
+
+    def test_fetch_results_get_split_result(self):
+        """Test that fetch returns the result of calling get split on the cache"""
+        self.assertEqual(self.some_split_cache.get_split.return_value,
+                         self.split_fetcher.fetch(self.some_feature))

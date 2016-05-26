@@ -9,8 +9,8 @@ except ImportError:
 
 from unittest import TestCase
 
-from splitio.cache import InMemorySplitCache, InMemorySegmentCache, InMemoryImpressionsCache
-from splitio.test.utils import MockUtilsMixin
+from splitio.cache import (InMemorySplitCache, InMemorySegmentCache, InMemoryImpressionsCache)
+from splitio.tests.utils import MockUtilsMixin
 
 
 class InMemorySegmentCacheTests(TestCase, MockUtilsMixin):
@@ -19,37 +19,36 @@ class InMemorySegmentCacheTests(TestCase, MockUtilsMixin):
         self.some_change_number = mock.MagicMock()
         self.segment_cache = InMemorySegmentCache()
         self.entries_mock = self.patch_object(self.segment_cache, '_entries')
-        self.existing_entries = {'some_key_1', 'some_key_2'}
+        self.existing_entries = {'key_set': {'some_key_1', 'some_key_2'}, 'change_number': -1}
         self.entries_mock.__getitem__.return_value = self.existing_entries
 
-    def test_add_to_segment_sets_keys_to_union(self):
-        """Tests that add_to_segment sets keys to union of old and new keys"""
-        self.segment_cache.add_to_segment(self.some_segment_name, {'some_key_2', 'some_key_3'})
-        self.entries_mock.__setitem__.assert_called_once_with(
-            self.some_segment_name, {'some_key_1', 'some_key_2', 'some_key_3'})
+    def test_add_keys_to_segment_sets_keys_to_union(self):
+        """Tests that add_keys_to_segment sets keys to union of old and new keys"""
+        self.segment_cache.add_keys_to_segment(self.some_segment_name, {'some_key_2', 'some_key_3'})
+        self.assertSetEqual({'some_key_1', 'some_key_2', 'some_key_3'},
+                            self.existing_entries['key_set'])
 
-    def test_remove_from_segment_set_keys_to_difference(self):
+    def test_remove_keys_from_segment_set_keys_to_difference(self):
         """Tests that remove_from_segment sets keys to difference of old and new keys"""
-        self.segment_cache.remove_from_segment(self.some_segment_name,
-                                               {'some_key_2', 'some_key_3'})
-        self.entries_mock.__setitem__.assert_called_once_with(
-            self.some_segment_name, {'some_key_1'})
+        self.segment_cache.remove_keys_from_segment(self.some_segment_name,
+                                                    {'some_key_2', 'some_key_3'})
+        self.assertSetEqual({'some_key_1'}, self.existing_entries['key_set'])
 
     def test_is_in_segment_calls_in_on_entries(self):
         """Tests that is_in_segment checks if key in internal set"""
         self.assertTrue(self.segment_cache.is_in_segment(self.some_segment_name, 'some_key_1'))
         self.assertFalse(self.segment_cache.is_in_segment(self.some_segment_name, 'some_key_3'))
 
-    def test_set_change_number_sets_change_number(self):
-        """Test that set_change_number sets the change number"""
-        self.segment_cache.set_change_number(self.some_change_number)
-        self.assertEqual(self.some_change_number, self.segment_cache._change_number)
+    def test_set_change_number_sets_change_number_for_segment(self):
+        """Tests that set_change_number sets the change number for the segment"""
+        self.segment_cache.set_change_number(self.some_segment_name, self.some_change_number)
+        self.assertIn('change_number', self.existing_entries)
+        self.assertEqual(self.some_change_number, self.existing_entries['change_number'])
 
-    def test_get_change_number_returns_change_number(self):
-        """Test that get_change_number returns the change number"""
-        self.segment_cache.set_change_number(self.some_change_number)
-        self.segment_cache._change_number = self.some_change_number
-        self.assertEqual(self.some_change_number, self.segment_cache.get_change_number())
+    def test_get_change_number_returns_existing_change_number(self):
+        """Tests that get_change_number resturns the current change number for the segment"""
+        self.assertEqual(self.existing_entries['change_number'],
+                         self.segment_cache.get_change_number(self.some_segment_name))
 
 
 class InMemorySplitCacheTests(TestCase, MockUtilsMixin):
@@ -91,6 +90,19 @@ class InMemorySplitCacheTests(TestCase, MockUtilsMixin):
         self.split_cache.set_change_number(self.some_change_number)
         self.split_cache._change_number = self.some_change_number
         self.assertEqual(self.some_change_number, self.split_cache.get_change_number())
+
+
+class InMemoryImpressionsCacheInitTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.some_impressions = mock.MagicMock()
+        self.impressions_mock = mock.MagicMock()
+        self.defaultdict_mock = self.patch('splitio.cache.defaultdict',
+                                           return_value=self.impressions_mock)
+
+    def test_init_initializes_impressions_with_impressions_parameter(self):
+        """Tests that __init__ updates the _impressions field with the impressions parameter"""
+        InMemoryImpressionsCache(impressions=self.some_impressions)
+        self.impressions_mock.update.assert_called_once_with(self.some_impressions)
 
 
 class InMemoryImpressionsCacheTests(TestCase, MockUtilsMixin):

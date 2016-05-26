@@ -39,37 +39,8 @@ def build_impressions_data(impressions):
 
 
 class TreatmentLog(object):
-    def __init__(self, ignore_impressions=False):
-        """A log for impressions. Specific implementations need to override the log and
-        fetch_all_and_clear methods.
-        :param ignore_impressions: Whether to ignore log requests
-        :type ignore_impressions: bool
-        """
+    def __init__(self):
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._ignore_impressions = ignore_impressions
-
-    @property
-    def ignore_impressions(self):
-        """
-        :return: Whether to ignore log requests
-        :rtype: bool
-        """
-        return self._ignore_impressions
-
-    @ignore_impressions.setter
-    def ignore_impressions(self, ignore_impressions):
-        """Set ignore_impressions property
-        :param ignore_impressions: Whether to ignore log requests
-        :type ignore_impressions: bool
-        """
-        self._ignore_impressions = ignore_impressions
-
-    def fetch_all_and_clear(self):
-        """Fetch all logged impressions and clear the log.
-        :return: The logged impressions
-        :rtype: list
-        """
-        return dict()
 
     def _log(self, key, feature_name, treatment, time):
         """Log an impression. Implementing classes need to override this method.
@@ -95,21 +66,14 @@ class TreatmentLog(object):
         :param time: The time of the impression in milliseconds since the epoch
         :type time: int
         """
+        pass  # Do nothing
         if key is None or feature_name is None or treatment is None or time is None or time <= 0:
             return
 
-        if not self._ignore_impressions:
-            self._log(key, feature_name, treatment, time)
+        self._log(key, feature_name, treatment, time)
 
 
 class LoggerBasedTreatmentLog(TreatmentLog):
-    def __init__(self, ignore_impressions=False):
-        """A log for impressions that writes impressions as log messages.
-        :param ignore_impressions: Whether to ignore log requests
-        :type ignore_impressions: bool
-        """
-        super(LoggerBasedTreatmentLog, self).__init__(ignore_impressions=ignore_impressions)
-
     def _log(self, key, feature_name, treatment, time):
         """Log an impression as a log message.
         :param key: The key of the impression
@@ -134,10 +98,27 @@ class InMemoryTreatmentLog(TreatmentLog):
         :param ignore_impressions: Whether to ignore log requests
         :type ignore_impressions: bool
         """
-        super(InMemoryTreatmentLog, self).__init__(ignore_impressions=ignore_impressions)
+        super(InMemoryTreatmentLog, self).__init__()
         self._max_count = max_count
+        self._ignore_impressions = ignore_impressions
         self._impressions = defaultdict(list)
         self._rlock = RLock()
+
+    @property
+    def ignore_impressions(self):
+        """
+        :return: Whether to ignore log requests
+        :rtype: bool
+        """
+        return self._ignore_impressions
+
+    @ignore_impressions.setter
+    def ignore_impressions(self, ignore_impressions):
+        """Set ignore_impressions property
+        :param ignore_impressions: Whether to ignore log requests
+        :type ignore_impressions: bool
+        """
+        self._ignore_impressions = ignore_impressions
 
     @property
     def max_count(self):
@@ -201,22 +182,13 @@ class InMemoryTreatmentLog(TreatmentLog):
 
 
 class CacheBasedTreatmentLog(TreatmentLog):
-    def __init__(self, impressions_cache, ignore_impressions=False):
+    def __init__(self, impressions_cache):
         """A cache based impressions log implementation.
         :param impressions_cache: An impressions cache
         :type impressions_cache: ImpressionsCache
-        :param ignore_impressions: Whether to ignore log requests
-        :type ignore_impressions: bool
         """
-        super(CacheBasedTreatmentLog, self).__init__(ignore_impressions=ignore_impressions)
+        super(CacheBasedTreatmentLog, self).__init__()
         self._impressions_cache = impressions_cache
-
-    def fetch_all_and_clear(self):
-        """Fetch all logged impressions and clear the log.
-        :return: The logged impressions
-        :rtype: list
-        """
-        return self._impressions_cache.fetch_all_and_clear()
 
     def _log(self, key, feature_name, treatment, time):
         """Logs an impression. Since the actual cache implementation may not allow for easily
@@ -352,16 +324,20 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
 
 
 class AsyncTreatmentLog(TreatmentLog):
-    def __init__(self, impressions_log, max_workers=5):
+    def __init__(self, delegate, max_workers=5):
         """A treatment log implementation that uses threads to execute the actual logging onto a
         delegate log to avoid blocking the caller.
-        :param impressions_log: The delegate impression log
-        :type impressions_log: ImpressionLog
+        :param delegate: The delegate impression log
+        :type delegate: ImpressionLog
         :param max_workers: How many workers to use for logging
         """
         super(AsyncTreatmentLog, self).__init__()
-        self._impressions_log = impressions_log
+        self._delegate = delegate
         self._thread_pool_executor = ThreadPoolExecutor(max_workers=max_workers)
+
+    @property
+    def delegate(self):
+        return self._delegate
 
     def log(self, key, feature_name, treatment, time):
         """Logs an impression asynchronously.
@@ -375,7 +351,7 @@ class AsyncTreatmentLog(TreatmentLog):
         :return: int
         """
         try:
-            self._thread_pool_executor.submit(self._impressions_log.log, key, feature_name,
+            self._thread_pool_executor.submit(self._delegate.log, key, feature_name,
                                               treatment, time)
         except:
             self._logger.exception('Exception caught logging impression asynchronously')
