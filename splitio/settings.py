@@ -11,7 +11,7 @@ PACKAGE_VERSION_MICRO = '1'
 PACKAGE_VERSION = '{major}.{minor}.{micro}'.format(major=PACKAGE_VERSION_MAJOR,
                                                    minor=PACKAGE_VERSION_MINOR,
                                                    micro=PACKAGE_VERSION_MICRO)
-SDK_VERSION = 'python-{package_version}'.format(PACKAGE_VERSION)
+SDK_VERSION = 'python-{package_version}'.format(package_version=PACKAGE_VERSION)
 
 DEFAULT_CONFIG = {
     'connectionTimeout': 1500,
