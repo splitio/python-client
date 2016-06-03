@@ -840,9 +840,9 @@ class AllKeysSplitTests(TestCase):
         """Tests that it as a single condition"""
         self.assertEqual(1, len(self.split.conditions))
 
-    def test_condition_as_all_keys_matcher(self):
-        """Tests that the condition is an all keys matcher"""
-        self.assertIsInstance(self.split.conditions[0].matcher, AllKeysMatcher)
+    def test_condition_as_attribute_matcher(self):
+        """Tests that the condition is an attribute matcher"""
+        self.assertIsInstance(self.split.conditions[0].matcher, AttributeMatcher)
 
     def test_condition_has_single_partition(self):
         """Tests that the condition has a single partition"""
