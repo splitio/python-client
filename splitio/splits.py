@@ -91,7 +91,8 @@ class AllKeysSplit(Split):
         """
         super(AllKeysSplit, self).__init__(
             name, None, False, treatment,
-            [Condition(AllKeysMatcher(), [Partition(treatment, 100)])])
+            [Condition(AttributeMatcher(None, AllKeysMatcher(), False),
+                       [Partition(treatment, 100)])])
 
 
 class Condition(object):
