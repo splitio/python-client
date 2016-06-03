@@ -4,7 +4,7 @@ from setuptools import setup
 from sys import version_info
 from splitio.settings import PACKAGE_VERSION
 
-tests_require = []
+tests_require = ['flake8', 'nose', 'coverage']
 install_requires = ['arrow>=0.7.0', 'requests>=2.9.1', 'future>=0.15.2']
 
 if version_info < (3,):
@@ -22,7 +22,7 @@ setup(name='splitio-client',
       install_requires=install_requires,
       tests_require=tests_require,
       extras_require={'test': tests_require},
-      setup_requires=['flake8', 'nose', 'coverage'],
+      setup_requires=['nose'],
       classifiers=[
           'Development Status :: 3 - Alpha',
           'Environment :: Console',
