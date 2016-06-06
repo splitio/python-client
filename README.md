@@ -20,13 +20,13 @@ and development versions are installed directly from the [Github](https://github
 
 Before you begin, make sure that you have an **API key** for the Split.io services. Consult the Split.io documentation on how to get an API key for any of your environments.
 
-The main entry point for this module is the `SelfRefreshingClient` class. Instances of this class provide access to the Split.io service while keeping the cached information up-to-date with periodic requests to the SDK API. Impressions (which treatments were given to each user) and metrics are also sent periodically to the Split.io events backend.
+The main entry point for this project is the `get_client` function. This function creates Split clients that keep the cached information up-to-date with periodic requests to the SDK API. Impressions (which treatments were given to each user) and metrics are also sent periodically to the Split events backend.
 
 The following snippet shows you how to create a basic client using the default configuration, and request a treatment for user:
 
 ```
-  >>> from splitio.clients import SelfRefreshingClient
-  >>> client = SelfRefreshingClient('some_api_key')
+  >>> from splitio import get_client
+  >>> client = get_client('some_api_key')
   >>> client.get_treatment('some_user', 'some_feature')
   'SOME_TREATMENT'
 ```
