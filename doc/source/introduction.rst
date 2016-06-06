@@ -55,12 +55,6 @@ All the possible configuration options are:
 +------------------------+------+--------------------------------------------------------+---------+
 | impressionsRefreshRate | int  | The impressions report period in seconds               | 60      |
 +------------------------+------+--------------------------------------------------------+---------+
-| randomizeIntervals     | bool | Whether to randomize or not the update/report          | False   |
-|                        |      | intervals. Randomized intervals will take random       |         |
-|                        |      | values between half and twice the set configuration.   |         |
-|                        |      | For instance, if the features update refresh period is |         |
-|                        |      | 60, the intervals will vary between 30 and 180 seconds |         |
-+------------------------+------+--------------------------------------------------------+---------+
 | ready                  | int  | How long to wait for the features and segments         | 0       |
 |                        |      | information to be available. If the timeout is         |         |
 |                        |      | exceeded, a ``TimeoutException`` will be raised. If    |         |
