@@ -55,12 +55,12 @@ All the possible configuration options are:
 +------------------------+------+--------------------------------------------------------+---------+
 | impressionsRefreshRate | int  | The impressions report period in seconds               | 60      |
 +------------------------+------+--------------------------------------------------------+---------+
-| ready                  | int  | How long to wait for the features and segments         | 0       |
-|                        |      | information to be available. If the timeout is         |         |
-|                        |      | exceeded, a ``TimeoutException`` will be raised. If    |         |
-|                        |      | value is 0, the constructor will return immediately    |         |
-|                        |      | but not all the information might be available right   |         |
-|                        |      | away.                                                  |         |
+| ready                  | int  | How long to wait (in milliseconds) for the features    |         |
+|                        |      | and segments information to be available. If the       |         |
+|                        |      | timeout is exceeded, a ``TimeoutException`` will be    |         |
+|                        |      | raised. If value is 0, the constructor will return     |         |
+|                        |      | immediately but not all the information might be       |         |
+|                        |      | available right away.                                  |         |
 +------------------------+------+--------------------------------------------------------+---------+
 
 The localhost environment

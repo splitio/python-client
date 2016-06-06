@@ -254,7 +254,7 @@ class SelfRefreshingClient(Client):
             thread.daemon = True
             thread.start()
 
-            flag_set = event.wait(self._ready)
+            flag_set = event.wait(self._ready / 1000)
             if not flag_set:
                 self._logger.info('Timeout reached. Returning client in partial state.')
                 raise TimeoutException()
