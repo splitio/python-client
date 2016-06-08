@@ -14,7 +14,7 @@ if version_info < (3,):
 with open(path.join(path.abspath(path.dirname(__file__)), 'splitio', 'version.py')) as f:
     exec (f.read())
 
-setup(name='splitio-client',
+setup(name='splitio_client',
       version=__version__,
       description='Split.io Python Client',
       author='Patricio Echague',
