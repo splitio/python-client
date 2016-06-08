@@ -38,10 +38,9 @@ class AsNumberTransformMixinTests(TestCase):
         self.assertIsInstance(transformed, int)
         self.assertEqual(9223372036854775808, transformed)
 
-    def test_fails_with_invalid_number(self):
-        """Tests that transform fails with strings with invalid integers"""
-        with self.assertRaises(ValueError):
-            self.transformer.transform('foobar')
+    def test_returns_none_with_invalid_number(self):
+        """Tests that transform returns none with strings with invalid integers"""
+        self.assertIsNone(self.transformer.transform('foobar'))
 
 
 class AsDateHourMinuteTimestampTransformMixinTests(TestCase):
@@ -87,6 +86,12 @@ class AsDateHourMinuteTimestampTransformMixinTests(TestCase):
         transformed = self.transformer.transform(value)
         self.assertEqual(2150162040000, transformed)
 
+    def test_returns_none_with_invalid_numer(self):
+        """
+        Tests that transform returns None when given an invalid number
+        """
+        self.assertIsNone(self.transformer.transform('foobar'))
+
 
 class AsDateTimestampTransformMixinTests(TestCase):
     def setUp(self):
@@ -130,3 +135,9 @@ class AsDateTimestampTransformMixinTests(TestCase):
 
         transformed = self.transformer.transform(value)
         self.assertEqual(2150150400000, transformed)
+
+    def test_returns_none_with_invalid_numer(self):
+        """
+        Tests that transform returns None when given an invalid number
+        """
+        self.assertIsNone(self.transformer.transform('foobar'))
