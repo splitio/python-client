@@ -1,17 +1,12 @@
 """Default settings for the Split.IO SDK Python client"""
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+from .version import __version__
 
 SDK_API_BASE_URL = 'https://sdk.split.io/api'
 EVENTS_API_BASE_URL = 'https://events.split.io/api'
 
-PACKAGE_VERSION_MAJOR = '0'
-PACKAGE_VERSION_MINOR = '0'
-PACKAGE_VERSION_MICRO = '1'
-PACKAGE_VERSION = '{major}.{minor}.{micro}'.format(major=PACKAGE_VERSION_MAJOR,
-                                                   minor=PACKAGE_VERSION_MINOR,
-                                                   micro=PACKAGE_VERSION_MICRO)
-SDK_VERSION = 'python-{package_version}'.format(package_version=PACKAGE_VERSION)
+SDK_VERSION = 'python-{package_version}'.format(package_version=__version__)
 
 DEFAULT_CONFIG = {
     'connectionTimeout': 1500,

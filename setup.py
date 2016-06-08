@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from setuptools import setup
+from os import path
 from sys import version_info
 
 tests_require = ['flake8', 'nose', 'coverage']
@@ -10,8 +11,11 @@ if version_info < (3,):
     tests_require += ['mock']
     install_requires += ['six>=1.10.0', 'futures>=3.0.5', 'enum34>=1.1.5']
 
+with open(path.join(path.abspath(path.dirname(__file__)), 'splitio', 'version.py')) as f:
+    exec (f.read())
+
 setup(name='splitio-client',
-      version='0.0.1',
+      version=__version__,
       description='Split.io Python Client',
       author='Patricio Echague',
       author_email='pato@split.io',
