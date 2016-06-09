@@ -235,7 +235,7 @@ class BetweenMatcherTests(TestCase, MockUtilsMixin):
         self.transformed_key.__le__.return_value = True
         self.some_data_type = mock.MagicMock()
 
-        self.transform_mock = self.patch('splitio.matchers.BetweenMatcher.transform',
+        self.transform_mock = self.patch('splitio.matchers.BetweenMatcher.transform_key',
                                          return_value=self.transformed_key)
 
         self.matcher = BetweenMatcher(self.some_start, self.some_end, self.some_data_type)
@@ -348,7 +348,7 @@ class CompareMatcherTests(TestCase, MockUtilsMixin):
         self.transformed_key = mock.MagicMock()
         self.some_data_type = mock.MagicMock()
 
-        self.transform_mock = self.patch('splitio.matchers.CompareMatcher.transform',
+        self.transform_mock = self.patch('splitio.matchers.CompareMatcher.transform_key',
                                          return_value=self.transformed_key)
         self.matcher = CompareMatcher(self.some_compare_to, self.some_data_type)
         self.compare_mock = self.patch_object(self.matcher, 'compare')

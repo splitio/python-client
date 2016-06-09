@@ -225,8 +225,10 @@ class BetweenMatcher(TransformMixin, ForDataTypeMixin):
         :type data_type: DataType
         """
         self._data_type = data_type
-        self._start = start
-        self._end = end
+        self._original_start = start
+        self._original_end = end
+        self._start = self.transform_condition_parameter(start)
+        self._end = self.transform_condition_parameter(end)
 
     @property
     def start(self):
@@ -238,14 +240,14 @@ class BetweenMatcher(TransformMixin, ForDataTypeMixin):
 
     def match(self, key):
         """
-        Returns True if the key (after being transformed by the transform() method) is between
+        Returns True if the key (after being transformed by the transform_key() method) is between
         start and end
         :param key: The key to match
         :type key: any
         :return: Whether the transformed key is between start and end
         :rtype: bool
         """
-        transformed_key = self.transform(key)
+        transformed_key = self.transform_key(key)
 
         if transformed_key is None:
             return None
@@ -297,7 +299,8 @@ class CompareMatcher(TransformMixin, CompareMixin):
         :type data_type: DataType
         """
         self._data_type = data_type
-        self._compare_to = compare_to
+        self._original_compare_to = compare_to
+        self._compare_to = self.transform_condition_parameter(compare_to)
 
     def match(self, key):
         """
@@ -307,7 +310,7 @@ class CompareMatcher(TransformMixin, CompareMixin):
         :return: The resulf of calling compare() with the key and the value
         :rtype: bool
         """
-        transformed_key = self.transform(key)
+        transformed_key = self.transform_key(key)
 
         if transformed_key is None:
             return None
