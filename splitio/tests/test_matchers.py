@@ -216,16 +216,6 @@ class BetweenMatcherForDataTypeTests(TestCase):
         matcher = BetweenMatcher.for_data_type(DataType.DATETIME, 1461601825000, 1461609025000)
         self.assertIsInstance(matcher, DateTimeBetweenMatcher)
 
-    def test_start_end_are_properly_transformed_for_datetime_datatype(self):
-        """
-        Tests that for_data_type returns a DateTimeBetweenMatcher for which the values of start
-        and end have been properly transformed.
-        """
-        matcher = BetweenMatcher.for_data_type(DataType.DATETIME, 1461601825000, 1461609025000)
-
-        self.assertEqual(1461601800000, matcher.start)
-        self.assertEqual(1461609000000, matcher.end)
-
     def test_for_data_type_returns_number_between_batcher_for_number(self):
         """
         Tests that for_data_type returns a NumberBetweenMatcher matcher with the
@@ -239,31 +229,16 @@ class BetweenMatcherTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.some_key = mock.MagicMock()
         self.some_start = mock.MagicMock()
+        self.some_start.__le__.return_value = True
         self.some_end = mock.MagicMock()
         self.transformed_key = mock.MagicMock()
         self.transformed_key.__le__.return_value = True
-        self.transformed_start = mock.MagicMock()
-        self.transformed_start.__le__.return_value = True
-        self.transformed_end = mock.MagicMock()
         self.some_data_type = mock.MagicMock()
 
-        self.transform_mock = self.patch('splitio.matchers.BetweenMatcher.transform')
-
-        def transform_side_effect(value):
-            if value == self.some_key:
-                return self.transformed_key
-            elif value == self.some_start:
-                return self.transformed_start
-            elif value == self.some_end:
-                return self.transformed_end
-
-            raise ValueError()
-
-        self.transform_mock.side_effect = transform_side_effect
+        self.transform_mock = self.patch('splitio.matchers.BetweenMatcher.transform',
+                                         return_value=self.transformed_key)
 
         self.matcher = BetweenMatcher(self.some_start, self.some_end, self.some_data_type)
-
-        self.transform_mock.reset_mock()
 
     def test_match_calls_transform_on_key(self):
         """Tests that match calls transform on key"""
@@ -282,8 +257,8 @@ class BetweenMatcherTests(TestCase, MockUtilsMixin):
         """Tests that match checks that the transformed key is between the start and end"""
         self.matcher.match(self.some_key)
 
-        self.transformed_start.__le__.assert_called_once_with(self.transformed_key)
-        self.transformed_key.__le__.assert_called_once_with(self.transformed_end)
+        self.some_start.__le__.assert_called_once_with(self.transformed_key)
+        self.transformed_key.__le__.assert_called_once_with(self.some_end)
 
     def test_match_returns_true_if_key_between_start_and_end(self):
         """Tests that match returns True if key is between the start and end"""
@@ -291,7 +266,7 @@ class BetweenMatcherTests(TestCase, MockUtilsMixin):
 
     def test_match_returns_false_if_key_less_than_start(self):
         """Tests that match returns False if key is less than start"""
-        self.transformed_start.__le__.return_value = False
+        self.some_start.__le__.return_value = False
         self.assertFalse(self.matcher.match(self.some_key))
 
     def test_match_returns_false_if_key_greater_than_end(self):
@@ -371,25 +346,12 @@ class CompareMatcherTests(TestCase, MockUtilsMixin):
         self.some_key = mock.MagicMock()
         self.some_compare_to = mock.MagicMock()
         self.transformed_key = mock.MagicMock()
-        self.transformed_compare_to = mock.MagicMock()
         self.some_data_type = mock.MagicMock()
 
-        self.transform_mock = self.patch('splitio.matchers.CompareMatcher.transform')
-
-        def transform_side_effect(value):
-            if value == self.some_key:
-                return self.transformed_key
-            elif value == self.some_compare_to:
-                return self.transformed_compare_to
-
-            raise ValueError()
-
-        self.transform_mock.side_effect = transform_side_effect
-
+        self.transform_mock = self.patch('splitio.matchers.CompareMatcher.transform',
+                                         return_value=self.transformed_key)
         self.matcher = CompareMatcher(self.some_compare_to, self.some_data_type)
         self.compare_mock = self.patch_object(self.matcher, 'compare')
-
-        self.transform_mock.reset_mock()
 
     def test_match_calls_transform_on_the_key(self):
         """Tests that match calls transform on the supplied key"""
@@ -409,7 +371,7 @@ class CompareMatcherTests(TestCase, MockUtilsMixin):
         self.matcher.match(self.some_key)
 
         self.compare_mock.assert_called_once_with(self.transformed_key,
-                                                  self.transformed_compare_to)
+                                                  self.some_compare_to)
 
     def test_match_returns_compare_result(self):
         """

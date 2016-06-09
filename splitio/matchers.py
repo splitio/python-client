@@ -225,10 +225,8 @@ class BetweenMatcher(TransformMixin, ForDataTypeMixin):
         :type data_type: DataType
         """
         self._data_type = data_type
-        self._original_start = start
-        self._original_end = end
-        self._start = self.transform(start)
-        self._end = self.transform(end)
+        self._start = start
+        self._end = end
 
     @property
     def start(self):
@@ -299,8 +297,7 @@ class CompareMatcher(TransformMixin, CompareMixin):
         :type data_type: DataType
         """
         self._data_type = data_type
-        self._original_compare_to = compare_to
-        self._compare_to = self.transform(compare_to)
+        self._compare_to = compare_to
 
     def match(self, key):
         """

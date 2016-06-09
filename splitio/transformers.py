@@ -64,8 +64,7 @@ class AsDateHourMinuteTimestampTransformMixin(TransformMixin):
         if value is None:
             return None
 
-        return Arrow.utcfromtimestamp(value / 1000).replace(second=0,
-                                                            microsecond=0).timestamp * 1000
+        return Arrow.utcfromtimestamp(value).replace(second=0, microsecond=0).timestamp * 1000
 
 
 class AsDateTimestampTransformMixin(TransformMixin):
@@ -81,5 +80,5 @@ class AsDateTimestampTransformMixin(TransformMixin):
         if value is None:
             return None
 
-        return Arrow.utcfromtimestamp(value / 1000).replace(hour=0, minute=0, second=0,
-                                                            microsecond=0).timestamp * 1000
+        return Arrow.utcfromtimestamp(value).replace(hour=0, minute=0, second=0,
+                                                     microsecond=0).timestamp * 1000
