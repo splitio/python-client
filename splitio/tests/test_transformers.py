@@ -99,7 +99,7 @@ class AsDateHourMinuteTimestampTransformMixinTests(TestCase):
         """Tests that transform truncates seconds and milliseconds"""
         value = arrow.get(2016, 5, 1, 16, 35, 28, 19).timestamp * 1000
 
-        transformed = self.transformer.transform_key(value)
+        transformed = self.transformer.transform_condition_parameter(value)
         self.assertEqual(1462120500000, transformed)
 
     def test_transform_condition_parameter_works_on_epoch_lower_limit(self):
@@ -107,7 +107,7 @@ class AsDateHourMinuteTimestampTransformMixinTests(TestCase):
         lower limit"""
         value = arrow.get(1970, 1, 1, 0, 0, 0, 0).timestamp * 1000
 
-        transformed = self.transformer.transform_key(value)
+        transformed = self.transformer.transform_condition_parameter(value)
         self.assertEqual(0, transformed)
 
     def test_transform_condition_parameter_works_on_epoch_upper_limit(self):
@@ -115,7 +115,7 @@ class AsDateHourMinuteTimestampTransformMixinTests(TestCase):
         upper limit"""
         value = arrow.get(2038, 1, 19, 3, 14, 8, 0).timestamp * 1000
 
-        transformed = self.transformer.transform_key(value)
+        transformed = self.transformer.transform_condition_parameter(value)
         self.assertEqual(2147483640000, transformed)
 
     def test_transform_condition_parameter_works_under_epoch_lower_limit(self):
@@ -123,7 +123,7 @@ class AsDateHourMinuteTimestampTransformMixinTests(TestCase):
         epoch timestamp lower limit"""
         value = arrow.get(1969, 1, 1, 20, 16, 13, 5).timestamp * 1000
 
-        transformed = self.transformer.transform_key(value)
+        transformed = self.transformer.transform_condition_parameter(value)
         self.assertEqual(-31463040000, transformed)
 
     def test_transform_condition_parameter_works_over_epoch_upper_limit(self):
@@ -131,13 +131,12 @@ class AsDateHourMinuteTimestampTransformMixinTests(TestCase):
         timestamp upper limit"""
         value = arrow.get(2038, 2, 19, 3, 14, 8, 9).timestamp * 1000
 
-        transformed = self.transformer.transform_key(value)
+        transformed = self.transformer.transform_condition_parameter(value)
         self.assertEqual(2150162040000, transformed)
 
-
-def test_transform_key_returns_none_with_invalid_numer(self):
-    """Tests that transform_key returns None when given an invalid number"""
-    self.assertIsNone(self.transformer.transform_key('foobar'))
+    def test_transform_key_returns_none_with_invalid_numer(self):
+        """Tests that transform_key returns None when given an invalid number"""
+        self.assertIsNone(self.transformer.transform_condition_parameter('foobar'))
 
 
 class AsDateTimestampTransformMixinTests(TestCase):
@@ -189,21 +188,21 @@ class AsDateTimestampTransformMixinTests(TestCase):
         """Tests that transform_key truncates seconds and milliseconds"""
         value = arrow.get(2016, 5, 1, 16, 35, 28, 19).timestamp * 1000
     
-        transformed = self.transformer.transform_key(value)
+        transformed = self.transformer.transform_condition_parameter(value)
         self.assertEqual(1462060800000, transformed)
 
     def test_transform_condition_parameter_works_on_epoch_lower_limit(self):
         """Tests that transform_key works when supplied with the epoch timestamp lower limit"""
         value = arrow.get(1970, 1, 1, 0, 0, 0, 0).timestamp * 1000
     
-        transformed = self.transformer.transform_key(value)
+        transformed = self.transformer.transform_condition_parameter(value)
         self.assertEqual(0, transformed)
 
     def test_transform_condition_parameter_works_on_epoch_upper_limit(self):
         """Tests that transform_key works when supplied with the epoch timestamp upper limit"""
         value = arrow.get(2038, 1, 19, 3, 14, 8, 0).timestamp * 1000
     
-        transformed = self.transformer.transform_key(value)
+        transformed = self.transformer.transform_condition_parameter(value)
         self.assertEqual(2147472000000, transformed)
 
     def test_transform_condition_parameter_works_under_epoch_lower_limit(self):
@@ -211,7 +210,7 @@ class AsDateTimestampTransformMixinTests(TestCase):
         lower limit"""
         value = arrow.get(1969, 1, 1, 20, 12, 34, 8).timestamp * 1000
     
-        transformed = self.transformer.transform_key(value)
+        transformed = self.transformer.transform_condition_parameter(value)
         self.assertEqual(-31536000000, transformed)
 
     def test_transform_condition_parameter_works_over_epoch_upper_limit(self):
@@ -219,9 +218,9 @@ class AsDateTimestampTransformMixinTests(TestCase):
         limit"""
         value = arrow.get(2038, 2, 19, 3, 14, 8, 15).timestamp * 1000
     
-        transformed = self.transformer.transform_key(value)
+        transformed = self.transformer.transform_condition_parameter(value)
         self.assertEqual(2150150400000, transformed)
 
     def test_transform_condition_parameter_returns_none_with_invalid_numer(self):
         """Tests that transform_key returns None when given an invalid number"""
-        self.assertIsNone(self.transformer.transform_key('foobar'))
+        self.assertIsNone(self.transformer.transform_condition_parameter('foobar'))

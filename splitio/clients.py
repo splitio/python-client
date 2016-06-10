@@ -82,6 +82,11 @@ class Client(object):
             start = arrow.utcnow().timestamp * 1000
 
             split = self.get_split_fetcher().fetch(feature)
+
+            if split is None:
+                self._logger.warning('Unknown or invalid feature: %s', feature)
+                return CONTROL
+
             treatment = self._get_treatment_for_split(split, key, attributes)
 
             self._record_stats(key, feature, treatment, start, SDK_GET_TREATMENT)
@@ -112,9 +117,6 @@ class Client(object):
         :return: The treatment for the key and split
         :rtype: str
         """
-        if split is None:
-            return CONTROL
-
         if split.killed:
             return split.default_treatment
 

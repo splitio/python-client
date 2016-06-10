@@ -84,34 +84,30 @@ class ClientTests(TestCase, MockUtilsMixin):
                                                    self.some_attributes))
 
     def test_get_treatment_returns_control_if_get_split_fetcher_raises_exception(self):
-        """
-        Test that get_treatment returns CONTROL treatment if get_split_fetcher raises an exception
-        """
+        """Test that get_treatment returns CONTROL treatment if get_split_fetcher raises an
+        exception"""
         self.get_split_fetcher_mock.side_effect = Exception()
         self.assertEqual(CONTROL, self.client.get_treatment(self.some_key, self.some_feature,
                                                             self.some_attributes))
 
     def test_get_treatment_returns_control_if_fetch_raises_exception(self):
-        """
-        Test that get_treatment returns CONTROL treatment if fetch raises an exception
-        """
+        """Test that get_treatment returns CONTROL treatment if fetch raises an exception"""
         self.get_split_fetcher_mock.return_value.fetch.side_effect = Exception()
         self.assertEqual(CONTROL, self.client.get_treatment(self.some_key, self.some_feature,
                                                             self.some_attributes))
 
-    def test_get_treatment_returns_control_if_get_treatment_for_split_raises_exception(self):
-        """
-        Test that get_treatment returns CONTROL treatment _get_treatment_for_split raises an
-        exception
-        """
-        self.patch_object(self.client, '_get_treatment_for_split', side_effect=Exception())
+    def test_get_treatment_returns_control_if_split_is_none(self):
+        """Test that get_treatment returns CONTROL treatment if split is None"""
+        self.get_split_fetcher_mock.return_value.fetch.return_value = None
         self.assertEqual(CONTROL, self.client.get_treatment(self.some_key, self.some_feature,
                                                             self.some_attributes))
 
-    def test_get_treatment_for_split_returns_control_if_split_is_none(self):
-        """Test that _get_treatment_for_split returns CONTROL if split is None"""
-        self.assertEqual(CONTROL, self.client._get_treatment_for_split(None, self.some_key,
-                                                                       self.some_feature))
+    def test_get_treatment_returns_control_if_get_treatment_for_split_raises_exception(self):
+        """Test that get_treatment returns CONTROL treatment _get_treatment_for_split raises an
+        exception"""
+        self.patch_object(self.client, '_get_treatment_for_split', side_effect=Exception())
+        self.assertEqual(CONTROL, self.client.get_treatment(self.some_key, self.some_feature,
+                                                            self.some_attributes))
 
     def test_get_treatment_for_split_returns_default_treatment_if_feature_is_killed(self):
         """Test that _get_treatment_for_split returns CONTROL if split is None"""
