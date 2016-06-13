@@ -1,0 +1,24 @@
+#!/bin/bash
+#Version 1
+InstanceID=`curl -s "http://169.254.169.254/latest/meta-data/instance-id"`
+ROLE=`aws --region us-east-1 ec2 describe-tags --filters Name=resource-id,Values=$InstanceID Name=key,Values=Role --output=text | awk {'print $5'}`
+
+if [ $ROLE = "sdk" ]; then
+        mkdir -p /home/ec2-user/sdk
+        sudo cp /tmp/server-sdk-api-0.0.1-SNAPSHOT.jar /home/ec2-user/sdk
+        sudo cp /tmp/config-sdk.yml /home/ec2-user/sdk/config.yml
+        sudo cp /tmp/sdk /etc/init.d/
+ 	sudo chmod +x /etc/init.d/sdk
+        sudo chown -R ec2-user: /home/ec2-user/sdk
+fi
+
+if [ $ROLE = "webadmin" ]; then
+        mkdir -p /home/ec2-user/webadmin
+        sudo cp /tmp/server-webadmin-0.0.1-SNAPSHOT.jar /home/ec2-user/webadmin
+        sudo cp /tmp/config-web.yml /home/ec2-user/webadmin/config.yml
+        sudo cp /tmp/web /etc/init.d/
+        sudo chmod +x /etc/init.d/web
+        sudo chown -R ec2-user: /home/ec2-user/webadmin
+fi
+
+exit 0
