@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import requests
 
-from splitio.settings import SDK_API_BASE_URL, EVENTS_API_BASE_URL, SDK_VERSION
+from splitio.config import SDK_API_BASE_URL, EVENTS_API_BASE_URL, SDK_VERSION
 
 _SEGMENT_CHANGES_URL_TEMPLATE = '{base_url}/segmentChanges/{segment_name}/'
 _SPLIT_CHANGES_URL_TEMPLATE = '{base_url}/splitChanges/'
@@ -222,3 +222,19 @@ class SdkApi(object):
         """
         url = _METRICS_URL_TEMPLATE.format(base_url=self._events_api_url_base, endpoint='gauge')
         return self._post(url, gauge_data)
+
+
+def api_factory(config):
+    """Build a split.io SDK API client using a config dictionary.
+    :param config: A config dictionary
+    :type config: dict
+    :return: SdkApi client
+    :rtype: SdkApi
+    """
+    return SdkApi(config.get('apiKey'),
+                  sdk_api_base_url=config['sdkApiBaseUrl'],
+                  events_api_base_url=config['eventsApiBaseUrl'],
+                  split_sdk_machine_name=config['splitSdkMachineName'],
+                  split_sdk_machine_ip=config['splitSdkMachineIp'],
+                  connect_timeout=config['connectionTimeout'],
+                  read_timeout=config['readTimeout'])

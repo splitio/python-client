@@ -15,7 +15,7 @@ import arrow
 from splitio.clients import (Client, SelfRefreshingClient, randomize_interval, JSONFileClient,
                              LocalhostEnvironmentClient)
 from splitio.exceptions import TimeoutException
-from splitio.settings import DEFAULT_CONFIG, MAX_INTERVAL
+from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL
 from splitio.treatments import CONTROL
 from splitio.tests.utils import MockUtilsMixin
 
