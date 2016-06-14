@@ -5,7 +5,7 @@ from os import path
 from sys import version_info
 
 tests_require = ['flake8', 'nose', 'coverage']
-install_requires = ['arrow>=0.7.0', 'requests>=2.9.1', 'future>=0.15.2']
+install_requires = ['arrow>=0.7.0', 'requests>=2.9.1', 'future>=0.15.2', 'docopt>=0.6.2']
 
 if version_info < (3,):
     tests_require += ['mock']
@@ -26,6 +26,9 @@ setup(name='splitio_client',
       tests_require=tests_require,
       extras_require={'test': tests_require},
       setup_requires=['nose'],
+      extra_requires={
+          'redis': ['redis>=2.6']
+      },
       classifiers=[
           'Development Status :: 3 - Alpha',
           'Environment :: Console',

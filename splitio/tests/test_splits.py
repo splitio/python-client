@@ -400,6 +400,7 @@ class SplitParserInternalParseTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.some_split = mock.MagicMock()
         self.some_segment_fetcher = mock.MagicMock()
+        self.some_block_until_ready = mock.MagicMock()
 
         self.partition_mock = self.patch('splitio.splits.Partition')
         self.partition_mock_side_effect = [mock.MagicMock() for _ in range(3)]
@@ -409,8 +410,8 @@ class SplitParserInternalParseTests(TestCase, MockUtilsMixin):
         self.condition_mock_side_effect = [mock.MagicMock() for _ in range(2)]
         self.condition_mock.side_effect = self.condition_mock_side_effect
 
-        self.split_mock = self.patch('splitio.splits.Split')
         self.parser = SplitParser(self.some_segment_fetcher)
+        self.parse_split_mock = self.patch_object(self.parser, '_parse_split')
         self.parse_matcher_group_mock = self.patch_object(self.parser, '_parse_matcher_group')
         self.parse_matcher_group_mock_side_effect = [mock.MagicMock() for _ in range(2)]
         self.parse_matcher_group_mock.side_effect = self.parse_matcher_group_mock_side_effect
@@ -467,8 +468,10 @@ class SplitParserInternalParseTests(TestCase, MockUtilsMixin):
         self.parser._parse(self.some_split)
 
         self.assertListEqual(
-            [mock.call(self.matcher_group_0, block_until_ready=False),
-             mock.call(self.matcher_group_1, block_until_ready=False)],
+            [mock.call(self.parse_split_mock.return_value, self.matcher_group_0,
+                       block_until_ready=False),
+             mock.call(self.parse_split_mock.return_value, self.matcher_group_1,
+                       block_until_ready=False)],
             self.parse_matcher_group_mock.call_args_list
         )
 
@@ -479,8 +482,10 @@ class SplitParserInternalParseTests(TestCase, MockUtilsMixin):
         self.parser._parse(self.some_split, block_until_ready=some_block_until_ready)
 
         self.assertListEqual(
-            [mock.call(self.matcher_group_0, block_until_ready=some_block_until_ready),
-             mock.call(self.matcher_group_1, block_until_ready=some_block_until_ready)],
+            [mock.call(self.parse_split_mock.return_value, self.matcher_group_0,
+                       block_until_ready=some_block_until_ready),
+             mock.call(self.parse_split_mock.return_value, self.matcher_group_1,
+                       block_until_ready=some_block_until_ready)],
             self.parse_matcher_group_mock.call_args_list
         )
 
@@ -496,19 +501,17 @@ class SplitParserInternalParseTests(TestCase, MockUtilsMixin):
             self.condition_mock.call_args_list
         )
 
-    def test_creates_split(self):
-        """Tests that _parse calls Split constructor"""
-        self.parser._parse(self.some_split)
+    def test_calls_parse_split(self):
+        """Tests that _parse calls _parse_split"""
+        self.parser._parse(self.some_split, block_until_ready=self.some_block_until_ready)
 
-        self.split_mock.assert_called_once_with(self.some_split['name'], self.some_split['seed'],
-                                                self.some_split['killed'],
-                                                self.some_split['defaultTreatment'],
-                                                self.condition_mock_side_effect)
+        self.parse_split_mock.assert_called_once_with(
+            self.some_split, block_until_ready=self.some_block_until_ready)
 
 
 class SplitParserParseMatcherGroupTests(TestCase, MockUtilsMixin):
     def setUp(self):
-        self.some_split = mock.MagicMock()
+        self.some_partial_split = mock.MagicMock()
         self.some_segment_fetcher = mock.MagicMock()
 
         self.combining_matcher_mock = self.patch('splitio.splits.CombiningMatcher')
@@ -527,37 +530,40 @@ class SplitParserParseMatcherGroupTests(TestCase, MockUtilsMixin):
     def test_calls_parse_matcher_on_each_matcher(self):
         """Tests that _parse_matcher_group calls _parse_matcher on each matcher with the default
         value for block_until_ready"""
-        self.parser._parse_matcher_group(self.some_matcher_group)
-        self.assertListEqual([mock.call(self.some_matchers[0], block_until_ready=False),
-                              mock.call(self.some_matchers[1], block_until_ready=False)],
+        self.parser._parse_matcher_group(self.some_partial_split, self.some_matcher_group)
+        self.assertListEqual([mock.call(self.some_partial_split, self.some_matchers[0],
+                                        block_until_ready=False),
+                              mock.call(self.some_partial_split, self.some_matchers[1],
+                                        block_until_ready=False)],
                              self.parse_matcher_mock.call_args_list)
 
     def test_calls_parse_matcher_with_block_until_ready_parameter(self):
         """Tests that _parse_matcher_group calls _parse_matcher on each matcher"""
         some_block_until_ready = mock.MagicMock
-        self.parser._parse_matcher_group(self.some_matcher_group,
+        self.parser._parse_matcher_group(self.some_partial_split, self.some_matcher_group,
                                          block_until_ready=some_block_until_ready)
-        self.assertListEqual([mock.call(self.some_matchers[0],
+        self.assertListEqual([mock.call(self.some_partial_split, self.some_matchers[0],
                                         block_until_ready=some_block_until_ready),
-                              mock.call(self.some_matchers[1],
+                              mock.call(self.some_partial_split, self.some_matchers[1],
                                         block_until_ready=some_block_until_ready)],
                              self.parse_matcher_mock.call_args_list)
 
     def test_calls_parse_combiner_on_combiner(self):
         """Tests that _parse_matcher_group calls _parse_combiner on combiner"""
-        self.parser._parse_matcher_group(self.some_matcher_group)
+        self.parser._parse_matcher_group(self.some_partial_split, self.some_matcher_group)
         self.parse_combiner_mock.assert_called_once_with(self.some_matcher_group['combiner'])
 
     def test_creates_combining_matcher(self):
         """Tests that _parse_matcher_group calls CombiningMatcher constructor"""
-        self.parser._parse_matcher_group(self.some_matcher_group)
+        self.parser._parse_matcher_group(self.some_partial_split, self.some_matcher_group)
         self.combining_matcher_mock.assert_called_once_with(self.parse_combiner_mock.return_value,
                                                             self.parse_matcher_side_effect)
 
     def test_returns_combining_matcher(self):
         """Tests that _parse_matcher_group returns a CombiningMatcher"""
         self.assertEqual(self.combining_matcher_mock.return_value,
-                         self.parser._parse_matcher_group(self.some_matcher_group))
+                         self.parser._parse_matcher_group(self.some_partial_split,
+                                                          self.some_matcher_group))
 
 
 class SplitParserParseCombinerTests(TestCase):
@@ -578,6 +584,7 @@ class SplitParserParseCombinerTests(TestCase):
 
 class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
     def setUp(self):
+        self.some_partial_split = mock.MagicMock()
         self.some_segment_fetcher = mock.MagicMock()
         self.some_matcher = mock.MagicMock()
 
@@ -629,13 +636,15 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
 
     def test_parse_matcher_all_keys_returns_all_keys_matcher(self):
         """Tests that _parser_matcher_all_keys returns an AllKeysMatcher"""
-        self.assertIsInstance(self.parser._parse_matcher_all_keys(self.some_matcher),
+        self.assertIsInstance(self.parser._parse_matcher_all_keys(self.some_partial_split,
+                                                                  self.some_matcher),
                               AllKeysMatcher)
 
     def test_parse_matcher_in_segment_calls_segment_fetcher_fetch(self):
         """Tests that _parse_matcher_in_segment calls segment_fetcher fetch method with default
         value for block_until_ready"""
-        self.parser._parse_matcher_in_segment(self.some_in_segment_matcher)
+        self.parser._parse_matcher_in_segment(self.some_partial_split,
+                                              self.some_in_segment_matcher)
         self.some_segment_fetcher.fetch.assert_called_once_with(
             self.some_in_segment_matcher['userDefinedSegmentMatcherData']['segmentName'],
             block_until_ready=False)
@@ -644,7 +653,7 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
         """Tests that _parse_matcher_in_segment calls segment_fetcher fetch method with supploed
         value for block_until_ready"""
         some_block_until_ready = mock.MagicMock()
-        self.parser._parse_matcher_in_segment(self.some_in_segment_matcher,
+        self.parser._parse_matcher_in_segment(self.some_partial_split, self.some_in_segment_matcher,
                                               block_until_ready=some_block_until_ready)
         self.some_segment_fetcher.fetch.assert_called_once_with(
             self.some_in_segment_matcher['userDefinedSegmentMatcherData']['segmentName'],
@@ -652,17 +661,19 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
 
     def test_parse_matcher_in_segment_returns_user_defined_segment_matcher(self):
         """Tests that _parse_matcher_in_segment calls segment_fetcher fetch method"""
-        self.assertIsInstance(self.parser._parse_matcher_in_segment(self.some_in_segment_matcher),
+        self.assertIsInstance(self.parser._parse_matcher_in_segment(self.some_partial_split,
+                                                                    self.some_in_segment_matcher),
                               UserDefinedSegmentMatcher)
 
     def test_parse_matcher_whitelist_returns_whitelist_matcher(self):
         """Tests that _parse_matcher_whitelist returns a WhitelistMatcher"""
-        self.assertIsInstance(self.parser._parse_matcher_whitelist(self.some_whitelist_matcher),
+        self.assertIsInstance(self.parser._parse_matcher_whitelist(self.some_partial_split,
+                                                                   self.some_whitelist_matcher),
                               WhitelistMatcher)
 
     def test_parse_matcher_equal_to_calls_equal_to_matcher_for_data_type(self):
         """Tests that _parse_matcher_equal_to calls EqualToMatcher.for_data_type"""
-        self.parser._parse_matcher_equal_to(self.some_equal_to_matcher)
+        self.parser._parse_matcher_equal_to(self.some_partial_split, self.some_equal_to_matcher)
         self.equal_to_matcher_mock.for_data_type.assert_called_once_with(
             self.get_matcher_data_data_type_mock.return_value,
             self.some_equal_to_matcher['unaryNumericMatcherData']['value'])
@@ -673,14 +684,15 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
         EqualToMatcher.for_data_type
         """
         self.assertEqual(self.equal_to_matcher_mock.for_data_type.return_value,
-                         self.parser._parse_matcher_equal_to(self.some_equal_to_matcher))
+                         self.parser._parse_matcher_equal_to(self.some_partial_split,
+                                                             self.some_equal_to_matcher))
 
     def test_parse_matcher_greater_than_or_equal_to_calls_equal_to_matcher_for_data_type(self):
         """
         Tests that _parse_matcher_greater_than_or_equal_to calls
         GreaterThanOrEqualToMatcher.for_data_type
         """
-        self.parser._parse_matcher_greater_than_or_equal_to(
+        self.parser._parse_matcher_greater_than_or_equal_to(self.some_partial_split,
             self.some_greater_than_or_equal_to_matcher)
         self.greater_than_or_equal_to_matcher_mock.for_data_type.assert_called_once_with(
             self.get_matcher_data_data_type_mock.return_value,
@@ -693,7 +705,7 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
         """
         self.assertEqual(
             self.greater_than_or_equal_to_matcher_mock.for_data_type.return_value,
-            self.parser._parse_matcher_greater_than_or_equal_to(
+            self.parser._parse_matcher_greater_than_or_equal_to(self.some_partial_split,
                 self.some_greater_than_or_equal_to_matcher))
 
     def test_parse_matcher_less_than_or_equal_to_calls_equal_to_matcher_for_data_type(self):
@@ -701,7 +713,7 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
         Tests that _parse_matcher_less_than_or_equal_to calls
         LessThanOrEqualToMatcher.for_data_type
         """
-        self.parser._parse_matcher_less_than_or_equal_to(
+        self.parser._parse_matcher_less_than_or_equal_to(self.some_partial_split,
             self.some_less_than_or_equal_to_matcher)
         self.less_than_or_equal_to_matcher_mock.for_data_type.assert_called_once_with(
             self.get_matcher_data_data_type_mock.return_value,
@@ -714,12 +726,12 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
         """
         self.assertEqual(
             self.less_than_or_equal_to_matcher_mock.for_data_type.return_value,
-            self.parser._parse_matcher_less_than_or_equal_to(
+            self.parser._parse_matcher_less_than_or_equal_to(self.some_partial_split,
                 self.some_less_than_or_equal_to_matcher))
 
     def test_parse_matcher_between_calls_between_matcher_for_data_type(self):
         """Tests that _parse_matcher_between calls BetweenMatcher.for_data_type"""
-        self.parser._parse_matcher_between(self.some_between_matcher)
+        self.parser._parse_matcher_between(self.some_partial_split, self.some_between_matcher)
         self.between_matcher_mock.for_data_type.assert_called_once_with(
             self.get_matcher_data_data_type_mock.return_value,
             self.some_between_matcher['betweenMatcherData']['start'],
@@ -731,11 +743,13 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
         BetweenMatcher.for_data_type
         """
         self.assertEqual(self.between_matcher_mock.for_data_type.return_value,
-                         self.parser._parse_matcher_between(self.some_between_matcher))
+                         self.parser._parse_matcher_between(self.some_partial_split,
+                                                            self.some_between_matcher))
 
 
 class SplitParserParseMatcherTests(TestCase, MockUtilsMixin):
     def setUp(self):
+        self.some_partial_split = mock.MagicMock()
         self.some_segment_fetcher = mock.MagicMock()
         self.some_matcher = mock.MagicMock()
 
@@ -769,26 +783,30 @@ class SplitParserParseMatcherTests(TestCase, MockUtilsMixin):
     def test_calls_parse_matcher_all_keys(self):
         """Test that _parse_matcher calls _parse_matcher_all_keys on ALL_KEYS matcher"""
         matcher = self._get_matcher('ALL_KEYS')
-        self.parser._parse_matcher(matcher)
-        self.parse_matcher_all_keys_mock.assert_called_once_with(matcher, block_until_ready=False)
+        self.parser._parse_matcher(self.some_partial_split, matcher)
+        self.parse_matcher_all_keys_mock.assert_called_once_with(self.some_partial_split, matcher,
+                                                                 block_until_ready=False)
 
     def test_calls_parse_matcher_in_segment(self):
         """Test that _parse_matcher calls _parse_matcher_in_segment on IN_SEGMENT matcher"""
         matcher = self._get_matcher('IN_SEGMENT')
-        self.parser._parse_matcher(matcher)
-        self.parse_matcher_in_segment_mock.assert_called_once_with(matcher, block_until_ready=False)
+        self.parser._parse_matcher(self.some_partial_split, matcher)
+        self.parse_matcher_in_segment_mock.assert_called_once_with(self.some_partial_split,
+                                                                   matcher, block_until_ready=False)
 
     def test_calls_parse_matcher_whitelist(self):
         """Test that _parse_matcher calls _parse_matcher_in_segment on WHITELIST matcher"""
         matcher = self._get_matcher('WHITELIST')
-        self.parser._parse_matcher(matcher)
-        self.parse_matcher_whitelist_mock.assert_called_once_with(matcher, block_until_ready=False)
+        self.parser._parse_matcher(self.some_partial_split, matcher)
+        self.parse_matcher_whitelist_mock.assert_called_once_with(self.some_partial_split, matcher,
+                                                                  block_until_ready=False)
 
     def test_calls_parse_matcher_equal_to(self):
         """Test that _parse_matcher calls _parse_matcher_equal_to on EQUAL_TO matcher"""
         matcher = self._get_matcher('EQUAL_TO')
-        self.parser._parse_matcher(matcher)
-        self.parse_matcher_equal_to_mock.assert_called_once_with(matcher, block_until_ready=False)
+        self.parser._parse_matcher(self.some_partial_split, matcher)
+        self.parse_matcher_equal_to_mock.assert_called_once_with(self.some_partial_split, matcher,
+                                                                 block_until_ready=False)
 
     def test_calls_parse_matcher_greater_than_or_equal_to(self):
         """
@@ -796,9 +814,9 @@ class SplitParserParseMatcherTests(TestCase, MockUtilsMixin):
         GREATER_THAN_OR_EQUAL_TO matcher
         """
         matcher = self._get_matcher('GREATER_THAN_OR_EQUAL_TO')
-        self.parser._parse_matcher(matcher)
+        self.parser._parse_matcher(self.some_partial_split, matcher)
         self.parse_matcher_greater_than_or_equal_to_mock.assert_called_once_with(
-            matcher, block_until_ready=False)
+            self.some_partial_split, matcher, block_until_ready=False)
 
     def test_calls_parse_matcher_less_than_or_equal_to(self):
         """
@@ -806,15 +824,16 @@ class SplitParserParseMatcherTests(TestCase, MockUtilsMixin):
         LESS_THAN_OR_EQUAL_TO matcher
         """
         matcher = self._get_matcher('LESS_THAN_OR_EQUAL_TO')
-        self.parser._parse_matcher(matcher)
+        self.parser._parse_matcher(self.some_partial_split, matcher)
         self.parse_matcher_less_than_or_equal_to_mock.assert_called_once_with(
-            matcher, block_until_ready=False)
+            self.some_partial_split, matcher, block_until_ready=False)
 
     def test_calls_parse_matcher_between(self):
         """Test that _parse_matcher calls _parse_between on BETWEEN matcher"""
         matcher = self._get_matcher('BETWEEN')
-        self.parser._parse_matcher(matcher)
-        self.parse_matcher_between_mock.assert_called_once_with(matcher, block_until_ready=False)
+        self.parser._parse_matcher(self.some_partial_split, matcher)
+        self.parse_matcher_between_mock.assert_called_once_with(self.some_partial_split, matcher,
+                                                                block_until_ready=False)
 
     def test_raises_exception_if_parse_method_returns_none(self):
         """
@@ -822,11 +841,12 @@ class SplitParserParseMatcherTests(TestCase, MockUtilsMixin):
         """
         self.parser._parse_matcher_fake.return_value = None
         with self.assertRaises(ValueError):
-            self.parser._parse_matcher(self._get_matcher('FAKE'))
+            self.parser._parse_matcher(self.some_partial_split, self._get_matcher('FAKE'))
 
     def test_returns_attribute_matcher(self):
         """Tests that _parse_matcher returns an AttributeMatcher"""
-        self.assertIsInstance(self.parser._parse_matcher(self._get_matcher('FAKE')),
+        self.assertIsInstance(self.parser._parse_matcher(self.some_partial_split,
+                                                         self._get_matcher('FAKE')),
                               AttributeMatcher)
 
 
