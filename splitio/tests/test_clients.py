@@ -15,7 +15,7 @@ import arrow
 from splitio.clients import (Client, SelfRefreshingClient, randomize_interval, JSONFileClient,
                              LocalhostEnvironmentClient)
 from splitio.exceptions import TimeoutException
-from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL
+from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, SDK_API_BASE_URL, EVENTS_API_BASE_URL
 from splitio.treatments import CONTROL
 from splitio.tests.utils import MockUtilsMixin
 
@@ -425,8 +425,17 @@ class SelfRefreshingClientInitConfigTests(TestCase, MockUtilsMixin):
             'randomizeIntervals': False,
             'maxImpressionsLogSize': -1,
             'maxMetricsCallsBeforeFlush': -1,
-            'ready': 10
+            'ready': 10,
+            'sdkApiBaseUrl': SDK_API_BASE_URL,
+            'eventsApiBaseUrl': EVENTS_API_BASE_URL,
+            'splitSdkMachineName': None,
+            'splitSdkMachineIp': None,
+            'redisHost': 'localhost',
+            'redisPort': 6379,
+            'redisDb': 0
         }
+
+
 
         self.client = SelfRefreshingClient(self.some_api_key)
 
@@ -438,6 +447,10 @@ class SelfRefreshingClientInitConfigTests(TestCase, MockUtilsMixin):
     def test_it_uses_supplied_config(self):
         """Test that if config is not None, it uses the supplied config"""
         self.client._init_config(config=self.some_config)
+
+        print('!1', self.some_config)
+        print('!2', self.client._config)
+
         self.assertDictEqual(self.some_config, self.client._config)
 
     def test_forces_interval_max_on_intervals(self):
