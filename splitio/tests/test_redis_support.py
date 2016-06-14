@@ -11,8 +11,8 @@ from unittest import TestCase
 from splitio.impressions import Impression
 from splitio.tests.utils import MockUtilsMixin
 
-from splitio.redis import (RedisSegmentCache, RedisSplitCache, RedisImpressionsCache,
-                           RedisMetricsCache)
+from splitio.redis_support import (RedisSegmentCache, RedisSplitCache, RedisImpressionsCache,
+                                   RedisMetricsCache)
 
 
 class RedisSegmentCacheTests(TestCase):
@@ -113,7 +113,7 @@ class RedisSegmentCacheTests(TestCase):
 
 class RedisSplitCacheTests(TestCase, MockUtilsMixin):
     def setUp(self):
-        self.pickle_mock = self.patch('splitio.redis.pickle')
+        self.pickle_mock = self.patch('splitio.redis_support.pickle')
         self.some_split_name = mock.MagicMock()
         self.some_split_name_str = 'some_split_name'
         self.some_split = mock.MagicMock()
@@ -192,7 +192,7 @@ class RedisSplitCacheTests(TestCase, MockUtilsMixin):
 
 class RedisImpressionsCacheTests(TestCase, MockUtilsMixin):
     def setUp(self):
-        self.pickle_mock = self.patch('splitio.redis.pickle')
+        self.pickle_mock = self.patch('splitio.redis_support.pickle')
         self.some_impression = mock.MagicMock()
         self.some_redis = mock.MagicMock()
         self.an_impressions_cache = RedisImpressionsCache(self.some_redis)
