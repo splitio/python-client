@@ -24,7 +24,7 @@ class Status(Enum):
 
 
 class Split(object):
-    def __init__(self, name, seed, killed, default_treatment, conditions):
+    def __init__(self, name, seed, killed, default_treatment, conditions=None):
         """
         A class that represents a split. It associates a feature name with a set of matchers
         (responsible of telling which condition to use) and conditions (which determines which
@@ -44,11 +44,7 @@ class Split(object):
         self._seed = seed
         self._killed = killed
         self._default_treatment = default_treatment
-        self._conditions = tuple(conditions)
-
-    @property
-    def feature(self):
-        return self._name
+        self._conditions = conditions if conditions is not None else []
 
     @property
     def name(self):
@@ -166,7 +162,7 @@ class SplitFetcher(object):  # pragma: no cover
         :return: A split associated with the feature
         :rtype: Split
         """
-        raise NotImplementedError()
+        return None
 
     def fetch_all(self):
         """
@@ -174,7 +170,7 @@ class SplitFetcher(object):  # pragma: no cover
         :return: All the know splits so far
         :rtype: list
         """
-        raise NotImplementedError()
+        return None
 
 
 class InMemorySplitFetcher(SplitFetcher):
@@ -491,7 +487,7 @@ class SplitParser(object):
         :param split: A dictionary with a parsed JSON of a split item
         :type split: dict
         :param block_until_ready: Whether to block until all data is available
-        :param block_until_ready:
+        :type block_until_ready: bool
         :return: A parsed split
         :rtype: Split
         """
@@ -507,38 +503,63 @@ class SplitParser(object):
         :param split: A dictionary with a parsed JSON of a split item
         :type split: dict
         :param block_until_ready: Whether to block until all data is available
-        :param block_until_ready:
+        :type block_until_ready: bool
         :return: A parsed split
         :rtype: Split
         """
         if Status[split['status']] != Status.ACTIVE:
             return None
 
-        parsed_conditions = []
+        partial_split = self._parse_split(split, block_until_ready=block_until_ready)
+        self._parse_conditions(partial_split, split, block_until_ready=block_until_ready)
+
+        return partial_split
+
+    def _parse_split(self, split, block_until_ready=False):
+        """Parse split properties.
+        :param split: A dictionary with a parsed JSON of a split item
+        :type split: dict
+        :param block_until_ready: Whether to block until all data is available
+        :type block_until_ready: bool
+        :return: A partial parsed split
+        :rtype: Split
+        """
+        return Split(split['name'], split['seed'], split['killed'], split['defaultTreatment'])
+
+    def _parse_conditions(self, partial_split, split, block_until_ready=False):
+        """Parse split conditions
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param split: A dictionary with a parsed JSON of a split item
+        :type split: dict
+        :param block_until_ready: Whether to block until all data is available
+        :type block_until_ready: bool
+        :return:
+        """
         for condition in split['conditions']:
             parsed_partitions = [Partition(partition['treatment'], partition['size'])
                                  for partition in condition['partitions']]
-            combining_matcher = self._parse_matcher_group(condition['matcherGroup'],
+            combining_matcher = self._parse_matcher_group(partial_split, condition['matcherGroup'],
                                                           block_until_ready=block_until_ready)
-            parsed_conditions.append(Condition(combining_matcher, parsed_partitions))
+            partial_split.conditions.append(Condition(combining_matcher, parsed_partitions))
 
-        return Split(split['name'], split['seed'], split['killed'],
-                     split['defaultTreatment'], parsed_conditions)
-
-    def _parse_matcher_group(self, matcher_group, block_until_ready=False):
+    def _parse_matcher_group(self, partial_split, matcher_group, block_until_ready=False):
         """
         Parses a matcher group
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
         :param matcher_group: A list of dictionaries with the JSON representation of a matcher
         :type matcher_group: list
         :param block_until_ready: Whether to block until all data is available
-        :param block_until_ready:
+        :type block_until_ready: bool
         :return: A combining matcher
         :rtype: CombiningMatcher
         """
         if 'matchers' not in matcher_group or len(matcher_group['matchers']) == 0:
             raise ValueError('Missing or empty matchers')
 
-        delegates = [self._parse_matcher(matcher, block_until_ready=block_until_ready)
+        delegates = [self._parse_matcher(partial_split, matcher,
+                                         block_until_ready=block_until_ready)
                      for matcher in matcher_group['matchers']]
         combiner = self._parse_combiner(matcher_group['combiner'])
 
@@ -586,9 +607,11 @@ class SplitParser(object):
 
         raise ValueError('Invalid combiner type: {}'.format(combiner))
 
-    def _parse_matcher_all_keys(self, matcher, *args, **kwargs):
+    def _parse_matcher_all_keys(self, partial_split, matcher, *args, **kwargs):
         """
         Parses an ALL_KEYS matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
         :param matcher: A dictionary with the JSON representation of an ALL_KEYS matcher
         :type matcher: dict
         :return: The parsed matcher
@@ -597,9 +620,12 @@ class SplitParser(object):
         delegate = AllKeysMatcher()
         return delegate
 
-    def _parse_matcher_in_segment(self, matcher, block_until_ready=False, *args, **kwargs):
+    def _parse_matcher_in_segment(self, partial_split, matcher, block_until_ready=False, *args,
+                                  **kwargs):
         """
         Parses an IN_SEGMENT matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
         :param matcher: A dictionary with the JSON representation of an IN_SEGMENT matcher
         :type matcher: dict
         :return: The parsed matcher
@@ -611,9 +637,11 @@ class SplitParser(object):
         delegate = UserDefinedSegmentMatcher(segment)
         return delegate
 
-    def _parse_matcher_whitelist(self, matcher, *args, **kwargs):
+    def _parse_matcher_whitelist(self, partial_split, matcher, *args, **kwargs):
         """
         Parses a WHITELIST matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
         :param matcher: A dictionary with the JSON representation of a WHITELIST matcher
         :type matcher: dict
         :return: The parsed matcher
@@ -623,9 +651,11 @@ class SplitParser(object):
         delegate = WhitelistMatcher(matcher_data['whitelist'])
         return delegate
 
-    def _parse_matcher_equal_to(self, matcher, *args, **kwargs):
+    def _parse_matcher_equal_to(self, partial_split, matcher, *args, **kwargs):
         """
         Parses an EQUAL_TO matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
         :param matcher: A dictionary with the JSON representation of an EQUAL_TO matcher
         :type matcher: dict
         :return: The parsed matcher (dependent on data type)
@@ -637,9 +667,11 @@ class SplitParser(object):
         delegate = EqualToMatcher.for_data_type(data_type, matcher_data.get('value', None))
         return delegate
 
-    def _parse_matcher_greater_than_or_equal_to(self, matcher, *args, **kwargs):
+    def _parse_matcher_greater_than_or_equal_to(self, partial_split, matcher, *args, **kwargs):
         """
         Parses a GREATER_THAN_OR_EQUAL_TO matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
         :param matcher: A dictionary with the JSON representation of a GREATER_THAN_OR_EQUAL_TO
                         matcher
         :type matcher: dict
@@ -653,9 +685,11 @@ class SplitParser(object):
                                                              matcher_data.get('value', None))
         return delegate
 
-    def _parse_matcher_less_than_or_equal_to(self, matcher, *args, **kwargs):
+    def _parse_matcher_less_than_or_equal_to(self, partial_split, matcher, *args, **kwargs):
         """
         Parses a LESS_THAN_OR_EQUAL_TO matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
         :param matcher: A dictionary with the JSON representation of an LESS_THAN_OR_EQUAL_TO
                         matcher
         :type matcher: dict
@@ -665,14 +699,15 @@ class SplitParser(object):
         matcher_data = self._get_matcher_attribute('unaryNumericMatcherData', matcher)
         data_type = self._get_matcher_data_data_type(matcher_data)
 
-        matcher_data = matcher['unaryNumericMatcherData']
         delegate = LessThanOrEqualToMatcher.for_data_type(data_type,
                                                           matcher_data['value'])
         return delegate
 
-    def _parse_matcher_between(self, matcher, *args, **kwargs):
+    def _parse_matcher_between(self, partial_split, matcher, *args, **kwargs):
         """
         Parses a BETWEEN matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
         :param matcher: A dictionary with the JSON representation of an BETWEEN matcher
         :type matcher: dict
         :return: The parsed matcher (dependent on data type)
@@ -686,13 +721,15 @@ class SplitParser(object):
                                                 matcher_data.get('end', None))
         return delegate
 
-    def _parse_matcher(self, matcher, block_until_ready=False):
+    def _parse_matcher(self, partial_split, matcher, block_until_ready=False):
         """
         Parses a matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
         :param matcher: A dictionary with the JSON representation of a matcher
         :type matcher: dict
         :param block_until_ready: Whether to block until all data is available
-        :param block_until_ready:
+        :type block_until_ready: bool
         :return: A parsed attribute matcher (with a delegate dependent on type)
         :rtype: AttributeMatcher
         """
@@ -704,7 +741,8 @@ class SplitParser(object):
         try:
             matcher_parse_method = getattr(
                 self, '_parse_matcher_{}'.format(matcher_type.strip().lower()))
-            delegate = matcher_parse_method(matcher, block_until_ready=block_until_ready)
+            delegate = matcher_parse_method(partial_split, matcher,
+                                            block_until_ready=block_until_ready)
         except AttributeError:
             raise ValueError('Invalid matcher type: {}'.format(matcher_type))
 

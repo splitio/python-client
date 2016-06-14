@@ -14,14 +14,19 @@ from future.utils import raise_from
 
 from splitio.api import SdkApi
 from splitio.exceptions import TimeoutException
-from splitio.metrics import (Metrics, AsyncMetrics, ApiMetrics, SDK_GET_TREATMENT)
-from splitio.impressions import (TreatmentLog, AsyncTreatmentLog, SelfUpdatingTreatmentLog)
+from splitio.metrics import (Metrics, AsyncMetrics, ApiMetrics, CacheBasedMetrics,
+                             SDK_GET_TREATMENT)
+from splitio.impressions import (TreatmentLog, AsyncTreatmentLog, SelfUpdatingTreatmentLog,
+                                 CacheBasedTreatmentLog)
+from splitio.redis_support import (RedisSplitCache, RedisImpressionsCache, RedisMetricsCache,
+                                   get_redis)
 from splitio.splitters import Splitter
 from splitio.splits import (SelfRefreshingSplitFetcher, SplitParser, ApiSplitChangeFetcher,
-                            JSONFileSplitFetcher, InMemorySplitFetcher, AllKeysSplit)
+                            JSONFileSplitFetcher, InMemorySplitFetcher, AllKeysSplit,
+                            CacheBasedSplitFetcher)
 from splitio.segments import (ApiSegmentChangeFetcher, SelfRefreshingSegmentFetcher,
                               JSONFileSegmentFetcher)
-from splitio.settings import DEFAULT_CONFIG, MAX_INTERVAL
+from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, parse_config_file
 from splitio.treatments import CONTROL
 
 
@@ -437,11 +442,100 @@ class LocalhostEnvironmentClient(Client):
         return self._metrics
 
 
+class RedisClient(Client):
+    def __init__(self, redis):
+        """A Client implementation that uses Redis as its backend.
+        :param redis: A redis client
+        :type redis: StrctRedis"""
+        super(RedisClient, self).__init__()
+
+        split_cache = RedisSplitCache(redis)
+        split_fetcher = CacheBasedSplitFetcher(split_cache)
+
+        impressions_cache = RedisImpressionsCache(redis)
+        delegate_treatment_log = CacheBasedTreatmentLog(impressions_cache)
+        treatment_log = AsyncTreatmentLog(delegate_treatment_log)
+
+        metrics_cache = RedisMetricsCache(redis)
+        delegate_metrics = CacheBasedMetrics(metrics_cache)
+        metrics = AsyncMetrics(delegate_metrics)
+
+        self._split_fetcher = split_fetcher
+        self._treatment_log = treatment_log
+        self._metrics = metrics
+
+    def get_split_fetcher(self):
+        """
+        Get the split fetcher implementation for the client.
+        :return: The split fetcher
+        :rtype: SplitFetcher
+        """
+        return self._split_fetcher
+
+    def get_treatment_log(self):
+        """
+        Get the treatment log implementation for the client.
+        :return: The treatment log
+        :rtype: TreatmentLog
+        """
+        return self._treatment_log
+
+    def get_metrics(self):
+        """
+        Get the metrics implementation for the client.
+        :return: The metrics
+        :rtype: Metrics
+        """
+        return self._metrics
+
+
+def _init_config(api_key, **kwargs):
+    config = kwargs.pop('config', dict())
+    sdk_api_base_url = kwargs.pop('sdk_api_base_url', None)
+    events_api_base_url = kwargs.pop('events_api_base_url', None)
+
+    if 'config_file' in kwargs:
+        file_config = parse_config_file(kwargs['config_file'])
+
+        file_api_key = file_config.pop('apiKey', None)
+        file_sdk_api_base_url = file_config.pop('sdkApiBaseUrl', None)
+        file_events_api_base_url = file_config.pop('eventsApiBaseUrl', None)
+
+        api_key = api_key or file_api_key
+        sdk_api_base_url = sdk_api_base_url or file_sdk_api_base_url
+        events_api_base_url = events_api_base_url or file_events_api_base_url
+
+        file_config.update(config)
+        config = file_config
+
+    return api_key, config, sdk_api_base_url, events_api_base_url
+
+
 def get_client(api_key, **kwargs):
     """
-    Builds a Split Client that refreshes itself at regular intervals. The config parameter is a
-    dictionary that allows you to control the behaviour of the client. The following configuration
-    values are supported:
+    Builds a Split Client that refreshes itself at regular intervals.
+
+    The config_file parameter is the name of a file that contains the client configuration. Here's
+    an example of a config file:
+
+    {
+      "apiKey": "some-api-key",
+      "sdkApiBaseUrl": "https://sdk.split.io/api",
+      "eventsApiBaseUrl": "https://events.split.io/api",
+      "connectionTimeout": 1500,
+      "readTimeout": 1500,
+      "featuresRefreshRate": 30,
+      "segmentsRefreshRate": 60,
+      "metricsRefreshRate": 60,
+      "impressionsRefreshRate": 60,
+      "randomizeIntervals": False,
+      "maxImpressionsLogSize": -1,
+      "maxMetricsCallsBeforeFlush": 1000,
+      "ready": 0
+    }
+
+    The config parameter is a dictionary that allows you to control the behaviour of the client.
+    The following configuration values are supported:
 
     * connectionTimeout: The TCP connection timeout (Default: 1500ms)
     * readTimeout: The HTTP read timeout (Default: 1500ms)
@@ -468,6 +562,8 @@ def get_client(api_key, **kwargs):
 
     :param api_key: The API key provided by Split.io
     :type api_key: str
+    :param config_file: Filename of the config file
+    :type config_file: str
     :param config: The configuration dictionary
     :type config: dict
     :param sdk_api_base_url: An override for the default API base URL.
@@ -477,7 +573,68 @@ def get_client(api_key, **kwargs):
     :param split_definition_file_name: Name of the definition file (Optional)
     :type split_definition_file_name: str
     """
+    api_key, config, sdk_api_base_url, events_api_base_url = _init_config(api_key, **kwargs)
+
     if api_key == 'localhost':
         return LocalhostEnvironmentClient(**kwargs)
 
-    return SelfRefreshingClient(api_key, **kwargs)
+    return SelfRefreshingClient(api_key, config=config, sdk_api_base_url=sdk_api_base_url,
+                                events_api_base_url=events_api_base_url)
+
+
+def get_redis_client(api_key, **kwargs):
+    """
+    Builds a Split Client that that gets its information from a Redis instance. It also writes
+    impressions and metrics to the same instance.
+
+    In order for this work properly, you need to periodically call the update_splits and
+    update_segments scripts. You also need to run the send_impressions and send_metrics scripts in
+    order to push the impressions and metrics onto the Split.io backend-
+
+    The config_file parameter is the name of a file that contains the client configuration. Here's
+    an example of a config file:
+
+    {
+      "apiKey": "some-api-key",
+      "sdkApiBaseUrl": "https://sdk.split.io/api",
+      "eventsApiBaseUrl": "https://events.split.io/api",
+      "redisFactory": 'some.redis.factory',
+      "redisHost": "localhost",
+      "redisPort": 30,
+      "redisDb": 60,
+    }
+
+    If the redisFactory entry is present, it is used to build the redis client instance, otherwise
+    the values of redisHost, redisPort and redisDb are used.
+
+    If the api_key argument is 'localhost' a localhost environment client is built based on the
+    contents of a .split file in the user's home directory. The definition file has the following
+    syntax:
+
+        file: (comment | split_line)+
+        comment : '#' string*\n
+        split_line : feature_name ' ' treatment\n
+        feature_name : string
+        treatment : string
+
+    It is possible to change the location of the split file by using the split_definition_file_name
+    argument.
+
+    :param api_key: The API key provided by Split.io
+    :type api_key: str
+    :param config_file: Filename of the config file
+    :type config_file: str
+    :param sdk_api_base_url: An override for the default API base URL.
+    :type sdk_api_base_url: str
+    :param events_api_base_url: An override for the default events base URL.
+    :type events_api_base_url: str
+    :param split_definition_file_name: Name of the definition file (Optional)
+    :type split_definition_file_name: str
+    """
+    api_key, config, _, _ = _init_config(api_key, **kwargs)
+
+    if api_key == 'localhost':
+        return LocalhostEnvironmentClient(**kwargs)
+
+    redis = get_redis(config)
+    return RedisClient(redis)
