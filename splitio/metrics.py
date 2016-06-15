@@ -32,7 +32,7 @@ def get_latency_bucket_index(micros):
     :return: Bucket index for the given latency
     :rtype: int
     """
-    if micros > MAX_LATENCY:
+    if micros > MAX_LATENCY -1:
         return len(BUCKETS) - 1
 
     return bisect_left(BUCKETS, micros)
