@@ -114,3 +114,76 @@ By default, all requests are sent to the Split production environments. It is po
           events_api_base_url='https://sdk-events.split.io/api')
 
 Notice that you're going to need a **different API key** than the one used for the production environments.
+
+Redis support
+-------------
+
+For environments that restrict the usage of threads or background tasks, it is possible to use the Split.io client with a Redis backend.
+
+Before you can use it, you need to install the ``splitio_client`` with support for redis: ::
+
+  pip install splitio_client[redis]
+
+The client depends on the information for features and segments being updated externally. In order to do that, we provide the ``update_splits`` and ``update_segments`` scripts.
+
+The scripts are configured through a JSON settings file, like the following: ::
+
+    {
+      "apiKey": "some-api-key",
+      "sdkApiBaseUrl": "https://sdk.split.io/api",
+      "eventsApiBaseUrl": "https://events.split.io/api",
+      "redisFactory": 'some.redis.factory',
+      "redisHost": "localhost",
+      "redisPort": 6879,
+      "redisDb": 0,
+    }
+
+These are the possible configuration parameters: ::
+
++------------------------+------+--------------------------------------------------------+-------------------------------+
+| Key                    | Type | Description                                            | Default                       |
++========================+======+========================================================+===============================+
+| apiKey                 | str  | A valid Split.io API key.                              | None                          |
++------------------------+------+--------------------------------------------------------+-------------------------------+
+| sdkApiBaseUrl          | str  | The SDK API url base                                   | "https://sdk.split.io/api"    |
++------------------------+------+--------------------------------------------------------+-------------------------------+
+| eventsApiBaseUrl       | str  | The Events API url base                                | "https://events.split.io/api" |
++------------------------+------+--------------------------------------------------------+-------------------------------+
+| redisFactory           | str  | A reference to a method that creates a redis client to | None                          |
+|                        |      | be used by the Split.io components. If this value is   |                               |
+|                        |      | not provided, the redisHost, redisPort and redisDb     |                               |
+|                        |      | values are used to create a StrictRedis instance.      |                               |
++------------------------+------+--------------------------------------------------------+-------------------------------+
+| redisHost              | str  | Hostname of the Redis instance                         | "localhost"                   |
++------------------------+------+--------------------------------------------------------+-------------------------------+
+| redisPort              | int  | The port of the Redis instance                         | 6879                          |
++------------------------+------+--------------------------------------------------------+-------------------------------+
+| redisDb                | int  | The db number on the Redis instance                    | 0                             |
++------------------------+------+--------------------------------------------------------+-------------------------------+
+
+Let's assume that the configuration file is called ``splitio-config.json`` and that the client is installed in a virtualenv in ``/home/user/venv``. The feature update script can be run with: ::
+
+  $ /home/user/venv/bin/python -m splitio.update_scripts.update_splits splitio-config.json
+
+and similarily the segment update script is run with: ::
+
+  $ /home/user/venv/bin/python -m splitio.update_scripts.update_segments splitio-config.json
+
+There are two additional scripts called ``post_impressions`` and ``post_metrics`` responsible of sending impressions and metrics back to Split.io.
+
+All these scripts need to run periodically, and one way to do that is through ``contrab``: ::
+
+    * * * * * /home/user/venv/bin/python -m -m splitio.update_scripts.update_splits /path/to/splitio-config.json >/dev/null 2>&1
+    * * * * * /home/user/venv/bin/python -m -m splitio.update_scripts.update_segments /path/to/splitio-config.json >/dev/null 2>&1
+    * * * * * /home/user/venv/bin/python -m -m splitio.update_scripts.post_impressions /path/to/splitio-config.json >/dev/null 2>&1
+    * * * * * /home/user/venv/bin/python -m -m splitio.update_scripts.post_metrics /path/to/splitio-config.json >/dev/null 2>&1
+
+There are other scheduling solutions like ``anacron`` or ``fcron`` that can serve this purpose as well.
+
+Once the scripts are running, you can access a client using the ``get_redis_client`` function with the ``config_file`` parameter: ::
+
+  >>> from splitio import get_redis_client
+  >>> client = get_redis_client(None,
+          config_file='splitio-config.json')
+
+The first argument is the API key which is not necessary in this context, but if you pass "localhost" as its value, a localhost environment client will be generated as shown in a previous section.
