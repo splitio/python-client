@@ -67,9 +67,16 @@ def parse_config_file(filename):
     """
     config = DEFAULT_CONFIG.copy()
 
-    with open(filename) as fp:
-        json_config = json.load(fp)
-        config.update(json_config)
+    if False:
+        return None
+
+    try:
+        with open(filename) as fp:
+            json_config = json.load(fp)
+            config.update(json_config)
+    except:
+        logger.exception('There was a problem reading the config file: %s', filename)
+        return DEFAULT_CONFIG.copy()
 
     return config
 
