@@ -12,7 +12,8 @@ from splitio.impressions import Impression
 from splitio.tests.utils import MockUtilsMixin
 
 from splitio.redis_support import (RedisSegmentCache, RedisSplitCache, RedisImpressionsCache,
-                                   RedisMetricsCache)
+                                   RedisMetricsCache, RedisSplitParser, RedisSplit,
+                                   RedisSplitBasedSegment)
 
 
 class RedisSegmentCacheTests(TestCase):
@@ -564,3 +565,47 @@ class RedisMetricsCacheBuildMetricsFromCacheResponseTests(TestCase):
                                 {'name': some_other_gauge, 'value': some_other_gauge_value}]
         self.assertDictEqual({'time': [], 'count': [], 'gauge': result_gauge_metrics},
                              self.a_metrics_cache._build_metrics_from_cache_response(gauge_metrics))
+
+
+class RedisSplitParserTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self.some_matcher = mock.MagicMock()
+        self.some_segment_cache = mock.MagicMock()
+        self.split_parser = RedisSplitParser(self.some_segment_cache)
+        self.redis_split_mock = self.patch('splitio.redis_support.RedisSplit')
+
+        self.some_split = {
+            'name': mock.MagicMock(),
+            'seed': mock.MagicMock(),
+            'killed': mock.MagicMock(),
+            'defaultTreatment': mock.MagicMock()
+        }
+        self.some_block_until_ready = mock.MagicMock()
+        self.some_partial_split = mock.MagicMock()
+        self.some_in_segment_matcher = {
+            'matcherType': 'IN_SEGMENT',
+            'userDefinedSegmentMatcherData': {
+                'segmentName': mock.MagicMock()
+            }
+        }
+
+    def test_parse_split_returns_redis_split(self):
+        """Test that _parse_split returns a RedisSplit"""
+        self.assertEqual(self.redis_split_mock.return_value,
+                         self.split_parser._parse_split(
+                             self.redis_split_mock, block_until_ready=self.some_block_until_ready))
+
+    def test_parse_split_calls_redis_split_constructor(self):
+        """Test that _parse_split calls RedisSplit constructor"""
+        self.split_parser._parse_split(self.some_split,
+                                       block_until_ready=self.some_block_until_ready)
+        self.redis_split_mock.assert_called_once_with(
+            self.some_split['name'], self.some_split['seed'], self.some_split['killed'],
+            self.some_split['defaultTreatment'], segment_cache=self.some_segment_cache)
+
+    def test_parse_matcher_in_segment_registers_segment(self):
+        """Test that _parse_matcher_in_segment registers segment"""
+        self.split_parser._parse_matcher_in_segment(self.some_partial_split,
+                                                    self.some_in_segment_matcher,
+                                                    block_until_ready=self.some_block_until_ready)
+        self.some_segment_cache.register_segment.assert_called()
