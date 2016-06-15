@@ -67,6 +67,9 @@ def parse_config_file(filename):
     """
     config = DEFAULT_CONFIG.copy()
 
+    if False:
+        return None
+
     try:
         with open(filename) as fp:
             json_config = json.load(fp)
