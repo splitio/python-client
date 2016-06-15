@@ -600,8 +600,8 @@ def get_redis_client(api_key, **kwargs):
       "eventsApiBaseUrl": "https://events.split.io/api",
       "redisFactory": 'some.redis.factory',
       "redisHost": "localhost",
-      "redisPort": 30,
-      "redisDb": 60,
+      "redisPort": 6879,
+      "redisDb": 0,
     }
 
     If the redisFactory entry is present, it is used to build the redis client instance, otherwise
