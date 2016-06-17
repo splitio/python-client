@@ -134,7 +134,7 @@ The scripts are configured through a JSON settings file, like the following: ::
       "eventsApiBaseUrl": "https://events.split.io/api",
       "redisFactory": 'some.redis.factory',
       "redisHost": "localhost",
-      "redisPort": 6879,
+      "redisPort": 6379,
       "redisDb": 0,
     }
 
@@ -156,7 +156,7 @@ These are the possible configuration parameters:
 +------------------------+------+--------------------------------------------------------+-------------------------------+
 | redisHost              | str  | Hostname of the Redis instance                         | "localhost"                   |
 +------------------------+------+--------------------------------------------------------+-------------------------------+
-| redisPort              | int  | The port of the Redis instance                         | 6879                          |
+| redisPort              | int  | The port of the Redis instance                         | 6379                          |
 +------------------------+------+--------------------------------------------------------+-------------------------------+
 | redisDb                | int  | The db number on the Redis instance                    | 0                             |
 +------------------------+------+--------------------------------------------------------+-------------------------------+
