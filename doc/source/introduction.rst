@@ -138,7 +138,7 @@ The scripts are configured through a JSON settings file, like the following: ::
       "redisDb": 0,
     }
 
-These are the possible configuration parameters: ::
+These are the possible configuration parameters:
 
 +------------------------+------+--------------------------------------------------------+-------------------------------+
 | Key                    | Type | Description                                            | Default                       |
