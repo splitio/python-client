@@ -63,6 +63,7 @@ All the possible configuration options are:
 |                        |      | available right away.                                  |         |
 +------------------------+------+--------------------------------------------------------+---------+
 
+.. _localhost_environment:
 The localhost environment
 -------------------------
 
@@ -115,10 +116,11 @@ By default, all requests are sent to the Split production environments. It is po
 
 Notice that you're going to need a **different API key** than the one used for the production environments.
 
+.. _redis_support:
 Redis support
 -------------
 
-For environments that restrict the usage of threads or background tasks, it is possible to use the Split.io client with a Redis backend.
+For environments that restrict the usage of threads or background tasks, it is possible to use the Split.io client with a `Redis <http://redis.io>`_ backend. Right now we only support Redis version 2.6 or later and we use the Python `redis <https://pypi.python.org/pypi/redis/2.10.5>`_ library to establish connections to the instances.
 
 Before you can use it, you need to install the ``splitio_client`` with support for redis: ::
 
@@ -173,10 +175,10 @@ There are two additional scripts called ``post_impressions`` and ``post_metrics`
 
 All these scripts need to run periodically, and one way to do that is through ``contrab``: ::
 
-    * * * * * /home/user/venv/bin/python -m -m splitio.update_scripts.update_splits /path/to/splitio-config.json >/dev/null 2>&1
-    * * * * * /home/user/venv/bin/python -m -m splitio.update_scripts.update_segments /path/to/splitio-config.json >/dev/null 2>&1
-    * * * * * /home/user/venv/bin/python -m -m splitio.update_scripts.post_impressions /path/to/splitio-config.json >/dev/null 2>&1
-    * * * * * /home/user/venv/bin/python -m -m splitio.update_scripts.post_metrics /path/to/splitio-config.json >/dev/null 2>&1
+    * * * * * /home/user/venv/bin/python -m splitio.update_scripts.update_splits /path/to/splitio-config.json >/dev/null 2>&1
+    * * * * * /home/user/venv/bin/python -m splitio.update_scripts.update_segments /path/to/splitio-config.json >/dev/null 2>&1
+    * * * * * /home/user/venv/bin/python -m splitio.update_scripts.post_impressions /path/to/splitio-config.json >/dev/null 2>&1
+    * * * * * /home/user/venv/bin/python -m splitio.update_scripts.post_metrics /path/to/splitio-config.json >/dev/null 2>&1
 
 There are other scheduling solutions like ``anacron`` or ``fcron`` that can serve this purpose as well.
 
