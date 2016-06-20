@@ -27,7 +27,7 @@ setup(name='splitio_client',
       extras_require={'test': tests_require},
       setup_requires=['nose'],
       extra_requires={
-          'redis': ['redis>=2.6']
+          'redis': ['redis>=2.6', 'jsonpickle>=0.9.3']
       },
       classifiers=[
           'Development Status :: 3 - Alpha',
