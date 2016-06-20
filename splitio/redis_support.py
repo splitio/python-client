@@ -1,12 +1,19 @@
 """This module contains everything related to redis cache implementations"""
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import pickle
 import re
 
 from collections import defaultdict
 from builtins import zip
 from itertools import groupby, islice
+
+try:
+    from jsonpickle import decode, encode
+    from redis import StrictRedis
+except ImportError:
+    def missing_redis_dependencies(*args, **kwargs):
+        raise NotImplementedError('Missing Redis support dependencies.')
+    decode = encode = StrictRedis = missing_redis_dependencies
 
 from six import iteritems
 
@@ -180,13 +187,13 @@ class RedisSplitCache(SplitCache):
                         change_number, None)
 
     def add_split(self, split_name, split):
-        self._redis.set(self._get_split_key(split_name), pickle.dumps(split))
+        self._redis.set(self._get_split_key(split_name), encode(split))
 
     def get_split(self, split_name):
         split_dump = self._redis.get(self._get_split_key(split_name))
 
         if split_dump is not None:
-            split = pickle.loads(split_dump)
+            split = decode(split_dump)
             split._segment_cache = RedisSegmentCache(self._redis)
             return split
 
@@ -261,7 +268,7 @@ class RedisImpressionsCache(ImpressionsCache):
             return dict()
 
         return self._build_impressions_dict(
-            [pickle.loads(impression) for impression in impressions])
+            [decode(impression) for impression in impressions])
 
     def clear(self):
         """Clears all cached impressions"""
@@ -275,7 +282,7 @@ class RedisImpressionsCache(ImpressionsCache):
         self._redis.eval(
             "if redis.call('EXISTS', KEYS[1]) == 0 then "
             "redis.call('LPUSH', KEYS[2], ARGV[1]) end", 2, RedisImpressionsCache._DISABLED_KEY,
-            self._IMPRESSIONS_KEY, pickle.dumps(impression))
+            self._IMPRESSIONS_KEY, encode(impression))
 
     def fetch_all_and_clear(self):
         """Fetches all impressions from the cache and clears it. It returns a dictionary with the
@@ -296,7 +303,7 @@ class RedisImpressionsCache(ImpressionsCache):
             return dict()
 
         return self._build_impressions_dict(
-            [pickle.loads(impression) for impression in impressions])
+            [decode(impression) for impression in impressions])
 
 
 class RedisMetricsCache(MetricsCache):
@@ -622,7 +629,6 @@ def default_redis_factory(config):
     :return: A StrictRedis object using the provided config values
     :rtype: StrictRedis
     """
-    from redis import StrictRedis
     host = config.get('redisHost', 'localhost')
     port = config.get('redisPort', 6379)
     db = config.get('redisDb', 0)

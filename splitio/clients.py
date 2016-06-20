@@ -19,7 +19,7 @@ from splitio.metrics import (Metrics, AsyncMetrics, ApiMetrics, CacheBasedMetric
 from splitio.impressions import (TreatmentLog, AsyncTreatmentLog, SelfUpdatingTreatmentLog,
                                  CacheBasedTreatmentLog)
 from splitio.redis_support import (RedisSplitCache, RedisImpressionsCache, RedisMetricsCache,
-                                   get_redis)
+                                       get_redis)
 from splitio.splitters import Splitter
 from splitio.splits import (SelfRefreshingSplitFetcher, SplitParser, ApiSplitChangeFetcher,
                             JSONFileSplitFetcher, InMemorySplitFetcher, AllKeysSplit,
