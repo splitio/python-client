@@ -12,6 +12,7 @@ Contents:
    :maxdepth: 2
 
    introduction
+   flask_support
 
 Indices and tables
 ==================
