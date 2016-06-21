@@ -189,3 +189,25 @@ Once the scripts are running, you can access a client using the ``get_redis_clie
           config_file='splitio-config.json')
 
 The first argument is the API key which is not necessary in this context, but if you pass "localhost" as its value, a localhost environment client will be generated as shown in a previous section.
+
+Sentinel support
+^^^^^^^^^^^^^^^^
+
+In order to support Redis' Sentinel host discovery, you need to provide a custom redis factory (through the ``redisFactory`` config key). The first step is to write the factory, which just a Python function that takes no arguments: ::
+
+  # redis_config.py
+  from redis.sentinel import Sentinel
+
+  def my_redis_factory():
+    sentinel = Sentinel([('localhost', 26379)], socket_timeout=0.1)
+    master = sentinel.master_for('some_master', socket_timeout=0.1)
+    return master
+
+Afterwards you tell the client to use this factory using the config file: ::
+
+  {
+    "apiKey": "some-api-key",
+    "sdkApiBaseUrl": "https://sdk.split.io/api",
+    "eventsApiBaseUrl": "https://events.split.io/api",
+    "redisFactory": 'redis_config.my_redis_factory'
+  }
