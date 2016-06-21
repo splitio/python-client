@@ -114,7 +114,8 @@ class RedisSegmentCacheTests(TestCase):
 
 class RedisSplitCacheTests(TestCase, MockUtilsMixin):
     def setUp(self):
-        self.pickle_mock = self.patch('splitio.redis_support.pickle')
+        self.decode_mock = self.patch('splitio.redis_support.decode')
+        self.encode_mock = self.patch('splitio.redis_support.encode')
         self.some_split_name = mock.MagicMock()
         self.some_split_name_str = 'some_split_name'
         self.some_split = mock.MagicMock()
@@ -168,16 +169,16 @@ class RedisSplitCacheTests(TestCase, MockUtilsMixin):
     def test_add_split_sets_split_key_with_pickled_split(self):
         """Test that add_split sets the split key with pickled split"""
         self.a_split_cache.add_split(self.some_split_name_str, self.some_split)
-        self.pickle_mock.dumps.assert_called_once_with(self.some_split)
+        self.encode_mock.assert_called_once_with(self.some_split)
         self.some_redis.set.assert_called_once_with('SPLITIO.splits.some_split_name',
-                                                    self.pickle_mock.dumps.return_value)
+                                                    self.encode_mock.return_value)
 
     def test_get_split_returns_unpickled_cached_split(self):
         """Test that if a split is cached get_split returns its unpickled form"""
-        self.assertEqual(self.pickle_mock.loads.return_value,
+        self.assertEqual(self.decode_mock.return_value,
                          self.a_split_cache.get_split(self.some_split_name_str))
         self.some_redis.get.assert_called_once_with('SPLITIO.splits.some_split_name')
-        self.pickle_mock.loads.assert_called_once_with(self.some_redis.get.return_value)
+        self.decode_mock.assert_called_once_with(self.some_redis.get.return_value)
 
     def test_get_split_returns_none_if_not_cached(self):
         """Test that if a split is not cached get_split returns None"""
@@ -193,7 +194,8 @@ class RedisSplitCacheTests(TestCase, MockUtilsMixin):
 
 class RedisImpressionsCacheTests(TestCase, MockUtilsMixin):
     def setUp(self):
-        self.pickle_mock = self.patch('splitio.redis_support.pickle')
+        self.encode_mock = self.patch('splitio.redis_support.encode')
+        self.decode_mock = self.patch('splitio.redis_support.decode')
         self.some_impression = mock.MagicMock()
         self.some_redis = mock.MagicMock()
         self.an_impressions_cache = RedisImpressionsCache(self.some_redis)
@@ -234,7 +236,7 @@ class RedisImpressionsCacheTests(TestCase, MockUtilsMixin):
         cached_impressions = [mock.MagicMock(), mock.MagicMock()]
         unpickled_cached_impressions = [mock.MagicMock(), mock.MagicMock()]
         self.some_redis.lrange.return_value = cached_impressions
-        self.pickle_mock.loads.side_effect = unpickled_cached_impressions
+        self.decode_mock.side_effect = unpickled_cached_impressions
         self.assertEqual(self.build_impressions_dict_mock.return_value,
                          self.an_impressions_cache.fetch_all())
         self.build_impressions_dict_mock.assert_called_once_with(unpickled_cached_impressions)
@@ -256,8 +258,8 @@ class RedisImpressionsCacheTests(TestCase, MockUtilsMixin):
         self.some_redis.eval.assert_called_once_with(
             "if redis.call('EXISTS', KEYS[1]) == 0 then redis.call('LPUSH', KEYS[2], ARGV[1]) end",
             2, 'SPLITIO.impressions.__disabled__', 'SPLITIO.impressions.impressions',
-            self.pickle_mock.dumps.return_value)
-        self.pickle_mock.dumps.assert_called_once_with(self.some_impression)
+            self.encode_mock.return_value)
+        self.encode_mock.assert_called_once_with(self.some_impression)
 
     def test_fetch_all_and_clear_calls_eval_with_fetch_and_clear_script(self):
         """Test that fetch_and_clear calls eval with the fetch and clear script"""
@@ -275,7 +277,7 @@ class RedisImpressionsCacheTests(TestCase, MockUtilsMixin):
         cached_impressions = [mock.MagicMock(), mock.MagicMock()]
         unpickled_cached_impressions = [mock.MagicMock(), mock.MagicMock()]
         self.some_redis.eval.return_value = cached_impressions
-        self.pickle_mock.loads.side_effect = unpickled_cached_impressions
+        self.decode_mock.side_effect = unpickled_cached_impressions
         self.assertEqual(self.build_impressions_dict_mock.return_value,
                          self.an_impressions_cache.fetch_all_and_clear())
         self.build_impressions_dict_mock.assert_called_once_with(unpickled_cached_impressions)
