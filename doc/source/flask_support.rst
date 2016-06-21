@@ -1,7 +1,7 @@
 Flask support
 =============
 
-The `Split.io <http://split.io/>`_ SDK API Python client works with `Flask <http://flask.pocoo.org/>`_ out of the box. We support with Flask using our `Redis <http://redis.io>`_ backend mentioned in the Redis support section of the :doc:`/introduction`.
+The `Split.io <http://split.io/>`_ SDK API Python client works with `Flask <http://flask.pocoo.org/>`_ out of the box. Both our in-memory and `Redis <http://redis.io>`_ backed clients work well with Flask.
 
 The following section shows how to use Split.io in a simple one-view Flask app.
 
@@ -13,13 +13,17 @@ This example assumes that the Split.io configuration is save in a file called ``
     import logging
     from flask import Flask, render_template, request
 
-    from splitio import get_redis_client
+    from splitio import get_redis_client, get_client
 
     logging.basicConfig(level=logging.INFO)
 
     app = Flask(__name__)
 
-    client = get_redis_client(None, config_file='splitio-config.json')
+    # With redis
+    #client = get_redis_client('SOME-API-KEY', config_file='splitio-config.json')
+
+    # In-memory
+    client = get_client('SOME-API-KEY', config_file='splitio-config.json')
 
 
     @app.route('/')
@@ -32,4 +36,6 @@ This example assumes that the Split.io configuration is save in a file called ``
 
         return render_template('index.html', **context)
 
-As long as the update scripts are running periodically, this should work without problems. As mentioned before, if the API key is set to ``'localhost'`` a localhost environment client is generated and no connections to Split.io are made as everything is read from ``.split`` file (you can read about this feature in the Localhost Environment section of the :doc:`/introduction`.)
+When using the Redis client the update scripts need to be run periodically, otherwise there won't be any data available to the client.
+
+As mentioned before, if the API key is set to ``'localhost'`` a localhost environment client is generated and no connections to Split.io are made as everything is read from ``.split`` file (you can read about this feature in the Localhost Environment section of the :doc:`/introduction`.)
