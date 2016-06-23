@@ -38,4 +38,4 @@ setup(name='splitio_client',
           'Programming Language :: Python :: 3',
           'Topic :: Software Development :: Libraries'
       ],
-      packages=['splitio'])
+      packages=['splitio','splitio.update_scripts'])
