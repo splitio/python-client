@@ -30,6 +30,12 @@ from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, parse_config_file
 from splitio.treatments import CONTROL
 
 
+class Key(object):
+    def __init__(self, matching_key, bucketing_key):
+        """Bucketing Key implementation"""
+        self.matching_key = matching_key
+        self.bucketing_key = bucketing_key
+
 class Client(object):
     def __init__(self):
         """Basic interface of a Client. Specific implementations need to override the
@@ -92,7 +98,10 @@ class Client(object):
                 self._logger.warning('Unknown or invalid feature: %s', feature)
                 return CONTROL
 
-            treatment = self._get_treatment_for_split(split, key, attributes)
+            if isinstance(key, Key):
+                treatment = self._get_treatment_for_split(split, key.matching_key, key.bucketing_key, attributes)
+            else:
+                treatment = self._get_treatment_for_split(split, key, key, attributes)
 
             self._record_stats(key, feature, treatment, start, SDK_GET_TREATMENT)
 
@@ -109,7 +118,7 @@ class Client(object):
         except:
             self._logger.exception('Exception caught recording impressions and metrics')
 
-    def _get_treatment_for_split(self, split, key, attributes=None):
+    def _get_treatment_for_split(self, split, matching_key, bucketing_key, attributes=None):
         """
         Internal method to get the treatment for a given Split and optional attributes. This
         method might raise exceptions and should never be used directly.
@@ -126,8 +135,8 @@ class Client(object):
             return split.default_treatment
 
         for condition in split.conditions:
-            if condition.matcher.match(key, attributes=attributes):
-                return self.get_splitter().get_treatment(key, split.seed, condition.partitions)
+            if condition.matcher.match(matching_key, attributes=attributes):
+                return self.get_splitter().get_treatment(bucketing_key, split.seed, condition.partitions)
 
         return split.default_treatment
 
