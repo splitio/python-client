@@ -31,9 +31,9 @@ _SPLITIO_CACHE_KEY_TEMPLATE = 'SPLITIO.{suffix}'
 class RedisSegmentCache(SegmentCache):
     _KEY_TEMPLATE = _SPLITIO_CACHE_KEY_TEMPLATE.format(suffix='segments.{suffix}')
     _DISABLED_KEY = _KEY_TEMPLATE.format(suffix='__disabled__')
-    _SEGMENT_KEY_SET_KEY_TEMPLATE = _KEY_TEMPLATE.format(suffix='segment.{segment_name}.key_set')
-    _SEGMENT_CHANGE_NUMBER_KEY_TEMPLATE = _KEY_TEMPLATE.format(
-        suffix='segment.{segment_name}.change_number')
+    _SEGMENT_KEY_SET_KEY_TEMPLATE = _SPLITIO_CACHE_KEY_TEMPLATE.format(suffix='segmentData.{segment_name}')
+    _SEGMENT_CHANGE_NUMBER_KEY_TEMPLATE = _SPLITIO_CACHE_KEY_TEMPLATE.format(
+        suffix='segment.{segment_name}.till')
 
     def __init__(self, redis, disabled_period=300):
         """A Segment Cache implementation that uses Redis as its back-end
@@ -74,7 +74,7 @@ class RedisSegmentCache(SegmentCache):
         :param segment_name: Name of the segment.
         :type segment_name: str
         """
-        self._redis.sadd(RedisSegmentCache._KEY_TEMPLATE.format(suffix='__registered_segments__'),
+        self._redis.sadd(RedisSegmentCache._KEY_TEMPLATE.format(suffix='registered'),
                          segment_name)
 
     def unregister_segment(self, segment_name):
@@ -82,7 +82,7 @@ class RedisSegmentCache(SegmentCache):
         :param segment_name: Name of the segment.
         :type segment_name: str
         """
-        self._redis.srem(RedisSegmentCache._KEY_TEMPLATE.format(suffix='__registered_segments__'),
+        self._redis.srem(RedisSegmentCache._KEY_TEMPLATE.format(suffix='registered'),
                          segment_name)
 
     def get_registered_segments(self):
@@ -91,7 +91,7 @@ class RedisSegmentCache(SegmentCache):
         :rtype: set
         """
         return self._redis.smembers(RedisSegmentCache._KEY_TEMPLATE.format(
-            suffix='__registered_segments__'))
+            suffix='registered'))
 
     def _get_segment_key_set_key(self, segment_name):
         """Build cache key for a given segment key set.
@@ -131,7 +131,7 @@ class RedisSegmentCache(SegmentCache):
 
 
 class RedisSplitCache(SplitCache):
-    _KEY_TEMPLATE = _SPLITIO_CACHE_KEY_TEMPLATE.format(suffix='splits.{suffix}')
+    _KEY_TEMPLATE = _SPLITIO_CACHE_KEY_TEMPLATE.format(suffix='split.{suffix}')
     _DISABLED_KEY = _KEY_TEMPLATE.format(suffix='__disabled__')
 
     def __init__(self, redis, disabled_period=300):
@@ -190,11 +190,12 @@ class RedisSplitCache(SplitCache):
         self._redis.set(self._get_split_key(split_name), encode(split))
 
     def get_split(self, split_name):
-        split_dump = self._redis.get(self._get_split_key(split_name))
+        split_dump = decode(self._redis.get(self._get_split_key(split_name)))
 
         if split_dump is not None:
-            split = decode(split_dump)
-            split._segment_cache = RedisSegmentCache(self._redis)
+            segment_cache = RedisSegmentCache(self._redis)
+            split_parser = RedisSplitParser(segment_cache)
+            split = split_parser.parse(split_dump)
             return split
 
         return None

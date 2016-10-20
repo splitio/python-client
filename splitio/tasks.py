@@ -91,7 +91,7 @@ def update_splits(split_cache, split_change_fetcher, split_parser):
                         continue
 
                     added_features.append(split_change['name'])
-                    split_cache.add_split(split_change['name'], parsed_split)
+                    split_cache.add_split(split_change['name'], split_change)
 
                 if len(added_features) > 0:
                     _logger.info('Updated features: %s', added_features)
