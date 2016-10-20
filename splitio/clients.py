@@ -100,10 +100,10 @@ class Client(object):
 
             if isinstance(key, Key):
                 treatment = self._get_treatment_for_split(split, key.matching_key, key.bucketing_key, attributes)
+                self._record_stats(key.matching_key, feature, treatment, start, SDK_GET_TREATMENT)
             else:
                 treatment = self._get_treatment_for_split(split, key, key, attributes)
-
-            self._record_stats(key, feature, treatment, start, SDK_GET_TREATMENT)
+                self._record_stats(key, feature, treatment, start, SDK_GET_TREATMENT)
 
             return treatment
         except:

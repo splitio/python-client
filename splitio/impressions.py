@@ -10,8 +10,8 @@ from threading import RLock, Timer
 
 from six import iteritems
 
-Impression = namedtuple('Impression', ['key', 'feature_name', 'treatment', 'time'])
-
+#Impression = namedtuple('Impression', ['key', 'feature_name', 'treatment', 'time'])
+Impression = namedtuple('Impression', ['matching_key', 'feature_name', 'treatment', 'label', 'change_number', 'bucketing_key', 'time'])
 
 def build_impressions_data(impressions):
     """Builds a list of dictionaries that can be used with the test_impressions API endpoint from
@@ -26,7 +26,7 @@ def build_impressions_data(impressions):
             'testName': feature_name,
             'keyImpressions': [
                 {
-                    'keyName': impression.key,
+                    'keyName': impression.matching_key,
                     'treatment': impression.treatment,
                     'time': impression.time
                 }
@@ -168,7 +168,9 @@ class InMemoryTreatmentLog(TreatmentLog):
         :param time: Timestamp as milliseconds from epoch of the impression
         :type time: int
         """
-        impression = Impression(key=key, feature_name=feature_name, treatment=treatment, time=time)
+        #impression = Impression(key=key, feature_name=feature_name, treatment=treatment, time=time)
+        #'matching_key', 'feature_name', 'treatment', 'label', 'change_number', 'bucketing_key', 'time'
+        impression = Impression(matching_key=key, feature_name=feature_name, treatment=treatment, label='', change_number=-1, bucketing_key='', time=time)
         with self._rlock:
             feature_impressions = self._impressions[feature_name]
 
@@ -273,7 +275,12 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         """Sends the impressions stored back to the Split.io back-end"""
         try:
             impressions_by_feature = self.fetch_all_and_clear()
+
+            self._logger.error(impressions_by_feature)
+
             test_impressions_data = build_impressions_data(impressions_by_feature)
+
+            self._logger.error(test_impressions_data)
 
             if len(test_impressions_data) > 0:
                 self._api.test_impressions(test_impressions_data)
