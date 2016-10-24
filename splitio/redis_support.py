@@ -23,6 +23,7 @@ from splitio.matchers import UserDefinedSegmentMatcher
 from splitio.metrics import BUCKETS
 from splitio.segments import Segment
 from splitio.splits import Split, SplitParser
+from splitio.impressions import Impression
 
 # Template for Split.io related Cache keys
 _SPLITIO_CACHE_KEY_TEMPLATE = 'SPLITIO.{suffix}'
@@ -206,7 +207,7 @@ class RedisSplitCache(SplitCache):
 
 class RedisImpressionsCache(ImpressionsCache):
     _KEY_TEMPLATE = _SPLITIO_CACHE_KEY_TEMPLATE.format(suffix='impressions.{suffix}')
-    _IMPRESSIONS_KEY = _KEY_TEMPLATE.format(suffix='impressions')
+    _IMPRESSIONS_KEY = _KEY_TEMPLATE.format(suffix='{feature_name}')
     _IMPRESSIONS_TO_CLEAR_KEY = _KEY_TEMPLATE.format(suffix='impressions_to_clear')
     _DISABLED_KEY = _KEY_TEMPLATE.format(suffix='__disabled__')
 
@@ -263,27 +264,45 @@ class RedisImpressionsCache(ImpressionsCache):
         :return: All cached impressions so far grouped by feature name
         :rtype: dict
         """
-        impressions = self._redis.lrange(RedisImpressionsCache._IMPRESSIONS_KEY, 0, -1)
+        impressions_list = list()
+        impressions_keys = self._redis.keys(self._IMPRESSIONS_KEY.format(feature_name='*'))
 
-        if impressions is None:
+        for impression_key in impressions_keys:
+            if impression_key.replace(self._IMPRESSIONS_KEY.format(feature_name=''), '') == 'impressions':
+                continue
+
+            feature_name = impression_key.replace(self._IMPRESSIONS_KEY.format(feature_name=''), '')
+
+            for impression in self._redis.smembers(impression_key):
+                impression_decoded = decode(impression)
+                impression_tuple = Impression(key=impression_decoded['keyName'],
+                                              feature_name=feature_name,
+                                              treatment=impression_decoded['treatment'],
+                                              time=impression_decoded['time']
+                                              )
+                impressions_list.append(impression_tuple)
+
+        if not impressions_list:
             return dict()
 
-        return self._build_impressions_dict(
-            [decode(impression) for impression in impressions])
+        return self._build_impressions_dict(impressions_list)
 
     def clear(self):
         """Clears all cached impressions"""
-        self._redis.delete(RedisImpressionsCache._IMPRESSIONS_KEY)
+        self._redis.eval("return redis.call('del', unpack(redis.call('keys', ARGV[1])))",
+                         0,
+                         self._IMPRESSIONS_KEY.format(feature_name='*')  )
 
     def add_impression(self, impression):
         """Adds an impression to the log if it is enabled, otherwise the impression is dropped.
         :param impression: The impression tuple
         :type impression: Impression
         """
-        self._redis.eval(
-            "if redis.call('EXISTS', KEYS[1]) == 0 then "
-            "redis.call('LPUSH', KEYS[2], ARGV[1]) end", 2, RedisImpressionsCache._DISABLED_KEY,
-            self._IMPRESSIONS_KEY, encode(impression))
+        if not self.is_enabled():
+            return
+
+        cache_impression = {'keyName':impression.key, 'treatment':impression.treatment, 'time':impression.time}
+        self._redis.sadd(self._IMPRESSIONS_KEY.format(feature_name=impression.feature_name), encode(cache_impression))
 
     def fetch_all_and_clear(self):
         """Fetches all impressions from the cache and clears it. It returns a dictionary with the
@@ -291,20 +310,32 @@ class RedisImpressionsCache(ImpressionsCache):
         :return: All cached impressions so far grouped by feature name
         :rtype: dict
         """
-        impressions = self._redis.eval(
-            "if redis.call('EXISTS', KEYS[1]) == 1 then "
-            "redis.call('RENAME', KEYS[1], KEYS[2]); "
-            "local impressions_to_clear = redis.call('LRANGE', KEYS[2], 0, -1); "
-            "redis.call('DEL', KEYS[2]); "
-            "return impressions_to_clear; "
-            "end", 2,
-            RedisImpressionsCache._IMPRESSIONS_KEY, RedisImpressionsCache._IMPRESSIONS_TO_CLEAR_KEY)
+        impressions_list = list()
+        impressions_keys = self._redis.keys(self._IMPRESSIONS_KEY.format(feature_name='*'))
 
-        if impressions is None:
+        for impression_key in impressions_keys:
+            if impression_key.replace(self._IMPRESSIONS_KEY.format(feature_name=''), '') == 'impressions':
+                continue
+
+            feature_name = impression_key.replace(self._IMPRESSIONS_KEY.format(feature_name=''), '')
+
+            to_remove = list()
+            for impression in self._redis.smembers(impression_key):
+                to_remove.append(impression)
+                impression_decoded = decode(impression)
+                impression_tuple = Impression(key=impression_decoded['keyName'],
+                                              feature_name=feature_name,
+                                              treatment=impression_decoded['treatment'],
+                                              time=impression_decoded['time']
+                                              )
+                impressions_list.append(impression_tuple)
+
+            self._redis.srem(impression_key, *set(to_remove))
+
+        if not impressions_list:
             return dict()
 
-        return self._build_impressions_dict(
-            [decode(impression) for impression in impressions])
+        return self._build_impressions_dict(impressions_list)
 
 
 class RedisMetricsCache(MetricsCache):
