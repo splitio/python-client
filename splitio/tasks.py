@@ -134,12 +134,12 @@ def report_metrics(metrics_cache, sdk_api):
         if not metrics_cache.is_enabled():
             return
 
-        metrics = metrics_cache.fetch_all_and_clear()
-
-        if 'time' in metrics and len(metrics['time']) > 0:
+        time = metrics_cache.fetch_all_times_and_clear()
+        if len(time) > 0:
             _logger.info('Sending times metrics...')
-            sdk_api.metrics_times(metrics['time'])
+            sdk_api.metrics_times(time)
 
+        metrics = metrics_cache.fetch_all_and_clear()
         if 'count' in metrics and len(metrics['count']) > 0:
             _logger.info('Sending counters metrics...')
             sdk_api.metrics_counters(metrics['count'])

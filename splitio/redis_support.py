@@ -342,11 +342,13 @@ class RedisMetricsCache(MetricsCache):
     _KEY_TEMPLATE = _SPLITIO_CACHE_KEY_TEMPLATE.format(suffix='metrics.{suffix}')
     _DISABLED_KEY = _KEY_TEMPLATE.format(suffix='__disabled__')
     _METRIC_KEY = _KEY_TEMPLATE.format(suffix='metric')
+    _KEY_LATENCY_BUCKET = _SPLITIO_CACHE_KEY_TEMPLATE.format(suffix='latency.{metric_name}.bucket.{bucket_number}')
     _METRIC_TO_CLEAR_KEY = _KEY_TEMPLATE.format(suffix='metric_to_clear')
     _COUNT_FIELD_TEMPLATE = 'count.{counter}'
     _TIME_FIELD_TEMPLATE = 'time.{operation}.{bucket_index}'
     _GAUGE_FIELD_TEMPLATE = 'gauge.{gauge}'
 
+    _LATENCY_FIELD_RE = re.compile('^SPLITIO\.latency\.(?P<operation>.+)\.bucket\.(?P<bucket_index>.+)$')
     _COUNT_FIELD_RE = re.compile('^count\.(?P<counter>.+)$')
     _TIME_FIELD_RE = re.compile('^time\.(?P<operation>.+)\.(?P<bucket_index>.+)$')
     _GAUGE_FIELD_RE = re.compile('^gauge\.(?P<gauge>.+)$')
@@ -486,9 +488,8 @@ class RedisMetricsCache(MetricsCache):
         :rtype: dict
         """
         if response is None:
-            return {'time': [], 'count': [], 'gauge': []}
+            return {'count': [], 'gauge': []}
 
-        time = defaultdict(lambda: [0] * len(BUCKETS))
         count = dict()
         gauge = dict()
 
@@ -498,18 +499,12 @@ class RedisMetricsCache(MetricsCache):
                 count[count_match.group('counter')] = value
                 continue
 
-            time_match = RedisMetricsCache._TIME_FIELD_RE.match(field)
-            if time_match is not None:
-                time[time_match.group('operation')][int(time_match.group('bucket_index'))] = value
-                continue
-
             gauge_match = RedisMetricsCache._GAUGE_FIELD_RE.match(field)
             if gauge_match is not None:
                 gauge[gauge_match.group('gauge')] = value
                 continue
 
         return {
-            'time': self._build_metrics_times_data(time),
             'count': self._build_metrics_counter_data(count),
             'gauge': self._build_metrics_gauge_data(gauge)
         }
@@ -522,21 +517,18 @@ class RedisMetricsCache(MetricsCache):
     def get_latency(self, operation):
         return [
             0 if count is None else count
-            for count in self._redis.hmget(
-                RedisMetricsCache._METRIC_KEY, *self._get_all_buckets_time_fields(operation))]
+            for count in (self._redis.get(self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket))
+                          for bucket in range(0, len(BUCKETS)))]
 
     def get_latency_bucket_counter(self, operation, bucket_index):
-        count = self._redis.hget(RedisMetricsCache._METRIC_KEY, self._get_time_field(operation,
-                                                                                     bucket_index))
+        count = int(self._redis.get(self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket_index)))
         return count if count is not None else 0
 
     def set_gauge(self, gauge, value):
         self._redis.hset(RedisMetricsCache._METRIC_KEY, self._get_gauge_field(gauge), value)
 
     def set_latency_bucket_counter(self, operation, bucket_index, value):
-        self._conditional_eval("redis.call('HSET', KEYS[1], ARGV[1], ARGV[2]);", 1,
-                               RedisMetricsCache._METRIC_KEY,
-                               self._get_time_field(operation, bucket_index), value)
+        self._redis.set(self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket_index), value)
 
     def get_count(self, counter):
         count = self._redis.hget(RedisMetricsCache._METRIC_KEY, self._get_count_field(counter))
@@ -548,9 +540,7 @@ class RedisMetricsCache(MetricsCache):
                                self._get_count_field(counter), value)
 
     def increment_latency_bucket_counter(self, operation, bucket_index, delta=1):
-        self._conditional_eval("redis.call('HINCRBY', KEYS[1], ARGV[1], ARGV[2]);", 1,
-                               RedisMetricsCache._METRIC_KEY,
-                               self._get_time_field(operation, bucket_index), delta)
+        self._redis.incr(self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket_index))
 
     def get_gauge(self, gauge):
         return self._redis.hget(RedisMetricsCache._METRIC_KEY, self._get_gauge_field(gauge))
@@ -563,6 +553,19 @@ class RedisMetricsCache(MetricsCache):
                                     "return metric; end", 2, RedisMetricsCache._METRIC_KEY,
                                     RedisMetricsCache._METRIC_TO_CLEAR_KEY)
         return self._build_metrics_from_cache_response(response)
+
+    def fetch_all_times_and_clear(self):
+        time_keys = self._redis.keys(self._KEY_LATENCY_BUCKET.format(metric_name='*', bucket_number='*'))
+
+        time = defaultdict(lambda: [0] * len(BUCKETS))
+
+        for key in time_keys:
+            time_match = RedisMetricsCache._LATENCY_FIELD_RE.match(key)
+            if time_match is not None:
+                time[time_match.group('operation')][int(time_match.group('bucket_index'))] = int(self._redis.getset(key, 0))
+
+        return self._build_metrics_times_data(time)
+
 
 
 class RedisSplitParser(SplitParser):
