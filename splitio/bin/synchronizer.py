@@ -21,9 +21,21 @@ Options:
   -h --help                             Show this screen.
   --version                             Show version.
 
+Configuration file:
+    The configuration file is a JSON file with the following fields:
+
+    {
+      "apiKey": "YOUR_API_KEY",
+      "redisHost": "REDIS_DNS_OR_IP",
+      "redisPort": 6379,
+      "redisDb": 0
+    }
+
+
 Examples:
     python -m splitio.bin.synchronizer splitio-config.json
     python -m splitio.bin.synchronizer --splits-refresh-rate=10 splitio-config.json
+
 
 """
 
