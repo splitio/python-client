@@ -180,11 +180,11 @@ class RedisSplitCache(SplitCache):
 
     def get_change_number(self):
         change_number = self._redis.get(RedisSplitCache._KEY_TEMPLATE.format(
-            suffix='__change_number__'))
+            suffix='till'))
         return int(change_number) if change_number is not None else -1
 
     def set_change_number(self, change_number):
-        self._redis.set(RedisSplitCache._KEY_TEMPLATE.format(suffix='__change_number__'),
+        self._redis.set(RedisSplitCache._KEY_TEMPLATE.format(suffix='till'),
                         change_number, None)
 
     def add_split(self, split_name, split):
