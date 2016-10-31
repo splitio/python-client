@@ -182,6 +182,39 @@ All these scripts need to run periodically, and one way to do that is through ``
 
 There are other scheduling solutions like ``anacron`` or ``fcron`` that can serve this purpose as well.
 
+On the other hand, there is available a python script named ``splitio.bin.synchronizer`` in order to run as a service instead of a ``cron-job``. For production environment we recomend run it via ``supervisord`` ::
+
+    $ /home/user/venv/bin/python -m splitio.bin.synchronizer --help
+
+    Usage:
+      synchronizer [options] <config_file>
+      synchronizer -h | --help
+      synchronizer --version
+
+    Options:
+      --splits-refresh-rate=SECONDS         The SECONDS rate to fetch Splits definitions [default: 30]
+      --segments-refresh-rate=SECONDS       The SECONDS rate to fetch the Segments keys [default: 30]
+      --impression-refresh-rate=SECONDS     The SECONDS rate to send key impressions [default: 60]
+      --metrics-refresh-rate=SECONDS        The SECONDS rate to send SDK metrics [default: 60]
+      -h --help                             Show this screen.
+      --version                             Show version.
+
+    Configuration file:
+        The configuration file is a JSON file with the following fields:
+
+        {
+          "apiKey": "YOUR_API_KEY",
+          "redisHost": "REDIS_DNS_OR_IP",
+          "redisPort": 6379,
+          "redisDb": 0
+        }
+
+
+    Examples:
+        python -m splitio.bin.synchronizer splitio-config.json
+        python -m splitio.bin.synchronizer --splits-refresh-rate=10 splitio-config.json
+
+
 Once the scripts are running, you can access a client using the ``get_redis_client`` function with the ``config_file`` parameter: ::
 
   >>> from splitio import get_redis_client
