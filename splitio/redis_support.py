@@ -23,6 +23,7 @@ from splitio.matchers import UserDefinedSegmentMatcher
 from splitio.metrics import BUCKETS
 from splitio.segments import Segment
 from splitio.splits import Split, SplitParser
+from splitio.impressions import Impression
 
 # Template for Split.io related Cache keys
 _SPLITIO_CACHE_KEY_TEMPLATE = 'SPLITIO.{suffix}'
@@ -31,9 +32,9 @@ _SPLITIO_CACHE_KEY_TEMPLATE = 'SPLITIO.{suffix}'
 class RedisSegmentCache(SegmentCache):
     _KEY_TEMPLATE = _SPLITIO_CACHE_KEY_TEMPLATE.format(suffix='segments.{suffix}')
     _DISABLED_KEY = _KEY_TEMPLATE.format(suffix='__disabled__')
-    _SEGMENT_KEY_SET_KEY_TEMPLATE = _KEY_TEMPLATE.format(suffix='segment.{segment_name}.key_set')
-    _SEGMENT_CHANGE_NUMBER_KEY_TEMPLATE = _KEY_TEMPLATE.format(
-        suffix='segment.{segment_name}.change_number')
+    _SEGMENT_KEY_SET_KEY_TEMPLATE = _SPLITIO_CACHE_KEY_TEMPLATE.format(suffix='segmentData.{segment_name}')
+    _SEGMENT_CHANGE_NUMBER_KEY_TEMPLATE = _SPLITIO_CACHE_KEY_TEMPLATE.format(
+        suffix='segment.{segment_name}.till')
 
     def __init__(self, redis, disabled_period=300):
         """A Segment Cache implementation that uses Redis as its back-end
@@ -74,7 +75,7 @@ class RedisSegmentCache(SegmentCache):
         :param segment_name: Name of the segment.
         :type segment_name: str
         """
-        self._redis.sadd(RedisSegmentCache._KEY_TEMPLATE.format(suffix='__registered_segments__'),
+        self._redis.sadd(RedisSegmentCache._KEY_TEMPLATE.format(suffix='registered'),
                          segment_name)
 
     def unregister_segment(self, segment_name):
@@ -82,7 +83,7 @@ class RedisSegmentCache(SegmentCache):
         :param segment_name: Name of the segment.
         :type segment_name: str
         """
-        self._redis.srem(RedisSegmentCache._KEY_TEMPLATE.format(suffix='__registered_segments__'),
+        self._redis.srem(RedisSegmentCache._KEY_TEMPLATE.format(suffix='registered'),
                          segment_name)
 
     def get_registered_segments(self):
@@ -91,7 +92,7 @@ class RedisSegmentCache(SegmentCache):
         :rtype: set
         """
         return self._redis.smembers(RedisSegmentCache._KEY_TEMPLATE.format(
-            suffix='__registered_segments__'))
+            suffix='registered'))
 
     def _get_segment_key_set_key(self, segment_name):
         """Build cache key for a given segment key set.
@@ -131,7 +132,7 @@ class RedisSegmentCache(SegmentCache):
 
 
 class RedisSplitCache(SplitCache):
-    _KEY_TEMPLATE = _SPLITIO_CACHE_KEY_TEMPLATE.format(suffix='splits.{suffix}')
+    _KEY_TEMPLATE = _SPLITIO_CACHE_KEY_TEMPLATE.format(suffix='split.{suffix}')
     _DISABLED_KEY = _KEY_TEMPLATE.format(suffix='__disabled__')
 
     def __init__(self, redis, disabled_period=300):
@@ -179,22 +180,23 @@ class RedisSplitCache(SplitCache):
 
     def get_change_number(self):
         change_number = self._redis.get(RedisSplitCache._KEY_TEMPLATE.format(
-            suffix='__change_number__'))
+            suffix='till'))
         return int(change_number) if change_number is not None else -1
 
     def set_change_number(self, change_number):
-        self._redis.set(RedisSplitCache._KEY_TEMPLATE.format(suffix='__change_number__'),
+        self._redis.set(RedisSplitCache._KEY_TEMPLATE.format(suffix='till'),
                         change_number, None)
 
     def add_split(self, split_name, split):
         self._redis.set(self._get_split_key(split_name), encode(split))
 
     def get_split(self, split_name):
-        split_dump = self._redis.get(self._get_split_key(split_name))
+        split_dump = decode(self._redis.get(self._get_split_key(split_name)))
 
         if split_dump is not None:
-            split = decode(split_dump)
-            split._segment_cache = RedisSegmentCache(self._redis)
+            segment_cache = RedisSegmentCache(self._redis)
+            split_parser = RedisSplitParser(segment_cache)
+            split = split_parser.parse(split_dump)
             return split
 
         return None
@@ -205,7 +207,7 @@ class RedisSplitCache(SplitCache):
 
 class RedisImpressionsCache(ImpressionsCache):
     _KEY_TEMPLATE = _SPLITIO_CACHE_KEY_TEMPLATE.format(suffix='impressions.{suffix}')
-    _IMPRESSIONS_KEY = _KEY_TEMPLATE.format(suffix='impressions')
+    _IMPRESSIONS_KEY = _KEY_TEMPLATE.format(suffix='{feature_name}')
     _IMPRESSIONS_TO_CLEAR_KEY = _KEY_TEMPLATE.format(suffix='impressions_to_clear')
     _DISABLED_KEY = _KEY_TEMPLATE.format(suffix='__disabled__')
 
@@ -262,27 +264,45 @@ class RedisImpressionsCache(ImpressionsCache):
         :return: All cached impressions so far grouped by feature name
         :rtype: dict
         """
-        impressions = self._redis.lrange(RedisImpressionsCache._IMPRESSIONS_KEY, 0, -1)
+        impressions_list = list()
+        impressions_keys = self._redis.keys(self._IMPRESSIONS_KEY.format(feature_name='*'))
 
-        if impressions is None:
+        for impression_key in impressions_keys:
+            if impression_key.replace(self._IMPRESSIONS_KEY.format(feature_name=''), '') == 'impressions':
+                continue
+
+            feature_name = impression_key.replace(self._IMPRESSIONS_KEY.format(feature_name=''), '')
+
+            for impression in self._redis.smembers(impression_key):
+                impression_decoded = decode(impression)
+                impression_tuple = Impression(key=impression_decoded['keyName'],
+                                              feature_name=feature_name,
+                                              treatment=impression_decoded['treatment'],
+                                              time=impression_decoded['time']
+                                              )
+                impressions_list.append(impression_tuple)
+
+        if not impressions_list:
             return dict()
 
-        return self._build_impressions_dict(
-            [decode(impression) for impression in impressions])
+        return self._build_impressions_dict(impressions_list)
 
     def clear(self):
         """Clears all cached impressions"""
-        self._redis.delete(RedisImpressionsCache._IMPRESSIONS_KEY)
+        self._redis.eval("return redis.call('del', unpack(redis.call('keys', ARGV[1])))",
+                         0,
+                         self._IMPRESSIONS_KEY.format(feature_name='*')  )
 
     def add_impression(self, impression):
         """Adds an impression to the log if it is enabled, otherwise the impression is dropped.
         :param impression: The impression tuple
         :type impression: Impression
         """
-        self._redis.eval(
-            "if redis.call('EXISTS', KEYS[1]) == 0 then "
-            "redis.call('LPUSH', KEYS[2], ARGV[1]) end", 2, RedisImpressionsCache._DISABLED_KEY,
-            self._IMPRESSIONS_KEY, encode(impression))
+        if not self.is_enabled():
+            return
+
+        cache_impression = {'keyName':impression.key, 'treatment':impression.treatment, 'time':impression.time}
+        self._redis.sadd(self._IMPRESSIONS_KEY.format(feature_name=impression.feature_name), encode(cache_impression))
 
     def fetch_all_and_clear(self):
         """Fetches all impressions from the cache and clears it. It returns a dictionary with the
@@ -290,31 +310,45 @@ class RedisImpressionsCache(ImpressionsCache):
         :return: All cached impressions so far grouped by feature name
         :rtype: dict
         """
-        impressions = self._redis.eval(
-            "if redis.call('EXISTS', KEYS[1]) == 1 then "
-            "redis.call('RENAME', KEYS[1], KEYS[2]); "
-            "local impressions_to_clear = redis.call('LRANGE', KEYS[2], 0, -1); "
-            "redis.call('DEL', KEYS[2]); "
-            "return impressions_to_clear; "
-            "end", 2,
-            RedisImpressionsCache._IMPRESSIONS_KEY, RedisImpressionsCache._IMPRESSIONS_TO_CLEAR_KEY)
+        impressions_list = list()
+        impressions_keys = self._redis.keys(self._IMPRESSIONS_KEY.format(feature_name='*'))
 
-        if impressions is None:
+        for impression_key in impressions_keys:
+            if impression_key.replace(self._IMPRESSIONS_KEY.format(feature_name=''), '') == 'impressions':
+                continue
+
+            feature_name = impression_key.replace(self._IMPRESSIONS_KEY.format(feature_name=''), '')
+
+            to_remove = list()
+            for impression in self._redis.smembers(impression_key):
+                to_remove.append(impression)
+                impression_decoded = decode(impression)
+                impression_tuple = Impression(key=impression_decoded['keyName'],
+                                              feature_name=feature_name,
+                                              treatment=impression_decoded['treatment'],
+                                              time=impression_decoded['time']
+                                              )
+                impressions_list.append(impression_tuple)
+
+            self._redis.srem(impression_key, *set(to_remove))
+
+        if not impressions_list:
             return dict()
 
-        return self._build_impressions_dict(
-            [decode(impression) for impression in impressions])
+        return self._build_impressions_dict(impressions_list)
 
 
 class RedisMetricsCache(MetricsCache):
     _KEY_TEMPLATE = _SPLITIO_CACHE_KEY_TEMPLATE.format(suffix='metrics.{suffix}')
     _DISABLED_KEY = _KEY_TEMPLATE.format(suffix='__disabled__')
     _METRIC_KEY = _KEY_TEMPLATE.format(suffix='metric')
+    _KEY_LATENCY_BUCKET = _SPLITIO_CACHE_KEY_TEMPLATE.format(suffix='latency.{metric_name}.bucket.{bucket_number}')
     _METRIC_TO_CLEAR_KEY = _KEY_TEMPLATE.format(suffix='metric_to_clear')
     _COUNT_FIELD_TEMPLATE = 'count.{counter}'
     _TIME_FIELD_TEMPLATE = 'time.{operation}.{bucket_index}'
     _GAUGE_FIELD_TEMPLATE = 'gauge.{gauge}'
 
+    _LATENCY_FIELD_RE = re.compile('^SPLITIO\.latency\.(?P<operation>.+)\.bucket\.(?P<bucket_index>.+)$')
     _COUNT_FIELD_RE = re.compile('^count\.(?P<counter>.+)$')
     _TIME_FIELD_RE = re.compile('^time\.(?P<operation>.+)\.(?P<bucket_index>.+)$')
     _GAUGE_FIELD_RE = re.compile('^gauge\.(?P<gauge>.+)$')
@@ -454,9 +488,8 @@ class RedisMetricsCache(MetricsCache):
         :rtype: dict
         """
         if response is None:
-            return {'time': [], 'count': [], 'gauge': []}
+            return {'count': [], 'gauge': []}
 
-        time = defaultdict(lambda: [0] * len(BUCKETS))
         count = dict()
         gauge = dict()
 
@@ -466,18 +499,12 @@ class RedisMetricsCache(MetricsCache):
                 count[count_match.group('counter')] = value
                 continue
 
-            time_match = RedisMetricsCache._TIME_FIELD_RE.match(field)
-            if time_match is not None:
-                time[time_match.group('operation')][int(time_match.group('bucket_index'))] = value
-                continue
-
             gauge_match = RedisMetricsCache._GAUGE_FIELD_RE.match(field)
             if gauge_match is not None:
                 gauge[gauge_match.group('gauge')] = value
                 continue
 
         return {
-            'time': self._build_metrics_times_data(time),
             'count': self._build_metrics_counter_data(count),
             'gauge': self._build_metrics_gauge_data(gauge)
         }
@@ -490,21 +517,18 @@ class RedisMetricsCache(MetricsCache):
     def get_latency(self, operation):
         return [
             0 if count is None else count
-            for count in self._redis.hmget(
-                RedisMetricsCache._METRIC_KEY, *self._get_all_buckets_time_fields(operation))]
+            for count in (self._redis.get(self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket))
+                          for bucket in range(0, len(BUCKETS)))]
 
     def get_latency_bucket_counter(self, operation, bucket_index):
-        count = self._redis.hget(RedisMetricsCache._METRIC_KEY, self._get_time_field(operation,
-                                                                                     bucket_index))
+        count = int(self._redis.get(self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket_index)))
         return count if count is not None else 0
 
     def set_gauge(self, gauge, value):
         self._redis.hset(RedisMetricsCache._METRIC_KEY, self._get_gauge_field(gauge), value)
 
     def set_latency_bucket_counter(self, operation, bucket_index, value):
-        self._conditional_eval("redis.call('HSET', KEYS[1], ARGV[1], ARGV[2]);", 1,
-                               RedisMetricsCache._METRIC_KEY,
-                               self._get_time_field(operation, bucket_index), value)
+        self._redis.set(self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket_index), value)
 
     def get_count(self, counter):
         count = self._redis.hget(RedisMetricsCache._METRIC_KEY, self._get_count_field(counter))
@@ -516,9 +540,7 @@ class RedisMetricsCache(MetricsCache):
                                self._get_count_field(counter), value)
 
     def increment_latency_bucket_counter(self, operation, bucket_index, delta=1):
-        self._conditional_eval("redis.call('HINCRBY', KEYS[1], ARGV[1], ARGV[2]);", 1,
-                               RedisMetricsCache._METRIC_KEY,
-                               self._get_time_field(operation, bucket_index), delta)
+        self._redis.incr(self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket_index))
 
     def get_gauge(self, gauge):
         return self._redis.hget(RedisMetricsCache._METRIC_KEY, self._get_gauge_field(gauge))
@@ -531,6 +553,19 @@ class RedisMetricsCache(MetricsCache):
                                     "return metric; end", 2, RedisMetricsCache._METRIC_KEY,
                                     RedisMetricsCache._METRIC_TO_CLEAR_KEY)
         return self._build_metrics_from_cache_response(response)
+
+    def fetch_all_times_and_clear(self):
+        time_keys = self._redis.keys(self._KEY_LATENCY_BUCKET.format(metric_name='*', bucket_number='*'))
+
+        time = defaultdict(lambda: [0] * len(BUCKETS))
+
+        for key in time_keys:
+            time_match = RedisMetricsCache._LATENCY_FIELD_RE.match(key)
+            if time_match is not None:
+                time[time_match.group('operation')][int(time_match.group('bucket_index'))] = int(self._redis.getset(key, 0))
+
+        return self._build_metrics_times_data(time)
+
 
 
 class RedisSplitParser(SplitParser):
