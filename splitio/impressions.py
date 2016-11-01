@@ -10,7 +10,6 @@ from threading import RLock, Timer
 
 from six import iteritems
 
-#Impression = namedtuple('Impression', ['key', 'feature_name', 'treatment', 'time'])
 Impression = namedtuple('Impression', ['matching_key', 'feature_name', 'treatment', 'label', 'change_number', 'bucketing_key', 'time'])
 
 def build_impressions_data(impressions):
@@ -28,7 +27,9 @@ def build_impressions_data(impressions):
                 {
                     'keyName': impression.matching_key,
                     'treatment': impression.treatment,
-                    'time': impression.time
+                    'time': impression.time,
+                    'changeNumber': impression.change_number,
+                    'label': impression.label
                 }
                 for impression in feature_impressions
             ]
@@ -38,55 +39,66 @@ def build_impressions_data(impressions):
     ]
 
 
+class Label(object):
+    # Condition: Split Was Killed
+    # Treatment: Default treatment
+    # Label: killed
+    KILLED = 'killed'
+
+    # Condition: No condition matched
+    # Treatment: Default Treatment
+    # Label: no condition matched
+    NO_CONDITION_MATCHED = 'no condition matched'
+
+    #Condition: Split definition was not found
+    #Treatment: control
+    #Label: split not found
+    SPLIT_NOT_FOUND = 'split not found'
+
+    # Condition: There was an exception
+    # Treatment: control
+    # Label: exception
+    EXCEPTION = 'exception'
+
 class TreatmentLog(object):
     def __init__(self):
         self._logger = logging.getLogger(self.__class__.__name__)
 
-    def _log(self, key, feature_name, treatment, time):
+    def _log(self, impression):
         """Log an impression. Implementing classes need to override this method.
-        :param key: The key of the impression
-        :type key: str
-        :param feature_name: The feature of the impression
-        :type feature_name: str
-        :param treatment: The treatment of the impression
-        :type treatment: str
-        :param time: The time of the impression in milliseconds since the epoch
-        :type time: int
+        :param impression: The impression class representation
+        :type impression: Impression
         """
         pass  # Do nothing
 
-    def log(self, key, feature_name, treatment, time):
+    def log(self, impression):
         """Log an impression.
-        :param key: The key of the impression
-        :type key: str
-        :param feature_name: The feature of the impression
-        :type feature_name: str
-        :param treatment: The treatment of the impression
-        :type treatment: str
-        :param time: The time of the impression in milliseconds since the epoch
-        :type time: int
+        :param impression: The impression
+        :type impression: Impression
         """
-        pass  # Do nothing
-        if key is None or feature_name is None or treatment is None or time is None or time <= 0:
-            return
+        if isinstance(impression, Impression):
+            self._log(impression)
 
-        self._log(key, feature_name, treatment, time)
+        return
+
 
 
 class LoggerBasedTreatmentLog(TreatmentLog):
-    def _log(self, key, feature_name, treatment, time):
-        """Log an impression as a log message.
-        :param key: The key of the impression
-        :type key: str
-        :param feature_name: The feature of the impression
-        :type feature_name: str
-        :param treatment: The treatment of the impression
-        :type treatment: str
-        :param time: The time of the impression in milliseconds since the epoch
-        :type time: int
+    def _log(self, impression):
+        """Log an impression.
+        :param impression: The impression class representation
+        :type impression: Impression
         """
-        self._logger.info('feature_name = %s, key = %s, treatment = %s, time = %s', feature_name,
-                          key, treatment, time)
+        if isinstance(impression, Impression):
+            self._logger.info('feature_name = %s, matching_key = %s, treatment = %s, time = %s, label = %s, change_number = %s, bucketing_key = %s',
+                              impression.feature_name,
+                              impression.matching_key,
+                              impression.treatment,
+                              impression.time,
+                              impression.label,
+                              impression.change_number,
+                              impression.bucketing_key
+                            )
 
 
 class InMemoryTreatmentLog(TreatmentLog):
@@ -157,30 +169,22 @@ class InMemoryTreatmentLog(TreatmentLog):
         """
         pass  # Do nothing
 
-    def _log(self, key, feature_name, treatment, time):
-        """Logs an impression.
-        :param key: The key of the impression
-        :type key: str
-        :param feature_name: The name of the feature of the impression
-        :type feature_name: str
-        :param treatment: The treatment of the impression
-        :type treatment: str
-        :param time: Timestamp as milliseconds from epoch of the impression
-        :type time: int
+    def _log(self, impression):
+        """Log an impression.
+        :param impression: The impression class representation
+        :type impression: Impression
         """
-        #impression = Impression(key=key, feature_name=feature_name, treatment=treatment, time=time)
-        #'matching_key', 'feature_name', 'treatment', 'label', 'change_number', 'bucketing_key', 'time'
-        impression = Impression(matching_key=key, feature_name=feature_name, treatment=treatment, label='', change_number=-1, bucketing_key='', time=time)
-        with self._rlock:
-            feature_impressions = self._impressions[feature_name]
+        if isinstance(impression, Impression):
+            with self._rlock:
+                feature_impressions = self._impressions[impression.feature_name]
 
-            if self._max_count < 0 or len(feature_impressions) < self._max_count:
-                feature_impressions.append(impression)
-            else:
-                self._logger.warning('Count limit for feature treatment log reached. '
-                                     'Clearing impressions for feature.')
-                self._impressions[feature_name] = [impression]
-                self._notify_eviction(feature_name, feature_impressions)
+                if self._max_count < 0 or len(feature_impressions) < self._max_count:
+                    feature_impressions.append(impression)
+                else:
+                    self._logger.warning('Count limit for feature treatment log reached. '
+                                         'Clearing impressions for feature.')
+                    self._impressions[impression.feature_name] = [impression]
+                    self._notify_eviction(impression.feature_name, feature_impressions)
 
 
 class CacheBasedTreatmentLog(TreatmentLog):
@@ -192,21 +196,13 @@ class CacheBasedTreatmentLog(TreatmentLog):
         super(CacheBasedTreatmentLog, self).__init__()
         self._impressions_cache = impressions_cache
 
-    def _log(self, key, feature_name, treatment, time):
-        """Logs an impression. Since the actual cache implementation may not allow for easily
-        counting existing keys, the max count enforcement would be up the specific cache
-        implementation.
-        :param key: The key of the impression
-        :type key: str
-        :param feature_name: The name of the feature of the impression
-        :type feature_name: str
-        :param treatment: The treatment of the impression
-        :type treatment: str
-        :param time: Timestamp as milliseconds from epoch of the impression
-        :return: int
+    def _log(self, impression):
+        """Log an impression.
+        :param impression: The impression class representation
+        :type impression: Impression
         """
-        self._impressions_cache.add_impression(
-            Impression(key=key, feature_name=feature_name, treatment=treatment, time=time))
+        if isinstance(impression, Impression):
+            self._impressions_cache.add_impression(impression)
 
 
 class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
@@ -275,12 +271,7 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         """Sends the impressions stored back to the Split.io back-end"""
         try:
             impressions_by_feature = self.fetch_all_and_clear()
-
-            self._logger.error(impressions_by_feature)
-
             test_impressions_data = build_impressions_data(impressions_by_feature)
-
-            self._logger.error(test_impressions_data)
 
             if len(test_impressions_data) > 0:
                 self._api.test_impressions(test_impressions_data)
@@ -346,19 +337,14 @@ class AsyncTreatmentLog(TreatmentLog):
     def delegate(self):
         return self._delegate
 
-    def log(self, key, feature_name, treatment, time):
+    def log(self, impression):
         """Logs an impression asynchronously.
-        :param key: The key of the impression
-        :type key: str
-        :param feature_name: The name of the feature of the impression
-        :type feature_name: str
-        :param treatment: The treatment of the impression
-        :type treatment: str
-        :param time: Timestamp as milliseconds from epoch of the impression
+        :param impression: The impression
+        :type impression: Impression
         :return: int
         """
-        try:
-            self._thread_pool_executor.submit(self._delegate.log, key, feature_name,
-                                              treatment, time)
-        except:
-            self._logger.exception('Exception caught logging impression asynchronously')
+        if isinstance(impression, Impression):
+            try:
+                self._thread_pool_executor.submit(self._delegate.log, impression)
+            except:
+                self._logger.exception('Exception caught logging impression asynchronously')
