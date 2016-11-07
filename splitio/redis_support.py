@@ -153,6 +153,9 @@ class RedisSplitCache(SplitCache):
     def disabled_period(self, disabled_period):
         self._disabled_period = disabled_period
 
+    def get_splits_keys(self):
+        return self._redis.keys(RedisSplitCache._KEY_TEMPLATE.format(suffix='*'))
+
     def _get_split_key(self, split_name):
         """Builds a Redis key cache for a given split (feature) name,
         :param split_name: Name of the split (feature)
@@ -200,6 +203,23 @@ class RedisSplitCache(SplitCache):
             return split
 
         return None
+
+    def get_splits(self):
+        keys = self.get_splits_keys()
+        keys.remove('SPLITIO.split.till')
+        splits = self._redis.mget(keys)
+
+        to_return = []
+
+        segment_cache = RedisSegmentCache(self._redis)
+        split_parser = RedisSplitParser(segment_cache)
+
+        for split in splits:
+            split_dump = decode(split)
+            if split_dump is not None:
+                to_return.append(split_parser.parse(split_dump))
+
+        return to_return
 
     def remove_split(self, split_name):
         self._redis.delete(self._get_split_key(split_name))
@@ -579,7 +599,7 @@ class RedisSplitParser(SplitParser):
 
     def _parse_split(self, split, block_until_ready=False):
         return RedisSplit(split['name'], split['seed'], split['killed'], split['defaultTreatment'],
-                          segment_cache=self._segment_cache)
+                          split['trafficTypeName'], segment_cache=self._segment_cache)
 
     def _parse_matcher_in_segment(self, partial_split, matcher, block_until_ready=False, *args,
                                   **kwargs):
@@ -591,7 +611,7 @@ class RedisSplitParser(SplitParser):
 
 
 class RedisSplit(Split):
-    def __init__(self, name, seed, killed, default_treatment, conditions=None, segment_cache=None):
+    def __init__(self, name, seed, killed, default_treatment, traffic_type_name, conditions=None, segment_cache=None):
         """A split implementation that mantains a reference to the segment cache so segments can
         be easily pickled and unpickled.
         :param name: Name of the feature
@@ -607,7 +627,7 @@ class RedisSplit(Split):
         :param segment_cache: A segment cache
         :type segment_cache: SegmentCache
         """
-        super(RedisSplit, self).__init__(name, seed, killed, default_treatment, conditions)
+        super(RedisSplit, self).__init__(name, seed, killed, default_treatment, traffic_type_name, conditions)
         self._segment_cache = segment_cache
 
     @property

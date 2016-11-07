@@ -8,6 +8,7 @@ from enum import Enum
 from json import load
 from requests.exceptions import HTTPError
 from threading import Thread, Timer, RLock
+from collections import namedtuple
 
 from future.utils import python_2_unicode_compatible
 
@@ -16,6 +17,7 @@ from splitio.matchers import (CombiningMatcher, AndCombiner, AllKeysMatcher,
                               GreaterThanOrEqualToMatcher, LessThanOrEqualToMatcher, BetweenMatcher,
                               AttributeMatcher, DataType)
 
+SplitView = namedtuple('SplitView', ['name', 'traffic_type', 'killed', 'treatments', 'change_number'])
 
 class Status(Enum):
     """Split status"""
@@ -25,7 +27,7 @@ class Status(Enum):
 
 
 class Split(object):
-    def __init__(self, name, seed, killed, default_treatment, conditions=None):
+    def __init__(self, name, seed, killed, default_treatment, traffic_type_name, conditions=None):
         """
         A class that represents a split. It associates a feature name with a set of matchers
         (responsible of telling which condition to use) and conditions (which determines which
@@ -45,6 +47,7 @@ class Split(object):
         self._seed = seed
         self._killed = killed
         self._default_treatment = default_treatment
+        self._traffic_type_name = traffic_type_name
         self._conditions = conditions if conditions is not None else []
 
     @property
@@ -62,6 +65,10 @@ class Split(object):
     @property
     def default_treatment(self):
         return self._default_treatment
+
+    @property
+    def traffic_type_name(self):
+        return self._traffic_type_name
 
     @property
     def conditions(self):
@@ -525,7 +532,7 @@ class SplitParser(object):
         :return: A partial parsed split
         :rtype: Split
         """
-        return Split(split['name'], split['seed'], split['killed'], split['defaultTreatment'])
+        return Split(split['name'], split['seed'], split['killed'], split['defaultTreatment'], split['trafficTypeName'])
 
     def _parse_conditions(self, partial_split, split, block_until_ready=False):
         """Parse split conditions
@@ -771,3 +778,11 @@ class CacheBasedSplitFetcher(SplitFetcher):
 
     def fetch(self, feature):
         return self._split_cache.get_split(feature)
+
+    def fetch_all(self):
+        """
+        Feches all splits
+        :return: All the know splits so far
+        :rtype: list
+        """
+        return self._split_cache.get_splits()
