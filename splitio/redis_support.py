@@ -301,7 +301,12 @@ class RedisImpressionsCache(ImpressionsCache):
         if not self.is_enabled():
             return
 
-        cache_impression = {'keyName':impression.key, 'treatment':impression.treatment, 'time':impression.time}
+        cache_impression = {'keyName':impression.matching_key,
+                            'treatment':impression.treatment,
+                            'time':impression.time,
+                            'changeNumber':impression.change_number,
+                            'label':impression.label
+                            }
         self._redis.sadd(self._IMPRESSIONS_KEY.format(feature_name=impression.feature_name), encode(cache_impression))
 
     def fetch_all_and_clear(self):
@@ -323,9 +328,21 @@ class RedisImpressionsCache(ImpressionsCache):
             for impression in self._redis.smembers(impression_key):
                 to_remove.append(impression)
                 impression_decoded = decode(impression)
-                impression_tuple = Impression(key=impression_decoded['keyName'],
+
+                label = ''
+                if 'label' in impression_decoded:
+                    label = impression_decoded['label']
+
+                change_number = -1
+                if 'changeNumber' in impression_decoded:
+                    change_number = impression_decoded['changeNumber']
+
+                impression_tuple = Impression(matching_key=impression_decoded['keyName'],
                                               feature_name=feature_name,
                                               treatment=impression_decoded['treatment'],
+                                              label=label,
+                                              change_number=change_number,
+                                              bucketing_key='',
                                               time=impression_decoded['time']
                                               )
                 impressions_list.append(impression_tuple)

@@ -155,6 +155,10 @@ class SplitFetcher(object):  # pragma: no cover
         """
         self._logger = logging.getLogger(self.__class__.__name__)
 
+    @property
+    def change_number(self):
+        pass
+
     def fetch(self, feature):
         """
         Fetches the split for a given feature
@@ -184,6 +188,10 @@ class InMemorySplitFetcher(SplitFetcher):
         """
         super(InMemorySplitFetcher, self).__init__()
         self._splits = splits if splits is not None else dict()
+
+    @property
+    def change_number(self):
+        return -1
 
     def fetch(self, feature):
         """
@@ -771,3 +779,7 @@ class CacheBasedSplitFetcher(SplitFetcher):
 
     def fetch(self, feature):
         return self._split_cache.get_split(feature)
+
+    @property
+    def change_number(self):
+        return self._split_cache.get_change_number()

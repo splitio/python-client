@@ -17,7 +17,7 @@ from splitio.exceptions import TimeoutException
 from splitio.metrics import (Metrics, AsyncMetrics, ApiMetrics, CacheBasedMetrics,
                              SDK_GET_TREATMENT)
 from splitio.impressions import (TreatmentLog, AsyncTreatmentLog, SelfUpdatingTreatmentLog,
-                                 CacheBasedTreatmentLog)
+                                 CacheBasedTreatmentLog, Impression, Label)
 from splitio.redis_support import (RedisSplitCache, RedisImpressionsCache, RedisMetricsCache,
                                        get_redis)
 from splitio.splitters import Splitter
@@ -29,6 +29,12 @@ from splitio.segments import (ApiSegmentChangeFetcher, SelfRefreshingSegmentFetc
 from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, parse_config_file
 from splitio.treatments import CONTROL
 
+
+class Key(object):
+    def __init__(self, matching_key, bucketing_key):
+        """Bucketing Key implementation"""
+        self.matching_key = matching_key
+        self.bucketing_key = bucketing_key
 
 class Client(object):
     def __init__(self):
@@ -83,33 +89,64 @@ class Client(object):
         if key is None or feature is None:
             return CONTROL
 
-        try:
-            start = arrow.utcnow().timestamp * 1000
+        start = arrow.utcnow().timestamp * 1000
 
+        matching_key = None
+        bucketing_key = None
+        if isinstance(key, Key):
+            matching_key = key.matching_key
+            bucketing_key = key.bucketing_key
+        else:
+            matching_key = key
+            bucketing_key = key
+
+        try:
+            label = ''
+            _treatment = CONTROL
+
+            #Fetching Split definition
             split = self.get_split_fetcher().fetch(feature)
 
             if split is None:
                 self._logger.warning('Unknown or invalid feature: %s', feature)
-                return CONTROL
+                label = Label.SPLIT_NOT_FOUND
+                _treatment = CONTROL
+            else:
+                if split.killed:
+                    label = Label.KILLED
+                    _treatment = split.default_treatment
+                else:
+                    treatment = self._get_treatment_for_split(split, matching_key, bucketing_key, attributes)
+                    if treatment is None:
+                        label = Label.NO_CONDITION_MATCHED
+                        _treatment = split.default_treatment
+                    else:
+                        _treatment = treatment
 
-            treatment = self._get_treatment_for_split(split, key, attributes)
-
-            self._record_stats(key, feature, treatment, start, SDK_GET_TREATMENT)
-
-            return treatment
+            impression = self._build_impression(matching_key, feature, _treatment, label,
+                                                self.get_split_fetcher().change_number, bucketing_key, start)
+            self._record_stats(impression, start, SDK_GET_TREATMENT)
+            return _treatment
         except:
             self._logger.exception('Exception caught getting treatment for feature')
+            impression = self._build_impression(matching_key, feature, CONTROL, Label.EXCEPTION,
+                                                self.get_split_fetcher().change_number, bucketing_key, start)
+            self._record_stats(impression, start, SDK_GET_TREATMENT)
             return CONTROL
 
-    def _record_stats(self, key, feature, treatment, start, operation):
+    def _build_impression(self, matching_key, feature_name, treatment, label, change_number, bucketing_key, time):
+        return Impression(matching_key=matching_key, feature_name=feature_name, treatment=treatment, label=label,
+                                    change_number=change_number, bucketing_key=bucketing_key, time=time)
+
+    def _record_stats(self, impression, start, operation):
         try:
             end = arrow.utcnow().timestamp * 1000
-            self.get_treatment_log().log(key, feature, treatment, end)
+            self.get_treatment_log().log(impression)
             self.get_metrics().time(operation, end - start)
         except:
             self._logger.exception('Exception caught recording impressions and metrics')
 
-    def _get_treatment_for_split(self, split, key, attributes=None):
+    def _get_treatment_for_split(self, split, matching_key, bucketing_key, attributes=None):
         """
         Internal method to get the treatment for a given Split and optional attributes. This
         method might raise exceptions and should never be used directly.
@@ -122,14 +159,13 @@ class Client(object):
         :return: The treatment for the key and split
         :rtype: str
         """
-        if split.killed:
-            return split.default_treatment
 
         for condition in split.conditions:
-            if condition.matcher.match(key, attributes=attributes):
-                return self.get_splitter().get_treatment(key, split.seed, condition.partitions)
+            if condition.matcher.match(matching_key, attributes=attributes):
+                return self.get_splitter().get_treatment(bucketing_key, split.seed, condition.partitions)
 
-        return split.default_treatment
+        # No condition matches
+        return None
 
 
 def randomize_interval(value):
