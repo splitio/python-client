@@ -85,6 +85,10 @@ class RedisSplitManager(SplitManager):
         :rtype: SplitView
         """
         split = self._split_fetcher.fetch(feature_name)
+
+        if split is None:
+            return None
+
         change_number = self._split_cache.get_change_number()
 
         treatments = []
@@ -147,6 +151,10 @@ class SelfRefreshingSplitManager(SplitManager):
         :rtype: SplitView
         """
         split = self._split_fetcher.fetch(feature_name)
+
+        if split is None:
+            return None
+
         change_number = self._split_fetcher.change_number
 
         treatments = []
