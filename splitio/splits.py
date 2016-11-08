@@ -164,7 +164,7 @@ class SplitFetcher(object):  # pragma: no cover
 
     @property
     def change_number(self):
-        pass
+        return None
 
     def fetch(self, feature):
         """

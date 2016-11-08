@@ -206,7 +206,10 @@ class RedisSplitCache(SplitCache):
 
     def get_splits(self):
         keys = self.get_splits_keys()
-        keys.remove('SPLITIO.split.till')
+
+        if 'SPLITIO.split.till' in keys:
+            keys.remove('SPLITIO.split.till')
+
         splits = self._redis.mget(keys)
 
         to_return = []
