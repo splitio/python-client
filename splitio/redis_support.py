@@ -194,7 +194,13 @@ class RedisSplitCache(SplitCache):
         self._redis.set(self._get_split_key(split_name), encode(split))
 
     def get_split(self, split_name):
-        split_dump = decode(self._redis.get(self._get_split_key(split_name)))
+
+        to_decode = self._redis.get(self._get_split_key(split_name))
+
+        if to_decode is None:
+            return None
+
+        split_dump = decode(to_decode)
 
         if split_dump is not None:
             segment_cache = RedisSegmentCache(self._redis)
