@@ -62,10 +62,14 @@ class MainSplitFactory(SplitFactory):
 
 
 class LocalhostSplitFactory(SplitFactory):
-    def __init__(self):
+    def __init__(self, **kwargs):
         super(LocalhostSplitFactory, self).__init__()
 
-        self._client = get_client('localhost')
+        if 'split_definition_file_name' in kwargs:
+            self._client = get_client('localhost', split_definition_file_name=kwargs['split_definition_file_name'])
+        else:
+            self._client = get_client('localhost')
+
         self._manager = LocalhostSplitManager(self._client.get_split_fetcher())
 
     def client(self):  # pragma: no cover
@@ -90,7 +94,7 @@ def get_factory(api_key, **kwargs):
     :return:
     """
     if api_key == 'localhost':
-        return LocalhostSplitFactory()
+        return LocalhostSplitFactory(**kwargs)
     else:
         return MainSplitFactory(api_key, **kwargs)
 
