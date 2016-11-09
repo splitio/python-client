@@ -25,8 +25,9 @@ The main entry point for this project is the `get_client` function. This functio
 The following snippet shows you how to create a basic client using the default configuration, and request a treatment for user:
 
 ```
-  >>> from splitio import get_client
-  >>> client = get_client('some_api_key')
+  >>> from splitio import get_factory
+  >>> factory = get_factory('some_api_key')
+  >>> client = factory.client()
   >>> client.get_treatment('some_user', 'some_feature')
   'SOME_TREATMENT'
 ```

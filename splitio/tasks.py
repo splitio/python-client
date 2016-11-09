@@ -91,7 +91,7 @@ def update_splits(split_cache, split_change_fetcher, split_parser):
                         continue
 
                     added_features.append(split_change['name'])
-                    split_cache.add_split(split_change['name'], parsed_split)
+                    split_cache.add_split(split_change['name'], split_change)
 
                 if len(added_features) > 0:
                     _logger.info('Updated features: %s', added_features)
@@ -134,12 +134,12 @@ def report_metrics(metrics_cache, sdk_api):
         if not metrics_cache.is_enabled():
             return
 
-        metrics = metrics_cache.fetch_all_and_clear()
-
-        if 'time' in metrics and len(metrics['time']) > 0:
+        time = metrics_cache.fetch_all_times_and_clear()
+        if len(time) > 0:
             _logger.info('Sending times metrics...')
-            sdk_api.metrics_times(metrics['time'])
+            sdk_api.metrics_times(time)
 
+        metrics = metrics_cache.fetch_all_and_clear()
         if 'count' in metrics and len(metrics['count']) > 0:
             _logger.info('Sending counters metrics...')
             sdk_api.metrics_counters(metrics['count'])
