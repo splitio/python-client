@@ -19,23 +19,56 @@ Quickstart
 
 Before you begin, make sure that you have an **API key** for the Split.io services. Consult the Split.io documentation on how to get an API key for any of your environments.
 
-The main entry point for this project is the ``get_client`` function. This function creates Split clients that keep the cached information up-to-date with periodic requests to the SDK API. Impressions (which treatments were given to each user) and metrics are also sent periodically to the Split events backend.
+The main entry point for this project is the ``get_factory`` function. This function creates Split clients that keep the cached information up-to-date with periodic requests to the SDK API. Impressions (which treatments were given to each user) and metrics are also sent periodically to the Split events backend.
 
 The following snippet shows you how to create a basic client using the default configuration, and request a treatment for user: ::
 
-  >>> from splitio import get_client
-  >>> client = get_client('some_api_key')
+  >>> from splitio import get_factory
+  >>> factory = get_factory('some_api_key')
+  >>> client = factory.client()
   >>> client.get_treatment('some_user', 'some_feature')
   'SOME_TREATMENT'
+
+Bucketing key
+-------------
+In advanced mode the key can be set as two different parts, one of them just to match the condition and the other one to calculate the treatment bucket ::
+
+  >>> from splitio import get_factory, Key
+  >>> user = 'some_user_or_anonymous'
+  >>> bucketing_key = 'some_random_string'
+  >>> split_key = Key(user, bucketing_key)
+  >>> factory = get_factory('API_KEY')
+  >>> client = factory.client()
+  >>> client.get_treatment(split_key, 'some_feature')
+
+Manager API
+-----------
+Manager API is very useful to get a representation (view) of cached splits: ::
+
+  >>> from splitio import get_factory
+  >>> factory = get_factory('API_KEY')
+  >>> manager = factory.manager()
+
+Available methods:
+
+**splits():** Returns a list of SplitView instance ::
+  >>> manager.splits()
+
+**split(name):** Returns a SplitView instance ::
+  >>> manager.split('some_test_name')
+
+**split_names():** Returns a list of Split names (String) ::
+  >>> manager.split_names()
 
 Client configuration
 --------------------
 
 It's possible to control certain aspects of the client behaviour by supplying a ``config`` dictionary. For instance, the following snippets shows you how to set the segment update interval to 10 seconds: ::
 
-  >>> from splitio import get_client
+  >>> from splitio import get_factory
   >>> config = {'segmentsRefreshRate': 10}
-  >>> client = get_client('some_api_key', config=config)
+  >>> factory = get_factory('some_api_key', config=config)
+  >>> client = factory.client()
 
 All the possible configuration options are:
 
@@ -85,8 +118,9 @@ This is an example of a ``.split`` file: ::
 
 Whenever a treatment is requested for the feature ``feature_0``, ``treatment_0`` is going to be returned. The same goes for ``feature_1`` and ``treatment_1``. The following example illustrates the behaviour: ::
 
-  >>> from splitio import get_client
-  >>> client = get_client('localhost')
+  >>> from splitio import get_factory
+  >>> factory = get_factory('localhost')
+  >>> client = factory.client()
   >>> client.get_treatment('some_user', 'feature_0')
   'treatment_0'
   >>> client.get_treatment('some_other_user', 'feature_0')
@@ -100,19 +134,20 @@ Notice that an API key is not necessary for the localhost environment, and the `
 
 It is possible to specify a different splits file using the ``split_definition_file_name`` argument: ::
 
-  >>> from splitio import get_client
-  >>> client = get_client(
-          split_definition_file_name='/path/to/splits/file')
+  >>> from splitio import get_factory
+  >>> factory = get_factory('localhost', split_definition_file_name='/path/to/splits/file')
+  >>> client = factory.client()
 
 Specifying Split.io environments
 --------------------------------
 
 By default, all requests are sent to the Split production environments. It is possible to change this by supplying values for the ``sdk_api_base_url`` and ``events_api_base_url`` arguments: ::
 
-  >>> from splitio import get_client
-  >>> client = get_client('some_api_key',
+  >>> from splitio import get_factory
+  >>> factory = get_factory('some_api_key',
           sdk_api_base_url='https://sdk-staging.split.io/api',
           events_api_base_url='https://sdk-events.split.io/api')
+  >>> client = factory.client()
 
 Notice that you're going to need a **different API key** than the one used for the production environments.
 
@@ -126,7 +161,7 @@ Before you can use it, you need to install the ``splitio_client`` with support f
 
   pip install splitio_client[redis]
 
-The client depends on the information for features and segments being updated externally. In order to do that, we provide the ``update_splits`` and ``update_segments`` scripts.
+The client depends on the information for features and segments being updated externally. In order to do that, we provide the ``update_splits`` and ``update_segments`` scripts or even the ``splitio.bin.synchronizer`` service.
 
 The scripts are configured through a JSON settings file, like the following: ::
 
@@ -215,10 +250,10 @@ On the other hand, there is available a python script named ``splitio.bin.synchr
         python -m splitio.bin.synchronizer --splits-refresh-rate=10 splitio-config.json
 
 
-Once the scripts are running, you can access a client using the ``get_redis_client`` function with the ``config_file`` parameter: ::
+Once the scripts are running, you can access a client using the ``get_factory().client()`` function with the ``config_file`` parameter: ::
 
-  >>> from splitio import get_redis_client
-  >>> client = get_redis_client(None,
+  >>> from splitio import get_factory
+  >>> factory = get_factory(None,
           config_file='splitio-config.json')
 
 The first argument is the API key which is not necessary in this context, but if you pass "localhost" as its value, a localhost environment client will be generated as shown in a previous section.

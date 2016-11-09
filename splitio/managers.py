@@ -213,6 +213,9 @@ class LocalhostSplitManager(SplitManager):
         :rtype: SplitView
         """
         split = self._split_fetcher.fetch(feature_name)
+        if split is None:
+            return None
+
         change_number = -1
         treatments = [split.default_treatment]
 

@@ -17,8 +17,8 @@ with open(path.join(path.abspath(path.dirname(__file__)), 'splitio', 'version.py
 setup(name='splitio_client',
       version=__version__,  # noqa
       description='Split.io Python Client',
-      author='Patricio Echague',
-      author_email='pato@split.io',
+      author='Patricio Echague, Sebastian Arrubia',
+      author_email='pato@split.io, sebastian@split.io',
       url='https://github.com/splitio/python-client',
       download_url='https://github.com/splitio/python-client/tarball/' + __version__,
       license='Apache License 2.0',

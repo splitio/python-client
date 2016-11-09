@@ -13,17 +13,16 @@ This example assumes that the Split.io configuration is save in a file called ``
     import logging
     from flask import Flask, render_template, request
 
-    from splitio import get_redis_client, get_client
+    from splitio import get_factory
 
     logging.basicConfig(level=logging.INFO)
 
     app = Flask(__name__)
 
-    # With redis
-    #client = get_redis_client('SOME-API-KEY', config_file='splitio-config.json')
-
-    # In-memory
-    client = get_client('SOME-API-KEY', config_file='splitio-config.json')
+    factory = get_factory('SOME-API-KEY', config_file='splitio-config.json')
+    # Redis: The redisHost key must be set into config-file
+    # In-memory: Don't set redis configurations
+    client = factory.client()
 
 
     @app.route('/')
