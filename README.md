@@ -1,37 +1,52 @@
-# Split.io Python Client
+# Split Python SDK
 
-This project provides Python programs access to the [Split.io](http://split.io/)` SDK API. For more information on the Split.io SDK, please consult the documentation.
+This SDK is designed to work with [Split](https://www.split.io), the platform for controlled rollouts, serving features to your users via the Split feature flag to manage your complete customer experience.
 
-## Installation and Requirements
+### Quick setup
 
-`split-client` supports both Python 2 (2.7 or later) and Python 3 (3.3 or later). Stable versions can be installed from [PyPI](https://pypi.python.org) using pip:
+For specific instructions on how to set up the Python SDK refer to our [Detailed-README](Detailed-README.md) or our [official SDK documentation](http://docs.split.io/docs/sdk-overview).
 
-```
-  pip install splitio_client
-```
+### Commitment to Quality:
 
-and development versions are installed directly from the [Github](https://github.com/splitio/python-client) repository:
+Split’s SDKs are in active development and are constantly tested for quality. Unit tests are developed for each SDK based on the unique needs of that language, and integration tests, load and performance tests, and behavior consistency tests are running 24/7 via automated bots. In addition, monitoring instrumentation ensures that these SDKs behave under the expected parameters of memory, CPU, and I/O.
 
-```
-  pip install -e git+git@github.com:splitio/python-client.git@development#egg=splitio_client
-```
+### About Split:
 
-## Quickstart
+Split builds on feature flags to create the platform for controlled rollouts, so any team can target customers and release or revert new features without a deployment—or touching code. Get started quickly with SDKs in your language, then create on/off, percentage, and multivariate rollout plans in seconds. Integrations with the services you use to monitor, alert and track issues reduce time-to-resolution when things go wrong, and hotfixes are entirely avoided by killing problem features with a single click.
 
-Before you begin, make sure that you have an **API key** for the Split.io services. Consult the Split.io documentation on how to get an API key for any of your environments.
+ * What you can do with Split. Split goes beyond the simple on/off capabilities of basic feature flagging to give your team the power to:
 
-The main entry point for this project is the `get_client` function. This function creates Split clients that keep the cached information up-to-date with periodic requests to the SDK API. Impressions (which treatments were given to each user) and metrics are also sent periodically to the Split events backend.
+ 	* Create multivariate feature releases
+	* Create A/B feature releases
+	* Kill any feature, over the browser, with a single click
+	* Target releases to subsets of your audience, including percentage roll outs, whitelists,    attribute-based targeting, and individual user IDs 
+	* Integrate with the services your team uses to monitor, plan and communicate, like Datadog, JIRA and Slack 
+	* Manage team access, with features like two-factor authentication and role-based permissioning.
 
-The following snippet shows you how to create a basic client using the default configuration, and request a treatment for user:
 
-```
-  >>> from splitio import get_factory
-  >>> factory = get_factory('some_api_key')
-  >>> client = factory.client()
-  >>> client.get_treatment('some_user', 'some_feature')
-  'SOME_TREATMENT'
-```
+Split has built and maintains a SDKs for:
 
-## Additional information
+* Java [Docs](http://docs.split.io/docs/java-sdk-guide)
+* Javascript [Github](https://github.com/splitio/javascript-client) [Docs](http://docs.split.io/docs/javascript-sdk-overview)
+* Node [Github](https://github.com/splitio/javascript-client) [Docs](http://docs.split.io/docs/nodejs-sdk-overview)
+* .NET [Github](https://github.com/splitio/.net-client) [Docs](http://docs.split.io/docs/net-sdk-overview)
+* Ruby [Github](https://github.com/splitio/ruby-client) [Docs](http://docs.split.io/docs/ruby-sdk-overview)
+* PHP [Github](https://github.com/splitio/php-client) [Docs](http://docs.split.io/docs/php-sdk-overview)
+* Python [Github](https://github.com/splitio/python-client) [Docs](http://docs.split.io/docs/python-sdk-overview)
 
-You can get more information on how to use this package in the included documentation.
+For a comprenhensive list of opensource projects visit our [Github page](https://github.com/splitio?utf8=%E2%9C%93&query=%20only%3Apublic%20).
+
+**Try Split for Free:**
+
+Split is available as a 30-day free trial. To create an account, visit [split.io/trial](https://www.split.io/trial).
+
+**Learn more about Split:** 
+
+Visit [split.io/product](https://www.split.io/product) for an overview of Split, or visit our documentation at [docs.split.io](http://docs.split.io) for more detailed information.
+
+**System Status:**
+
+We use a status page to monitor the availability of Split’s various services. You can check the current status at [status.split.io](http://status.split.io).
+
+----
+
