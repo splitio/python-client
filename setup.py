@@ -25,7 +25,7 @@ setup(name='splitio_client',
       install_requires=install_requires,
       tests_require=tests_require,
       extras_require={'test': tests_require},
-      setup_requires=['pbr>=1.9', 'setuptools>=17.1'],
+      setup_requires=['nose'],
       extra_requires={
           'redis': ['redis>=2.6', 'jsonpickle>=0.9.3']
       },
