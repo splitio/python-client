@@ -56,32 +56,10 @@ class ClientTests(TestCase, MockUtilsMixin):
         self.assertEqual(CONTROL, self.client.get_treatment(self.some_key, None,
                                                             self.some_attributes))
 
-    def test_get_treatment_calls_get_split_fetcher(self):
-        """Test that get_treatment calls get_split_fetcher"""
-        self.client.get_treatment(self.some_key, self.some_feature, self.some_attributes)
-        self.get_split_fetcher_mock.assert_called_once_with()
-
     def test_get_treatment_calls_split_fetcher_fetch(self):
         """Test that get_treatment calls split fetcher fetch"""
         self.client.get_treatment(self.some_key, self.some_feature, self.some_attributes)
         self.get_split_fetcher_mock.return_value.fetch.assert_called_once_with(self.some_feature)
-
-    def test_get_treatment_calls_get_treatment_for_split(self):
-        """Test that get_treatment calls get_treatment_for_split"""
-        get_treatment_for_split_mock = self.patch_object(self.client, '_get_treatment_for_split')
-
-        self.client.get_treatment(self.some_key, self.some_feature, self.some_attributes)
-        get_treatment_for_split_mock.assert_called_once_with(
-            self.get_split_fetcher_mock.return_value.fetch.return_value, self.some_key,
-            self.some_attributes)
-
-    def test_get_treatment_returns_get_treatment_for_split_result(self):
-        """Test that get_treatment returns get_treatment_for_split result"""
-        get_treatment_for_split_mock = self.patch_object(self.client, '_get_treatment_for_split')
-
-        self.assertEqual(get_treatment_for_split_mock.return_value,
-                         self.client.get_treatment(self.some_key, self.some_feature,
-                                                   self.some_attributes))
 
     def test_get_treatment_returns_control_if_get_split_fetcher_raises_exception(self):
         """Test that get_treatment returns CONTROL treatment if get_split_fetcher raises an
@@ -105,23 +83,26 @@ class ClientTests(TestCase, MockUtilsMixin):
     def test_get_treatment_returns_control_if_get_treatment_for_split_raises_exception(self):
         """Test that get_treatment returns CONTROL treatment _get_treatment_for_split raises an
         exception"""
+        self.some_split.killed = False
+        self.get_split_fetcher_mock.return_value.fetch.return_value = self.some_split
         self.patch_object(self.client, '_get_treatment_for_split', side_effect=Exception())
         self.assertEqual(CONTROL, self.client.get_treatment(self.some_key, self.some_feature,
                                                             self.some_attributes))
 
-    def test_get_treatment_for_split_returns_default_treatment_if_feature_is_killed(self):
-        """Test that _get_treatment_for_split returns CONTROL if split is None"""
+    def test_get_treatment_returns_default_treatment_if_feature_is_killed(self):
+        """Test that get_treatment returns default treatment if split is Killed"""
         self.some_split.killed = True
+        self.get_split_fetcher_mock.return_value.fetch.return_value = self.some_split
         self.assertEqual(self.some_split.default_treatment,
-                         self.client._get_treatment_for_split(self.some_split, self.some_key,
-                                                              self.some_feature))
+                         self.client.get_treatment(self.some_key, self.some_feature,
+                                                            self.some_attributes))
 
     def test_get_treatment_returns_default_treatment_if_no_conditions_match(self):
-        """Test that _get_treatment_for_split returns CONTROL if no split conditions_match"""
+        """Test that _get_treatment_for_split returns None if no split conditions_match"""
         self.some_conditions[0].matcher.match.return_value = False
         self.some_conditions[1].matcher.match.return_value = False
         self.some_conditions[2].matcher.match.return_value = False
-        self.assertEqual(self.some_split.default_treatment,
+        self.assertEqual(None,
                          self.client._get_treatment_for_split(self.some_split, self.some_key,
                                                               self.some_feature))
 
@@ -133,7 +114,7 @@ class ClientTests(TestCase, MockUtilsMixin):
         self.some_conditions[0].matcher.match.return_value = False
         self.some_conditions[1].matcher.match.return_value = True
         self.some_conditions[2].matcher.match.return_value = False
-        self.client._get_treatment_for_split(self.some_split, self.some_key, self.some_attributes)
+        self.client._get_treatment_for_split(self.some_split, self.some_key, self.some_key, self.some_attributes)
         self.some_conditions[0].matcher.match.assert_called_once_with(
             self.some_key, attributes=self.some_attributes)
         self.some_conditions[1].matcher.match.assert_called_once_with(
@@ -146,7 +127,7 @@ class ClientTests(TestCase, MockUtilsMixin):
         """
         self.some_conditions[0].matcher.match.return_value = False
         self.some_conditions[1].matcher.match.return_value = True
-        self.client._get_treatment_for_split(self.some_split, self.some_key, self.some_attributes)
+        self.client._get_treatment_for_split(self.some_split, self.some_key, self.some_key, self.some_attributes)
         self.splitter_mock.return_value.get_treatment.assert_called_once_with(
             self.some_key, self.some_split.seed, self.some_conditions[1].partitions)
 
@@ -154,10 +135,11 @@ class ClientTests(TestCase, MockUtilsMixin):
         """Test that get_treatment calls get_split_fetcher"""
         get_treatment_for_split_mock = self.patch_object(self.client, '_get_treatment_for_split')
         self.client.get_treatment(self.some_key, self.some_feature, self.some_attributes)
-        self.record_stats_mock.assert_called_once_with(self.some_key, self.some_feature,
-                                                       get_treatment_for_split_mock.return_value,
-                                                       mock.ANY, 'sdk.getTreatment')
 
+        impression = self.client._build_impression(self.some_key, self.some_feature, 'some_treatment', 'some_label',
+                                                   -1, self.some_key, mock.ANY)
+
+        self.client._record_stats(impression, mock.ANY, 'sdk.getTreatment')
 
 class ClientRecordStatsTests(TestCase, MockUtilsMixin):
     def setUp(self):
@@ -175,24 +157,35 @@ class ClientRecordStatsTests(TestCase, MockUtilsMixin):
 
     def test_record_stats_calls_treatment_log_log(self):
         """Test that _record_stats calls log on the treatment log"""
-        self.client._record_stats(self.some_key, self.some_feature, self.some_treatment,
-                                  self.some_start, self.some_operation)
-        self.get_treatment_log_mock.return_value.log.assert_called_once_with(
-            self.some_key, self.some_feature, self.some_treatment, 123457000)
+
+        impression = self.client._build_impression(self.some_key, self.some_feature, self.some_treatment, 'some_label',
+                                                   -1, self.some_key, self.some_start)
+
+        self.client._record_stats(impression, self.some_start, self.some_operation)
+
+        self.get_treatment_log_mock.return_value.log.assert_called_once_with(impression)
 
     def test_record_stats_doesnt_raise_an_exception_if_log_does(self):
         """Test that _record_stats doesn't raise an exception if log does"""
         self.get_treatment_log_mock.return_value.log.side_effect = Exception()
         try:
-            self.client._record_stats(self.some_key, self.some_feature, self.some_treatment,
-                                      self.some_start, self.some_operation)
+
+            impression = self.client._build_impression(self.some_key, self.some_feature, self.some_treatment,
+                                                       'some_label',
+                                                       -1, self.some_key, self.some_start)
+
+            self.client._record_stats(impression, self.some_start, self.some_operation)
         except:
             self.fail('Unexpected exception raised')
 
     def test_record_stats_calls_metrics_time(self):
         """Test that _record_stats calls time on the metrics object"""
-        self.client._record_stats(self.some_key, self.some_feature, self.some_treatment,
-                                  self.some_start, self.some_operation)
+
+        impression = self.client._build_impression(self.some_key, self.some_feature, self.some_treatment, 'some_label',
+                                            -1, self.some_key, self.some_start)
+
+        self.client._record_stats(impression, self.some_start, self.some_operation)
+
         self.get_metrics_mock.return_value.time.assert_called_once_with(
             self.some_operation, 1000)
 
