@@ -11,9 +11,6 @@ from unittest import TestCase
 from json import load
 
 from splitio.redis_support import (RedisSplitCache, RedisSegmentCache, get_redis)
-from splitio.splits import (JSONFileSplitFetcher, SplitParser)
-from splitio.segments import JSONFileSegmentFetcher
-
 
 class CacheInterfacesTests(TestCase):
     def setUp(self):
