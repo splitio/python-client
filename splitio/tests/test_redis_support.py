@@ -6,6 +6,7 @@ except ImportError:
     # Python 2
     import mock
 
+from os.path import dirname, join
 from unittest import TestCase
 from collections import defaultdict
 
@@ -15,7 +16,10 @@ from splitio.tests.utils import MockUtilsMixin
 
 from splitio.redis_support import (RedisSegmentCache, RedisSplitCache, RedisImpressionsCache,
                                    RedisMetricsCache, RedisSplitParser, RedisSplit,
-                                   RedisSplitBasedSegment)
+                                   RedisSplitBasedSegment, get_redis)
+
+from splitio.splits import (JSONFileSplitFetcher, SplitParser)
+from splitio.segments import JSONFileSegmentFetcher
 
 
 class RedisSegmentCacheTests(TestCase):
