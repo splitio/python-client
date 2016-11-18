@@ -129,9 +129,14 @@ class Client(object):
             return _treatment
         except:
             self._logger.exception('Exception caught getting treatment for feature')
-            impression = self._build_impression(matching_key, feature, CONTROL, Label.EXCEPTION,
-                                                self.get_split_fetcher().change_number, bucketing_key, start)
-            self._record_stats(impression, start, SDK_GET_TREATMENT)
+
+            try:
+                impression = self._build_impression(matching_key, feature, CONTROL, Label.EXCEPTION,
+                                                    self.get_split_fetcher().change_number, bucketing_key, start)
+                self._record_stats(impression, start, SDK_GET_TREATMENT)
+            except:
+                self._logger.exception('Exception reporting impression into get_treatment exception block')
+
             return CONTROL
 
     def _build_impression(self, matching_key, feature_name, treatment, label, change_number, bucketing_key, time):

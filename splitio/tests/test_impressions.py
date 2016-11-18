@@ -8,6 +8,7 @@ except ImportError:
     import mock
 
 from unittest import TestCase
+from itertools import groupby
 
 from splitio.impressions import (Impression, build_impressions_data, TreatmentLog,
                                  LoggerBasedTreatmentLog, InMemoryTreatmentLog,
@@ -20,20 +21,28 @@ class BuildImpressionsDataTests(TestCase):
     def setUp(self):
         self.some_feature = 'feature_0'
         self.some_other_feature = 'feature_1'
-        self.some_impression_0 = Impression(key=mock.MagicMock(), feature_name=self.some_feature,
-                                            treatment=mock.MagicMock(), time=mock.MagicMock())
-        self.some_impression_1 = Impression(key=mock.MagicMock(),
-                                            feature_name=self.some_other_feature,
-                                            treatment=mock.MagicMock(), time=mock.MagicMock())
-        self.some_impression_2 = Impression(key=mock.MagicMock(),
-                                            feature_name=self.some_other_feature,
-                                            treatment=mock.MagicMock(), time=mock.MagicMock())
+        self.some_impression_0 = Impression(matching_key=mock.MagicMock(), feature_name=self.some_feature,
+                                          treatment=mock.MagicMock(), label=mock.MagicMock(),
+                                          change_number=mock.MagicMock(), bucketing_key=mock.MagicMock(),
+                                          time=mock.MagicMock())
+        self.some_impression_1 = Impression(matching_key=mock.MagicMock(), feature_name=self.some_other_feature,
+                                           treatment=mock.MagicMock(), label=mock.MagicMock(),
+                                           change_number=mock.MagicMock(), bucketing_key=mock.MagicMock(),
+                                           time=mock.MagicMock())
+        self.some_impression_2 = Impression(matching_key=mock.MagicMock(), feature_name=self.some_other_feature,
+                                           treatment=mock.MagicMock(), label=mock.MagicMock(),
+                                           change_number=mock.MagicMock(), bucketing_key=mock.MagicMock(),
+                                           time=mock.MagicMock())
 
     def test_build_impressions_data_works(self):
         """Tests that build_impressions_data works"""
-        result = build_impressions_data(
-            {self.some_feature: [self.some_impression_0],
-             self.some_other_feature: [self.some_impression_1, self.some_impression_2]})
+
+        impressions = [self.some_impression_0, self.some_impression_1, self.some_impression_2]
+        grouped_impressions = groupby(impressions, key=lambda impression: impression.feature_name)
+
+        impression_dict = dict((feature_name, list(group)) for feature_name, group in grouped_impressions)
+
+        result = build_impressions_data(impression_dict)
 
         self.assertIsInstance(result, list)
         self.assertEqual(2, len(result))
@@ -44,9 +53,11 @@ class BuildImpressionsDataTests(TestCase):
             'testName': self.some_feature,
             'keyImpressions': [
                 {
-                    'keyName': self.some_impression_0.key,
+                    'keyName': self.some_impression_0.matching_key,
                     'treatment': self.some_impression_0.treatment,
-                    'time': self.some_impression_0.time
+                    'time': self.some_impression_0.time,
+                    'changeNumber': self.some_impression_0.change_number,
+                    'label': self.some_impression_0.label
                 }
             ]
         }, result[0])
@@ -54,37 +65,48 @@ class BuildImpressionsDataTests(TestCase):
             'testName': self.some_other_feature,
             'keyImpressions': [
                 {
-                    'keyName': self.some_impression_1.key,
+                    'keyName': self.some_impression_1.matching_key,
                     'treatment': self.some_impression_1.treatment,
-                    'time': self.some_impression_1.time
+                    'time': self.some_impression_1.time,
+                    'changeNumber': self.some_impression_1.change_number,
+                    'label': self.some_impression_1.label
                 },
                 {
-                    'keyName': self.some_impression_2.key,
+                    'keyName': self.some_impression_2.matching_key,
                     'treatment': self.some_impression_2.treatment,
-                    'time': self.some_impression_2.time
+                    'time': self.some_impression_2.time,
+                    'changeNumber': self.some_impression_2.change_number,
+                    'label': self.some_impression_2.label
                 }
             ]
         }, result[1])
 
     def test_build_impressions_data_skipts_features_with_no_impressions(self):
         """Tests that build_impressions_data skips features with no impressions"""
-        result = build_impressions_data(
-            {self.some_feature: [self.some_impression_0],
-             self.some_other_feature: []})
+
+        grouped_impressions = groupby([self.some_impression_0],
+                                      key=lambda impression: impression.feature_name)
+
+        impression_dict = dict((feature_name, list(group)) for feature_name, group in grouped_impressions)
+
+        result = build_impressions_data(impression_dict)
 
         self.assertIsInstance(result, list)
         self.assertEqual(1, len(result))
 
-        self.assertDictEqual({
-            'testName': self.some_feature,
-            'keyImpressions': [
-                {
-                    'keyName': self.some_impression_0.key,
-                    'treatment': self.some_impression_0.treatment,
-                    'time': self.some_impression_0.time
-                }
-            ]
-        }, result[0])
+        self.assertDictEqual(
+            {
+                'testName': self.some_impression_0.feature_name,
+                'keyImpressions': [
+                        {
+                            'keyName': self.some_impression_0.matching_key,
+                            'treatment': self.some_impression_0.treatment,
+                            'time': self.some_impression_0.time,
+                            'changeNumber': self.some_impression_0.change_number,
+                            'label': self.some_impression_0.label
+                        }
+                ]
+            }, result[0])
 
 
 class TreatmentLogTests(TestCase, MockUtilsMixin):
@@ -96,29 +118,60 @@ class TreatmentLogTests(TestCase, MockUtilsMixin):
         self.treatment_log = TreatmentLog()
         self.log_mock = self.patch_object(self.treatment_log, '_log')
 
+        self.some_label = mock.MagicMock()
+        self.some_change_number = mock.MagicMock()
+        self.some_impression = Impression(matching_key=self.some_key, feature_name=self.some_feature_name,
+                                          treatment=self.some_treatment, label=self.some_label,
+                                          change_number=self.some_change_number, bucketing_key=self.some_key,
+                                          time=self.some_time)
+
     def test_log_doesnt_call_internal_log_if_key_is_none(self):
         """Tests that log doesn't call _log if key is None"""
-        self.treatment_log.log(None, self.some_feature_name, self.some_treatment, self.some_time)
+        impression = Impression(matching_key=None, feature_name=self.some_feature_name,
+                                treatment=self.some_treatment, label=self.some_label,
+                                change_number=self.some_change_number, bucketing_key=self.some_key,
+                                time=self.some_time)
+
+        self.treatment_log.log(impression)
         self.log_mock.assert_not_called()
 
     def test_log_doesnt_call_internal_log_if_feature_name_is_none(self):
         """Tests that log doesn't call _log if feature name is None"""
-        self.treatment_log.log(self.some_key, None, self.some_treatment, self.some_time)
+        impression = Impression(matching_key=self.some_key, feature_name=None,
+                              treatment=self.some_treatment, label=self.some_label,
+                              change_number=self.some_change_number, bucketing_key=self.some_key,
+                              time=self.some_time)
+        self.treatment_log.log(impression)
         self.log_mock.assert_not_called()
 
     def test_log_doesnt_call_internal_log_if_treatment_is_none(self):
         """Tests that log doesn't call _log if treatment is None"""
-        self.treatment_log.log(self.some_key, self.some_feature_name, None, self.some_time)
+        impression = Impression(matching_key=self.some_key, feature_name=self.some_feature_name,
+                                treatment=None, label=self.some_label,
+                                change_number=self.some_change_number, bucketing_key=self.some_key,
+                                time=self.some_time)
+
+        self.treatment_log.log(impression)
         self.log_mock.assert_not_called()
 
     def test_log_doesnt_call_internal_log_if_time_is_none(self):
         """Tests that log doesn't call _log if time is None"""
-        self.treatment_log.log(self.some_key, self.some_feature_name, self.some_treatment, None)
+        impression = Impression(matching_key=self.some_key, feature_name=self.some_feature_name,
+                                treatment=self.some_treatment, label=self.some_label,
+                                change_number=self.some_change_number, bucketing_key=self.some_key,
+                                time=None)
+
+        self.treatment_log.log(impression)
         self.log_mock.assert_not_called()
 
     def test_log_doesnt_call_internal_log_if_time_is_lt_0(self):
         """Tests that log doesn't call _log if time is less than 0"""
-        self.treatment_log.log(self.some_key, self.some_feature_name, self.some_treatment, -1)
+        impression = Impression(matching_key=self.some_key, feature_name=self.some_feature_name,
+                                treatment=self.some_treatment, label=self.some_label,
+                                change_number=self.some_change_number, bucketing_key=self.some_key,
+                                time=-1)
+
+        self.treatment_log.log(impression)
         self.log_mock.assert_not_called()
 
 
@@ -131,13 +184,20 @@ class LoggerBasedTreatmentLogTests(TestCase, MockUtilsMixin):
         self.logger_mock = self.patch('splitio.impressions.logging.getLogger').return_value
         self.treatment_log = LoggerBasedTreatmentLog()
 
+        self.some_label = mock.MagicMock()
+        self.some_change_number = mock.MagicMock()
+        self.some_impression = Impression(matching_key=self.some_key, feature_name=self.some_feature_name,
+                                          treatment=self.some_treatment, label=self.some_label,
+                                          change_number=self.some_change_number, bucketing_key=self.some_key,
+                                          time=self.some_time)
+
     def test_log_calls_logger_info(self):
         """Tests that log calls logger info"""
-        self.treatment_log._log(self.some_key, self.some_feature_name, self.some_treatment,
-                                self.some_time)
+        self.treatment_log._log(self.some_impression)
         self.logger_mock.info.assert_called_once_with(mock.ANY, self.some_feature_name,
                                                       self.some_key, self.some_treatment,
-                                                      self.some_time)
+                                                      self.some_time, self.some_label, self.some_change_number,
+                                                      self.some_key)
 
 
 class InMemoryTreatmentLogTests(TestCase, MockUtilsMixin):
@@ -156,6 +216,13 @@ class InMemoryTreatmentLogTests(TestCase, MockUtilsMixin):
         self.rlock_mock = self.patch('splitio.impressions.RLock')
         self.treatment_log = InMemoryTreatmentLog()
         self.notify_eviction_mock = self.patch_object(self.treatment_log, '_notify_eviction')
+
+        self.some_label = mock.MagicMock()
+        self.some_change_number = mock.MagicMock()
+        self.some_impression = Impression(matching_key=self.some_key, feature_name=self.some_feature_name,
+                                          treatment=self.some_treatment, label=self.some_label,
+                                          change_number=self.some_change_number, bucketing_key=self.some_key,
+                                          time=self.some_time)
 
     def test_impressions_is_defaultdict(self):
         """Tests that impressions is a defaultdict"""
@@ -178,34 +245,26 @@ class InMemoryTreatmentLogTests(TestCase, MockUtilsMixin):
     def test_log_calls_appends_impression_to_feature_entry(self):
         """Tests that _log appends an impression to the feature name entry in the impressions
         dictionary"""
-        self.treatment_log._log(self.some_key, self.some_feature_name, self.some_treatment,
-                                self.some_time)
+        self.treatment_log._log(self.some_impression)
         impressions = self.treatment_log._impressions
         impressions.__getitem__.assert_called_once_with(self.some_feature_name)
-        impressions.__getitem__.return_value.append.assert_called_once_with(
-            Impression(key=self.some_key, feature_name=self.some_feature_name,
-                       treatment=self.some_treatment, time=self.some_time))
+        impressions.__getitem__.return_value.append.assert_called_once_with(self.some_impression)
 
     def test_log_resets_impressions_if_max_count_reached(self):
         """Tests that _log resets impressions if max_count is reached"""
         self.treatment_log._max_count = 5
         impressions = self.treatment_log._impressions
         impressions.__getitem__.return_value.__len__.return_value = 10
-        self.treatment_log._log(self.some_key, self.some_feature_name, self.some_treatment,
-                                self.some_time)
+        self.treatment_log._log(self.some_impression)
         impressions.__setitem__.assert_called_once_with(
-            self.some_feature_name, [Impression(key=self.some_key,
-                                                feature_name=self.some_feature_name,
-                                                treatment=self.some_treatment,
-                                                time=self.some_time)])
+            self.some_feature_name, [self.some_impression])
 
     def test_log_calls__notify_eviction_if_max_count_reached(self):
         """Tests that _log calls _notify_eviction if max_count is reached"""
         self.treatment_log._max_count = 5
         impressions = self.treatment_log._impressions
         impressions.__getitem__.return_value.__len__.return_value = 10
-        self.treatment_log._log(self.some_key, self.some_feature_name, self.some_treatment,
-                                self.some_time)
+        self.treatment_log._log(self.some_impression)
         self.notify_eviction_mock.assert_called_once_with(self.some_feature_name,
                                                           impressions.__getitem__.return_value)
 
@@ -218,14 +277,18 @@ class CacheBasedTreatmentLogTests(TestCase):
         self.some_time = mock.MagicMock()
         self.some_impressions_cache = mock.MagicMock()
         self.treatment_log = CacheBasedTreatmentLog(self.some_impressions_cache)
+        self.some_label = mock.MagicMock()
+        self.some_change_number = mock.MagicMock()
+
+        self.some_impression = Impression(matching_key=self.some_key, feature_name=self.some_feature_name,
+                                          treatment=self.some_treatment, label=self.some_label,
+                                          change_number=self.some_change_number, bucketing_key=self.some_key,
+                                          time=self.some_time)
 
     def test_log_calls_cache_add_impression(self):
         """Tests that _log calls add_impression on cache"""
-        self.treatment_log._log(self.some_key, self.some_feature_name, self.some_treatment,
-                                self.some_time)
-        self.some_impressions_cache.add_impression(
-            Impression(key=self.some_key, feature_name=self.some_feature_name,
-                       treatment=self.some_treatment, time=self.some_time))
+        self.treatment_log._log(self.some_impression)
+        self.some_impressions_cache.add_impression(self.some_impression)
 
 
 class SelfUpdatingTreatmentLogTests(TestCase, MockUtilsMixin):
@@ -429,6 +492,8 @@ class AsyncTreatmentLogTests(TestCase, MockUtilsMixin):
         self.some_key = mock.MagicMock()
         self.some_feature_name = mock.MagicMock()
         self.some_treatment = mock.MagicMock()
+        self.some_label = mock.MagicMock()
+        self.some_change_number = mock.MagicMock()
         self.some_time = mock.MagicMock()
         self.some_max_workers = mock.MagicMock()
         self.some_delegate_treatment_log = mock.MagicMock()
@@ -436,19 +501,21 @@ class AsyncTreatmentLogTests(TestCase, MockUtilsMixin):
         self.treatment_log = AsyncTreatmentLog(self.some_delegate_treatment_log,
                                                max_workers=self.some_max_workers)
 
+        self.some_impression = Impression(matching_key=self.some_key, feature_name=self.some_feature_name,
+                                treatment=self.some_treatment, label=self.some_label,
+                                change_number=self.some_change_number, bucketing_key=self.some_key,
+                                time=self.some_time)
+
     def test_log_calls_thread_pool_executor_submit(self):
         """Tests that log calls submit on the thread pool executor"""
-        self.treatment_log.log(self.some_key, self.some_feature_name, self.some_treatment,
-                               self.some_time)
+        self.treatment_log.log(self.some_impression)
         self.thread_pool_executor_mock.return_value.submit.assert_called_once_with(
-            self.some_delegate_treatment_log.log, self.some_key, self.some_feature_name,
-            self.some_treatment, self.some_time)
+            self.some_delegate_treatment_log.log, self.some_impression)
 
     def test_log_doesnt_raise_exceptions_if_submit_does(self):
         """Tests that log doesn't raise exceptions when submit does"""
         self.thread_pool_executor_mock.return_value.submit.side_effect = Exception()
-        self.treatment_log.log(self.some_key, self.some_feature_name, self.some_treatment,
-                               self.some_time)
+        self.treatment_log.log(self.some_impression)
         #
         # try:
         # except:

@@ -567,8 +567,8 @@ class RedisMetricsCache(MetricsCache):
                           for bucket in range(0, len(BUCKETS)))]
 
     def get_latency_bucket_counter(self, operation, bucket_index):
-        count = int(self._redis.get(self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket_index)))
-        return count if count is not None else 0
+        count = self._redis.get(self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket_index))
+        return int(count) if count is not None else 0
 
     def set_gauge(self, gauge, value):
         self._redis.hset(RedisMetricsCache._METRIC_KEY, self._get_gauge_field(gauge), value)
@@ -586,7 +586,7 @@ class RedisMetricsCache(MetricsCache):
                                self._get_count_field(counter), value)
 
     def increment_latency_bucket_counter(self, operation, bucket_index, delta=1):
-        self._redis.incr(self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket_index))
+        self._redis.incr(self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket_index), delta)
 
     def get_gauge(self, gauge):
         return self._redis.hget(RedisMetricsCache._METRIC_KEY, self._get_gauge_field(gauge))

@@ -77,7 +77,11 @@ class TreatmentLog(object):
         :type impression: Impression
         """
         if isinstance(impression, Impression):
-            self._log(impression)
+            if impression.feature_name is not None \
+            and impression.matching_key is not None \
+            and impression.treatment is not None\
+            and impression.time > 0:
+                self._log(impression)
 
         return
 
