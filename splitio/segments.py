@@ -356,6 +356,9 @@ class SegmentChangeFetcher(object):
         :return: A dictionary with the changes
         :rtype: dict
         """
+        if type(name).__name__ == 'bytes':
+            name = str(name,'utf-8')
+
         try:
             segment_change = self.fetch_from_backend(name, since)
         except:

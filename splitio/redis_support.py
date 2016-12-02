@@ -24,6 +24,7 @@ from splitio.metrics import BUCKETS
 from splitio.segments import Segment
 from splitio.splits import Split, SplitParser
 from splitio.impressions import Impression
+from splitio.utils import bytes_to_string
 
 # Template for Split.io related Cache keys
 _SPLITIO_CACHE_KEY_TEMPLATE = 'SPLITIO.{suffix}'
@@ -101,6 +102,7 @@ class RedisSegmentCache(SegmentCache):
         :return: The cache key for the segment key set
         :rtype: str
         """
+        segment_name = bytes_to_string(segment_name)
         return RedisSegmentCache._SEGMENT_KEY_SET_KEY_TEMPLATE.format(
             segment_name=segment_name)
 
@@ -111,6 +113,7 @@ class RedisSegmentCache(SegmentCache):
         :return: The cache key for the segment change number
         :rtype: str
         """
+        segment_name = bytes_to_string(segment_name)
         return RedisSegmentCache._SEGMENT_CHANGE_NUMBER_KEY_TEMPLATE.format(
             segment_name=segment_name)
 
@@ -133,6 +136,7 @@ class RedisSegmentCache(SegmentCache):
 
 class RedisSplitCache(SplitCache):
     _KEY_TEMPLATE = _SPLITIO_CACHE_KEY_TEMPLATE.format(suffix='split.{suffix}')
+    _KEY_TILL_TEMPLATE = _SPLITIO_CACHE_KEY_TEMPLATE.format(suffix='splits.{suffix}')
     _DISABLED_KEY = _KEY_TEMPLATE.format(suffix='__disabled__')
 
     def __init__(self, redis, disabled_period=300):
@@ -182,12 +186,12 @@ class RedisSplitCache(SplitCache):
         return not self._redis.exists(RedisSplitCache._DISABLED_KEY)
 
     def get_change_number(self):
-        change_number = self._redis.get(RedisSplitCache._KEY_TEMPLATE.format(
+        change_number = self._redis.get(RedisSplitCache._KEY_TILL_TEMPLATE.format(
             suffix='till'))
         return int(change_number) if change_number is not None else -1
 
     def set_change_number(self, change_number):
-        self._redis.set(RedisSplitCache._KEY_TEMPLATE.format(suffix='till'),
+        self._redis.set(RedisSplitCache._KEY_TILL_TEMPLATE.format(suffix='till'),
                         change_number, None)
 
     def add_split(self, split_name, split):
@@ -199,6 +203,8 @@ class RedisSplitCache(SplitCache):
 
         if to_decode is None:
             return None
+
+        to_decode = bytes_to_string(to_decode)
 
         split_dump = decode(to_decode)
 
@@ -213,9 +219,6 @@ class RedisSplitCache(SplitCache):
     def get_splits(self):
         keys = self.get_splits_keys()
 
-        if 'SPLITIO.split.till' in keys:
-            keys.remove('SPLITIO.split.till')
-
         splits = self._redis.mget(keys)
 
         to_return = []
@@ -224,6 +227,7 @@ class RedisSplitCache(SplitCache):
         split_parser = RedisSplitParser(segment_cache)
 
         for split in splits:
+            split = bytes_to_string(split)
             split_dump = decode(split)
             if split_dump is not None:
                 to_return.append(split_parser.parse(split_dump))
@@ -297,12 +301,14 @@ class RedisImpressionsCache(ImpressionsCache):
         impressions_keys = self._redis.keys(self._IMPRESSIONS_KEY.format(feature_name='*'))
 
         for impression_key in impressions_keys:
+            impression_key = bytes_to_string(impression_key)
             if impression_key.replace(self._IMPRESSIONS_KEY.format(feature_name=''), '') == 'impressions':
                 continue
 
             feature_name = impression_key.replace(self._IMPRESSIONS_KEY.format(feature_name=''), '')
 
             for impression in self._redis.smembers(impression_key):
+                impression = bytes_to_string(impression)
                 impression_decoded = decode(impression)
                 impression_tuple = Impression(key=impression_decoded['keyName'],
                                               feature_name=feature_name,
@@ -348,6 +354,9 @@ class RedisImpressionsCache(ImpressionsCache):
         impressions_keys = self._redis.keys(self._IMPRESSIONS_KEY.format(feature_name='*'))
 
         for impression_key in impressions_keys:
+
+            impression_key = bytes_to_string(impression_key)
+
             if impression_key.replace(self._IMPRESSIONS_KEY.format(feature_name=''), '') == 'impressions':
                 continue
 
@@ -356,6 +365,9 @@ class RedisImpressionsCache(ImpressionsCache):
             to_remove = list()
             for impression in self._redis.smembers(impression_key):
                 to_remove.append(impression)
+
+                impression = bytes_to_string(impression)
+
                 impression_decoded = decode(impression)
 
                 label = ''
@@ -606,6 +618,7 @@ class RedisMetricsCache(MetricsCache):
         time = defaultdict(lambda: [0] * len(BUCKETS))
 
         for key in time_keys:
+            key = bytes_to_string(key)
             time_match = RedisMetricsCache._LATENCY_FIELD_RE.match(key)
             if time_match is not None:
                 time[time_match.group('operation')][int(time_match.group('bucket_index'))] = int(self._redis.getset(key, 0))
