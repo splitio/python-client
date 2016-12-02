@@ -113,12 +113,14 @@ class ReportMetricsTests(TestCase, MockUtilsMixin):
 
     def test_calls_metrics_times(self):
         """Test that report_metrics calls metrics_times if time metrics are not empty"""
-        self.some_metrics_cache.fetch_all_and_clear.return_value = {'time': [mock.MagicMock()],
-                                                                    'count': mock.MagicMock(),
+        self.some_metrics_cache.fetch_all_and_clear.return_value = {'count': mock.MagicMock(),
                                                                     'gauge': mock.MagicMock()}
+
+        self.some_metrics_cache.fetch_all_times_and_clear.return_value = [mock.MagicMock()]
+
         report_metrics(self.some_metrics_cache, self.some_api_sdk)
         self.some_api_sdk.metrics_times.assert_called_once_with(
-            self.some_metrics_cache.fetch_all_and_clear.return_value['time'])
+            self.some_metrics_cache.fetch_all_times_and_clear.return_value)
 
     def test_doesnt_call_metrics_counters_if_counter_metrics_is_empty(self):
         """Test that report_metrics doesn't call metrics_counters if counter metrics are empty"""
@@ -277,7 +279,7 @@ class UpdateSplitsTests(TestCase, MockUtilsMixin):
         self.some_split_cache = mock.MagicMock()
         self.some_split_cache.get_change_number.return_value = -1
         self.some_split_parser = mock.MagicMock()
-        self.parse_side_effect = [mock.MagicMock(), mock.MagicMock(), mock.MagicMock()]
+        self.parse_side_effect = ['PEPE',mock.MagicMock(), mock.MagicMock(), mock.MagicMock()]
         self.some_split_parser.parse.side_effect = self.parse_side_effect
         self.some_split_change_fetcher = mock.MagicMock()
         self.some_split_change_fetcher.fetch.side_effect = [
@@ -342,10 +344,18 @@ class UpdateSplitsTests(TestCase, MockUtilsMixin):
     def test_calls_add_split(self):
         """Test that update_split calls split_cache's add_split method on active splits"""
         update_splits(self.some_split_cache, self.some_split_change_fetcher, self.some_split_parser)
-        self.assertListEqual([mock.call('some_split', self.parse_side_effect[0]),
+
+        """self.assertListEqual([mock.call('some_split', self.parse_side_effect[0]),
                               mock.call('some_other_split', self.parse_side_effect[1]),
                               mock.call('some_split', self.parse_side_effect[2])],
+                             self.some_split_cache.add_split.call_args_list)"""
+
+        self.assertListEqual([mock.call('some_split', {'status': 'ACTIVE', 'name': 'some_split'}),
+                              mock.call('some_other_split', {'status': 'ACTIVE', 'name': 'some_other_split'}),
+                              mock.call('some_split', {'status': 'ACTIVE', 'name': 'some_split'})],
                              self.some_split_cache.add_split.call_args_list)
+
+
 
     def test_calls_set_change_number(self):
         """Test that update_split calls set_change_number on every update"""

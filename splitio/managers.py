@@ -5,6 +5,7 @@ import logging
 
 from splitio.redis_support import RedisSplitCache
 from splitio.splits import (CacheBasedSplitFetcher, SplitView)
+from splitio.utils import bytes_to_string
 
 class SplitManager(object):
     def __init__(self):
@@ -55,6 +56,7 @@ class RedisSplitManager(SplitManager):
         splits = self._split_cache.get_splits_keys()
         split_names = []
         for split_name in splits:
+            split_name = bytes_to_string(split_name)
             split_names.append(split_name.replace(RedisSplitCache._KEY_TEMPLATE.format(suffix=''), ''))
 
         return split_names

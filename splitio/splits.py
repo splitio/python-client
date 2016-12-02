@@ -94,7 +94,7 @@ class AllKeysSplit(Split):
         :type treatment: str
         """
         super(AllKeysSplit, self).__init__(
-            name, None, False, treatment,
+            name, None, False, treatment, None,
             [Condition(AttributeMatcher(None, AllKeysMatcher(), False),
                        [Partition(treatment, 100)])])
 
