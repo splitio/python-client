@@ -24,11 +24,11 @@ setup(name='splitio_client',
       license='Apache License 2.0',
       install_requires=install_requires,
       tests_require=tests_require,
-      extras_require={'test': tests_require},
-      setup_requires=['nose'],
-      extra_requires={
+      extras_require={
+          'test': tests_require,
           'redis': ['redis>=2.6', 'jsonpickle>=0.9.3']
       },
+      setup_requires=['nose'],
       classifiers=[
           'Development Status :: 3 - Alpha',
           'Environment :: Console',
@@ -38,4 +38,4 @@ setup(name='splitio_client',
           'Programming Language :: Python :: 3',
           'Topic :: Software Development :: Libraries'
       ],
-      packages=['splitio','splitio.update_scripts'])
+      packages=['splitio','splitio.update_scripts','splitio.bin'])

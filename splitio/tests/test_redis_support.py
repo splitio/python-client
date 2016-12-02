@@ -156,7 +156,7 @@ class RedisSplitCacheTests(TestCase, MockUtilsMixin):
         """Test that set_change_number sets the change number key"""
         self.a_split_cache.set_change_number(self.some_change_number)
         self.some_redis.set.assert_called_once_with(
-            'SPLITIO.split.till', self.some_change_number, None)
+            'SPLITIO.splits.till', self.some_change_number, None)
 
     def test_get_change_number_gets_segment_change_number_key(self):
         """Test that get_change_number gets the change number key"""
@@ -165,7 +165,7 @@ class RedisSplitCacheTests(TestCase, MockUtilsMixin):
         self.assertEqual(int(self.some_redis.get.return_value), result)
         self.assertIsInstance(result, int)
         self.some_redis.get.assert_called_once_with(
-            'SPLITIO.split.till')
+            'SPLITIO.splits.till')
 
     def test_get_change_number_returns_default_value_if_not_set(self):
         """Test that get_change_number returns -1 if the value is not set"""
