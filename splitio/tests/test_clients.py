@@ -425,7 +425,8 @@ class SelfRefreshingClientInitConfigTests(TestCase, MockUtilsMixin):
             'splitSdkMachineIp': None,
             'redisHost': 'localhost',
             'redisPort': 6379,
-            'redisDb': 0
+            'redisDb': 0,
+            'redisPassword':None
         }
 
 
