@@ -97,8 +97,8 @@ class Client(object):
             matching_key = key.matching_key
             bucketing_key = key.bucketing_key
         else:
-            matching_key = key
-            bucketing_key = key
+            matching_key = str(key)
+            bucketing_key = str(key)
 
         try:
             label = ''

@@ -726,5 +726,6 @@ def default_redis_factory(config):
     host = config.get('redisHost', 'localhost')
     port = config.get('redisPort', 6379)
     db = config.get('redisDb', 0)
-    redis = StrictRedis(host=host, port=port, db=db)
+    password = config.get('redisPassword', None)
+    redis = StrictRedis(host=host, port=port, db=db, password=password)
     return redis

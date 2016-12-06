@@ -31,7 +31,8 @@ DEFAULT_CONFIG = {
     'ready': 0,
     'redisHost': 'localhost',
     'redisPort': 6379,
-    'redisDb': 0
+    'redisDb': 0,
+    'redisPassword': None
 }
 
 MAX_INTERVAL = 180
