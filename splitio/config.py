@@ -32,7 +32,25 @@ DEFAULT_CONFIG = {
     'redisHost': 'localhost',
     'redisPort': 6379,
     'redisDb': 0,
-    'redisPassword': None
+    'redisPassword': None,
+    'redisSocketTimeout': None,
+    'redisSocketConnectTimeout': None,
+    'redisSocketKeepalive': None,
+    'redisSocketKeepaliveOptions': None,
+    'redisConnectionPool': None,
+    'redisUnixSocketPath': None,
+    'redisEncoding': 'utf-8',
+    'redisEncodingErrors': 'strict',
+    'redisCharset': None,
+    'redisErrors': None,
+    'redisDecodeResponses': False,
+    'redisRetryOnTimeout': False,
+    'redisSsl': False,
+    'redisSslKeyfile': None,
+    'redisSslCertfile': None,
+    'redisSslCertReqs': None,
+    'redisSslCaCerts': None,
+    'redisMaxConnections': None
 }
 
 MAX_INTERVAL = 180
