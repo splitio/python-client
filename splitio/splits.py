@@ -96,11 +96,12 @@ class AllKeysSplit(Split):
         super(AllKeysSplit, self).__init__(
             name, None, False, treatment, None,
             [Condition(AttributeMatcher(None, AllKeysMatcher(), False),
-                       [Partition(treatment, 100)])])
+                       [Partition(treatment, 100)],
+                       None)])
 
 
 class Condition(object):
-    def __init__(self, matcher, partitions):
+    def __init__(self, matcher, partitions, label):
         """
         A class that represents a split condition. It associates a matcher with a set of partitions.
         :param matcher: A combining matcher
@@ -110,6 +111,7 @@ class Condition(object):
         """
         self._matcher = matcher
         self._partitions = tuple(partitions)
+        self._label = label
 
     @property
     def matcher(self):
@@ -118,6 +120,10 @@ class Condition(object):
     @property
     def partitions(self):
         return self._partitions
+
+    @property
+    def label(self):
+        return self._label
 
     @python_2_unicode_compatible
     def __str__(self):
@@ -557,7 +563,9 @@ class SplitParser(object):
                                  for partition in condition['partitions']]
             combining_matcher = self._parse_matcher_group(partial_split, condition['matcherGroup'],
                                                           block_until_ready=block_until_ready)
-            partial_split.conditions.append(Condition(combining_matcher, parsed_partitions))
+            label = None
+            if 'label' in condition: label = condition['label']
+            partial_split.conditions.append(Condition(combining_matcher, parsed_partitions, label))
 
     def _parse_matcher_group(self, partial_split, matcher_group, block_until_ready=False):
         """

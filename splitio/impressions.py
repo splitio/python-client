@@ -29,7 +29,8 @@ def build_impressions_data(impressions):
                     'treatment': impression.treatment,
                     'time': impression.time,
                     'changeNumber': impression.change_number,
-                    'label': impression.label
+                    'label': impression.label,
+                    'bucketingKey': impression.bucketing_key
                 }
                 for impression in feature_impressions
             ]

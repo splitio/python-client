@@ -116,7 +116,7 @@ class Client(object):
                     label = Label.KILLED
                     _treatment = split.default_treatment
                 else:
-                    treatment = self._get_treatment_for_split(split, matching_key, bucketing_key, attributes)
+                    treatment, label = self._get_treatment_for_split(split, matching_key, bucketing_key, attributes)
                     if treatment is None:
                         label = Label.NO_CONDITION_MATCHED
                         _treatment = split.default_treatment
@@ -167,10 +167,10 @@ class Client(object):
 
         for condition in split.conditions:
             if condition.matcher.match(matching_key, attributes=attributes):
-                return self.get_splitter().get_treatment(bucketing_key, split.seed, condition.partitions)
+                return self.get_splitter().get_treatment(bucketing_key, split.seed, condition.partitions), condition.label
 
         # No condition matches
-        return None
+        return None, None
 
 
 def randomize_interval(value):

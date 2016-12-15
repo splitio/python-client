@@ -340,7 +340,8 @@ class RedisImpressionsCache(ImpressionsCache):
                             'treatment':impression.treatment,
                             'time':impression.time,
                             'changeNumber':impression.change_number,
-                            'label':impression.label
+                            'label':impression.label,
+                            'bucketingKey':impression.bucketing_key
                             }
         self._redis.sadd(self._IMPRESSIONS_KEY.format(feature_name=impression.feature_name), encode(cache_impression))
 
@@ -378,12 +379,16 @@ class RedisImpressionsCache(ImpressionsCache):
                 if 'changeNumber' in impression_decoded:
                     change_number = impression_decoded['changeNumber']
 
+                bucketing_key = ''
+                if 'bucketingKey' in impression_decoded:
+                    bucketing_key = impression_decoded['bucketingKey']
+
                 impression_tuple = Impression(matching_key=impression_decoded['keyName'],
                                               feature_name=feature_name,
                                               treatment=impression_decoded['treatment'],
                                               label=label,
                                               change_number=change_number,
-                                              bucketing_key='',
+                                              bucketing_key=bucketing_key,
                                               time=impression_decoded['time']
                                               )
                 impressions_list.append(impression_tuple)
