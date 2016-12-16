@@ -423,6 +423,9 @@ class SplitParserInternalParseTests(TestCase, MockUtilsMixin):
         self.matcher_group_0 = mock.MagicMock()
         self.matcher_group_1 = mock.MagicMock()
 
+        self.label_0 = mock.MagicMock()
+        self.label_1 = mock.MagicMock()
+
         self.some_split = {
             'status': 'ACTIVE',
             'name': mock.MagicMock(),
@@ -436,7 +439,7 @@ class SplitParserInternalParseTests(TestCase, MockUtilsMixin):
 
                         self.partition_0
                     ],
-                    'label': 'some label'
+                    'label': self.label_0
                 },
                 {
                     'matcherGroup': self.matcher_group_1,
@@ -444,7 +447,7 @@ class SplitParserInternalParseTests(TestCase, MockUtilsMixin):
                         self.partition_1,
                         self.partition_2
                     ],
-                    'label': 'some label'
+                    'label': self.label_1
                 }
             ]
         }
@@ -497,9 +500,9 @@ class SplitParserInternalParseTests(TestCase, MockUtilsMixin):
 
         self.assertListEqual(
             [mock.call(self.parse_matcher_group_mock_side_effect[0],
-                       [self.partition_mock_side_effect[0]]),
+                       [self.partition_mock_side_effect[0]], self.label_0),
              mock.call(self.parse_matcher_group_mock_side_effect[1],
-                       [self.partition_mock_side_effect[1], self.partition_mock_side_effect[2]])],
+                       [self.partition_mock_side_effect[1], self.partition_mock_side_effect[2]], self.label_1)],
             self.condition_mock.call_args_list
         )
 
