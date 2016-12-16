@@ -57,7 +57,8 @@ class BuildImpressionsDataTests(TestCase):
                     'treatment': self.some_impression_0.treatment,
                     'time': self.some_impression_0.time,
                     'changeNumber': self.some_impression_0.change_number,
-                    'label': self.some_impression_0.label
+                    'label': self.some_impression_0.label,
+                    'bucketingKey': self.some_impression_0.bucketing_key
                 }
             ]
         }, result[0])
@@ -69,14 +70,16 @@ class BuildImpressionsDataTests(TestCase):
                     'treatment': self.some_impression_1.treatment,
                     'time': self.some_impression_1.time,
                     'changeNumber': self.some_impression_1.change_number,
-                    'label': self.some_impression_1.label
+                    'label': self.some_impression_1.label,
+                    'bucketingKey': self.some_impression_1.bucketing_key
                 },
                 {
                     'keyName': self.some_impression_2.matching_key,
                     'treatment': self.some_impression_2.treatment,
                     'time': self.some_impression_2.time,
                     'changeNumber': self.some_impression_2.change_number,
-                    'label': self.some_impression_2.label
+                    'label': self.some_impression_2.label,
+                    'bucketingKey': self.some_impression_2.bucketing_key
                 }
             ]
         }, result[1])
@@ -103,7 +106,8 @@ class BuildImpressionsDataTests(TestCase):
                             'treatment': self.some_impression_0.treatment,
                             'time': self.some_impression_0.time,
                             'changeNumber': self.some_impression_0.change_number,
-                            'label': self.some_impression_0.label
+                            'label': self.some_impression_0.label,
+                            'bucketingKey': self.some_impression_0.bucketing_key
                         }
                 ]
             }, result[0])

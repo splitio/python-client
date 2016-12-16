@@ -435,14 +435,16 @@ class SplitParserInternalParseTests(TestCase, MockUtilsMixin):
                     'partitions': [
 
                         self.partition_0
-                    ]
+                    ],
+                    'label': 'some label'
                 },
                 {
                     'matcherGroup': self.matcher_group_1,
                     'partitions': [
                         self.partition_1,
                         self.partition_2
-                    ]
+                    ],
+                    'label': 'some label'
                 }
             ]
         }

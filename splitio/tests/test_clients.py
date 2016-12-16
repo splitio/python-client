@@ -102,9 +102,12 @@ class ClientTests(TestCase, MockUtilsMixin):
         self.some_conditions[0].matcher.match.return_value = False
         self.some_conditions[1].matcher.match.return_value = False
         self.some_conditions[2].matcher.match.return_value = False
-        self.assertEqual(None,
-                         self.client._get_treatment_for_split(self.some_split, self.some_key,
-                                                              self.some_feature))
+
+        treatment, label = self.client._get_treatment_for_split(self.some_split, self.some_key,
+                                                              self.some_feature)
+
+        self.assertEqual(None, treatment)
+        self.assertEqual(None, label)
 
     def test_get_treatment_calls_condition_matcher_match_with_short_circuit(self):
         """
