@@ -37,12 +37,13 @@ class Key(object):
         self.bucketing_key = bucketing_key
 
 class Client(object):
-    def __init__(self):
+    def __init__(self, labels_enabled=True):
         """Basic interface of a Client. Specific implementations need to override the
         get_split_fetcher method (and optionally the get_splitter method).
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self._splitter = Splitter()
+        self._labels_enabled = labels_enabled
 
     def get_split_fetcher(self):  # pragma: no cover
         """Get the split fetcher implementation. Subclasses need to override this method.
@@ -140,6 +141,10 @@ class Client(object):
             return CONTROL
 
     def _build_impression(self, matching_key, feature_name, treatment, label, change_number, bucketing_key, time):
+
+        if not self._labels_enabled:
+            label = None
+
         return Impression(matching_key=matching_key, feature_name=feature_name, treatment=treatment, label=label,
                                     change_number=change_number, bucketing_key=bucketing_key, time=time)
 
@@ -214,7 +219,11 @@ class SelfRefreshingClient(Client):
         :param events_api_base_url: An override for the default events base URL.
         :type events_api_base_url: str
         """
-        super(SelfRefreshingClient, self).__init__()
+        labels_enabled = True
+        if 'labelsEnabled' in config:
+            labels_enabled = config['labelsEnabled']
+
+        super(SelfRefreshingClient, self).__init__(labels_enabled)
 
         self._api_key = api_key
         self._sdk_api_base_url = sdk_api_base_url
@@ -484,11 +493,11 @@ class LocalhostEnvironmentClient(Client):
 
 
 class RedisClient(Client):
-    def __init__(self, redis):
+    def __init__(self, redis, labels_enabled=True):
         """A Client implementation that uses Redis as its backend.
         :param redis: A redis client
         :type redis: StrctRedis"""
-        super(RedisClient, self).__init__()
+        super(RedisClient, self).__init__(labels_enabled)
 
         split_cache = RedisSplitCache(redis)
         split_fetcher = CacheBasedSplitFetcher(split_cache)
@@ -678,4 +687,12 @@ def get_redis_client(api_key, **kwargs):
         return LocalhostEnvironmentClient(**kwargs)
 
     redis = get_redis(config)
-    return RedisClient(redis)
+
+    if 'labelsEnabled' in config:
+        redis_client = RedisClient(redis, config['labelsEnabled'])
+    else:
+        redis_client = RedisClient(redis)
+
+    return redis_client
+
+
