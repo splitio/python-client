@@ -224,7 +224,7 @@ class SelfRefreshingClient(Client):
         :type events_api_base_url: str
         """
         labels_enabled = True
-        if 'labelsEnabled' in config:
+        if config is not None and 'labelsEnabled' in config:
             labels_enabled = config['labelsEnabled']
 
         super(SelfRefreshingClient, self).__init__(labels_enabled)
