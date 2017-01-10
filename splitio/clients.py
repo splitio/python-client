@@ -99,11 +99,12 @@ class Client(object):
             bucketing_key = key.bucketing_key
         else:
             matching_key = str(key)
-            bucketing_key = str(key)
+            bucketing_key = None
 
         try:
             label = ''
             _treatment = CONTROL
+            _change_number = -1
 
             #Fetching Split definition
             split = self.get_split_fetcher().fetch(feature)
@@ -113,6 +114,7 @@ class Client(object):
                 label = Label.SPLIT_NOT_FOUND
                 _treatment = CONTROL
             else:
+                _change_number = split.change_number
                 if split.killed:
                     label = Label.KILLED
                     _treatment = split.default_treatment
@@ -125,7 +127,7 @@ class Client(object):
                         _treatment = treatment
 
             impression = self._build_impression(matching_key, feature, _treatment, label,
-                                                self.get_split_fetcher().change_number, bucketing_key, start)
+                                                _change_number, bucketing_key, start)
             self._record_stats(impression, start, SDK_GET_TREATMENT)
             return _treatment
         except:
@@ -169,6 +171,8 @@ class Client(object):
         :return: The treatment for the key and split
         :rtype: str
         """
+        if bucketing_key is None:
+            bucketing_key = matching_key
 
         for condition in split.conditions:
             if condition.matcher.match(matching_key, attributes=attributes):

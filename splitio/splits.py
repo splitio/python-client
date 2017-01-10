@@ -27,7 +27,7 @@ class Status(Enum):
 
 
 class Split(object):
-    def __init__(self, name, seed, killed, default_treatment, traffic_type_name, conditions=None):
+    def __init__(self, name, seed, killed, default_treatment, traffic_type_name, status, change_number, conditions=None):
         """
         A class that represents a split. It associates a feature name with a set of matchers
         (responsible of telling which condition to use) and conditions (which determines which
@@ -48,6 +48,8 @@ class Split(object):
         self._killed = killed
         self._default_treatment = default_treatment
         self._traffic_type_name = traffic_type_name
+        self._status = status
+        self._change_number = change_number
         self._conditions = conditions if conditions is not None else []
 
     @property
@@ -69,6 +71,14 @@ class Split(object):
     @property
     def traffic_type_name(self):
         return self._traffic_type_name
+
+    @property
+    def status(self):
+        return self._status
+
+    @property
+    def change_number(self):
+        return self._change_number
 
     @property
     def conditions(self):
@@ -546,7 +556,8 @@ class SplitParser(object):
         :return: A partial parsed split
         :rtype: Split
         """
-        return Split(split['name'], split['seed'], split['killed'], split['defaultTreatment'], split['trafficTypeName'])
+        return Split(split['name'], split['seed'], split['killed'],
+                     split['defaultTreatment'], split['trafficTypeName'], split['status'], split['changeNumber'])
 
     def _parse_conditions(self, partial_split, split, block_until_ready=False):
         """Parse split conditions
