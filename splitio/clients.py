@@ -2,8 +2,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import logging
-
-import arrow
+import time
 
 from os.path import expanduser, join
 from random import randint
@@ -90,7 +89,7 @@ class Client(object):
         if key is None or feature is None:
             return CONTROL
 
-        start = arrow.utcnow().timestamp * 1000
+        start = int(round(time.time() * 1000))
 
         matching_key = None
         bucketing_key = None
@@ -152,7 +151,7 @@ class Client(object):
 
     def _record_stats(self, impression, start, operation):
         try:
-            end = arrow.utcnow().timestamp * 1000
+            end = int(round(time.time() * 1000))
             self.get_treatment_log().log(impression)
             self.get_metrics().time(operation, end - start)
         except:

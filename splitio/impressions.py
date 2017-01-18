@@ -49,12 +49,12 @@ class Label(object):
     # Condition: No condition matched
     # Treatment: Default Treatment
     # Label: no condition matched
-    NO_CONDITION_MATCHED = 'no condition matched'
+    NO_CONDITION_MATCHED = 'no rule matched'
 
     #Condition: Split definition was not found
     #Treatment: control
     #Label: split not found
-    SPLIT_NOT_FOUND = 'split not found'
+    SPLIT_NOT_FOUND = 'rules not found'
 
     # Condition: There was an exception
     # Treatment: control
