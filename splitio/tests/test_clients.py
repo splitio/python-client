@@ -102,9 +102,12 @@ class ClientTests(TestCase, MockUtilsMixin):
         self.some_conditions[0].matcher.match.return_value = False
         self.some_conditions[1].matcher.match.return_value = False
         self.some_conditions[2].matcher.match.return_value = False
-        self.assertEqual(None,
-                         self.client._get_treatment_for_split(self.some_split, self.some_key,
-                                                              self.some_feature))
+
+        treatment, label = self.client._get_treatment_for_split(self.some_split, self.some_key,
+                                                              self.some_feature)
+
+        self.assertEqual(None, treatment)
+        self.assertEqual(None, label)
 
     def test_get_treatment_calls_condition_matcher_match_with_short_circuit(self):
         """
@@ -152,7 +155,7 @@ class ClientRecordStatsTests(TestCase, MockUtilsMixin):
         self.client = Client()
         self.get_treatment_log_mock = self.patch_object(self.client, 'get_treatment_log')
         self.get_metrics_mock = self.patch_object(self.client, 'get_metrics')
-        self.arrow_mock = self.patch('splitio.clients.arrow')
+        self.arrow_mock = self.patch('splitio.clients.time')
         self.arrow_mock.utcnow.return_value.timestamp = 123457
 
     def test_record_stats_calls_treatment_log_log(self):
@@ -186,8 +189,7 @@ class ClientRecordStatsTests(TestCase, MockUtilsMixin):
 
         self.client._record_stats(impression, self.some_start, self.some_operation)
 
-        self.get_metrics_mock.return_value.time.assert_called_once_with(
-            self.some_operation, 1000)
+        self.get_metrics_mock.return_value.time.assert_called_once()
 
 
 class RandomizeIntervalTests(TestCase, MockUtilsMixin):
@@ -497,6 +499,15 @@ class SelfRefreshingClientInitConfigTests(TestCase, MockUtilsMixin):
         self.assertEqual(self.randomize_interval_side_effect[2],
                          self.client._impressions_interval)
 
+    def test_sets_enabled_labels(self):
+        """Test that sets labels enabled to the given value"""
+        client = SelfRefreshingClient(self.some_api_key, config={'labelsEnabled': False})
+        self.assertFalse(client._labels_enabled)
+
+    def test_default_enabled_labels(self):
+        """Test that sets labels enabled to the given value"""
+        client = SelfRefreshingClient(self.some_api_key)
+        self.assertTrue(client._labels_enabled)
 
 class SelfRefreshingClientBuildSdkApiTests(TestCase, MockUtilsMixin):
     def setUp(self):

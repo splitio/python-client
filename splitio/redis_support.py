@@ -340,7 +340,8 @@ class RedisImpressionsCache(ImpressionsCache):
                             'treatment':impression.treatment,
                             'time':impression.time,
                             'changeNumber':impression.change_number,
-                            'label':impression.label
+                            'label':impression.label,
+                            'bucketingKey':impression.bucketing_key
                             }
         self._redis.sadd(self._IMPRESSIONS_KEY.format(feature_name=impression.feature_name), encode(cache_impression))
 
@@ -378,12 +379,16 @@ class RedisImpressionsCache(ImpressionsCache):
                 if 'changeNumber' in impression_decoded:
                     change_number = impression_decoded['changeNumber']
 
+                bucketing_key = ''
+                if 'bucketingKey' in impression_decoded:
+                    bucketing_key = impression_decoded['bucketingKey']
+
                 impression_tuple = Impression(matching_key=impression_decoded['keyName'],
                                               feature_name=feature_name,
                                               treatment=impression_decoded['treatment'],
                                               label=label,
                                               change_number=change_number,
-                                              bucketing_key='',
+                                              bucketing_key=bucketing_key,
                                               time=impression_decoded['time']
                                               )
                 impressions_list.append(impression_tuple)
@@ -638,7 +643,7 @@ class RedisSplitParser(SplitParser):
 
     def _parse_split(self, split, block_until_ready=False):
         return RedisSplit(split['name'], split['seed'], split['killed'], split['defaultTreatment'],
-                          split['trafficTypeName'], segment_cache=self._segment_cache)
+                          split['trafficTypeName'], split['status'], split['changeNumber'], segment_cache=self._segment_cache)
 
     def _parse_matcher_in_segment(self, partial_split, matcher, block_until_ready=False, *args,
                                   **kwargs):
@@ -650,7 +655,7 @@ class RedisSplitParser(SplitParser):
 
 
 class RedisSplit(Split):
-    def __init__(self, name, seed, killed, default_treatment, traffic_type_name, conditions=None, segment_cache=None):
+    def __init__(self, name, seed, killed, default_treatment, traffic_type_name, status, change_number, conditions=None, segment_cache=None):
         """A split implementation that mantains a reference to the segment cache so segments can
         be easily pickled and unpickled.
         :param name: Name of the feature
@@ -666,7 +671,7 @@ class RedisSplit(Split):
         :param segment_cache: A segment cache
         :type segment_cache: SegmentCache
         """
-        super(RedisSplit, self).__init__(name, seed, killed, default_treatment, traffic_type_name, conditions)
+        super(RedisSplit, self).__init__(name, seed, killed, default_treatment, traffic_type_name, status, change_number, conditions)
         self._segment_cache = segment_cache
 
     @property

@@ -2,8 +2,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import logging
-
-import arrow
+import time
 
 from os.path import expanduser, join
 from random import randint
@@ -37,12 +36,13 @@ class Key(object):
         self.bucketing_key = bucketing_key
 
 class Client(object):
-    def __init__(self):
+    def __init__(self, labels_enabled=True):
         """Basic interface of a Client. Specific implementations need to override the
         get_split_fetcher method (and optionally the get_splitter method).
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self._splitter = Splitter()
+        self._labels_enabled = labels_enabled
 
     def get_split_fetcher(self):  # pragma: no cover
         """Get the split fetcher implementation. Subclasses need to override this method.
@@ -89,7 +89,7 @@ class Client(object):
         if key is None or feature is None:
             return CONTROL
 
-        start = arrow.utcnow().timestamp * 1000
+        start = int(round(time.time() * 1000))
 
         matching_key = None
         bucketing_key = None
@@ -98,11 +98,12 @@ class Client(object):
             bucketing_key = key.bucketing_key
         else:
             matching_key = str(key)
-            bucketing_key = str(key)
+            bucketing_key = None
 
         try:
             label = ''
             _treatment = CONTROL
+            _change_number = -1
 
             #Fetching Split definition
             split = self.get_split_fetcher().fetch(feature)
@@ -112,11 +113,12 @@ class Client(object):
                 label = Label.SPLIT_NOT_FOUND
                 _treatment = CONTROL
             else:
+                _change_number = split.change_number
                 if split.killed:
                     label = Label.KILLED
                     _treatment = split.default_treatment
                 else:
-                    treatment = self._get_treatment_for_split(split, matching_key, bucketing_key, attributes)
+                    treatment, label = self._get_treatment_for_split(split, matching_key, bucketing_key, attributes)
                     if treatment is None:
                         label = Label.NO_CONDITION_MATCHED
                         _treatment = split.default_treatment
@@ -124,7 +126,7 @@ class Client(object):
                         _treatment = treatment
 
             impression = self._build_impression(matching_key, feature, _treatment, label,
-                                                self.get_split_fetcher().change_number, bucketing_key, start)
+                                                _change_number, bucketing_key, start)
             self._record_stats(impression, start, SDK_GET_TREATMENT)
             return _treatment
         except:
@@ -140,12 +142,16 @@ class Client(object):
             return CONTROL
 
     def _build_impression(self, matching_key, feature_name, treatment, label, change_number, bucketing_key, time):
+
+        if not self._labels_enabled:
+            label = None
+
         return Impression(matching_key=matching_key, feature_name=feature_name, treatment=treatment, label=label,
                                     change_number=change_number, bucketing_key=bucketing_key, time=time)
 
     def _record_stats(self, impression, start, operation):
         try:
-            end = arrow.utcnow().timestamp * 1000
+            end = int(round(time.time() * 1000))
             self.get_treatment_log().log(impression)
             self.get_metrics().time(operation, end - start)
         except:
@@ -164,13 +170,15 @@ class Client(object):
         :return: The treatment for the key and split
         :rtype: str
         """
+        if bucketing_key is None:
+            bucketing_key = matching_key
 
         for condition in split.conditions:
             if condition.matcher.match(matching_key, attributes=attributes):
-                return self.get_splitter().get_treatment(bucketing_key, split.seed, condition.partitions)
+                return self.get_splitter().get_treatment(bucketing_key, split.seed, condition.partitions), condition.label
 
         # No condition matches
-        return None
+        return None, None
 
 
 def randomize_interval(value):
@@ -214,7 +222,11 @@ class SelfRefreshingClient(Client):
         :param events_api_base_url: An override for the default events base URL.
         :type events_api_base_url: str
         """
-        super(SelfRefreshingClient, self).__init__()
+        labels_enabled = True
+        if config is not None and 'labelsEnabled' in config:
+            labels_enabled = config['labelsEnabled']
+
+        super(SelfRefreshingClient, self).__init__(labels_enabled)
 
         self._api_key = api_key
         self._sdk_api_base_url = sdk_api_base_url
@@ -484,11 +496,11 @@ class LocalhostEnvironmentClient(Client):
 
 
 class RedisClient(Client):
-    def __init__(self, redis):
+    def __init__(self, redis, labels_enabled=True):
         """A Client implementation that uses Redis as its backend.
         :param redis: A redis client
         :type redis: StrctRedis"""
-        super(RedisClient, self).__init__()
+        super(RedisClient, self).__init__(labels_enabled)
 
         split_cache = RedisSplitCache(redis)
         split_fetcher = CacheBasedSplitFetcher(split_cache)
@@ -678,4 +690,12 @@ def get_redis_client(api_key, **kwargs):
         return LocalhostEnvironmentClient(**kwargs)
 
     redis = get_redis(config)
-    return RedisClient(redis)
+
+    if 'labelsEnabled' in config:
+        redis_client = RedisClient(redis, config['labelsEnabled'])
+    else:
+        redis_client = RedisClient(redis)
+
+    return redis_client
+
+
