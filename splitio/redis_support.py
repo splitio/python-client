@@ -340,7 +340,8 @@ class RedisImpressionsCache(ImpressionsCache):
                             'treatment':impression.treatment,
                             'time':impression.time,
                             'changeNumber':impression.change_number,
-                            'label':impression.label
+                            'label':impression.label,
+                            'bucketingKey':impression.bucketing_key
                             }
         self._redis.sadd(self._IMPRESSIONS_KEY.format(feature_name=impression.feature_name), encode(cache_impression))
 
@@ -378,12 +379,16 @@ class RedisImpressionsCache(ImpressionsCache):
                 if 'changeNumber' in impression_decoded:
                     change_number = impression_decoded['changeNumber']
 
+                bucketing_key = ''
+                if 'bucketingKey' in impression_decoded:
+                    bucketing_key = impression_decoded['bucketingKey']
+
                 impression_tuple = Impression(matching_key=impression_decoded['keyName'],
                                               feature_name=feature_name,
                                               treatment=impression_decoded['treatment'],
                                               label=label,
                                               change_number=change_number,
-                                              bucketing_key='',
+                                              bucketing_key=bucketing_key,
                                               time=impression_decoded['time']
                                               )
                 impressions_list.append(impression_tuple)
@@ -638,7 +643,7 @@ class RedisSplitParser(SplitParser):
 
     def _parse_split(self, split, block_until_ready=False):
         return RedisSplit(split['name'], split['seed'], split['killed'], split['defaultTreatment'],
-                          split['trafficTypeName'], segment_cache=self._segment_cache)
+                          split['trafficTypeName'], split['status'], split['changeNumber'], segment_cache=self._segment_cache)
 
     def _parse_matcher_in_segment(self, partial_split, matcher, block_until_ready=False, *args,
                                   **kwargs):
@@ -650,7 +655,7 @@ class RedisSplitParser(SplitParser):
 
 
 class RedisSplit(Split):
-    def __init__(self, name, seed, killed, default_treatment, traffic_type_name, conditions=None, segment_cache=None):
+    def __init__(self, name, seed, killed, default_treatment, traffic_type_name, status, change_number, conditions=None, segment_cache=None):
         """A split implementation that mantains a reference to the segment cache so segments can
         be easily pickled and unpickled.
         :param name: Name of the feature
@@ -666,7 +671,7 @@ class RedisSplit(Split):
         :param segment_cache: A segment cache
         :type segment_cache: SegmentCache
         """
-        super(RedisSplit, self).__init__(name, seed, killed, default_treatment, traffic_type_name, conditions)
+        super(RedisSplit, self).__init__(name, seed, killed, default_treatment, traffic_type_name, status, change_number, conditions)
         self._segment_cache = segment_cache
 
     @property
@@ -710,7 +715,7 @@ def get_redis(config):
     :return: A redis client
     """
     if 'redisFactory' in config:
-        redis_factory = import_from_string(config['redisFactory'])
+        redis_factory = import_from_string(config['redisFactory'],'redisFactory')
         return redis_factory()
 
     return default_redis_factory(config)
@@ -726,5 +731,34 @@ def default_redis_factory(config):
     host = config.get('redisHost', 'localhost')
     port = config.get('redisPort', 6379)
     db = config.get('redisDb', 0)
-    redis = StrictRedis(host=host, port=port, db=db)
+    password = config.get('redisPassword', None)
+    socket_timeout = config.get('redisSocketTimeout', None)
+    socket_connect_timeout = config.get('redisSocketConnectTimeout', None)
+    socket_keepalive = config.get('redisSocketKeepalive', None)
+    socket_keepalive_options = config.get('redisSocketKeepaliveOptions', None)
+    connection_pool = config.get('redisConnectionPool', None)
+    unix_socket_path = config.get('redisUnixSocketPath', None)
+    encoding = config.get('redisEncoding', 'utf-8')
+    encoding_errors = config.get('redisEncodingErrors', 'strict')
+    charset = config.get('redisCharset', None)
+    errors = config.get('redisErrors', None)
+    decode_responses = config.get('redisDecodeResponses', False)
+    retry_on_timeout = config.get('redisRetryOnTimeout', False)
+    ssl = config.get('redisSsl', False)
+    ssl_keyfile = config.get('redisSslKeyfile', None)
+    ssl_certfile = config.get('redisSslCertfile', None)
+    ssl_cert_reqs = config.get('redisSslCertReqs', None)
+    ssl_ca_certs = config.get('redisSslCaCerts', None)
+    max_connections = config.get('redisMaxConnections', None)
+
+    redis = StrictRedis(host=host, port=port, db=db, password=password, socket_timeout=socket_timeout,
+                 socket_connect_timeout=socket_connect_timeout,
+                 socket_keepalive=socket_keepalive, socket_keepalive_options=socket_keepalive_options,
+                 connection_pool=connection_pool, unix_socket_path=unix_socket_path,
+                 encoding=encoding, encoding_errors=encoding_errors,
+                 charset=charset, errors=errors,
+                 decode_responses=decode_responses, retry_on_timeout=retry_on_timeout,
+                 ssl=ssl, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile,
+                 ssl_cert_reqs=ssl_cert_reqs, ssl_ca_certs=ssl_ca_certs,
+                 max_connections=max_connections)
     return redis

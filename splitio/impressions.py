@@ -29,7 +29,8 @@ def build_impressions_data(impressions):
                     'treatment': impression.treatment,
                     'time': impression.time,
                     'changeNumber': impression.change_number,
-                    'label': impression.label
+                    'label': impression.label,
+                    'bucketingKey': impression.bucketing_key
                 }
                 for impression in feature_impressions
             ]
@@ -48,12 +49,12 @@ class Label(object):
     # Condition: No condition matched
     # Treatment: Default Treatment
     # Label: no condition matched
-    NO_CONDITION_MATCHED = 'no condition matched'
+    NO_CONDITION_MATCHED = 'no rule matched'
 
     #Condition: Split definition was not found
     #Treatment: control
     #Label: split not found
-    SPLIT_NOT_FOUND = 'split not found'
+    SPLIT_NOT_FOUND = 'rules not found'
 
     # Condition: There was an exception
     # Treatment: control
