@@ -499,6 +499,15 @@ class SelfRefreshingClientInitConfigTests(TestCase, MockUtilsMixin):
         self.assertEqual(self.randomize_interval_side_effect[2],
                          self.client._impressions_interval)
 
+    def test_sets_enabled_labels(self):
+        """Test that sets labels enabled to the given value"""
+        client = SelfRefreshingClient(self.some_api_key, config={'labelsEnabled': False})
+        self.assertFalse(client._labels_enabled)
+
+    def test_default_enabled_labels(self):
+        """Test that sets labels enabled to the given value"""
+        client = SelfRefreshingClient(self.some_api_key)
+        self.assertTrue(client._labels_enabled)
 
 class SelfRefreshingClientBuildSdkApiTests(TestCase, MockUtilsMixin):
     def setUp(self):
