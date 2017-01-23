@@ -1,3 +1,5 @@
+2.1.x
+ - Fixed HTTP status code exceptions
 2.1.0
  - Added enabled labels
  - Added impressions by sdk and version including bucketing key
