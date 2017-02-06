@@ -33,9 +33,12 @@ def update_segment(segment_cache, segment_name, segment_change_fetcher):
     :type segment_name: str
     """
     till = segment_cache.get_change_number(segment_name)
-
+    _logger.info("Updating segment %s"%segment_name)
     while True:
         response = segment_change_fetcher.fetch(segment_name, till)
+        _logger.info("SEGMENT RESPONSE %s"%response)
+        if 'till' not in response:
+            return
 
         if till >= response['till']:
             return

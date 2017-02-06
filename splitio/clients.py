@@ -195,6 +195,59 @@ def randomize_interval(value):
 
     return random_interval
 
+class JSONFileClient(Client):
+    def __init__(self, segment_changes_file_name, split_changes_file_name):
+        """
+        A Client implementation that uses responses from the segmentChanges and splitChanges
+        resources to provide access to splits. It is intended to be used on integration
+        tests only.
+
+        :param segment_changes_file_name: The name of the file with the segmentChanges response
+        :type segment_changes_file_name: str
+        :param split_changes_file_name: The name of the file with the splitChanges response
+        :type split_changes_file_name: str
+        """
+        super(JSONFileClient, self).__init__()
+        self._segment_changes_file_name = segment_changes_file_name
+        self._split_changes_file_name = split_changes_file_name
+        self._split_fetcher = self._build_split_fetcher()
+        self._treatment_log = TreatmentLog()
+        self._metrics = Metrics()
+
+    def _build_split_fetcher(self):
+        """
+        Build the json backed split fetcher
+        :return: The json backed split fetcher
+        :rtype: SelfRefreshingSplitFetcher
+        """
+        segment_fetcher = JSONFileSegmentFetcher(self._segment_changes_file_name)
+        split_parser = SplitParser(segment_fetcher)
+        split_fetcher = JSONFileSplitFetcher(self._split_changes_file_name, split_parser)
+
+        return split_fetcher
+
+    def get_split_fetcher(self):
+        """
+        Get the split fetcher implementation for the client.
+        :return: The split fetcher
+        :rtype: SplitFetcher
+        """
+        return self._split_fetcher
+
+    def get_treatment_log(self):
+        """Get the treatment log implementation.
+        :return: The treatment log implementation.
+        :rtype: TreatmentLog
+        """
+        return self._treatment_log
+
+    def get_metrics(self):
+        """Get the metrics implementation.
+        :return: The metrics implementation.
+        :rtype: Metrics
+        """
+        return self._metrics
+
 
 class SelfRefreshingClient(Client):
     def __init__(self, api_key, config=None, sdk_api_base_url=None, events_api_base_url=None):
@@ -326,60 +379,6 @@ class SelfRefreshingClient(Client):
         self._split_fetcher.refresh_splits(block_until_ready=True)
         self._split_fetcher.start(delayed_update=True)
         event.set()
-
-    def get_split_fetcher(self):
-        """
-        Get the split fetcher implementation for the client.
-        :return: The split fetcher
-        :rtype: SplitFetcher
-        """
-        return self._split_fetcher
-
-    def get_treatment_log(self):
-        """Get the treatment log implementation.
-        :return: The treatment log implementation.
-        :rtype: TreatmentLog
-        """
-        return self._treatment_log
-
-    def get_metrics(self):
-        """Get the metrics implementation.
-        :return: The metrics implementation.
-        :rtype: Metrics
-        """
-        return self._metrics
-
-
-class JSONFileClient(Client):
-    def __init__(self, segment_changes_file_name, split_changes_file_name):
-        """
-        A Client implementation that uses responses from the segmentChanges and splitChanges
-        resources to provide access to splits. It is intended to be used on integration
-        tests only.
-
-        :param segment_changes_file_name: The name of the file with the segmentChanges response
-        :type segment_changes_file_name: str
-        :param split_changes_file_name: The name of the file with the splitChanges response
-        :type split_changes_file_name: str
-        """
-        super(JSONFileClient, self).__init__()
-        self._segment_changes_file_name = segment_changes_file_name
-        self._split_changes_file_name = split_changes_file_name
-        self._split_fetcher = self._build_split_fetcher()
-        self._treatment_log = TreatmentLog()
-        self._metrics = Metrics()
-
-    def _build_split_fetcher(self):
-        """
-        Build the json backed split fetcher
-        :return: The json backed split fetcher
-        :rtype: SelfRefreshingSplitFetcher
-        """
-        segment_fetcher = JSONFileSegmentFetcher(self._segment_changes_file_name)
-        split_parser = SplitParser(segment_fetcher)
-        split_fetcher = JSONFileSplitFetcher(self._split_changes_file_name, split_parser)
-
-        return split_fetcher
 
     def get_split_fetcher(self):
         """
@@ -540,7 +539,6 @@ class RedisClient(Client):
         :rtype: Metrics
         """
         return self._metrics
-
 
 def _init_config(api_key, **kwargs):
     config = kwargs.pop('config', dict())
