@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import logging
 
+from splitio.uwsgi import UWSGISplitCache
 from splitio.redis_support import RedisSplitCache
 from splitio.splits import (CacheBasedSplitFetcher, SplitView)
 from splitio.utils import bytes_to_string
@@ -103,6 +104,71 @@ class RedisSplitManager(SplitManager):
         split_view = SplitView(name=split.name, traffic_type=split.traffic_type_name, killed=split.killed, treatments=list(set(treatments)), change_number=change_number)
         return split_view
 
+
+class UWSGISplitManager(SplitManager):
+    def __init__(self, uwsgi):
+        """A SplitManager implementation that uses uWSGI as its backend.
+        :param uwsgi: A uwsgi module
+        :type uwsgi: module"""
+        super(UWSGISplitManager, self).__init__()
+
+        split_cache = UWSGISplitCache(uwsgi)
+        split_fetcher = CacheBasedSplitFetcher(split_cache)
+
+        self._split_cache = split_cache
+        self._split_fetcher = split_fetcher
+
+    def split_names(self):
+        """Get the name of fetched splits.
+        :return: A list of str
+        :rtype: list
+        """
+        splits = self._split_cache.get_splits_keys()
+        split_names = []
+        for split_name in splits:
+            split_name = bytes_to_string(split_name)
+            split_names.append(split_name)
+
+        return split_names
+
+    def splits(self):  # pragma: no cover
+        """Get the fetched splits. Subclasses need to override this method.
+        :return: A List of SplitView.
+        :rtype: list
+        """
+        splits = self._split_fetcher.fetch_all()
+
+        split_views = []
+
+        for split in splits:
+            treatments = []
+            if hasattr(split, 'conditions'):
+                for condition in split.conditions:
+                    for partition in condition.partitions:
+                        treatments.append(partition.treatment)
+                split_views.append(SplitView(name=split.name, traffic_type=split.traffic_type_name, killed=split.killed, treatments=list(set(treatments)), change_number=split.change_number))
+
+        return split_views
+
+    def split(self, feature_name):  # pragma: no cover
+        """Get the splitView of feature_name. Subclasses need to override this method.
+        :return: The SplitView instance.
+        :rtype: SplitView
+        """
+        split = self._split_fetcher.fetch(feature_name)
+
+        if split is None:
+            return None
+
+        treatments = []
+
+        for condition in split.conditions:
+            for partition in condition.partitions:
+                treatments.append(partition.treatment)
+
+        #Using sets on treatments to avoid duplicate entries
+        split_view = SplitView(name=split.name, traffic_type=split.traffic_type_name, killed=split.killed, treatments=list(set(treatments)), change_number=split.change_number)
+        return split_view
 
 class SelfRefreshingSplitManager(SplitManager):
 

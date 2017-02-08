@@ -22,52 +22,56 @@ uwsgi --http :9090 --wsgi-file mysite/wsgi.py --processes 4 --threads 2 --enable
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from collections import defaultdict
-
 try:
+    #uwsgi is loaded at runtime by uwsgi app.
     import uwsgi
-    from uwsgidecorators import thread
-    from jsonpickle import decode, encode
 except ImportError:
     def missing_uwsgi_dependencies(*args, **kwargs):
         raise NotImplementedError('Missing uWSGI support dependencies.')
-    decode = encode = uwsgi = missing_uwsgi_dependencies
+    uwsgi = missing_uwsgi_dependencies
 
+try:
+    from jsonpickle import decode, encode
+except ImportError:
+    def missing_jsonpickle_dependencies(*args, **kwargs):
+        raise NotImplementedError('Missing jsonpickle support dependencies.')
+    decode = encode = missing_jsonpickle_dependencies
+
+
+
+import sys
 import re
 import logging
-import threading
 import time
 
-from builtins import zip
-from itertools import groupby, islice
+from itertools import groupby
 from six import iteritems
+from collections import defaultdict
 
-from splitio.config import DEFAULT_CONFIG
 from splitio.cache import SegmentCache, SplitCache, ImpressionsCache, MetricsCache
 from splitio.api import api_factory
 from splitio.tasks import update_splits, update_segments, report_metrics, report_impressions
-from splitio.splits import Split, ApiSplitChangeFetcher, SplitParser, CacheBasedSplitFetcher
+from splitio.splits import Split, ApiSplitChangeFetcher, SplitParser
 from splitio.segments import Segment, ApiSegmentChangeFetcher
 from splitio.matchers import UserDefinedSegmentMatcher
 from splitio.utils import bytes_to_string
-from splitio.clients import Client
-from splitio.impressions import CacheBasedTreatmentLog, AsyncTreatmentLog, Impression
-from splitio.metrics import CacheBasedMetrics, AsyncMetrics, BUCKETS
+from splitio.impressions import Impression
+from splitio.metrics import BUCKETS
 
 
 _logger = logging.getLogger(__name__)
 
 
-def uwsgi_update_splits(seconds, config):
+def uwsgi_update_splits(config):
     try:
+        seconds = config['featuresRefreshRate']
         while True:
-            _logger.info("**** RUNNING uwsgi_update_splits")
-            split_cache = UWSGISplitCache(uwsgi)
+            split_cache = UWSGISplitCache(get_uwsgi())
 
             sdk_api = api_factory(config)
             split_change_fetcher = ApiSplitChangeFetcher(sdk_api)
 
-            segment_cache = UWSGISegmentCache(uwsgi)
+            segment_cache = UWSGISegmentCache(get_uwsgi())
             split_parser = UWSGISplitParser(segment_cache)
 
             update_splits(split_cache, split_change_fetcher, split_parser)
@@ -77,10 +81,11 @@ def uwsgi_update_splits(seconds, config):
         _logger.exception('Exception caught updating splits')
 
 
-def uwsgi_update_segments(seconds, config):
+def uwsgi_update_segments(config):
     try:
+        seconds = config['segmentsRefreshRate']
         while True:
-            segment_cache = UWSGISegmentCache(uwsgi)
+            segment_cache = UWSGISegmentCache(get_uwsgi())
             sdk_api = api_factory(config)
             segment_change_fetcher = ApiSegmentChangeFetcher(sdk_api)
             update_segments(segment_cache, segment_change_fetcher)
@@ -90,10 +95,11 @@ def uwsgi_update_segments(seconds, config):
         _logger.exception('Exception caught updating segments')
 
 
-def uwsgi_report_impressions(seconds, config):
+def uwsgi_report_impressions(config):
     try:
+        seconds = config['impressionsRefreshRate']
         while True:
-            impressions_cache = UWSGIImpressionsCache(uwsgi)
+            impressions_cache = UWSGIImpressionsCache(get_uwsgi())
             sdk_api = api_factory(config)
             report_impressions(impressions_cache, sdk_api)
 
@@ -102,98 +108,30 @@ def uwsgi_report_impressions(seconds, config):
         _logger.exception('Exception caught posting impressions')
 
 
-"""
-user_sdk_config = {
-    'apiKey':'923rv3kf6r3e2ft1j28ifdfvq848obmnpsu9',
-    'sdkApiBaseUrl':'https://sdk-aws-staging.split.io/api',
-    'eventsApiBaseUrl':'https://events-aws-staging.split.io/api',
-    'segmentsRefreshRate':30,
-    'featuresRefreshRate':20,
-    'impressionsRefreshRate': 60
-}
+def uwsgi_report_metrics(config):
+    try:
+        seconds = config['metricsRefreshRate']
+        while True:
+            metrics_cache = UWSGIMetricsCache(get_uwsgi())
+            sdk_api = api_factory(config)
+            report_metrics(metrics_cache, sdk_api)
 
-sdk_config = DEFAULT_CONFIG
-sdk_config.update(user_sdk_config)
-
-
-
-class UpdateSplitsJob(threading.Thread):
-    def _update_splits(self, seconds, config):
-        try:
-            while True:
-
-                split_cache = UWSGISplitCache()
-
-                sdk_api = api_factory(config)
-                split_change_fetcher = ApiSplitChangeFetcher(sdk_api)
-
-                segment_cache = UWSGISegmentCache()
-                split_parser = UWSGISplitParser(segment_cache)
-
-                update_splits(split_cache, split_change_fetcher, split_parser)
-
-                time.sleep(seconds)
-        except:
-            _logger.exception('Exception caught updating splits')
-
-    def run(self):
-        self._update_splits(sdk_config['featuresRefreshRate'],sdk_config)
-
-class UpdateSegmentsJob(threading.Thread):
-    def _update_segments(self, seconds, config):
-        try:
-            while True:
-                segment_cache = UWSGISegmentCache()
-                sdk_api = api_factory(config)
-                segment_change_fetcher = ApiSegmentChangeFetcher(sdk_api)
-                update_segments(segment_cache, segment_change_fetcher)
-
-                time.sleep(seconds)
-        except:
-            _logger.exception('Exception caught updating segments')
-
-    def run(self):
-        self._update_segments(sdk_config['segmentsRefreshRate'],sdk_config)
+            time.sleep(seconds)
+    except:
+        _logger.exception('Exception caught posting metrics')
 
 
 
-class Synchronizer(threading.Thread):
-    def __init__(self):
-        #Synchronizer service to keep cache up to date.
-        threading.Thread.__init__(self)
-        self._update_splits_job = UpdateSplitsJob()
-        self._update_segments_job = UpdateSegmentsJob()
-        self._impressionsProducer = None
-        self._metricsProducer = None
-
-        self._update_splits_job.daemon = True
-        self._update_segments_job.daemon = True
-
-    def run(self):
-        self._update_splits_job.start()
-        self._update_segments_job.start()
-        #while True:
-        #    time.sleep(5)
-        #    obj = TestObject(val="Synchronizer! %s" % str(int(round(time.time() * 1000))))
-        #    uwsgi.cache_update('myKey', obj, 0, 'splitio')
-
-# Synchronizer Singleton instance
-#splitio_synchronizer = Synchronizer()
-#splitio_synchronizer.daemon = True
-"""
 
 _SPLITIO_COMMON_CACHE_NAMESPACE = 'splitio'
-#_SPLITIO_SPLITS_CACHE_NAMESPACE = 'splitio.splits'
-#_SPLITIO_SEGMENT_CACHE_NAMESPACE = 'splitio.segments'
-#_SPLITIO_IMPRESSIONS_CACHE_NAMESPACE = 'splitio.impressions'
-#_SPLITIO_METRICS_CACHE_NAMESPACE = 'splitio.metrics'
 
 class UWSGISplitCache(SplitCache):
     _KEY_TEMPLATE = 'split.{suffix}'
     _KEY_TILL_TEMPLATE = 'splits.till'
+    _KEY_CURRENT_SPLITS = 'splits.current'
 
     def __init__(self, adapter):
-        """A SplitCache implementation that uses Redis as its back-end."""
+        """A SplitCache implementation that uses uwsgi cache as its back-end."""
         self._adapter = adapter
 
     def is_enabled(self):
@@ -201,7 +139,7 @@ class UWSGISplitCache(SplitCache):
         return True
 
     def disable(self):
-        """Disable cache. To keep Redis interface"""
+        """Disable cache. To keep interface"""
         return True
 
     def add_split(self, split_name, split):
@@ -212,7 +150,16 @@ class UWSGISplitCache(SplitCache):
         :param split: The split to store
         :type split: Split
         """
-        self._adapter.cache_update(self._KEY_TEMPLATE.format(suffix=split_name), encode(split), 0, _SPLITIO_COMMON_CACHE_NAMESPACE)
+        self._adapter.cache_update(self._KEY_TEMPLATE.format(suffix=split_name), encode(split), 0,
+                                   _SPLITIO_COMMON_CACHE_NAMESPACE)
+
+        if self._adapter.cache_exists(self._KEY_CURRENT_SPLITS, _SPLITIO_COMMON_CACHE_NAMESPACE):
+            current_splits = decode(self._adapter.cache_get(self._KEY_CURRENT_SPLITS, _SPLITIO_COMMON_CACHE_NAMESPACE))
+            current_splits[split_name] = True
+        else:
+            current_splits = {split_name:True}
+
+        self._adapter.cache_update(self._KEY_CURRENT_SPLITS, encode(current_splits), 0, _SPLITIO_COMMON_CACHE_NAMESPACE)
 
     def remove_split(self, split_name):
         """
@@ -220,6 +167,13 @@ class UWSGISplitCache(SplitCache):
         :param split_name: Name of the split (feature)
         :type split_name: str
         """
+
+        if self._adapter.cache_exists(self._KEY_CURRENT_SPLITS, _SPLITIO_COMMON_CACHE_NAMESPACE):
+            current_splits = decode(self._adapter.cache_get(self._KEY_CURRENT_SPLITS, _SPLITIO_COMMON_CACHE_NAMESPACE))
+            current_splits.pop(split_name, None)
+            self._adapter.cache_update(self._KEY_CURRENT_SPLITS, encode(current_splits), 0,
+                                       _SPLITIO_COMMON_CACHE_NAMESPACE)
+
         return self._adapter.cache_del(self._KEY_TEMPLATE.format(suffix=split_name), _SPLITIO_COMMON_CACHE_NAMESPACE)
 
     def get_split(self, split_name):
@@ -246,6 +200,21 @@ class UWSGISplitCache(SplitCache):
             return split
 
         return None
+
+    def get_splits_keys(self):
+        if self._adapter.cache_exists(self._KEY_CURRENT_SPLITS, _SPLITIO_COMMON_CACHE_NAMESPACE):
+            return decode(self._adapter.cache_get(self._KEY_CURRENT_SPLITS, _SPLITIO_COMMON_CACHE_NAMESPACE))
+        return dict()
+
+    def get_splits(self):
+        current_splits = self.get_splits_keys()
+
+        to_return = []
+
+        for split_name in current_splits:
+            to_return.append(self.get_split(split_name))
+
+        return to_return
 
 
     def set_change_number(self, change_number):
@@ -275,9 +244,9 @@ class UWSGISegmentCache(SegmentCache):
 
 
     def __init__(self,adapter, disabled_period=300):
-        """A Segment Cache implementation that uses Redis as its back-end
+        """A Segment Cache implementation that uses uWSGI as its back-end
         :param adapter: The uwsgi module
-        :rtype redis: uwsgi
+        :rtype uwsgi: uwsgi
         :param disabled_period: The expiration period for the disabled key.
         :param disabled_period: int
         """
@@ -388,7 +357,7 @@ class UWSGISegmentCache(SegmentCache):
 class UWSGISplitParser(SplitParser):
     def __init__(self, segment_cache):
         """
-        A SplitParser implementation that registers the segments with the redis segment cache
+        A SplitParser implementation that registers the segments with the uwsgi segment cache
         implementation upon parsing an IN_SEGMENT matcher.
         """
         super(UWSGISplitParser, self).__init__(None)
@@ -446,12 +415,12 @@ class UWSGISplit(Split):
 
 class UWSGISplitBasedSegment(Segment):
     def __init__(self, name, split):
-        """A Segment that uses a reference to a RedisSplit redis' instance to check if a key
+        """A Segment that uses a reference to a UWSGISplit uwsgi' instance to check if a key
         is in a segment
         :param name: The name of the segment
         :type name: str
-        :param split: A RedisSplit instance
-        :type split: RedisSplit
+        :param split: A UWSGISplit instance
+        :type split: UWSGISplit
         """
         super(UWSGISplitBasedSegment, self).__init__(name)
         self._split = split
@@ -582,24 +551,20 @@ class UWSGIImpressionsCache(ImpressionsCache):
 
 class UWSGIMetricsCache(MetricsCache):
     _KEY_TEMPLATE = 'metrics.{suffix}'
-    _DISABLED_KEY = _KEY_TEMPLATE.format(suffix='__disabled__')
     _METRIC_KEY = _KEY_TEMPLATE.format(suffix='metric')
+    _LATENCY_KEY = _KEY_TEMPLATE.format(suffix='latency')
     _KEY_LATENCY_BUCKET = 'latency.{metric_name}.bucket.{bucket_number}'
-    _METRIC_TO_CLEAR_KEY = _KEY_TEMPLATE.format(suffix='metric_to_clear')
     _COUNT_FIELD_TEMPLATE = 'count.{counter}'
     _TIME_FIELD_TEMPLATE = 'time.{operation}.{bucket_index}'
     _GAUGE_FIELD_TEMPLATE = 'gauge.{gauge}'
 
-    _LATENCY_FIELD_RE = re.compile('^SPLITIO\.latency\.(?P<operation>.+)\.bucket\.(?P<bucket_index>.+)$')
+    _LATENCY_FIELD_RE = re.compile('^latency\.(?P<operation>.+)\.bucket\.(?P<bucket_index>.+)$')
     _COUNT_FIELD_RE = re.compile('^count\.(?P<counter>.+)$')
     _TIME_FIELD_RE = re.compile('^time\.(?P<operation>.+)\.(?P<bucket_index>.+)$')
     _GAUGE_FIELD_RE = re.compile('^gauge\.(?P<gauge>.+)$')
 
-    _CONDITIONAL_EVAL_SCRIPT_TEMPLATE = "if redis.call('EXISTS', '{disabled_key}') == 0 " \
-                                        "then {script} end"
-
     def __init__(self, adapter, disabled_period=300):
-        """A MetricsCache implementation that uses Redis as its back-end
+        """A MetricsCache implementation that uses uWSGI as its back-end
         :param disabled_period: The expiration period for the disabled key.
         :param disabled_period: int
         """
@@ -633,7 +598,7 @@ class UWSGIMetricsCache(MetricsCache):
         return True
 
     def _get_count_field(self, counter):
-        """Builds the field name for a counter on the metrics redis hash.
+        """Builds the field name for a counter on the metrics.
         :param counter: Name of the counter
         :type counter: str
         :return: Name of the field on the metrics hash for the given counter
@@ -642,7 +607,7 @@ class UWSGIMetricsCache(MetricsCache):
         return self._COUNT_FIELD_TEMPLATE.format(counter=counter)
 
     def _get_time_field(self, operation, bucket_index):
-        """Builds the field name for a latency counting bucket ont the metrics redis hash.
+        """Builds the field name for a latency counting bucket ont the metrics.
         :param operation: Name of the operation
         :type operation: str
         :param bucket_index: Latency bucket index as returned by get_latency_bucket_index
@@ -664,7 +629,7 @@ class UWSGIMetricsCache(MetricsCache):
         return [self._get_time_field(operation, bucket) for bucket in range(0, len(BUCKETS))]
 
     def _get_gauge_field(self, gauge):
-        """Builds the field name for a gauge on the metrics redis hash.
+        """Builds the field name for a gauge on the metrics hash.
         :param gauge: Name of the gauge
         :type gauge: str
         :return: Name of the field on the metrics hash for the given gauge
@@ -690,8 +655,9 @@ class UWSGIMetricsCache(MetricsCache):
         :return: A list of of time metrics
         :rtype: list
         """
-        return [{'name': name, 'latencies': latencies}
+        to_return = [{'name': name, 'latencies': latencies}
                 for name, latencies in iteritems(time_metrics)]
+        return to_return
 
     def _build_metrics_gauge_data(self, gauge_metrics):
         """Build metrics gauge data in the format expected by the API from the contents of the
@@ -750,44 +716,40 @@ class UWSGIMetricsCache(MetricsCache):
 
         metrics[field_name] = value
         self._adapter.cache_update(self._METRIC_KEY, encode(metrics), 0, _SPLITIO_COMMON_CACHE_NAMESPACE)
+        _logger.error(metrics)
 
     def get_latency(self, operation):
-        """return [
-            0 if count is None else count
-            for count in (self._redis.get(self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket))
-                          for bucket in range(0, len(BUCKETS)))]
-        """
-        return [0]
+        _latencies = []
+        if self._adapter.cache_exists(self._LATENCY_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE):
+            latencies = decode(self._adapter.cache_get(self._LATENCY_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE))
+            for bucket in range(0, len(BUCKETS)):
+                _key = self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket)
+                if _key in latencies:
+                    _latencies.append(latencies[_key])
+                else:
+                    _latencies.append(0)
+
+        return [0 for bucket in range(0, len(BUCKETS))]
 
     def get_latency_bucket_counter(self, operation, bucket_index):
-        _key = self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket_index)
-        if self._adapter.cache_exists(_key, _SPLITIO_COMMON_CACHE_NAMESPACE):
-            return self._adapter.cache_get(_key, _SPLITIO_COMMON_CACHE_NAMESPACE)
-
+        if self._adapter.cache_exists(self._LATENCY_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE):
+            latencies = decode(self._adapter.cache_get(self._LATENCY_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE))
+            _key = self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket_index)
+            if _key in latencies:
+                return latencies[_key]
         return 0
 
     def set_latency_bucket_counter(self, operation, bucket_index, value):
-        self._adapter.cache_update(
-            self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket_index),
-            encode(value),
-            0,
-            _SPLITIO_COMMON_CACHE_NAMESPACE)
-        pass
+        latencies = dict()
+        if self._adapter.cache_exists(self._LATENCY_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE):
+            latencies = decode(self._adapter.cache_get(self._LATENCY_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE))
+
+        latencies[self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket_index)] = value
+        self._adapter.cache_update(self._LATENCY_KEY, encode(latencies), 0, _SPLITIO_COMMON_CACHE_NAMESPACE)
 
     def increment_latency_bucket_counter(self, operation, bucket_index, delta=1):
-        _key =  self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket_index)
-        if self._adapter.cache_exists(_key, _SPLITIO_COMMON_CACHE_NAMESPACE):
-            self._adapter.cache_update(
-                _key,
-                encode(
-                    decode(
-                        self._adapter.cache_get(_key, _SPLITIO_COMMON_CACHE_NAMESPACE)
-                    ) + delta
-                ),
-                0,
-                _SPLITIO_COMMON_CACHE_NAMESPACE)
-        else:
-            self._adapter.cache_update(_key, encode(delta), 0, _SPLITIO_COMMON_CACHE_NAMESPACE)
+        latency = self.get_latency_bucket_counter(operation, bucket_index)
+        self.set_latency_bucket_counter(operation, bucket_index, latency + delta)
 
     def set_count(self, counter, value):
         metric_field = self._get_count_field(counter)
@@ -820,75 +782,18 @@ class UWSGIMetricsCache(MetricsCache):
         return self._build_metrics_from_cache_response(None)
 
     def fetch_all_times_and_clear(self):
-        """time_keys = self._redis.keys(self._KEY_LATENCY_BUCKET.format(metric_name='*', bucket_number='*'))
+        if self._adapter.cache_exists(self._LATENCY_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE):
+            latencies = decode(self._adapter.cache_get(self._LATENCY_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE))
+            time = defaultdict(lambda: [0] * len(BUCKETS))
+            for key in latencies:
+                time_match = self._LATENCY_FIELD_RE.match(key)
+                if time_match is not None:
+                    time[time_match.group('operation')][int(time_match.group('bucket_index'))] = int(latencies[key])
+                    latencies[key] = 0
+            self._adapter.cache_update(self._LATENCY_KEY, encode(latencies), 0, _SPLITIO_COMMON_CACHE_NAMESPACE)
+            return self._build_metrics_times_data(time)
 
-        time = defaultdict(lambda: [0] * len(BUCKETS))
-
-        for key in time_keys:
-            key = bytes_to_string(key)
-            time_match = RedisMetricsCache._LATENCY_FIELD_RE.match(key)
-            if time_match is not None:
-                time[time_match.group('operation')][int(time_match.group('bucket_index'))] = int(self._redis.getset(key, 0))
-
-        return self._build_metrics_times_data(time)"""
         return self._build_metrics_times_data(dict())
-
-
-
-class UWSGIClient(Client):
-    def __init__(self, config=None):
-        """
-        A Client implementation that consumes data from uwsgi cache framework. The config parameter
-        is a dictionary that allows you to control the behaviour of the client.
-
-        :param config: The configuration dictionary
-        :type config: dict
-        """
-        labels_enabled = True
-        if config is not None and 'labelsEnabled' in config:
-            labels_enabled = config['labelsEnabled']
-
-        super(UWSGIClient, self).__init__(labels_enabled)
-
-        split_cache = UWSGISplitCache(uwsgi)
-        split_fetcher = CacheBasedSplitFetcher(split_cache)
-
-        impressions_cache = UWSGIImpressionsCache(uwsgi)
-        delegate_treatment_log = CacheBasedTreatmentLog(impressions_cache)
-        treatment_log = AsyncTreatmentLog(delegate_treatment_log)
-
-        metrics_cache = UWSGIMetricsCache(uwsgi)
-        delegate_metrics = CacheBasedMetrics(metrics_cache)
-        metrics = AsyncMetrics(delegate_metrics)
-
-        self._split_fetcher = split_fetcher
-        self._treatment_log = treatment_log
-        self._metrics = metrics
-
-
-    def get_split_fetcher(self):
-        """
-        Get the split fetcher implementation for the client.
-        :return: The split fetcher
-        :rtype: SplitFetcher
-        """
-        return self._split_fetcher
-
-    def get_treatment_log(self):
-        """
-        Get the treatment log implementation for the client.
-        :return: The treatment log
-        :rtype: TreatmentLog
-        """
-        return self._treatment_log
-
-    def get_metrics(self):
-        """
-        Get the metrics implementation for the client.
-        :return: The metrics
-        :rtype: Metrics
-        """
-        return self._metrics
 
 class UWSGICacheEmulator(object):
     def __init__(self):
@@ -930,3 +835,11 @@ class UWSGICacheEmulator(object):
 
     def cache_clear(self, cache_namespace='default'):
         self._cache.pop(cache_namespace, None)
+
+
+def get_uwsgi(emulator=False):
+    """Returns a uwsgi imported module or an emulator to use in unit test """
+    if emulator:
+        return UWSGICacheEmulator()
+
+    return uwsgi

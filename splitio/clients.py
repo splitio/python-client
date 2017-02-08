@@ -28,6 +28,8 @@ from splitio.segments import (ApiSegmentChangeFetcher, SelfRefreshingSegmentFetc
 from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, parse_config_file
 from splitio.treatments import CONTROL
 
+from splitio.uwsgi import (UWSGISplitCache, UWSGIImpressionsCache, UWSGIMetricsCache, get_uwsgi)
+
 
 class Key(object):
     def __init__(self, matching_key, bucketing_key):
@@ -540,6 +542,63 @@ class RedisClient(Client):
         """
         return self._metrics
 
+class UWSGIClient(Client):
+    def __init__(self, uwsgi, config=None):
+        """
+        A Client implementation that consumes data from uwsgi cache framework. The config parameter
+        is a dictionary that allows you to control the behaviour of the client.
+
+        :param config: The configuration dictionary
+        :type config: dict
+        """
+        labels_enabled = True
+        if config is not None and 'labelsEnabled' in config:
+            labels_enabled = config['labelsEnabled']
+
+        super(UWSGIClient, self).__init__(labels_enabled)
+
+        split_cache = UWSGISplitCache(uwsgi)
+        split_fetcher = CacheBasedSplitFetcher(split_cache)
+
+        impressions_cache = UWSGIImpressionsCache(uwsgi)
+        delegate_treatment_log = CacheBasedTreatmentLog(impressions_cache)
+        treatment_log = AsyncTreatmentLog(delegate_treatment_log)
+
+        metrics_cache = UWSGIMetricsCache(uwsgi)
+        delegate_metrics = CacheBasedMetrics(metrics_cache)
+        metrics = AsyncMetrics(delegate_metrics)
+
+        self._split_fetcher = split_fetcher
+        self._treatment_log = treatment_log
+        self._metrics = metrics
+
+
+    def get_split_fetcher(self):
+        """
+        Get the split fetcher implementation for the client.
+        :return: The split fetcher
+        :rtype: SplitFetcher
+        """
+        return self._split_fetcher
+
+    def get_treatment_log(self):
+        """
+        Get the treatment log implementation for the client.
+        :return: The treatment log
+        :rtype: TreatmentLog
+        """
+        return self._treatment_log
+
+    def get_metrics(self):
+        """
+        Get the metrics implementation for the client.
+        :return: The metrics
+        :rtype: Metrics
+        """
+        return self._metrics
+
+
+
 def _init_config(api_key, **kwargs):
     config = kwargs.pop('config', dict())
     sdk_api_base_url = kwargs.pop('sdk_api_base_url', None)
@@ -696,4 +755,58 @@ def get_redis_client(api_key, **kwargs):
 
     return redis_client
 
+def get_uwsgi_client(api_key, **kwargs):
+    """
+    Builds a Split Client that that gets its information from a uWSGI cache instance. It also writes
+    impressions and metrics to the same instance.
 
+    In order for this work properly, you need to periodically call the spooler uwsgi_update_splits and
+    uwsgi_update_segments scripts. You also need to run the uwsgi_report_impressions and uwsgi_report_metrics scripts in
+    order to push the impressions and metrics onto the Split.io backend-
+
+    The config_file parameter is the name of a file that contains the client configuration. Here's
+    an example of a config file:
+
+    {
+      "apiKey": "some-api-key",
+      "sdkApiBaseUrl": "https://sdk.split.io/api",
+      "eventsApiBaseUrl": "https://events.split.io/api",
+      "featuresRefreshRate": 30,
+      "segmentsRefreshRate": 60,
+      "metricsRefreshRate": 60,
+      "impressionsRefreshRate": 60
+    }
+
+    If the api_key argument is 'localhost' a localhost environment client is built based on the
+    contents of a .split file in the user's home directory. The definition file has the following
+    syntax:
+
+        file: (comment | split_line)+
+        comment : '#' string*\n
+        split_line : feature_name ' ' treatment\n
+        feature_name : string
+        treatment : string
+
+    It is possible to change the location of the split file by using the split_definition_file_name
+    argument.
+
+    :param api_key: The API key provided by Split.io
+    :type api_key: str
+    :param config_file: Filename of the config file
+    :type config_file: str
+    :param sdk_api_base_url: An override for the default API base URL.
+    :type sdk_api_base_url: str
+    :param events_api_base_url: An override for the default events base URL.
+    :type events_api_base_url: str
+    :param split_definition_file_name: Name of the definition file (Optional)
+    :type split_definition_file_name: str
+    """
+    api_key, config, _, _ = _init_config(api_key, **kwargs)
+
+    if api_key == 'localhost':
+        return LocalhostEnvironmentClient(**kwargs)
+
+    uwsgi = get_uwsgi()
+    uwsgi_client = UWSGIClient(uwsgi, config)
+
+    return uwsgi_client

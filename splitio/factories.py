@@ -1,9 +1,10 @@
 """A module for Split.io Factories"""
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from splitio.clients import get_client, get_redis_client
-from splitio.managers import (RedisSplitManager, SelfRefreshingSplitManager, LocalhostSplitManager)
+from splitio.clients import get_client, get_redis_client, get_uwsgi_client
+from splitio.managers import (RedisSplitManager, SelfRefreshingSplitManager, LocalhostSplitManager, UWSGISplitManager)
 from splitio.redis_support import get_redis
+from splitio.uwsgi import get_uwsgi
 
 import logging
 
@@ -41,8 +42,12 @@ class MainSplitFactory(SplitFactory):
             redis = get_redis(config)
             self._manager = RedisSplitManager(redis)
         else:
-            self._client = get_client(api_key, **kwargs)
-            self._manager = SelfRefreshingSplitManager(self._client.get_split_fetcher())
+            if 'uwsgiClient' in config and config['uwsgiClient'] :
+                self._client = get_uwsgi_client(api_key, **kwargs)
+                self._manager = UWSGISplitManager(get_uwsgi())
+            else:
+                self._client = get_client(api_key, **kwargs)
+                self._manager = SelfRefreshingSplitManager(self._client.get_split_fetcher())
 
 
 
