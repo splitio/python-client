@@ -483,7 +483,7 @@ class UWSGIImpressionsCache(ImpressionsCache):
         :return: All cached impressions so far grouped by feature name
         :rtype: dict
         """
-        return dict()
+        return self.fetch_all_and_clear()
 
     def clear(self):
         """Clears all cached impressions"""
@@ -805,7 +805,7 @@ class UWSGICacheEmulator(object):
     def _check_string_data_type(self, value):
         if type(value).__name__ == 'str':
             return True
-        raise TypeError("The value to add into uWSGI cache must be string and %s given"%type(value).__name__)
+        raise TypeError('The value to add into uWSGI cache must be string and %s given' % type(value).__name__)
 
     def cache_get(self, key, cache_namespace='default'):
         if self.cache_exists(key, cache_namespace):
