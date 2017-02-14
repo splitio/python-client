@@ -74,8 +74,7 @@ def update_splits(split_cache, split_change_fetcher, split_parser):
                 return
 
             if 'splits' in response and len(response['splits']) > 0:
-                _logger.debug("Missing or empty 'splits' field in response. response = %s",
-                              response)
+                _logger.debug("Splits field in response. response = %s", response)
                 added_features = []
                 removed_features = []
 
