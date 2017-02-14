@@ -498,7 +498,7 @@ class UWSGIImpressionsCache(ImpressionsCache):
             else:
                 if time.time() - initial_time > self._OVERWRITE_LOCK_SECONDS:
                     return
-            time.sleep(0.1)
+            time.sleep(0.3)
 
     def __unlock_impressions(self):
         self._adapter.cache_del(self._LOCK_IMPRESSION_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE)
@@ -543,8 +543,13 @@ class UWSGIImpressionsCache(ImpressionsCache):
 
         if self._adapter.cache_exists(self._IMPRESSIONS_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE):
             impressions_list = list()
+
+            self.__lock_impressions()
+
             cached_impressions = decode(self._adapter.cache_get(self._IMPRESSIONS_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE))
             self._adapter.cache_del(self._IMPRESSIONS_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE)
+
+            self.__unlock_impressions()
 
             for feature_name in cached_impressions:
                 impressions = cached_impressions[feature_name]
