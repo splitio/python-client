@@ -121,6 +121,8 @@ def report_impressions(impressions_cache, sdk_api):
         impressions = impressions_cache.fetch_all_and_clear()
         test_impressions_data = build_impressions_data(impressions)
 
+        _logger.debug('Impressions to send: %s' % test_impressions_data)
+
         if len(test_impressions_data) > 0:
             _logger.info('Posting impressions for features: %s.', ', '.join(impressions.keys()))
             sdk_api.test_impressions(test_impressions_data)

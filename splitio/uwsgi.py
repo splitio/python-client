@@ -38,8 +38,6 @@ except ImportError:
     decode = encode = missing_jsonpickle_dependencies
 
 
-
-import sys
 import re
 import logging
 import time
