@@ -530,7 +530,7 @@ class UWSGIImpressionsCache(ImpressionsCache):
             impressions_set.append(cache_impression)
             impressions[impression.feature_name] = impressions_set.reverse()
 
-
+        _logger.debug('Adding impressions to cache: %s' % impressions)
         self._adapter.cache_update(self._IMPRESSIONS_KEY, encode(impressions), 0, _SPLITIO_COMMON_CACHE_NAMESPACE)
 
         self.__unlock_impressions()
@@ -551,6 +551,8 @@ class UWSGIImpressionsCache(ImpressionsCache):
             self._adapter.cache_del(self._IMPRESSIONS_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE)
 
             self.__unlock_impressions()
+
+            _logger.debug('**** Cached Impressions: %s' % cached_impressions)
 
             for feature_name in cached_impressions:
                 impressions = cached_impressions[feature_name]
