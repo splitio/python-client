@@ -429,6 +429,8 @@ class UWSGISplitBasedSegment(Segment):
 
 class UWSGIImpressionsCache(ImpressionsCache):
     _IMPRESSIONS_KEY = 'impressions'
+    _LOCK_IMPRESSION_KEY = 'impressions_lock'
+    _OVERWRITE_LOCK_SECONDS = 5
 
     def __init__(self, adapter, disabled_period=300):
         """An ImpressionsCache implementation that uses uWSGI as its back-end
@@ -487,6 +489,20 @@ class UWSGIImpressionsCache(ImpressionsCache):
         """Clears all cached impressions"""
         pass
 
+    def __lock_impressions(self):
+        initial_time = time.time()
+        while True:
+            if not self._adapter.cache_exists(self._LOCK_IMPRESSION_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE):
+                self._adapter.cache_set(self._LOCK_IMPRESSION_KEY, str('locked'), 0, _SPLITIO_COMMON_CACHE_NAMESPACE)
+                return
+            else:
+                if time.time() - initial_time > self._OVERWRITE_LOCK_SECONDS:
+                    return
+            time.sleep(0.1)
+
+    def __unlock_impressions(self):
+        self._adapter.cache_del(self._LOCK_IMPRESSION_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE)
+
     def add_impression(self, impression):
         """Adds an impression to the log if it is enabled, otherwise the impression is dropped.
         :param impression: The impression tuple
@@ -499,6 +515,8 @@ class UWSGIImpressionsCache(ImpressionsCache):
                             'label':impression.label,
                             'bucketingKey':impression.bucketing_key
                             }
+
+        self.__lock_impressions()
 
         if self._adapter.cache_exists(self._IMPRESSIONS_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE):
             impressions = decode(self._adapter.cache_get(self._IMPRESSIONS_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE))
@@ -513,6 +531,8 @@ class UWSGIImpressionsCache(ImpressionsCache):
             impressions[impression.feature_name] = impressions_set
 
         self._adapter.cache_update(self._IMPRESSIONS_KEY, encode(impressions), 0, _SPLITIO_COMMON_CACHE_NAMESPACE)
+
+        self.__unlock_impressions()
 
     def fetch_all_and_clear(self):
         """Fetches all impressions from the cache and clears it. It returns a dictionary with the
