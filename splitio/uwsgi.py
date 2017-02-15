@@ -55,13 +55,20 @@ from splitio.matchers import UserDefinedSegmentMatcher
 from splitio.utils import bytes_to_string
 from splitio.impressions import Impression
 from splitio.metrics import BUCKETS
-
+from splitio.config import DEFAULT_CONFIG
 
 _logger = logging.getLogger(__name__)
 
 
-def uwsgi_update_splits(config):
+def _get_config(user_config):
+    sdk_config = DEFAULT_CONFIG
+    sdk_config.update(user_config)
+    return sdk_config
+
+
+def uwsgi_update_splits(user_config):
     try:
+        config = _get_config(user_config)
         seconds = config['featuresRefreshRate']
         while True:
             split_cache = UWSGISplitCache(get_uwsgi())
@@ -79,8 +86,9 @@ def uwsgi_update_splits(config):
         _logger.exception('Exception caught updating splits')
 
 
-def uwsgi_update_segments(config):
+def uwsgi_update_segments(user_config):
     try:
+        config = _get_config(user_config)
         seconds = config['segmentsRefreshRate']
         while True:
             segment_cache = UWSGISegmentCache(get_uwsgi())
@@ -93,8 +101,9 @@ def uwsgi_update_segments(config):
         _logger.exception('Exception caught updating segments')
 
 
-def uwsgi_report_impressions(config):
+def uwsgi_report_impressions(user_config):
     try:
+        config = _get_config(user_config)
         seconds = config['impressionsRefreshRate']
         while True:
             impressions_cache = UWSGIImpressionsCache(get_uwsgi())
@@ -106,8 +115,9 @@ def uwsgi_report_impressions(config):
         _logger.exception('Exception caught posting impressions')
 
 
-def uwsgi_report_metrics(config):
+def uwsgi_report_metrics(user_config):
     try:
+        config = _get_config(user_config)
         seconds = config['metricsRefreshRate']
         while True:
             metrics_cache = UWSGIMetricsCache(get_uwsgi())
