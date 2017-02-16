@@ -132,6 +132,7 @@ def uwsgi_report_metrics(user_config):
 
 
 _SPLITIO_COMMON_CACHE_NAMESPACE = 'splitio'
+_SPLITIO_IMPRESSIONS_CACHE_NAMESPACE = 'splitioImpressions'
 
 class UWSGISplitCache(SplitCache):
     _KEY_TEMPLATE = 'split.{suffix}'
@@ -502,8 +503,8 @@ class UWSGIImpressionsCache(ImpressionsCache):
     def __lock_impressions(self):
         initial_time = time.time()
         while True:
-            if not self._adapter.cache_exists(self._LOCK_IMPRESSION_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE):
-                self._adapter.cache_set(self._LOCK_IMPRESSION_KEY, str('locked'), 0, _SPLITIO_COMMON_CACHE_NAMESPACE)
+            if not self._adapter.cache_exists(self._LOCK_IMPRESSION_KEY, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE):
+                self._adapter.cache_set(self._LOCK_IMPRESSION_KEY, str('locked'), 0, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE)
                 return
             else:
                 if time.time() - initial_time > self._OVERWRITE_LOCK_SECONDS:
@@ -511,7 +512,7 @@ class UWSGIImpressionsCache(ImpressionsCache):
             time.sleep(0.3)
 
     def __unlock_impressions(self):
-        self._adapter.cache_del(self._LOCK_IMPRESSION_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE)
+        self._adapter.cache_del(self._LOCK_IMPRESSION_KEY, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE)
 
     def add_impression(self, impression):
         """Adds an impression to the log if it is enabled, otherwise the impression is dropped.
@@ -528,8 +529,8 @@ class UWSGIImpressionsCache(ImpressionsCache):
 
         self.__lock_impressions()
 
-        if self._adapter.cache_exists(self._IMPRESSIONS_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE):
-            impressions = decode(self._adapter.cache_get(self._IMPRESSIONS_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE))
+        if self._adapter.cache_exists(self._IMPRESSIONS_KEY, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE):
+            impressions = decode(self._adapter.cache_get(self._IMPRESSIONS_KEY, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE))
         else:
             impressions = dict()
 
@@ -542,7 +543,7 @@ class UWSGIImpressionsCache(ImpressionsCache):
             impressions[impression.feature_name] = impressions_set
 
         _logger.debug('Adding impressions to cache: %s' % impressions)
-        self._adapter.cache_update(self._IMPRESSIONS_KEY, encode(impressions), 0, _SPLITIO_COMMON_CACHE_NAMESPACE)
+        self._adapter.cache_update(self._IMPRESSIONS_KEY, encode(impressions), 0, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE)
 
         self.__unlock_impressions()
 
@@ -553,13 +554,13 @@ class UWSGIImpressionsCache(ImpressionsCache):
         :rtype: dict
         """
 
-        if self._adapter.cache_exists(self._IMPRESSIONS_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE):
+        if self._adapter.cache_exists(self._IMPRESSIONS_KEY, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE):
             impressions_list = list()
 
             self.__lock_impressions()
 
-            cached_impressions = decode(self._adapter.cache_get(self._IMPRESSIONS_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE))
-            self._adapter.cache_del(self._IMPRESSIONS_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE)
+            cached_impressions = decode(self._adapter.cache_get(self._IMPRESSIONS_KEY, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE))
+            self._adapter.cache_del(self._IMPRESSIONS_KEY, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE)
 
             self.__unlock_impressions()
 
