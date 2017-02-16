@@ -132,7 +132,7 @@ def uwsgi_report_metrics(user_config):
 
 
 _SPLITIO_COMMON_CACHE_NAMESPACE = 'splitio'
-_SPLITIO_IMPRESSIONS_CACHE_NAMESPACE = 'splitioImpressions'
+_SPLITIO_STATS_CACHE_NAMESPACE = 'splitioStats'
 
 class UWSGISplitCache(SplitCache):
     _KEY_TEMPLATE = 'split.{suffix}'
@@ -503,8 +503,8 @@ class UWSGIImpressionsCache(ImpressionsCache):
     def __lock_impressions(self):
         initial_time = time.time()
         while True:
-            if not self._adapter.cache_exists(self._LOCK_IMPRESSION_KEY, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE):
-                self._adapter.cache_set(self._LOCK_IMPRESSION_KEY, str('locked'), 0, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE)
+            if not self._adapter.cache_exists(self._LOCK_IMPRESSION_KEY, _SPLITIO_STATS_CACHE_NAMESPACE):
+                self._adapter.cache_set(self._LOCK_IMPRESSION_KEY, str('locked'), 0, _SPLITIO_STATS_CACHE_NAMESPACE)
                 return
             else:
                 if time.time() - initial_time > self._OVERWRITE_LOCK_SECONDS:
@@ -512,7 +512,7 @@ class UWSGIImpressionsCache(ImpressionsCache):
             time.sleep(0.3)
 
     def __unlock_impressions(self):
-        self._adapter.cache_del(self._LOCK_IMPRESSION_KEY, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE)
+        self._adapter.cache_del(self._LOCK_IMPRESSION_KEY, _SPLITIO_STATS_CACHE_NAMESPACE)
 
     def add_impression(self, impression):
         """Adds an impression to the log if it is enabled, otherwise the impression is dropped.
@@ -529,8 +529,8 @@ class UWSGIImpressionsCache(ImpressionsCache):
 
         self.__lock_impressions()
 
-        if self._adapter.cache_exists(self._IMPRESSIONS_KEY, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE):
-            impressions = decode(self._adapter.cache_get(self._IMPRESSIONS_KEY, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE))
+        if self._adapter.cache_exists(self._IMPRESSIONS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE):
+            impressions = decode(self._adapter.cache_get(self._IMPRESSIONS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE))
         else:
             impressions = dict()
 
@@ -543,7 +543,7 @@ class UWSGIImpressionsCache(ImpressionsCache):
             impressions[impression.feature_name] = impressions_set
 
         _logger.debug('Adding impressions to cache: %s' % impressions)
-        self._adapter.cache_update(self._IMPRESSIONS_KEY, encode(impressions), 0, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE)
+        self._adapter.cache_update(self._IMPRESSIONS_KEY, encode(impressions), 0, _SPLITIO_STATS_CACHE_NAMESPACE)
 
         self.__unlock_impressions()
 
@@ -554,13 +554,13 @@ class UWSGIImpressionsCache(ImpressionsCache):
         :rtype: dict
         """
 
-        if self._adapter.cache_exists(self._IMPRESSIONS_KEY, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE):
+        if self._adapter.cache_exists(self._IMPRESSIONS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE):
             impressions_list = list()
 
             self.__lock_impressions()
 
-            cached_impressions = decode(self._adapter.cache_get(self._IMPRESSIONS_KEY, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE))
-            self._adapter.cache_del(self._IMPRESSIONS_KEY, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE)
+            cached_impressions = decode(self._adapter.cache_get(self._IMPRESSIONS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE))
+            self._adapter.cache_del(self._IMPRESSIONS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE)
 
             self.__unlock_impressions()
 
@@ -741,26 +741,26 @@ class UWSGIMetricsCache(MetricsCache):
 
 
     def _get_metric(self, field_name):
-        if self._adapter.cache_exists(self._METRIC_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE):
-            metrics = decode(self._adapter.cache_get(self._METRIC_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE))
+        if self._adapter.cache_exists(self._METRIC_KEY, _SPLITIO_STATS_CACHE_NAMESPACE):
+            metrics = decode(self._adapter.cache_get(self._METRIC_KEY, _SPLITIO_STATS_CACHE_NAMESPACE))
             if field_name in metrics:
                 return metrics[field_name]
         return None
 
     def _set_metric(self, field_name, value):
-        if self._adapter.cache_exists(self._METRIC_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE):
-            metrics = decode(self._adapter.cache_get(self._METRIC_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE))
+        if self._adapter.cache_exists(self._METRIC_KEY, _SPLITIO_STATS_CACHE_NAMESPACE):
+            metrics = decode(self._adapter.cache_get(self._METRIC_KEY, _SPLITIO_STATS_CACHE_NAMESPACE))
         else:
             metrics = dict()
 
         metrics[field_name] = value
-        self._adapter.cache_update(self._METRIC_KEY, encode(metrics), 0, _SPLITIO_COMMON_CACHE_NAMESPACE)
+        self._adapter.cache_update(self._METRIC_KEY, encode(metrics), 0, _SPLITIO_STATS_CACHE_NAMESPACE)
         _logger.error(metrics)
 
     def get_latency(self, operation):
         _latencies = []
-        if self._adapter.cache_exists(self._LATENCY_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE):
-            latencies = decode(self._adapter.cache_get(self._LATENCY_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE))
+        if self._adapter.cache_exists(self._LATENCY_KEY, _SPLITIO_STATS_CACHE_NAMESPACE):
+            latencies = decode(self._adapter.cache_get(self._LATENCY_KEY, _SPLITIO_STATS_CACHE_NAMESPACE))
             for bucket in range(0, len(BUCKETS)):
                 _key = self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket)
                 if _key in latencies:
@@ -771,8 +771,8 @@ class UWSGIMetricsCache(MetricsCache):
         return [0 for bucket in range(0, len(BUCKETS))]
 
     def get_latency_bucket_counter(self, operation, bucket_index):
-        if self._adapter.cache_exists(self._LATENCY_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE):
-            latencies = decode(self._adapter.cache_get(self._LATENCY_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE))
+        if self._adapter.cache_exists(self._LATENCY_KEY, _SPLITIO_STATS_CACHE_NAMESPACE):
+            latencies = decode(self._adapter.cache_get(self._LATENCY_KEY, _SPLITIO_STATS_CACHE_NAMESPACE))
             _key = self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket_index)
             if _key in latencies:
                 return latencies[_key]
@@ -780,11 +780,11 @@ class UWSGIMetricsCache(MetricsCache):
 
     def set_latency_bucket_counter(self, operation, bucket_index, value):
         latencies = dict()
-        if self._adapter.cache_exists(self._LATENCY_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE):
-            latencies = decode(self._adapter.cache_get(self._LATENCY_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE))
+        if self._adapter.cache_exists(self._LATENCY_KEY, _SPLITIO_STATS_CACHE_NAMESPACE):
+            latencies = decode(self._adapter.cache_get(self._LATENCY_KEY, _SPLITIO_STATS_CACHE_NAMESPACE))
 
         latencies[self._KEY_LATENCY_BUCKET.format(metric_name=operation, bucket_number=bucket_index)] = value
-        self._adapter.cache_update(self._LATENCY_KEY, encode(latencies), 0, _SPLITIO_COMMON_CACHE_NAMESPACE)
+        self._adapter.cache_update(self._LATENCY_KEY, encode(latencies), 0, _SPLITIO_STATS_CACHE_NAMESPACE)
 
     def increment_latency_bucket_counter(self, operation, bucket_index, delta=1):
         latency = self.get_latency_bucket_counter(operation, bucket_index)
@@ -815,21 +815,21 @@ class UWSGIMetricsCache(MetricsCache):
         return 0
 
     def fetch_all_and_clear(self):
-        if self._adapter.cache_exists(self._METRIC_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE):
-            metrics = decode(self._adapter.cache_get(self._METRIC_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE))
+        if self._adapter.cache_exists(self._METRIC_KEY, _SPLITIO_STATS_CACHE_NAMESPACE):
+            metrics = decode(self._adapter.cache_get(self._METRIC_KEY, _SPLITIO_STATS_CACHE_NAMESPACE))
             return self._build_metrics_from_cache_response(metrics)
         return self._build_metrics_from_cache_response(None)
 
     def fetch_all_times_and_clear(self):
-        if self._adapter.cache_exists(self._LATENCY_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE):
-            latencies = decode(self._adapter.cache_get(self._LATENCY_KEY, _SPLITIO_COMMON_CACHE_NAMESPACE))
+        if self._adapter.cache_exists(self._LATENCY_KEY, _SPLITIO_STATS_CACHE_NAMESPACE):
+            latencies = decode(self._adapter.cache_get(self._LATENCY_KEY, _SPLITIO_STATS_CACHE_NAMESPACE))
             time = defaultdict(lambda: [0] * len(BUCKETS))
             for key in latencies:
                 time_match = self._LATENCY_FIELD_RE.match(key)
                 if time_match is not None:
                     time[time_match.group('operation')][int(time_match.group('bucket_index'))] = int(latencies[key])
                     latencies[key] = 0
-            self._adapter.cache_update(self._LATENCY_KEY, encode(latencies), 0, _SPLITIO_COMMON_CACHE_NAMESPACE)
+            self._adapter.cache_update(self._LATENCY_KEY, encode(latencies), 0, _SPLITIO_STATS_CACHE_NAMESPACE)
             return self._build_metrics_times_data(time)
 
         return self._build_metrics_times_data(dict())
