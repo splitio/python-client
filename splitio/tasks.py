@@ -69,6 +69,9 @@ def update_splits(split_cache, split_change_fetcher, split_parser):
         while True:
             response = split_change_fetcher.fetch(till)
 
+            if 'till' not in response:
+                return
+
             if till >= response['till']:
                 _logger.debug("change_number is greater or equal than 'till'")
                 return
