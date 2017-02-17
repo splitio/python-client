@@ -33,9 +33,12 @@ def update_segment(segment_cache, segment_name, segment_change_fetcher):
     :type segment_name: str
     """
     till = segment_cache.get_change_number(segment_name)
-
+    _logger.info("Updating segment %s"%segment_name)
     while True:
         response = segment_change_fetcher.fetch(segment_name, till)
+        _logger.info("SEGMENT RESPONSE %s"%response)
+        if 'till' not in response:
+            return
 
         if till >= response['till']:
             return
@@ -66,13 +69,15 @@ def update_splits(split_cache, split_change_fetcher, split_parser):
         while True:
             response = split_change_fetcher.fetch(till)
 
+            if 'till' not in response:
+                return
+
             if till >= response['till']:
                 _logger.debug("change_number is greater or equal than 'till'")
                 return
 
             if 'splits' in response and len(response['splits']) > 0:
-                _logger.debug("Missing or empty 'splits' field in response. response = %s",
-                              response)
+                _logger.debug("Splits field in response. response = %s", response)
                 added_features = []
                 removed_features = []
 
@@ -117,6 +122,8 @@ def report_impressions(impressions_cache, sdk_api):
 
         impressions = impressions_cache.fetch_all_and_clear()
         test_impressions_data = build_impressions_data(impressions)
+
+        _logger.debug('Impressions to send: %s' % test_impressions_data)
 
         if len(test_impressions_data) > 0:
             _logger.info('Posting impressions for features: %s.', ', '.join(impressions.keys()))
