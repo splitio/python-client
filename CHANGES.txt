@@ -1,4 +1,5 @@
-2.1.x
+2.2.0
+ - Added uwsgi cache support
  - Fixed HTTP status code exceptions
 2.1.0
  - Added enabled labels
