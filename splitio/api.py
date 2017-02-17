@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import requests
+import logging
 
 from splitio.config import SDK_API_BASE_URL, EVENTS_API_BASE_URL, SDK_VERSION
 
@@ -38,6 +39,7 @@ class SdkApi(object):
         :param read_timeout: The HTTP read timeout. Default: 1000 (seconds)
         :type read_timeout: float
         """
+        self._logger = logging.getLogger(self.__class__.__name__)
         self._api_key = api_key
         self._sdk_api_url_base = sdk_api_base_url if sdk_api_base_url is not None \
             else SDK_API_BASE_URL
@@ -83,11 +85,19 @@ class SdkApi(object):
 
         return headers
 
+    def _logHttpError(self, response):
+        if response.status_code < 200 or response.status_code >= 400 :
+            respJson = response.json()
+            if 'message' in respJson:
+                self._logger.error("HTTP Error (status: %s) connecting with split servers: %s" % (response.status_code, respJson['message']))
+            else:
+                self._logger.error("HTTP Error connecting with split servers")
+
     def _get(self, url, params):
         headers = self._build_headers()
 
         response = requests.get(url, params=params, headers=headers, timeout=self._timeout)
-        response.raise_for_status()
+        self._logHttpError(response)
 
         return response.json()
 
@@ -95,7 +105,7 @@ class SdkApi(object):
         headers = self._build_headers()
 
         response = requests.post(url, json=data, headers=headers, timeout=self._timeout)
-        response.raise_for_status()
+        self._logHttpError(response)
 
         return response.status_code
 

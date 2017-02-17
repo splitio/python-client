@@ -139,13 +139,14 @@ class SdkApiGetTests(TestCase, MockUtilsMixin):
         with self.assertRaises(RequestException):
             self.api._get(self.some_url, self.some_params)
 
-    def test_request_status_exceptions_are_raised(self):
-        """Tests that if requests succeeds but its status is not 200 (Ok) an exception is raised
-        and , it is not handled within the call"""
+    def test_request_status_exceptions_are_not_raised(self):
+        """Tests that if requests succeeds but its status is not 200 (Ok) an exception is not raised"""
         self.requests_get_mock.return_value.raise_for_status.side_effect = HTTPError()
 
-        with self.assertRaises(HTTPError):
+        try:
             self.api._get(self.some_url, self.some_params)
+        except:
+            self.assertTrue(False)
 
     def test_json_exceptions_are_raised(self):
         """Tests that if requests succeeds but its payload is not JSON, an exception is raised and
@@ -214,13 +215,14 @@ class SdkApiPostTests(TestCase, MockUtilsMixin):
         with self.assertRaises(RequestException):
             self.api._post(self.some_url, self.some_data)
 
-    def test_request_status_exceptions_are_raised(self):
-        """Tests that if requests succeeds but its status is not 200 (Ok) an exception is raised
-        and , it is not handled within the call"""
+    def test_request_status_exceptions_are_not_raised(self):
+        """Tests that if requests succeeds but its status is not 200 (Ok) an exception is not raised"""
         self.requests_post_mock.return_value.raise_for_status.side_effect = HTTPError()
 
-        with self.assertRaises(HTTPError):
+        try:
             self.api._post(self.some_url, self.some_data)
+        except:
+            self.assertTrue(False)
 
 
 class SdkApiSplitChangesTest(TestCase, MockUtilsMixin):
