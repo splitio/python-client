@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import re
+import logging
 
 from collections import defaultdict
 from builtins import zip
@@ -148,6 +149,7 @@ class RedisSplitCache(SplitCache):
         """
         self._redis = redis
         self._disabled_period = disabled_period
+        self._logger = logging.getLogger(self.__class__.__name__)
 
     @property
     def disabled_period(self):
@@ -227,10 +229,13 @@ class RedisSplitCache(SplitCache):
         split_parser = RedisSplitParser(segment_cache)
 
         for split in splits:
-            split = bytes_to_string(split)
-            split_dump = decode(split)
-            if split_dump is not None:
-                to_return.append(split_parser.parse(split_dump))
+            try:
+                split = bytes_to_string(split)
+                split_dump = decode(split)
+                if split_dump is not None:
+                    to_return.append(split_parser.parse(split_dump))
+            except:
+                self._logger.error("Error decoding/parsing fetched split or invalid split format: %s" % split)
 
         return to_return
 
