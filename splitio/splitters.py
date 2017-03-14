@@ -3,12 +3,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 
 from splitio.treatments import CONTROL
-
-
-def as_int32(value):
-    if not -2147483649 <= value <= 2147483648:
-        return (value + 2147483648) % 4294967296 - 2147483648
-    return value
+from splitio.hashfns import get_hash_fn
 
 
 class Splitter(object):
@@ -16,7 +11,7 @@ class Splitter(object):
     The class responsible for selecting a treatment given a key, a feature seed and condition
     partitions.
     """
-    def get_treatment(self, key, seed, partitions):
+    def get_treatment(self, key, seed, partitions, algo):
         """
         Returs a treatment for a key, a feature seed and condition partitions. It returns CONTROL
         if partitions is None or empty.
@@ -35,24 +30,11 @@ class Splitter(object):
         if len(partitions) == 1 and partitions[0].size == 100:
             return partitions[0].treatment
 
-        return self.get_treatment_for_bucket(self.get_bucket(self.hash_key(key, seed)), partitions)
-
-    def hash_key(self, key, seed):
-        """
-        Generates a hash for a key and a feature seed.
-        :param key: The key for which to get the hash
-        :type key: str
-        :param seed: The feature seed
-        :type seed: int
-        :return: The hash for the key and seed
-        :rtype: int
-        """
-        h = 0
-
-        for c in map(ord, key):
-            h = as_int32(as_int32(31 * as_int32(h)) + c)
-
-        return int(as_int32(h ^ as_int32(seed)))
+        hashfn = get_hash_fn(algo)
+        return self.get_treatment_for_bucket(
+            self.get_bucket(hashfn(key, seed)),
+            partitions
+        )
 
     def get_bucket(self, key_hash):
         """

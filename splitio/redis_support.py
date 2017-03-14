@@ -647,8 +647,13 @@ class RedisSplitParser(SplitParser):
         self._segment_cache = segment_cache
 
     def _parse_split(self, split, block_until_ready=False):
-        return RedisSplit(split['name'], split['seed'], split['killed'], split['defaultTreatment'],
-                          split['trafficTypeName'], split['status'], split['changeNumber'], segment_cache=self._segment_cache)
+        return RedisSplit(
+            split['name'], split['seed'], split['killed'],
+            split['defaultTreatment'], split['trafficTypeName'],
+            split['status'], split['changeNumber'],
+            segment_cache=self._segment_cache,
+            algo=split.get('algo')
+        )
 
     def _parse_matcher_in_segment(self, partial_split, matcher, block_until_ready=False, *args,
                                   **kwargs):
