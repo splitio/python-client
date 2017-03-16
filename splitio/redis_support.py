@@ -23,7 +23,7 @@ from splitio.cache import SegmentCache, SplitCache, ImpressionsCache, MetricsCac
 from splitio.matchers import UserDefinedSegmentMatcher
 from splitio.metrics import BUCKETS
 from splitio.segments import Segment
-from splitio.splits import Split, SplitParser
+from splitio.splits import Split, SplitParser, HashAlgorithm
 from splitio.impressions import Impression
 from splitio.utils import bytes_to_string
 
@@ -665,7 +665,7 @@ class RedisSplitParser(SplitParser):
 
 
 class RedisSplit(Split):
-    def __init__(self, name, seed, killed, default_treatment, traffic_type_name, status, change_number, conditions=None, segment_cache=None):
+    def __init__(self, name, seed, killed, default_treatment, traffic_type_name, status, change_number, conditions=None, segment_cache=None, algo=HashAlgorithm.LEGACY):
         """A split implementation that mantains a reference to the segment cache so segments can
         be easily pickled and unpickled.
         :param name: Name of the feature

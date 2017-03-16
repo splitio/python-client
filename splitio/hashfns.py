@@ -27,7 +27,7 @@ def murmur32_py(key, seed=0x0):
     Pure python implementation of murmur32 hash
     """
 
-    key = bytearray(xencode(key))
+    key = bytearray(key, 'utf-8')  # bytearray(xencode(key), 'utf-8')
 
     def fmix(h):
         h ^= h >> 16
@@ -40,7 +40,7 @@ def murmur32_py(key, seed=0x0):
     length = len(key)
     nblocks = int(length/4)
 
-    h1 = seed
+    h1 = seed & 0xFFFFFFFF
 
     c1 = 0xcc9e2d51
     c2 = 0x1b873593
@@ -80,16 +80,17 @@ def murmur32_py(key, seed=0x0):
         h1 ^= k1
 
     unsigned_val = fmix(h1 ^ length)
-    if unsigned_val & 0x80000000 == 0:
-        return unsigned_val
-    else:
-        return -((unsigned_val ^ 0xFFFFFFFF) + 1)
+    return unsigned_val
 
 
 try:
     # First attempt to import module with C++ core (faster)
     import mmh3
-    _murmur_hash = mmh3.hash
+    from ctypes import c_uint
+
+    def _murmur_hash(key, seed):
+        ukey = key.encode('utf8')
+        return c_uint(mmh3.hash(ukey, seed)).value
 except:
     # Fallback to interpreted python hash algoritm (slower)
     _murmur_hash = murmur32_py

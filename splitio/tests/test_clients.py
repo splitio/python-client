@@ -133,7 +133,7 @@ class ClientTests(TestCase, MockUtilsMixin):
         self.client._get_treatment_for_split(self.some_split, self.some_key, self.some_key, self.some_attributes)
         self.splitter_mock.return_value.get_treatment.assert_called_once_with(
             self.some_key, self.some_split.seed, self.some_conditions[1].partitions,
-            self.some_algo
+            self.some_split.algo
         )
 
     def test_get_treatment_calls_record_stats(self):

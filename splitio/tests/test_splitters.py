@@ -19,7 +19,7 @@ from splitio.splitters import Splitter
 from splitio.treatments import CONTROL
 from splitio.hashfns import _basic_hash, _murmur_hash
 from splitio.tests.utils import MockUtilsMixin, random_alphanumeric_string
-
+import io
 
 class SplitterGetTreatmentTests(TestCase, MockUtilsMixin):
     def setUp(self):
@@ -116,40 +116,38 @@ class SplitterHashKeyTests(TestCase):
 
     def test_with_sample_data(self):
         """
-        Tests hash_key against expected values using alphanumeric values
+        Tests basic hash against expected values using alphanumeric values
         """
         with open(join(dirname(__file__), 'sample-data.jsonl')) as f:
             for line in map(loads, f):
                 seed, key, hash_, bucket = line
                 self.assertEqual(int(hash_), _basic_hash(key, int(seed)))
-
-#    @skip
+    @skip
     def test_with_non_alpha_numeric_sample_data(self):
         """
-        Tests hash_key against expected values using non alphanumeric values
+        Tests basic hash against expected values using non alphanumeric values
         """
-        with open(join(dirname(__file__), 'sample-data-non-alpha-numeric.jsonl')) as f:
+        with io.open(join(dirname(__file__), 'sample-data-non-alpha-numeric.jsonl'), 'r', encoding='utf-8') as f:
             for line in map(loads, f):
                 seed, key, hash_, bucket = line
                 self.assertEqual(int(hash_), _basic_hash(key, int(seed)))
 
     def test_murmur_with_sample_data(self):
         """
-        Tests hash_key against expected values using alphanumeric values
+        Tests murmur32 hash against expected values using alphanumeric values
         """
-        with open(join(dirname(__file__), 'sample-data.jsonl')) as f:
-            for line in map(loads, f):
-                seed, key, hash_, bucket = line
+        with open(join(dirname(__file__), 'murmur3-sample-data-v2.csv')) as f:
+            for line in f:
+                seed, key, hash_, bucket = line.split(',')
                 self.assertEqual(int(hash_), _murmur_hash(key, int(seed)))
 
-#    @skip
     def test_murmur_with_non_alpha_numeric_sample_data(self):
         """
-        Tests hash_key against expected values using non alphanumeric values
+        Tests murmur32 hash against expected values using non alphanumeric values
         """
-        with open(join(dirname(__file__), 'sample-data-non-alpha-numeric.jsonl')) as f:
-            for line in map(loads, f):
-                seed, key, hash_, bucket = line
+        with io.open(join(dirname(__file__), 'murmur3-sample-data-non-alpha-numeric-v2.csv'), 'r', encoding='utf-8') as f:
+            for line in f:
+                seed, key, hash_, bucket = line.split(',')
                 self.assertEqual(int(hash_), _murmur_hash(key, int(seed)))
 
 
