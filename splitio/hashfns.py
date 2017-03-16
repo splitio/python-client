@@ -10,15 +10,6 @@ import sys as _sys
 if (_sys.version_info > (3, 0)):
     def xrange(a, b, c):
         return range(a, b, c)
-
-    def xencode(x):
-        if isinstance(x, bytes) or isinstance(x, bytearray):
-            return x
-        else:
-            return x.encode()
-else:
-    def xencode(x):
-        return x
 del _sys
 
 
@@ -27,7 +18,7 @@ def murmur32_py(key, seed=0x0):
     Pure python implementation of murmur32 hash
     """
 
-    key = bytearray(key, 'utf-8')  # bytearray(xencode(key), 'utf-8')
+    key = bytearray(key, 'utf-8')
 
     def fmix(h):
         h ^= h >> 16
