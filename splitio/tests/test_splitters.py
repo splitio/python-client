@@ -17,7 +17,7 @@ from unittest import TestCase, skip
 from splitio.splits import Partition, HashAlgorithm
 from splitio.splitters import Splitter
 from splitio.treatments import CONTROL
-from splitio.hashfns import _basic_hash, _murmur_hash
+from splitio.hashfns import _HASH_ALGORITHMS
 from splitio.tests.utils import MockUtilsMixin, random_alphanumeric_string
 import io
 
@@ -118,37 +118,41 @@ class SplitterHashKeyTests(TestCase):
         """
         Tests basic hash against expected values using alphanumeric values
         """
+        hashfn = _HASH_ALGORITHMS['legacy']
         with open(join(dirname(__file__), 'sample-data.jsonl')) as f:
             for line in map(loads, f):
                 seed, key, hash_, bucket = line
-                self.assertEqual(int(hash_), _basic_hash(key, int(seed)))
+                self.assertEqual(int(hash_), hashfn(key, int(seed)))
     @skip
     def test_with_non_alpha_numeric_sample_data(self):
         """
         Tests basic hash against expected values using non alphanumeric values
         """
+        hashfn = _HASH_ALGORITHMS['legacy']
         with io.open(join(dirname(__file__), 'sample-data-non-alpha-numeric.jsonl'), 'r', encoding='utf-8') as f:
             for line in map(loads, f):
                 seed, key, hash_, bucket = line
-                self.assertEqual(int(hash_), _basic_hash(key, int(seed)))
+                self.assertEqual(int(hash_), hashfn(key, int(seed)))
 
     def test_murmur_with_sample_data(self):
         """
         Tests murmur32 hash against expected values using alphanumeric values
         """
+        hashfn = _HASH_ALGORITHMS['murmur']
         with open(join(dirname(__file__), 'murmur3-sample-data-v2.csv')) as f:
             for line in f:
                 seed, key, hash_, bucket = line.split(',')
-                self.assertEqual(int(hash_), _murmur_hash(key, int(seed)))
+                self.assertEqual(int(hash_), hashfn(key, int(seed)))
 
     def test_murmur_with_non_alpha_numeric_sample_data(self):
         """
         Tests murmur32 hash against expected values using non alphanumeric values
         """
+        hashfn = _HASH_ALGORITHMS['murmur']
         with io.open(join(dirname(__file__), 'murmur3-sample-data-non-alpha-numeric-v2.csv'), 'r', encoding='utf-8') as f:
             for line in f:
                 seed, key, hash_, bucket = line.split(',')
-                self.assertEqual(int(hash_), _murmur_hash(key, int(seed)))
+                self.assertEqual(int(hash_), hashfn(key, int(seed)))
 
 
 class SplitterGetBucketUnitTests(TestCase):
