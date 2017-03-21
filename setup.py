@@ -47,4 +47,4 @@ setup(name='splitio_client',
           'Programming Language :: Python :: 3',
           'Topic :: Software Development :: Libraries'
       ],
-      packages=['splitio', 'splitio.update_scripts', 'splitio.bin'])
+      packages=['splitio', 'splitio.update_scripts', 'splitio.bin', 'splitio.hashfns'])
