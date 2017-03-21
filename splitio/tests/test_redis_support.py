@@ -548,7 +548,8 @@ class RedisSplitParserTests(TestCase, MockUtilsMixin):
             'defaultTreatment': mock.MagicMock(),
             'trafficTypeName': mock.MagicMock(),
             'status': mock.MagicMock(),
-            'changeNumber': mock.MagicMock()
+            'changeNumber': mock.MagicMock(),
+            'algo': mock.MagicMock()
         }
         self.some_block_until_ready = mock.MagicMock()
         self.some_partial_split = mock.MagicMock()
@@ -572,7 +573,9 @@ class RedisSplitParserTests(TestCase, MockUtilsMixin):
         self.redis_split_mock.assert_called_once_with(
             self.some_split['name'], self.some_split['seed'], self.some_split['killed'],
             self.some_split['defaultTreatment'],self.some_split['trafficTypeName'],
-            self.some_split['status'], self.some_split['changeNumber'], segment_cache=self.some_segment_cache)
+            self.some_split['status'], self.some_split['changeNumber'], segment_cache=self.some_segment_cache,
+            algo=self.some_split['algo']
+        )
 
     def test_parse_matcher_in_segment_registers_segment(self):
         """Test that _parse_matcher_in_segment registers segment"""

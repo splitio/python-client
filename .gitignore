@@ -63,3 +63,6 @@ target/
 
 # PyCharm
 .idea
+
+# rope autocomplete
+.ropeproject/

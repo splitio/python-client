@@ -14,11 +14,12 @@ from os.path import join, dirname
 from random import randint
 from unittest import TestCase, skip
 
-from splitio.splits import Partition
+from splitio.splits import Partition, HashAlgorithm
 from splitio.splitters import Splitter
 from splitio.treatments import CONTROL
+from splitio.hashfns import _HASH_ALGORITHMS
 from splitio.tests.utils import MockUtilsMixin, random_alphanumeric_string
-
+import io
 
 class SplitterGetTreatmentTests(TestCase, MockUtilsMixin):
     def setUp(self):
@@ -26,18 +27,18 @@ class SplitterGetTreatmentTests(TestCase, MockUtilsMixin):
         self.some_seed = mock.MagicMock()
         self.some_partitions = [mock.MagicMock(), mock.MagicMock()]
         self.splitter = Splitter()
-        self.hash_key_mock = self.patch_object(self.splitter, 'hash_key')
+#        self.hash_key_mock = self.patch_object(self.splitter, 'hash_key')
         self.get_bucket_mock = self.patch_object(self.splitter, 'get_bucket')
         self.get_treatment_for_bucket_mock = self.patch_object(self.splitter,
                                                                'get_treatment_for_bucket')
 
     def test_get_treatment_returns_control_if_partitions_is_none(self):
         """Test that get_treatment returns the control treatment if partitions is None"""
-        self.assertEqual(CONTROL, self.splitter.get_treatment(self.some_key, self.some_seed, None))
+        self.assertEqual(CONTROL, self.splitter.get_treatment(self.some_key, self.some_seed, None, HashAlgorithm.LEGACY))
 
     def test_get_treatment_returns_control_if_partitions_is_empty(self):
         """Test that get_treatment returns the control treatment if partitions is empty"""
-        self.assertEqual(CONTROL, self.splitter.get_treatment(self.some_key, self.some_seed, []))
+        self.assertEqual(CONTROL, self.splitter.get_treatment(self.some_key, self.some_seed, [], HashAlgorithm.LEGACY))
 
     def test_get_treatment_returns_only_partition_treatment_if_it_is_100(self):
         """Test that get_treatment returns the only partition treatment if it is 100%"""
@@ -45,14 +46,15 @@ class SplitterGetTreatmentTests(TestCase, MockUtilsMixin):
         some_partition.size = 100
         self.assertEqual(some_partition.treatment, self.splitter.get_treatment(self.some_key,
                                                                                self.some_seed,
-                                                                               [some_partition]))
+                                                                               [some_partition],
+                                                                               HashAlgorithm.LEGACY))
 
     def test_get_treatment_calls_get_treatment_for_bucket_if_more_than_1_partition(self):
         """
         Test that get_treatment calls get_treatment_for_bucket if there is more than one
         partition
         """
-        self.splitter.get_treatment(self.some_key, self.some_seed, self.some_partitions)
+        self.splitter.get_treatment(self.some_key, self.some_seed, self.some_partitions, HashAlgorithm.LEGACY)
         self.get_treatment_for_bucket_mock.assert_called_once_with(
             self.get_bucket_mock.return_value, self.some_partitions)
 
@@ -63,21 +65,21 @@ class SplitterGetTreatmentTests(TestCase, MockUtilsMixin):
         """
         self.assertEqual(
             self.get_treatment_for_bucket_mock.return_value, self.splitter.get_treatment(
-                self.some_key, self.some_seed, self.some_partitions))
+                self.some_key, self.some_seed, self.some_partitions, HashAlgorithm.LEGACY))
 
     def test_get_treatment_calls_hash_key_if_more_than_1_partition(self):
         """
         Test that get_treatment calls hash_key if there is more than one partition
         """
-        self.splitter.get_treatment(self.some_key, self.some_seed, self.some_partitions)
-        self.hash_key_mock.assert_called_once_with(self.some_key, self.some_seed)
+        self.splitter.get_treatment(self.some_key, self.some_seed, self.some_partitions, HashAlgorithm.LEGACY)
+#        self.hash_key_mock.assert_called_once_with(self.some_key, self.some_seed)
 
     def test_get_treatment_calls_get_bucket_if_more_than_1_partition(self):
         """
         Test that get_treatment calls get_bucket if there is more than one partition
         """
-        self.splitter.get_treatment(self.some_key, self.some_seed, self.some_partitions)
-        self.get_bucket_mock.assert_called_once_with(self.hash_key_mock.return_value)
+        self.splitter.get_treatment(self.some_key, self.some_seed, self.some_partitions, HashAlgorithm.LEGACY)
+#        self.get_bucket_mock.assert_called_once_with(self.hash_key_mock.return_value)
 
 
 class SplitterGetTreatmentForBucket(TestCase):
@@ -114,22 +116,43 @@ class SplitterHashKeyTests(TestCase):
 
     def test_with_sample_data(self):
         """
-        Tests hash_key against expected values using alphanumeric values
+        Tests basic hash against expected values using alphanumeric values
         """
+        hashfn = _HASH_ALGORITHMS['legacy']
         with open(join(dirname(__file__), 'sample-data.jsonl')) as f:
             for line in map(loads, f):
                 seed, key, hash_, bucket = line
-                self.assertEqual(int(hash_), self.splitter.hash_key(key, int(seed)))
-
+                self.assertEqual(int(hash_), hashfn(key, int(seed)))
     @skip
     def test_with_non_alpha_numeric_sample_data(self):
         """
-        Tests hash_key against expected values using non alphanumeric values
+        Tests basic hash against expected values using non alphanumeric values
         """
-        with open(join(dirname(__file__), 'sample-data-non-alpha-numeric.jsonl')) as f:
+        hashfn = _HASH_ALGORITHMS['legacy']
+        with io.open(join(dirname(__file__), 'sample-data-non-alpha-numeric.jsonl'), 'r', encoding='utf-8') as f:
             for line in map(loads, f):
                 seed, key, hash_, bucket = line
-                self.assertEqual(int(hash_), self.splitter.hash_key(key, int(seed)))
+                self.assertEqual(int(hash_), hashfn(key, int(seed)))
+
+    def test_murmur_with_sample_data(self):
+        """
+        Tests murmur32 hash against expected values using alphanumeric values
+        """
+        hashfn = _HASH_ALGORITHMS['murmur']
+        with open(join(dirname(__file__), 'murmur3-sample-data-v2.csv')) as f:
+            for line in f:
+                seed, key, hash_, bucket = line.split(',')
+                self.assertEqual(int(hash_), hashfn(key, int(seed)))
+
+    def test_murmur_with_non_alpha_numeric_sample_data(self):
+        """
+        Tests murmur32 hash against expected values using non alphanumeric values
+        """
+        hashfn = _HASH_ALGORITHMS['murmur']
+        with io.open(join(dirname(__file__), 'murmur3-sample-data-non-alpha-numeric-v2.csv'), 'r', encoding='utf-8') as f:
+            for line in f:
+                seed, key, hash_, bucket = line.split(',')
+                self.assertEqual(int(hash_), hashfn(key, int(seed)))
 
 
 class SplitterGetBucketUnitTests(TestCase):
@@ -168,7 +191,7 @@ class SplitterGetTreatmentDistributionTests(TestCase):
         p = 0.01
 
         treatments = [self.splitter.get_treatment(random_alphanumeric_string(randint(16, 32)),
-                                                  seed, partitions) for _ in range(n)]
+                                                  seed, partitions, HashAlgorithm.LEGACY) for _ in range(n)]
         counter = Counter(treatments)
 
         mean = n * p

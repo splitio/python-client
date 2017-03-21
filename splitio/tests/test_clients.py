@@ -31,7 +31,7 @@ class ClientTests(TestCase, MockUtilsMixin):
             mock.MagicMock(),
             mock.MagicMock()
         ]
-
+        self.some_algo = mock.MagicMock()
         self.some_split = mock.MagicMock()
         self.some_split.killed = False
         self.some_split.conditions.__iter__.return_value = self.some_conditions
@@ -132,7 +132,9 @@ class ClientTests(TestCase, MockUtilsMixin):
         self.some_conditions[1].matcher.match.return_value = True
         self.client._get_treatment_for_split(self.some_split, self.some_key, self.some_key, self.some_attributes)
         self.splitter_mock.return_value.get_treatment.assert_called_once_with(
-            self.some_key, self.some_split.seed, self.some_conditions[1].partitions)
+            self.some_key, self.some_split.seed, self.some_conditions[1].partitions,
+            self.some_split.algo
+        )
 
     def test_get_treatment_calls_record_stats(self):
         """Test that get_treatment calls get_split_fetcher"""
