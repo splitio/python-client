@@ -26,7 +26,7 @@ from splitio.segments import Segment
 from splitio.splits import Split, SplitParser, HashAlgorithm
 from splitio.impressions import Impression
 from splitio.utils import bytes_to_string
-
+from splitio.prefix_decorator import PrefixDecorator
 # Template for Split.io related Cache keys
 _SPLITIO_CACHE_KEY_TEMPLATE = 'SPLITIO.{suffix}'
 
@@ -760,6 +760,7 @@ def default_redis_factory(config):
     ssl_cert_reqs = config.get('redisSslCertReqs', None)
     ssl_ca_certs = config.get('redisSslCaCerts', None)
     max_connections = config.get('redisMaxConnections', None)
+    prefix = config.get('redisPrefix')
 
     redis = StrictRedis(host=host, port=port, db=db, password=password, socket_timeout=socket_timeout,
                  socket_connect_timeout=socket_connect_timeout,
@@ -771,4 +772,4 @@ def default_redis_factory(config):
                  ssl=ssl, ssl_keyfile=ssl_keyfile, ssl_certfile=ssl_certfile,
                  ssl_cert_reqs=ssl_cert_reqs, ssl_ca_certs=ssl_ca_certs,
                  max_connections=max_connections)
-    return redis
+    return PrefixDecorator(redis, prefix=prefix)
