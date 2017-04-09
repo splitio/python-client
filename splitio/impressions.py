@@ -304,8 +304,6 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
     def _timer_refresh(self):
         """Responsible for setting the periodic calls to _update_impressions using a Timer thread.
         """
-        if self._stopped:
-            return
 
         try:
             self._thread_pool_executor.submit(self._update_impressions)
