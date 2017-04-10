@@ -6,7 +6,6 @@ except ImportError:
     # Python 2
     import mock
 
-from os.path import dirname, join
 from unittest import TestCase
 from collections import defaultdict
 
@@ -32,35 +31,6 @@ class RedisSegmentCacheTests(TestCase):
         self.some_redis = mock.MagicMock()
         self.a_segment_cache = RedisSegmentCache(self.some_redis)
 
-    def test_disable_sets_disabled_key(self):
-        """Test that disable sets the disabled key for segments"""
-        self.a_segment_cache.disable()
-        self.some_redis.setex.assert_called_once_with('SPLITIO.segments.__disabled__', 1,
-                                                      self.a_segment_cache.disabled_period)
-
-    def test_enable_deletes_disabled_key(self):
-        """Test that enable deletes the disabled key for segments"""
-        self.a_segment_cache.enable()
-        self.some_redis.delete.assert_called_once_with('SPLITIO.segments.__disabled__')
-
-    def test_is_enabled_returns_false_if_disabled_key_exists(self):
-        """Test that is_enabled returns False if disabled key exists"""
-        self.some_redis.exists.return_value = True
-        self.assertFalse(self.a_segment_cache.is_enabled())
-        self.some_redis.exists.assert_called_once_with('SPLITIO.segments.__disabled__')
-
-    def test_is_enabled_returns_true_if_disabled_key_doesnt_exist(self):
-        """Test that is_enabled returns True if disabled key doesn't exist"""
-        self.some_redis.exists.return_value = False
-        self.assertTrue(self.a_segment_cache.is_enabled())
-        self.some_redis.exists.assert_called_once_with('SPLITIO.segments.__disabled__')
-
-    def test_register_segment_adds_segment_name_to_register_segments_set(self):
-        """Test that register_segment adds segment name to registered segments set"""
-        self.a_segment_cache.register_segment(self.some_segment_name)
-        self.some_redis.sadd.assert_called_once_with('SPLITIO.segments.registered',
-                                                     self.some_segment_name)
-
     def test_unregister_segment_removes_segment_name_to_register_segments_set(self):
         """Test that unregister_segment removes segment name to registered segments set"""
         self.a_segment_cache.unregister_segment(self.some_segment_name)
@@ -77,7 +47,7 @@ class RedisSegmentCacheTests(TestCase):
         """Test that add_keys_to_segment adds the keys to the segment key set"""
         self.a_segment_cache.add_keys_to_segment(self.some_segment_name_str, self.some_segment_keys)
         self.some_redis.sadd.assert_called_once_with(
-            'SPLITIO.segmentData.some_segment_name', self.some_segment_keys[0],
+            'SPLITIO.segment.some_segment_name', self.some_segment_keys[0],
             self.some_segment_keys[1])
 
     def test_remove_keys_from_segment_remove_keys_from_segment_set(self):
@@ -85,7 +55,7 @@ class RedisSegmentCacheTests(TestCase):
         self.a_segment_cache.remove_keys_from_segment(self.some_segment_name_str,
                                                       self.some_segment_keys)
         self.some_redis.srem.assert_called_once_with(
-            'SPLITIO.segmentData.some_segment_name', self.some_segment_keys[0],
+            'SPLITIO.segment.some_segment_name', self.some_segment_keys[0],
             self.some_segment_keys[1])
 
     def test_is_in_segment_tests_whether_a_key_is_in_a_segments_key_set(self):
@@ -94,7 +64,7 @@ class RedisSegmentCacheTests(TestCase):
                          self.a_segment_cache.is_in_segment(self.some_segment_name_str,
                                                             self.some_key))
         self.some_redis.sismember.assert_called_once_with(
-            'SPLITIO.segmentData.some_segment_name', self.some_key)
+            'SPLITIO.segment.some_segment_name', self.some_key)
 
     def test_set_change_number_sets_segment_change_number_key(self):
         """Test that set_change_number sets the segment's change number key"""
@@ -128,29 +98,6 @@ class RedisSplitCacheTests(TestCase, MockUtilsMixin):
         self.some_change_number = mock.MagicMock()
         self.some_redis = mock.MagicMock()
         self.a_split_cache = RedisSplitCache(self.some_redis)
-
-    def test_disable_sets_disabled_key(self):
-        """Test that disable sets the disabled key for splits"""
-        self.a_split_cache.disable()
-        self.some_redis.setex.assert_called_once_with('SPLITIO.split.__disabled__', 1,
-                                                      self.a_split_cache.disabled_period)
-
-    def test_enable_deletes_disabled_key(self):
-        """Test that enable deletes the disabled key for splits"""
-        self.a_split_cache.enable()
-        self.some_redis.delete.assert_called_once_with('SPLITIO.split.__disabled__')
-
-    def test_is_enabled_returns_false_if_disabled_key_exists(self):
-        """Test that is_enabled returns False if disabled key exists"""
-        self.some_redis.exists.return_value = True
-        self.assertFalse(self.a_split_cache.is_enabled())
-        self.some_redis.exists.assert_called_once_with('SPLITIO.split.__disabled__')
-
-    def test_is_enabled_returns_true_if_disabled_key_doesnt_exist(self):
-        """Test that is_enabled returns True if disabled key doesn't exist"""
-        self.some_redis.exists.return_value = False
-        self.assertTrue(self.a_split_cache.is_enabled())
-        self.some_redis.exists.assert_called_once_with('SPLITIO.split.__disabled__')
 
     def test_set_change_number_sets_change_number_key(self):
         """Test that set_change_number sets the change number key"""
@@ -200,36 +147,6 @@ class RedisImpressionsCacheTests(TestCase, MockUtilsMixin):
         self.an_impressions_cache = RedisImpressionsCache(self.some_redis)
         self.build_impressions_dict_mock = self.patch_object(self.an_impressions_cache,
                                                              '_build_impressions_dict')
-
-    def test_disable_sets_disabled_key(self):
-        """Test that disable sets the disabled key for impressions"""
-        self.an_impressions_cache.disable()
-        self.some_redis.setex.assert_called_once_with(
-            'SPLITIO/python-2.2.1/unknown/impressions.__disabled__',
-            1,
-            self.an_impressions_cache.disabled_period
-        )
-
-    def test_enable_deletes_disabled_key(self):
-        """Test that enable deletes the disabled key for impressions"""
-        self.an_impressions_cache.enable()
-        self.some_redis.delete.assert_called_once_with(
-            'SPLITIO/python-2.2.1/unknown/impressions.__disabled__'
-        )
-
-    def test_is_enabled_returns_false_if_disabled_key_exists(self):
-        """Test that is_enabled returns False if disabled key exists"""
-        self.some_redis.exists.return_value = True
-        self.assertFalse(self.an_impressions_cache.is_enabled())
-        self.some_redis.exists.assert_called_once_with(
-            'SPLITIO/python-2.2.1/unknown/impressions.__disabled__')
-
-    def test_is_enabled_returns_true_if_disabled_key_doesnt_exist(self):
-        """Test that is_enabled returns True if disabled key doesn't exist"""
-        self.some_redis.exists.return_value = False
-        self.assertTrue(self.an_impressions_cache.is_enabled())
-        self.some_redis.exists.assert_called_once_with(
-            'SPLITIO/python-2.2.1/unknown/impressions.__disabled__')
 
     def test_fetch_all_doesnt_call_build_impressions_dict_if_no_impressions_cached(self):
         """Test that fetch_all doesn't call _build_impressions_dict if no impressions are cached"""
@@ -297,29 +214,6 @@ class RedisMetricsCacheTests(TestCase, MockUtilsMixin):
         self.a_metrics_cache = RedisMetricsCache(self.some_redis)
         self.build_metrics_from_cache_response_mock = self.patch_object(
             self.a_metrics_cache, '_build_metrics_from_cache_response')
-
-    def test_disable_sets_disabled_key(self):
-        """Test that disable sets the disabled key for metrics"""
-        self.a_metrics_cache.disable()
-        self.some_redis.setex.assert_called_once_with('SPLITIO.metrics.__disabled__', 1,
-                                                      self.a_metrics_cache.disabled_period)
-
-    def test_enable_deletes_disabled_key(self):
-        """Test that enable deletes the disabled key for metrics"""
-        self.a_metrics_cache.enable()
-        self.some_redis.delete.assert_called_once_with('SPLITIO.metrics.__disabled__')
-
-    def test_is_enabled_returns_false_if_disabled_key_exists(self):
-        """Test that is_enabled returns False if disabled key exists"""
-        self.some_redis.exists.return_value = True
-        self.assertFalse(self.a_metrics_cache.is_enabled())
-        self.some_redis.exists.assert_called_once_with('SPLITIO.metrics.__disabled__')
-
-    def test_is_enabled_returns_true_if_disabled_key_doesnt_exist(self):
-        """Test that is_enabled returns True if disabled key doesn't exist"""
-        self.some_redis.exists.return_value = False
-        self.assertTrue(self.a_metrics_cache.is_enabled())
-        self.some_redis.exists.assert_called_once_with('SPLITIO.metrics.__disabled__')
 
     def test_get_latency_calls_get(self):
         """Test that get_latency calls get in last position (22)"""

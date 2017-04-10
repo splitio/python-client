@@ -1,4 +1,4 @@
-"""This module contains everything related to redis cache implementations"""
+'''This module contains everything related to redis cache implementations'''
 from __future__ import absolute_import, division, print_function, \
     unicode_literals
 
@@ -45,101 +45,72 @@ class RedisSegmentCache(SegmentCache):
     )
     _DISABLED_KEY = _KEY_TEMPLATE.format(suffix='__disabled__')
     _SEGMENT_KEY_SET_KEY_TEMPLATE = _SPLITIO_CACHE_KEY_TEMPLATE.format(
-        suffix='segmentData.{segment_name}'
+        suffix='segment.{segment_name}'
     )
     _SEGMENT_CHANGE_NUMBER_KEY_TEMPLATE = _SPLITIO_CACHE_KEY_TEMPLATE.format(
         suffix='segment.{segment_name}.till'
     )
 
-    def __init__(self, redis, disabled_period=300):
-        """A Segment Cache implementation that uses Redis as its back-end
+    def __init__(self, redis):
+        '''
+        A Segment Cache implementation that uses Redis as its back-end
         :param redis: The redis client
         :rtype redis: StringRedis
-        :param disabled_period: The expiration period for the disabled key.
-        :param disabled_period: int
-        """
+        '''
         self._redis = redis
-        self._disabled_period = disabled_period
-
-    @property
-    def disabled_period(self):
-        return self._disabled_period
-
-    @disabled_period.setter
-    def disabled_period(self, disabled_period):
-        self._disabled_period = disabled_period
-
-    def disable(self):
-        '''
-        Disables the automatic update process. This method will be called if the
-        update fails for some reason.
-        Use enable to re-enable the update process.
-        '''
-        self._redis.setex(
-            RedisSegmentCache._DISABLED_KEY,
-            1,
-            self._disabled_period
-        )
-
-    def enable(self):
-        """Enables the automatic update process."""
-        self._redis.delete(RedisSegmentCache._DISABLED_KEY)
-
-    def is_enabled(self):
-        """
-        :return: Whether the update process is enabled or not.
-        :rtype: bool
-        """
-        return not self._redis.exists(RedisSegmentCache._DISABLED_KEY)
 
     def register_segment(self, segment_name):
-        """Register a segment for inclusion in the automatic update process.
+        '''
+        Register a segment for inclusion in the automatic update process.
         :param segment_name: Name of the segment.
         :type segment_name: str
-        """
+        '''
         self._redis.sadd(
             RedisSegmentCache._KEY_TEMPLATE.format(suffix='registered'),
             segment_name
         )
 
     def unregister_segment(self, segment_name):
-        """Unregister a segment from the automatic update process.
+        '''
+        Unregister a segment from the automatic update process.
         :param segment_name: Name of the segment.
         :type segment_name: str
-        """
+        '''
         self._redis.srem(
             RedisSegmentCache._KEY_TEMPLATE.format(suffix='registered'),
             segment_name
         )
 
     def get_registered_segments(self):
-        """
+        '''
         :return: All segments included in the automatic update process.
         :rtype: set
-        """
+        '''
         return self._redis.smembers(
             RedisSegmentCache._KEY_TEMPLATE.format(suffix='registered')
         )
 
     def _get_segment_key_set_key(self, segment_name):
-        """Build cache key for a given segment key set.
+        '''
+        Build cache key for a given segment key set.
         :param segment_name: The name of the segment
         :type segment_name: str
         :return: The cache key for the segment key set
         :rtype: str
-        """
+        '''
         segment_name = bytes_to_string(segment_name)
         return RedisSegmentCache._SEGMENT_KEY_SET_KEY_TEMPLATE.format(
             segment_name=segment_name
         )
 
     def _get_segment_change_number_key(self, segment_name):
-        """Build cache key for a given segment change_number.
+        '''
+        Build cache key for a given segment change_number.
         :param segment_name: The name of the segment
         :type segment_name: str
         :return: The cache key for the segment change number
         :rtype: str
-        """
+        '''
         segment_name = bytes_to_string(segment_name)
         return RedisSegmentCache._SEGMENT_CHANGE_NUMBER_KEY_TEMPLATE.format(
             segment_name=segment_name
@@ -181,26 +152,15 @@ class RedisSplitCache(SplitCache):
     _KEY_TILL_TEMPLATE = _SPLITIO_CACHE_KEY_TEMPLATE.format(
         suffix='splits.{suffix}'
     )
-    _DISABLED_KEY = _KEY_TEMPLATE.format(suffix='__disabled__')
 
-    def __init__(self, redis, disabled_period=300):
-        """A SplitCache implementation that uses Redis as its back-end.
+    def __init__(self, redis):
+        '''
+        A SplitCache implementation that uses Redis as its back-end.
         :param redis: The redis client
         :type redis: StrictRedis
-        :param disabled_period: The expiration period for the disabled key.
-        :param disabled_period: int
-        """
+        '''
         self._redis = redis
-        self._disabled_period = disabled_period
         self._logger = logging.getLogger(self.__class__.__name__)
-
-    @property
-    def disabled_period(self):
-        return self._disabled_period
-
-    @disabled_period.setter
-    def disabled_period(self, disabled_period):
-        self._disabled_period = disabled_period
 
     def get_splits_keys(self):
         return self._redis.keys(
@@ -208,38 +168,14 @@ class RedisSplitCache(SplitCache):
         )
 
     def _get_split_key(self, split_name):
-        """Builds a Redis key cache for a given split (feature) name,
+        '''
+        Builds a Redis key cache for a given split (feature) name,
         :param split_name: Name of the split (feature)
         :type split_name: str
         :return: The split key
         :rtype: str
-        """
+        '''
         return RedisSplitCache._KEY_TEMPLATE.format(suffix=split_name)
-
-    def disable(self):
-        '''
-        Disables the automatic split update process for the specified disabled
-        period. This  method will be called if there's an exception while
-        updating the splits.
-        '''
-        self._redis.setex(
-            RedisSplitCache._DISABLED_KEY,
-            1,
-            self._disabled_period
-        )
-
-    def enable(self):
-        '''
-        Enables the automatic split update process.
-        '''
-        self._redis.delete(RedisSplitCache._DISABLED_KEY)
-
-    def is_enabled(self):
-        '''
-        :return: Whether the update process is enabled or not.
-        :rtype: bool
-        '''
-        return not self._redis.exists(RedisSplitCache._DISABLED_KEY)
 
     def get_change_number(self):
         change_number = self._redis.get(
@@ -311,8 +247,8 @@ class RedisImpressionsCache(ImpressionsCache):
 
     @classmethod
     def _get_impressions_key(cls, feature_name):
-        """
-        """
+        '''
+        '''
         return cls._KEY_TEMPLATE.format(
             **dict(_GLOBAL_KEY_PARAMETERS, feature=feature_name)
         )
@@ -323,60 +259,16 @@ class RedisImpressionsCache(ImpressionsCache):
         '''
         return cls._get_impressions_key('impressions_to_clear')
 
-    @classmethod
-    def _get_disabled_key(cls):
+    def __init__(self, redis):
         '''
-        '''
-        return cls._get_impressions_key('__disabled__')
-
-    def __init__(self, redis, disabled_period=300):
-        """An ImpressionsCache implementation that uses Redis as its back-end
+        An ImpressionsCache implementation that uses Redis as its back-end
         :param redis: The redis client
         :type redis: StrictRedis
-        :param disabled_period: The expiration period for the disabled key.
-        :param disabled_period: int
-        """
+        '''
         self._redis = redis
-        self._disabled_period = disabled_period
 
         key_params = _GLOBAL_KEY_PARAMETERS.copy()
         key_params['suffix'] = '{feature_name}'
-
-    @property
-    def disabled_period(self):
-        return self._disabled_period
-
-    @disabled_period.setter
-    def disabled_period(self, disabled_period):
-        self._disabled_period = disabled_period
-
-    def enable(self):
-        '''
-        Enables the automatic impressions report process and the registration of
-        impressions.
-        '''
-        self._redis.delete(RedisImpressionsCache._get_disabled_key())
-
-    def disable(self):
-        '''
-        Disables the automatic impressions report process and the registration
-        of any impressions for the specificed disabled period.
-        This method will be called if there's an exception while trying to send
-        the impressions back to Split.
-        '''
-        self._redis.setex(
-            RedisImpressionsCache._get_disabled_key(),
-            1,
-            self._disabled_period
-        )
-
-    def is_enabled(self):
-        """
-        :return: Whether the automatic report process and impressions
-            registration are enabled.
-        :rtype: bool
-        """
-        return not self._redis.exists(RedisImpressionsCache._get_disabled_key())
 
     def _build_impressions_dict(self, impressions):
         '''
@@ -437,7 +329,9 @@ class RedisImpressionsCache(ImpressionsCache):
         return self._build_impressions_dict(impressions_list)
 
     def clear(self):
-        """Clears all cached impressions"""
+        '''
+        Clears all cached impressions
+        '''
         self._redis.eval(
             "return redis.call('del', unpack(redis.call('keys', ARGV[1])))",
             0,
@@ -451,9 +345,6 @@ class RedisImpressionsCache(ImpressionsCache):
         :param impression: The impression tuple
         :type impression: Impression
         '''
-        if not self.is_enabled():
-            return
-
         cache_impression = {
             'keyName': impression.matching_key,
             'treatment': impression.treatment,
@@ -532,7 +423,6 @@ class RedisMetricsCache(MetricsCache):
     _KEY_TEMPLATE = _SPLITIO_CACHE_KEY_TEMPLATE.format(
         suffix='metrics.{suffix}'
     )
-    _DISABLED_KEY = _KEY_TEMPLATE.format(suffix='__disabled__')
 
     _KEY_LATENCY = (
         'SPLITIO/{sdk-language-version}/{instance-id}/'
@@ -595,52 +485,14 @@ class RedisMetricsCache(MetricsCache):
                           .replace('{gauge}', '(?P<gauge>.+)'))
                 ).format(**_GLOBAL_KEY_PARAMETERS)
 
-    def __init__(self, redis, disabled_period=300):
-        """A MetricsCache implementation that uses Redis as its back-end
+    def __init__(self, redis):
+        '''
+        A MetricsCache implementation that uses Redis as its back-end
         :param redis: The redis client
         :type redis: StrictRedis
-        :param disabled_period: The expiration period for the disabled key.
-        :param disabled_period: int
-        """
+        '''
         super(RedisMetricsCache, self).__init__()
         self._redis = redis
-        self._disabled_period = disabled_period
-
-    @property
-    def disabled_period(self):
-        return self._disabled_period
-
-    @disabled_period.setter
-    def disabled_period(self, disabled_period):
-        self._disabled_period = disabled_period
-
-    def enable(self):
-        '''
-        Enables the automatic metrics report process and the registration of
-        new metrics.
-        '''
-        self._redis.delete(RedisMetricsCache._DISABLED_KEY)
-
-    def disable(self):
-        '''
-        Disables the automatic metrics report process and the registration of
-        any metrics for the specified disabled period.
-        This method will be called if there's an  exception while trying to send
-        the metrics back to Split.
-        '''
-        self._redis.setex(
-            RedisMetricsCache._DISABLED_KEY,
-            1,
-            self._disabled_period
-        )
-
-    def is_enabled(self):
-        """
-        :return: Whether the automatic report process and metrics registration
-            are enabled.
-        :rtype: bool
-        """
-        return not self._redis.exists(RedisMetricsCache._DISABLED_KEY)
 
     def _get_time_field(self, operation, bucket_index):
         '''
@@ -884,7 +736,8 @@ class RedisSplitBasedSegment(Segment):
 
 def setup_instance_id(instance_id):
     '''
-    TODO
+    Setup the correct parameters once the redis-client has been instantiated
+    with a configuration from the client
     '''
     if instance_id:
         _GLOBAL_KEY_PARAMETERS['instance-id'] = instance_id
@@ -893,11 +746,12 @@ def setup_instance_id(instance_id):
 
 
 def get_redis(config):
-    """Build a redis client based on the configuration.
+    '''
+    Build a redis client based on the configuration.
     :param config: Dictionary with the contents of the config file.
     :type config: dict
     :return: A redis client
-    """
+    '''
     setup_instance_id(config.get('instance-id'))
     if 'redisFactory' in config:
         redis_factory = import_from_string(
@@ -909,7 +763,8 @@ def get_redis(config):
 
 
 def default_redis_factory(config):
-    '''Default redis client factory.
+    '''
+    Default redis client factory.
     :param config: A dict with the Redis configuration parameters
     :type config: dict
     :return: A StrictRedis object using the provided config values
