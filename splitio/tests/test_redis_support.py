@@ -295,23 +295,6 @@ class RedisMetricsCacheTests(TestCase, MockUtilsMixin):
             1
         )
 
-#    def test_fetch_all_and_clear_calls_eval(self):
-#        """Test that fetch_all_and_clear calls eval with fetch and clear script"""
-#        self.a_metrics_cache.fetch_all_and_clear()
-#        self.some_redis.eval.assert_called_once_with(
-#            "if redis.call('EXISTS', KEYS[1]) == 1 then redis.call('RENAME', KEYS[1], KEYS[2]); "
-#            "local metric = redis.call('HGETALL', KEYS[2]); redis.call('DEL', KEYS[2]); "
-#            "return metric; end", 2, 'SPLITIO.metrics.metric', 'SPLITIO.metrics.metric_to_clear'
-#        )
-#
-#    def test_fetch_all_and_clear_returns_build_metrics_from_cache_response_result(self):
-#        """Test that fetch_all_and_clear returns the result of calling
-#        build_metrics_from_cache_response"""
-#        self.assertEqual(self.build_metrics_from_cache_response_mock.return_value,
-#                         self.a_metrics_cache.fetch_all_and_clear())
-#        self.build_metrics_from_cache_response_mock.assert_called_once_with(
-#            self.some_redis.eval.return_value)
-
 
 class RedisMetricsCacheConditionalEvalTests(TestCase):
     def setUp(self):
