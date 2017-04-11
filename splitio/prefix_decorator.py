@@ -5,7 +5,7 @@ class PrefixDecorator:
     keys
     '''
 
-    def __init__(self, decorated, prefix=None, forward_not_implemented=False):
+    def __init__(self, decorated, prefix=None):
         '''
         Stores the user prefix and the redis client instance.
 
@@ -14,7 +14,6 @@ class PrefixDecorator:
         '''
         self._prefix = prefix
         self._decorated = decorated
-        self._forward_if_not_implemented = forward_not_implemented
 
     def _add_prefix(self, k):
         '''
@@ -56,22 +55,6 @@ class PrefixDecorator:
                 return [key[len(self._prefix)+1:] for key in k]
         else:
             return k
-
-    def __getattr__(self, meth, *args, **kwargs):
-        '''
-        Fallback for not implemented methods that might exist in the instance.
-        If `forward_not_implemented` was set to True in the constructor, and
-        such method exists in the decorated instance, it will be forwarded.
-        PLEASE KEEP IN MIND: If the method somewhat uses keys, prefix will not
-        be added nor removed, hence resulting in unexpected results.
-        '''
-        if self._forward_if_not_implemented and meth in [
-            method for method in dir(self._decorated)
-            if callable(getattr(self._decorated, method))
-        ]:
-            return getattr(self._decorated, meth)(*args, **kwargs)
-        else:
-            raise Exception('Method not available or forwarding disabled')
 
     # Below starts a list of methods that implement the interface of a standard
     # redis client.
@@ -116,8 +99,8 @@ class PrefixDecorator:
     def eval(self, *args):
         script = args[0]
         num_keys = args[1]
-        keys = args[2:]
-        return self._decorated.eval(script, num_keys, self._add_prefix(keys))
+        keys = list(args[2:])
+        return self._decorated.eval(script, num_keys, *self._add_prefix(keys))
 
     def hset(self, name, key, value):
         return self._decorated.hset(self._add_prefix(name), key, value)
