@@ -1,3 +1,6 @@
+from six import string_types
+
+
 class PrefixDecorator:
     '''
     Instance decorator for Redis clients such as StrictRedis.
@@ -28,7 +31,7 @@ class PrefixDecorator:
         :returns: Key(s) with prefix if applicable
         '''
         if self._prefix:
-            if isinstance(k, basestring):
+            if isinstance(k, string_types):
                 return '{prefix}.{key}'.format(prefix=self._prefix, key=k)
             elif isinstance(k, list):
                 return [
@@ -49,7 +52,7 @@ class PrefixDecorator:
         :returns: prefix-less key(s)
         '''
         if self._prefix:
-            if isinstance(k, basestring):
+            if isinstance(k, string_types):
                 return k[len(self._prefix)+1:]
             elif isinstance(k, list):
                 return [key[len(self._prefix)+1:] for key in k]
