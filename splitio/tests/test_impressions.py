@@ -330,18 +330,6 @@ class SelfUpdatingTreatmentLogTimerRefreshTests(TestCase, MockUtilsMixin):
         self.treatment_log = SelfUpdatingTreatmentLog(self.some_api, interval=self.some_interval)
         self.treatment_log.stopped = False
 
-    def test_doesnt_call_submit_if_stopped(self):
-        """Test that _timer_refresh doesn't call submit on the executor pool if it is stopped"""
-        self.treatment_log._stopped = True
-        self.treatment_log._timer_refresh()
-        self.thread_pool_executor.return_value.submit.assert_not_called()
-
-    def test_doesnt_create_timer_if_stopped(self):
-        """Test that _timer_refresh doesn't refresh the timer it is stopped"""
-        self.treatment_log._stopped = True
-        self.treatment_log._timer_refresh()
-        self.timer_mock.assert_not_called()
-
     def test_calls_submit(self):
         """Test that _timer_refresh calls submit on the executor pool if it is not stopped"""
         self.treatment_log._timer_refresh()

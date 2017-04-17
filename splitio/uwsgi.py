@@ -49,7 +49,7 @@ from collections import defaultdict
 from splitio.cache import SegmentCache, SplitCache, ImpressionsCache, MetricsCache
 from splitio.api import api_factory
 from splitio.tasks import update_splits, update_segments, report_metrics, report_impressions
-from splitio.splits import Split, ApiSplitChangeFetcher, SplitParser
+from splitio.splits import Split, ApiSplitChangeFetcher, SplitParser, HashAlgorithm
 from splitio.segments import Segment, ApiSegmentChangeFetcher
 from splitio.matchers import UserDefinedSegmentMatcher
 from splitio.utils import bytes_to_string
@@ -373,8 +373,12 @@ class UWSGISplitParser(SplitParser):
         self._segment_cache = segment_cache
 
     def _parse_split(self, split, block_until_ready=False):
-        return UWSGISplit(split['name'], split['seed'], split['killed'], split['defaultTreatment'],
-                          split['trafficTypeName'], split['status'], split['changeNumber'], segment_cache=self._segment_cache)
+        return UWSGISplit(
+            split['name'], split['seed'], split['killed'],
+            split['defaultTreatment'], split['trafficTypeName'],
+            split['status'], split['changeNumber'],
+            segment_cache=self._segment_cache, algo=split.get('algo')
+        )
 
     def _parse_matcher_in_segment(self, partial_split, matcher, block_until_ready=False, *args,
                                   **kwargs):
@@ -385,7 +389,7 @@ class UWSGISplitParser(SplitParser):
         return delegate
 
 class UWSGISplit(Split):
-    def __init__(self, name, seed, killed, default_treatment, traffic_type_name, status, change_number, conditions=None, segment_cache=None):
+    def __init__(self, name, seed, killed, default_treatment, traffic_type_name, status, change_number, conditions=None, segment_cache=None, algo=HashAlgorithm.LEGACY):
         """A split implementation that mantains a reference to the segment cache so segments can
         be easily pickled and unpickled.
         :param name: Name of the feature

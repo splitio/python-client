@@ -177,7 +177,12 @@ class Client(object):
 
         for condition in split.conditions:
             if condition.matcher.match(matching_key, attributes=attributes):
-                return self.get_splitter().get_treatment(bucketing_key, split.seed, condition.partitions), condition.label
+                return self.get_splitter().get_treatment(
+                    bucketing_key,
+                    split.seed,
+                    condition.partitions,
+                    split.algo
+                ), condition.label
 
         # No condition matches
         return None, None
