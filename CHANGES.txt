@@ -1,3 +1,5 @@
+4.0.0 (April 17, 2017)
+ - Added support for murmur3 hashing native and cpp version for performance
 2.2.1
  - Ignore invalid Split fetched from Redis cache
 2.2.0
