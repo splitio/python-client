@@ -11,11 +11,16 @@ from unittest import TestCase
 
 from splitio.splits import (InMemorySplitFetcher, SelfRefreshingSplitFetcher, SplitChangeFetcher,
                             ApiSplitChangeFetcher, SplitParser, AllKeysSplit,
-                            CacheBasedSplitFetcher)
+                            CacheBasedSplitFetcher, HashAlgorithm)
 from splitio.matchers import (AndCombiner, AllKeysMatcher, UserDefinedSegmentMatcher,
                               WhitelistMatcher, AttributeMatcher)
 from splitio.tests.utils import MockUtilsMixin
-
+from os.path import join, dirname
+from splitio.hashfns import _murmur_hash, get_hash_fn
+from splitio.hashfns.legacy import legacy_hash
+from splitio.redis_support import get_redis, RedisSegmentCache, RedisSplitParser
+from splitio.uwsgi import get_uwsgi, UWSGISegmentCache, UWSGISplitParser
+import json
 
 class InMemorySplitFetcherTests(TestCase):
     def setUp(self):
