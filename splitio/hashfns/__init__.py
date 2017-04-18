@@ -6,6 +6,7 @@ function with python bindings.
 from __future__ import absolute_import, division, print_function, \
     unicode_literals
 
+from splitio.splits import HashAlgorithm
 from splitio.hashfns import legacy
 
 try:
@@ -23,8 +24,8 @@ except:
 
 
 _HASH_ALGORITHMS = {
-    'legacy': legacy.legacy_hash,
-    'murmur': _murmur_hash
+    HashAlgorithm.LEGACY: legacy.legacy_hash,
+    HashAlgorithm.MURMUR: _murmur_hash
 }
 
 

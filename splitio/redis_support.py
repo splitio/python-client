@@ -23,7 +23,7 @@ from splitio.cache import SegmentCache, SplitCache, ImpressionsCache, MetricsCac
 from splitio.matchers import UserDefinedSegmentMatcher
 from splitio.metrics import BUCKETS
 from splitio.segments import Segment
-from splitio.splits import Split, SplitParser, HashAlgorithm
+from splitio.splits import Split, SplitParser
 from splitio.impressions import Impression
 from splitio.utils import bytes_to_string
 
@@ -202,7 +202,6 @@ class RedisSplitCache(SplitCache):
     def get_split(self, split_name):
 
         to_decode = self._redis.get(self._get_split_key(split_name))
-
         if to_decode is None:
             return None
 
@@ -665,9 +664,12 @@ class RedisSplitParser(SplitParser):
 
 
 class RedisSplit(Split):
-    def __init__(self, name, seed, killed, default_treatment, traffic_type_name, status, change_number, conditions=None, segment_cache=None, algo=HashAlgorithm.LEGACY):
-        """A split implementation that mantains a reference to the segment cache so segments can
-        be easily pickled and unpickled.
+    def __init__(self, name, seed, killed, default_treatment, traffic_type_name,
+                 status, change_number, conditions=None, segment_cache=None,
+                 algo=None):
+        '''
+        A split implementation that mantains a reference to the segment cache
+        so segments can be easily pickled and unpickled.
         :param name: Name of the feature
         :type name: unicode
         :param seed: Seed
@@ -680,8 +682,10 @@ class RedisSplit(Split):
         :type conditions: list
         :param segment_cache: A segment cache
         :type segment_cache: SegmentCache
-        """
-        super(RedisSplit, self).__init__(name, seed, killed, default_treatment, traffic_type_name, status, change_number, conditions)
+        '''
+        super(RedisSplit, self).__init__(name, seed, killed, default_treatment,
+                                         traffic_type_name, status,
+                                         change_number, conditions, algo)
         self._segment_cache = segment_cache
 
     @property

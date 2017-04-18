@@ -118,7 +118,7 @@ class SplitterHashKeyTests(TestCase):
         """
         Tests basic hash against expected values using alphanumeric values
         """
-        hashfn = _HASH_ALGORITHMS['legacy']
+        hashfn = _HASH_ALGORITHMS[HashAlgorithm.LEGACY]
         with open(join(dirname(__file__), 'sample-data.jsonl')) as f:
             for line in map(loads, f):
                 seed, key, hash_, bucket = line
@@ -128,7 +128,7 @@ class SplitterHashKeyTests(TestCase):
         """
         Tests basic hash against expected values using non alphanumeric values
         """
-        hashfn = _HASH_ALGORITHMS['legacy']
+        hashfn = _HASH_ALGORITHMS[HashAlgorithm.LEGACY]
         with io.open(join(dirname(__file__), 'sample-data-non-alpha-numeric.jsonl'), 'r', encoding='utf-8') as f:
             for line in map(loads, f):
                 seed, key, hash_, bucket = line
@@ -138,7 +138,7 @@ class SplitterHashKeyTests(TestCase):
         """
         Tests murmur32 hash against expected values using alphanumeric values
         """
-        hashfn = _HASH_ALGORITHMS['murmur']
+        hashfn = _HASH_ALGORITHMS[HashAlgorithm.MURMUR]
         with open(join(dirname(__file__), 'murmur3-sample-data-v2.csv')) as f:
             for line in f:
                 seed, key, hash_, bucket = line.split(',')
@@ -148,7 +148,7 @@ class SplitterHashKeyTests(TestCase):
         """
         Tests murmur32 hash against expected values using non alphanumeric values
         """
-        hashfn = _HASH_ALGORITHMS['murmur']
+        hashfn = _HASH_ALGORITHMS[HashAlgorithm.MURMUR]
         with io.open(join(dirname(__file__), 'murmur3-sample-data-non-alpha-numeric-v2.csv'), 'r', encoding='utf-8') as f:
             for line in f:
                 seed, key, hash_, bucket = line.split(',')

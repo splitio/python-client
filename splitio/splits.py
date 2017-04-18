@@ -34,14 +34,13 @@ class HashAlgorithm(Enum):
     """
     Hash algorithm names
     """
-    LEGACY = "legacy"
-    MURMUR = "murmur"
+    LEGACY = 1
+    MURMUR = 2
 
 
 class Split(object):
     def __init__(self, name, seed, killed, default_treatment, traffic_type_name,
-                 status, change_number, conditions=None,
-                 algo=HashAlgorithm.LEGACY):
+                 status, change_number, conditions=None, algo=None):
         """
         A class that represents a split. It associates a feature name with a set
         of matchers (responsible of telling which condition to use) and
@@ -65,7 +64,7 @@ class Split(object):
         self._status = status
         self._change_number = change_number
         self._conditions = conditions if conditions is not None else []
-        self._algo = algo
+        self._algo = HashAlgorithm(algo) if algo else HashAlgorithm.LEGACY
 
     @property
     def name(self):
