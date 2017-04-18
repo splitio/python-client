@@ -196,6 +196,67 @@
                     ]
                 }
             ]
+        },
+        {
+            "orgId": null,
+            "environment": null,
+            "trafficTypeId": null,
+            "trafficTypeName": null,
+            "name": "some_feature_5",
+            "algo": 38,
+            "seed": 1548363147,
+            "changeNumber":1325599980,
+            "status": "ACTIVE",
+            "killed": false,
+            "defaultTreatment": "off",
+            "conditions": [
+                {
+                    "matcherGroup": {
+                        "combiner": "AND",
+                        "matchers": [
+                            {
+                                "matcherType": "IN_SEGMENT",
+                                "negate": false,
+                                "userDefinedSegmentMatcherData": {
+                                    "segmentName": "employees"
+                                },
+                                "whitelistMatcherData": null
+                            }
+                        ]
+                    },
+                    "partitions": [
+                        {
+                            "treatment": "on",
+                            "size": 100
+                        }
+                    ]
+                },
+                {
+                    "matcherGroup": {
+                        "combiner": "AND",
+                        "matchers": [
+                            {
+                                "matcherType": "IN_SEGMENT",
+                                "negate": false,
+                                "userDefinedSegmentMatcherData": {
+                                    "segmentName": "human_beigns"
+                                },
+                                "whitelistMatcherData": null
+                            }
+                        ]
+                    },
+                    "partitions": [
+                        {
+                            "treatment": "on",
+                            "size": 30
+                        },
+                        {
+                            "treatment": "off",
+                            "size": 70
+                        }
+                    ]
+                }
+            ]
         }
     ],
     "since": -1,

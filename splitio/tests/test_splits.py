@@ -12,14 +12,13 @@ from unittest import TestCase
 import json
 from splitio.splits import (InMemorySplitFetcher, SelfRefreshingSplitFetcher, SplitChangeFetcher,
                             ApiSplitChangeFetcher, SplitParser, AllKeysSplit,
-                            CacheBasedSplitFetcher)
+                            CacheBasedSplitFetcher, HashAlgorithm)
 from splitio.matchers import (AndCombiner, AllKeysMatcher, UserDefinedSegmentMatcher,
                               WhitelistMatcher, AttributeMatcher)
 from splitio.tests.utils import MockUtilsMixin
 from os.path import join, dirname
 from splitio.hashfns import _murmur_hash, get_hash_fn
 from splitio.hashfns.legacy import legacy_hash
-from splitio.splits import HashAlgorithm
 from splitio.redis_support import get_redis, RedisSegmentCache, RedisSplitParser
 from splitio.uwsgi import get_uwsgi, UWSGISegmentCache, UWSGISplitParser
 
@@ -932,6 +931,11 @@ class RedisCacheAlgoFieldTests(TestCase):
             'body': rawData[3],
             'algo': HashAlgorithm.LEGACY,
             'hashfn': legacy_hash
+        },
+        {
+            'body': rawData[4],
+            'algo': HashAlgorithm.LEGACY,
+            'hashfn': legacy_hash
         }]
 
     def testAlgoHandlers(self):
@@ -941,7 +945,6 @@ class RedisCacheAlgoFieldTests(TestCase):
         segment_cache = RedisSegmentCache(redis)
         split_parser = RedisSplitParser(segment_cache)
         for sp in self._testData:
-            print(sp)
             split = split_parser.parse(sp['body'], True)
             self.assertEqual(split.algo, sp['algo'])
             self.assertEqual(get_hash_fn(split.algo), sp['hashfn'])
@@ -971,6 +974,11 @@ class UWSGICacheAlgoFieldTests(TestCase):
         },
         {
             'body': rawData[3],
+            'algo': HashAlgorithm.LEGACY,
+            'hashfn': legacy_hash
+        },
+        {
+            'body': rawData[4],
             'algo': HashAlgorithm.LEGACY,
             'hashfn': legacy_hash
         }]
