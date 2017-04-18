@@ -65,7 +65,10 @@ class Split(object):
         self._status = status
         self._change_number = change_number
         self._conditions = conditions if conditions is not None else []
-        self._algo = algo
+        try:
+            self._algo = HashAlgorithm(algo)
+        except ValueError:
+            self._algo = HashAlgorithm.LEGACY
 
     @property
     def name(self):
