@@ -9,12 +9,18 @@ except ImportError:
 
 from unittest import TestCase
 
+import json
 from splitio.splits import (InMemorySplitFetcher, SelfRefreshingSplitFetcher, SplitChangeFetcher,
                             ApiSplitChangeFetcher, SplitParser, AllKeysSplit,
-                            CacheBasedSplitFetcher)
+                            CacheBasedSplitFetcher, HashAlgorithm)
 from splitio.matchers import (AndCombiner, AllKeysMatcher, UserDefinedSegmentMatcher,
                               WhitelistMatcher, AttributeMatcher)
 from splitio.tests.utils import MockUtilsMixin
+from os.path import join, dirname
+from splitio.hashfns import _murmur_hash, get_hash_fn
+from splitio.hashfns.legacy import legacy_hash
+from splitio.redis_support import get_redis, RedisSegmentCache, RedisSplitParser
+from splitio.uwsgi import get_uwsgi, UWSGISegmentCache, UWSGISplitParser
 
 
 class InMemorySplitFetcherTests(TestCase):
@@ -897,3 +903,93 @@ class CacheBasedSplitFetcherTests(TestCase):
         """Test that fetch returns the result of calling get split on the cache"""
         self.assertEqual(self.some_split_cache.get_split.return_value,
                          self.split_fetcher.fetch(self.some_feature))
+
+
+class RedisCacheAlgoFieldTests(TestCase):
+    def setUp(self):
+        '''
+        '''
+        fn = join(dirname(__file__), 'algoSplits.json')
+        with open(fn, 'r') as flo:
+            rawData = json.load(flo)['splits']
+        self._testData = [{
+            'body': rawData[0],
+            'algo': HashAlgorithm.LEGACY,
+            'hashfn': legacy_hash
+        },
+        {
+            'body': rawData[1],
+            'algo': HashAlgorithm.MURMUR,
+            'hashfn': _murmur_hash
+        },
+        {
+            'body': rawData[2],
+            'algo': HashAlgorithm.LEGACY,
+            'hashfn': legacy_hash
+        },
+        {
+            'body': rawData[3],
+            'algo': HashAlgorithm.LEGACY,
+            'hashfn': legacy_hash
+        },
+        {
+            'body': rawData[4],
+            'algo': HashAlgorithm.LEGACY,
+            'hashfn': legacy_hash
+        }]
+
+    def testAlgoHandlers(self):
+        '''
+        '''
+        redis = get_redis({})
+        segment_cache = RedisSegmentCache(redis)
+        split_parser = RedisSplitParser(segment_cache)
+        for sp in self._testData:
+            split = split_parser.parse(sp['body'], True)
+            self.assertEqual(split.algo, sp['algo'])
+            self.assertEqual(get_hash_fn(split.algo), sp['hashfn'])
+
+
+class UWSGICacheAlgoFieldTests(TestCase):
+    def setUp(self):
+        '''
+        '''
+        fn = join(dirname(__file__), 'algoSplits.json')
+        with open(fn, 'r') as flo:
+            rawData = json.load(flo)['splits']
+        self._testData = [{
+            'body': rawData[0],
+            'algo': HashAlgorithm.LEGACY,
+            'hashfn': legacy_hash
+        },
+        {
+            'body': rawData[1],
+            'algo': HashAlgorithm.MURMUR,
+            'hashfn': _murmur_hash
+        },
+        {
+            'body': rawData[2],
+            'algo': HashAlgorithm.LEGACY,
+            'hashfn': legacy_hash
+        },
+        {
+            'body': rawData[3],
+            'algo': HashAlgorithm.LEGACY,
+            'hashfn': legacy_hash
+        },
+        {
+            'body': rawData[4],
+            'algo': HashAlgorithm.LEGACY,
+            'hashfn': legacy_hash
+        }]
+
+    def testAlgoHandlers(self):
+        '''
+        '''
+        uwsgi = get_uwsgi(True)
+        segment_cache = UWSGISegmentCache(uwsgi)
+        split_parser = UWSGISplitParser(segment_cache)
+        for sp in self._testData:
+            split = split_parser.parse(sp['body'], True)
+            self.assertEqual(split.algo, sp['algo'])
+            self.assertEqual(get_hash_fn(split.algo), sp['hashfn'])
