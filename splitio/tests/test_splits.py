@@ -12,7 +12,7 @@ from unittest import TestCase
 import json
 from splitio.splits import (InMemorySplitFetcher, SelfRefreshingSplitFetcher, SplitChangeFetcher,
                             ApiSplitChangeFetcher, SplitParser, AllKeysSplit,
-                            CacheBasedSplitFetcher, HashAlgorithm)
+                            CacheBasedSplitFetcher, HashAlgorithm, ConditionType)
 from splitio.matchers import (AndCombiner, AllKeysMatcher, UserDefinedSegmentMatcher,
                               WhitelistMatcher, AttributeMatcher)
 from splitio.tests.utils import MockUtilsMixin
@@ -505,10 +505,23 @@ class SplitParserInternalParseTests(TestCase, MockUtilsMixin):
         self.parser._parse(self.some_split)
 
         self.assertListEqual(
-            [mock.call(self.parse_matcher_group_mock_side_effect[0],
-                       [self.partition_mock_side_effect[0]], self.label_0),
-             mock.call(self.parse_matcher_group_mock_side_effect[1],
-                       [self.partition_mock_side_effect[1], self.partition_mock_side_effect[2]], self.label_1)],
+            [
+                mock.call(
+                    self.parse_matcher_group_mock_side_effect[0],
+                    [self.partition_mock_side_effect[0]],
+                    self.label_0,
+                    ConditionType.WHITELIST
+                ),
+                mock.call(
+                    self.parse_matcher_group_mock_side_effect[1],
+                    [
+                        self.partition_mock_side_effect[1],
+                        self.partition_mock_side_effect[2]
+                    ],
+                    self.label_1,
+                    ConditionType.WHITELIST
+                )
+            ],
             self.condition_mock.call_args_list
         )
 
