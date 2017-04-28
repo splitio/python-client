@@ -42,8 +42,8 @@ class ConditionType(Enum):
     """
     Split possible condition types
     """
-    WHITELIST = 1
-    ROLLOUT = 2
+    WHITELIST = 'WHITELIST'
+    ROLLOUT = 'ROLLOUT'
 
 
 class Split(object):
@@ -73,7 +73,7 @@ class Split(object):
         self._status = status
         self._change_number = change_number
         self._conditions = conditions if conditions is not None else []
-        self._traffic_allocation = traffic_allocation
+        self._traffic_allocation = traffic_allocation if traffic_allocation else 100
         self._traffic_allocation_seed = traffic_allocation_seed
         try:
             self._algo = HashAlgorithm(algo)
@@ -637,8 +637,8 @@ class SplitParser(object):
             split['status'],
             split['changeNumber'],
             algo=split.get('algo'),
-            traffic_allocation=split.get('traffic_allocation'),
-            traffic_allocation_seed=split.get('traffic_allocation_seed')
+            traffic_allocation=split.get('trafficAllocation'),
+            traffic_allocation_seed=split.get('trafficAllocationSeed')
         )
 
     def _parse_conditions(self, partial_split, split, block_until_ready=False):
@@ -664,12 +664,17 @@ class SplitParser(object):
             if 'label' in condition:
                 label = condition['label']
 
+            try:
+                condition_type = ConditionType(condition.get('conditionType'))
+            except:
+                condition_type = ConditionType.WHITELIST
+
             partial_split.conditions.append(
                 Condition(
                     combining_matcher,
                     parsed_partitions,
                     label,
-                    condition.get('condition_type', ConditionType.WHITELIST)
+                    condition_type
                 )
             )
 

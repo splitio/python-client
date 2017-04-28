@@ -181,12 +181,12 @@ class Client(object):
                 condition.condition_type == ConditionType.ROLLOUT):
                 if split.traffic_allocation < 100:
                     bucket = self.get_splitter().get_bucket(
-                        key,
+                        bucketing_key,
                         split.traffic_allocation_seed,
                         split.algo
                     )
                     if bucket >= split.traffic_allocation:
-                        return split.default_treatment
+                        return split.default_treatment, condition.label
                 roll_out = True
 
             if condition.matcher.match(matching_key, attributes=attributes):

@@ -652,8 +652,8 @@ class RedisSplitParser(SplitParser):
             split['status'], split['changeNumber'],
             segment_cache=self._segment_cache,
             algo=split.get('algo'),
-            traffic_allocation=split.get('traffic_allocation'),
-            traffic_allocation_seed=split.get('traffic_allocation_seed')
+            traffic_allocation=split.get('trafficAllocation'),
+            traffic_allocation_seed=split.get('trafficAllocationSeed')
         )
 
     def _parse_matcher_in_segment(self, partial_split, matcher, block_until_ready=False, *args,
