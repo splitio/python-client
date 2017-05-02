@@ -73,7 +73,12 @@ class Split(object):
         self._status = status
         self._change_number = change_number
         self._conditions = conditions if conditions is not None else []
-        self._traffic_allocation = traffic_allocation if traffic_allocation else 100
+
+        if traffic_allocation >= 0 and traffic_allocation <= 100:
+            self._traffic_allocation = traffic_allocation
+        else:
+            self._traffic_allocation = 100
+
         self._traffic_allocation_seed = traffic_allocation_seed
         try:
             self._algo = HashAlgorithm(algo)
