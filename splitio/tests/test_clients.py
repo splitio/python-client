@@ -7,10 +7,12 @@ except ImportError:
     # Python 2
     import mock
 
+import tempfile
+import arrow
+
 from unittest import TestCase
 from os.path import dirname, join
-
-import arrow
+from time import sleep
 
 from splitio.clients import (Client, SelfRefreshingClient, randomize_interval, JSONFileClient,
                              LocalhostEnvironmentClient)
@@ -1367,3 +1369,33 @@ class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
         self.open_mock.side_effect = IOError()
         with self.assertRaises(ValueError):
             self.client._parse_split_file(self.some_file_name)
+
+
+class LocalhostEnvironmentClientOffTheGrid(TestCase):
+    '''
+    '''
+    def setUp(self):
+        '''
+        '''
+        pass
+
+    def test_auto_update_splits(self):
+        '''
+        '''
+        with tempfile.NamedTemporaryFile() as split_file:
+            split_file.write('a_test_split off\n')
+            split_file.flush()
+
+            client = LocalhostEnvironmentClient(
+                split_definition_file_name=split_file.name
+            )
+
+            self.assertEqual(client.get_treatment('x', 'a_test_split'), 'off')
+
+            split_file.truncate()
+            split_file.write('a_test_split on\n')
+            split_file.flush()
+            sleep(1)
+
+            self.assertEqual(client.get_treatment('x', 'a_test_split'), 'on')
+
