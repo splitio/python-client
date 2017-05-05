@@ -30,13 +30,12 @@ class Splitter(object):
         if len(partitions) == 1 and partitions[0].size == 100:
             return partitions[0].treatment
 
-        hashfn = get_hash_fn(algo)
         return self.get_treatment_for_bucket(
-            self.get_bucket(hashfn(key, seed)),
+            self.get_bucket(key, seed, algo),
             partitions
         )
 
-    def get_bucket(self, key_hash):
+    def get_bucket(self, key, seed, algo):
         """
         Get the bucket for a key hash
         :param key_hash: The hash for a key
@@ -44,6 +43,8 @@ class Splitter(object):
         :return: The bucked for a hash
         :rtype: int
         """
+        hashfn = get_hash_fn(algo)
+        key_hash = hashfn(key, seed)
         return abs(key_hash) % 100 + 1
 
     def get_treatment_for_bucket(self, bucket, partitions):

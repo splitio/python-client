@@ -10,6 +10,7 @@ install_requires = [
     'requests>=2.9.1',
     'future>=0.15.2',
     'docopt>=0.6.2',
+    'watchdog>=0.8.3'
 ]
 
 if version_info < (3,):

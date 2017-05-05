@@ -38,9 +38,18 @@ class HashAlgorithm(Enum):
     MURMUR = 2
 
 
+class ConditionType(Enum):
+    """
+    Split possible condition types
+    """
+    WHITELIST = 'WHITELIST'
+    ROLLOUT = 'ROLLOUT'
+
+
 class Split(object):
     def __init__(self, name, seed, killed, default_treatment, traffic_type_name,
-                 status, change_number, conditions=None, algo=None):
+                 status, change_number, conditions=None, algo=None,
+                 traffic_allocation=None, traffic_allocation_seed=None):
         """
         A class that represents a split. It associates a feature name with a set
         of matchers (responsible of telling which condition to use) and
@@ -64,6 +73,8 @@ class Split(object):
         self._status = status
         self._change_number = change_number
         self._conditions = conditions if conditions is not None else []
+        self._traffic_allocation = traffic_allocation if traffic_allocation else 100
+        self._traffic_allocation_seed = traffic_allocation_seed
         try:
             self._algo = HashAlgorithm(algo)
         except ValueError:
@@ -105,6 +116,14 @@ class Split(object):
     def conditions(self):
         return self._conditions
 
+    @property
+    def traffic_allocation(self):
+        return self._traffic_allocation
+
+    @property
+    def traffic_allocation_seed(self):
+        return self._traffic_allocation_seed
+
     @python_2_unicode_compatible
     def __str__(self):
         return 'name: {name}, seed: {seed}, killed: {killed}, ' \
@@ -133,7 +152,8 @@ class AllKeysSplit(Split):
 
 
 class Condition(object):
-    def __init__(self, matcher, partitions, label):
+    def __init__(self, matcher, partitions, label,
+                 condition_type=ConditionType.WHITELIST):
         """
         A class that represents a split condition. It associates a matcher with
         a set of partitions.
@@ -145,6 +165,7 @@ class Condition(object):
         self._matcher = matcher
         self._partitions = tuple(partitions)
         self._label = label
+        self._confition_type = condition_type
 
     @property
     def matcher(self):
@@ -157,6 +178,10 @@ class Condition(object):
     @property
     def label(self):
         return self._label
+
+    @property
+    def condition_type(self):
+        return self._confition_type
 
     @python_2_unicode_compatible
     def __str__(self):
@@ -603,10 +628,18 @@ class SplitParser(object):
         :return: A partial parsed split
         :rtype: Split
         """
-        return Split(split['name'], split['seed'], split['killed'],
-                     split['defaultTreatment'], split['trafficTypeName'],
-                     split['status'], split['changeNumber'],
-                     algo=split.get('algo'))
+        return Split(
+            split['name'],
+            split['seed'],
+            split['killed'],
+            split['defaultTreatment'],
+            split['trafficTypeName'],
+            split['status'],
+            split['changeNumber'],
+            algo=split.get('algo'),
+            traffic_allocation=split.get('trafficAllocation'),
+            traffic_allocation_seed=split.get('trafficAllocationSeed')
+        )
 
     def _parse_conditions(self, partial_split, split, block_until_ready=False):
         """Parse split conditions
@@ -630,8 +663,19 @@ class SplitParser(object):
             label = None
             if 'label' in condition:
                 label = condition['label']
+
+            try:
+                condition_type = ConditionType(condition.get('conditionType'))
+            except:
+                condition_type = ConditionType.WHITELIST
+
             partial_split.conditions.append(
-                Condition(combining_matcher, parsed_partitions, label)
+                Condition(
+                    combining_matcher,
+                    parsed_partitions,
+                    label,
+                    condition_type
+                )
             )
 
     def _parse_matcher_group(self, partial_split, matcher_group,

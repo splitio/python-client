@@ -3,13 +3,15 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import logging
 import time
+import weakref
 
-from os.path import expanduser, join
+from os.path import expanduser, join, sep, dirname
 from random import randint
 from re import compile
 from threading import Event, Thread
-
 from future.utils import raise_from
+from watchdog.events import PatternMatchingEventHandler
+from watchdog.observers import Observer
 
 from splitio.api import SdkApi
 from splitio.exceptions import TimeoutException
@@ -22,7 +24,7 @@ from splitio.redis_support import (RedisSplitCache, RedisImpressionsCache, Redis
 from splitio.splitters import Splitter
 from splitio.splits import (SelfRefreshingSplitFetcher, SplitParser, ApiSplitChangeFetcher,
                             JSONFileSplitFetcher, InMemorySplitFetcher, AllKeysSplit,
-                            CacheBasedSplitFetcher)
+                            CacheBasedSplitFetcher, ConditionType)
 from splitio.segments import (ApiSegmentChangeFetcher, SelfRefreshingSegmentFetcher,
                               JSONFileSegmentFetcher)
 from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, parse_config_file
@@ -175,7 +177,20 @@ class Client(object):
         if bucketing_key is None:
             bucketing_key = matching_key
 
+        roll_out = False
         for condition in split.conditions:
+            if (not roll_out and
+                condition.condition_type == ConditionType.ROLLOUT):
+                if split.traffic_allocation < 100:
+                    bucket = self.get_splitter().get_bucket(
+                        bucketing_key,
+                        split.traffic_allocation_seed,
+                        split.algo
+                    )
+                    if bucket >= split.traffic_allocation:
+                        return split.default_treatment, condition.label
+                roll_out = True
+
             if condition.matcher.match(matching_key, attributes=attributes):
                 return self.get_splitter().get_treatment(
                     bucketing_key,
@@ -410,6 +425,38 @@ class SelfRefreshingClient(Client):
         return self._metrics
 
 
+class LocalhostEnvironmentClientFileEventHandler(PatternMatchingEventHandler):
+    '''
+    '''
+    def __init__(self, client_instance, *args, **kwargs):
+        '''
+        Store client to trigger re-parsing of file upon modifications detected.
+        A weak refereance is used to break circular dependencies between this
+        class and `LocalhostEnvironmentClient`.
+        All arguments but `client_instance` are forwarded to the parent class
+        `PatternMatchingEventHandler`
+        '''
+        self._client_instance = weakref.ref(client_instance)
+        PatternMatchingEventHandler.__init__(self, *args, **kwargs)
+
+    def on_moved(self, event):
+        pass
+
+    def on_created(self, event):
+        pass
+
+    def on_deleted(self, event):
+        pass
+
+    def on_modified(self, event):
+        '''
+        Rebuild split fetcher
+        '''
+        self._client_instance()._split_fetcher = (
+            self._client_instance()._build_split_fetcher()
+        )
+
+
 class LocalhostEnvironmentClient(Client):
     _COMMENT_LINE_RE = compile('^#.*$')
     _DEFINITION_LINE_RE = compile('^(?<![^#])(?P<feature>[\w_]+)\s+(?P<treatment>[\w_]+)$')
@@ -437,7 +484,18 @@ class LocalhostEnvironmentClient(Client):
             self._split_definition_file_name = join(expanduser('~'), '.split')
         else:
             self._split_definition_file_name = split_definition_file_name
+
         self._split_fetcher = self._build_split_fetcher()
+
+        event_handler = LocalhostEnvironmentClientFileEventHandler(
+            self,
+            [self._split_definition_file_name]
+        )
+        file_path = dirname(self._split_definition_file_name)
+        self._observer = Observer()
+        self._observer.schedule(event_handler, file_path, recursive=False)
+        self._observer.start()
+
         self._treatment_log = TreatmentLog()
         self._metrics = Metrics()
 
