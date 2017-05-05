@@ -56,6 +56,11 @@ class Label(object):
     #Label: split not found
     SPLIT_NOT_FOUND = 'rules not found'
 
+    #Condition: Traffic allocation failed
+    #Treatment: Default Treatment
+    #Label: not in split
+    NOT_IN_SPLIT = 'not in split'
+
     # Condition: There was an exception
     # Treatment: control
     # Label: exception
