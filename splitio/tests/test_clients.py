@@ -1380,7 +1380,7 @@ class LocalhostEnvironmentClientOffTheGrid(TestCase):
         Verifies that the split file is automatically re-parsed as soon as it's
         modified
         '''
-        with tempfile.NamedTemporaryFile() as split_file:
+        with tempfile.NamedTemporaryFile(mode='w') as split_file:
             split_file.write('a_test_split off\n')
             split_file.flush()
 
