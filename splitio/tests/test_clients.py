@@ -1373,14 +1373,12 @@ class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
 
 class LocalhostEnvironmentClientOffTheGrid(TestCase):
     '''
+    Tests for LocalhostEnvironmentClient. Auto update config behaviour
     '''
-    def setUp(self):
-        '''
-        '''
-        pass
-
     def test_auto_update_splits(self):
         '''
+        Verifies that the split file is automatically re-parsed as soon as it's
+        modified
         '''
         with tempfile.NamedTemporaryFile() as split_file:
             split_file.write('a_test_split off\n')
