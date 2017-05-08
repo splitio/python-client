@@ -22,7 +22,7 @@ from splitio.redis_support import (RedisSplitCache, RedisImpressionsCache, Redis
 from splitio.splitters import Splitter
 from splitio.splits import (SelfRefreshingSplitFetcher, SplitParser, ApiSplitChangeFetcher,
                             JSONFileSplitFetcher, InMemorySplitFetcher, AllKeysSplit,
-                            CacheBasedSplitFetcher)
+                            CacheBasedSplitFetcher, ConditionType)
 from splitio.segments import (ApiSegmentChangeFetcher, SelfRefreshingSegmentFetcher,
                               JSONFileSegmentFetcher)
 from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, parse_config_file
@@ -175,7 +175,20 @@ class Client(object):
         if bucketing_key is None:
             bucketing_key = matching_key
 
+        roll_out = False
         for condition in split.conditions:
+            if (not roll_out and
+                    condition.condition_type == ConditionType.ROLLOUT):
+                if split.traffic_allocation < 100:
+                    bucket = self.get_splitter().get_bucket(
+                        bucketing_key,
+                        split.traffic_allocation_seed,
+                        split.algo
+                    )
+                    if bucket >= split.traffic_allocation:
+                        return split.default_treatment, Label.NOT_IN_SPLIT
+                roll_out = True
+
             if condition.matcher.match(matching_key, attributes=attributes):
                 return self.get_splitter().get_treatment(
                     bucketing_key,
