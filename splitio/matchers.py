@@ -5,7 +5,7 @@ from enum import Enum
 from sys import modules
 
 from future.utils import python_2_unicode_compatible
-
+from six import string_types
 from splitio.transformers import AsDateHourMinuteTimestampTransformMixin, \
     AsNumberTransformMixin, AsDateTimestampTransformMixin, TransformMixin
 
@@ -485,7 +485,8 @@ class StartsWithMatcher(object):
         :return: True under the conditiones described above
         :rtype: bool
         """
-        return any(key.startswith(s) for s in self._whitelist)
+        return (isinstance(key, string_types) and
+                any(key.startswith(s) for s in self._whitelist))
 
     @python_2_unicode_compatible
     def __str__(self):
@@ -512,7 +513,8 @@ class EndsWithMatcher(object):
         :return: True under the conditiones described above
         :rtype: bool
         """
-        return any(key.endswith(s) for s in self._whitelist)
+        return (isinstance(key, string_types) and
+                any(key.endswith(s) for s in self._whitelist))
 
     @python_2_unicode_compatible
     def __str__(self):
@@ -539,7 +541,8 @@ class ContainsStringMatcher(object):
         :return: True under the conditiones described above
         :rtype: bool
         """
-        return any(s in key for s in self._whitelist)
+        return (isinstance(key, string_types) and
+                 any(s in key for s in self._whitelist))
 
     @python_2_unicode_compatible
     def __str__(self):
@@ -664,7 +667,7 @@ class PartOfSetMatcher(object):
         """
         try:
             setkey = set(key)
-            return setkey.issubset(set(self._whitelist))
+            return len(setkey) > 0 and setkey.issubset(set(self._whitelist))
         except TypeError:
             return False
 
