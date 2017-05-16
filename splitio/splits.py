@@ -16,7 +16,9 @@ from future.utils import python_2_unicode_compatible
 from splitio.matchers import CombiningMatcher, AndCombiner, AllKeysMatcher, \
     UserDefinedSegmentMatcher, WhitelistMatcher, EqualToMatcher, \
     GreaterThanOrEqualToMatcher, LessThanOrEqualToMatcher, BetweenMatcher, \
-    AttributeMatcher, DataType
+    AttributeMatcher, DataType, StartsWithMatcher, EndsWithMatcher, \
+    ContainsStringMatcher, ContainsAllOfSetMatcher, ContainsAnyOfSetMatcher, \
+    EqualToSetMatcher, PartOfSetMatcher
 
 SplitView = namedtuple(
     'SplitView',
@@ -871,6 +873,139 @@ class SplitParser(object):
 
         delegate = LessThanOrEqualToMatcher.for_data_type(data_type,
                                                           matcher_data['value'])
+        return delegate
+
+    def _parse_matcher_starts_with(self, partial_split, matcher, *args,
+                                   **kwargs):
+        """
+        Parses a STARTS_WITH matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of a
+            STARTS_WITH matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'whitelistMatcherData',
+            matcher
+        )
+        delegate = StartsWithMatcher(matcher_data['whitelist'])
+        return delegate
+
+    def _parse_matcher_ends_with(self, partial_split, matcher, *args,
+                                 **kwargs):
+        """
+        Parses a ENDS_WITH matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of a
+            ENDS_WITH matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'whitelistMatcherData',
+            matcher
+        )
+        delegate = EndsWithMatcher(matcher_data['whitelist'])
+        return delegate
+
+    def _parse_matcher_contains_string(self, partial_split, matcher, *args,
+                                       **kwargs):
+        """
+        Parses a CONTAINS_STRING matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of a
+            CONTAINS_STRING matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'whitelistMatcherData',
+            matcher
+        )
+        delegate = ContainsStringMatcher(matcher_data['whitelist'])
+        return delegate
+
+    def _parse_matcher_contains_all_of_set(self, partial_split, matcher, *args,
+                                           **kwargs):
+        """
+        Parses a CONTAINS_ALL_OF_SET matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of a
+            CONTAINS_ALL_OF_SET matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'whitelistMatcherData',
+            matcher
+        )
+        delegate = ContainsAllOfSetMatcher(matcher_data['whitelist'])
+        return delegate
+
+    def _parse_matcher_contains_any_of_set(self, partial_split, matcher, *args,
+                                           **kwargs):
+        """
+        Parses a CONTAINS_ANY_OF_SET matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of a
+            CONTAINS_ANY_OF_SET matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'whitelistMatcherData',
+            matcher
+        )
+        delegate = ContainsAnyOfSetMatcher(matcher_data['whitelist'])
+        return delegate
+
+    def _parse_matcher_equal_to_set(self, partial_split, matcher, *args,
+                                    **kwargs):
+        """
+        Parses a EQUAL_TO_SET matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of a
+            EQUAL_TO_SET matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'whitelistMatcherData',
+            matcher
+        )
+        delegate = EqualToSetMatcher(matcher_data['whitelist'])
+        return delegate
+
+    def _parse_matcher_part_of_set(self, partial_split, matcher, *args,
+                                   **kwargs):
+        """
+        Parses a PART_OF_SET matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of a
+            PART_OF_SET matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'whitelistMatcherData',
+            matcher
+        )
+        delegate = PartOfSetMatcher(matcher_data['whitelist'])
         return delegate
 
     def _parse_matcher_between(self, partial_split, matcher, *args, **kwargs):
