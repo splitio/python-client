@@ -24,7 +24,7 @@ from splitio.cache import SegmentCache, SplitCache, ImpressionsCache, \
 from splitio.matchers import UserDefinedSegmentMatcher
 from splitio.metrics import BUCKETS
 from splitio.segments import Segment
-from splitio.splits import Split, SplitParser, HashAlgorithm
+from splitio.splits import Split, SplitParser
 from splitio.impressions import Impression
 from splitio.utils import bytes_to_string
 from splitio.prefix_decorator import PrefixDecorator
@@ -196,7 +196,6 @@ class RedisSplitCache(SplitCache):
     def get_split(self, split_name):
 
         to_decode = self._redis.get(self._get_split_key(split_name))
-
         if to_decode is None:
             return None
 
@@ -656,7 +655,9 @@ class RedisSplitParser(SplitParser):
             split['defaultTreatment'], split['trafficTypeName'],
             split['status'], split['changeNumber'],
             segment_cache=self._segment_cache,
-            algo=split.get('algo')
+            algo=split.get('algo'),
+            traffic_allocation=split.get('trafficAllocation'),
+            traffic_allocation_seed=split.get('trafficAllocationSeed')
         )
 
     def _parse_matcher_in_segment(self, partial_split, matcher,
@@ -677,7 +678,8 @@ class RedisSplitParser(SplitParser):
 class RedisSplit(Split):
     def __init__(self, name, seed, killed, default_treatment, traffic_type_name,
                  status, change_number, conditions=None, segment_cache=None,
-                 algo=HashAlgorithm.LEGACY):
+                 algo=None, traffic_allocation=None,
+                 traffic_allocation_seed=None):
         '''
         A split implementation that mantains a reference to the segment cache
         so segments can be easily pickled and unpickled.
@@ -694,9 +696,12 @@ class RedisSplit(Split):
         :param segment_cache: A segment cache
         :type segment_cache: SegmentCache
         '''
-        super(RedisSplit, self).__init__(name, seed, killed, default_treatment,
-                                         traffic_type_name, status,
-                                         change_number, conditions)
+        super(RedisSplit, self).__init__(
+            name, seed, killed, default_treatment, traffic_type_name, status,
+            change_number, conditions, algo, traffic_allocation,
+            traffic_allocation_seed
+        )
+
         self._segment_cache = segment_cache
 
     @property

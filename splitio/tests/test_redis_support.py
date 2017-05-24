@@ -420,6 +420,8 @@ class RedisSplitParserTests(TestCase, MockUtilsMixin):
             self.some_split['name'], self.some_split['seed'], self.some_split['killed'],
             self.some_split['defaultTreatment'],self.some_split['trafficTypeName'],
             self.some_split['status'], self.some_split['changeNumber'], segment_cache=self.some_segment_cache,
+            traffic_allocation=self.some_split.get('trafficAllocation'),
+            traffic_allocation_seed=self.some_split.get('trafficAllocationSeed'),
             algo=self.some_split['algo']
         )
 

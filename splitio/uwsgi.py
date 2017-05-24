@@ -377,7 +377,9 @@ class UWSGISplitParser(SplitParser):
             split['name'], split['seed'], split['killed'],
             split['defaultTreatment'], split['trafficTypeName'],
             split['status'], split['changeNumber'],
-            segment_cache=self._segment_cache, algo=split.get('algo')
+            segment_cache=self._segment_cache, algo=split.get('algo'),
+            traffic_allocation=split.get('trafficAllocation'),
+            traffic_allocation_seed=split.get('trafficAllocationSeed')
         )
 
     def _parse_matcher_in_segment(self, partial_split, matcher, block_until_ready=False, *args,
@@ -389,7 +391,9 @@ class UWSGISplitParser(SplitParser):
         return delegate
 
 class UWSGISplit(Split):
-    def __init__(self, name, seed, killed, default_treatment, traffic_type_name, status, change_number, conditions=None, segment_cache=None, algo=HashAlgorithm.LEGACY):
+    def __init__(self, name, seed, killed, default_treatment, traffic_type_name, status, change_number, conditions=None, segment_cache=None, algo=None,
+                 traffic_allocation=None,
+                 traffic_allocation_seed=None):
         """A split implementation that mantains a reference to the segment cache so segments can
         be easily pickled and unpickled.
         :param name: Name of the feature
@@ -405,7 +409,10 @@ class UWSGISplit(Split):
         :param segment_cache: A segment cache
         :type segment_cache: SegmentCache
         """
-        super(UWSGISplit, self).__init__(name, seed, killed, default_treatment, traffic_type_name, status, change_number, conditions)
+        super(UWSGISplit, self).__init__(
+            name, seed, killed, default_treatment, traffic_type_name, status,
+            change_number, conditions, algo, traffic_allocation,
+            traffic_allocation_seed)
         self._segment_cache = segment_cache
 
     @property
