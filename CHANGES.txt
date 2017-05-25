@@ -1,3 +1,5 @@
+4.1.1 (May 25, 2017)
+ - Python 3 fixed incompatible comparison between None an integer
 4.1.0 (May 16, 2017)
  - Adding support for String and Set Matchers
 4.0.2 (May 8, 2017)
