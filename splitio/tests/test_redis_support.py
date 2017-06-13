@@ -9,6 +9,7 @@ except ImportError:
 from unittest import TestCase
 from collections import defaultdict
 
+from splitio.version import __version__
 from splitio.metrics import BUCKETS
 from splitio.impressions import Impression
 from splitio.tests.utils import MockUtilsMixin
@@ -219,7 +220,7 @@ class RedisMetricsCacheTests(TestCase, MockUtilsMixin):
         """Test that get_latency calls get in last position (22)"""
         self.a_metrics_cache.get_latency(self.some_operation_str)
         self.some_redis.get.assert_called_with(
-            'SPLITIO/python-2.2.1/unknown/latency.some_operation.bucket.{}'
+            'SPLITIO/python-'+__version__+'/unknown/latency.some_operation.bucket.{}'
             .format(22)
         )
 
@@ -240,7 +241,7 @@ class RedisMetricsCacheTests(TestCase, MockUtilsMixin):
         self.a_metrics_cache.get_latency_bucket_counter(self.some_operation_str,
                                                         self.some_bucket_index)
         self.some_redis.get.assert_called_once_with(
-            'SPLITIO/python-2.2.1/unknown/latency.{0}.bucket.{1}'.format(
+            'SPLITIO/python-'+__version__+'/unknown/latency.{0}.bucket.{1}'.format(
             self.some_operation_str, self.some_bucket_index))
 
     def test_get_latency_bucket_counter_returns_get_result(self):
@@ -331,8 +332,8 @@ class RedisMetricsCacheBuildMetricsFromCacheResponseTests(TestCase):
         some_other_count = 'some_other_count'
         some_other_count_value = mock.MagicMock()
         count_metrics = [
-            'SPLITIO/python-2.2.1/unknown/count.some_count', some_count_value,
-            'SPLITIO/python-2.2.1/unknown/count.some_other_count',
+            'SPLITIO/python-'+__version__+'/unknown/count.some_count', some_count_value,
+            'SPLITIO/python-'+__version__+'/unknown/count.some_other_count',
             some_other_count_value
         ]
         result_count_metrics = [{'name': some_count, 'delta': some_count_value},
@@ -370,8 +371,8 @@ class RedisMetricsCacheBuildMetricsFromCacheResponseTests(TestCase):
         some_other_gauge = 'some_other_gauge'
         some_other_gauge_value = mock.MagicMock()
         gauge_metrics = [
-            'SPLITIO/python-2.2.1/unknown/gauge.some_gauge', some_gauge_value,
-            'SPLITIO/python-2.2.1/unknown/gauge.some_other_gauge',
+            'SPLITIO/python-'+__version__+'/unknown/gauge.some_gauge', some_gauge_value,
+            'SPLITIO/python-'+__version__+'/unknown/gauge.some_other_gauge',
             some_other_gauge_value
         ]
         result_gauge_metrics = [{'name': some_gauge, 'value': some_gauge_value},
