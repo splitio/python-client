@@ -13,7 +13,7 @@ from os.path import dirname, join
 
 import arrow
 
-from splitio.clients import StandardClient
+from splitio.clients import Client
 from splitio.brokers import JSONFileBroker, LocalhostBroker, RedisBroker, \
     UWSGIBroker, randomize_interval, SelfRefreshingBroker
 from splitio.exceptions import TimeoutException
@@ -658,7 +658,7 @@ class JSONFileBrokerIntegrationTests(TestCase):
     def setUpClass(cls):
         cls.segment_changes_file_name = join(dirname(__file__), 'segmentChanges.json')
         cls.split_changes_file_name = join(dirname(__file__), 'splitChanges.json')
-        cls.client = StandardClient(JSONFileBroker(cls.segment_changes_file_name, cls.split_changes_file_name))
+        cls.client = Client(JSONFileBroker(cls.segment_changes_file_name, cls.split_changes_file_name))
         cls.on_treatment = 'on'
         cls.off_treatment = 'off'
         cls.some_key = 'some_key'

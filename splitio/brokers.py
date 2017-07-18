@@ -1,4 +1,4 @@
-"""A module for Split.io SDK API clients"""
+"""A module for Split.io SDK Brokers"""
 from __future__ import absolute_import, division, print_function, \
     unicode_literals
 
@@ -54,9 +54,9 @@ class BaseBroker(object):
 
     def fetch_feature(self, name):
         """
-        Get the split fetcher implementation for the client.
-        :return: The split fetcher
-        :rtype: SplitFetcher
+        Fetch a feature
+        :return: The split associated with that feature
+        :rtype: Split
         """
         return self._split_fetcher.fetch(name)
 
@@ -79,7 +79,14 @@ class BaseBroker(object):
         :rtype: Metrics
         """
         return self._metrics.time(operation, time)
-    pass
+
+    def get_split_fetcher(self):
+        """
+        Get the split fetcher implementation for the client.
+        :return: The split fetcher
+        :rtype: SplitFetcher
+        """
+        return self._split_fetcher
 
 
 class JSONFileBroker(BaseBroker):

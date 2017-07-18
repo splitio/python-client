@@ -21,7 +21,7 @@ from splitio.hashfns import _murmur_hash, get_hash_fn
 from splitio.hashfns.legacy import legacy_hash
 from splitio.redis_support import get_redis, RedisSegmentCache, RedisSplitParser
 from splitio.uwsgi import get_uwsgi, UWSGISegmentCache, UWSGISplitParser
-from splitio.clients import StandardClient
+from splitio.clients import Client
 from splitio.brokers import RedisBroker
 
 
@@ -1020,7 +1020,7 @@ class TrafficAllocationTests(TestCase):
         redis = get_redis({})
         segment_cache = RedisSegmentCache(redis)
         split_parser = RedisSplitParser(segment_cache)
-        self._client = StandardClient(RedisBroker(redis))
+        self._client = Client(RedisBroker(redis))
 
         self._splitObjects = {}
 

@@ -1,7 +1,7 @@
 """A module for Split.io Factories"""
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from splitio.clients import StandardClient
+from splitio.clients import Client
 from splitio.brokers import get_local_broker, get_redis_broker, get_uwsgi_broker
 from splitio.managers import RedisSplitManager, SelfRefreshingSplitManager, \
     LocalhostSplitManager, UWSGISplitManager
@@ -41,22 +41,22 @@ class MainSplitFactory(SplitFactory):
         if 'config' in kwargs:
             config = kwargs['config']
 
-        labels_enabled = config.get('labelsEnabled', False)
+        labels_enabled = config.get('labelsEnabled', True)
         if 'redisHost' in config:
             broker = get_redis_broker(api_key, **kwargs)
-            self._client = StandardClient(broker, labels_enabled)
+            self._client = Client(broker, labels_enabled)
             redis = get_redis(config)
             self._manager = RedisSplitManager(redis)
         else:
             if 'uwsgiClient' in config and config['uwsgiClient']:
                 broker = get_uwsgi_broker(api_key, **kwargs)
-                self._client = StandardClient(broker, labels_enabled)
+                self._client = Client(broker, labels_enabled)
                 self._manager = UWSGISplitManager(get_uwsgi())
             else:
                 broker = get_local_broker(api_key, **kwargs)
-                self._client = StandardClient(broker, labels_enabled)
+                self._client = Client(broker, labels_enabled)
                 self._manager = SelfRefreshingSplitManager(
-                    self._client.get_split_fetcher()
+                    broker.get_split_fetcher()
                 )
 
 
@@ -85,7 +85,7 @@ class LocalhostSplitFactory(SplitFactory):
         else:
             broker = get_local_broker('localhost')
 
-        self._client = StandardClient(broker)
+        self._client = Client(broker)
         self._manager = LocalhostSplitManager(self._client.get_split_fetcher())
 
     def client(self):  # pragma: no cover
