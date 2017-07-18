@@ -15,7 +15,7 @@ DataType = Enum('DataType', 'DATETIME NUMBER')
 
 class AndCombiner(object):
     """Combines the calls to all delegates match() method with a conjunction"""
-    def combine(self, matchers, key, attributes):
+    def combine(self, matchers, key, attributes, client=None):
         """
         Combines the calls to the delegates match() methods to produce a single
         boolean response
@@ -31,7 +31,9 @@ class AndCombiner(object):
         if not matchers:
             return False
 
-        return all(matcher.match(key, attributes) for matcher in matchers)
+        return all(
+            matcher.match(key, attributes,client) for matcher in matchers
+        )
 
     @python_2_unicode_compatible
     def __str__(self):
@@ -52,7 +54,7 @@ class CombiningMatcher(object):
         self._combiner = combiner
         self._delegates = tuple(delegates)
 
-    def match(self, key, attributes=None):
+    def match(self, key, attributes=None, client=None):
         """
         Tests whether there is a match for the given key and attributes
         :param key: Key to match
@@ -62,7 +64,7 @@ class CombiningMatcher(object):
         :return: Whether there is a match for the given key and attributes
         :rtype: bool
         """
-        return self._combiner.combine(self._delegates, key, attributes)
+        return self._combiner.combine(self._delegates, key, attributes, client)
 
     @python_2_unicode_compatible
     def __str__(self):
@@ -102,7 +104,7 @@ class NegatableMatcher(object):
         self._negate = negate
         self._delegate = delegate
 
-    def match(self, key):
+    def match(self, key, attributes=None, client=None):
         """
         Check of a match for the given key
         :param key: The key to match
@@ -110,7 +112,10 @@ class NegatableMatcher(object):
         :return: True if there is a match, False otherwise
         :rtype: bool
         """
-        result = self._delegate.match(key)
+        if isinstance(self._delegate, DependencyMatcher):
+            result = self._delegate.match(key, attributes, client)
+        else:
+            result = self._delegate.match(key)
         return result if not self._negate else not result
 
     @property
@@ -144,7 +149,7 @@ class AttributeMatcher(object):
         self._attribute = attribute
         self._matcher = NegatableMatcher(negate, matcher)
 
-    def match(self, key, attributes=None):
+    def match(self, key, attributes=None, client=None):
         """
         Matches against the value of an attribute associated with the provided
         key
@@ -157,8 +162,11 @@ class AttributeMatcher(object):
                  the key. If negate is True, it returns the opposite.
         :rtype: bool
         """
+        if isinstance(self._matcher.delegate, DependencyMatcher):
+            return self._matcher.match(key, attributes, client)
+
         if self._attribute is None:
-            return self._matcher.match(key)
+            return self._matcher.match(key.matching_key)
 
         if attributes is None or \
                 self._attribute not in attributes or \
@@ -676,3 +684,22 @@ class PartOfSetMatcher(object):
         return 'is a subset of the following set: [{whitelist}]'.format(
             whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
         )
+
+
+class DependencyMatcher(object):
+    '''
+    '''
+    def __init__(self, dependency_matcher_data):
+        '''
+        '''
+        self._data = dependency_matcher_data
+
+    def match(self, key, attributes, client):
+        '''
+        '''
+        treatment = client.get_treatment(
+            key,
+            self._data.get('split'),
+            attributes
+        )
+        return treatment in self._data.get('treatments', [])
