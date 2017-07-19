@@ -1,3 +1,5 @@
+5.1.0 (Jul 19, 2017)
+ - Adding dependency matcher and refactoring clients into brokers
 5.0.0 (Jun 13, 2017)
  - BREAKING BACKWARD COMPATIBILITY
  - Adding support for Split Synchronizer service
