@@ -15,7 +15,7 @@ DataType = Enum('DataType', 'DATETIME NUMBER')
 
 class AndCombiner(object):
     """Combines the calls to all delegates match() method with a conjunction"""
-    def combine(self, matchers, key, attributes):
+    def combine(self, matchers, key, attributes, client=None):
         """
         Combines the calls to the delegates match() methods to produce a single
         boolean response
@@ -31,7 +31,9 @@ class AndCombiner(object):
         if not matchers:
             return False
 
-        return all(matcher.match(key, attributes) for matcher in matchers)
+        return all(
+            matcher.match(key, attributes,client) for matcher in matchers
+        )
 
     @python_2_unicode_compatible
     def __str__(self):
@@ -52,7 +54,7 @@ class CombiningMatcher(object):
         self._combiner = combiner
         self._delegates = tuple(delegates)
 
-    def match(self, key, attributes=None):
+    def match(self, key, attributes=None, client=None):
         """
         Tests whether there is a match for the given key and attributes
         :param key: Key to match
@@ -62,7 +64,7 @@ class CombiningMatcher(object):
         :return: Whether there is a match for the given key and attributes
         :rtype: bool
         """
-        return self._combiner.combine(self._delegates, key, attributes)
+        return self._combiner.combine(self._delegates, key, attributes, client)
 
     @python_2_unicode_compatible
     def __str__(self):
@@ -74,7 +76,7 @@ class CombiningMatcher(object):
 
 class AllKeysMatcher(object):
     """A matcher that always returns True"""
-    def match(self, key):
+    def match(self, key, attributes=None, client=None):
         """
         Returns True except when the key is None
         :param key: The key to match
@@ -102,7 +104,7 @@ class NegatableMatcher(object):
         self._negate = negate
         self._delegate = delegate
 
-    def match(self, key):
+    def match(self, key, attributes=None, client=None):
         """
         Check of a match for the given key
         :param key: The key to match
@@ -110,7 +112,7 @@ class NegatableMatcher(object):
         :return: True if there is a match, False otherwise
         :rtype: bool
         """
-        result = self._delegate.match(key)
+        result = self._delegate.match(key, attributes, client)
         return result if not self._negate else not result
 
     @property
@@ -144,7 +146,7 @@ class AttributeMatcher(object):
         self._attribute = attribute
         self._matcher = NegatableMatcher(negate, matcher)
 
-    def match(self, key, attributes=None):
+    def match(self, key, attributes=None, client=None):
         """
         Matches against the value of an attribute associated with the provided
         key
@@ -158,7 +160,7 @@ class AttributeMatcher(object):
         :rtype: bool
         """
         if self._attribute is None:
-            return self._matcher.match(key)
+            return self._matcher.match(key, attributes, client)
 
         if attributes is None or \
                 self._attribute not in attributes or \
@@ -214,6 +216,16 @@ class ForDataTypeMixin(object):
         return cls.get_class(cls.MATCHER_FOR_DATA_TYPE[data_type])(*args, **kwargs)
 
 
+def get_matching_key(key):
+    '''
+    '''
+    from splitio.clients import Key
+    if isinstance(key, Key):
+        return key.matching_key
+    else:
+        return key
+
+
 class BetweenMatcher(TransformMixin, ForDataTypeMixin):
     MATCHER_FOR_DATA_TYPE = {
         DataType.DATETIME: 'DateTimeBetweenMatcher',
@@ -245,7 +257,7 @@ class BetweenMatcher(TransformMixin, ForDataTypeMixin):
     def end(self):
         return self._end
 
-    def match(self, key):
+    def match(self, key, attributes=None, client=None):
         """
         Returns True if the key (after being transformed by the transform_key()
         method) is between start and end
@@ -254,6 +266,7 @@ class BetweenMatcher(TransformMixin, ForDataTypeMixin):
         :return: Whether the transformed key is between start and end
         :rtype: bool
         """
+        key = get_matching_key(key)
         transformed_key = self.transform_key(key)
 
         if transformed_key is None:
@@ -314,7 +327,7 @@ class CompareMatcher(TransformMixin, CompareMixin):
         self._original_compare_to = compare_to
         self._compare_to = self.transform_condition_parameter(compare_to)
 
-    def match(self, key):
+    def match(self, key, attributes=None, client=None):
         """
         Compares the supplied key with the matcher's value using the compare()
         method
@@ -323,6 +336,7 @@ class CompareMatcher(TransformMixin, CompareMixin):
         :return: The resulf of calling compare() with the key and the value
         :rtype: bool
         """
+        key = get_matching_key(key)
         transformed_key = self.transform_key(key)
 
         if transformed_key is None:
@@ -424,7 +438,7 @@ class UserDefinedSegmentMatcher(object):
     def segment(self):
         return self._segment
 
-    def match(self, key):
+    def match(self, key, attributes=None, client=None):
         """
         Checks if key is contained within the segment by calling contains()
         :param key: The key to match
@@ -432,6 +446,7 @@ class UserDefinedSegmentMatcher(object):
         :return: The result of calling contains() on the segment
         :rtype: bool
         """
+        key = get_matching_key(key)
         return self._segment.contains(key)
 
     @python_2_unicode_compatible
@@ -450,7 +465,7 @@ class WhitelistMatcher(object):
         """
         self._whitelist = frozenset(whitelist)
 
-    def match(self, key):
+    def match(self, key, attributes=None, client=None):
         """
         Checks if a key is in the whitelist
         :param key: The key to match
@@ -458,6 +473,7 @@ class WhitelistMatcher(object):
         :return: True if the key is in the whitelist, False otherwise
         :rtype: bool
         """
+        key = get_matching_key(key)
         return key in self._whitelist
 
     @python_2_unicode_compatible
@@ -477,7 +493,7 @@ class StartsWithMatcher(object):
         """
         self._whitelist = frozenset(whitelist)
 
-    def match(self, key):
+    def match(self, key, attributes=None, client=None):
         """
         Checks if any of the strings in whitelist is a prefix of key
         :param key: The key to match
@@ -485,6 +501,7 @@ class StartsWithMatcher(object):
         :return: True under the conditiones described above
         :rtype: bool
         """
+        key = get_matching_key(key)
         return (isinstance(key, string_types) and
                 any(key.startswith(s) for s in self._whitelist))
 
@@ -505,7 +522,7 @@ class EndsWithMatcher(object):
         """
         self._whitelist = frozenset(whitelist)
 
-    def match(self, key):
+    def match(self, key, attributes=None, client=None):
         """
         Checks if any of the strings in whitelist is a suffix of key
         :param key: The key to match
@@ -513,6 +530,7 @@ class EndsWithMatcher(object):
         :return: True under the conditiones described above
         :rtype: bool
         """
+        key = get_matching_key(key)
         return (isinstance(key, string_types) and
                 any(key.endswith(s) for s in self._whitelist))
 
@@ -533,7 +551,7 @@ class ContainsStringMatcher(object):
         """
         self._whitelist = frozenset(whitelist)
 
-    def match(self, key):
+    def match(self, key, attributes=None, client=None):
         """
         Checks if any of the strings in whitelist is a suffix of key
         :param key: The key to match
@@ -541,6 +559,7 @@ class ContainsStringMatcher(object):
         :return: True under the conditiones described above
         :rtype: bool
         """
+        key = get_matching_key(key)
         return (isinstance(key, string_types) and
                  any(s in key for s in self._whitelist))
 
@@ -561,7 +580,7 @@ class ContainsAllOfSetMatcher(object):
         """
         self._whitelist = frozenset(whitelist)
 
-    def match(self, key):
+    def match(self, key, attributes=None, client=None):
         """
         Checks if all the strings in whitelist are in the key when treated as
         a set
@@ -570,6 +589,7 @@ class ContainsAllOfSetMatcher(object):
         :return: True under the conditiones described above
         :rtype: bool
         """
+        key = get_matching_key(key)
         try:
             setkey = set(key)
             return set(self._whitelist).issubset(setkey)
@@ -593,7 +613,7 @@ class ContainsAnyOfSetMatcher(object):
         """
         self._whitelist = frozenset(whitelist)
 
-    def match(self, key):
+    def match(self, key, attributes=None, client=None):
         """
         Checks if any of the strings in whitelist are in the key when treated as
         a set
@@ -602,6 +622,7 @@ class ContainsAnyOfSetMatcher(object):
         :return: True under the conditiones described above
         :rtype: bool
         """
+        key = get_matching_key(key)
         try:
             setkey = set(key)
             return set(self._whitelist).intersection(setkey)
@@ -625,7 +646,7 @@ class EqualToSetMatcher(object):
         """
         self._whitelist = frozenset(whitelist)
 
-    def match(self, key):
+    def match(self, key, attributes=None, client=None):
         """
         checks if the key, treated as a set, is equal to the set formed by the
         elements in whitelist
@@ -634,6 +655,7 @@ class EqualToSetMatcher(object):
         :return: True under the conditiones described above
         :rtype: bool
         """
+        key = get_matching_key(key)
         try:
             setkey = set(key)
             return set(self._whitelist) == setkey
@@ -657,7 +679,7 @@ class PartOfSetMatcher(object):
         """
         self._whitelist = frozenset(whitelist)
 
-    def match(self, key):
+    def match(self, key, attributes=None, client=None):
         """
         Checks if the whitelist set contains the 'key' set
         :param key: The key to match
@@ -665,6 +687,7 @@ class PartOfSetMatcher(object):
         :return: True under the conditiones described above
         :rtype: bool
         """
+        key = get_matching_key(key)
         try:
             setkey = set(key)
             return len(setkey) > 0 and setkey.issubset(set(self._whitelist))
@@ -676,3 +699,22 @@ class PartOfSetMatcher(object):
         return 'is a subset of the following set: [{whitelist}]'.format(
             whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
         )
+
+
+class DependencyMatcher(object):
+    '''
+    '''
+    def __init__(self, dependency_matcher_data):
+        '''
+        '''
+        self._data = dependency_matcher_data
+
+    def match(self, key, attributes=None, client=None):
+        '''
+        '''
+        treatment = client.get_treatment(
+            key,
+            self._data.get('split'),
+            attributes
+        )
+        return treatment in self._data.get('treatments', [])

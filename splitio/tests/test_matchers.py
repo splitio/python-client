@@ -36,6 +36,7 @@ class AndCombinerTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.some_key = mock.MagicMock()
         self.some_attributes = mock.MagicMock()
+        self.some_client = mock.MagicMock()
         self.combiner = AndCombiner()
 
     def test_combine_returns_false_on_none_matchers(self):
@@ -64,11 +65,11 @@ class AndCombinerTests(TestCase, MockUtilsMixin):
         for matcher in matchers:
             matcher.match.return_value = True
 
-        self.combiner.combine(matchers, self.some_key, self.some_attributes)
+        self.combiner.combine(matchers, self.some_key, self.some_attributes, self.some_client)
 
         for matcher in matchers:
             matcher.match.assert_called_once_with(
-                self.some_key, self.some_attributes
+                self.some_key, self.some_attributes, self.some_client
             )
 
     def test_combine_short_circuits_check(self):
@@ -82,13 +83,13 @@ class AndCombinerTests(TestCase, MockUtilsMixin):
         matchers[0].match.return_value = True
         matchers[1].match.return_value = False
 
-        self.combiner.combine(matchers, self.some_key, self.some_attributes)
+        self.combiner.combine(matchers, self.some_key, self.some_attributes, self.some_client)
 
         matchers[0].match.assert_called_once_with(
-            self.some_key, self.some_attributes
+            self.some_key, self.some_attributes, self.some_client
         )
         matchers[1].match.assert_called_once_with(
-            self.some_key, self.some_attributes
+            self.some_key, self.some_attributes, self.some_client
         )
         matchers[2].match.assert_not_called()
 
@@ -161,6 +162,8 @@ class NegatableMatcherTests(TestCase):
     def setUp(self):
         self.some_key = mock.MagicMock()
         self.some_delegate = mock.MagicMock()
+        self.some_client = mock.MagicMock()
+        self.some_attributes = mock.MagicMock()
 
     def test_match_calls_delegate_match(self):
         '''
@@ -168,9 +171,9 @@ class NegatableMatcherTests(TestCase):
         '''
         matcher = NegatableMatcher(True, self.some_delegate)
 
-        matcher.match(self.some_key)
+        matcher.match(self.some_key, self.some_attributes, self.some_client)
 
-        self.some_delegate.match.assert_called_once_with(self.some_key)
+        self.some_delegate.match.assert_called_once_with(self.some_key, self.some_attributes, self.some_client)
 
     def test_if_negate_true_match_negates_result_of_delegate_match(self):
         '''
@@ -206,7 +209,7 @@ class AttributeMatcherTests(TestCase, MockUtilsMixin):
         )
         self.some_attribute = mock.MagicMock()
         self.some_key = mock.MagicMock()
-
+        self.some_client = mock.MagicMock()
         self.some_attribute_value = mock.MagicMock()
         self.some_attributes = mock.MagicMock()
         self.some_attributes.__contains__.return_value = True
@@ -225,9 +228,9 @@ class AttributeMatcherTests(TestCase, MockUtilsMixin):
         supplied key if attribute is None
         '''
         matcher = AttributeMatcher(None, self.some_matcher, self.some_negate)
-        matcher.match(self.some_key, self.some_attributes)
+        matcher.match(self.some_key, self.some_attributes, self.some_client)
 
-        self.negatable_matcher_mock.match.assert_called_once_with(self.some_key)
+        self.negatable_matcher_mock.match.assert_called_once_with(self.some_key, self.some_attributes, self.some_client)
 
     def test_match_returns_false_attributes_is_none(self):
         '''
