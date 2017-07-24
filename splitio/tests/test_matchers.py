@@ -1069,7 +1069,7 @@ class RegexMatcherTests(TestCase, MockUtilsMixin):
         self._split_parser = SplitParser(object())
         matcher = {
             'matcherType': 'MATCHES_STRING',
-            'regexMatcherData': '[a-z]'
+            'stringMatcherData': '[a-z]'
         }
         split = {'conditions': [{'matcher': matcher}]}
         self._matcher = (self._split_parser._parse_matcher(split, matcher)
