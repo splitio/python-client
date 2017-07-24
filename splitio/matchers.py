@@ -165,7 +165,7 @@ class AttributeMatcher(object):
             return self._matcher.match(key, attributes, client)
 
         if attributes is None or \
-                self._attribute not in attributes or \
+            self._attribute not in attributes or \
                 attributes[self._attribute] is None:
             return False
 
@@ -733,6 +733,7 @@ class BooleanMatcher(object):
     def match(self, key, attributes=None, client=None):
         '''
         '''
+        key = get_matching_key(key)
         if isinstance(key, bool):
             decoded = key
         elif isinstance(key, string_types):
@@ -759,6 +760,7 @@ class RegexMatcher(object):
     def match(self, key, attributes=None, client=None):
         '''
         '''
+        key = get_matching_key(key)
         try:
             regex = re.compile(self._data)
         except re.error:

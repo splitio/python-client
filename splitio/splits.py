@@ -1078,7 +1078,7 @@ class SplitParser(object):
         :rtype: BetweenMatcher
         """
         matcher_data = self._get_matcher_attribute(
-            'regexMatcherData', matcher
+            'stringMatcherData', matcher
         )
 
         delegate = RegexMatcher(matcher_data)
