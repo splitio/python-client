@@ -1055,11 +1055,8 @@ class DependencyMatcherTests(TestCase, MockUtilsMixin):
         '''
         self.assertIsInstance(self._matcher, DependencyMatcher)
 
-    def test_(self):
-        '''
-        TODO
-        '''
-        evaluation = self._matcher.match('abc', None, self._mock)
+    def test_matcher_client_is_created_and_get_treatment_called(self):
+        self._matcher.match('abc', None, self._mock)
         self._mock.get_treatment.assert_called_once_with('abc', 'someSplit', None)
         self.assertTrue(True)
 

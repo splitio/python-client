@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division, print_function, \
     unicode_literals
 
+import abc
 import logging
 from os.path import expanduser, join
 from random import randint
@@ -44,12 +45,18 @@ def randomize_interval(value):
 
 
 class BaseBroker(object):
-    '''
-    '''
+    """
+    Abstract class defining the interface that concrete brokers must implement,
+    and including methods that use that interface to retrieve splits, log
+    impressions and submit metrics.
+    """
+
+    __metaclass__ = abc.ABCMeta
 
     def __init__(self):
-        '''
-        '''
+        """
+        Class constructor, only sets up the logger
+        """
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def fetch_feature(self, name):
@@ -61,13 +68,14 @@ class BaseBroker(object):
         return self._split_fetcher.fetch(name)
 
     def get_change_number(self):
-        '''
-        '''
+        """
+        Returns the latest change number
+        """
         return self._split_fetcher.change_number
 
     def log_impression(self, impression):
         """
-        Get the treatment log implementation.
+        Logs an impression after a get_treatment call
         :return: The treatment log implementation.
         :rtype: TreatmentLog
         """
@@ -80,19 +88,23 @@ class BaseBroker(object):
         """
         return self._metrics.time(operation, time)
 
+    @abc.abstractmethod
     def get_split_fetcher(self):
-        """
-        Get the split fetcher implementation for the client.
-        :return: The split fetcher
-        :rtype: SplitFetcher
-        """
-        return self._split_fetcher
+        pass
+
+    @abc.abstractmethod
+    def get_metrics_handler(self):
+        pass
+
+    @abc.abstractmethod
+    def get_impression_log(self):
+        pass
 
 
 class JSONFileBroker(BaseBroker):
     def __init__(self, segment_changes_file_name, split_changes_file_name):
         """
-        A Client implementation that uses responses from the segmentChanges and splitChanges
+        A Broker implementation that uses responses from the segmentChanges and splitChanges
         resources to provide access to splits. It is intended to be used on integration
         tests only.
 
@@ -120,12 +132,30 @@ class JSONFileBroker(BaseBroker):
 
         return split_fetcher
 
+    def get_split_fetcher(self):
+        """
+        Get the split fetcher implementation for the broker.
+        :return: The split fetcher
+        :rtype: SplitFetcher
+        """
+        return self._split_fetcher
+
+    def get_metrics_handler(self):
+        """
+        """
+        return self._metrics
+
+    def get_impression_log(self):
+        """
+        """
+        return self._treatment_log
+
 
 class SelfRefreshingBroker(BaseBroker):
     def __init__(self, api_key, config=None, sdk_api_base_url=None, events_api_base_url=None):
         """
-        A Client implementation that refreshes itself at regular intervals. The config parameter
-        is a dictionary that allows you to control the behaviour of the client. The following
+        A Broker implementation that refreshes itself at regular intervals. The config parameter
+        is a dictionary that allows you to control the behaviour of the broker. The following
         configuration values are supported:
 
         * connectionTimeout: The TCP connection timeout (Default: 1500ms)
@@ -135,7 +165,7 @@ class SelfRefreshingBroker(BaseBroker):
         * metricsRefreshRate: The refresh rate for metrics (Default: 60s)
         * impressionsRefreshRate: The refresh rate for impressions (Default: 60s)
         * randomizeIntervals: Whether to randomize the refres intervals (Default: False)
-        * ready: How long to wait (in seconds) for the client to be initialized. 0 to return
+        * ready: How long to wait (in seconds) for the broker to be initialized. 0 to return
           immediately without waiting. (Default: 0s)
 
         :param api_key: The API key provided by Split.io
@@ -237,7 +267,7 @@ class SelfRefreshingBroker(BaseBroker):
 
             flag_set = event.wait(self._ready / 1000)
             if not flag_set:
-                self._logger.info('Timeout reached. Returning client in partial state.')
+                self._logger.info('Timeout reached. Returning broker in partial state.')
                 raise TimeoutException()
         else:
             self._split_fetcher.start()
@@ -248,6 +278,24 @@ class SelfRefreshingBroker(BaseBroker):
         self._split_fetcher.start(delayed_update=True)
         event.set()
 
+    def get_split_fetcher(self):
+        """
+        Get the split fetcher implementation for the broker.
+        :return: The split fetcher
+        :rtype: SplitFetcher
+        """
+        return self._split_fetcher
+
+    def get_metrics_handler(self):
+        """
+        """
+        return self._metrics
+
+    def get_impression_log(self):
+        """
+        """
+        return self._treatment_log
+
 
 class LocalhostBroker(BaseBroker):
     _COMMENT_LINE_RE = compile('^#.*$')
@@ -255,7 +303,7 @@ class LocalhostBroker(BaseBroker):
 
     def __init__(self, split_definition_file_name=None):
         """
-        A client implementation that builds its configuration from a split definition file. By
+        A broker implementation that builds its configuration from a split definition file. By
         default the definition is taken from $HOME/.split but the file name can be supplied as
         argument as well.
 
@@ -279,14 +327,6 @@ class LocalhostBroker(BaseBroker):
         self._split_fetcher = self._build_split_fetcher()
         self._treatment_log = TreatmentLog()
         self._metrics = Metrics()
-
-    def get_split_fetcher(self):
-        """
-        Get the split fetcher implementation for the client.
-        :return: The split fetcher
-        :rtype: SplitFetcher
-        """
-        return self._split_fetcher
 
     def _build_split_fetcher(self):
         """
@@ -325,25 +365,29 @@ class LocalhostBroker(BaseBroker):
             raise_from(ValueError('There was a problem with '
                                   'the splits definition file "{}"'.format(file_name)), e)
 
-    def get_treatment_log(self):
-        """Get the treatment log implementation.
-        :return: The treatment log implementation.
-        :rtype: TreatmentLog
+    def get_split_fetcher(self):
         """
-        return self._treatment_log
+        Get the split fetcher implementation for the broker.
+        :return: The split fetcher
+        :rtype: SplitFetcher
+        """
+        return self._split_fetcher
 
-    def get_metrics(self):
-        """Get the metrics implementation.
-        :return: The metrics implementation.
-        :rtype: Metrics
+    def get_metrics_handler(self):
+        """
         """
         return self._metrics
+
+    def get_impression_log(self):
+        """
+        """
+        return self._treatment_log
 
 
 class RedisBroker(BaseBroker):
     def __init__(self, redis):
-        """A Client implementation that uses Redis as its backend.
-        :param redis: A redis client
+        """A Broker implementation that uses Redis as its backend.
+        :param redis: A redis broker
         :type redis: StrctRedis"""
         super(RedisBroker, self).__init__()
 
@@ -364,54 +408,36 @@ class RedisBroker(BaseBroker):
 
     def get_split_fetcher(self):
         """
-        Get the split fetcher implementation for the client.
+        Get the split fetcher implementation for the broker.
         :return: The split fetcher
         :rtype: SplitFetcher
         """
         return self._split_fetcher
 
-    def get_treatment_log(self):
+    def get_metrics_handler(self):
         """
-        Get the treatment log implementation for the client.
-        :return: The treatment log
-        :rtype: TreatmentLog
+        """
+        return self._metrics
+
+    def get_impression_log(self):
+        """
         """
         return self._treatment_log
 
     def get_metrics(self):
         """
-        Get the metrics implementation for the client.
+        Get the metrics implementation for the broker.
         :return: The metrics
         :rtype: Metrics
         """
         return self._metrics
 
-    def fetch_feature(self, feature_name):
-        '''
-        '''
-        return self._split_fetcher.fetch(feature_name)
-
-    def get_changenumber(self):
-        '''
-        '''
-        return self._split_fetcher.change_number
-
-    def log_impression(self, impression):
-        '''
-        '''
-        return self._treatment_log.log(impression)
-
-    def log_operation_time(self, operation, time):
-        '''
-        '''
-        return self._metrics.time(operation, time)
-
 
 class UWSGIBroker(BaseBroker):
     def __init__(self, uwsgi, config=None):
         """
-        A Client implementation that consumes data from uwsgi cache framework. The config parameter
-        is a dictionary that allows you to control the behaviour of the client.
+        A Broker implementation that consumes data from uwsgi cache framework. The config parameter
+        is a dictionary that allows you to control the behaviour of the broker.
 
         :param config: The configuration dictionary
         :type config: dict
@@ -435,47 +461,21 @@ class UWSGIBroker(BaseBroker):
 
     def get_split_fetcher(self):
         """
-        Get the split fetcher implementation for the client.
+        Get the split fetcher implementation for the broker.
         :return: The split fetcher
         :rtype: SplitFetcher
         """
         return self._split_fetcher
 
-    def get_treatment_log(self):
+    def get_metrics_handler(self):
         """
-        Get the treatment log implementation for the client.
-        :return: The treatment log
-        :rtype: TreatmentLog
-        """
-        return self._treatment_log
-
-    def get_metrics(self):
-        """
-        Get the metrics implementation for the client.
-        :return: The metrics
-        :rtype: Metrics
         """
         return self._metrics
 
-    def fetch_feature(self, feature_name):
-        '''
-        '''
-        return self._split_fetcher.fetch(feature_name)
-
-    def get_changenumber(self):
-        '''
-        '''
-        return self._split_fetcher.change_number
-
-    def log_impression(self, impression):
-        '''
-        '''
-        return self._treatment_log.log(impression)
-
-    def log_operation_time(self, operation, time):
-        '''
-        '''
-        return self._metrics.time(operation, time)
+    def get_impression_log(self):
+        """
+        """
+        return self._treatment_log
 
 
 def _init_config(api_key, **kwargs):
@@ -502,9 +502,9 @@ def _init_config(api_key, **kwargs):
 
 def get_local_broker(api_key, **kwargs):
     """
-    Builds a Split Client that refreshes itself at regular intervals.
+    Builds a Split Broker that refreshes itself at regular intervals.
 
-    The config_file parameter is the name of a file that contains the client configuration. Here's
+    The config_file parameter is the name of a file that contains the broker configuration. Here's
     an example of a config file:
 
     {
@@ -523,7 +523,7 @@ def get_local_broker(api_key, **kwargs):
       "ready": 0
     }
 
-    The config parameter is a dictionary that allows you to control the behaviour of the client.
+    The config parameter is a dictionary that allows you to control the behaviour of the broker.
     The following configuration values are supported:
 
     * connectionTimeout: The TCP connection timeout (Default: 1500ms)
@@ -533,10 +533,10 @@ def get_local_broker(api_key, **kwargs):
     * metricsRefreshRate: The refresh rate for metrics (Default: 60s)
     * impressionsRefreshRate: The refresh rate for impressions (Default: 60s)
     * randomizeIntervals: Whether to randomize the refres intervals (Default: False)
-    * ready: How long to wait (in seconds) for the client to be initialized. 0 to return
+    * ready: How long to wait (in seconds) for the broker to be initialized. 0 to return
       immediately without waiting. (Default: 0s)
 
-    If the api_key argument is 'localhost' a localhost environment client is built based on the
+    If the api_key argument is 'localhost' a localhost environment broker is built based on the
     contents of a .split file in the user's home directory. The definition file has the following
     syntax:
 
@@ -573,14 +573,14 @@ def get_local_broker(api_key, **kwargs):
 
 def get_redis_broker(api_key, **kwargs):
     """
-    Builds a Split Client that that gets its information from a Redis instance. It also writes
+    Builds a Split Broker that that gets its information from a Redis instance. It also writes
     impressions and metrics to the same instance.
 
     In order for this work properly, you need to periodically call the update_splits and
     update_segments scripts. You also need to run the send_impressions and send_metrics scripts in
     order to push the impressions and metrics onto the Split.io backend-
 
-    The config_file parameter is the name of a file that contains the client configuration. Here's
+    The config_file parameter is the name of a file that contains the broker configuration. Here's
     an example of a config file:
 
     {
@@ -593,10 +593,10 @@ def get_redis_broker(api_key, **kwargs):
       "redisDb": 0,
     }
 
-    If the redisFactory entry is present, it is used to build the redis client instance, otherwise
+    If the redisFactory entry is present, it is used to build the redis broker instance, otherwise
     the values of redisHost, redisPort and redisDb are used.
 
-    If the api_key argument is 'localhost' a localhost environment client is built based on the
+    If the api_key argument is 'localhost' a localhost environment broker is built based on the
     contents of a .split file in the user's home directory. The definition file has the following
     syntax:
 
@@ -627,21 +627,21 @@ def get_redis_broker(api_key, **kwargs):
 
     redis = get_redis(config)
 
-    redis_client = RedisBroker(redis)
+    redis_broker = RedisBroker(redis)
 
-    return redis_client
+    return redis_broker
 
 
 def get_uwsgi_broker(api_key, **kwargs):
     """
-    Builds a Split Client that that gets its information from a uWSGI cache instance. It also writes
+    Builds a Split Broker that that gets its information from a uWSGI cache instance. It also writes
     impressions and metrics to the same instance.
 
     In order for this work properly, you need to periodically call the spooler uwsgi_update_splits and
     uwsgi_update_segments scripts. You also need to run the uwsgi_report_impressions and uwsgi_report_metrics scripts in
     order to push the impressions and metrics onto the Split.io backend-
 
-    The config_file parameter is the name of a file that contains the client configuration. Here's
+    The config_file parameter is the name of a file that contains the broker configuration. Here's
     an example of a config file:
 
     {
@@ -654,7 +654,7 @@ def get_uwsgi_broker(api_key, **kwargs):
       "impressionsRefreshRate": 60
     }
 
-    If the api_key argument is 'localhost' a localhost environment client is built based on the
+    If the api_key argument is 'localhost' a localhost environment broker is built based on the
     contents of a .split file in the user's home directory. The definition file has the following
     syntax:
 
@@ -684,6 +684,6 @@ def get_uwsgi_broker(api_key, **kwargs):
         return LocalhostBroker(**kwargs)
 
     uwsgi = get_uwsgi()
-    uwsgi_client = UWSGIBroker(uwsgi, config)
+    uwsgi_broker = UWSGIBroker(uwsgi, config)
 
-    return uwsgi_client
+    return uwsgi_broker

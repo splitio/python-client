@@ -219,8 +219,8 @@ class ForDataTypeMixin(object):
 
 
 def get_matching_key(key):
-    '''
-    '''
+    """
+    """
     from splitio.clients import Key
     if isinstance(key, Key):
         return key.matching_key
@@ -704,16 +704,16 @@ class PartOfSetMatcher(object):
 
 
 class DependencyMatcher(object):
-    '''
-    '''
+    """
+    """
     def __init__(self, dependency_matcher_data):
-        '''
-        '''
+        """
+        """
         self._data = dependency_matcher_data
 
     def match(self, key, attributes=None, client=None):
-        '''
-        '''
+        """
+        """
         treatment = client.get_treatment(
             key,
             self._data.get('split'),
@@ -723,16 +723,16 @@ class DependencyMatcher(object):
 
 
 class BooleanMatcher(object):
-    '''
-    '''
+    """
+    """
     def __init__(self, boolean_matcher_data):
-        '''
-        '''
+        """
+        """
         self._data = boolean_matcher_data
 
     def match(self, key, attributes=None, client=None):
-        '''
-        '''
+        """
+        """
         key = get_matching_key(key)
         if isinstance(key, bool):
             decoded = key
@@ -750,16 +750,16 @@ class BooleanMatcher(object):
 
 
 class RegexMatcher(object):
-    '''
-    '''
+    """
+    """
     def __init__(self, regex_matcher_data):
-        '''
-        '''
+        """
+        """
         self._data = regex_matcher_data
 
     def match(self, key, attributes=None, client=None):
-        '''
-        '''
+        """
+        """
         key = get_matching_key(key)
         try:
             regex = re.compile(self._data)
