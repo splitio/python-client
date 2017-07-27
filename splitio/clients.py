@@ -29,8 +29,8 @@ class Client(object):
 
     @staticmethod
     def _get_keys(key):
-        '''
-        '''
+        """
+        """
         if isinstance(key, Key):
             matching_key = key.matching_key
             bucketing_key = key.bucketing_key
@@ -177,8 +177,8 @@ class Client(object):
 
 
 class MatcherClient(Client):
-    '''
-    '''
+    """
+    """
 
     def __init__(self, broker, splitter, logger):
         self._broker = broker
@@ -186,8 +186,8 @@ class MatcherClient(Client):
         self._logger = logger
 
     def get_treatment(self, key, feature, attributes=None):
-        '''
-        '''
+        """
+        """
         if key is None or feature is None: return CONTROL
 
         matching_key, bucketing_key = self._get_keys(key)

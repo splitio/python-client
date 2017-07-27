@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function, \
     unicode_literals
 
+import json
+import re
 from enum import Enum
 from sys import modules
 
@@ -32,7 +34,7 @@ class AndCombiner(object):
             return False
 
         return all(
-            matcher.match(key, attributes,client) for matcher in matchers
+            matcher.match(key, attributes, client) for matcher in matchers
         )
 
     @python_2_unicode_compatible
@@ -163,7 +165,7 @@ class AttributeMatcher(object):
             return self._matcher.match(key, attributes, client)
 
         if attributes is None or \
-                self._attribute not in attributes or \
+            self._attribute not in attributes or \
                 attributes[self._attribute] is None:
             return False
 
@@ -217,8 +219,8 @@ class ForDataTypeMixin(object):
 
 
 def get_matching_key(key):
-    '''
-    '''
+    """
+    """
     from splitio.clients import Key
     if isinstance(key, Key):
         return key.matching_key
@@ -561,7 +563,7 @@ class ContainsStringMatcher(object):
         """
         key = get_matching_key(key)
         return (isinstance(key, string_types) and
-                 any(s in key for s in self._whitelist))
+                any(s in key for s in self._whitelist))
 
     @python_2_unicode_compatible
     def __str__(self):
@@ -702,19 +704,70 @@ class PartOfSetMatcher(object):
 
 
 class DependencyMatcher(object):
-    '''
-    '''
+    """
+    """
     def __init__(self, dependency_matcher_data):
-        '''
-        '''
+        """
+        """
         self._data = dependency_matcher_data
 
     def match(self, key, attributes=None, client=None):
-        '''
-        '''
+        """
+        """
         treatment = client.get_treatment(
             key,
             self._data.get('split'),
             attributes
         )
         return treatment in self._data.get('treatments', [])
+
+
+class BooleanMatcher(object):
+    """
+    """
+    def __init__(self, boolean_matcher_data):
+        """
+        """
+        self._data = boolean_matcher_data
+
+    def match(self, key, attributes=None, client=None):
+        """
+        """
+        key = get_matching_key(key)
+        if isinstance(key, bool):
+            decoded = key
+        elif isinstance(key, string_types):
+            try:
+                decoded = json.loads(key.lower())
+                if not isinstance(decoded, bool):
+                    return False
+            except ValueError:
+                return False
+        else:
+            return False
+
+        return decoded == self._data
+
+
+class RegexMatcher(object):
+    """
+    """
+    def __init__(self, regex_matcher_data):
+        """
+        """
+        self._data = regex_matcher_data
+
+    def match(self, key, attributes=None, client=None):
+        """
+        """
+        key = get_matching_key(key)
+        try:
+            regex = re.compile(self._data)
+        except re.error:
+            return False
+
+        try:
+            matches = re.search(regex, key)
+            return matches is not None
+        except TypeError:
+            return False

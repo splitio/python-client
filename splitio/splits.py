@@ -18,7 +18,8 @@ from splitio.matchers import CombiningMatcher, AndCombiner, AllKeysMatcher, \
     GreaterThanOrEqualToMatcher, LessThanOrEqualToMatcher, BetweenMatcher, \
     AttributeMatcher, DataType, StartsWithMatcher, EndsWithMatcher, \
     ContainsStringMatcher, ContainsAllOfSetMatcher, ContainsAnyOfSetMatcher, \
-    EqualToSetMatcher, PartOfSetMatcher, DependencyMatcher
+    EqualToSetMatcher, PartOfSetMatcher, DependencyMatcher, RegexMatcher, \
+    BooleanMatcher
 
 SplitView = namedtuple(
     'SplitView',
@@ -1046,6 +1047,43 @@ class SplitParser(object):
 
         delegate = DependencyMatcher(matcher_data)
         return delegate
+
+    def _parse_matcher_equal_to_boolean(self, partial_split, matcher, *args, **kwargs):
+        """
+        Parses an EQUAL_TO_BOOLEAN matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of an BETWEEN
+            matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'booleanMatcherData', matcher
+        )
+
+        delegate = BooleanMatcher(matcher_data)
+        return delegate
+
+    def _parse_matcher_matches_string(self, partial_split, matcher, *args, **kwargs):
+        """
+        Parses an MATCHER_STRING matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of an BETWEEN
+            matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'stringMatcherData', matcher
+        )
+
+        delegate = RegexMatcher(matcher_data)
+        return delegate
+
 
     def _parse_matcher(self, partial_split, matcher, block_until_ready=False):
         """
