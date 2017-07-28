@@ -203,7 +203,15 @@ class SelfRefreshingSegment(InMemorySegment):
                 while True:
                     response = self._segment_change_fetcher.fetch(self._name,
                                                                   self._change_number)
-                    if self._change_number >= response['till']:
+
+                    # If the response fails, and doesn't return a dict, or
+                    # returns a dict without the 'till' attribute, abort this
+                    # execution.
+                    if (
+                        not isinstance(response, dict)
+                        or 'till' not in response
+                        or self._change_number >= response['till']
+                    ):
                         return
 
                     if len(response['added']) > 0 or len(response['removed']) > 0:
@@ -248,6 +256,10 @@ class SelfRefreshingSegment(InMemorySegment):
     def _timer_refresh(self):
         """Responsible for setting the periodic calls to _refresh_segment using a Timer thread."""
         if self._stopped:
+            self._logger.error('Previous fetch failed, skipping this iteration '
+                               'and rescheduling segment refresh.')
+            self._stopped = False
+            self._timer_start()
             return
 
         try:
