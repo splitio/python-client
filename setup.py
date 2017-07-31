@@ -10,7 +10,6 @@ install_requires = [
     'requests>=2.9.1',
     'future>=0.15.2',
     'docopt>=0.6.2',
-    'watchdog>=0.8.3'
 ]
 
 if version_info < (3,):
@@ -36,7 +35,8 @@ setup(name='splitio_client',
           'test': tests_require,
           'redis': ['redis>=2.10.5', 'jsonpickle>=0.9.3'],
           'uwsgi': ['uwsgi>=2.0.0', 'jsonpickle>=0.9.3'],
-          'cpphash': ['splitmmh3']
+          'cpphash': ['splitmmh3'],
+          'offgrid': ['watchdog>=0.8.3']
       },
       setup_requires=['nose'],
       classifiers=[
