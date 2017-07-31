@@ -10,11 +10,17 @@ import os.path
 import random
 import re
 import threading
-from watchdog.events import PatternMatchingEventHandler
-# TODO: REMOVE THE FOLLOWING LINE OR AT LEAST TIDY UP!
-#from watchdog.observers.fsevents import FSEventsObserver as Observer
-from watchdog.observers import Observer
 from future.utils import raise_from
+
+# For some reason watchdog and fsevents don't work as expected, and the modified
+# file event is not triggered. Forcing the observer to use Kqueue if in osx,
+# otherwise use deafult OS API
+from watchdog.utils import platform
+if platform.is_darwin():
+    from watchdog.observers.kqueue import KqueueObserver as Observer
+else:
+    from watchdog.observers import Observer
+from watchdog.events import PatternMatchingEventHandler
 
 from splitio.api import SdkApi
 from splitio.exceptions import TimeoutException
@@ -326,7 +332,9 @@ class LocalhostBroker(BaseBroker):
         super(LocalhostBroker, self).__init__()
 
         if split_definition_file_name is None:
-            self._split_definition_file_name = os.path.join(os.path.expanduser('~'), '.split')
+            self._split_definition_file_name = os.path.join(
+                os.path.expanduser('~'), '.split'
+            )
         else:
             self._split_definition_file_name = split_definition_file_name
 
@@ -337,7 +345,6 @@ class LocalhostBroker(BaseBroker):
             [self._split_definition_file_name]
         )
         file_path = os.path.dirname(self._split_definition_file_name)
-        print(self._split_definition_file_name)
         self._observer = Observer()
         self._observer.schedule(event_handler, file_path, recursive=False)
         self._observer.start()
@@ -428,7 +435,6 @@ class LocalhostBrokerFileEventHandler(PatternMatchingEventHandler):
         '''
         Rebuild split fetcher
         '''
-        raise 'aaaaa'
         self._client_instance()._split_fetcher = (
             self._client_instance()._build_split_fetcher()
         )

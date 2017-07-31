@@ -10,9 +10,9 @@ except ImportError:
 
 import tempfile
 import arrow
+import os.path
 
 from unittest import TestCase
-from os.path import dirname, join
 from time import sleep
 
 from splitio.clients import Client
@@ -484,8 +484,14 @@ class SelfRefreshingBrokerBuildMetricsTests(TestCase, MockUtilsMixin):
 class JSONFileBrokerIntegrationTests(TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.segment_changes_file_name = join(dirname(__file__), 'segmentChanges.json')
-        cls.split_changes_file_name = join(dirname(__file__), 'splitChanges.json')
+        cls.segment_changes_file_name = os.path.join(
+            os.path.dirname(__file__),
+            'segmentChanges.json'
+        )
+        cls.split_changes_file_name = os.path.join(
+            os.path.dirname(__file__),
+            'splitChanges.json'
+        )
         cls.client = Client(JSONFileBroker(cls.segment_changes_file_name, cls.split_changes_file_name))
         cls.on_treatment = 'on'
         cls.off_treatment = 'off'
