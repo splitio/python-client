@@ -16,7 +16,10 @@ from future.utils import python_2_unicode_compatible
 from splitio.matchers import CombiningMatcher, AndCombiner, AllKeysMatcher, \
     UserDefinedSegmentMatcher, WhitelistMatcher, EqualToMatcher, \
     GreaterThanOrEqualToMatcher, LessThanOrEqualToMatcher, BetweenMatcher, \
-    AttributeMatcher, DataType
+    AttributeMatcher, DataType, StartsWithMatcher, EndsWithMatcher, \
+    ContainsStringMatcher, ContainsAllOfSetMatcher, ContainsAnyOfSetMatcher, \
+    EqualToSetMatcher, PartOfSetMatcher, DependencyMatcher, RegexMatcher, \
+    BooleanMatcher
 
 SplitView = namedtuple(
     'SplitView',
@@ -38,9 +41,18 @@ class HashAlgorithm(Enum):
     MURMUR = 2
 
 
+class ConditionType(Enum):
+    """
+    Split possible condition types
+    """
+    WHITELIST = 'WHITELIST'
+    ROLLOUT = 'ROLLOUT'
+
+
 class Split(object):
     def __init__(self, name, seed, killed, default_treatment, traffic_type_name,
-                 status, change_number, conditions=None, algo=None):
+                 status, change_number, conditions=None, algo=None,
+                 traffic_allocation=None, traffic_allocation_seed=None):
         """
         A class that represents a split. It associates a feature name with a set
         of matchers (responsible of telling which condition to use) and
@@ -64,6 +76,13 @@ class Split(object):
         self._status = status
         self._change_number = change_number
         self._conditions = conditions if conditions is not None else []
+
+        if traffic_allocation >= 0 and traffic_allocation <= 100:
+            self._traffic_allocation = traffic_allocation
+        else:
+            self._traffic_allocation = 100
+
+        self._traffic_allocation_seed = traffic_allocation_seed
         try:
             self._algo = HashAlgorithm(algo)
         except ValueError:
@@ -105,6 +124,14 @@ class Split(object):
     def conditions(self):
         return self._conditions
 
+    @property
+    def traffic_allocation(self):
+        return self._traffic_allocation
+
+    @property
+    def traffic_allocation_seed(self):
+        return self._traffic_allocation_seed
+
     @python_2_unicode_compatible
     def __str__(self):
         return 'name: {name}, seed: {seed}, killed: {killed}, ' \
@@ -133,7 +160,8 @@ class AllKeysSplit(Split):
 
 
 class Condition(object):
-    def __init__(self, matcher, partitions, label):
+    def __init__(self, matcher, partitions, label,
+                 condition_type=ConditionType.WHITELIST):
         """
         A class that represents a split condition. It associates a matcher with
         a set of partitions.
@@ -145,6 +173,7 @@ class Condition(object):
         self._matcher = matcher
         self._partitions = tuple(partitions)
         self._label = label
+        self._confition_type = condition_type
 
     @property
     def matcher(self):
@@ -157,6 +186,10 @@ class Condition(object):
     @property
     def label(self):
         return self._label
+
+    @property
+    def condition_type(self):
+        return self._confition_type
 
     @python_2_unicode_compatible
     def __str__(self):
@@ -404,7 +437,15 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
                     response = self._split_change_fetcher.fetch(
                         self._change_number)
 
-                    if self._change_number >= response['till']:
+
+                    # If the response fails, and doesn't return a dict, or
+                    # returns a dict without the 'till' attribute, abort this
+                    # execution.
+                    if (
+                        not isinstance(response, dict)
+                        or 'till' not in response
+                        or self._change_number >= response['till']
+                    ):
                         return
 
                     if 'splits' in response and len(response['splits']) > 0:
@@ -442,6 +483,10 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
         Timer thread
         """
         if self._stopped:
+            self._logger.error('Previous fetch failed, skipping this iteration '
+                               'and rescheduling segment refresh.')
+            self._stopped = False
+            self._timer_start()
             return
 
         try:
@@ -603,10 +648,18 @@ class SplitParser(object):
         :return: A partial parsed split
         :rtype: Split
         """
-        return Split(split['name'], split['seed'], split['killed'],
-                     split['defaultTreatment'], split['trafficTypeName'],
-                     split['status'], split['changeNumber'],
-                     algo=split.get('algo'))
+        return Split(
+            split['name'],
+            split['seed'],
+            split['killed'],
+            split['defaultTreatment'],
+            split['trafficTypeName'],
+            split['status'],
+            split['changeNumber'],
+            algo=split.get('algo'),
+            traffic_allocation=split.get('trafficAllocation'),
+            traffic_allocation_seed=split.get('trafficAllocationSeed')
+        )
 
     def _parse_conditions(self, partial_split, split, block_until_ready=False):
         """Parse split conditions
@@ -630,8 +683,19 @@ class SplitParser(object):
             label = None
             if 'label' in condition:
                 label = condition['label']
+
+            try:
+                condition_type = ConditionType(condition.get('conditionType'))
+            except:
+                condition_type = ConditionType.WHITELIST
+
             partial_split.conditions.append(
-                Condition(combining_matcher, parsed_partitions, label)
+                Condition(
+                    combining_matcher,
+                    parsed_partitions,
+                    label,
+                    condition_type
+                )
             )
 
     def _parse_matcher_group(self, partial_split, matcher_group,
@@ -824,6 +888,139 @@ class SplitParser(object):
                                                           matcher_data['value'])
         return delegate
 
+    def _parse_matcher_starts_with(self, partial_split, matcher, *args,
+                                   **kwargs):
+        """
+        Parses a STARTS_WITH matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of a
+            STARTS_WITH matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'whitelistMatcherData',
+            matcher
+        )
+        delegate = StartsWithMatcher(matcher_data['whitelist'])
+        return delegate
+
+    def _parse_matcher_ends_with(self, partial_split, matcher, *args,
+                                 **kwargs):
+        """
+        Parses a ENDS_WITH matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of a
+            ENDS_WITH matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'whitelistMatcherData',
+            matcher
+        )
+        delegate = EndsWithMatcher(matcher_data['whitelist'])
+        return delegate
+
+    def _parse_matcher_contains_string(self, partial_split, matcher, *args,
+                                       **kwargs):
+        """
+        Parses a CONTAINS_STRING matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of a
+            CONTAINS_STRING matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'whitelistMatcherData',
+            matcher
+        )
+        delegate = ContainsStringMatcher(matcher_data['whitelist'])
+        return delegate
+
+    def _parse_matcher_contains_all_of_set(self, partial_split, matcher, *args,
+                                           **kwargs):
+        """
+        Parses a CONTAINS_ALL_OF_SET matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of a
+            CONTAINS_ALL_OF_SET matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'whitelistMatcherData',
+            matcher
+        )
+        delegate = ContainsAllOfSetMatcher(matcher_data['whitelist'])
+        return delegate
+
+    def _parse_matcher_contains_any_of_set(self, partial_split, matcher, *args,
+                                           **kwargs):
+        """
+        Parses a CONTAINS_ANY_OF_SET matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of a
+            CONTAINS_ANY_OF_SET matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'whitelistMatcherData',
+            matcher
+        )
+        delegate = ContainsAnyOfSetMatcher(matcher_data['whitelist'])
+        return delegate
+
+    def _parse_matcher_equal_to_set(self, partial_split, matcher, *args,
+                                    **kwargs):
+        """
+        Parses a EQUAL_TO_SET matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of a
+            EQUAL_TO_SET matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'whitelistMatcherData',
+            matcher
+        )
+        delegate = EqualToSetMatcher(matcher_data['whitelist'])
+        return delegate
+
+    def _parse_matcher_part_of_set(self, partial_split, matcher, *args,
+                                   **kwargs):
+        """
+        Parses a PART_OF_SET matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of a
+            PART_OF_SET matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'whitelistMatcherData',
+            matcher
+        )
+        delegate = PartOfSetMatcher(matcher_data['whitelist'])
+        return delegate
+
     def _parse_matcher_between(self, partial_split, matcher, *args, **kwargs):
         """
         Parses a BETWEEN matcher
@@ -844,6 +1041,61 @@ class SplitParser(object):
                                                 matcher_data.get('start', None),
                                                 matcher_data.get('end', None))
         return delegate
+
+    def _parse_matcher_in_split_treatment(self, partial_split, matcher, *args, **kwargs):
+        """
+        Parses an IN_SPLIT_TREATMENT matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of an BETWEEN
+            matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'dependencyMatcherData', matcher
+        )
+
+        delegate = DependencyMatcher(matcher_data)
+        return delegate
+
+    def _parse_matcher_equal_to_boolean(self, partial_split, matcher, *args, **kwargs):
+        """
+        Parses an EQUAL_TO_BOOLEAN matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of an BETWEEN
+            matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'booleanMatcherData', matcher
+        )
+
+        delegate = BooleanMatcher(matcher_data)
+        return delegate
+
+    def _parse_matcher_matches_string(self, partial_split, matcher, *args, **kwargs):
+        """
+        Parses an MATCHER_STRING matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of an BETWEEN
+            matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'stringMatcherData', matcher
+        )
+
+        delegate = RegexMatcher(matcher_data)
+        return delegate
+
 
     def _parse_matcher(self, partial_split, matcher, block_until_ready=False):
         """

@@ -17,7 +17,7 @@ class CacheInterfacesTests(TestCase):
         self._segment_changes_file_name = join(dirname(__file__), 'segmentChanges.json')
         self._split_changes_file_name = join(dirname(__file__), 'splitChanges.json')
 
-        self._redis = get_redis(dict()) #default config
+        self._redis = get_redis({'redisPrefix': 'test'})
         self._redis_split_cache = RedisSplitCache(self._redis)
         self._redis_segment_cache = RedisSegmentCache(self._redis)
 

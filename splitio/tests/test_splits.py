@@ -12,7 +12,7 @@ from unittest import TestCase
 import json
 from splitio.splits import (InMemorySplitFetcher, SelfRefreshingSplitFetcher, SplitChangeFetcher,
                             ApiSplitChangeFetcher, SplitParser, AllKeysSplit,
-                            CacheBasedSplitFetcher, HashAlgorithm)
+                            CacheBasedSplitFetcher, HashAlgorithm, ConditionType)
 from splitio.matchers import (AndCombiner, AllKeysMatcher, UserDefinedSegmentMatcher,
                               WhitelistMatcher, AttributeMatcher)
 from splitio.tests.utils import MockUtilsMixin
@@ -21,6 +21,8 @@ from splitio.hashfns import _murmur_hash, get_hash_fn
 from splitio.hashfns.legacy import legacy_hash
 from splitio.redis_support import get_redis, RedisSegmentCache, RedisSplitParser
 from splitio.uwsgi import get_uwsgi, UWSGISegmentCache, UWSGISplitParser
+from splitio.clients import Client
+from splitio.brokers import RedisBroker
 
 
 class InMemorySplitFetcherTests(TestCase):
@@ -308,7 +310,7 @@ class SelfRefreshingSplitFetcherTimerRefreshTests(TestCase, MockUtilsMixin):
         """Tests that _timer_refresh doesn't call start_tiemer if it is stopped"""
         self.fetcher.stopped = True
         self.fetcher._timer_refresh()
-        self.timer_start_mock.assert_not_called()
+        self.timer_start_mock.assert_called()
 
     def test_timer_start_called_if_thread_raises_exception(self):
         """
@@ -505,10 +507,23 @@ class SplitParserInternalParseTests(TestCase, MockUtilsMixin):
         self.parser._parse(self.some_split)
 
         self.assertListEqual(
-            [mock.call(self.parse_matcher_group_mock_side_effect[0],
-                       [self.partition_mock_side_effect[0]], self.label_0),
-             mock.call(self.parse_matcher_group_mock_side_effect[1],
-                       [self.partition_mock_side_effect[1], self.partition_mock_side_effect[2]], self.label_1)],
+            [
+                mock.call(
+                    self.parse_matcher_group_mock_side_effect[0],
+                    [self.partition_mock_side_effect[0]],
+                    self.label_0,
+                    ConditionType.WHITELIST
+                ),
+                mock.call(
+                    self.parse_matcher_group_mock_side_effect[1],
+                    [
+                        self.partition_mock_side_effect[1],
+                        self.partition_mock_side_effect[2]
+                    ],
+                    self.label_1,
+                    ConditionType.WHITELIST
+                )
+            ],
             self.condition_mock.call_args_list
         )
 
@@ -993,3 +1008,77 @@ class UWSGICacheAlgoFieldTests(TestCase):
             split = split_parser.parse(sp['body'], True)
             self.assertEqual(split.algo, sp['algo'])
             self.assertEqual(get_hash_fn(split.algo), sp['hashfn'])
+
+
+class TrafficAllocationTests(TestCase):
+    '''
+    '''
+
+    def setUp(self):
+        '''
+        '''
+        redis = get_redis({})
+        segment_cache = RedisSegmentCache(redis)
+        split_parser = RedisSplitParser(segment_cache)
+        self._client = Client(RedisBroker(redis))
+
+        self._splitObjects = {}
+
+        raw_split = {
+            'name': 'test1',
+            'algo': 1,
+            'killed': False,
+            'status': 'ACTIVE',
+            'defaultTreatment': 'default',
+            'seed': -1222652054,
+            'orgId': None,
+            'environment': None,
+            'trafficTypeId': None,
+            'trafficTypeName': None,
+            'changeNumber': 1,
+            'conditions': [{
+                'conditionType': 'WHITELIST',
+                'matcherGroup': {
+                    'combiner': 'AND',
+                    'matchers': [{
+                        'matcherType': 'ALL_KEYS',
+                        'negate': False,
+                        'userDefinedSegmentMatcherData': None,
+                        'whitelistMatcherData': None
+                    }]
+                },
+                'partitions': [{
+                        'treatment': 'on',
+                        'size': 100
+                }],
+                'label': 'in segment all'
+            }]
+        }
+        self._splitObjects['whitelist'] = split_parser.parse(raw_split, True)
+
+        raw_split['name'] = 'test2'
+        raw_split['conditions'][0]['conditionType'] = 'ROLLOUT'
+        self._splitObjects['rollout1'] = split_parser.parse(raw_split, True)
+
+        raw_split['name'] = 'test3'
+        raw_split['trafficAllocation'] = 1
+        raw_split['trafficAllocationSeed'] = -1
+        self._splitObjects['rollout2'] = split_parser.parse(raw_split, True)
+
+    def testTrafficAllocation(self):
+        '''
+        '''
+        treatment1, label1 = self._client._get_treatment_for_split(
+            self._splitObjects['whitelist'], 'testKey', None
+        )
+        self.assertEqual(treatment1, 'on')
+
+        treatment2, label1 = self._client._get_treatment_for_split(
+            self._splitObjects['rollout1'], 'testKey', None
+        )
+        self.assertEqual(treatment2, 'on')
+
+        treatment3, label1 = self._client._get_treatment_for_split(
+            self._splitObjects['rollout2'], 'testKey', None
+        )
+        self.assertEqual(treatment3, 'default')

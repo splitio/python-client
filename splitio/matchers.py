@@ -1,13 +1,15 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import absolute_import, division, print_function, \
+    unicode_literals
 
+import json
+import re
 from enum import Enum
 from sys import modules
 
 from future.utils import python_2_unicode_compatible
-
-from splitio.transformers import (AsDateHourMinuteTimestampTransformMixin,
-                                  AsNumberTransformMixin, AsDateTimestampTransformMixin,
-                                  TransformMixin)
+from six import string_types
+from splitio.transformers import AsDateHourMinuteTimestampTransformMixin, \
+    AsNumberTransformMixin, AsDateTimestampTransformMixin, TransformMixin
 
 
 DataType = Enum('DataType', 'DATETIME NUMBER')
@@ -15,9 +17,10 @@ DataType = Enum('DataType', 'DATETIME NUMBER')
 
 class AndCombiner(object):
     """Combines the calls to all delegates match() method with a conjunction"""
-    def combine(self, matchers, key, attributes):
+    def combine(self, matchers, key, attributes, client=None):
         """
-        Combines the calls to the delegates match() methods to produce a single boolean response
+        Combines the calls to the delegates match() methods to produce a single
+        boolean response
         :param matchers: List of delegate matchers
         :type matchers: list
         :param key: Key to match
@@ -30,7 +33,9 @@ class AndCombiner(object):
         if not matchers:
             return False
 
-        return all(matcher.match(key, attributes) for matcher in matchers)
+        return all(
+            matcher.match(key, attributes, client) for matcher in matchers
+        )
 
     @python_2_unicode_compatible
     def __str__(self):
@@ -40,9 +45,10 @@ class AndCombiner(object):
 class CombiningMatcher(object):
     def __init__(self, combiner, delegates):
         """
-        Combines the results of multiple delegate matchers using a specific combiner to produce a
-        single boolean result
-        :param combiner: The combiner to use to generate a single result from the individual ones
+        Combines the results of multiple delegate matchers using a specific
+        combiner to produce a single boolean result
+        :param combiner: The combiner to use to generate a single result from
+            the individual ones
         :type combiner: AndCombiner
         :param delegates: Delegate matchers
         :type delegates: list
@@ -50,7 +56,7 @@ class CombiningMatcher(object):
         self._combiner = combiner
         self._delegates = tuple(delegates)
 
-    def match(self, key, attributes=None):
+    def match(self, key, attributes=None, client=None):
         """
         Tests whether there is a match for the given key and attributes
         :param key: Key to match
@@ -60,7 +66,7 @@ class CombiningMatcher(object):
         :return: Whether there is a match for the given key and attributes
         :rtype: bool
         """
-        return self._combiner.combine(self._delegates, key, attributes)
+        return self._combiner.combine(self._delegates, key, attributes, client)
 
     @python_2_unicode_compatible
     def __str__(self):
@@ -72,7 +78,7 @@ class CombiningMatcher(object):
 
 class AllKeysMatcher(object):
     """A matcher that always returns True"""
-    def match(self, key):
+    def match(self, key, attributes=None, client=None):
         """
         Returns True except when the key is None
         :param key: The key to match
@@ -90,7 +96,8 @@ class AllKeysMatcher(object):
 class NegatableMatcher(object):
     def __init__(self, negate, delegate):
         """
-        A matcher that negates the result of a delegate matcher based on the negate flag
+        A matcher that negates the result of a delegate matcher based on the
+        negate flag
         :param negate: Whether to negate the result of the delegate matcher
         :type negate: bool
         :param delegate: The delegate matcher
@@ -99,7 +106,7 @@ class NegatableMatcher(object):
         self._negate = negate
         self._delegate = delegate
 
-    def match(self, key):
+    def match(self, key, attributes=None, client=None):
         """
         Check of a match for the given key
         :param key: The key to match
@@ -107,7 +114,7 @@ class NegatableMatcher(object):
         :return: True if there is a match, False otherwise
         :rtype: bool
         """
-        result = self._delegate.match(key)
+        result = self._delegate.match(key, attributes, client)
         return result if not self._negate else not result
 
     @property
@@ -129,8 +136,8 @@ class NegatableMatcher(object):
 class AttributeMatcher(object):
     def __init__(self, attribute, matcher, negate):
         """
-        A matcher that looks for the value of a specific attribute and passes it to the delegate
-        matcher to provide a result.
+        A matcher that looks for the value of a specific attribute and passes it
+        to the delegate matcher to provide a result.
         :param attribute: Name of the attribute
         :type attribute: str
         :param matcher: The delegate matcher
@@ -141,23 +148,24 @@ class AttributeMatcher(object):
         self._attribute = attribute
         self._matcher = NegatableMatcher(negate, matcher)
 
-    def match(self, key, attributes=None):
+    def match(self, key, attributes=None, client=None):
         """
-        Matches against the value of an attribute associated with the provided key
+        Matches against the value of an attribute associated with the provided
+        key
         :param key: The key to match
         :type key: str
         :param attributes: Dictionary of attributes to match
         :type attributes: dict
-        :return: If negate is False, it returns the result of calling the delegate match method
-                 on the attribute value associated with the key. If negate is True, it returns the
-                 opposite.
+        :return: If negate is False, it returns the result of calling the
+                 delegate match method on the attribute value associated with
+                 the key. If negate is True, it returns the opposite.
         :rtype: bool
         """
         if self._attribute is None:
-            return self._matcher.match(key)
+            return self._matcher.match(key, attributes, client)
 
         if attributes is None or \
-                self._attribute not in attributes or \
+            self._attribute not in attributes or \
                 attributes[self._attribute] is None:
             return False
 
@@ -172,9 +180,10 @@ class AttributeMatcher(object):
 
 class ForDataTypeMixin(object):
     """
-    A mixin to provide a class method called for_data_type to build the appropriate matcher for
-    the given data type. The class needs to define a dictionary member named MATCHER_FOR_DATA_TYPE
-    that matches constructors with data types like so:
+    A mixin to provide a class method called for_data_type to build the
+    appropriate matcher for the given data type. The class needs to define a
+    dictionary member named MATCHER_FOR_DATA_TYPE that matches constructors with
+    data types like so:
 
     MATCHER_FOR_DATA_TYPE = {
         DataType.DATETIME: 'DateTimeBetweenMatcher',
@@ -197,7 +206,8 @@ class ForDataTypeMixin(object):
         :type data_type: DataType
         :param args: arguments to be passed to the actual matcher contructor
         :type args: iterable
-        :param kwargs: keyword arguments to be passed to the actual matcher contructor
+        :param kwargs: keyword arguments to be passed to the actual matcher
+            contructor
         :type kwargs: dict
         :return: A matcher appropriate for the given data type
         :rtype: Matcher
@@ -208,6 +218,16 @@ class ForDataTypeMixin(object):
         return cls.get_class(cls.MATCHER_FOR_DATA_TYPE[data_type])(*args, **kwargs)
 
 
+def get_matching_key(key):
+    """
+    """
+    from splitio.clients import Key
+    if isinstance(key, Key):
+        return key.matching_key
+    else:
+        return key
+
+
 class BetweenMatcher(TransformMixin, ForDataTypeMixin):
     MATCHER_FOR_DATA_TYPE = {
         DataType.DATETIME: 'DateTimeBetweenMatcher',
@@ -216,7 +236,8 @@ class BetweenMatcher(TransformMixin, ForDataTypeMixin):
 
     def __init__(self, start, end, data_type):
         """
-        A matcher that checks if a (transformed) value is between two other values.
+        A matcher that checks if a (transformed) value is between two other
+        values.
         :param start: The start of the interval
         :type start: any
         :param end: The end of the interval
@@ -238,15 +259,16 @@ class BetweenMatcher(TransformMixin, ForDataTypeMixin):
     def end(self):
         return self._end
 
-    def match(self, key):
+    def match(self, key, attributes=None, client=None):
         """
-        Returns True if the key (after being transformed by the transform_key() method) is between
-        start and end
+        Returns True if the key (after being transformed by the transform_key()
+        method) is between start and end
         :param key: The key to match
         :type key: any
         :return: Whether the transformed key is between start and end
         :rtype: bool
         """
+        key = get_matching_key(key)
         transformed_key = self.transform_key(key)
 
         if transformed_key is None:
@@ -256,12 +278,17 @@ class BetweenMatcher(TransformMixin, ForDataTypeMixin):
 
     @python_2_unicode_compatible
     def __str__(self):
-        return 'between {start} and {end}'.format(start=self._start, end=self._end)
+        return 'between {start} and {end}'.format(
+            start=self._start, end=self._end
+        )
 
 
-class DateTimeBetweenMatcher(BetweenMatcher, AsDateHourMinuteTimestampTransformMixin):
+class DateTimeBetweenMatcher(BetweenMatcher,
+                             AsDateHourMinuteTimestampTransformMixin):
     def __init__(self, start, end):
-        super(DateTimeBetweenMatcher, self).__init__(start, end, DataType.DATETIME)
+        super(DateTimeBetweenMatcher, self).__init__(
+            start, end, DataType.DATETIME
+        )
 
 
 class NumberBetweenMatcher(BetweenMatcher, AsNumberTransformMixin):
@@ -302,14 +329,16 @@ class CompareMatcher(TransformMixin, CompareMixin):
         self._original_compare_to = compare_to
         self._compare_to = self.transform_condition_parameter(compare_to)
 
-    def match(self, key):
+    def match(self, key, attributes=None, client=None):
         """
-        Compares the supplied key with the matcher's value using the compare() method
+        Compares the supplied key with the matcher's value using the compare()
+        method
         :param key: The key to match
         :type key: str
         :return: The resulf of calling compare() with the key and the value
         :rtype: bool
         """
+        key = get_matching_key(key)
         transformed_key = self.transform_key(key)
 
         if transformed_key is None:
@@ -329,7 +358,8 @@ class EqualToMatcher(CompareMatcher, EqualToCompareMixin, ForDataTypeMixin):
         return '== {compare_to}'.format(compare_to=self._compare_to)
 
 
-class GreaterThanOrEqualToMatcher(CompareMatcher, GreaterOrEqualToCompareMixin, ForDataTypeMixin):
+class GreaterThanOrEqualToMatcher(CompareMatcher, GreaterOrEqualToCompareMixin,
+                                  ForDataTypeMixin):
     MATCHER_FOR_DATA_TYPE = {
         DataType.DATETIME: 'DateTimeGreaterThanOrEqualToMatcher',
         DataType.NUMBER: 'NumberGreaterThanOrEqualToMatcher'
@@ -340,7 +370,8 @@ class GreaterThanOrEqualToMatcher(CompareMatcher, GreaterOrEqualToCompareMixin, 
         return '>= {compare_to}'.format(compare_to=self._compare_to)
 
 
-class LessThanOrEqualToMatcher(CompareMatcher, LessThanOrEqualToCompareMixin, ForDataTypeMixin):
+class LessThanOrEqualToMatcher(CompareMatcher, LessThanOrEqualToCompareMixin,
+                               ForDataTypeMixin):
     MATCHER_FOR_DATA_TYPE = {
         DataType.DATETIME: 'DateTimeLessThanOrEqualToMatcher',
         DataType.NUMBER: 'NumberLessThanOrEqualToMatcher'
@@ -364,25 +395,36 @@ class NumberEqualToMatcher(EqualToMatcher, AsNumberTransformMixin):
 class DateTimeGreaterThanOrEqualToMatcher(GreaterThanOrEqualToMatcher,
                                           AsDateHourMinuteTimestampTransformMixin):
     def __init__(self, compare_to):
-        super(DateTimeGreaterThanOrEqualToMatcher, self).__init__(compare_to, DataType.DATETIME)
+        super(DateTimeGreaterThanOrEqualToMatcher, self).__init__(
+            compare_to, DataType.DATETIME
+        )
 
 
 class NumberGreaterThanOrEqualToMatcher(GreaterThanOrEqualToMatcher,
                                         AsNumberTransformMixin):
     def __init__(self, compare_to):
-        super(NumberGreaterThanOrEqualToMatcher, self).__init__(compare_to, DataType.NUMBER)
+        super(NumberGreaterThanOrEqualToMatcher, self).__init__(
+            compare_to,
+            DataType.NUMBER
+        )
 
 
 class DateTimeLessThanOrEqualToMatcher(LessThanOrEqualToMatcher,
                                        AsDateHourMinuteTimestampTransformMixin):
     def __init__(self, compare_to):
-        super(DateTimeLessThanOrEqualToMatcher, self).__init__(compare_to, DataType.DATETIME)
+        super(DateTimeLessThanOrEqualToMatcher, self).__init__(
+            compare_to,
+            DataType.DATETIME
+        )
 
 
 class NumberLessThanOrEqualToMatcher(LessThanOrEqualToMatcher,
                                      AsNumberTransformMixin):
     def __init__(self, compare_to):
-        super(NumberLessThanOrEqualToMatcher, self).__init__(compare_to, DataType.NUMBER)
+        super(NumberLessThanOrEqualToMatcher, self).__init__(
+            compare_to,
+            DataType.NUMBER
+        )
 
 
 class UserDefinedSegmentMatcher(object):
@@ -398,7 +440,7 @@ class UserDefinedSegmentMatcher(object):
     def segment(self):
         return self._segment
 
-    def match(self, key):
+    def match(self, key, attributes=None, client=None):
         """
         Checks if key is contained within the segment by calling contains()
         :param key: The key to match
@@ -406,11 +448,14 @@ class UserDefinedSegmentMatcher(object):
         :return: The result of calling contains() on the segment
         :rtype: bool
         """
+        key = get_matching_key(key)
         return self._segment.contains(key)
 
     @python_2_unicode_compatible
     def __str__(self):
-        return 'in segment {segment_name}'.format(segment_name=self._segment.name)
+        return 'in segment {segment_name}'.format(
+            segment_name=self._segment.name
+        )
 
 
 class WhitelistMatcher(object):
@@ -422,7 +467,7 @@ class WhitelistMatcher(object):
         """
         self._whitelist = frozenset(whitelist)
 
-    def match(self, key):
+    def match(self, key, attributes=None, client=None):
         """
         Checks if a key is in the whitelist
         :param key: The key to match
@@ -430,6 +475,7 @@ class WhitelistMatcher(object):
         :return: True if the key is in the whitelist, False otherwise
         :rtype: bool
         """
+        key = get_matching_key(key)
         return key in self._whitelist
 
     @python_2_unicode_compatible
@@ -437,3 +483,291 @@ class WhitelistMatcher(object):
         return 'in whitelist [{whitelist}]'.format(
             whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
         )
+
+
+class StartsWithMatcher(object):
+    def __init__(self, whitelist):
+        """
+        A matcher that checks if a any of the strings in whitelist is a prefix
+        of key
+        :param whitelist: A list of strings that will be treated as prefixes
+        :type whitelist: list
+        """
+        self._whitelist = frozenset(whitelist)
+
+    def match(self, key, attributes=None, client=None):
+        """
+        Checks if any of the strings in whitelist is a prefix of key
+        :param key: The key to match
+        :type key: str
+        :return: True under the conditiones described above
+        :rtype: bool
+        """
+        key = get_matching_key(key)
+        return (isinstance(key, string_types) and
+                any(key.startswith(s) for s in self._whitelist))
+
+    @python_2_unicode_compatible
+    def __str__(self):
+        return 'has one of the following prefixes [{whitelist}]'.format(
+            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
+        )
+
+
+class EndsWithMatcher(object):
+    def __init__(self, whitelist):
+        """
+        A matcher that checks if a any of the strings in whitelist is a suffix
+        of key
+        :param whitelist: A list of strings that will be treated as suffixes
+        :type whitelist: list
+        """
+        self._whitelist = frozenset(whitelist)
+
+    def match(self, key, attributes=None, client=None):
+        """
+        Checks if any of the strings in whitelist is a suffix of key
+        :param key: The key to match
+        :type key: str
+        :return: True under the conditiones described above
+        :rtype: bool
+        """
+        key = get_matching_key(key)
+        return (isinstance(key, string_types) and
+                any(key.endswith(s) for s in self._whitelist))
+
+    @python_2_unicode_compatible
+    def __str__(self):
+        return 'has one of the following suffixes [{whitelist}]'.format(
+            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
+        )
+
+
+class ContainsStringMatcher(object):
+    def __init__(self, whitelist):
+        """
+        A matcher that checks if a any of the strings in whitelist is a is
+        contained in key
+        :param whitelist: A list of strings that will be treated as suffixes
+        :type whitelist: list
+        """
+        self._whitelist = frozenset(whitelist)
+
+    def match(self, key, attributes=None, client=None):
+        """
+        Checks if any of the strings in whitelist is a suffix of key
+        :param key: The key to match
+        :type key: str
+        :return: True under the conditiones described above
+        :rtype: bool
+        """
+        key = get_matching_key(key)
+        return (isinstance(key, string_types) and
+                any(s in key for s in self._whitelist))
+
+    @python_2_unicode_compatible
+    def __str__(self):
+        return 'contains one of the following string: [{whitelist}]'.format(
+            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
+        )
+
+
+class ContainsAllOfSetMatcher(object):
+    def __init__(self, whitelist):
+        """
+        A matcher that checks if the key, treated as a set, contains all
+        the elements in whitelist
+        :param whitelist: A list of strings that will be treated as a set
+        :type whitelist: list
+        """
+        self._whitelist = frozenset(whitelist)
+
+    def match(self, key, attributes=None, client=None):
+        """
+        Checks if all the strings in whitelist are in the key when treated as
+        a set
+        :param key: The key to match
+        :type key: str
+        :return: True under the conditiones described above
+        :rtype: bool
+        """
+        key = get_matching_key(key)
+        try:
+            setkey = set(key)
+            return set(self._whitelist).issubset(setkey)
+        except TypeError:
+            return False
+
+    @python_2_unicode_compatible
+    def __str__(self):
+        return 'contains all of the following set: [{whitelist}]'.format(
+            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
+        )
+
+
+class ContainsAnyOfSetMatcher(object):
+    def __init__(self, whitelist):
+        """
+        A matcher that checks if the key, treated as a set, contains any
+        the elements in whitelist
+        :param whitelist: A list of strings that will be treated as a set
+        :type whitelist: list
+        """
+        self._whitelist = frozenset(whitelist)
+
+    def match(self, key, attributes=None, client=None):
+        """
+        Checks if any of the strings in whitelist are in the key when treated as
+        a set
+        :param key: The key to match
+        :type key: str
+        :return: True under the conditiones described above
+        :rtype: bool
+        """
+        key = get_matching_key(key)
+        try:
+            setkey = set(key)
+            return set(self._whitelist).intersection(setkey)
+        except TypeError:
+            return False
+
+    @python_2_unicode_compatible
+    def __str__(self):
+        return 'contains on of the following se: [{whitelist}]'.format(
+            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
+        )
+
+
+class EqualToSetMatcher(object):
+    def __init__(self, whitelist):
+        """
+        A matcher that checks if the key, treated as a set, is equal to the set
+        formed by the elements in whitelist
+        :param whitelist: A list of strings that will be treated as a set
+        :type whitelist: list
+        """
+        self._whitelist = frozenset(whitelist)
+
+    def match(self, key, attributes=None, client=None):
+        """
+        checks if the key, treated as a set, is equal to the set formed by the
+        elements in whitelist
+        :param key: The key to match
+        :type key: str
+        :return: True under the conditiones described above
+        :rtype: bool
+        """
+        key = get_matching_key(key)
+        try:
+            setkey = set(key)
+            return set(self._whitelist) == setkey
+        except TypeError:
+            return False
+
+    @python_2_unicode_compatible
+    def __str__(self):
+        return 'equals the following set: [{whitelist}]'.format(
+            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
+        )
+
+
+class PartOfSetMatcher(object):
+    def __init__(self, whitelist):
+        """
+        A matcher that checks if the key, treated as a set, is part of the
+        whitelist set
+        :param whitelist: A list of strings that will be treated as a set
+        :type whitelist: list
+        """
+        self._whitelist = frozenset(whitelist)
+
+    def match(self, key, attributes=None, client=None):
+        """
+        Checks if the whitelist set contains the 'key' set
+        :param key: The key to match
+        :type key: str
+        :return: True under the conditiones described above
+        :rtype: bool
+        """
+        key = get_matching_key(key)
+        try:
+            setkey = set(key)
+            return len(setkey) > 0 and setkey.issubset(set(self._whitelist))
+        except TypeError:
+            return False
+
+    @python_2_unicode_compatible
+    def __str__(self):
+        return 'is a subset of the following set: [{whitelist}]'.format(
+            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
+        )
+
+
+class DependencyMatcher(object):
+    """
+    """
+    def __init__(self, dependency_matcher_data):
+        """
+        """
+        self._data = dependency_matcher_data
+
+    def match(self, key, attributes=None, client=None):
+        """
+        """
+        treatment = client.get_treatment(
+            key,
+            self._data.get('split'),
+            attributes
+        )
+        return treatment in self._data.get('treatments', [])
+
+
+class BooleanMatcher(object):
+    """
+    """
+    def __init__(self, boolean_matcher_data):
+        """
+        """
+        self._data = boolean_matcher_data
+
+    def match(self, key, attributes=None, client=None):
+        """
+        """
+        key = get_matching_key(key)
+        if isinstance(key, bool):
+            decoded = key
+        elif isinstance(key, string_types):
+            try:
+                decoded = json.loads(key.lower())
+                if not isinstance(decoded, bool):
+                    return False
+            except ValueError:
+                return False
+        else:
+            return False
+
+        return decoded == self._data
+
+
+class RegexMatcher(object):
+    """
+    """
+    def __init__(self, regex_matcher_data):
+        """
+        """
+        self._data = regex_matcher_data
+
+    def match(self, key, attributes=None, client=None):
+        """
+        """
+        key = get_matching_key(key)
+        try:
+            regex = re.compile(self._data)
+        except re.error:
+            return False
+
+        try:
+            matches = re.search(regex, key)
+            return matches is not None
+        except TypeError:
+            return False

@@ -298,7 +298,7 @@ class SelfRefreshingSegmentTimerRefreshTests(TestCase, MockUtilsMixin):
         self.segment._stopped = True
         self.segment._timer_refresh()
 
-        self.timer_mock.assert_not_called()
+        self.timer_mock.assert_called()
 
 
 class SegmentChangeFetcherTests(TestCase, MockUtilsMixin):

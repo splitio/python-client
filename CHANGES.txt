@@ -1,3 +1,17 @@
+5.2.1 (Jul 28, 2017)
+ - Adding hotfix to keep alive fetcher threads if proxy/backend connection goes temporarily down.
+5.2.0 (Jul 26, 2017)
+ - Adding Adding regex & boolean matcher
+5.1.0 (Jul 19, 2017)
+ - Adding dependency matcher
+ - Refactoring clients into brokers
+5.0.0 (Jun 13, 2017)
+ - BREAKING BACKWARD COMPATIBILITY
+ - Adding support for Split Synchronizer service
+4.1.0 (May 16, 2017)
+ - Adding support for String and Set Matchers
+4.0.2 (May 8, 2017)
+ - Adding support for Traffic Allocation
 4.0.1 (April 19, 2017)
  - Hotfix Hashing enumerator to default value LEGACY
 4.0.0 (April 17, 2017)
