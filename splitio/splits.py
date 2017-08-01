@@ -77,7 +77,9 @@ class Split(object):
         self._change_number = change_number
         self._conditions = conditions if conditions is not None else []
 
-        if traffic_allocation >= 0 and traffic_allocation <= 100:
+        if traffic_allocation is None:
+            self._traffic_allocation = 100
+        elif traffic_allocation >= 0 and traffic_allocation <= 100:
             self._traffic_allocation = traffic_allocation
         else:
             self._traffic_allocation = 100

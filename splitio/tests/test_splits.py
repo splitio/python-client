@@ -1073,6 +1073,13 @@ class TrafficAllocationTests(TestCase):
         )
         self.assertEqual(treatment1, 'on')
 
+        # Make sure traffic allocation is set to 100 at construction time if a
+        # value is not provided.
+        self.assertEqual(
+            self._splitObjects['whitelist'].traffic_allocation,
+            100
+        )
+
         treatment2, label1 = self._client._get_treatment_for_split(
             self._splitObjects['rollout1'], 'testKey', None
         )
