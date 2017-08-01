@@ -2,14 +2,30 @@
 from __future__ import absolute_import, division, print_function, \
     unicode_literals
 
+import weakref
 import abc
 import logging
-from os.path import expanduser, join
-from random import randint
-from re import compile
-from threading import Event, Thread
-
+import os
+import os.path
+import random
+import re
+import threading
 from future.utils import raise_from
+
+# If watchdog is installed enable auto-refreshing localhost broker
+try:
+    # For some reason watchdog and fsevents don't work as expected, and the
+    # modified file event is not triggered. Forcing the observer to use Kqueue
+    # if in osx, otherwise use deafult OS API.
+    from watchdog.utils import platform
+    if platform.is_darwin():
+        from watchdog.observers.kqueue import KqueueObserver as Observer
+    else:
+        from watchdog.observers import Observer
+    from watchdog.events import PatternMatchingEventHandler
+    _LOCALHOST_BROKER_AUTO_REFRESH = True
+except ImportError:
+    _LOCALHOST_BROKER_AUTO_REFRESH = False
 
 from splitio.api import SdkApi
 from splitio.exceptions import TimeoutException
@@ -39,7 +55,7 @@ def randomize_interval(value):
     :rtype: function
     """
     def random_interval():
-        return max(5, randint(value // 2, value))
+        return max(5, random.randint(value // 2, value))
 
     return random_interval
 
@@ -259,9 +275,9 @@ class SelfRefreshingBroker(BaseBroker):
         self._treatment_log.delegate.start()
 
         if self._ready > 0:
-            event = Event()
+            event = threading.Event()
 
-            thread = Thread(target=self._fetch_splits, args=(event,))
+            thread = threading.Thread(target=self._fetch_splits, args=(event,))
             thread.daemon = True
             thread.start()
 
@@ -298,8 +314,8 @@ class SelfRefreshingBroker(BaseBroker):
 
 
 class LocalhostBroker(BaseBroker):
-    _COMMENT_LINE_RE = compile('^#.*$')
-    _DEFINITION_LINE_RE = compile('^(?<![^#])(?P<feature>[\w_]+)\s+(?P<treatment>[\w_]+)$')
+    _COMMENT_LINE_RE = re.compile('^#.*$')
+    _DEFINITION_LINE_RE = re.compile('^(?<![^#])(?P<feature>[\w_]+)\s+(?P<treatment>[\w_]+)$')
 
     def __init__(self, split_definition_file_name=None):
         """
@@ -321,12 +337,26 @@ class LocalhostBroker(BaseBroker):
         super(LocalhostBroker, self).__init__()
 
         if split_definition_file_name is None:
-            self._split_definition_file_name = join(expanduser('~'), '.split')
+            self._split_definition_file_name = os.path.join(
+                os.path.expanduser('~'), '.split'
+            )
         else:
             self._split_definition_file_name = split_definition_file_name
+
         self._split_fetcher = self._build_split_fetcher()
+
         self._treatment_log = TreatmentLog()
         self._metrics = Metrics()
+
+        if _LOCALHOST_BROKER_AUTO_REFRESH:
+            event_handler = LocalhostBrokerFileEventHandler(
+                self,
+                [self._split_definition_file_name]
+            )
+            file_path = os.path.dirname(self._split_definition_file_name)
+            self._observer = Observer()
+            self._observer.schedule(event_handler, file_path, recursive=False)
+            self._observer.start()
 
     def _build_split_fetcher(self):
         """
@@ -382,6 +412,39 @@ class LocalhostBroker(BaseBroker):
         """
         """
         return self._treatment_log
+
+
+if _LOCALHOST_BROKER_AUTO_REFRESH:
+    class LocalhostBrokerFileEventHandler(PatternMatchingEventHandler):
+        '''
+        '''
+        def __init__(self, client_instance, *args, **kwargs):
+            '''
+            Store client to trigger re-parsing of file upon modifications detected.
+            A weak refereance is used to break circular dependencies between this
+            class and `LocalhostEnvironmentClient`.
+            All arguments but `client_instance` are forwarded to the parent class
+            `PatternMatchingEventHandler`
+            '''
+            self._client_instance = weakref.ref(client_instance)
+            PatternMatchingEventHandler.__init__(self, *args, **kwargs)
+
+        def on_moved(self, event):
+            pass
+
+        def on_created(self, event):
+            pass
+
+        def on_deleted(self, event):
+            pass
+
+        def on_modified(self, event):
+            '''
+            Rebuild split fetcher
+            '''
+            self._client_instance()._split_fetcher = (
+                self._client_instance()._build_split_fetcher()
+            )
 
 
 class RedisBroker(BaseBroker):

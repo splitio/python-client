@@ -10,6 +10,7 @@ from splitio.impressions import Impression, Label
 from splitio.metrics import SDK_GET_TREATMENT
 from splitio.splits import ConditionType
 
+
 class Key(object):
     def __init__(self, matching_key, bucketing_key):
         """Bucketing Key implementation"""
@@ -81,7 +82,7 @@ class Client(object):
                     treatment, label = self._get_treatment_for_split(
                         split,
                         matching_key,
-						bucketing_key,
+                        bucketing_key,
                         attributes
                     )
                     if treatment is None:
@@ -89,7 +90,6 @@ class Client(object):
                         _treatment = split.default_treatment
                     else:
                         _treatment = treatment
-
 
             impression = self._build_impression(matching_key, feature, _treatment, label,
                                                 _change_number, bucketing_key, start)
@@ -179,7 +179,6 @@ class Client(object):
 class MatcherClient(Client):
     """
     """
-
     def __init__(self, broker, splitter, logger):
         self._broker = broker
         self._splitter = splitter
@@ -216,4 +215,3 @@ class MatcherClient(Client):
         except:
             self._logger.exception('Exception caught retrieving dependent feature. Returning CONTROL')
             return CONTROL
-
