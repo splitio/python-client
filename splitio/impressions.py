@@ -1,20 +1,35 @@
 """This module contains everything related to metrics"""
-from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import absolute_import, division, print_function, \
+    unicode_literals
 
 import logging
+import six
 
 from collections import namedtuple, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from threading import RLock, Timer
 
-from six import iteritems
 
-Impression = namedtuple('Impression', ['matching_key', 'feature_name', 'treatment', 'label', 'change_number', 'bucketing_key', 'time'])
+Impression = namedtuple(
+    'Impression',
+    [
+        'matching_key',
+        'feature_name',
+        'treatment',
+        'label',
+        'change_number',
+        'bucketing_key',
+        'time'
+    ]
+)
+
 
 def build_impressions_data(impressions):
-    """Builds a list of dictionaries that can be used with the test_impressions API endpoint from
-    a dictionary of lists of impressions grouped by feature name.
+    """
+    Builds a list of dictionaries that can be used with the test_impressions
+    API endpoint from a dictionary of lists of impressions grouped by feature
+    name.
     :param impressions: Dict of impression tuples
     :type impressions: dict
     :return: List of dictionaries with impressions data for each feature
@@ -35,9 +50,25 @@ def build_impressions_data(impressions):
                 for impression in feature_impressions
             ]
         }
-        for feature_name, feature_impressions in iteritems(impressions)
+        for feature_name, feature_impressions in six.iteritems(impressions)
         if len(feature_impressions) > 0
     ]
+
+
+def _notify_listener(listener, impressions_data):
+    """
+    Execute custom callable provided by user with impressions as arguments
+    :param impressions_data: Impressions grouped by feature name.
+    :type impressions_data: list of dicts
+    """
+    if six.callable(listener):
+        try:
+            listener(impressions_data)
+        except Exception:
+            logging.getLogger('Impressions-Listener').exception(
+                'Exception caught when executing user provided impression '
+                'listener function.'
+            )
 
 
 class Label(object):
@@ -51,20 +82,21 @@ class Label(object):
     # Label: no condition matched
     NO_CONDITION_MATCHED = 'no rule matched'
 
-    #Condition: Split definition was not found
-    #Treatment: control
-    #Label: split not found
+    # Condition: Split definition was not found
+    # Treatment: control
+    # Label: split not found
     SPLIT_NOT_FOUND = 'rules not found'
 
-    #Condition: Traffic allocation failed
-    #Treatment: Default Treatment
-    #Label: not in split
+    # Condition: Traffic allocation failed
+    # Treatment: Default Treatment
+    # Label: not in split
     NOT_IN_SPLIT = 'not in split'
 
     # Condition: There was an exception
     # Treatment: control
     # Label: exception
     EXCEPTION = 'exception'
+
 
 class TreatmentLog(object):
     def __init__(self):
@@ -84,13 +116,12 @@ class TreatmentLog(object):
         """
         if isinstance(impression, Impression):
             if impression.feature_name is not None \
-            and impression.matching_key is not None \
-            and impression.treatment is not None\
-            and impression.time > 0:
-                self._log(impression)
+                and impression.matching_key is not None \
+                and impression.treatment is not None \
+                and impression.time > 0:
+                    self._log(impression)
 
         return
-
 
 
 class LoggerBasedTreatmentLog(TreatmentLog):
@@ -100,21 +131,25 @@ class LoggerBasedTreatmentLog(TreatmentLog):
         :type impression: Impression
         """
         if isinstance(impression, Impression):
-            self._logger.info('feature_name = %s, matching_key = %s, treatment = %s, time = %s, label = %s, change_number = %s, bucketing_key = %s',
-                              impression.feature_name,
-                              impression.matching_key,
-                              impression.treatment,
-                              impression.time,
-                              impression.label,
-                              impression.change_number,
-                              impression.bucketing_key
-                            )
+            self._logger.info(
+                'feature_name = %s, matching_key = %s, treatment = %s, '
+                'time = %s, label = %s, change_number = %s, bucketing_key = %s',
+                impression.feature_name,
+                impression.matching_key,
+                impression.treatment,
+                impression.time,
+                impression.label,
+                impression.change_number,
+                impression.bucketing_key
+            )
 
 
 class InMemoryTreatmentLog(TreatmentLog):
     def __init__(self, max_count=-1, ignore_impressions=False):
-        """A thread safe impressions log implementation that stores the impressions in memory.
-        Access to the impressions storage is synchronized with a re-entrant lock.
+        """
+        A thread safe impressions log implementation that stores the impressions
+        in memory. Access to the impressions storage is synchronized with a
+        re-entrant lock.
         :param max_count: Max number of impressions per feature before eviction
         :type max_count: int
         :param ignore_impressions: Whether to ignore log requests
@@ -170,8 +205,8 @@ class InMemoryTreatmentLog(TreatmentLog):
         return existing_impressions
 
     def _notify_eviction(self, feature_name, feature_impressions):
-        """Notifies that the max count was reached for a feature. This gives the opportunity to
-        subclasses to do something about the eviction
+        """Notifies that the max count was reached for a feature. This gives the
+        opportunity to subclasses to do something about the eviction.
         :param feature_name: The name of the feature
         :type feature_name: str
         :param feature_impressions: The evicted impressions
@@ -191,10 +226,15 @@ class InMemoryTreatmentLog(TreatmentLog):
                 if self._max_count < 0 or len(feature_impressions) < self._max_count:
                     feature_impressions.append(impression)
                 else:
-                    self._logger.warning('Count limit for feature treatment log reached. '
-                                         'Clearing impressions for feature.')
+                    self._logger.warning(
+                        'Count limit for feature treatment log. '
+                        'Clearing impressions for feature.'
+                    )
                     self._impressions[impression.feature_name] = [impression]
-                    self._notify_eviction(impression.feature_name, feature_impressions)
+                    self._notify_eviction(
+                        impression.feature_name,
+                        feature_impressions
+                    )
 
 
 class CacheBasedTreatmentLog(TreatmentLog):
@@ -216,9 +256,11 @@ class CacheBasedTreatmentLog(TreatmentLog):
 
 
 class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
-    def __init__(self, api, interval=180, max_workers=5, max_count=-1, ignore_impressions=False):
-        """An impressions implementation that sends the in impressions stored periodically to the
-        Split.io back-end.
+    def __init__(self, api, interval=180, max_workers=5, max_count=-1,
+                 ignore_impressions=False, listener=None):
+        """
+        An impressions implementation that sends the in impressions stored
+        periodically to the Split.io back-end.
         :param api: The SDK api client
         :type api: SdkApi
         :param interval: Optional update interval (Default: 180s)
@@ -230,12 +272,15 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         :param ignore_impressions: Whether to ignore log requests
         :type ignore_impressions: bool
         """
-        super(SelfUpdatingTreatmentLog, self).__init__(max_count=max_count,
-                                                       ignore_impressions=ignore_impressions)
+        super(SelfUpdatingTreatmentLog, self).__init__(
+            max_count=max_count,
+            ignore_impressions=ignore_impressions
+        )
         self._api = api
         self._interval = interval
         self._stopped = True
         self._thread_pool_executor = ThreadPoolExecutor(max_workers=max_workers)
+        self._listener = listener
 
     @property
     def stopped(self):
@@ -262,36 +307,51 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         self._timer_refresh()
 
     def _update_evictions(self, feature_name, feature_impressions):
-        """Sends evicted impressions to the Split.io back-end.
+        """
+        Sends evicted impressions to the Split.io back-end.
         :param feature_name: The name of the feature
         :type feature_name: str
         :param feature_impressions: The evicted impressions
         :type feature_impressions: list
         """
         try:
-            test_impressions_data = build_impressions_data({feature_name: feature_impressions})
+            test_impressions_data = build_impressions_data({
+                feature_name: feature_impressions
+            })
 
             if len(test_impressions_data) > 0:
                 self._api.test_impressions(test_impressions_data)
+                _notify_listener(self._listener, test_impressions_data)
         except:
-            self._logger.exception('Exception caught updating evicted impressions')
+            self._logger.exception(
+                'Exception caught updating evicted impressions'
+            )
             self._stopped = True
 
+
     def _update_impressions(self):
-        """Sends the impressions stored back to the Split.io back-end"""
+        """
+        Sends the impressions stored back to the Split.io back-end
+        """
         try:
             impressions_by_feature = self.fetch_all_and_clear()
-            test_impressions_data = build_impressions_data(impressions_by_feature)
+            test_impressions_data = build_impressions_data(
+                impressions_by_feature
+            )
 
             if len(test_impressions_data) > 0:
                 self._api.test_impressions(test_impressions_data)
+                _notify_listener(self._listener, test_impressions_data)
         except:
             self._logger.exception('Exception caught updating impressions')
             self._stopped = True
 
+
+
     def _notify_eviction(self, feature_name, feature_impressions):
-        """Notifies that the max count was reached for a feature. The evicted impressions are going
-        to be sent to the back-end.
+        """
+        Notifies that the max count was reached for a feature. The evicted
+        impressions are going to be sent to the back-end.
         :param feature_name: The name of the feature
         :type feature_name: str
         :param feature_impressions: The evicted impressions
@@ -301,19 +361,26 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
             return
 
         try:
-            self._thread_pool_executor.submit(self._update_evictions, feature_name,
-                                              feature_impressions)
+            self._thread_pool_executor.submit(
+                self._update_evictions, feature_name, feature_impressions
+            )
         except:
-            self._logger.exception('Exception caught starting evicted impressions update thread')
+            self._logger.exception(
+                'Exception caught starting evicted impressions update thread'
+            )
 
     def _timer_refresh(self):
-        """Responsible for setting the periodic calls to _update_impressions using a Timer thread.
+        """
+        Responsible for setting the periodic calls to _update_impressions using
+        a Timer thread.
         """
 
         try:
             self._thread_pool_executor.submit(self._update_impressions)
         except:
-            self._logger.exception('Exception caught starting impressions update thread')
+            self._logger.exception(
+                'Exception caught starting impressions update thread'
+            )
 
         try:
             if hasattr(self._interval, '__call__'):
@@ -331,8 +398,9 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
 
 class AsyncTreatmentLog(TreatmentLog):
     def __init__(self, delegate, max_workers=5):
-        """A treatment log implementation that uses threads to execute the actual logging onto a
-        delegate log to avoid blocking the caller.
+        """
+        A treatment log implementation that uses threads to execute the
+        actual logging onto a delegate log to avoid blocking the caller.
         :param delegate: The delegate impression log
         :type delegate: ImpressionLog
         :param max_workers: How many workers to use for logging
@@ -355,4 +423,6 @@ class AsyncTreatmentLog(TreatmentLog):
             try:
                 self._thread_pool_executor.submit(self._delegate.log, impression)
             except:
-                self._logger.exception('Exception caught logging impression asynchronously')
+                self._logger.exception(
+                    'Exception caught logging impression asynchronously'
+                )

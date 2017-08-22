@@ -101,14 +101,17 @@ def uwsgi_update_segments(user_config):
         _logger.exception('Exception caught updating segments')
 
 
-def uwsgi_report_impressions(user_config):
+def uwsgi_report_impressions(user_config, listener=None):
     try:
         config = _get_config(user_config)
         seconds = config['impressionsRefreshRate']
         while True:
             impressions_cache = UWSGIImpressionsCache(get_uwsgi())
             sdk_api = api_factory(config)
-            report_impressions(impressions_cache, sdk_api)
+            report_impressions(
+                impressions_cache,
+                sdk_api,
+                user_config.get('impression_listener'))
 
             time.sleep(seconds)
     except:

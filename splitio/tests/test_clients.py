@@ -433,8 +433,11 @@ class SelfRefreshingBrokerBuildTreatmentLogTests(TestCase, MockUtilsMixin):
     def test_calls_self_updating_treatment_log_constructor(self):
         """Tests that _build_treatment_log calls SelfUpdatingTreatmentLog constructor"""
         self.self_updating_treatment_log_mock.assert_called_once_with(
-            self.client._sdk_api, max_count=self.client._max_impressions_log_size,
-            interval=self.client._impressions_interval)
+            self.client._sdk_api,
+            max_count=self.client._max_impressions_log_size,
+            interval=self.client._impressions_interval,
+            listener=None
+        )
 
     def test_calls_async_treatment_log_constructor(self):
         """Tests that _build_treatment_log calls AsyncTreatmentLog constructor"""

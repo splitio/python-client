@@ -5,7 +5,7 @@ import logging
 
 from .splits import Status
 from .impressions import build_impressions_data
-
+from .impressions import _notify_listener
 _logger = logging.getLogger(__name__)
 
 
@@ -111,7 +111,7 @@ def update_splits(split_cache, split_change_fetcher, split_parser):
         split_cache.disable()
 
 
-def report_impressions(impressions_cache, sdk_api):
+def report_impressions(impressions_cache, sdk_api, listener=None):
     """If the reporting process is enabled (through the impressions cache), this function collects
     the impressions from the cache and sends them to Split through the events API. If the process
     fails, no exceptions are raised (but they are logged) and the process is disabled.
@@ -121,6 +121,7 @@ def report_impressions(impressions_cache, sdk_api):
             return
 
         impressions = impressions_cache.fetch_all_and_clear()
+        _notify_listener(listener, impressions)
         test_impressions_data = build_impressions_data(impressions)
 
         _logger.debug('Impressions to send: %s' % test_impressions_data)

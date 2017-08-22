@@ -168,21 +168,25 @@ class JSONFileBroker(BaseBroker):
 
 
 class SelfRefreshingBroker(BaseBroker):
-    def __init__(self, api_key, config=None, sdk_api_base_url=None, events_api_base_url=None):
+    def __init__(self, api_key, config=None, sdk_api_base_url=None,
+                 events_api_base_url=None, impression_listener=None):
         """
-        A Broker implementation that refreshes itself at regular intervals. The config parameter
-        is a dictionary that allows you to control the behaviour of the broker. The following
-        configuration values are supported:
+        A Broker implementation that refreshes itself at regular intervals.
+        The config parameter is a dictionary that allows you to control the
+        behaviour of the broker.
+        The following configuration values are supported:
 
         * connectionTimeout: The TCP connection timeout (Default: 1500ms)
         * readTimeout: The HTTP read timeout (Default: 1500ms)
         * featuresRefreshRate: The refresh rate for features (Default: 30s)
         * segmentsRefreshRate: The refresh rate for segments (Default: 60s)
         * metricsRefreshRate: The refresh rate for metrics (Default: 60s)
-        * impressionsRefreshRate: The refresh rate for impressions (Default: 60s)
-        * randomizeIntervals: Whether to randomize the refres intervals (Default: False)
-        * ready: How long to wait (in seconds) for the broker to be initialized. 0 to return
-          immediately without waiting. (Default: 0s)
+        * impressionsRefreshRate: The refresh rate for impressions
+            (Default: 60s)
+        * randomizeIntervals: Whether to randomize the refres intervals
+        (Default: False)
+        * ready: How long to wait (in seconds) for the broker to be initialized.
+            0 to return immediately without waiting. (Default: 0s)
 
         :param api_key: The API key provided by Split.io
         :type api_key: str
@@ -198,6 +202,7 @@ class SelfRefreshingBroker(BaseBroker):
         self._api_key = api_key
         self._sdk_api_base_url = sdk_api_base_url
         self._events_api_base_url = events_api_base_url
+        self._impression_listener = impression_listener
 
         self._init_config(config)
         self._sdk_api = self._build_sdk_api()
@@ -258,8 +263,11 @@ class SelfRefreshingBroker(BaseBroker):
         :rtype: TreatmentLog
         """
         self_updating_treatment_log = SelfUpdatingTreatmentLog(
-            self._sdk_api, max_count=self._max_impressions_log_size,
-            interval=self._impressions_interval)
+            self._sdk_api,
+            max_count=self._max_impressions_log_size,
+            interval=self._impressions_interval,
+            listener=self._impression_listener
+        )
         return AsyncTreatmentLog(self_updating_treatment_log)
 
     def _build_metrics(self):
@@ -630,8 +638,13 @@ def get_local_broker(api_key, **kwargs):
     if api_key == 'localhost':
         return LocalhostBroker(**kwargs)
 
-    return SelfRefreshingBroker(api_key, config=config, sdk_api_base_url=sdk_api_base_url,
-                                events_api_base_url=events_api_base_url)
+    return SelfRefreshingBroker(
+        api_key,
+        config=config,
+        sdk_api_base_url=sdk_api_base_url,
+        events_api_base_url=events_api_base_url,
+        impression_listener=kwargs.get('impression_listener')
+    )
 
 
 def get_redis_broker(api_key, **kwargs):
