@@ -16,6 +16,8 @@ from splitio.impressions import (Impression, build_impressions_data, TreatmentLo
                                  AsyncTreatmentLog)
 from splitio.tests.utils import MockUtilsMixin
 
+from splitio.tasks import report_impressions
+
 
 class BuildImpressionsDataTests(TestCase):
     def setUp(self):
@@ -512,3 +514,41 @@ class AsyncTreatmentLogTests(TestCase, MockUtilsMixin):
         # try:
         # except:
         #     self.fail('Unexpected exception raised')
+
+
+class TestImpressionListener(TestCase):
+    """
+    Tests for impression listener in "in-memory" and "uwsgi-cache" operation
+    modes
+    """
+
+    def test_inmemory_impression_listener(self):
+        some_api = mock.MagicMock()
+        listener = mock.MagicMock()
+        treatment_log = SelfUpdatingTreatmentLog(some_api, listener=listener)
+        with mock.patch(
+            'splitio.impressions.build_impressions_data',
+            return_value=[1, 2, 3]
+        ):
+            treatment_log._update_evictions('some_feature', [])
+
+        listener.assert_called_once_with([1, 2, 3])
+
+    def test_uwsgi_impression_listener(self):
+        impressions_cache = mock.MagicMock()
+        impressions_cache.fetch_all_and_clear.return_value = [1, 2, 3]
+        some_api = mock.MagicMock()
+        listener = mock.MagicMock()
+        with mock.patch(
+            'splitio.impressions.build_impressions_data',
+            return_value=[1, 2, 3]
+        ):
+            report_impressions(
+                impressions_cache,
+                some_api,
+                listener=listener
+            )
+
+        listener.assert_called_with([1, 2, 3])
+
+
