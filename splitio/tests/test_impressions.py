@@ -536,12 +536,19 @@ class TestImpressionListener(TestCase):
 
     def test_uwsgi_impression_listener(self):
         impressions_cache = mock.MagicMock()
-        impressions_cache.fetch_all_and_clear.return_value = [1, 2, 3]
+        impressions = {
+            'testName': 'someTest',
+            'keyImpressions': [1, 2, 3]
+        }
+
+        impressions_cache.fetch_all_and_clear.return_value = {
+            'someTest': [1, 2, 3]
+        }
         some_api = mock.MagicMock()
         listener = mock.MagicMock()
         with mock.patch(
-            'splitio.impressions.build_impressions_data',
-            return_value=[1, 2, 3]
+            'splitio.tasks.build_impressions_data',
+            return_value=impressions
         ):
             report_impressions(
                 impressions_cache,
@@ -549,6 +556,4 @@ class TestImpressionListener(TestCase):
                 listener=listener
             )
 
-        listener.assert_called_with([1, 2, 3])
-
-
+        listener.assert_called_with(impressions)
