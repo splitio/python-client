@@ -12,6 +12,7 @@ import re
 import threading
 from future.utils import raise_from
 
+
 # If watchdog is installed enable auto-refreshing localhost broker
 try:
     # For some reason watchdog and fsevents don't work as expected, and the
@@ -75,6 +76,16 @@ class BaseBroker(object):
         """
         self._logger = logging.getLogger(self.__class__.__name__)
 
+    def destroy(self):
+        """
+        Free all resources associated with this broker.
+        After this is called, all future invocations to fetch_feature,
+        get_change_number, etc will result in an Exception.
+        The client is responsible for handling it and returning an appropriate
+        treatment.
+        """
+        pass
+
     def fetch_feature(self, name):
         """
         Fetch a feature
@@ -135,6 +146,7 @@ class JSONFileBroker(BaseBroker):
         self._split_fetcher = self._build_split_fetcher()
         self._treatment_log = TreatmentLog()
         self._metrics = Metrics()
+        self._destroyed = False
 
     def _build_split_fetcher(self):
         """
