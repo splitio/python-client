@@ -101,7 +101,7 @@ def uwsgi_update_segments(user_config):
         _logger.exception('Exception caught updating segments')
 
 
-def uwsgi_report_impressions(user_config, listener=None):
+def uwsgi_report_impressions(user_config):
     try:
         config = _get_config(user_config)
         seconds = config['impressionsRefreshRate']
