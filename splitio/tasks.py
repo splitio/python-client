@@ -122,7 +122,7 @@ def report_impressions(impressions_cache, sdk_api, listener=None):
 
         impressions = impressions_cache.fetch_all_and_clear()
         test_impressions_data = build_impressions_data(impressions)
-        _notify_listener(listener, test_impressions_data)
+        _notify_listener(listener, {'impressions': test_impressions_data})
 
         _logger.debug('Impressions to send: %s' % test_impressions_data)
 
