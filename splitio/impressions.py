@@ -63,7 +63,7 @@ def _notify_listener(listener, impressions_data):
     """
     if six.callable(listener):
         try:
-            listener(impressions_data)
+            listener({'impressions': impressions_data})
         except Exception:
             logging.getLogger('Impressions-Listener').exception(
                 'Exception caught when executing user provided impression '
