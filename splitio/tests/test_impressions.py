@@ -556,4 +556,4 @@ class TestImpressionListener(TestCase):
                 listener=listener
             )
 
-        listener.assert_called_with(impressions)
+        listener.assert_called_with({'impressions': impressions})
