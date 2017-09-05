@@ -120,7 +120,6 @@ class TreatmentLog(object):
                 and impression.treatment is not None \
                 and impression.time > 0:
                     self._log(impression)
-
         return
 
 
@@ -205,8 +204,10 @@ class InMemoryTreatmentLog(TreatmentLog):
         return existing_impressions
 
     def _notify_eviction(self, feature_name, feature_impressions):
-        """Notifies that the max count was reached for a feature. This gives the
-        opportunity to subclasses to do something about the eviction.
+        """
+        Notifies that the max count was reached for a feature.
+        This gives the opportunity to
+        subclasses to do something about the eviction
         :param feature_name: The name of the feature
         :type feature_name: str
         :param feature_impressions: The evicted impressions
@@ -271,6 +272,9 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         :type max_count: int
         :param ignore_impressions: Whether to ignore log requests
         :type ignore_impressions: bool
+        :param listener: callback that will receive impressions bulk fur custom
+            user handling of impressions.
+        :type listener: callable
         """
         super(SelfUpdatingTreatmentLog, self).__init__(
             max_count=max_count,
@@ -281,6 +285,10 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         self._stopped = True
         self._thread_pool_executor = ThreadPoolExecutor(max_workers=max_workers)
         self._listener = listener
+        self._destroyed = False
+
+    def destroy(self):
+        self._destroyed = True
 
     @property
     def stopped(self):
@@ -315,9 +323,9 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         :type feature_impressions: list
         """
         try:
-            test_impressions_data = build_impressions_data({
-                feature_name: feature_impressions
-            })
+            test_impressions_data = build_impressions_data(
+                {feature_name: feature_impressions}
+            )
 
             if len(test_impressions_data) > 0:
                 self._api.test_impressions(test_impressions_data)
@@ -357,7 +365,9 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         :param feature_impressions: The evicted impressions
         :type feature_impressions: list
         """
-        if feature_name is None or feature_impressions is None or len(feature_impressions) == 0:
+        if self._destroyed \
+                or feature_name is None \
+                or feature_impressions is None or len(feature_impressions) == 0:
             return
 
         try:
@@ -374,6 +384,8 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         Responsible for setting the periodic calls to _update_impressions using
         a Timer thread.
         """
+        if self._destroyed:
+            return
 
         try:
             self._thread_pool_executor.submit(self._update_impressions)
@@ -426,3 +438,9 @@ class AsyncTreatmentLog(TreatmentLog):
                 self._logger.exception(
                     'Exception caught logging impression asynchronously'
                 )
+
+    def destroy(self):
+        """
+        Forward call to delegate fetcher.
+        """
+        self.delegate.destroy()

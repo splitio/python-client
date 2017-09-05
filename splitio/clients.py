@@ -27,6 +27,7 @@ class Client(object):
         self._splitter = Splitter()
         self._broker = broker
         self._labels_enabled = labels_enabled
+        self._destroyed = False
 
     @staticmethod
     def _get_keys(key):
@@ -39,6 +40,14 @@ class Client(object):
             matching_key = str(key)
             bucketing_key = None
         return matching_key, bucketing_key
+
+    def destroy(self):
+        """
+        Disable the split-client and free all allocated resources.
+        Only applicable when using in-memory operation mode.
+        """
+        self._destroyed = True
+        self._broker.destroy()
 
     def get_treatment(self, key, feature, attributes=None):
         """
@@ -54,6 +63,9 @@ class Client(object):
         :return: The treatment for the key and feature
         :rtype: str
         """
+        if self._destroyed:
+            return CONTROL
+
         if key is None or feature is None:
             return CONTROL
 

@@ -12,6 +12,7 @@ import re
 import threading
 from future.utils import raise_from
 
+
 # If watchdog is installed enable auto-refreshing localhost broker
 try:
     # For some reason watchdog and fsevents don't work as expected, and the
@@ -47,8 +48,8 @@ from splitio.uwsgi import UWSGISplitCache, UWSGIImpressionsCache, \
 
 def randomize_interval(value):
     """
-    Generates a function that return a random integer in the [value/2,value) interval. The minimum
-    generated value is 5.
+    Generates a function that return a random integer in the [value/2,value)
+    interval. The minimum generated value is 5.
     :param value: The maximum value for the random interval
     :type value: int
     :return: A function that returns a random integer in the interval.
@@ -116,17 +117,22 @@ class BaseBroker(object):
     def get_impression_log(self):
         pass
 
+    def destroy(self):
+        pass
+
 
 class JSONFileBroker(BaseBroker):
     def __init__(self, segment_changes_file_name, split_changes_file_name):
         """
-        A Broker implementation that uses responses from the segmentChanges and splitChanges
-        resources to provide access to splits. It is intended to be used on integration
-        tests only.
+        A Broker implementation that uses responses from the segmentChanges and
+        splitChanges resources to provide access to splits. It is intended to be
+        used on integration tests only.
 
-        :param segment_changes_file_name: The name of the file with the segmentChanges response
+        :param segment_changes_file_name: The name of the file with the
+            segmentChanges response
         :type segment_changes_file_name: str
-        :param split_changes_file_name: The name of the file with the splitChanges response
+        :param split_changes_file_name: The name of the file with the
+            splitChanges response
         :type split_changes_file_name: str
         """
         super(JSONFileBroker, self).__init__()
@@ -135,16 +141,20 @@ class JSONFileBroker(BaseBroker):
         self._split_fetcher = self._build_split_fetcher()
         self._treatment_log = TreatmentLog()
         self._metrics = Metrics()
+        self._destroyed = False
 
     def _build_split_fetcher(self):
         """
         Build the json backed split fetcher
         :return: The json backed split fetcher
-        :rtype: SelfRefreshingSplitFetcher
+        :rtype: JSONFileSplitFetcher
         """
         segment_fetcher = JSONFileSegmentFetcher(self._segment_changes_file_name)
         split_parser = SplitParser(segment_fetcher)
-        split_fetcher = JSONFileSplitFetcher(self._split_changes_file_name, split_parser)
+        split_fetcher = JSONFileSplitFetcher(
+            self._split_changes_file_name,
+            split_parser
+        )
 
         return split_fetcher
 
@@ -175,7 +185,6 @@ class SelfRefreshingBroker(BaseBroker):
         The config parameter is a dictionary that allows you to control the
         behaviour of the broker.
         The following configuration values are supported:
-
         * connectionTimeout: The TCP connection timeout (Default: 1500ms)
         * readTimeout: The HTTP read timeout (Default: 1500ms)
         * featuresRefreshRate: The refresh rate for features (Default: 30s)
@@ -184,7 +193,7 @@ class SelfRefreshingBroker(BaseBroker):
         * impressionsRefreshRate: The refresh rate for impressions
             (Default: 60s)
         * randomizeIntervals: Whether to randomize the refres intervals
-        (Default: False)
+            (Default: False)
         * ready: How long to wait (in seconds) for the broker to be initialized.
             0 to return immediately without waiting. (Default: 0s)
 
@@ -216,9 +225,18 @@ class SelfRefreshingBroker(BaseBroker):
         if config is not None:
             self._config.update(config)
 
-        segment_fetcher_interval = min(MAX_INTERVAL, self._config['segmentsRefreshRate'])
-        split_fetcher_interval = min(MAX_INTERVAL, self._config['featuresRefreshRate'])
-        impressions_interval = min(MAX_INTERVAL, self._config['impressionsRefreshRate'])
+        segment_fetcher_interval = min(
+            MAX_INTERVAL,
+            self._config['segmentsRefreshRate']
+        )
+        split_fetcher_interval = min(
+            MAX_INTERVAL,
+            self._config['featuresRefreshRate']
+        )
+        impressions_interval = min(
+            MAX_INTERVAL,
+            self._config['impressionsRefreshRate']
+        )
 
         if self._config['randomizeIntervals']:
             self._segment_fetcher_interval = randomize_interval(segment_fetcher_interval)
@@ -229,7 +247,10 @@ class SelfRefreshingBroker(BaseBroker):
             self._split_fetcher_interval = split_fetcher_interval
             self._impressions_interval = impressions_interval
 
-        self._metrics_max_time_between_calls = min(MAX_INTERVAL, self._config['metricsRefreshRate'])
+        self._metrics_max_time_between_calls = min(
+            MAX_INTERVAL,
+            self._config['metricsRefreshRate']
+        )
         self._metrics_max_call_count = self._config['maxMetricsCallsBeforeFlush']
 
         self._connection_timeout = self._config['connectionTimeout']
@@ -238,9 +259,13 @@ class SelfRefreshingBroker(BaseBroker):
         self._ready = self._config['ready']
 
     def _build_sdk_api(self):
-        return SdkApi(self._api_key, sdk_api_base_url=self._sdk_api_base_url,
-                      events_api_base_url=self._events_api_base_url,
-                      connect_timeout=self._connection_timeout, read_timeout=self._read_timeout)
+        return SdkApi(
+            self._api_key,
+            sdk_api_base_url=self._sdk_api_base_url,
+            events_api_base_url=self._events_api_base_url,
+            connect_timeout=self._connection_timeout,
+            read_timeout=self._read_timeout
+        )
 
     def _build_split_fetcher(self):
         """
@@ -249,12 +274,17 @@ class SelfRefreshingBroker(BaseBroker):
         :rtype: SelfRefreshingSplitFetcher
         """
         segment_change_fetcher = ApiSegmentChangeFetcher(self._sdk_api)
-        segment_fetcher = SelfRefreshingSegmentFetcher(segment_change_fetcher,
-                                                       interval=self._segment_fetcher_interval)
+        segment_fetcher = SelfRefreshingSegmentFetcher(
+            segment_change_fetcher,
+            interval=self._segment_fetcher_interval
+        )
         split_change_fetcher = ApiSplitChangeFetcher(self._sdk_api)
         split_parser = SplitParser(segment_fetcher)
-        split_fetcher = SelfRefreshingSplitFetcher(split_change_fetcher, split_parser,
-                                                   interval=self._split_fetcher_interval)
+        split_fetcher = SelfRefreshingSplitFetcher(
+            split_change_fetcher,
+            split_parser,
+            interval=self._split_fetcher_interval
+        )
         return split_fetcher
 
     def _build_treatment_log(self):
@@ -275,8 +305,11 @@ class SelfRefreshingBroker(BaseBroker):
         :return: The metrics implementation.
         :rtype: Metrics
         """
-        api_metrics = ApiMetrics(self._sdk_api, max_call_count=self._metrics_max_call_count,
-                                 max_time_between_calls=self._metrics_max_time_between_calls)
+        api_metrics = ApiMetrics(
+            self._sdk_api,
+            max_call_count=self._metrics_max_call_count,
+            max_time_between_calls=self._metrics_max_time_between_calls
+        )
         return AsyncMetrics(api_metrics)
 
     def _start(self):
@@ -291,13 +324,17 @@ class SelfRefreshingBroker(BaseBroker):
 
             flag_set = event.wait(self._ready / 1000)
             if not flag_set:
-                self._logger.info('Timeout reached. Returning broker in partial state.')
+                self._logger.info(
+                    'Timeout reached. Returning broker in partial state.'
+                )
                 raise TimeoutException()
         else:
             self._split_fetcher.start()
 
     def _fetch_splits(self, event):
-        """Fetches the split and segment information blocking until it is done."""
+        """
+        Fetches the split and segment information blocking until it is done.
+        """
         self._split_fetcher.refresh_splits(block_until_ready=True)
         self._split_fetcher.start(delayed_update=True)
         event.set()
@@ -320,16 +357,23 @@ class SelfRefreshingBroker(BaseBroker):
         """
         return self._treatment_log
 
+    def destroy(self):
+        self._split_fetcher.destroy()
+        self._treatment_log.destroy()
+        self._metrics.destroy()
+
 
 class LocalhostBroker(BaseBroker):
     _COMMENT_LINE_RE = re.compile('^#.*$')
-    _DEFINITION_LINE_RE = re.compile('^(?<![^#])(?P<feature>[\w_]+)\s+(?P<treatment>[\w_]+)$')
+    _DEFINITION_LINE_RE = re.compile(
+        '^(?<![^#])(?P<feature>[\w_]+)\s+(?P<treatment>[\w_]+)$'
+    )
 
     def __init__(self, split_definition_file_name=None):
         """
-        A broker implementation that builds its configuration from a split definition file. By
-        default the definition is taken from $HOME/.split but the file name can be supplied as
-        argument as well.
+        A broker implementation that builds its configuration from a split
+        definition file. By default the definition is taken from $HOME/.split
+        but the file name can be supplied as argument as well.
 
         The definition file has the following syntax:
 
@@ -339,7 +383,7 @@ class LocalhostBroker(BaseBroker):
         feature_name : string
         treatment : string
 
-        :param split_definition_file_name: Name of the definition file (Optional)
+        :param split_definition_file_name: Name of definition file (Optional)
         :type split_definition_file_name: str
         """
         super(LocalhostBroker, self).__init__()
@@ -368,7 +412,8 @@ class LocalhostBroker(BaseBroker):
 
     def _build_split_fetcher(self):
         """
-        Build the in memory split fetcher using the local environment split definition file
+        Build the in memory split fetcher using the local environment split
+        definition file
         :return: The in memory split fetcher
         :rtype: InMemorySplitFetcher
         """
@@ -393,15 +438,23 @@ class LocalhostBroker(BaseBroker):
                     definition_match = LocalhostBroker._DEFINITION_LINE_RE.match(line)
                     if definition_match:
                         splits[definition_match.group('feature')] = AllKeysSplit(
-                            definition_match.group('feature'), definition_match.group('treatment'))
+                            definition_match.group('feature'),
+                            definition_match.group('treatment')
+                        )
                         continue
 
-                    self._logger.warning('Invalid line on localhost environment split definition. '
-                                         'line = %s', line)
+                    self._logger.warning(
+                        'Invalid line on localhost environment split '
+                        'definition. Line = %s',
+                        line
+                    )
             return splits
         except IOError as e:
-            raise_from(ValueError('There was a problem with '
-                                  'the splits definition file "{}"'.format(file_name)), e)
+            raise_from(ValueError(
+                'There was a problem with '
+                'the splits definition file "{}"'.format(file_name)),
+                e
+            )
 
     def get_split_fetcher(self):
         """
@@ -428,11 +481,11 @@ if _LOCALHOST_BROKER_AUTO_REFRESH:
         '''
         def __init__(self, client_instance, *args, **kwargs):
             '''
-            Store client to trigger re-parsing of file upon modifications detected.
-            A weak refereance is used to break circular dependencies between this
-            class and `LocalhostEnvironmentClient`.
-            All arguments but `client_instance` are forwarded to the parent class
-            `PatternMatchingEventHandler`
+            Store client to trigger re-parsing of file upon modifications
+            detected. A weak refereance is used to break circular dependencies
+            between this class and `LocalhostEnvironmentClient`.
+            All arguments but `client_instance` are forwarded to the parent
+            class `PatternMatchingEventHandler`
             '''
             self._client_instance = weakref.ref(client_instance)
             PatternMatchingEventHandler.__init__(self, *args, **kwargs)
@@ -507,8 +560,9 @@ class RedisBroker(BaseBroker):
 class UWSGIBroker(BaseBroker):
     def __init__(self, uwsgi, config=None):
         """
-        A Broker implementation that consumes data from uwsgi cache framework. The config parameter
-        is a dictionary that allows you to control the behaviour of the broker.
+        A Broker implementation that consumes data from uwsgi cache framework.
+        The config parameter is a dictionary that allows you to control the
+        behaviour of the broker.
 
         :param config: The configuration dictionary
         :type config: dict
@@ -575,8 +629,8 @@ def get_local_broker(api_key, **kwargs):
     """
     Builds a Split Broker that refreshes itself at regular intervals.
 
-    The config_file parameter is the name of a file that contains the broker configuration. Here's
-    an example of a config file:
+    The config_file parameter is the name of a file that contains the broker
+    configuration. Here's an example of a config file:
 
     {
       "apiKey": "some-api-key",
@@ -594,8 +648,8 @@ def get_local_broker(api_key, **kwargs):
       "ready": 0
     }
 
-    The config parameter is a dictionary that allows you to control the behaviour of the broker.
-    The following configuration values are supported:
+    The config parameter is a dictionary that allows you to control the
+    behaviour of the broker. The following configuration values are supported:
 
     * connectionTimeout: The TCP connection timeout (Default: 1500ms)
     * readTimeout: The HTTP read timeout (Default: 1500ms)
@@ -603,13 +657,14 @@ def get_local_broker(api_key, **kwargs):
     * segmentsRefreshRate: The refresh rate for segments (Default: 60s)
     * metricsRefreshRate: The refresh rate for metrics (Default: 60s)
     * impressionsRefreshRate: The refresh rate for impressions (Default: 60s)
-    * randomizeIntervals: Whether to randomize the refres intervals (Default: False)
-    * ready: How long to wait (in seconds) for the broker to be initialized. 0 to return
-      immediately without waiting. (Default: 0s)
+    * randomizeIntervals: Whether to randomize the refres intervals
+        (Default: False)
+    * ready: How long to wait (in seconds) for the broker to be initialized.
+        0 to return immediately without waiting. (Default: 0s)
 
-    If the api_key argument is 'localhost' a localhost environment broker is built based on the
-    contents of a .split file in the user's home directory. The definition file has the following
-    syntax:
+    If the api_key argument is 'localhost' a localhost environment broker is
+    built based on the contents of a .split file in the user's home directory.
+    The definition file has the following syntax:
 
         file: (comment | split_line)+
         comment : '#' string*\n
@@ -617,8 +672,8 @@ def get_local_broker(api_key, **kwargs):
         feature_name : string
         treatment : string
 
-    It is possible to change the location of the split file by using the split_definition_file_name
-    argument.
+    It is possible to change the location of the split file by using the
+    split_definition_file_name argument.
 
     :param api_key: The API key provided by Split.io
     :type api_key: str
@@ -633,7 +688,10 @@ def get_local_broker(api_key, **kwargs):
     :param split_definition_file_name: Name of the definition file (Optional)
     :type split_definition_file_name: str
     """
-    api_key, config, sdk_api_base_url, events_api_base_url = _init_config(api_key, **kwargs)
+    api_key, config, sdk_api_base_url, events_api_base_url = _init_config(
+        api_key,
+        **kwargs
+    )
 
     if api_key == 'localhost':
         return LocalhostBroker(**kwargs)
@@ -649,15 +707,16 @@ def get_local_broker(api_key, **kwargs):
 
 def get_redis_broker(api_key, **kwargs):
     """
-    Builds a Split Broker that that gets its information from a Redis instance. It also writes
-    impressions and metrics to the same instance.
+    Builds a Split Broker that that gets its information from a Redis instance.
+    It also writes impressions and metrics to the same instance.
 
-    In order for this work properly, you need to periodically call the update_splits and
-    update_segments scripts. You also need to run the send_impressions and send_metrics scripts in
-    order to push the impressions and metrics onto the Split.io backend-
+    In order for this work properly, you need to periodically call the
+    update_splits and update_segments scripts.
+    You also need to run the send_impressions and send_metrics scripts in order
+    to push the impressions and metrics onto the Split.io backend.
 
-    The config_file parameter is the name of a file that contains the broker configuration. Here's
-    an example of a config file:
+    The config_file parameter is the name of a file that contains the broker
+    configuration. Here's an example of a config file:
 
     {
       "apiKey": "some-api-key",
@@ -669,12 +728,12 @@ def get_redis_broker(api_key, **kwargs):
       "redisDb": 0,
     }
 
-    If the redisFactory entry is present, it is used to build the redis broker instance, otherwise
-    the values of redisHost, redisPort and redisDb are used.
+    If the redisFactory entry is present, it is used to build the redis broker
+    instance, otherwise the values of redisHost, redisPort and redisDb are used.
 
-    If the api_key argument is 'localhost' a localhost environment broker is built based on the
-    contents of a .split file in the user's home directory. The definition file has the following
-    syntax:
+    If the api_key argument is 'localhost' a localhost environment broker is
+    built based on the contents of a .split file in the user's home directory.
+    The definition file has the following syntax:
 
         file: (comment | split_line)+
         comment : '#' string*\n
@@ -682,8 +741,8 @@ def get_redis_broker(api_key, **kwargs):
         feature_name : string
         treatment : string
 
-    It is possible to change the location of the split file by using the split_definition_file_name
-    argument.
+    It is possible to change the location of the split file by using the
+    split_definition_file_name argument.
 
     :param api_key: The API key provided by Split.io
     :type api_key: str
@@ -710,15 +769,17 @@ def get_redis_broker(api_key, **kwargs):
 
 def get_uwsgi_broker(api_key, **kwargs):
     """
-    Builds a Split Broker that that gets its information from a uWSGI cache instance. It also writes
-    impressions and metrics to the same instance.
+    Builds a Split Broker that that gets its information from a uWSGI cache
+    instance. It also writes impressions and metrics to the same instance.
 
-    In order for this work properly, you need to periodically call the spooler uwsgi_update_splits and
-    uwsgi_update_segments scripts. You also need to run the uwsgi_report_impressions and uwsgi_report_metrics scripts in
-    order to push the impressions and metrics onto the Split.io backend-
+    In order for this work properly, you need to periodically call the spooler
+    uwsgi_update_splits and uwsgi_update_segments scripts.
+    You also need to run the uwsgi_report_impressions and uwsgi_report_metrics
+    scripts in order to push the impressions and metrics onto the Split.io
+    backend.
 
-    The config_file parameter is the name of a file that contains the broker configuration. Here's
-    an example of a config file:
+    The config_file parameter is the name of a file that contains the broker
+    configuration. Here's an example of a config file:
 
     {
       "apiKey": "some-api-key",
@@ -730,9 +791,9 @@ def get_uwsgi_broker(api_key, **kwargs):
       "impressionsRefreshRate": 60
     }
 
-    If the api_key argument is 'localhost' a localhost environment broker is built based on the
-    contents of a .split file in the user's home directory. The definition file has the following
-    syntax:
+    If the api_key argument is 'localhost' a localhost environment broker is
+    built based on the contents of a .split file in the user's home directory.
+    The definition file has the following syntax:
 
         file: (comment | split_line)+
         comment : '#' string*\n
@@ -740,8 +801,8 @@ def get_uwsgi_broker(api_key, **kwargs):
         feature_name : string
         treatment : string
 
-    It is possible to change the location of the split file by using the split_definition_file_name
-    argument.
+    It is possible to change the location of the split file by using the
+    split_definition_file_name argument.
 
     :param api_key: The API key provided by Split.io
     :type api_key: str

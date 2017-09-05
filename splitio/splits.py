@@ -350,6 +350,7 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
         self._change_number = change_number
         self._stopped = True
         self._rlock = RLock()
+        self._destroyed = False
 
     @property
     def stopped(self):
@@ -370,6 +371,14 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
     @property
     def change_number(self):
         return self._change_number
+
+    def destroy(self):
+        """
+        Disables the split-refreshing task, by preventing it from being
+        re-scheduled.
+        """
+        self._destroyed = True
+        self._split_parser.destroy()
 
     def start(self, delayed_update=False):
         """Starts the self-refreshing processes of the splits
@@ -431,6 +440,9 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
         :param block_until_ready: Whether to block until all data is available
         :param block_until_ready: bool
         """
+        if self._destroyed:
+            return
+
         change_number_before = self._change_number
 
         try:
@@ -484,6 +496,9 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
         Responsible for setting the periodic calls to _refresh_splits using a
         Timer thread
         """
+        if self._destroyed:
+            return
+
         if self._stopped:
             self._logger.error('Previous fetch failed, skipping this iteration '
                                'and rescheduling segment refresh.')
@@ -1139,6 +1154,8 @@ class SplitParser(object):
             attribute, delegate, matcher.get('negate', False)
         )
 
+    def destroy(self):
+        self._segment_fetcher.destroy()
 
 class CacheBasedSplitFetcher(SplitFetcher):
     def __init__(self, split_cache):
