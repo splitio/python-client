@@ -6,6 +6,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from json import load
 from threading import Timer, RLock
+import six
 
 
 class Segment(object):
@@ -108,6 +109,12 @@ class SelfRefreshingSegmentFetcher(object):
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
         self._interval = interval
         self._segments = dict()
+        self._destroyed = False
+
+    def destroy(self):
+        self._destroyed = True
+        for _, segment in six.iteritems(self._segments):
+            segment.destroy()
 
     def fetch(self, name, block_until_ready=False):
         """
@@ -164,6 +171,7 @@ class SelfRefreshingSegment(InMemorySegment):
         self._stopped = True
         self._rlock = RLock()
         self._logger = logging.getLogger(self.__class__.__name__)
+        self._destroyed = False
 
     @property
     def stopped(self):
@@ -181,6 +189,9 @@ class SelfRefreshingSegment(InMemorySegment):
         """
         self._stopped = stopped
 
+    def destroy(self):
+        self._destroyed = True
+
     def start(self, delayed_update=False):
         """Starts the self-refreshing processes of the segment.
         :param delayed_update: Whether to delay the update until the interval has passed
@@ -197,7 +208,12 @@ class SelfRefreshingSegment(InMemorySegment):
             self._timer_refresh()
 
     def refresh_segment(self):
-        """The actual segment refresh process."""
+        """
+        The actual segment refresh process.
+        """
+        if self._destroyed:
+            return
+
         try:
             with self._rlock:
                 while True:
@@ -220,8 +236,10 @@ class SelfRefreshingSegment(InMemorySegment):
                         self._logger.info('%s removed %s', self._name,
                                           self._summarize_changes(response['removed']))
 
-                        new_key_set = (self._key_set | frozenset(response['added'])) -\
-                            frozenset(response['removed'])
+                        new_key_set = (
+                            (self._key_set | frozenset(response['added']))
+                            - frozenset(response['removed'])
+                        )
                         self._key_set = new_key_set
 
                     self._change_number = response['till']
@@ -254,7 +272,13 @@ class SelfRefreshingSegment(InMemorySegment):
             self._stopped = True
 
     def _timer_refresh(self):
-        """Responsible for setting the periodic calls to _refresh_segment using a Timer thread."""
+        """
+        Responsible for setting the periodic calls to _refresh_segment using a
+        Timer thread.
+        """
+        if self._destroyed:
+            return
+
         if self._stopped:
             self._logger.error('Previous fetch failed, skipping this iteration '
                                'and rescheduling segment refresh.')

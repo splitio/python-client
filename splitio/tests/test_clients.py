@@ -480,6 +480,12 @@ class SelfRefreshingBrokerBuildMetricsTests(TestCase, MockUtilsMixin):
         """Tests that _build_metrics returns an AsyncMetrics"""
         self.assertEqual(self.aync_metrics_mock.return_value, self.client._build_metrics())
 
+    def test_destroy_returns_control(self):
+        client = Client(SelfRefreshingBroker(self.some_api_key))
+        client.destroy()
+        self.assertEqual(client.get_treatment('asd', 'asd'), CONTROL)
+
+
 
 class JSONFileBrokerIntegrationTests(TestCase):
     @classmethod
