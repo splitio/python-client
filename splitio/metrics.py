@@ -441,6 +441,10 @@ class AsyncMetrics(Metrics):
         super(AsyncMetrics, self).__init__()
         self._delegate = delegate
         self._thread_pool_executor = ThreadPoolExecutor(max_workers=max_workers)
+        self._destroyed = False
+
+    def destroy(self):
+        self._destroyed = True
 
     def count(self, counter, delta):
         """Adjusts the specified counter by a given delta. This method is is non-blocking and is
@@ -449,6 +453,9 @@ class AsyncMetrics(Metrics):
         :type counter: str
         :param delta: The amount ot adjust the counter by
         :type delta: int"""
+        if self._destroyed:
+            return
+
         try:
             self._thread_pool_executor.submit(self._delegate.count, counter, delta)
         except:
@@ -462,6 +469,9 @@ class AsyncMetrics(Metrics):
         :param time_in_ms: The time in milliseconds
         :type: int
         """
+        if self._destroyed:
+            return
+
         try:
             self._thread_pool_executor.submit(self._delegate.time, operation, time_in_ms)
         except:
@@ -475,6 +485,9 @@ class AsyncMetrics(Metrics):
         :param value: The new reading of the gauge
         :type: float
         """
+        if self._destroyed:
+            return
+
         try:
             self._thread_pool_executor.submit(self._delegate.gauge, gauge, value)
         except:

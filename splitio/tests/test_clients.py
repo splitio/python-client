@@ -433,8 +433,11 @@ class SelfRefreshingBrokerBuildTreatmentLogTests(TestCase, MockUtilsMixin):
     def test_calls_self_updating_treatment_log_constructor(self):
         """Tests that _build_treatment_log calls SelfUpdatingTreatmentLog constructor"""
         self.self_updating_treatment_log_mock.assert_called_once_with(
-            self.client._sdk_api, max_count=self.client._max_impressions_log_size,
-            interval=self.client._impressions_interval)
+            self.client._sdk_api,
+            max_count=self.client._max_impressions_log_size,
+            interval=self.client._impressions_interval,
+            listener=None
+        )
 
     def test_calls_async_treatment_log_constructor(self):
         """Tests that _build_treatment_log calls AsyncTreatmentLog constructor"""
@@ -479,6 +482,12 @@ class SelfRefreshingBrokerBuildMetricsTests(TestCase, MockUtilsMixin):
     def test_returns_async_treatment_log(self):
         """Tests that _build_metrics returns an AsyncMetrics"""
         self.assertEqual(self.aync_metrics_mock.return_value, self.client._build_metrics())
+
+    def test_destroy_returns_control(self):
+        client = Client(SelfRefreshingBroker(self.some_api_key))
+        client.destroy()
+        self.assertEqual(client.get_treatment('asd', 'asd'), CONTROL)
+
 
 
 class JSONFileBrokerIntegrationTests(TestCase):
