@@ -23,7 +23,8 @@ from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, SDK_API_BASE_URL, \
     EVENTS_API_BASE_URL
 from splitio.treatments import CONTROL
 from splitio.tests.utils import MockUtilsMixin
-
+from splitio.managers import LocalhostSplitManager, \
+    SelfRefreshingSplitManager, UWSGISplitManager, RedisSplitManager
 
 class RandomizeIntervalTests(TestCase, MockUtilsMixin):
     def setUp(self):
@@ -482,11 +483,6 @@ class SelfRefreshingBrokerBuildMetricsTests(TestCase, MockUtilsMixin):
     def test_returns_async_treatment_log(self):
         """Tests that _build_metrics returns an AsyncMetrics"""
         self.assertEqual(self.aync_metrics_mock.return_value, self.client._build_metrics())
-
-    def test_destroy_returns_control(self):
-        client = Client(SelfRefreshingBroker(self.some_api_key))
-        client.destroy()
-        self.assertEqual(client.get_treatment('asd', 'asd'), CONTROL)
 
 
 
@@ -1231,3 +1227,39 @@ class LocalhostBrokerOffTheGrid(TestCase):
             sleep(1)
 
             self.assertEqual(client.get_treatment('x', 'a_test_split'), 'on')
+
+
+class TestClientDestroy(TestCase):
+    """
+    """
+
+    def setUp(self):
+        self.some_api_key = mock.MagicMock()
+
+    def test_self_refreshing_destroy(self):
+        broker = SelfRefreshingBroker(self.some_api_key)
+        client = Client(broker)
+        manager = SelfRefreshingSplitManager(broker)
+        client.destroy()
+        self.assertEqual(client.get_treatment('asd', 'asd'), CONTROL)
+        self.assertEqual(manager.splits(), [])
+        self.assertEqual(manager.split_names(), [])
+
+    def test_redis_destroy(self):
+        broker = RedisBroker(self.some_api_key)
+        client = Client(broker)
+        manager = RedisSplitManager(broker)
+        client.destroy()
+        self.assertEqual(client.get_treatment('asd', 'asd'), CONTROL)
+        self.assertEqual(manager.splits(), [])
+        self.assertEqual(manager.split_names(), [])
+
+    def test_uwsgi_destroy(self):
+        broker = UWSGIBroker(self.some_api_key)
+        client = Client(broker)
+        manager = UWSGISplitManager(broker)
+        client.destroy()
+        self.assertEqual(client.get_treatment('asd', 'asd'), CONTROL)
+        self.assertEqual(manager.splits(), [])
+        self.assertEqual(manager.split_names(), [])
+

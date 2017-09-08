@@ -238,6 +238,7 @@ class SplitFetcher(object):  # pragma: no cover
         It provides access to Split implementations.
         """
         self._logger = logging.getLogger(self.__class__.__name__)
+        self._destroyed = False
 
     @property
     def change_number(self):
@@ -260,6 +261,9 @@ class SplitFetcher(object):  # pragma: no cover
         :rtype: list
         """
         return None
+
+    def destroy(self):
+        self._destroyed = True
 
 
 class InMemorySplitFetcher(SplitFetcher):
@@ -285,6 +289,9 @@ class InMemorySplitFetcher(SplitFetcher):
         :return: A split associated with the feature
         :rtype: Split
         """
+        if self._destroyed:
+            return None
+
         return self._splits.get(feature)
 
     def fetch_all(self):
@@ -293,7 +300,10 @@ class InMemorySplitFetcher(SplitFetcher):
         :return: All the know splits so far
         :rtype: list
         """
-        return list(self._splits.values())
+        if self._destroyed:
+            return []
+        else:
+            return list(self._splits.values())
 
 
 class JSONFileSplitFetcher(InMemorySplitFetcher):
@@ -350,7 +360,6 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
         self._change_number = change_number
         self._stopped = True
         self._rlock = RLock()
-        self._destroyed = False
 
     @property
     def stopped(self):
@@ -377,7 +386,7 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
         Disables the split-refreshing task, by preventing it from being
         re-scheduled.
         """
-        self._destroyed = True
+        super(SelfRefreshingSplitFetcher, self).destroy()
         self._split_parser.destroy()
 
     def start(self, delayed_update=False):
@@ -450,7 +459,6 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
                 while True:
                     response = self._split_change_fetcher.fetch(
                         self._change_number)
-
 
                     # If the response fails, and doesn't return a dict, or
                     # returns a dict without the 'till' attribute, abort this
@@ -613,6 +621,7 @@ class SplitParser(object):
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self._segment_fetcher = segment_fetcher
+        self._destroyed = False
 
     def parse(self, split, block_until_ready=False):
         """
@@ -1113,7 +1122,6 @@ class SplitParser(object):
         delegate = RegexMatcher(matcher_data)
         return delegate
 
-
     def _parse_matcher(self, partial_split, matcher, block_until_ready=False):
         """
         Parses a matcher
@@ -1157,6 +1165,7 @@ class SplitParser(object):
     def destroy(self):
         self._segment_fetcher.destroy()
 
+
 class CacheBasedSplitFetcher(SplitFetcher):
     def __init__(self, split_cache):
         """
@@ -1169,6 +1178,9 @@ class CacheBasedSplitFetcher(SplitFetcher):
         self._split_cache = split_cache
 
     def fetch(self, feature):
+        if self._destroyed:
+            return None
+
         return self._split_cache.get_split(feature)
 
     def fetch_all(self):
@@ -1177,7 +1189,10 @@ class CacheBasedSplitFetcher(SplitFetcher):
         :return: All the know splits so far
         :rtype: list
         """
-        return self._split_cache.get_splits()
+        if self._destroyed:
+            return []
+        else:
+            return self._split_cache.get_splits()
 
     @property
     def change_number(self):
