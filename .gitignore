@@ -66,3 +66,5 @@ target/
 
 # rope autocomplete
 .ropeproject/
+
+*.swp # vim backup files

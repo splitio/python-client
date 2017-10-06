@@ -438,7 +438,14 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
                     response = self._split_change_fetcher.fetch(
                         self._change_number)
 
-                    if self._change_number >= response['till']:
+                    # If the response fails, and doesn't return a dict, or
+                    # returns a dict without the 'till' attribute, abort this
+                    # execution.
+                    if (
+                        not isinstance(response, dict)
+                        or 'till' not in response
+                        or self._change_number >= response['till']
+                    ):
                         return
 
                     if 'splits' in response and len(response['splits']) > 0:
@@ -476,6 +483,10 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
         Timer thread
         """
         if self._stopped:
+            self._logger.error('Previous fetch failed, skipping this iteration '
+                               'and rescheduling segment refresh.')
+            self._stopped = False
+            self._timer_start()
             return
 
         try:

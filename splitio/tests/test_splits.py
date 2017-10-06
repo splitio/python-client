@@ -304,11 +304,12 @@ class SelfRefreshingSplitFetcherTimerRefreshTests(TestCase, MockUtilsMixin):
         self.fetcher._timer_refresh()
         self.thread_mock.assert_not_called()
 
-    def test_timer_start_not_called_if_stopped(self):
-        """Tests that _timer_refresh doesn't call start_tiemer if it is stopped"""
-        self.fetcher.stopped = True
-        self.fetcher._timer_refresh()
-        self.timer_start_mock.assert_not_called()
+# This no longer makes sense since it will only be stopped for one iteration.
+#    def test_timer_start_not_called_if_stopped(self):
+#        """Tests that _timer_refresh doesn't call start_tiemer if it is stopped"""
+#        self.fetcher.stopped = True
+#        self.fetcher._timer_refresh()
+#        self.timer_start_mock.assert_not_called()
 
     def test_timer_start_called_if_thread_raises_exception(self):
         """

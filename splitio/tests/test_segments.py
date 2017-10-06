@@ -293,12 +293,13 @@ class SelfRefreshingSegmentTimerRefreshTests(TestCase, MockUtilsMixin):
 
         self.some_executor.submit.assert_not_called()
 
-    def test_new_timer_not_created_if_stopped(self):
-        """Tests that if the segment refresh is stopped, no new Timer is created"""
-        self.segment._stopped = True
-        self.segment._timer_refresh()
-
-        self.timer_mock.assert_not_called()
+# This no longer makes sense since it will only be stopped for one iteration.
+#    def test_new_timer_not_created_if_stopped(self):
+#        """Tests that if the segment refresh is stopped, no new Timer is created"""
+#        self.segment._stopped = True
+#        self.segment._timer_refresh()
+#
+#        self.timer_mock.assert_not_called()
 
 
 class SegmentChangeFetcherTests(TestCase, MockUtilsMixin):
