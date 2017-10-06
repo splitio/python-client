@@ -59,7 +59,8 @@ class RedisSegmentCache(SegmentCache):
     def disable(self):
         """Disables the automatic update process. This method will be called if the update fails
         for some reason. Use enable to re-enable the update process."""
-        self._redis.setex(RedisSegmentCache._DISABLED_KEY, 1, self._disabled_period)
+        # self._redis.setex(RedisSegmentCache._DISABLED_KEY, 1, self._disabled_period)
+        pass
 
     def enable(self):
         """Enables the automatic update process."""
@@ -70,7 +71,8 @@ class RedisSegmentCache(SegmentCache):
         :return: Whether the update process is enabled or not.
         :rtype: bool
         """
-        return not self._redis.exists(RedisSegmentCache._DISABLED_KEY)
+        return True
+        # return not self._redis.exists(RedisSegmentCache._DISABLED_KEY)
 
     def register_segment(self, segment_name):
         """Register a segment for inclusion in the automatic update process.
@@ -174,7 +176,8 @@ class RedisSplitCache(SplitCache):
     def disable(self):
         """Disables the automatic split update process for the specified disabled period. This
         method will be called if there's an exception while updating the splits."""
-        self._redis.setex(RedisSplitCache._DISABLED_KEY, 1, self._disabled_period)
+        # self._redis.setex(RedisSplitCache._DISABLED_KEY, 1, self._disabled_period)
+        pass
 
     def enable(self):
         """Enables the automatic split update process."""
@@ -185,7 +188,8 @@ class RedisSplitCache(SplitCache):
         :return: Whether the update process is enabled or not.
         :rtype: bool
         """
-        return not self._redis.exists(RedisSplitCache._DISABLED_KEY)
+        return True
+        # return not self._redis.exists(RedisSplitCache._DISABLED_KEY)
 
     def get_change_number(self):
         change_number = self._redis.get(RedisSplitCache._KEY_TILL_TEMPLATE.format(
@@ -274,14 +278,16 @@ class RedisImpressionsCache(ImpressionsCache):
         """Disables the automatic impressions report process and the registration of any
         impressions for the specificed disabled period. This method will be called if there's an
         exception while trying to send the impressions back to Split."""
-        self._redis.setex(RedisImpressionsCache._DISABLED_KEY, 1, self._disabled_period)
+        # self._redis.setex(RedisImpressionsCache._DISABLED_KEY, 1, self._disabled_period)
+        pass
 
     def is_enabled(self):
         """
         :return: Whether the automatic report process and impressions registration are enabled.
         :rtype: bool
         """
-        return not self._redis.exists(RedisImpressionsCache._DISABLED_KEY)
+        # return not self._redis.exists(RedisImpressionsCache._DISABLED_KEY)
+        return True
 
     def _build_impressions_dict(self, impressions):
         """Buils a dictionary of impressions that groups them based on their feature name.
@@ -450,14 +456,16 @@ class RedisMetricsCache(MetricsCache):
         """Disables the automatic metrics report process and the registration of any
         metrics for the specified disabled period. This method will be called if there's an
         exception while trying to send the metrics back to Split."""
-        self._redis.setex(RedisMetricsCache._DISABLED_KEY, 1, self._disabled_period)
+        # self._redis.setex(RedisMetricsCache._DISABLED_KEY, 1, self._disabled_period)
+        pass
 
     def is_enabled(self):
         """
         :return: Whether the automatic report process and metrics registration are enabled.
         :rtype: bool
         """
-        return not self._redis.exists(RedisMetricsCache._DISABLED_KEY)
+        # return not self._redis.exists(RedisMetricsCache._DISABLED_KEY)
+        return True
 
     def _get_count_field(self, counter):
         """Builds the field name for a counter on the metrics redis hash.
