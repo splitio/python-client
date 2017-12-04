@@ -33,13 +33,17 @@ Split has built and maintains a SDKs for:
 * Ruby [Github](https://github.com/splitio/ruby-client) [Docs](http://docs.split.io/docs/ruby-sdk-overview)
 * PHP [Github](https://github.com/splitio/php-client) [Docs](http://docs.split.io/docs/php-sdk-overview)
 * Python [Github](https://github.com/splitio/python-client) [Docs](http://docs.split.io/docs/python-sdk-overview)
+* GO [Github](https://github.com/splitio/go-client) [Docs](http://docs.split.io/docs/go-sdk-overview)
 
 For a comprenhensive list of opensource projects visit our [Github page](https://github.com/splitio?utf8=%E2%9C%93&query=%20only%3Apublic%20).
 
+<<<<<<< Updated upstream
 **Try Split for Free:**
 
 Split is available as a 30-day free trial. To create an account, visit [split.io/trial](https://www.split.io/trial).
 
+=======
+>>>>>>> Stashed changes
 **Learn more about Split:** 
 
 Visit [split.io/product](https://www.split.io/product) for an overview of Split, or visit our documentation at [docs.split.io](http://docs.split.io) for more detailed information.
