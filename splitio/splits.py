@@ -18,7 +18,8 @@ from splitio.matchers import CombiningMatcher, AndCombiner, AllKeysMatcher, \
     GreaterThanOrEqualToMatcher, LessThanOrEqualToMatcher, BetweenMatcher, \
     AttributeMatcher, DataType, StartsWithMatcher, EndsWithMatcher, \
     ContainsStringMatcher, ContainsAllOfSetMatcher, ContainsAnyOfSetMatcher, \
-    EqualToSetMatcher, PartOfSetMatcher
+    EqualToSetMatcher, PartOfSetMatcher, DependencyMatcher, RegexMatcher, \
+    BooleanMatcher
 
 SplitView = namedtuple(
     'SplitView',
@@ -237,6 +238,7 @@ class SplitFetcher(object):  # pragma: no cover
         It provides access to Split implementations.
         """
         self._logger = logging.getLogger(self.__class__.__name__)
+        self._destroyed = False
 
     @property
     def change_number(self):
@@ -259,6 +261,9 @@ class SplitFetcher(object):  # pragma: no cover
         :rtype: list
         """
         return None
+
+    def destroy(self):
+        self._destroyed = True
 
 
 class InMemorySplitFetcher(SplitFetcher):
@@ -284,6 +289,9 @@ class InMemorySplitFetcher(SplitFetcher):
         :return: A split associated with the feature
         :rtype: Split
         """
+        if self._destroyed:
+            return None
+
         return self._splits.get(feature)
 
     def fetch_all(self):
@@ -292,7 +300,10 @@ class InMemorySplitFetcher(SplitFetcher):
         :return: All the know splits so far
         :rtype: list
         """
-        return list(self._splits.values())
+        if self._destroyed:
+            return []
+        else:
+            return list(self._splits.values())
 
 
 class JSONFileSplitFetcher(InMemorySplitFetcher):
@@ -370,6 +381,14 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
     def change_number(self):
         return self._change_number
 
+    def destroy(self):
+        """
+        Disables the split-refreshing task, by preventing it from being
+        re-scheduled.
+        """
+        super(SelfRefreshingSplitFetcher, self).destroy()
+        self._split_parser.destroy()
+
     def start(self, delayed_update=False):
         """Starts the self-refreshing processes of the splits
         :param delayed_update: Whether to delay the update until the interval
@@ -430,6 +449,9 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
         :param block_until_ready: Whether to block until all data is available
         :param block_until_ready: bool
         """
+        if self._destroyed:
+            return
+
         change_number_before = self._change_number
 
         try:
@@ -438,7 +460,14 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
                     response = self._split_change_fetcher.fetch(
                         self._change_number)
 
-                    if self._change_number >= response['till']:
+                    # If the response fails, and doesn't return a dict, or
+                    # returns a dict without the 'till' attribute, abort this
+                    # execution.
+                    if (
+                        not isinstance(response, dict)
+                        or 'till' not in response
+                        or self._change_number >= response['till']
+                    ):
                         return
 
                     if 'splits' in response and len(response['splits']) > 0:
@@ -475,7 +504,14 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
         Responsible for setting the periodic calls to _refresh_splits using a
         Timer thread
         """
+        if self._destroyed:
+            return
+
         if self._stopped:
+            self._logger.error('Previous fetch failed, skipping this iteration '
+                               'and rescheduling segment refresh.')
+            self._stopped = False
+            self._timer_start()
             return
 
         try:
@@ -585,6 +621,7 @@ class SplitParser(object):
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self._segment_fetcher = segment_fetcher
+        self._destroyed = False
 
     def parse(self, split, block_until_ready=False):
         """
@@ -1031,6 +1068,60 @@ class SplitParser(object):
                                                 matcher_data.get('end', None))
         return delegate
 
+    def _parse_matcher_in_split_treatment(self, partial_split, matcher, *args, **kwargs):
+        """
+        Parses an IN_SPLIT_TREATMENT matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of an BETWEEN
+            matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'dependencyMatcherData', matcher
+        )
+
+        delegate = DependencyMatcher(matcher_data)
+        return delegate
+
+    def _parse_matcher_equal_to_boolean(self, partial_split, matcher, *args, **kwargs):
+        """
+        Parses an EQUAL_TO_BOOLEAN matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of an BETWEEN
+            matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'booleanMatcherData', matcher
+        )
+
+        delegate = BooleanMatcher(matcher_data)
+        return delegate
+
+    def _parse_matcher_matches_string(self, partial_split, matcher, *args, **kwargs):
+        """
+        Parses an MATCHER_STRING matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of an BETWEEN
+            matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'stringMatcherData', matcher
+        )
+
+        delegate = RegexMatcher(matcher_data)
+        return delegate
+
     def _parse_matcher(self, partial_split, matcher, block_until_ready=False):
         """
         Parses a matcher
@@ -1071,6 +1162,9 @@ class SplitParser(object):
             attribute, delegate, matcher.get('negate', False)
         )
 
+    def destroy(self):
+        self._segment_fetcher.destroy()
+
 
 class CacheBasedSplitFetcher(SplitFetcher):
     def __init__(self, split_cache):
@@ -1084,6 +1178,9 @@ class CacheBasedSplitFetcher(SplitFetcher):
         self._split_cache = split_cache
 
     def fetch(self, feature):
+        if self._destroyed:
+            return None
+
         return self._split_cache.get_split(feature)
 
     def fetch_all(self):
@@ -1092,7 +1189,10 @@ class CacheBasedSplitFetcher(SplitFetcher):
         :return: All the know splits so far
         :rtype: list
         """
-        return self._split_cache.get_splits()
+        if self._destroyed:
+            return []
+        else:
+            return self._split_cache.get_splits()
 
     @property
     def change_number(self):

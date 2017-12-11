@@ -1,3 +1,20 @@
+5.4.0 (Sep 6, 2017)
+ - Add Client-Destroy support
+ - Add Impression listener support for in-memory and uwsgi modes
+5.3.0 (Aug 1, 2017)
+ - Add off-grid support for localhost broker (auto refresh splits from file)
+5.2.2 (Aug 1, 2017)
+ - Adding hotfix to set traffic allocation to 100 by default
+5.2.1 (Jul 28, 2017)
+ - Adding hotfix to keep alive fetcher threads if proxy/backend connection goes temporarily down.
+5.2.0 (Jul 26, 2017)
+ - Adding Adding regex & boolean matcher
+5.1.0 (Jul 19, 2017)
+ - Adding dependency matcher
+ - Refactoring clients into brokers
+5.0.0 (Jun 13, 2017)
+ - BREAKING BACKWARD COMPATIBILITY
+ - Adding support for Split Synchronizer service
 4.1.1 (May 25, 2017)
  - Python 3 fixed incompatible comparison between None an integer
 4.1.0 (May 16, 2017)
