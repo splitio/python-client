@@ -101,6 +101,7 @@ class Label(object):
 class TreatmentLog(object):
     def __init__(self):
         self._logger = logging.getLogger(self.__class__.__name__)
+        self._destroyed = False
 
     def _log(self, impression):
         """Log an impression. Implementing classes need to override this method.
@@ -121,6 +122,12 @@ class TreatmentLog(object):
                 and impression.time > 0:
                     self._log(impression)
         return
+
+    def destroy(self):
+        """
+        Prevent future thread scheduling.
+        """
+        self._destroyed = True
 
 
 class LoggerBasedTreatmentLog(TreatmentLog):
@@ -285,10 +292,6 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         self._stopped = True
         self._thread_pool_executor = ThreadPoolExecutor(max_workers=max_workers)
         self._listener = listener
-        self._destroyed = False
-
-    def destroy(self):
-        self._destroyed = True
 
     @property
     def stopped(self):
@@ -420,10 +423,21 @@ class AsyncTreatmentLog(TreatmentLog):
         super(AsyncTreatmentLog, self).__init__()
         self._delegate = delegate
         self._thread_pool_executor = ThreadPoolExecutor(max_workers=max_workers)
+        self._destroyed = False
 
     @property
     def delegate(self):
         return self._delegate
+
+    def destroy(self):
+        """
+        Prevent future "log" calls from scheduling threads.
+        If delegate has a custom destroy() method, call it.
+        """
+        self._destroyed = True
+        delegate_destroy = getattr(self._delegate, 'destroy', None)
+        if six.callable(delegate_destroy):
+            self._delegate.destroy()
 
     def log(self, impression):
         """Logs an impression asynchronously.
@@ -431,6 +445,9 @@ class AsyncTreatmentLog(TreatmentLog):
         :type impression: Impression
         :return: int
         """
+        if self._destroyed:
+            return
+
         if isinstance(impression, Impression):
             try:
                 self._thread_pool_executor.submit(self._delegate.log, impression)
@@ -438,9 +455,3 @@ class AsyncTreatmentLog(TreatmentLog):
                 self._logger.exception(
                     'Exception caught logging impression asynchronously'
                 )
-
-    def destroy(self):
-        """
-        Forward call to delegate fetcher.
-        """
-        self.delegate.destroy()

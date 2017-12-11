@@ -8,6 +8,7 @@ from splitio.redis_support import RedisSplitCache
 from splitio.splits import (CacheBasedSplitFetcher, SplitView)
 from splitio.utils import bytes_to_string
 
+
 class SplitManager(object):
     def __init__(self):
         """Basic interface of a SplitManager. Specific implementations need to override the
@@ -36,15 +37,16 @@ class SplitManager(object):
         """
         raise NotImplementedError()
 
+
 class RedisSplitManager(SplitManager):
-    def __init__(self, redis):
+    def __init__(self, redis_broker):
         """A SplitManager implementation that uses Redis as its backend.
         :param redis: A redis client
         :type redis: StrctRedis"""
         super(RedisSplitManager, self).__init__()
 
-        split_cache = RedisSplitCache(redis)
-        split_fetcher = CacheBasedSplitFetcher(split_cache)
+        split_fetcher = redis_broker.get_split_fetcher()
+        split_cache = split_fetcher._split_cache
 
         self._split_cache = split_cache
         self._split_fetcher = split_fetcher
@@ -106,14 +108,14 @@ class RedisSplitManager(SplitManager):
 
 
 class UWSGISplitManager(SplitManager):
-    def __init__(self, uwsgi):
+    def __init__(self, broker):
         """A SplitManager implementation that uses uWSGI as its backend.
         :param uwsgi: A uwsgi module
         :type uwsgi: module"""
         super(UWSGISplitManager, self).__init__()
 
-        split_cache = UWSGISplitCache(uwsgi)
-        split_fetcher = CacheBasedSplitFetcher(split_cache)
+        split_fetcher = broker.get_split_fetcher()
+        split_cache = split_fetcher._split_cache
 
         self._split_cache = split_cache
         self._split_fetcher = split_fetcher
@@ -170,15 +172,16 @@ class UWSGISplitManager(SplitManager):
         split_view = SplitView(name=split.name, traffic_type=split.traffic_type_name, killed=split.killed, treatments=list(set(treatments)), change_number=split.change_number)
         return split_view
 
+
 class SelfRefreshingSplitManager(SplitManager):
 
-    def __init__(self, split_fetcher):
+    def __init__(self, broker):
         """A SplitManager implementation that uses in-memory as its backend.
         :param redis: A SplitFetcher instance
         :type redis: SelfRefreshingSplitFetcher"""
         super(SelfRefreshingSplitManager, self).__init__()
 
-        self._split_fetcher = split_fetcher
+        self._split_fetcher = broker.get_split_fetcher()
 
     def split_names(self):
         """Get the name of fetched splits.
@@ -239,14 +242,16 @@ class SelfRefreshingSplitManager(SplitManager):
 
 class LocalhostSplitManager(SplitManager):
     def __init__(self, split_fetcher):
-        """Basic interface of a SplitManager. Specific implementations need to override the
-        splits, split and split_names method.
+        """
+        Basic interface of a SplitManager. Specific implementations need to
+        override the splits, split and split_names method.
         """
         super(LocalhostSplitManager, self).__init__()
         self._split_fetcher = split_fetcher
 
     def split_names(self):
-        """Get the name of fetched splits.
+        """
+        Get the name of fetched splits.
         :return: A list of str
         :rtype: list
         """
@@ -276,7 +281,9 @@ class LocalhostSplitManager(SplitManager):
 
 
     def split(self, feature_name):
-        """Get the splitView of feature_name. Subclasses need to override this method.
+        """
+        Get the splitView of feature_name. Subclasses need to override this
+        method.
         :return: The SplitView instance.
         :rtype: SplitView
         """

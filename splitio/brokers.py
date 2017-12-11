@@ -75,6 +75,7 @@ class BaseBroker(object):
         Class constructor, only sets up the logger
         """
         self._logger = logging.getLogger(self.__class__.__name__)
+        self._destroyed = False
 
     def fetch_feature(self, name):
         """
@@ -118,7 +119,9 @@ class BaseBroker(object):
         pass
 
     def destroy(self):
-        pass
+        self._split_fetcher.destroy()
+        self._treatment_log.destroy()
+        self._metrics.destroy()
 
 
 class JSONFileBroker(BaseBroker):
@@ -139,9 +142,8 @@ class JSONFileBroker(BaseBroker):
         self._segment_changes_file_name = segment_changes_file_name
         self._split_changes_file_name = split_changes_file_name
         self._split_fetcher = self._build_split_fetcher()
-        self._treatment_log = TreatmentLog()
-        self._metrics = Metrics()
-        self._destroyed = False
+        self._treatment_log = TreatmentLog() # Does nothing on ._log()
+        self._metrics = Metrics() # Does nothing on .count(), .time(), .gauge()
 
     def _build_split_fetcher(self):
         """
@@ -356,11 +358,6 @@ class SelfRefreshingBroker(BaseBroker):
         """
         """
         return self._treatment_log
-
-    def destroy(self):
-        self._split_fetcher.destroy()
-        self._treatment_log.destroy()
-        self._metrics.destroy()
 
 
 class LocalhostBroker(BaseBroker):
@@ -625,7 +622,7 @@ def _init_config(api_key, **kwargs):
     return api_key, config, sdk_api_base_url, events_api_base_url
 
 
-def get_local_broker(api_key, **kwargs):
+def get_self_refreshing_broker(api_key, **kwargs):
     """
     Builds a Split Broker that refreshes itself at regular intervals.
 

@@ -19,8 +19,8 @@ __all__ = ('api', 'brokers', 'cache', 'clients', 'matchers', 'segments',
 
 def get_client(apikey, **kwargs):
     from .clients import Client
-    from .brokers import get_local_broker
-    broker = get_local_broker(apikey, **kwargs)
+    from .brokers import get_self_refreshing_broker
+    broker = get_self_refreshing_broker(apikey, **kwargs)
     return Client(broker)
 
 
