@@ -1,12 +1,15 @@
 """A module for Split.io Factories"""
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from splitio.clients import get_client, get_redis_client, get_uwsgi_client
-from splitio.managers import (RedisSplitManager, SelfRefreshingSplitManager, LocalhostSplitManager, UWSGISplitManager)
+from splitio.clients import Client
+from splitio.brokers import get_local_broker, get_redis_broker, get_uwsgi_broker
+from splitio.managers import RedisSplitManager, SelfRefreshingSplitManager, \
+    LocalhostSplitManager, UWSGISplitManager
 from splitio.redis_support import get_redis
 from splitio.uwsgi import get_uwsgi
 
 import logging
+
 
 class SplitFactory(object):
     def __init__(self):
@@ -29,6 +32,7 @@ class SplitFactory(object):
         """
         raise NotImplementedError()
 
+
 class MainSplitFactory(SplitFactory):
     def __init__(self, api_key, **kwargs):
         super(MainSplitFactory, self).__init__()
@@ -37,17 +41,23 @@ class MainSplitFactory(SplitFactory):
         if 'config' in kwargs:
             config = kwargs['config']
 
+        labels_enabled = config.get('labelsEnabled', True)
         if 'redisHost' in config:
-            self._client = get_redis_client(api_key, **kwargs)
+            broker = get_redis_broker(api_key, **kwargs)
+            self._client = Client(broker, labels_enabled)
             redis = get_redis(config)
             self._manager = RedisSplitManager(redis)
         else:
-            if 'uwsgiClient' in config and config['uwsgiClient'] :
-                self._client = get_uwsgi_client(api_key, **kwargs)
+            if 'uwsgiClient' in config and config['uwsgiClient']:
+                broker = get_uwsgi_broker(api_key, **kwargs)
+                self._client = Client(broker, labels_enabled)
                 self._manager = UWSGISplitManager(get_uwsgi())
             else:
-                self._client = get_client(api_key, **kwargs)
-                self._manager = SelfRefreshingSplitManager(self._client.get_split_fetcher())
+                broker = get_local_broker(api_key, **kwargs)
+                self._client = Client(broker, labels_enabled)
+                self._manager = SelfRefreshingSplitManager(
+                    broker.get_split_fetcher()
+                )
 
 
 
@@ -71,10 +81,11 @@ class LocalhostSplitFactory(SplitFactory):
         super(LocalhostSplitFactory, self).__init__()
 
         if 'split_definition_file_name' in kwargs:
-            self._client = get_client('localhost', split_definition_file_name=kwargs['split_definition_file_name'])
+            broker = get_local_broker('localhost', split_definition_file_name=kwargs['split_definition_file_name'])
         else:
-            self._client = get_client('localhost')
+            broker = get_local_broker('localhost')
 
+        self._client = Client(broker)
         self._manager = LocalhostSplitManager(self._client.get_split_fetcher())
 
     def client(self):  # pragma: no cover
@@ -91,6 +102,7 @@ class LocalhostSplitFactory(SplitFactory):
         :rtype: SplitManager
         """
         return self._manager
+
 
 def get_factory(api_key, **kwargs):
     """

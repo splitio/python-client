@@ -1,5 +1,6 @@
 """Unit tests for the matchers module"""
-from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import absolute_import, division, print_function, \
+    unicode_literals
 
 try:
     from unittest import mock
@@ -7,198 +8,28 @@ except ImportError:
     # Python 2
     import mock
 
-from unittest import TestCase
-from os.path import dirname, join
-
+import tempfile
 import arrow
+import os.path
 
-from splitio.clients import (Client, SelfRefreshingClient, randomize_interval, JSONFileClient,
-                             LocalhostEnvironmentClient)
+from unittest import TestCase
+from time import sleep
+
+from splitio.clients import Client
+from splitio.brokers import JSONFileBroker, LocalhostBroker, RedisBroker, \
+    UWSGIBroker, randomize_interval, SelfRefreshingBroker
 from splitio.exceptions import TimeoutException
-from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, SDK_API_BASE_URL, EVENTS_API_BASE_URL
+from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, SDK_API_BASE_URL, \
+    EVENTS_API_BASE_URL
 from splitio.treatments import CONTROL
 from splitio.tests.utils import MockUtilsMixin
-
-
-class ClientTests(TestCase, MockUtilsMixin):
-    def setUp(self):
-        self.some_key = mock.MagicMock()
-        self.some_feature = mock.MagicMock()
-        self.some_attributes = mock.MagicMock()
-
-        self.some_conditions = [
-            mock.MagicMock(),
-            mock.MagicMock(),
-            mock.MagicMock()
-        ]
-        self.some_algo = mock.MagicMock()
-        self.some_split = mock.MagicMock()
-        self.some_split.killed = False
-        self.some_split.conditions.__iter__.return_value = self.some_conditions
-        self.splitter_mock = self.patch('splitio.clients.Splitter')
-        self.client = Client()
-        self.get_split_fetcher_mock = self.patch_object(self.client, 'get_split_fetcher')
-        self.get_treatment_log_mock = self.patch_object(self.client, 'get_treatment_log')
-        self.get_metrics = self.patch_object(self.client, 'get_metrics')
-        self.record_stats_mock = self.patch_object(self.client, '_record_stats')
-
-    def test_get_splitter_returns_a_splitter(self):
-        """Test that get_splitter returns a splitter"""
-        self.assertEqual(self.splitter_mock.return_value, self.client.get_splitter())
-
-    def test_get_treatment_returns_control_if_key_is_none(self):
-        """Test that get_treatment returns CONTROL treatment if key is None"""
-        self.assertEqual(CONTROL, self.client.get_treatment(None, self.some_feature,
-                                                            self.some_attributes))
-
-    def test_get_treatment_returns_control_if_feature_is_none(self):
-        """Test that get_treatment returns CONTROL treatment if feature is None"""
-        self.assertEqual(CONTROL, self.client.get_treatment(self.some_key, None,
-                                                            self.some_attributes))
-
-    def test_get_treatment_calls_split_fetcher_fetch(self):
-        """Test that get_treatment calls split fetcher fetch"""
-        self.client.get_treatment(self.some_key, self.some_feature, self.some_attributes)
-        self.get_split_fetcher_mock.return_value.fetch.assert_called_once_with(self.some_feature)
-
-    def test_get_treatment_returns_control_if_get_split_fetcher_raises_exception(self):
-        """Test that get_treatment returns CONTROL treatment if get_split_fetcher raises an
-        exception"""
-        self.get_split_fetcher_mock.side_effect = Exception()
-        self.assertEqual(CONTROL, self.client.get_treatment(self.some_key, self.some_feature,
-                                                            self.some_attributes))
-
-    def test_get_treatment_returns_control_if_fetch_raises_exception(self):
-        """Test that get_treatment returns CONTROL treatment if fetch raises an exception"""
-        self.get_split_fetcher_mock.return_value.fetch.side_effect = Exception()
-        self.assertEqual(CONTROL, self.client.get_treatment(self.some_key, self.some_feature,
-                                                            self.some_attributes))
-
-    def test_get_treatment_returns_control_if_split_is_none(self):
-        """Test that get_treatment returns CONTROL treatment if split is None"""
-        self.get_split_fetcher_mock.return_value.fetch.return_value = None
-        self.assertEqual(CONTROL, self.client.get_treatment(self.some_key, self.some_feature,
-                                                            self.some_attributes))
-
-    def test_get_treatment_returns_control_if_get_treatment_for_split_raises_exception(self):
-        """Test that get_treatment returns CONTROL treatment _get_treatment_for_split raises an
-        exception"""
-        self.some_split.killed = False
-        self.get_split_fetcher_mock.return_value.fetch.return_value = self.some_split
-        self.patch_object(self.client, '_get_treatment_for_split', side_effect=Exception())
-        self.assertEqual(CONTROL, self.client.get_treatment(self.some_key, self.some_feature,
-                                                            self.some_attributes))
-
-    def test_get_treatment_returns_default_treatment_if_feature_is_killed(self):
-        """Test that get_treatment returns default treatment if split is Killed"""
-        self.some_split.killed = True
-        self.get_split_fetcher_mock.return_value.fetch.return_value = self.some_split
-        self.assertEqual(self.some_split.default_treatment,
-                         self.client.get_treatment(self.some_key, self.some_feature,
-                                                            self.some_attributes))
-
-    def test_get_treatment_returns_default_treatment_if_no_conditions_match(self):
-        """Test that _get_treatment_for_split returns None if no split conditions_match"""
-        self.some_conditions[0].matcher.match.return_value = False
-        self.some_conditions[1].matcher.match.return_value = False
-        self.some_conditions[2].matcher.match.return_value = False
-
-        treatment, label = self.client._get_treatment_for_split(self.some_split, self.some_key,
-                                                              self.some_feature)
-
-        self.assertEqual(None, treatment)
-        self.assertEqual(None, label)
-
-    def test_get_treatment_calls_condition_matcher_match_with_short_circuit(self):
-        """
-        Test that _get_treatment_for_split calls the conditions matcher match method until a match
-        is found
-        """
-        self.some_conditions[0].matcher.match.return_value = False
-        self.some_conditions[1].matcher.match.return_value = True
-        self.some_conditions[2].matcher.match.return_value = False
-        self.client._get_treatment_for_split(self.some_split, self.some_key, self.some_key, self.some_attributes)
-        self.some_conditions[0].matcher.match.assert_called_once_with(
-            self.some_key, attributes=self.some_attributes)
-        self.some_conditions[1].matcher.match.assert_called_once_with(
-            self.some_key, attributes=self.some_attributes)
-        self.some_conditions[2].matcher.match.assert_not_called()
-
-    def test_get_treatment_calls_get_splitter_if_a_condition_match(self):
-        """
-        Test that _get_treatment_for_split calls get_treatment on splitter if a condition match
-        """
-        self.some_conditions[0].matcher.match.return_value = False
-        self.some_conditions[1].matcher.match.return_value = True
-        self.client._get_treatment_for_split(self.some_split, self.some_key, self.some_key, self.some_attributes)
-        self.splitter_mock.return_value.get_treatment.assert_called_once_with(
-            self.some_key, self.some_split.seed, self.some_conditions[1].partitions,
-            self.some_split.algo
-        )
-
-    def test_get_treatment_calls_record_stats(self):
-        """Test that get_treatment calls get_split_fetcher"""
-        get_treatment_for_split_mock = self.patch_object(self.client, '_get_treatment_for_split')
-        self.client.get_treatment(self.some_key, self.some_feature, self.some_attributes)
-
-        impression = self.client._build_impression(self.some_key, self.some_feature, 'some_treatment', 'some_label',
-                                                   -1, self.some_key, mock.ANY)
-
-        self.client._record_stats(impression, mock.ANY, 'sdk.getTreatment')
-
-class ClientRecordStatsTests(TestCase, MockUtilsMixin):
-    def setUp(self):
-        self.some_key = mock.MagicMock()
-        self.some_feature = mock.MagicMock()
-        self.some_treatment = mock.MagicMock()
-        self.some_start = 123456000
-        self.some_operation = mock.MagicMock()
-
-        self.client = Client()
-        self.get_treatment_log_mock = self.patch_object(self.client, 'get_treatment_log')
-        self.get_metrics_mock = self.patch_object(self.client, 'get_metrics')
-        self.arrow_mock = self.patch('splitio.clients.time')
-        self.arrow_mock.utcnow.return_value.timestamp = 123457
-
-    def test_record_stats_calls_treatment_log_log(self):
-        """Test that _record_stats calls log on the treatment log"""
-
-        impression = self.client._build_impression(self.some_key, self.some_feature, self.some_treatment, 'some_label',
-                                                   -1, self.some_key, self.some_start)
-
-        self.client._record_stats(impression, self.some_start, self.some_operation)
-
-        self.get_treatment_log_mock.return_value.log.assert_called_once_with(impression)
-
-    def test_record_stats_doesnt_raise_an_exception_if_log_does(self):
-        """Test that _record_stats doesn't raise an exception if log does"""
-        self.get_treatment_log_mock.return_value.log.side_effect = Exception()
-        try:
-
-            impression = self.client._build_impression(self.some_key, self.some_feature, self.some_treatment,
-                                                       'some_label',
-                                                       -1, self.some_key, self.some_start)
-
-            self.client._record_stats(impression, self.some_start, self.some_operation)
-        except:
-            self.fail('Unexpected exception raised')
-
-    def test_record_stats_calls_metrics_time(self):
-        """Test that _record_stats calls time on the metrics object"""
-
-        impression = self.client._build_impression(self.some_key, self.some_feature, self.some_treatment, 'some_label',
-                                            -1, self.some_key, self.some_start)
-
-        self.client._record_stats(impression, self.some_start, self.some_operation)
-
-        self.get_metrics_mock.return_value.time.assert_called_once()
 
 
 class RandomizeIntervalTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.some_value = mock.MagicMock()
         self.max_mock = self.patch_builtin('max')
-        self.randint_mock = self.patch('splitio.clients.randint')
+        self.randint_mock = self.patch('splitio.brokers.random.randint')
 
     def test_returns_callable(self):
         """
@@ -232,119 +63,119 @@ class RandomizeIntervalTests(TestCase, MockUtilsMixin):
         self.assertEqual(self.max_mock.return_value, randomize_interval(self.some_value)())
 
 
-class SelfRefreshingClientInitTests(TestCase, MockUtilsMixin):
+class SelfRefreshingBrokerInitTests(TestCase, MockUtilsMixin):
     def setUp(self):
-        self.init_config_mock = self.patch('splitio.clients.SelfRefreshingClient._init_config')
-        self.build_sdk_api_mock = self.patch('splitio.clients.SelfRefreshingClient._build_sdk_api')
+        self.init_config_mock = self.patch('splitio.brokers.SelfRefreshingBroker._init_config')
+        self.build_sdk_api_mock = self.patch('splitio.brokers.SelfRefreshingBroker._build_sdk_api')
         self.build_split_fetcher_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_split_fetcher')
+            'splitio.brokers.SelfRefreshingBroker._build_split_fetcher')
         self.build_treatment_log_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_treatment_log')
+            'splitio.brokers.SelfRefreshingBroker._build_treatment_log')
         self.build_metrics_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_metrics')
+            'splitio.brokers.SelfRefreshingBroker._build_metrics')
         self.start_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._start')
+            'splitio.brokers.SelfRefreshingBroker._start')
 
         self.some_api_key = mock.MagicMock()
         self.some_config = mock.MagicMock()
 
     def test_sets_api_key(self):
         """Test that __init__ sets api key to the given value"""
-        client = SelfRefreshingClient(self.some_api_key)
-        self.assertEqual(self.some_api_key, client._api_key)
+        broker = SelfRefreshingBroker(self.some_api_key)
+        self.assertEqual(self.some_api_key, broker._api_key)
 
     def test_calls_init_config(self):
         """Test that __init__ calls _init_config with the given config"""
-        SelfRefreshingClient(self.some_api_key, config=self.some_config)
+        SelfRefreshingBroker(self.some_api_key, config=self.some_config)
         self.init_config_mock.assert_called_once_with(self.some_config)
 
     def test_calls_build_sdk_api(self):
         """Test that __init__ calls _build_sdk_api"""
-        client = SelfRefreshingClient(self.some_api_key)
+        client = SelfRefreshingBroker(self.some_api_key)
         self.build_sdk_api_mock.assert_called_once_with()
         self.assertEqual(self.build_sdk_api_mock.return_value, client._sdk_api)
 
     def test_calls_build_split_fetcher(self):
         """Test that __init__ calls _build_split_fetcher"""
-        client = SelfRefreshingClient(self.some_api_key)
+        client = SelfRefreshingBroker(self.some_api_key)
         self.build_split_fetcher_mock.assert_called_once_with()
         self.assertEqual(self.build_split_fetcher_mock.return_value, client._split_fetcher)
 
     def test_calls_build_build_treatment_log(self):
         """Test that __init__ calls _build_treatment_log"""
-        client = SelfRefreshingClient(self.some_api_key)
+        client = SelfRefreshingBroker(self.some_api_key)
         self.build_treatment_log_mock.assert_called_once_with()
         self.assertEqual(self.build_treatment_log_mock.return_value, client._treatment_log)
 
     def test_calls_build_treatment_log(self):
         """Test that __init__ calls _build_treatment_log"""
-        client = SelfRefreshingClient(self.some_api_key)
+        client = SelfRefreshingBroker(self.some_api_key)
         self.build_treatment_log_mock.assert_called_once_with()
         self.assertEqual(self.build_treatment_log_mock.return_value, client._treatment_log)
 
     def test_calls_build_metrics(self):
         """Test that __init__ calls _build_metrics"""
-        client = SelfRefreshingClient(self.some_api_key)
+        client = SelfRefreshingBroker(self.some_api_key)
         self.build_metrics_mock.assert_called_once_with()
         self.assertEqual(self.build_metrics_mock.return_value, client._metrics)
 
     def test_calls_start(self):
         """Test that __init__ calls _start"""
-        SelfRefreshingClient(self.some_api_key)
+        SelfRefreshingBroker(self.some_api_key)
         self.start_mock.assert_called_once_with()
 
 
-class SelfRefreshingClientStartTests(TestCase, MockUtilsMixin):
+class SelfRefreshingBrokerStartTests(TestCase, MockUtilsMixin):
     def setUp(self):
-        self.event_mock = self.patch('splitio.clients.Event')
+        self.event_mock = self.patch('splitio.brokers.threading.Event')
         self.event_mock.return_value.wait.return_value = True
-        self.thread_mock = self.patch('splitio.clients.Thread')
-        self.build_sdk_api_mock = self.patch('splitio.clients.SelfRefreshingClient._build_sdk_api')
+        self.thread_mock = self.patch('splitio.brokers.threading.Thread')
+        self.build_sdk_api_mock = self.patch('splitio.brokers.SelfRefreshingBroker._build_sdk_api')
         self.build_split_fetcher_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_split_fetcher')
+            'splitio.brokers.SelfRefreshingBroker._build_split_fetcher')
         self.build_treatment_log_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_treatment_log')
+            'splitio.brokers.SelfRefreshingBroker._build_treatment_log')
         self.build_metrics_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_metrics')
+            'splitio.brokers.SelfRefreshingBroker._build_metrics')
         self.fetch_splits_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._fetch_splits')
+            'splitio.brokers.SelfRefreshingBroker._fetch_splits')
 
         self.some_api_key = mock.MagicMock()
 
     def test_calls_start_on_treatment_log_delegate(self):
         """Test that _start calls start on the treatment log delegate"""
-        SelfRefreshingClient(self.some_api_key, config={'ready': 0})
+        SelfRefreshingBroker(self.some_api_key, config={'ready': 0})
         self.build_treatment_log_mock.return_value.delegate.start.assert_called_once_with()
 
     def test_calls_start_on_treatment_log_delegate_with_timeout(self):
         """Test that _start calls start on the treatment log delegate when a timeout is given"""
-        SelfRefreshingClient(self.some_api_key, config={'ready': 10})
+        SelfRefreshingBroker(self.some_api_key, config={'ready': 10})
         self.build_treatment_log_mock.return_value.delegate.start.assert_called_once_with()
 
     def test_no_event_or_thread_created_if_timeout_is_zero(self):
         """Test that if timeout is zero, no threads or events are created"""
-        SelfRefreshingClient(self.some_api_key, config={'ready': 0})
+        SelfRefreshingBroker(self.some_api_key, config={'ready': 0})
         self.event_mock.assert_not_called()
         self.thread_mock.assert_not_called()
 
     def test_split_fetcher_start_called_if_timeout_is_zero(self):
         """Test that if timeout is zero, start is called on the split fetcher"""
-        SelfRefreshingClient(self.some_api_key, config={'ready': 0})
+        SelfRefreshingBroker(self.some_api_key, config={'ready': 0})
         self.build_split_fetcher_mock.assert_called_once_with()
 
     def test_event_created_if_timeout_is_non_zero(self):
         """Test that if timeout is non-zero, an event is created"""
-        SelfRefreshingClient(self.some_api_key, config={'ready': 10})
+        SelfRefreshingBroker(self.some_api_key, config={'ready': 10})
         self.event_mock.assert_called_once_with()
 
     def test_wait_is_called_on_event_if_timeout_is_non_zero(self):
         """Test that if timeout is non-zero, wait is called on the event"""
-        SelfRefreshingClient(self.some_api_key, config={'ready': 10})
+        SelfRefreshingBroker(self.some_api_key, config={'ready': 10})
         self.event_mock.return_value.wait.asser_called_once_with(10)
 
     def test_thread_created_if_timeout_is_non_zero(self):
         """Test that if timeout is non-zero, a thread with target _fetch_splits is created"""
-        SelfRefreshingClient(self.some_api_key, config={'ready': 10})
+        SelfRefreshingBroker(self.some_api_key, config={'ready': 10})
         self.thread_mock.assert_called_once_with(target=self.fetch_splits_mock,
                                                  args=(self.event_mock.return_value,))
         self.thread_mock.return_value.start.asser_called_once_with()
@@ -353,29 +184,29 @@ class SelfRefreshingClientStartTests(TestCase, MockUtilsMixin):
         """Test that if the event flag is not set, a TimeoutException is raised"""
         self.event_mock.return_value.wait.return_value = False
         with self.assertRaises(TimeoutException):
-            SelfRefreshingClient(self.some_api_key, config={'ready': 10})
+            SelfRefreshingBroker(self.some_api_key, config={'ready': 10})
 
     def test_if_event_flag_is_set_an_exception_is_not_raised(self):
         """Test that if the event flag is set, a TimeoutException is not raised"""
         try:
-            SelfRefreshingClient(self.some_api_key, config={'ready': 10})
+            SelfRefreshingBroker(self.some_api_key, config={'ready': 10})
         except:
             self.fail('An unexpected exception was raised')
 
 
-class SelfRefreshingClientFetchSplitsTests(TestCase, MockUtilsMixin):
+class SelfRefreshingBrokerFetchSplitsTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.some_event = mock.MagicMock()
-        self.build_sdk_api_mock = self.patch('splitio.clients.SelfRefreshingClient._build_sdk_api')
+        self.build_sdk_api_mock = self.patch('splitio.brokers.SelfRefreshingBroker._build_sdk_api')
         self.build_split_fetcher_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_split_fetcher')
+            'splitio.brokers.SelfRefreshingBroker._build_split_fetcher')
         self.build_treatment_log_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_treatment_log')
+            'splitio.brokers.SelfRefreshingBroker._build_treatment_log')
         self.build_metrics_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_metrics')
+            'splitio.brokers.SelfRefreshingBroker._build_metrics')
 
         self.some_api_key = mock.MagicMock()
-        self.client = SelfRefreshingClient(self.some_api_key, config={'ready': 10})
+        self.client = SelfRefreshingBroker(self.some_api_key, config={'ready': 10})
         self.build_split_fetcher_mock.reset_mock()
 
     def test_calls_refresh_splits_on_split_fetcher(self):
@@ -396,21 +227,21 @@ class SelfRefreshingClientFetchSplitsTests(TestCase, MockUtilsMixin):
         self.some_event.set.assert_called_once_with()
 
 
-class SelfRefreshingClientInitConfigTests(TestCase, MockUtilsMixin):
+class SelfRefreshingBrokerInitConfigTests(TestCase, MockUtilsMixin):
     def setUp(self):
-        self.build_sdk_api_mock = self.patch('splitio.clients.SelfRefreshingClient._build_sdk_api')
+        self.build_sdk_api_mock = self.patch('splitio.brokers.SelfRefreshingBroker._build_sdk_api')
         self.build_split_fetcher_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_split_fetcher')
+            'splitio.brokers.SelfRefreshingBroker._build_split_fetcher')
         self.build_treatment_log_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_treatment_log')
+            'splitio.brokers.SelfRefreshingBroker._build_treatment_log')
         self.build_metrics_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_metrics')
+            'splitio.brokers.SelfRefreshingBroker._build_metrics')
         self.start_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._start')
+            'splitio.brokers.SelfRefreshingBroker._start')
         self.some_api_key = mock.MagicMock()
         self.randomize_interval_side_effect = [mock.MagicMock(), mock.MagicMock(), mock.MagicMock()]
         self.randomize_interval_mock = self.patch(
-            'splitio.clients.randomize_interval', side_effect=self.randomize_interval_side_effect)
+            'splitio.brokers.randomize_interval', side_effect=self.randomize_interval_side_effect)
 
         self.some_config = {
             'connectionTimeout': mock.MagicMock(),
@@ -453,7 +284,7 @@ class SelfRefreshingClientInitConfigTests(TestCase, MockUtilsMixin):
 
 
 
-        self.client = SelfRefreshingClient(self.some_api_key)
+        self.client = SelfRefreshingBroker(self.some_api_key)
 
     def test_if_config_is_none_uses_default(self):
         """Test that if config is None _init_config uses the defaults"""
@@ -501,29 +332,20 @@ class SelfRefreshingClientInitConfigTests(TestCase, MockUtilsMixin):
         self.assertEqual(self.randomize_interval_side_effect[2],
                          self.client._impressions_interval)
 
-    def test_sets_enabled_labels(self):
-        """Test that sets labels enabled to the given value"""
-        client = SelfRefreshingClient(self.some_api_key, config={'labelsEnabled': False})
-        self.assertFalse(client._labels_enabled)
 
-    def test_default_enabled_labels(self):
-        """Test that sets labels enabled to the given value"""
-        client = SelfRefreshingClient(self.some_api_key)
-        self.assertTrue(client._labels_enabled)
-
-class SelfRefreshingClientBuildSdkApiTests(TestCase, MockUtilsMixin):
+class SelfRefreshingBrokerBuildSdkApiTests(TestCase, MockUtilsMixin):
     def setUp(self):
-        self.sdk_api_mock = self.patch('splitio.clients.SdkApi')
+        self.sdk_api_mock = self.patch('splitio.brokers.SdkApi')
         self.build_split_fetcher_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_split_fetcher')
+            'splitio.brokers.SelfRefreshingBroker._build_split_fetcher')
         self.build_treatment_log_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_treatment_log')
+            'splitio.brokers.SelfRefreshingBroker._build_treatment_log')
         self.build_metrics_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_metrics')
+            'splitio.brokers.SelfRefreshingBroker._build_metrics')
         self.start_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._start')
+            'splitio.brokers.SelfRefreshingBroker._start')
         self.some_api_key = mock.MagicMock()
-        self.client = SelfRefreshingClient(self.some_api_key)
+        self.client = SelfRefreshingBroker(self.some_api_key)
 
     def test_calls_sdk_api_constructor(self):
         """Test that _build_sdk_api calls SdkApi constructor"""
@@ -534,27 +356,27 @@ class SelfRefreshingClientBuildSdkApiTests(TestCase, MockUtilsMixin):
         )
 
 
-class SelfRefreshingClientBuildSplitFetcherTests(TestCase, MockUtilsMixin):
+class SelfRefreshingBrokerBuildSplitFetcherTests(TestCase, MockUtilsMixin):
     def setUp(self):
-        self.build_sdk_api_mock = self.patch('splitio.clients.SelfRefreshingClient._build_sdk_api')
+        self.build_sdk_api_mock = self.patch('splitio.brokers.SelfRefreshingBroker._build_sdk_api')
         self.build_treatment_log_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_treatment_log')
+            'splitio.brokers.SelfRefreshingBroker._build_treatment_log')
         self.build_metrics_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_metrics')
+            'splitio.brokers.SelfRefreshingBroker._build_metrics')
         self.start_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._start')
+            'splitio.brokers.SelfRefreshingBroker._start')
         self.some_api_key = mock.MagicMock()
 
-        self.api_segment_change_fetcher_mock = self.patch('splitio.clients.ApiSegmentChangeFetcher')
+        self.api_segment_change_fetcher_mock = self.patch('splitio.brokers.ApiSegmentChangeFetcher')
         self.self_refreshing_segment_fetcher_mock = self.patch(
-            'splitio.clients.SelfRefreshingSegmentFetcher')
-        self.api_split_change_fetcher_mock = self.patch('splitio.clients.ApiSplitChangeFetcher')
-        self.split_parser_mock = self.patch('splitio.clients.SplitParser')
+            'splitio.brokers.SelfRefreshingSegmentFetcher')
+        self.api_split_change_fetcher_mock = self.patch('splitio.brokers.ApiSplitChangeFetcher')
+        self.split_parser_mock = self.patch('splitio.brokers.SplitParser')
         self.self_refreshing_split_fetcher_mock = self.patch(
-            'splitio.clients.SelfRefreshingSplitFetcher')
+            'splitio.brokers.SelfRefreshingSplitFetcher')
 
         self.some_api_key = mock.MagicMock()
-        self.client = SelfRefreshingClient(self.some_api_key)
+        self.client = SelfRefreshingBroker(self.some_api_key)
 
     def test_builds_segment_change_fetcher(self):
         """Tests that _build_split_fetcher calls the ApiSegmentChangeFetcher constructor"""
@@ -590,29 +412,32 @@ class SelfRefreshingClientBuildSplitFetcherTests(TestCase, MockUtilsMixin):
                          self.client._build_split_fetcher())
 
 
-class SelfRefreshingClientBuildTreatmentLogTests(TestCase, MockUtilsMixin):
+class SelfRefreshingBrokerBuildTreatmentLogTests(TestCase, MockUtilsMixin):
     def setUp(self):
-        self.build_sdk_api_mock = self.patch('splitio.clients.SelfRefreshingClient._build_sdk_api')
+        self.build_sdk_api_mock = self.patch('splitio.brokers.SelfRefreshingBroker._build_sdk_api')
         self.build_split_fetcher_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_split_fetcher')
+            'splitio.brokers.SelfRefreshingBroker._build_split_fetcher')
         self.build_metrics_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_metrics')
+            'splitio.brokers.SelfRefreshingBroker._build_metrics')
         self.start_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._start')
+            'splitio.brokers.SelfRefreshingBroker._start')
         self.some_api_key = mock.MagicMock()
 
         self.self_updating_treatment_log_mock = self.patch(
-            'splitio.clients.SelfUpdatingTreatmentLog')
+            'splitio.brokers.SelfUpdatingTreatmentLog')
         self.aync_treatment_log_mock = self.patch(
-            'splitio.clients.AsyncTreatmentLog')
+            'splitio.brokers.AsyncTreatmentLog')
         self.some_api_key = mock.MagicMock()
-        self.client = SelfRefreshingClient(self.some_api_key)
+        self.client = SelfRefreshingBroker(self.some_api_key)
 
     def test_calls_self_updating_treatment_log_constructor(self):
         """Tests that _build_treatment_log calls SelfUpdatingTreatmentLog constructor"""
         self.self_updating_treatment_log_mock.assert_called_once_with(
-            self.client._sdk_api, max_count=self.client._max_impressions_log_size,
-            interval=self.client._impressions_interval)
+            self.client._sdk_api,
+            max_count=self.client._max_impressions_log_size,
+            interval=self.client._impressions_interval,
+            listener=None
+        )
 
     def test_calls_async_treatment_log_constructor(self):
         """Tests that _build_treatment_log calls AsyncTreatmentLog constructor"""
@@ -625,23 +450,23 @@ class SelfRefreshingClientBuildTreatmentLogTests(TestCase, MockUtilsMixin):
                          self.client._build_treatment_log())
 
 
-class SelfRefreshingClientBuildMetricsTests(TestCase, MockUtilsMixin):
+class SelfRefreshingBrokerBuildMetricsTests(TestCase, MockUtilsMixin):
     def setUp(self):
-        self.build_sdk_api_mock = self.patch('splitio.clients.SelfRefreshingClient._build_sdk_api')
+        self.build_sdk_api_mock = self.patch('splitio.brokers.SelfRefreshingBroker._build_sdk_api')
         self.build_split_fetcher_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_split_fetcher')
+            'splitio.brokers.SelfRefreshingBroker._build_split_fetcher')
         self.build_treatment_log_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._build_treatment_log')
+            'splitio.brokers.SelfRefreshingBroker._build_treatment_log')
         self.start_mock = self.patch(
-            'splitio.clients.SelfRefreshingClient._start')
+            'splitio.brokers.SelfRefreshingBroker._start')
         self.some_api_key = mock.MagicMock()
 
         self.api_metrics_mock = self.patch(
-            'splitio.clients.ApiMetrics')
+            'splitio.brokers.ApiMetrics')
         self.aync_metrics_mock = self.patch(
-            'splitio.clients.AsyncMetrics')
+            'splitio.brokers.AsyncMetrics')
         self.some_api_key = mock.MagicMock()
-        self.client = SelfRefreshingClient(self.some_api_key)
+        self.client = SelfRefreshingBroker(self.some_api_key)
 
     def test_calls_api_metrics_constructor(self):
         """Tests that _build_metrics calls ApiMetrics constructor"""
@@ -658,13 +483,25 @@ class SelfRefreshingClientBuildMetricsTests(TestCase, MockUtilsMixin):
         """Tests that _build_metrics returns an AsyncMetrics"""
         self.assertEqual(self.aync_metrics_mock.return_value, self.client._build_metrics())
 
+    def test_destroy_returns_control(self):
+        client = Client(SelfRefreshingBroker(self.some_api_key))
+        client.destroy()
+        self.assertEqual(client.get_treatment('asd', 'asd'), CONTROL)
 
-class JSONFileClientIntegrationTests(TestCase):
+
+
+class JSONFileBrokerIntegrationTests(TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.segment_changes_file_name = join(dirname(__file__), 'segmentChanges.json')
-        cls.split_changes_file_name = join(dirname(__file__), 'splitChanges.json')
-        cls.client = JSONFileClient(cls.segment_changes_file_name, cls.split_changes_file_name)
+        cls.segment_changes_file_name = os.path.join(
+            os.path.dirname(__file__),
+            'segmentChanges.json'
+        )
+        cls.split_changes_file_name = os.path.join(
+            os.path.dirname(__file__),
+            'splitChanges.json'
+        )
+        cls.client = Client(JSONFileBroker(cls.segment_changes_file_name, cls.split_changes_file_name))
         cls.on_treatment = 'on'
         cls.off_treatment = 'off'
         cls.some_key = 'some_key'
@@ -1323,33 +1160,33 @@ class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.some_file_name = mock.MagicMock()
         self.all_keys_split_side_effect = [mock.MagicMock(), mock.MagicMock()]
-        self.all_keys_split_mock = self.patch('splitio.clients.AllKeysSplit',
+        self.all_keys_split_mock = self.patch('splitio.brokers.AllKeysSplit',
                                               side_effect=self.all_keys_split_side_effect)
         self.build_split_fetcher_mock = self.patch(
-            'splitio.tests.test_clients.LocalhostEnvironmentClient._build_split_fetcher')
+            'splitio.tests.test_clients.LocalhostBroker._build_split_fetcher')
 
         self.open_mock = self.patch_builtin('open')
-        self.client = LocalhostEnvironmentClient()
+        self.broker = LocalhostBroker()
 
     def test_skips_comment_lines(self):
         """Test that _parse_split_file skips comment lines"""
         self.open_mock.return_value.__enter__.return_value.__iter__.return_value = [
             '#feature treatment']
-        self.client._parse_split_file(self.some_file_name)
+        self.broker._parse_split_file(self.some_file_name)
         self.all_keys_split_mock.assert_not_called()
 
     def test_skips_illegal_lines(self):
         """Test that _parse_split_file skips illegal lines"""
         self.open_mock.return_value.__enter__.return_value.__iter__.return_value = [
             '!feature treat$ment']
-        self.client._parse_split_file(self.some_file_name)
+        self.broker._parse_split_file(self.some_file_name)
         self.all_keys_split_mock.assert_not_called()
 
     def test_parses_definition_lines(self):
         """Test that _parse_split_file skips comment lines"""
         self.open_mock.return_value.__enter__.return_value.__iter__.return_value = [
             'feature1 treatment1', 'feature2 treatment2']
-        self.client._parse_split_file(self.some_file_name)
+        self.broker._parse_split_file(self.some_file_name)
         self.assertListEqual([mock.call('feature1', 'treatment1'),
                               mock.call('feature2', 'treatment2')],
                              self.all_keys_split_mock.call_args_list)
@@ -1360,10 +1197,37 @@ class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
             'feature1 treatment1', 'feature2 treatment2']
         self.assertDictEqual({'feature1': self.all_keys_split_side_effect[0],
                               'feature2': self.all_keys_split_side_effect[1]},
-                             self.client._parse_split_file(self.some_file_name))
+                             self.broker._parse_split_file(self.some_file_name))
 
     def test_raises_value_error_if_ioerror_is_raised(self):
         """Raises a ValueError if an IOError is raised"""
         self.open_mock.side_effect = IOError()
         with self.assertRaises(ValueError):
-            self.client._parse_split_file(self.some_file_name)
+            self.broker._parse_split_file(self.some_file_name)
+
+
+class LocalhostBrokerOffTheGrid(TestCase):
+    '''
+    Tests for LocalhostEnvironmentClient. Auto update config behaviour
+    '''
+    def test_auto_update_splits(self):
+        '''
+        Verifies that the split file is automatically re-parsed as soon as it's
+        modified
+        '''
+        with tempfile.NamedTemporaryFile(mode='w') as split_file:
+            split_file.write('a_test_split off\n')
+            split_file.flush()
+
+            client = Client(
+                LocalhostBroker(split_definition_file_name=split_file.name)
+            )
+
+            self.assertEqual(client.get_treatment('x', 'a_test_split'), 'off')
+
+            split_file.truncate()
+            split_file.write('a_test_split on\n')
+            split_file.flush()
+            sleep(1)
+
+            self.assertEqual(client.get_treatment('x', 'a_test_split'), 'on')

@@ -18,7 +18,8 @@ from splitio.matchers import CombiningMatcher, AndCombiner, AllKeysMatcher, \
     GreaterThanOrEqualToMatcher, LessThanOrEqualToMatcher, BetweenMatcher, \
     AttributeMatcher, DataType, StartsWithMatcher, EndsWithMatcher, \
     ContainsStringMatcher, ContainsAllOfSetMatcher, ContainsAnyOfSetMatcher, \
-    EqualToSetMatcher, PartOfSetMatcher
+    EqualToSetMatcher, PartOfSetMatcher, DependencyMatcher, RegexMatcher, \
+    BooleanMatcher
 
 SplitView = namedtuple(
     'SplitView',
@@ -349,6 +350,7 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
         self._change_number = change_number
         self._stopped = True
         self._rlock = RLock()
+        self._destroyed = False
 
     @property
     def stopped(self):
@@ -369,6 +371,14 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
     @property
     def change_number(self):
         return self._change_number
+
+    def destroy(self):
+        """
+        Disables the split-refreshing task, by preventing it from being
+        re-scheduled.
+        """
+        self._destroyed = True
+        self._split_parser.destroy()
 
     def start(self, delayed_update=False):
         """Starts the self-refreshing processes of the splits
@@ -430,6 +440,9 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
         :param block_until_ready: Whether to block until all data is available
         :param block_until_ready: bool
         """
+        if self._destroyed:
+            return
+
         change_number_before = self._change_number
 
         try:
@@ -438,7 +451,15 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
                     response = self._split_change_fetcher.fetch(
                         self._change_number)
 
-                    if self._change_number >= response['till']:
+
+                    # If the response fails, and doesn't return a dict, or
+                    # returns a dict without the 'till' attribute, abort this
+                    # execution.
+                    if (
+                        not isinstance(response, dict)
+                        or 'till' not in response
+                        or self._change_number >= response['till']
+                    ):
                         return
 
                     if 'splits' in response and len(response['splits']) > 0:
@@ -475,7 +496,14 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
         Responsible for setting the periodic calls to _refresh_splits using a
         Timer thread
         """
+        if self._destroyed:
+            return
+
         if self._stopped:
+            self._logger.error('Previous fetch failed, skipping this iteration '
+                               'and rescheduling segment refresh.')
+            self._stopped = False
+            self._timer_start()
             return
 
         try:
@@ -1031,6 +1059,61 @@ class SplitParser(object):
                                                 matcher_data.get('end', None))
         return delegate
 
+    def _parse_matcher_in_split_treatment(self, partial_split, matcher, *args, **kwargs):
+        """
+        Parses an IN_SPLIT_TREATMENT matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of an BETWEEN
+            matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'dependencyMatcherData', matcher
+        )
+
+        delegate = DependencyMatcher(matcher_data)
+        return delegate
+
+    def _parse_matcher_equal_to_boolean(self, partial_split, matcher, *args, **kwargs):
+        """
+        Parses an EQUAL_TO_BOOLEAN matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of an BETWEEN
+            matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'booleanMatcherData', matcher
+        )
+
+        delegate = BooleanMatcher(matcher_data)
+        return delegate
+
+    def _parse_matcher_matches_string(self, partial_split, matcher, *args, **kwargs):
+        """
+        Parses an MATCHER_STRING matcher
+        :param partial_split: The partially parsed split
+        :param partial_split: Split
+        :param matcher: A dictionary with the JSON representation of an BETWEEN
+            matcher
+        :type matcher: dict
+        :return: The parsed matcher (dependent on data type)
+        :rtype: BetweenMatcher
+        """
+        matcher_data = self._get_matcher_attribute(
+            'stringMatcherData', matcher
+        )
+
+        delegate = RegexMatcher(matcher_data)
+        return delegate
+
+
     def _parse_matcher(self, partial_split, matcher, block_until_ready=False):
         """
         Parses a matcher
@@ -1071,6 +1154,8 @@ class SplitParser(object):
             attribute, delegate, matcher.get('negate', False)
         )
 
+    def destroy(self):
+        self._segment_fetcher.destroy()
 
 class CacheBasedSplitFetcher(SplitFetcher):
     def __init__(self, split_cache):
