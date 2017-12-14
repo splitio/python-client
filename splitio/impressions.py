@@ -49,12 +49,12 @@ class Label(object):
     # Condition: No condition matched
     # Treatment: Default Treatment
     # Label: no condition matched
-    NO_CONDITION_MATCHED = 'no rule matched'
+    NO_CONDITION_MATCHED = 'default rule'
 
     #Condition: Split definition was not found
     #Treatment: control
     #Label: split not found
-    SPLIT_NOT_FOUND = 'rules not found'
+    SPLIT_NOT_FOUND = 'definition not found'
 
     #Condition: Traffic allocation failed
     #Treatment: Default Treatment
