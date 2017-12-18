@@ -108,7 +108,10 @@ def uwsgi_report_impressions(user_config):
         while True:
             impressions_cache = UWSGIImpressionsCache(get_uwsgi())
             sdk_api = api_factory(config)
-            report_impressions(impressions_cache, sdk_api)
+            report_impressions(
+                impressions_cache,
+                sdk_api,
+                user_config.get('impression_listener'))
 
             time.sleep(seconds)
     except:
@@ -212,7 +215,14 @@ class UWSGISplitCache(SplitCache):
 
     def get_splits_keys(self):
         if self._adapter.cache_exists(self._KEY_CURRENT_SPLITS, _SPLITIO_COMMON_CACHE_NAMESPACE):
-            return decode(self._adapter.cache_get(self._KEY_CURRENT_SPLITS, _SPLITIO_COMMON_CACHE_NAMESPACE))
+            try:
+                return decode(
+                    self._adapter.cache_get(
+                        self._KEY_CURRENT_SPLITS,
+                        _SPLITIO_COMMON_CACHE_NAMESPACE)
+                )
+            except TypeError: # Thrown by jsonpickle.decode when passed "None"
+                pass # Fall back to default return statement (empty dict)
         return dict()
 
     def get_splits(self):

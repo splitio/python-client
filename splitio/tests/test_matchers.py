@@ -11,6 +11,9 @@ except ImportError:
     # Python 2
     import mock
 
+
+import os.path
+import json
 from unittest import TestCase
 
 from splitio.matchers import AndCombiner, CombiningMatcher, AllKeysMatcher, \
@@ -24,7 +27,7 @@ from splitio.matchers import AndCombiner, CombiningMatcher, AllKeysMatcher, \
     NumberLessThanOrEqualToMatcher, LessThanOrEqualToMatcher, \
     StartsWithMatcher, EndsWithMatcher, ContainsStringMatcher, \
     ContainsAllOfSetMatcher, ContainsAnyOfSetMatcher, PartOfSetMatcher, \
-    EqualToSetMatcher
+    EqualToSetMatcher, DependencyMatcher, BooleanMatcher, RegexMatcher
 
 from splitio.transformers import AsDateHourMinuteTimestampTransformMixin, \
     AsNumberTransformMixin, AsDateTimestampTransformMixin
@@ -36,6 +39,7 @@ class AndCombinerTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.some_key = mock.MagicMock()
         self.some_attributes = mock.MagicMock()
+        self.some_client = mock.MagicMock()
         self.combiner = AndCombiner()
 
     def test_combine_returns_false_on_none_matchers(self):
@@ -64,11 +68,11 @@ class AndCombinerTests(TestCase, MockUtilsMixin):
         for matcher in matchers:
             matcher.match.return_value = True
 
-        self.combiner.combine(matchers, self.some_key, self.some_attributes)
+        self.combiner.combine(matchers, self.some_key, self.some_attributes, self.some_client)
 
         for matcher in matchers:
             matcher.match.assert_called_once_with(
-                self.some_key, self.some_attributes
+                self.some_key, self.some_attributes, self.some_client
             )
 
     def test_combine_short_circuits_check(self):
@@ -82,13 +86,13 @@ class AndCombinerTests(TestCase, MockUtilsMixin):
         matchers[0].match.return_value = True
         matchers[1].match.return_value = False
 
-        self.combiner.combine(matchers, self.some_key, self.some_attributes)
+        self.combiner.combine(matchers, self.some_key, self.some_attributes, self.some_client)
 
         matchers[0].match.assert_called_once_with(
-            self.some_key, self.some_attributes
+            self.some_key, self.some_attributes, self.some_client
         )
         matchers[1].match.assert_called_once_with(
-            self.some_key, self.some_attributes
+            self.some_key, self.some_attributes, self.some_client
         )
         matchers[2].match.assert_not_called()
 
@@ -161,6 +165,8 @@ class NegatableMatcherTests(TestCase):
     def setUp(self):
         self.some_key = mock.MagicMock()
         self.some_delegate = mock.MagicMock()
+        self.some_client = mock.MagicMock()
+        self.some_attributes = mock.MagicMock()
 
     def test_match_calls_delegate_match(self):
         '''
@@ -168,9 +174,9 @@ class NegatableMatcherTests(TestCase):
         '''
         matcher = NegatableMatcher(True, self.some_delegate)
 
-        matcher.match(self.some_key)
+        matcher.match(self.some_key, self.some_attributes, self.some_client)
 
-        self.some_delegate.match.assert_called_once_with(self.some_key)
+        self.some_delegate.match.assert_called_once_with(self.some_key, self.some_attributes, self.some_client)
 
     def test_if_negate_true_match_negates_result_of_delegate_match(self):
         '''
@@ -206,7 +212,7 @@ class AttributeMatcherTests(TestCase, MockUtilsMixin):
         )
         self.some_attribute = mock.MagicMock()
         self.some_key = mock.MagicMock()
-
+        self.some_client = mock.MagicMock()
         self.some_attribute_value = mock.MagicMock()
         self.some_attributes = mock.MagicMock()
         self.some_attributes.__contains__.return_value = True
@@ -225,9 +231,9 @@ class AttributeMatcherTests(TestCase, MockUtilsMixin):
         supplied key if attribute is None
         '''
         matcher = AttributeMatcher(None, self.some_matcher, self.some_negate)
-        matcher.match(self.some_key, self.some_attributes)
+        matcher.match(self.some_key, self.some_attributes, self.some_client)
 
-        self.negatable_matcher_mock.match.assert_called_once_with(self.some_key)
+        self.negatable_matcher_mock.match.assert_called_once_with(self.some_key, self.some_attributes, self.some_client)
 
     def test_match_returns_false_attributes_is_none(self):
         '''
@@ -1026,3 +1032,91 @@ class PartOfSetMatcherTests(TestCase, MockUtilsMixin):
         Tests that None doesn't match.
         '''
         self.assertFalse(self._matcher.match(None))
+
+
+class DependencyMatcherTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self._split_parser = SplitParser(object())
+        matcher = {
+            'matcherType': 'IN_SPLIT_TREATMENT',
+            'dependencyMatcherData': {
+                'split': 'someSplit',
+                'treatments': ['on']
+            }
+        }
+        split = {'conditions': [{'matcher': matcher}]}
+        self._matcher = (self._split_parser._parse_matcher(split, matcher)
+                         ._matcher.delegate)
+        self._mock = self.patch('splitio.clients.MatcherClient')
+
+    def test_matcher_construction(self):
+        '''
+        Tests that the correct matcher matcher is constructed.
+        '''
+        self.assertIsInstance(self._matcher, DependencyMatcher)
+
+    def test_matcher_client_is_created_and_get_treatment_called(self):
+        self._matcher.match('abc', None, self._mock)
+        self._mock.get_treatment.assert_called_once_with('abc', 'someSplit', None)
+        self.assertTrue(True)
+
+
+class RegexMatcherTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self._split_parser = SplitParser(object())
+        matcher = {
+            'matcherType': 'MATCHES_STRING',
+            'stringMatcherData': '[a-z]'
+        }
+        split = {'conditions': [{'matcher': matcher}]}
+        self._matcher = (self._split_parser._parse_matcher(split, matcher)
+                         ._matcher.delegate)
+
+    def test_matcher_construction(self):
+        '''
+        Tests that the correct matcher matcher is constructed.
+        '''
+        self.assertIsInstance(self._matcher, RegexMatcher)
+
+    def test_regexes(self):
+        '''
+        Test different regexes lodeded from regex.txt
+        '''
+        current_path = os.path.dirname(__file__)
+        with open(os.path.join(current_path, 'regex.txt')) as flo:
+            lines = [line for line in flo]
+        lines.pop()  # Remove empy last line
+        for line in lines:
+            regex, text, res = line.split('#')
+            matcher = RegexMatcher(regex)
+            print(regex, text, res)
+            self.assertEquals(matcher.match(text), json.loads(res))
+
+
+class BooleanMatcherTests(TestCase, MockUtilsMixin):
+    def setUp(self):
+        self._split_parser = SplitParser(object())
+        matcher = {
+            'matcherType': 'EQUAL_TO_BOOLEAN',
+            'booleanMatcherData': True
+        }
+        split = {'conditions': [{'matcher': matcher}]}
+        self._matcher = (self._split_parser._parse_matcher(split, matcher)
+                         ._matcher.delegate)
+
+    def test_matcher_construction(self):
+        '''
+        Tests that the correct matcher matcher is constructed.
+        '''
+        self.assertIsInstance(self._matcher, BooleanMatcher)
+
+    def test_different_keys(self):
+        '''
+        Test how different types get parsed
+        '''
+        self.assertTrue(self._matcher.match(True))
+        self.assertTrue(self._matcher.match('tRue'))
+        self.assertFalse(self._matcher.match(False))
+        self.assertFalse(self._matcher.match('False'))
+        self.assertFalse(self._matcher.match(''))
+        self.assertFalse(self._matcher.match({}))

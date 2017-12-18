@@ -21,7 +21,9 @@ from splitio.hashfns import _murmur_hash, get_hash_fn
 from splitio.hashfns.legacy import legacy_hash
 from splitio.redis_support import get_redis, RedisSegmentCache, RedisSplitParser
 from splitio.uwsgi import get_uwsgi, UWSGISegmentCache, UWSGISplitParser
-from splitio.clients import RedisClient
+from splitio.clients import Client
+from splitio.brokers import RedisBroker
+
 
 class InMemorySplitFetcherTests(TestCase):
     def setUp(self):
@@ -308,7 +310,7 @@ class SelfRefreshingSplitFetcherTimerRefreshTests(TestCase, MockUtilsMixin):
         """Tests that _timer_refresh doesn't call start_tiemer if it is stopped"""
         self.fetcher.stopped = True
         self.fetcher._timer_refresh()
-        self.timer_start_mock.assert_not_called()
+        self.timer_start_mock.assert_called()
 
     def test_timer_start_called_if_thread_raises_exception(self):
         """
@@ -1018,7 +1020,7 @@ class TrafficAllocationTests(TestCase):
         redis = get_redis({})
         segment_cache = RedisSegmentCache(redis)
         split_parser = RedisSplitParser(segment_cache)
-        self._client = RedisClient(redis)
+        self._client = Client(RedisBroker(redis))
 
         self._splitObjects = {}
 
@@ -1063,6 +1065,12 @@ class TrafficAllocationTests(TestCase):
         raw_split['trafficAllocationSeed'] = -1
         self._splitObjects['rollout2'] = split_parser.parse(raw_split, True)
 
+        raw_split['name'] = 'test4'
+        raw_split['trafficAllocation'] = None #must be mapped as 100
+        raw_split['trafficAllocationSeed'] = -1
+        self._splitObjects['rollout3'] = split_parser.parse(raw_split, True)
+
+
     def testTrafficAllocation(self):
         '''
         '''
@@ -1070,6 +1078,13 @@ class TrafficAllocationTests(TestCase):
             self._splitObjects['whitelist'], 'testKey', None
         )
         self.assertEqual(treatment1, 'on')
+
+        # Make sure traffic allocation is set to 100 at construction time if a
+        # value is not provided.
+        self.assertEqual(
+            self._splitObjects['whitelist'].traffic_allocation,
+            100
+        )
 
         treatment2, label1 = self._client._get_treatment_for_split(
             self._splitObjects['rollout1'], 'testKey', None
@@ -1080,3 +1095,8 @@ class TrafficAllocationTests(TestCase):
             self._splitObjects['rollout2'], 'testKey', None
         )
         self.assertEqual(treatment3, 'default')
+
+        treatment4, label1 = self._client._get_treatment_for_split(
+            self._splitObjects['rollout3'], 'testKey', None
+        )
+        self.assertEqual(treatment4, 'on')
