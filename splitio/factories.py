@@ -82,7 +82,7 @@ class LocalhostSplitFactory(SplitFactory):
             broker = get_self_refreshing_broker('localhost')
 
         self._client = Client(broker)
-        self._manager = LocalhostSplitManager(self._client.get_split_fetcher())
+        self._manager = LocalhostSplitManager(broker.get_split_fetcher())
 
     def client(self):  # pragma: no cover
         """Get the split client implementation.
