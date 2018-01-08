@@ -2,7 +2,6 @@
 from __future__ import absolute_import, division, print_function, \
     unicode_literals
 
-import weakref
 import abc
 import logging
 import os
@@ -10,23 +9,9 @@ import os.path
 import random
 import re
 import threading
+import time
 from future.utils import raise_from
 
-
-# If watchdog is installed enable auto-refreshing localhost broker
-try:
-    # For some reason watchdog and fsevents don't work as expected, and the
-    # modified file event is not triggered. Forcing the observer to use Kqueue
-    # if in osx, otherwise use deafult OS API.
-    from watchdog.utils import platform
-    if platform.is_darwin():
-        from watchdog.observers.kqueue import KqueueObserver as Observer
-    else:
-        from watchdog.observers import Observer
-    from watchdog.events import PatternMatchingEventHandler
-    _LOCALHOST_BROKER_AUTO_REFRESH = True
-except ImportError:
-    _LOCALHOST_BROKER_AUTO_REFRESH = False
 
 from splitio.api import SdkApi
 from splitio.exceptions import TimeoutException
@@ -119,6 +104,7 @@ class BaseBroker(object):
         pass
 
     def destroy(self):
+        self._destroyed = True
         self._split_fetcher.destroy()
         self._treatment_log.destroy()
         self._metrics.destroy()
@@ -365,23 +351,15 @@ class LocalhostBroker(BaseBroker):
     _DEFINITION_LINE_RE = re.compile(
         '^(?<![^#])(?P<feature>[\w_]+)\s+(?P<treatment>[\w_]+)$'
     )
-
-    def __init__(self, split_definition_file_name=None):
+    def __init__(self, split_definition_file_name=None, auto_refresh_period=2):
         """
         A broker implementation that builds its configuration from a split
         definition file. By default the definition is taken from $HOME/.split
         but the file name can be supplied as argument as well.
-
-        The definition file has the following syntax:
-
-        file: (comment | split_line)+
-        comment : '#' string*\n
-        split_line : feature_name ' ' treatment\n
-        feature_name : string
-        treatment : string
-
         :param split_definition_file_name: Name of definition file (Optional)
         :type split_definition_file_name: str
+        :param auto_refresh_period: Number of seconds between split refresh calls
+        :type auto_refresh_period: int
         """
         super(LocalhostBroker, self).__init__()
 
@@ -392,20 +370,15 @@ class LocalhostBroker(BaseBroker):
         else:
             self._split_definition_file_name = split_definition_file_name
 
+        self._split_refresh_period = auto_refresh_period
+
         self._split_fetcher = self._build_split_fetcher()
+        self._refresh_thread = threading.Thread(target=self.refresh_splits)
+        self._refresh_thread.daemon = True
+        self._refresh_thread.start()
 
         self._treatment_log = TreatmentLog()
         self._metrics = Metrics()
-
-        if _LOCALHOST_BROKER_AUTO_REFRESH:
-            event_handler = LocalhostBrokerFileEventHandler(
-                self,
-                [self._split_definition_file_name]
-            )
-            file_path = os.path.dirname(self._split_definition_file_name)
-            self._observer = Observer()
-            self._observer.schedule(event_handler, file_path, recursive=False)
-            self._observer.start()
 
     def _build_split_fetcher(self):
         """
@@ -471,38 +444,15 @@ class LocalhostBroker(BaseBroker):
         """
         return self._treatment_log
 
-
-if _LOCALHOST_BROKER_AUTO_REFRESH:
-    class LocalhostBrokerFileEventHandler(PatternMatchingEventHandler):
-        '''
-        '''
-        def __init__(self, client_instance, *args, **kwargs):
-            '''
-            Store client to trigger re-parsing of file upon modifications
-            detected. A weak refereance is used to break circular dependencies
-            between this class and `LocalhostEnvironmentClient`.
-            All arguments but `client_instance` are forwarded to the parent
-            class `PatternMatchingEventHandler`
-            '''
-            self._client_instance = weakref.ref(client_instance)
-            PatternMatchingEventHandler.__init__(self, *args, **kwargs)
-
-        def on_moved(self, event):
-            pass
-
-        def on_created(self, event):
-            pass
-
-        def on_deleted(self, event):
-            pass
-
-        def on_modified(self, event):
-            '''
-            Rebuild split fetcher
-            '''
-            self._client_instance()._split_fetcher = (
-                self._client_instance()._build_split_fetcher()
-            )
+    def refresh_splits(self):
+        while not self._destroyed:
+            time.sleep(self._split_refresh_period)
+            if not self._destroyed: # DO NOT REMOVE
+                                    # This check is used in case the client was
+                                    # destroyed while the thread was sleeping
+                                    # and the file was closed, in order to
+                                    # prevent an exception.
+                self._split_fetcher = self._build_split_fetcher()
 
 
 class RedisBroker(BaseBroker):

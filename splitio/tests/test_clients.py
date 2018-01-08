@@ -1223,10 +1223,10 @@ class LocalhostBrokerOffTheGrid(TestCase):
             split_file.truncate()
             split_file.write('a_test_split on\n')
             split_file.flush()
-            sleep(1)
+            sleep(5)
 
             self.assertEqual(client.get_treatment('x', 'a_test_split'), 'on')
-
+            client.destroy()
 
 class TestClientDestroy(TestCase):
     """
