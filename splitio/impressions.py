@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function, \
 
 import logging
 import six
+from threading import Thread
 
 from collections import namedtuple, defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -63,7 +64,9 @@ def _notify_listener(listener, impressions_data):
     """
     if six.callable(listener):
         try:
-            listener(impressions_data)
+            t = Thread(target=listener, args=(impressions_data,))
+            t.daemon = True
+            t.start()
         except Exception:
             logging.getLogger('Impressions-Listener').exception(
                 'Exception caught when executing user provided impression '
