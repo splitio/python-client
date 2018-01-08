@@ -1,5 +1,6 @@
 5.4.3 (Jan 7, 2018)
  - Fix bug in localhost client
+ - Removed unmaintained dependency causing issues with newer mac os updates
 5.4.2 (Dec 22, 2017)
  - Update labels
 5.4.1 (Dec 11, 2017)

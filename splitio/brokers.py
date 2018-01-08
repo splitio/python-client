@@ -447,7 +447,11 @@ class LocalhostBroker(BaseBroker):
     def refresh_splits(self):
         while not self._destroyed:
             time.sleep(self._split_refresh_period)
-            if not self._destroyed:
+            if not self._destroyed: # DO NOT REMOVE
+                                    # This check is used in case the client was
+                                    # destroyed while the thread was sleeping
+                                    # and the file was closed, in order to
+                                    # prevent an exception.
                 self._split_fetcher = self._build_split_fetcher()
 
 
