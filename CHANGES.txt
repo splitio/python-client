@@ -1,3 +1,11 @@
+5.4.3 (Jan 7, 2018)
+ - Move impressions listener to it's own thread
+ - Fix bug in localhost client
+ - Removed unmaintained dependency causing issues with newer mac os updates
+5.4.2 (Dec 22, 2017)
+ - Update labels
+5.4.1 (Dec 11, 2017)
+ - Handle destroyed client in manager
 5.4.0 (Sep 6, 2017)
  - Add Client-Destroy support
  - Add Impression listener support for in-memory and uwsgi modes

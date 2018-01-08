@@ -101,7 +101,8 @@ class Metrics(object):  # pragma: no cover
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def count(self, counter, delta):
-        """Adjusts the specified counter by a given delta. This method is is non-blocking and is
+        """
+        Adjusts the specified counter by a given delta. This method is is non-blocking and is
         guaranteed not to throw an exception
         :param counter: The name of the counter to adjust
         :type counter: str
@@ -110,7 +111,8 @@ class Metrics(object):  # pragma: no cover
         pass  # Do nothing
 
     def time(self, operation, time_in_ms):
-        """Records an execution time in milliseconds for the specified named operation. This method
+        """
+        Records an execution time in milliseconds for the specified named operation. This method
         is non-blocking and is guaranteed not to throw an exception.
         :param operation: The name of the timed operation
         :type operation: str
@@ -120,12 +122,19 @@ class Metrics(object):  # pragma: no cover
         pass  # Do nothing
 
     def gauge(self, gauge, value):
-        """Records the latest fixed value for the specified named gauge. This method is
+        """
+        Records the latest fixed value for the specified named gauge. This method is
         non-blocking and is guaranteed not to throw an exception.
         :param gauge: The name of the gauge
         :type gauge: str
         :param value: The new reading of the gauge
         :type: float
+        """
+        pass
+
+    def destroy(self):
+        """
+        Dummy method for dummy implementation.
         """
         pass
 

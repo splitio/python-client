@@ -15,6 +15,7 @@ import os.path
 from unittest import TestCase
 from time import sleep
 
+from splitio import get_factory
 from splitio.clients import Client
 from splitio.brokers import JSONFileBroker, LocalhostBroker, RedisBroker, \
     UWSGIBroker, randomize_interval, SelfRefreshingBroker
@@ -1215,19 +1216,17 @@ class LocalhostBrokerOffTheGrid(TestCase):
             split_file.write('a_test_split off\n')
             split_file.flush()
 
-            client = Client(
-                LocalhostBroker(split_definition_file_name=split_file.name)
-            )
-
+            factory = get_factory("localhost", split_definition_file_name=split_file.name)
+            client = factory.client()
             self.assertEqual(client.get_treatment('x', 'a_test_split'), 'off')
 
             split_file.truncate()
             split_file.write('a_test_split on\n')
             split_file.flush()
-            sleep(1)
+            sleep(5)
 
             self.assertEqual(client.get_treatment('x', 'a_test_split'), 'on')
-
+            client.destroy()
 
 class TestClientDestroy(TestCase):
     """
