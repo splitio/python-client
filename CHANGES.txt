@@ -1,4 +1,5 @@
 5.4.3 (Jan 7, 2018)
+ - Move impressions listener to it's own thread
  - Fix bug in localhost client
  - Removed unmaintained dependency causing issues with newer mac os updates
 5.4.2 (Dec 22, 2017)
