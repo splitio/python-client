@@ -116,3 +116,6 @@ class PrefixDecorator:
 
     def getset(self, name, value):
         return self._decorated.getset(self._add_prefix(name), value)
+
+    def rpush(self, key, value):
+        return self._decorated.rpush(key, value)

@@ -33,7 +33,8 @@ from splitio.version import __version__ as _SDK_VERSION
 _SPLITIO_CACHE_KEY_TEMPLATE = 'SPLITIO.{suffix}'
 _GLOBAL_KEY_PARAMETERS = {
     'sdk-language-version': 'python-{version}'.format(version=_SDK_VERSION),
-    'instance-id': 'unknown'
+    'instance-id': 'unknown',
+    'ip-address': 'unknown',
 }
 
 
@@ -237,6 +238,35 @@ class RedisSplitCache(SplitCache):
 
     def remove_split(self, split_name):
         self._redis.delete(self._get_split_key(split_name))
+
+
+class RedisEventsCache(ImpressionsCache):
+    _KEY_TEMPLATE = (
+        'SPLITIO.events'
+    )
+
+    def __init__(self, redis):
+        '''
+        An ImpressionsCache implementation that uses Redis as its back-end
+        :param redis: The redis client
+        :type redis: StrictRedis
+        '''
+        self._redis = redis
+
+    def log_event(self, event):
+        """
+        Adds an event to the redis storage
+        """
+        key = self._KEY_TEMPLATE
+        to_store = {
+            'e': dict(event._asdict()),
+            'm': { 
+                's': _GLOBAL_KEY_PARAMETERS['sdk-language-version'],
+                'n': _GLOBAL_KEY_PARAMETERS['instance-id'],
+                'i': _GLOBAL_KEY_PARAMETERS['ip-address'],
+            }
+        }
+        self._redis.rpush(key, encode(to_store))
 
 
 class RedisImpressionsCache(ImpressionsCache):

@@ -1,19 +1,33 @@
-"""This module contains everything related to update tasks"""
-from __future__ import absolute_import, division, print_function, unicode_literals
+"""
+This module contains everything related to update tasks
+"""
+
+from __future__ import absolute_import, division, print_function, \
+    unicode_literals
 
 import logging
+from traceback import print_exc
+
+from six.moves import queue
 
 from .splits import Status
 from .impressions import build_impressions_data
 from .impressions import _notify_listener
+from . import asynctask
+from . import events
+
+
 _logger = logging.getLogger(__name__)
 
 
 def update_segments(segment_cache, segment_change_fetcher):
-    """If updates are enabled, this function updates all the segments listed by the segment cache
-    get_registered_segments() method making requests to the Split.io SDK API. If an exception is
-    raised, the process is stopped and it won't try to update segments again until enabled_updates
-    is called on the segment cache."""
+    """
+    If updates are enabled, this function updates all the segments listed
+    by the segment cache get_registered_segments() method making requests to
+    the Split.io SDK API. If an exception is raised, the process is stopped and
+    it won't try to update segments again until enabled_updates
+    is called on the segment cache.
+    """
     try:
         if not segment_cache.is_enabled():
             return
@@ -27,16 +41,17 @@ def update_segments(segment_cache, segment_change_fetcher):
 
 
 def update_segment(segment_cache, segment_name, segment_change_fetcher):
-    """Updates a segment. It will eagerly request all changes until the change number is the same
-    "till" value in the response.
+    """
+    Updates a segment. It will eagerly request all changes until the change
+    number is the same "till" value in the response.
     :param segment_name: The name of the segment
     :type segment_name: str
     """
     till = segment_cache.get_change_number(segment_name)
-    _logger.info("Updating segment %s"%segment_name)
+    _logger.info("Updating segment %s" % segment_name)
     while True:
         response = segment_change_fetcher.fetch(segment_name, till)
-        _logger.info("SEGMENT RESPONSE %s"%response)
+        _logger.info("SEGMENT RESPONSE %s" % response)
         if 'till' not in response:
             return
 
@@ -44,7 +59,10 @@ def update_segment(segment_cache, segment_name, segment_change_fetcher):
             return
 
         if len(response['removed']) > 0:
-            segment_cache.remove_keys_from_segment(segment_name, response['removed'])
+            segment_cache.remove_keys_from_segment(
+                segment_name,
+                response['removed']
+            )
 
         if len(response['added']) > 0:
             segment_cache.add_keys_to_segment(segment_name, response['added'])
@@ -55,15 +73,14 @@ def update_segment(segment_cache, segment_name, segment_change_fetcher):
 
 
 def update_splits(split_cache, split_change_fetcher, split_parser):
-    """If updates are enabled, this function updates (or initializes) the current cached split
-    configuration. It can be called by periodic update tasks or directly to force an unscheduled
-    update. If an exception is raised, the process is stopped and it won't try to update splits
-    again until enabled_updates is called on the splits cache.
+    """
+    If updates are enabled, this function updates (or initializes) the current
+    cached split configuration. It can be called by periodic update tasks or
+    directly to force an unscheduled update.
+    If an exception is raised, the process is stopped and it won't try to
+    update splits again until enabled_updates is called on the splits cache.
     """
     try:
-        if not split_cache.is_enabled():
-            return
-
         till = split_cache.get_change_number()
 
         while True:
@@ -77,7 +94,10 @@ def update_splits(split_cache, split_change_fetcher, split_parser):
                 return
 
             if 'splits' in response and len(response['splits']) > 0:
-                _logger.debug("Splits field in response. response = %s", response)
+                _logger.debug(
+                    "Splits field in response. response = %s",
+                    response
+                )
                 added_features = []
                 removed_features = []
 
@@ -112,9 +132,11 @@ def update_splits(split_cache, split_change_fetcher, split_parser):
 
 
 def report_impressions(impressions_cache, sdk_api, listener=None):
-    """If the reporting process is enabled (through the impressions cache), this function collects
-    the impressions from the cache and sends them to Split through the events API. If the process
-    fails, no exceptions are raised (but they are logged) and the process is disabled.
+    """
+    If the reporting process is enabled (through the impressions cache),
+    this function collects the impressions from the cache and sends them to
+    Split through the events API. If the process fails, no exceptions are
+    raised (but they are logged) and the process is disabled.
     """
     try:
         if not impressions_cache.is_enabled():
@@ -127,17 +149,25 @@ def report_impressions(impressions_cache, sdk_api, listener=None):
         _logger.debug('Impressions to send: %s' % test_impressions_data)
 
         if len(test_impressions_data) > 0:
-            _logger.info('Posting impressions for features: %s.', ', '.join(impressions.keys()))
+            _logger.info(
+                'Posting impressions for features: %s.',
+                ', '.join(impressions.keys())
+            )
             sdk_api.test_impressions(test_impressions_data)
     except:
-        _logger.exception('Exception caught report impressions. Disabling impressions log.')
+        _logger.exception(
+            'Exception caught report impressions. Disabling impressions log.'
+        )
         impressions_cache.disable()
 
 
 def report_metrics(metrics_cache, sdk_api):
-    """If the reporting process is enabled (through the metrics cache), this function collects
-    the time, count and gauge from the cache and sends them to Split through the events API. If the
-    process fails, no exceptions are raised (but they are logged) and the process is disabled."""
+    """
+    If the reporting process is enabled (through the metrics cache),
+    this function collects the time, count and gauge from the cache and sends
+    them to Split through the events API. If the process fails, no exceptions
+    are raised (but they are logged) and the process is disabled.
+    """
     try:
         if not metrics_cache.is_enabled():
             return
@@ -158,3 +188,90 @@ def report_metrics(metrics_cache, sdk_api):
     except:
         _logger.exception('Exception caught reporting metrics')
         metrics_cache.disable()
+
+
+class EventsSyncTask:
+    """
+    Events synchronization task uses an asynctask.AsyncTask to send events
+    periodically to the backend in a controlled way
+    """
+
+    def __init__(self, sdk_api, storage, period, bulk_size):
+        """
+        """
+        self._sdk_api = sdk_api
+        self._storage = storage
+        self._period = period
+        self._failed = queue.Queue()
+        self._bulk_size = bulk_size
+        self._task = asynctask.AsyncTask(
+            self._send_events,
+            self._period,
+            on_stop=self._send_events,
+        )
+
+    def _get_failed(self):
+        """
+        Return up to <BULK_SIZE> events stored in the failed eventes queue
+        """
+        events = []
+        n = 0
+        while n < self._bulk_size:
+            try:
+                events.append(self._failed.get(False))
+            except queue.Empty:
+                # If no more items in queue, break the loop
+                break
+        return events
+
+    def _add_to_failed_queue(self, events):
+        """
+        Add events that were about to be sent to a secondary queue for failed sends
+        """
+        for e in events:
+            self._failed.put(e, False)
+
+
+    def _send_events(self):
+        """
+        Grabs events from the failed queue (and new ones if the bulk size
+        is not met) and submits them to the backend
+        """
+
+        to_send = self._get_failed()
+        if len(to_send) < self._bulk_size:
+            # If the amount of previously failed items is less than the bulk
+            # size, try to complete with new events from storage
+            to_send.extend(self._storage.pop_many(self._bulk_size - len(to_send)))
+
+        if len(to_send) == 0:
+            return
+
+        try:
+            print("sending events")
+            status_code = self._sdk_api.track_events(events.build_bulk(to_send))
+            if status_code >= 300:
+                print("Fallo con " + str(status_code))
+                self._add_to_failed_queue(to_send)
+        except Exception:
+            # Something went wrong
+            print_exc()
+            self._add_to_failed_queue(to_send)
+
+    def start(self):
+        """
+        Start executing the events synchronization task
+        """
+        self._task.start()
+
+    def stop(self):
+        """
+        Stop executing the events synchronization task
+        """
+        self._task.stop()
+
+    def flush(self):
+        """
+        Flush events in storage
+        """
+        self._task.force_execution()

@@ -9,7 +9,7 @@ from splitio.splitters import Splitter
 from splitio.impressions import Impression, Label
 from splitio.metrics import SDK_GET_TREATMENT
 from splitio.splits import ConditionType
-
+from splitio.events import Event
 
 class Key(object):
     def __init__(self, matching_key, bucketing_key):
@@ -187,6 +187,18 @@ class Client(object):
         # No condition matches
         return None, None
 
+    def track(self, key, traffic_type, event_type, value=None):
+        """
+        Track an event
+        """
+        e = Event(
+            key=key,
+            trafficTypeName=traffic_type,
+            eventTypeId=event_type,
+            value=value,
+            timestamp=int(time.time()*1000)
+        )
+        self._broker.get_events_log().log_event(e)
 
 class MatcherClient(Client):
     """
