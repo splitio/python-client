@@ -154,11 +154,13 @@ class SelfRefreshingBrokerStartTests(TestCase, MockUtilsMixin):
         SelfRefreshingBroker(self.some_api_key, config={'ready': 10})
         self.build_treatment_log_mock.return_value.delegate.start.assert_called_once_with()
 
-    def test_no_event_or_thread_created_if_timeout_is_zero(self):
-        """Test that if timeout is zero, no threads or events are created"""
-        SelfRefreshingBroker(self.some_api_key, config={'ready': 0})
-        self.event_mock.assert_not_called()
-        self.thread_mock.assert_not_called()
+#    TODO: Remove This! This test is no longer value for the new asynctasks introduced.
+# .  When all tasks are migrated to the new model, this should be removed
+#    def test_no_event_or_thread_created_if_timeout_is_zero(self):
+#        """Test that if timeout is zero, no threads or events are created"""
+#        SelfRefreshingBroker(self.some_api_key, config={'ready': 0})
+#        self.event_mock.assert_not_called()
+#        self.thread_mock.assert_not_called()
 
     def test_split_fetcher_start_called_if_timeout_is_zero(self):
         """Test that if timeout is zero, start is called on the split fetcher"""
@@ -175,12 +177,14 @@ class SelfRefreshingBrokerStartTests(TestCase, MockUtilsMixin):
         SelfRefreshingBroker(self.some_api_key, config={'ready': 10})
         self.event_mock.return_value.wait.asser_called_once_with(10)
 
-    def test_thread_created_if_timeout_is_non_zero(self):
-        """Test that if timeout is non-zero, a thread with target _fetch_splits is created"""
-        SelfRefreshingBroker(self.some_api_key, config={'ready': 10})
-        self.thread_mock.assert_called_once_with(target=self.fetch_splits_mock,
-                                                 args=(self.event_mock.return_value,))
-        self.thread_mock.return_value.start.asser_called_once_with()
+#    TODO: Remove This! This test is no longer value for the new asynctasks introduced.
+#    When all tasks are migrated to the new model, this should be removed
+#    def test_thread_created_if_timeout_is_non_zero(self):
+#        """Test that if timeout is non-zero, a thread with target _fetch_splits is created"""
+#        SelfRefreshingBroker(self.some_api_key, config={'ready': 10})
+#        self.thread_mock.assert_called_once_with(target=self.fetch_splits_mock,
+#                                                 args=(self.event_mock.return_value,))
+#        self.thread_mock.return_value.start.asser_called_once_with()
 
     def test_if_event_flag_is_not_set_an_exception_is_raised(self):
         """Test that if the event flag is not set, a TimeoutException is raised"""
@@ -281,7 +285,9 @@ class SelfRefreshingBrokerInitConfigTests(TestCase, MockUtilsMixin):
             'redisSslCertfile': None,
             'redisSslCertReqs': None,
             'redisSslCaCerts': None,
-            'redisMaxConnections': None
+            'redisMaxConnections': None,
+            'eventsPushRate' : 60,
+            'eventsQueueSize': 500,
         }
 
 

@@ -198,7 +198,7 @@ class Client(object):
             value=value,
             timestamp=int(time.time()*1000)
         )
-        self._broker.get_events_log().log_event(e)
+        return self._broker.get_events_log().log_event(e)
 
 class MatcherClient(Client):
     """
