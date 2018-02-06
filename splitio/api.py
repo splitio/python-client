@@ -243,10 +243,9 @@ class SdkApi(object):
 
     def track_events(self, events):
         url = _EVENTS_URL_TEMPLATE.format(base_url=self._events_api_url_base)
-        print(json.dumps(events))
         return self._post(url, events)
 
-        
+
 def api_factory(config):
     """Build a split.io SDK API client using a config dictionary.
     :param config: A config dictionary

@@ -248,14 +248,13 @@ class EventsSyncTask:
             return
 
         try:
-            print("sending events")
             status_code = self._sdk_api.track_events(events.build_bulk(to_send))
             if status_code >= 300:
-                print("Fallo con " + str(status_code))
+                _logger.error("Event reporting failed with status code {}".format(status_code))
                 self._add_to_failed_queue(to_send)
         except Exception:
             # Something went wrong
-            print_exc()
+            _logger.error("Exception raised while reporting events")
             self._add_to_failed_queue(to_send)
 
     def start(self):

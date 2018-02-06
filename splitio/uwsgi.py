@@ -136,7 +136,7 @@ def uwsgi_report_metrics(user_config):
 def uwsgi_report_events(user_config):
     try:
         config = _get_config(user_config)
-        seconds = config.get('eventsRefreshRate', 5)
+        seconds = config.get('eventsRefreshRate', 60)
         events_cache = UWSGIEventsCache(get_uwsgi())
         sdk_api = api_factory(config)
         task = EventsSyncTask(sdk_api, events_cache, seconds, 500)
@@ -627,13 +627,14 @@ class UWSGIEventsCache:
     _LOCK_EVENTS_KEY = 'events_lock'
     _OVERWRITE_LOCK_SECONDS = 5
 
-    def __init__(self, adapter, disabled_period=300):
+    def __init__(self, adapter, disabled_period=300, events_queue_size=500):
         """An ImpressionsCache implementation that uses uWSGI as its back-end
         :param disabled_period: The expiration period for the disabled key.
         :param disabled_period: int
         """
         self._adapter = adapter
         self._disabled_period = disabled_period
+        self._events_queue_size = events_queue_size
 
     @property
     def disabled_period(self):
@@ -663,18 +664,22 @@ class UWSGIEventsCache:
         :type impression: Impression
         """
         cache_event = dict(event._asdict())
-        self.__lock_events()
 
-        if self._adapter.cache_exists(self._EVENTS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE):
-            events = decode(self._adapter.cache_get(self._EVENTS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE))
-        else:
-            events = []
+        try:
+            self.__lock_events()
+            if self._adapter.cache_exists(self._EVENTS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE):
+                events = decode(self._adapter.cache_get(self._EVENTS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE))
+            else:
+                events = []
 
-        events.append(cache_event)
-        _logger.error('Adding event to cache: {}.'.format(event))
-        self._adapter.cache_update(self._EVENTS_KEY, encode(events), 0, _SPLITIO_STATS_CACHE_NAMESPACE)
-
-        self.__unlock_events()
+            if len(events) < self._events_queue_size:
+                events.append(cache_event)
+                _logger.error('Adding event to cache: {}.'.format(event))
+                self._adapter.cache_update(self._EVENTS_KEY, encode(events), 0, _SPLITIO_STATS_CACHE_NAMESPACE)
+                return True
+            return False
+        finally:
+            self.__unlock_events()
 
     def pop_many(self, count):
         """Fetches all impressions from the cache and clears it. It returns a dictionary with the
