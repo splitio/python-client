@@ -133,14 +133,14 @@ def uwsgi_report_metrics(user_config):
         _logger.exception('Exception caught posting metrics')
 
 
-def uwsgi_send_events(user_config):
+def uwsgi_report_events(user_config):
     try:
         config = _get_config(user_config)
-        seconds = config['eventsRefreshRate']
+        seconds = config.get('eventsRefreshRate', 5)
         events_cache = UWSGIEventsCache(get_uwsgi())
-        task = EventsSyncTask(ask_api, events_cache, seconds, 500)
+        sdk_api = api_factory(config)
+        task = EventsSyncTask(sdk_api, events_cache, seconds, 500)
         while True:
-            sdk_api = api_factory(config)
             task._send_events()
             time.sleep(seconds)
     except:
@@ -657,7 +657,7 @@ class UWSGIEventsCache:
     def __unlock_events(self):
         self._adapter.cache_del(self._LOCK_EVENTS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE)
 
-    def add_event(self, event):
+    def log_event(self, event):
         """Adds an impression to the log if it is enabled, otherwise the impression is dropped.
         :param impression: The impression tuple
         :type impression: Impression
@@ -671,12 +671,12 @@ class UWSGIEventsCache:
             events = []
 
         events.append(cache_event)
-        _logger.debug('Adding event to cache: %s' % event)
+        _logger.error('Adding event to cache: {}.'.format(event))
         self._adapter.cache_update(self._EVENTS_KEY, encode(events), 0, _SPLITIO_STATS_CACHE_NAMESPACE)
 
         self.__unlock_events()
 
-    def fetch_many(self, count):
+    def pop_many(self, count):
         """Fetches all impressions from the cache and clears it. It returns a dictionary with the
         impressions grouped by feature name.
         :return: All cached impressions so far grouped by feature name
@@ -689,7 +689,8 @@ class UWSGIEventsCache:
             cached_events = cached_events[:(0 - count)]
             self._adapter.cache_update(self._EVENTS_KEY, encode(cached_events), 0, _SPLITIO_STATS_CACHE_NAMESPACE)
             self.__unlock_events()
-            return [Event(**e) for e in events_to_return]
+            eventos =  [Event(**e) for e in events_to_return]
+            return eventos
 
         return []
 

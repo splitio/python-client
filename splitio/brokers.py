@@ -28,7 +28,7 @@ from splitio.segments import ApiSegmentChangeFetcher, \
     SelfRefreshingSegmentFetcher, JSONFileSegmentFetcher
 from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, parse_config_file
 from splitio.uwsgi import UWSGISplitCache, UWSGIImpressionsCache, \
-    UWSGIMetricsCache, get_uwsgi
+    UWSGIMetricsCache, UWSGIEventsCache, get_uwsgi
 from splitio.tasks import EventsSyncTask
 from splitio.events import InMemoryEventStorage
 
@@ -179,6 +179,8 @@ class JSONFileBroker(BaseBroker):
         self._treatment_log.destroy()
         self._metrics.destroy()
 
+    def get_events_log(self):
+        return None
 
 class SelfRefreshingBroker(BaseBroker):
     def __init__(self, api_key, config=None, sdk_api_base_url=None,
@@ -381,6 +383,15 @@ class LocalhostBroker(BaseBroker):
     _DEFINITION_LINE_RE = re.compile(
         '^(?<![^#])(?P<feature>[\w_]+)\s+(?P<treatment>[\w_]+)$'
     )
+
+    class LocalhostEventStorage(object):
+        """
+        """
+        def log(self, event):
+            """
+            """
+            pass
+
     def __init__(self, split_definition_file_name=None, auto_refresh_period=2):
         """
         A broker implementation that builds its configuration from a split
@@ -409,6 +420,7 @@ class LocalhostBroker(BaseBroker):
 
         self._treatment_log = TreatmentLog()
         self._metrics = Metrics()
+        self._event_storage = LocalhostBroker.LocalhostEventStorage()
 
     def _build_split_fetcher(self):
         """
@@ -473,6 +485,9 @@ class LocalhostBroker(BaseBroker):
         """
         """
         return self._treatment_log
+
+    def get_events_log(self):
+        return self._event_storage
 
     def refresh_splits(self):
         while not self._destroyed:
@@ -576,6 +591,8 @@ class UWSGIBroker(BaseBroker):
         delegate_metrics = CacheBasedMetrics(metrics_cache)
         metrics = AsyncMetrics(delegate_metrics)
 
+        self._event_log = UWSGIEventsCache(uwsgi)
+
         self._split_fetcher = split_fetcher
         self._treatment_log = treatment_log
         self._metrics = metrics
@@ -597,6 +614,11 @@ class UWSGIBroker(BaseBroker):
         """
         """
         return self._treatment_log
+
+    def get_events_log(self):
+        """
+        """
+        return self._event_log
 
     def destroy(self):
         self._destroyed = True
