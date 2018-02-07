@@ -212,7 +212,6 @@ class SelfRefreshingBroker(BaseBroker):
         :type events_api_base_url: str
         """
         super(SelfRefreshingBroker, self).__init__()
-
         self._api_key = api_key
         self._sdk_api_base_url = sdk_api_base_url
         self._events_api_base_url = events_api_base_url
@@ -382,6 +381,7 @@ class SelfRefreshingBroker(BaseBroker):
         self._split_fetcher.destroy()
         self._treatment_log.destroy()
         self._metrics.destroy()
+        self._events_task.stop()
 
 
 class LocalhostBroker(BaseBroker):
