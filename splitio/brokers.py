@@ -225,8 +225,14 @@ class SelfRefreshingBroker(BaseBroker):
         self._metrics = self._build_metrics()
         self._start()
 
-        self._events_storage = InMemoryEventStorage()
-        self._events_task = EventsSyncTask(self._sdk_api, self._events_storage, 5, 500)
+        self._events_storage = InMemoryEventStorage(config['eventsQueueSize'])
+        self._events_task = EventsSyncTask(
+            self._sdk_api,
+            self._events_storage,
+            config['eventsPushRate'],
+            config['eventsQueueSize'],
+        )
+        self._events_storage.set_queue_full_hook(lambda: self._events_task.flush())
         self._events_task.start()
 
     def _init_config(self, config=None):
@@ -591,7 +597,7 @@ class UWSGIBroker(BaseBroker):
         delegate_metrics = CacheBasedMetrics(metrics_cache)
         metrics = AsyncMetrics(delegate_metrics)
 
-        self._event_log = UWSGIEventsCache(uwsgi)
+        self._event_log = UWSGIEventsCache(uwsgi, events_queue_size=config['eventsQueueSize'])
 
         self._split_fetcher = split_fetcher
         self._treatment_log = treatment_log
@@ -628,7 +634,9 @@ class UWSGIBroker(BaseBroker):
 
 
 def _init_config(api_key, **kwargs):
-    config = kwargs.pop('config', dict())
+    config = dict(DEFAULT_CONFIG)
+    user_cfg = kwargs.pop('config', dict())
+    config.update(user_cfg)
     sdk_api_base_url = kwargs.pop('sdk_api_base_url', None)
     events_api_base_url = kwargs.pop('events_api_base_url', None)
 
