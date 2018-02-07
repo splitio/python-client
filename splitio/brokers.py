@@ -225,12 +225,12 @@ class SelfRefreshingBroker(BaseBroker):
         self._metrics = self._build_metrics()
         self._start()
 
-        self._events_storage = InMemoryEventStorage(config['eventsQueueSize'])
+        self._events_storage = InMemoryEventStorage(self._config['eventsQueueSize'])
         self._events_task = EventsSyncTask(
             self._sdk_api,
             self._events_storage,
-            config['eventsPushRate'],
-            config['eventsQueueSize'],
+            self._config['eventsPushRate'],
+            self._config['eventsQueueSize'],
         )
         self._events_storage.set_queue_full_hook(lambda: self._events_task.flush())
         self._events_task.start()

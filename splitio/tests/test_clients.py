@@ -66,8 +66,9 @@ class RandomizeIntervalTests(TestCase, MockUtilsMixin):
 
 
 class SelfRefreshingBrokerInitTests(TestCase, MockUtilsMixin):
+
+
     def setUp(self):
-        self.init_config_mock = self.patch('splitio.brokers.SelfRefreshingBroker._init_config')
         self.build_sdk_api_mock = self.patch('splitio.brokers.SelfRefreshingBroker._build_sdk_api')
         self.build_split_fetcher_mock = self.patch(
             'splitio.brokers.SelfRefreshingBroker._build_split_fetcher')
@@ -85,11 +86,6 @@ class SelfRefreshingBrokerInitTests(TestCase, MockUtilsMixin):
         """Test that __init__ sets api key to the given value"""
         broker = SelfRefreshingBroker(self.some_api_key)
         self.assertEqual(self.some_api_key, broker._api_key)
-
-    def test_calls_init_config(self):
-        """Test that __init__ calls _init_config with the given config"""
-        SelfRefreshingBroker(self.some_api_key, config=self.some_config)
-        self.init_config_mock.assert_called_once_with(self.some_config)
 
     def test_calls_build_sdk_api(self):
         """Test that __init__ calls _build_sdk_api"""
@@ -1260,7 +1256,7 @@ class TestClientDestroy(TestCase):
         self.assertEqual(manager.split_names(), [])
 
     def test_uwsgi_destroy(self):
-        broker = UWSGIBroker(self.some_api_key)
+        broker = UWSGIBroker(self.some_api_key, {'eventsQueueSize': 30})
         client = Client(broker)
         manager = UWSGISplitManager(broker)
         client.destroy()
