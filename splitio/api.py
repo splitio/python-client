@@ -1,8 +1,9 @@
 """Provides access to the Split.io SDK API"""
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import requests
 import logging
+import requests
+import json
 
 from splitio.config import SDK_API_BASE_URL, EVENTS_API_BASE_URL, SDK_VERSION
 
@@ -10,9 +11,13 @@ _SEGMENT_CHANGES_URL_TEMPLATE = '{base_url}/segmentChanges/{segment_name}/'
 _SPLIT_CHANGES_URL_TEMPLATE = '{base_url}/splitChanges/'
 _TEST_IMPRESSIONS_URL_TEMPLATE = '{base_url}/testImpressions/bulk/'
 _METRICS_URL_TEMPLATE = '{base_url}/metrics/{endpoint}/'
+_EVENTS_URL_TEMPLATE = '{base_url}/events/bulk/'
 
 
 class SdkApi(object):
+    """
+    TODO
+    """
     def __init__(self, api_key, sdk_api_base_url=None, events_api_base_url=None,
                  split_sdk_machine_name=None, split_sdk_machine_ip=None, connect_timeout=1500,
                  read_timeout=1000):
@@ -86,10 +91,13 @@ class SdkApi(object):
         return headers
 
     def _logHttpError(self, response):
-        if response.status_code < 200 or response.status_code >= 400 :
+        if response.status_code < 200 or response.status_code >= 400:
             respJson = response.json()
             if 'message' in respJson:
-                self._logger.error("HTTP Error (status: %s) connecting with split servers: %s" % (response.status_code, respJson['message']))
+                self._logger.error(
+                    "HTTP Error (status: %s) connecting with split servers: %s"
+                    % (response.status_code, respJson['message'])
+                )
             else:
                 self._logger.error("HTTP Error connecting with split servers")
 
@@ -232,6 +240,10 @@ class SdkApi(object):
         """
         url = _METRICS_URL_TEMPLATE.format(base_url=self._events_api_url_base, endpoint='gauge')
         return self._post(url, gauge_data)
+
+    def track_events(self, events):
+        url = _EVENTS_URL_TEMPLATE.format(base_url=self._events_api_url_base)
+        return self._post(url, events)
 
 
 def api_factory(config):

@@ -48,7 +48,7 @@ from collections import defaultdict
 
 from splitio.cache import SegmentCache, SplitCache, ImpressionsCache, MetricsCache
 from splitio.api import api_factory
-from splitio.tasks import update_splits, update_segments, report_metrics, report_impressions
+from splitio.tasks import update_splits, update_segments, report_metrics, report_impressions, EventsSyncTask
 from splitio.splits import Split, ApiSplitChangeFetcher, SplitParser, HashAlgorithm
 from splitio.segments import Segment, ApiSegmentChangeFetcher
 from splitio.matchers import UserDefinedSegmentMatcher
@@ -56,6 +56,7 @@ from splitio.utils import bytes_to_string
 from splitio.impressions import Impression
 from splitio.metrics import BUCKETS
 from splitio.config import DEFAULT_CONFIG
+from splitio.events import Event
 
 _logger = logging.getLogger(__name__)
 
@@ -132,6 +133,22 @@ def uwsgi_report_metrics(user_config):
         _logger.exception('Exception caught posting metrics')
 
 
+def uwsgi_report_events(user_config):
+    try:
+        config = _get_config(user_config)
+        seconds = config.get('eventsRefreshRate', 30)
+        events_cache = UWSGIEventsCache(get_uwsgi())
+        sdk_api = api_factory(config)
+        task = EventsSyncTask(sdk_api, events_cache, seconds, 500)
+        while True:
+            task._send_events()
+            for _ in xrange(0, seconds):
+                if uwsgi.cache_get(UWSGIEventsCache._EVENTS_FLUSH, _SPLITIO_STATS_CACHE_NAMESPACE):
+                    uwsgi.cache_del(UWSGIEventsCache._EVENTS_FLUSH, _SPLITIO_STATS_CACHE_NAMESPACE)
+                    break
+                time.sleep(1)
+    except:
+        _logger.exception('Exception caught posting metrics')
 
 
 _SPLITIO_COMMON_CACHE_NAMESPACE = 'splitio'
@@ -255,6 +272,7 @@ class UWSGISplitCache(SplitCache):
         else:
             return -1
 
+
 class UWSGISegmentCache(SegmentCache):
     _KEY_TEMPLATE = 'segments.{suffix}'
     _SEGMENT_DATA_KEY_TEMPLATE = 'segmentData.{segment_name}'
@@ -322,7 +340,6 @@ class UWSGISegmentCache(SegmentCache):
             if segment_name in segments:
                 segments.discard(segment_name)
                 self._adapter.cache_update(self._SEGMENT_REGISTERED, encode(segments), 0, _SPLITIO_COMMON_CACHE_NAMESPACE)
-
 
     def get_registered_segments(self):
         """
@@ -609,6 +626,88 @@ class UWSGIImpressionsCache(ImpressionsCache):
         return dict()
 
 
+class UWSGIEventsCache:
+    _EVENTS_KEY = 'events'
+    _LOCK_EVENTS_KEY = 'events_lock'
+    _EVENTS_FLUSH = 'events_flush'
+    _OVERWRITE_LOCK_SECONDS = 5
+
+    def __init__(self, adapter, disabled_period=300, events_queue_size=500):
+        """An ImpressionsCache implementation that uses uWSGI as its back-end
+        :param disabled_period: The expiration period for the disabled key.
+        :param disabled_period: int
+        """
+        self._adapter = adapter
+        self._disabled_period = disabled_period
+        self._events_queue_size = events_queue_size
+
+    @property
+    def disabled_period(self):
+        return self._disabled_period
+
+    @disabled_period.setter
+    def disabled_period(self, disabled_period):
+        self._disabled_period = disabled_period
+
+    def __lock_events(self):
+        initial_time = time.time()
+        while True:
+            if not self._adapter.cache_exists(self._LOCK_EVENTS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE):
+                self._adapter.cache_set(self._LOCK_EVENTS_KEY, str('locked'), 0, _SPLITIO_STATS_CACHE_NAMESPACE)
+                return
+            else:
+                if time.time() - initial_time > self._OVERWRITE_LOCK_SECONDS:
+                    return
+            time.sleep(0.3)
+
+    def __unlock_events(self):
+        self._adapter.cache_del(self._LOCK_EVENTS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE)
+
+    def log_event(self, event):
+        """Adds an impression to the log if it is enabled, otherwise the impression is dropped.
+        :param impression: The impression tuple
+        :type impression: Impression
+        """
+        cache_event = dict(event._asdict())
+
+        try:
+            self.__lock_events()
+            if self._adapter.cache_exists(self._EVENTS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE):
+                events = decode(self._adapter.cache_get(self._EVENTS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE))
+            else:
+                events = []
+
+            if len(events) < self._events_queue_size:
+                events.append(cache_event)
+                _logger.debug('Adding event to cache: {}.'.format(event))
+                self._adapter.cache_update(self._EVENTS_KEY, encode(events), 0, _SPLITIO_STATS_CACHE_NAMESPACE)
+                return True
+
+            # Set a key to force an events flush
+            uwsgi.cache_set(self._EVENTS_FLUSH, '1', 0, _SPLITIO_STATS_CACHE_NAMESPACE)
+            return False
+        finally:
+            self.__unlock_events()
+
+    def pop_many(self, count):
+        """Fetches all impressions from the cache and clears it. It returns a dictionary with the
+        impressions grouped by feature name.
+        :return: All cached impressions so far grouped by feature name
+        :rtype: dict
+        """
+        if self._adapter.cache_exists(self._EVENTS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE):
+            self.__lock_events()
+            cached_events = decode(self._adapter.cache_get(self._EVENTS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE))
+            events_to_return = cached_events[(0 - count):]
+            cached_events = cached_events[:(0 - count)]
+            self._adapter.cache_update(self._EVENTS_KEY, encode(cached_events), 0, _SPLITIO_STATS_CACHE_NAMESPACE)
+            self.__unlock_events()
+            eventos =  [Event(**e) for e in events_to_return]
+            return eventos
+
+        return []
+
+
 class UWSGIMetricsCache(MetricsCache):
     _KEY_TEMPLATE = 'metrics.{suffix}'
     _METRIC_KEY = _KEY_TEMPLATE.format(suffix='metric')
@@ -854,6 +953,7 @@ class UWSGIMetricsCache(MetricsCache):
             return self._build_metrics_times_data(time)
 
         return self._build_metrics_times_data(dict())
+
 
 class UWSGICacheEmulator(object):
     def __init__(self):

@@ -50,7 +50,9 @@ DEFAULT_CONFIG = {
     'redisSslCertfile': None,
     'redisSslCertReqs': None,
     'redisSslCaCerts': None,
-    'redisMaxConnections': None
+    'redisMaxConnections': None,
+    'eventsPushRate' : 60,
+    'eventsQueueSize': 500,
 }
 
 MAX_INTERVAL = 180
