@@ -20,7 +20,7 @@ from splitio.metrics import Metrics, AsyncMetrics, ApiMetrics, \
 from splitio.impressions import TreatmentLog, AsyncTreatmentLog, \
     SelfUpdatingTreatmentLog, CacheBasedTreatmentLog
 from splitio.redis_support import RedisSplitCache, RedisImpressionsCache, \
-    RedisMetricsCache, get_redis
+    RedisMetricsCache, get_redis, RedisEventsCache
 from splitio.splits import SelfRefreshingSplitFetcher, SplitParser, \
     ApiSplitChangeFetcher, JSONFileSplitFetcher, InMemorySplitFetcher, \
     AllKeysSplit, CacheBasedSplitFetcher
@@ -28,7 +28,9 @@ from splitio.segments import ApiSegmentChangeFetcher, \
     SelfRefreshingSegmentFetcher, JSONFileSegmentFetcher
 from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, parse_config_file
 from splitio.uwsgi import UWSGISplitCache, UWSGIImpressionsCache, \
-    UWSGIMetricsCache, get_uwsgi
+    UWSGIMetricsCache, UWSGIEventsCache, get_uwsgi
+from splitio.tasks import EventsSyncTask
+from splitio.events import InMemoryEventStorage
 
 
 def randomize_interval(value):
@@ -68,13 +70,13 @@ class BaseBroker(object):
         :return: The split associated with that feature
         :rtype: Split
         """
-        return self._split_fetcher.fetch(name)
+        return self.get_split_fetcher().fetch(name)
 
     def get_change_number(self):
         """
         Returns the latest change number
         """
-        return self._split_fetcher.change_number
+        return self.get_split_fetcher().change_number
 
     def log_impression(self, impression):
         """
@@ -82,14 +84,20 @@ class BaseBroker(object):
         :return: The treatment log implementation.
         :rtype: TreatmentLog
         """
-        return self._treatment_log.log(impression)
+        return self.get_impression_log().log(impression)
 
-    def log_operation_time(self, operation, time):
+    def log_operation_time(self, operation, elapsed):
         """Get the metrics implementation.
         :return: The metrics implementation.
         :rtype: Metrics
         """
-        return self._metrics.time(operation, time)
+        return self.get_metrics_handler().time(operation, elapsed)
+
+    def log_event(self, event):
+        """
+        Logs an event after a .track() call
+        """
+        return self.get_events_log().log(event)
 
     @abc.abstractmethod
     def get_split_fetcher(self):
@@ -103,12 +111,13 @@ class BaseBroker(object):
     def get_impression_log(self):
         pass
 
-    def destroy(self):
-        self._destroyed = True
-        self._split_fetcher.destroy()
-        self._treatment_log.destroy()
-        self._metrics.destroy()
+    @abc.abstractmethod
+    def get_events_log(self):
+        pass
 
+    @abc.abstractmethod
+    def destroy(self):
+        pass
 
 class JSONFileBroker(BaseBroker):
     def __init__(self, segment_changes_file_name, split_changes_file_name):
@@ -164,6 +173,14 @@ class JSONFileBroker(BaseBroker):
         """
         return self._treatment_log
 
+    def destroy(self):
+        self._destroyed = True
+        self._split_fetcher.destroy()
+        self._treatment_log.destroy()
+        self._metrics.destroy()
+
+    def get_events_log(self):
+        return None
 
 class SelfRefreshingBroker(BaseBroker):
     def __init__(self, api_key, config=None, sdk_api_base_url=None,
@@ -195,7 +212,6 @@ class SelfRefreshingBroker(BaseBroker):
         :type events_api_base_url: str
         """
         super(SelfRefreshingBroker, self).__init__()
-
         self._api_key = api_key
         self._sdk_api_base_url = sdk_api_base_url
         self._events_api_base_url = events_api_base_url
@@ -207,6 +223,16 @@ class SelfRefreshingBroker(BaseBroker):
         self._treatment_log = self._build_treatment_log()
         self._metrics = self._build_metrics()
         self._start()
+
+        self._events_storage = InMemoryEventStorage(self._config['eventsQueueSize'])
+        self._events_task = EventsSyncTask(
+            self._sdk_api,
+            self._events_storage,
+            self._config['eventsPushRate'],
+            self._config['eventsQueueSize'],
+        )
+        self._events_storage.set_queue_full_hook(lambda: self._events_task.flush())
+        self._events_task.start()
 
     def _init_config(self, config=None):
         self._config = dict(DEFAULT_CONFIG)
@@ -336,14 +362,20 @@ class SelfRefreshingBroker(BaseBroker):
         return self._split_fetcher
 
     def get_metrics_handler(self):
-        """
-        """
         return self._metrics
 
     def get_impression_log(self):
-        """
-        """
         return self._treatment_log
+
+    def get_events_log(self):
+        return self._events_storage
+
+    def destroy(self):
+        self._destroyed = True
+        self._split_fetcher.destroy()
+        self._treatment_log.destroy()
+        self._metrics.destroy()
+        self._events_task.stop()
 
 
 class LocalhostBroker(BaseBroker):
@@ -351,6 +383,11 @@ class LocalhostBroker(BaseBroker):
     _DEFINITION_LINE_RE = re.compile(
         '^(?<![^#])(?P<feature>[\w_]+)\s+(?P<treatment>[\w_]+)$'
     )
+
+    class LocalhostEventStorage(object):
+        def log(self, event):
+            pass
+
     def __init__(self, split_definition_file_name=None, auto_refresh_period=2):
         """
         A broker implementation that builds its configuration from a split
@@ -379,6 +416,7 @@ class LocalhostBroker(BaseBroker):
 
         self._treatment_log = TreatmentLog()
         self._metrics = Metrics()
+        self._event_storage = LocalhostBroker.LocalhostEventStorage()
 
     def _build_split_fetcher(self):
         """
@@ -444,6 +482,9 @@ class LocalhostBroker(BaseBroker):
         """
         return self._treatment_log
 
+    def get_events_log(self):
+        return self._event_storage
+
     def refresh_splits(self):
         while not self._destroyed:
             time.sleep(self._split_refresh_period)
@@ -453,6 +494,12 @@ class LocalhostBroker(BaseBroker):
                                     # and the file was closed, in order to
                                     # prevent an exception.
                 self._split_fetcher = self._build_split_fetcher()
+
+    def destroy(self):
+        self._destroyed = True
+        self._split_fetcher.destroy()
+        self._treatment_log.destroy()
+        self._metrics.destroy()
 
 
 class RedisBroker(BaseBroker):
@@ -477,6 +524,8 @@ class RedisBroker(BaseBroker):
         self._treatment_log = treatment_log
         self._metrics = metrics
 
+        self._event_storage = RedisEventsCache(redis)
+
     def get_split_fetcher(self):
         """
         Get the split fetcher implementation for the broker.
@@ -495,6 +544,9 @@ class RedisBroker(BaseBroker):
         """
         return self._treatment_log
 
+    def get_events_log(self):
+        return self._event_storage
+
     def get_metrics(self):
         """
         Get the metrics implementation for the broker.
@@ -502,6 +554,12 @@ class RedisBroker(BaseBroker):
         :rtype: Metrics
         """
         return self._metrics
+
+    def destroy(self):
+        self._destroyed = True
+        self._split_fetcher.destroy()
+        self._treatment_log.destroy()
+        self._metrics.destroy()
 
 
 class UWSGIBroker(BaseBroker):
@@ -527,6 +585,8 @@ class UWSGIBroker(BaseBroker):
         delegate_metrics = CacheBasedMetrics(metrics_cache)
         metrics = AsyncMetrics(delegate_metrics)
 
+        self._event_log = UWSGIEventsCache(uwsgi, events_queue_size=config['eventsQueueSize'])
+
         self._split_fetcher = split_fetcher
         self._treatment_log = treatment_log
         self._metrics = metrics
@@ -549,9 +609,20 @@ class UWSGIBroker(BaseBroker):
         """
         return self._treatment_log
 
+    def get_events_log(self):
+        return self._event_log
+
+    def destroy(self):
+        self._destroyed = True
+        self._split_fetcher.destroy()
+        self._treatment_log.destroy()
+        self._metrics.destroy()
+
 
 def _init_config(api_key, **kwargs):
-    config = kwargs.pop('config', dict())
+    config = dict(DEFAULT_CONFIG)
+    user_cfg = kwargs.pop('config', dict())
+    config.update(user_cfg)
     sdk_api_base_url = kwargs.pop('sdk_api_base_url', None)
     events_api_base_url = kwargs.pop('events_api_base_url', None)
 

@@ -33,7 +33,8 @@ from splitio.version import __version__ as _SDK_VERSION
 _SPLITIO_CACHE_KEY_TEMPLATE = 'SPLITIO.{suffix}'
 _GLOBAL_KEY_PARAMETERS = {
     'sdk-language-version': 'python-{version}'.format(version=_SDK_VERSION),
-    'instance-id': 'unknown'
+    'instance-id': 'unknown',
+    'ip-address': 'unknown',
 }
 
 
@@ -239,6 +240,41 @@ class RedisSplitCache(SplitCache):
         self._redis.delete(self._get_split_key(split_name))
 
 
+class RedisEventsCache(ImpressionsCache):
+    _KEY_TEMPLATE = (
+        'SPLITIO.events'
+    )
+
+    def __init__(self, redis):
+        '''
+        An ImpressionsCache implementation that uses Redis as its back-end
+        :param redis: The redis client
+        :type redis: StrictRedis
+        '''
+        self._logger = logging.getLogger(self.__class__.__name__)
+        self._redis = redis
+
+    def log_event(self, event):
+        """
+        Adds an event to the redis storage
+        """
+        key = self._KEY_TEMPLATE
+        to_store = {
+            'e': dict(event._asdict()),
+            'm': {
+                's': _GLOBAL_KEY_PARAMETERS['sdk-language-version'],
+                'n': _GLOBAL_KEY_PARAMETERS['instance-id'],
+                'i': _GLOBAL_KEY_PARAMETERS['ip-address'],
+            }
+        }
+        try:
+            res = self._redis.rpush(key, encode(to_store))
+            return True
+        except Exception:
+            self._logger.exception("Something went wrong when trying to add event to redis")
+            return False
+
+
 class RedisImpressionsCache(ImpressionsCache):
     _KEY_TEMPLATE = (
         'SPLITIO/{sdk-language-version}/{instance-id}/impressions.{feature}'
@@ -434,7 +470,7 @@ class RedisMetricsCache(MetricsCache):
     @classmethod
     def _get_latency_bucket_key(cls, metric_name, bucket_number):
         '''
-        TODO
+        Returns the latency bucket
         '''
         return cls._KEY_LATENCY.format(**dict(
             _GLOBAL_KEY_PARAMETERS,
@@ -445,7 +481,7 @@ class RedisMetricsCache(MetricsCache):
     @classmethod
     def _get_count_key(cls, counter):
         '''
-        TODO
+        Returns the count key
         '''
         return cls._KEY_COUNT.format(**dict(
             _GLOBAL_KEY_PARAMETERS,
@@ -455,7 +491,7 @@ class RedisMetricsCache(MetricsCache):
     @classmethod
     def _get_gauge_key(cls, gauge):
         '''
-        TODO
+        Returns the gauge key
         '''
         return cls._KEY_GAUGE.format(**dict(
             _GLOBAL_KEY_PARAMETERS,
