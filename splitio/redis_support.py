@@ -251,6 +251,7 @@ class RedisEventsCache(ImpressionsCache):
         :param redis: The redis client
         :type redis: StrictRedis
         '''
+        self._logger = logging.getLogger(self.__class__.__name__)
         self._redis = redis
 
     def log_event(self, event):
@@ -260,13 +261,18 @@ class RedisEventsCache(ImpressionsCache):
         key = self._KEY_TEMPLATE
         to_store = {
             'e': dict(event._asdict()),
-            'm': { 
+            'm': {
                 's': _GLOBAL_KEY_PARAMETERS['sdk-language-version'],
                 'n': _GLOBAL_KEY_PARAMETERS['instance-id'],
                 'i': _GLOBAL_KEY_PARAMETERS['ip-address'],
             }
         }
-        self._redis.rpush(key, encode(to_store))
+        try:
+            res = self._redis.rpush(key, encode(to_store))
+            return True
+        except Exception:
+            self._logger.exception("Something went wrong when trying to add event to redis")
+            return False
 
 
 class RedisImpressionsCache(ImpressionsCache):
