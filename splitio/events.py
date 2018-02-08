@@ -1,5 +1,7 @@
 """
-Event DTO definition
+Event DTO and Storage classes.
+
+The dto is implemented as a namedtuple for performance matters.
 """
 
 from __future__ import print_function
@@ -19,33 +21,43 @@ Event = namedtuple('Event', [
 
 def build_bulk(event_list):
     """
-    Returns a list of dictionaries with all the events.
+    Return a list of dictionaries with all the events.
+
+    :param event_list: list of event tuples
     """
     return [e._asdict() for e in event_list]
 
 
 class InMemoryEventStorage(object):
     """
-    TODO
+    In memory storage for events.
+
+    Supports adding and popping events.
     """
 
     def __init__(self, eventsQueueSize):
         """
-        TODO
+        Construct an instance.
+
+        :param eventsQueueSize: How many events to queue before forcing a submission
         """
         self._events = queue.Queue(maxsize=eventsQueueSize)
         self._queue_full_hook = None
 
-    def set_queue_full_hook(self, h):
+    def set_queue_full_hook(self, hook):
         """
-        TODO
+        Set a hook to be called when the queue is full.
+
+        :param h: Hook to be called when the queue is full
         """
-        if callable(h):
-            self._queue_full_hook = h
+        if callable(hook):
+            self._queue_full_hook = hook
 
     def log_event(self, event):
         """
-        TODO
+        Add an avent to storage.
+
+        :param event: Event to be added in the storage
         """
         try:
             self._events.put(event, False)
@@ -57,7 +69,9 @@ class InMemoryEventStorage(object):
 
     def pop_many(self, count):
         """
-        TODO
+        Pop multiple items from the storage.
+
+        :param count: number of items to be retrieved and removed from the queue.
         """
         events = []
         while not self._events.empty() and count > 0:
