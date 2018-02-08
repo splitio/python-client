@@ -16,7 +16,8 @@ _EVENTS_URL_TEMPLATE = '{base_url}/events/bulk/'
 
 class SdkApi(object):
     """
-    TODO
+    SDK API Class contains all methods required to interact with
+    the split backend.
     """
     def __init__(self, api_key, sdk_api_base_url=None, events_api_base_url=None,
                  split_sdk_machine_name=None, split_sdk_machine_ip=None, connect_timeout=1500,

@@ -470,7 +470,7 @@ class RedisMetricsCache(MetricsCache):
     @classmethod
     def _get_latency_bucket_key(cls, metric_name, bucket_number):
         '''
-        TODO
+        Returns the latency bucket
         '''
         return cls._KEY_LATENCY.format(**dict(
             _GLOBAL_KEY_PARAMETERS,
@@ -481,7 +481,7 @@ class RedisMetricsCache(MetricsCache):
     @classmethod
     def _get_count_key(cls, counter):
         '''
-        TODO
+        Returns the count key
         '''
         return cls._KEY_COUNT.format(**dict(
             _GLOBAL_KEY_PARAMETERS,
@@ -491,7 +491,7 @@ class RedisMetricsCache(MetricsCache):
     @classmethod
     def _get_gauge_key(cls, gauge):
         '''
-        TODO
+        Returns the gauge key
         '''
         return cls._KEY_GAUGE.format(**dict(
             _GLOBAL_KEY_PARAMETERS,
