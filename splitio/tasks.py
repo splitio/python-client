@@ -197,8 +197,6 @@ class EventsSyncTask:
     """
 
     def __init__(self, sdk_api, storage, period, bulk_size):
-        """
-        """
         self._sdk_api = sdk_api
         self._storage = storage
         self._period = period

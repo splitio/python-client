@@ -362,18 +362,12 @@ class SelfRefreshingBroker(BaseBroker):
         return self._split_fetcher
 
     def get_metrics_handler(self):
-        """
-        """
         return self._metrics
 
     def get_impression_log(self):
-        """
-        """
         return self._treatment_log
 
     def get_events_log(self):
-        """
-        """
         return self._events_storage
 
     def destroy(self):
@@ -391,11 +385,7 @@ class LocalhostBroker(BaseBroker):
     )
 
     class LocalhostEventStorage(object):
-        """
-        """
         def log(self, event):
-            """
-            """
             pass
 
     def __init__(self, split_definition_file_name=None, auto_refresh_period=2):
@@ -555,8 +545,6 @@ class RedisBroker(BaseBroker):
         return self._treatment_log
 
     def get_events_log(self):
-        """
-        """
         return self._event_storage
 
     def get_metrics(self):
@@ -622,8 +610,6 @@ class UWSGIBroker(BaseBroker):
         return self._treatment_log
 
     def get_events_log(self):
-        """
-        """
         return self._event_log
 
     def destroy(self):
