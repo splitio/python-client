@@ -1,4 +1,4 @@
-from six import string_types
+from six import string_types, binary_type
 
 
 class PrefixDecorator:
@@ -33,11 +33,18 @@ class PrefixDecorator:
         if self._prefix:
             if isinstance(k, string_types):
                 return '{prefix}.{key}'.format(prefix=self._prefix, key=k)
-            elif isinstance(k, list):
-                return [
-                    '{prefix}.{key}'.format(prefix=self._prefix, key=key)
-                    for key in k
-                ]
+            elif isinstance(k, list) and len(k) > 0:
+                if isinstance(k[0], binary_type):
+                    return [
+                        '{prefix}.{key}'.format(prefix=self._prefix, key=key.decode("utf8"))
+                        for key in k
+                    ]
+                elif isinstance(k[0], string_types):
+                    return [
+                        '{prefix}.{key}'.format(prefix=self._prefix, key=key.decode("utf8"))
+                        for key in k
+                    ]
+
         else:
             return k
 
