@@ -87,11 +87,11 @@ def update_splits(split_cache, split_change_fetcher, split_parser):
             response = split_change_fetcher.fetch(till)
 
             if 'till' not in response:
-                return
+                return [], []
 
             if till >= response['till']:
                 _logger.debug("change_number is greater or equal than 'till'")
-                return
+                return [], []
 
             if 'splits' in response and len(response['splits']) > 0:
                 _logger.debug(
@@ -126,9 +126,11 @@ def update_splits(split_cache, split_change_fetcher, split_parser):
 
             till = response['till']
             split_cache.set_change_number(response['till'])
+            return added_features, removed_features
     except:
         _logger.exception('Exception caught updating split definitions')
         split_cache.disable()
+        return [], []
 
 
 def report_impressions(impressions_cache, sdk_api, listener=None):

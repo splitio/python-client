@@ -67,6 +67,29 @@ def _get_config(user_config):
     return sdk_config
 
 
+class UWSGILock:
+    def __init__(self, namespace, key, overwrite_lock_seconds=5):
+        self._namespace = namespace
+        self._key = key
+        self._overwrite_lock_seconds = overwrite_lock_seconds
+        self._adapter = get_uwsgi()
+
+    def __enter__(self):
+        initial_time = time.time()
+        while True:
+            if not self._adapter.cache_exists(self._key, self._namespace):
+                self._adapter.cache_set(self._key, str('locked'), 0, self._namespace)
+                return
+            else:
+                if time.time() - initial_time > self._overwrite_lock_seconds:
+                    return
+            time.sleep(0.3)
+
+    def __exit__(self):
+        self._adapter.cache_del(self._key, self._namespace)
+
+
+
 def uwsgi_update_splits(user_config):
     try:
         config = _get_config(user_config)
@@ -80,7 +103,8 @@ def uwsgi_update_splits(user_config):
             segment_cache = UWSGISegmentCache(get_uwsgi())
             split_parser = UWSGISplitParser(segment_cache)
 
-            update_splits(split_cache, split_change_fetcher, split_parser)
+            added, removed = update_splits(split_cache, split_change_fetcher, split_parser)
+            split_cache.update_split_list(added, removed)
 
             time.sleep(seconds)
     except:
@@ -158,6 +182,9 @@ class UWSGISplitCache(SplitCache):
     _KEY_TEMPLATE = 'split.{suffix}'
     _KEY_TILL_TEMPLATE = 'splits.till'
     _KEY_CURRENT_SPLITS = 'splits.current'
+    _KEY_FEATURE_LIST_LOCK = 'splits.list.lock'
+    _KEY_FEATURE_LIST = 'splits.list'
+    _OVERWRITE_LOCK_SECONDS = 5
 
     def __init__(self, adapter):
         """A SplitCache implementation that uses uwsgi cache as its back-end."""
@@ -182,13 +209,13 @@ class UWSGISplitCache(SplitCache):
         self._adapter.cache_update(self._KEY_TEMPLATE.format(suffix=split_name), encode(split), 0,
                                    _SPLITIO_COMMON_CACHE_NAMESPACE)
 
-        if self._adapter.cache_exists(self._KEY_CURRENT_SPLITS, _SPLITIO_COMMON_CACHE_NAMESPACE):
-            current_splits = decode(self._adapter.cache_get(self._KEY_CURRENT_SPLITS, _SPLITIO_COMMON_CACHE_NAMESPACE))
-            current_splits[split_name] = True
-        else:
-            current_splits = {split_name:True}
-
-        self._adapter.cache_update(self._KEY_CURRENT_SPLITS, encode(current_splits), 0, _SPLITIO_COMMON_CACHE_NAMESPACE)
+#        if self._adapter.cache_exists(self._KEY_CURRENT_SPLITS, _SPLITIO_COMMON_CACHE_NAMESPACE):
+#            current_splits = decode(self._adapter.cache_get(self._KEY_CURRENT_SPLITS, _SPLITIO_COMMON_CACHE_NAMESPACE))
+#            current_splits[split_name] = True
+#        else:
+#            current_splits = {split_name:True}
+#
+#        self._adapter.cache_update(self._KEY_CURRENT_SPLITS, encode(current_splits), 0, _SPLITIO_COMMON_CACHE_NAMESPACE)
 
     def remove_split(self, split_name):
         """
@@ -197,12 +224,12 @@ class UWSGISplitCache(SplitCache):
         :type split_name: str
         """
 
-        if self._adapter.cache_exists(self._KEY_CURRENT_SPLITS, _SPLITIO_COMMON_CACHE_NAMESPACE):
-            current_splits = decode(self._adapter.cache_get(self._KEY_CURRENT_SPLITS, _SPLITIO_COMMON_CACHE_NAMESPACE))
-            current_splits.pop(split_name, None)
-            self._adapter.cache_update(self._KEY_CURRENT_SPLITS, encode(current_splits), 0,
-                                       _SPLITIO_COMMON_CACHE_NAMESPACE)
-
+#        if self._adapter.cache_exists(self._KEY_CURRENT_SPLITS, _SPLITIO_COMMON_CACHE_NAMESPACE):
+#            current_splits = decode(self._adapter.cache_get(self._KEY_CURRENT_SPLITS, _SPLITIO_COMMON_CACHE_NAMESPACE))
+#            current_splits.pop(split_name, None)
+#            self._adapter.cache_update(self._KEY_CURRENT_SPLITS, encode(current_splits), 0,
+#                                       _SPLITIO_COMMON_CACHE_NAMESPACE)
+#
         return self._adapter.cache_del(self._KEY_TEMPLATE.format(suffix=split_name), _SPLITIO_COMMON_CACHE_NAMESPACE)
 
     def get_split(self, split_name):
@@ -271,6 +298,24 @@ class UWSGISplitCache(SplitCache):
             return decode(self._adapter.cache_get(self._KEY_TILL_TEMPLATE, _SPLITIO_COMMON_CACHE_NAMESPACE))
         else:
             return -1
+
+    def update_split_list(self, added, removed):
+        """
+        Updates a list of splits that will be used to keep track of impression keys in the cache.
+        """
+        added_set = set(added)
+        removed_set = set(removed)
+        with UWSGILock(self._KEY_FEATURE_LIST_LOCK, _SPLITIO_COMMON_CACHE_NAMESPACE):
+            current = self._adapter.cache_get(self._KEY_FEATURE_LIST, _SPLITIO_COMMON_CACHE_NAMESPACE)
+            current = set(current).union(added_set).difference(removed_set)
+            if current is None:
+                current = set()
+            current = self._adapter.cache_update(
+                self._KEY_FEATURE_LIST,
+                encode(current),
+                0,
+                _SPLITIO_COMMON_CACHE_NAMESPACE
+            )
 
 
 class UWSGISegmentCache(SegmentCache):
@@ -477,8 +522,10 @@ class UWSGISplitBasedSegment(Segment):
 
 
 class UWSGIImpressionsCache(ImpressionsCache):
-    _IMPRESSIONS_KEY = 'impressions'
-    _LOCK_IMPRESSION_KEY = 'impressions_lock'
+    _IMPRESSIONS_KEY = 'impressions.{feature}'
+    _MISSING = '__MISSING__'
+    _LOCK_IMPRESSION_KEY = 'impressions_lock.{feature}'
+    _LOCK_IMPRESSION_KEY = 'impressions_lock.{feature}'
     _OVERWRITE_LOCK_SECONDS = 5
 
     def __init__(self, adapter, disabled_period=300):
@@ -538,52 +585,49 @@ class UWSGIImpressionsCache(ImpressionsCache):
         """Clears all cached impressions"""
         pass
 
-    def __lock_impressions(self):
-        initial_time = time.time()
-        while True:
-            if not self._adapter.cache_exists(self._LOCK_IMPRESSION_KEY, _SPLITIO_STATS_CACHE_NAMESPACE):
-                self._adapter.cache_set(self._LOCK_IMPRESSION_KEY, str('locked'), 0, _SPLITIO_STATS_CACHE_NAMESPACE)
-                return
-            else:
-                if time.time() - initial_time > self._OVERWRITE_LOCK_SECONDS:
-                    return
-            time.sleep(0.3)
-
-    def __unlock_impressions(self):
-        self._adapter.cache_del(self._LOCK_IMPRESSION_KEY, _SPLITIO_STATS_CACHE_NAMESPACE)
+#    def __lock_impressions(self):
+#        initial_time = time.time()
+#        while True:
+#            if not self._adapter.cache_exists(self._LOCK_IMPRESSION_KEY, _SPLITIO_STATS_CACHE_NAMESPACE):
+#                self._adapter.cache_set(self._LOCK_IMPRESSION_KEY, str('locked'), 0, _SPLITIO_STATS_CACHE_NAMESPACE)
+#                return
+#            else:
+#                if time.time() - initial_time > self._OVERWRITE_LOCK_SECONDS:
+#                    return
+#            time.sleep(0.3)
+#
+#    def __unlock_impressions(self):
+#        self._adapter.cache_del(self._LOCK_IMPRESSION_KEY, _SPLITIO_STATS_CACHE_NAMESPACE)
 
     def add_impression(self, impression):
         """Adds an impression to the log if it is enabled, otherwise the impression is dropped.
         :param impression: The impression tuple
         :type impression: Impression
         """
-        cache_impression = {'keyName':impression.matching_key,
-                            'treatment':impression.treatment,
-                            'time':impression.time,
-                            'changeNumber':impression.change_number,
-                            'label':impression.label,
-                            'bucketingKey':impression.bucketing_key
-                            }
+        with UWSGILock(UWSGISplitCache._KEY_FEATURE_LIST_LOCK, _SPLITIO_COMMON_CACHE_NAMESPACE):
+            features = self._adapter.cache_get(UWSGISplitCache._KEY_FEATURE_LIST, _SPLITIO_COMMON_CACHE_NAMESPACE)
+        try:
+            features = decode(features)
+        except TypeError:
+            features = set()
 
-        self.__lock_impressions()
-
-        if self._adapter.cache_exists(self._IMPRESSIONS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE):
-            impressions = decode(self._adapter.cache_get(self._IMPRESSIONS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE))
+        if impression.feature_name in features:
+            # Feature is known, add to it's own impression collection
+            key = self._IMPRESSIONS_KEY.format(feature=impression.feature_name)
+            lock_key = self._LOCK_IMPRESSION_KEY.format(feature=impression.feature_name)
         else:
-            impressions = dict()
+            # Feature is unknown add to `impressions.__MISSING__` key in cache
+            key = self._IMPRESSIONS_KEY.format(feature=self._MISSING)
+            lock_key = self._LOCK_IMPRESSION_KEY.format(feature=self._MISSING)
 
-        if impression.feature_name not in impressions:
-            impressions[impression.feature_name] = [cache_impression]
-        else:
-            impressions_set = impressions[impression.feature_name]
-            impressions_set.append(cache_impression)
-            impressions_set.reverse()
-            impressions[impression.feature_name] = impressions_set
+        with UWSGILock(lock_key, _SPLITIO_STATS_CACHE_NAMESPACE):
+            try:
+                impressions = decode(self._adapter.cache_get(key, _SPLITIO_STATS_CACHE_NAMESPACE))
+            except TypeError:
+                impressions = set()
+            impressions.add(tuple(impression))
+            self._adapter.cache_set(key, encode(impressions), 0, _SPLITIO_STATS_CACHE_NAMESPACE)
 
-        _logger.debug('Adding impressions to cache: %s' % impressions)
-        self._adapter.cache_update(self._IMPRESSIONS_KEY, encode(impressions), 0, _SPLITIO_STATS_CACHE_NAMESPACE)
-
-        self.__unlock_impressions()
 
     def fetch_all_and_clear(self):
         """Fetches all impressions from the cache and clears it. It returns a dictionary with the
@@ -591,39 +635,60 @@ class UWSGIImpressionsCache(ImpressionsCache):
         :return: All cached impressions so far grouped by feature name
         :rtype: dict
         """
+        with UWSGILock(UWSGISplitCache._KEY_FEATURE_LIST_LOCK, _SPLITIO_COMMON_CACHE_NAMESPACE):
+            features = self._adapter.cache_get(UWSGISplitCache._KEY_FEATURE_LIST, _SPLITIO_COMMON_CACHE_NAMESPACE)
+        try:
+            features = decode(features)
+        except TypeError:
+            features = set()
 
-        if self._adapter.cache_exists(self._IMPRESSIONS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE):
-            impressions_list = list()
+        features.add(self._MISSING) # Include impressions for splits not in cache.
 
-            self.__lock_impressions()
+        impressions = []
+        for feature in features:
+            key = self._IMPRESSIONS_KEY.format(feature=feature)
+            lock_key = self._LOCK_IMPRESSION_KEY.format(feature=feature)
+            with UWSGILock(lock_key, _SPLITIO_STATS_CACHE_NAMESPACE):
+                try:
+                    raw = self._adapter.cache_get(key, _SPLITIO_STATS_CACHE_NAMESPACE)
+                    impressions.append(Impression(*decode(raw)))
+                except TypeError:
+                    pass
+                self._adapter.cache_del(key, _SPLITIO_STATS_CACHE_NAMESPACE)
 
-            cached_impressions = decode(self._adapter.cache_get(self._IMPRESSIONS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE))
-            self._adapter.cache_del(self._IMPRESSIONS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE)
+        return self._build_impressions_dict(impressions)
 
-            self.__unlock_impressions()
-
-            _logger.debug('**** Cached Impressions: %s' % cached_impressions)
-
-            for feature_name in cached_impressions:
-                impressions = cached_impressions[feature_name]
-
-                for impression in impressions:
-                    impression_tuple = Impression(matching_key=impression['keyName'],
-                                                  feature_name=feature_name,
-                                                  treatment=impression['treatment'],
-                                                  label=impression['label'],
-                                                  change_number=impression['changeNumber'],
-                                                  bucketing_key=impression['bucketingKey'],
-                                                  time=impression['time']
-                                                  )
-                    impressions_list.append(impression_tuple)
-
-            if not impressions_list:
-                return dict()
-
-            return self._build_impressions_dict(impressions_list)
-
-        return dict()
+#        if self._adapter.cache_exists(self._IMPRESSIONS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE):
+#            impressions_list = list()
+#
+#            self.__lock_impressions()
+#
+#            cached_impressions = decode(self._adapter.cache_get(self._IMPRESSIONS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE))
+#            self._adapter.cache_del(self._IMPRESSIONS_KEY, _SPLITIO_STATS_CACHE_NAMESPACE) #
+#            self.__unlock_impressions()
+#
+#            _logger.debug('**** Cached Impressions: %s' % cached_impressions)
+#
+#            for feature_name in cached_impressions:
+#                impressions = cached_impressions[feature_name]
+#
+#                for impression in impressions:
+#                    impression_tuple = Impression(matching_key=impression['keyName'],
+#                                                  feature_name=feature_name,
+#                                                  treatment=impression['treatment'],
+#                                                  label=impression['label'],
+#                                                  change_number=impression['changeNumber'],
+#                                                  bucketing_key=impression['bucketingKey'],
+#                                                  time=impression['time']
+#                                                  )
+#                    impressions_list.append(impression_tuple)
+#
+#            if not impressions_list:
+#                return dict()
+#
+#            return self._build_impressions_dict(impressions_list)
+#
+#        return dict()
 
 
 class UWSGIEventsCache:
