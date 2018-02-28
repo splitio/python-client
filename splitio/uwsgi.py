@@ -580,8 +580,8 @@ class UWSGIImpressionsCache(ImpressionsCache):
         :param impression: The impression tuple
         :type impression: Impression
         """
-        with UWSGILock(UWSGISplitCache._KEY_FEATURE_LIST_LOCK, _SPLITIO_COMMON_CACHE_NAMESPACE):
-            features = self._adapter.cache_get(UWSGISplitCache._KEY_FEATURE_LIST, _SPLITIO_COMMON_CACHE_NAMESPACE)
+        # with UWSGILock(UWSGISplitCache._KEY_FEATURE_LIST_LOCK, _SPLITIO_COMMON_CACHE_NAMESPACE):
+        features = self._adapter.cache_get(UWSGISplitCache._KEY_FEATURE_LIST, _SPLITIO_COMMON_CACHE_NAMESPACE)
         try:
             features = decode(features)
         except TypeError:
@@ -612,8 +612,8 @@ class UWSGIImpressionsCache(ImpressionsCache):
         :return: All cached impressions so far grouped by feature name
         :rtype: dict
         """
-        with UWSGILock(UWSGISplitCache._KEY_FEATURE_LIST_LOCK, _SPLITIO_COMMON_CACHE_NAMESPACE):
-            features = self._adapter.cache_get(UWSGISplitCache._KEY_FEATURE_LIST, _SPLITIO_COMMON_CACHE_NAMESPACE)
+   #     with UWSGILock(UWSGISplitCache._KEY_FEATURE_LIST_LOCK, _SPLITIO_COMMON_CACHE_NAMESPACE):
+        features = self._adapter.cache_get(UWSGISplitCache._KEY_FEATURE_LIST, _SPLITIO_COMMON_CACHE_NAMESPACE)
         try:
             features = decode(features)
         except TypeError:
