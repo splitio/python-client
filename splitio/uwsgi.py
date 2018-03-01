@@ -89,7 +89,6 @@ class UWSGILock:
         self._adapter.cache_del(self._key, self._namespace)
 
 
-
 def uwsgi_update_splits(user_config):
     try:
         config = _get_config(user_config)
@@ -181,7 +180,6 @@ _SPLITIO_STATS_CACHE_NAMESPACE = 'splitioStats'
 class UWSGISplitCache(SplitCache):
     _KEY_TEMPLATE = 'split.{suffix}'
     _KEY_TILL_TEMPLATE = 'splits.till'
-    _KEY_CURRENT_SPLITS = 'splits.current'
     _KEY_FEATURE_LIST_LOCK = 'splits.list.lock'
     _KEY_FEATURE_LIST = 'splits.list'
     _OVERWRITE_LOCK_SECONDS = 5
@@ -248,13 +246,13 @@ class UWSGISplitCache(SplitCache):
         return None
 
     def get_splits_keys(self):
-        if self._adapter.cache_exists(self._KEY_CURRENT_SPLITS, _SPLITIO_COMMON_CACHE_NAMESPACE):
+        if self._adapter.cache_exists(self._KEY_FEATURE_LIST, _SPLITIO_COMMON_CACHE_NAMESPACE):
             try:
-                return decode(
+                return list(decode(
                     self._adapter.cache_get(
-                        self._KEY_CURRENT_SPLITS,
+                        self._KEY_FEATURE_LIST,
                         _SPLITIO_COMMON_CACHE_NAMESPACE)
-                )
+                ))
             except TypeError: # Thrown by jsonpickle.decode when passed "None"
                 pass # Fall back to default return statement (empty dict)
         return dict()
