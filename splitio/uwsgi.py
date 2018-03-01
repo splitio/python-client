@@ -61,6 +61,11 @@ from splitio.events import Event
 _logger = logging.getLogger(__name__)
 
 
+
+_SPLITIO_COMMON_CACHE_NAMESPACE = 'splitio'
+_SPLITIO_LOCK_CACHE_NAMESPACE = 'splitioLock'
+_SPLITIO_STATS_CACHE_NAMESPACE = 'splitioStats'
+
 def _get_config(user_config):
     sdk_config = DEFAULT_CONFIG
     sdk_config.update(user_config)
@@ -68,8 +73,7 @@ def _get_config(user_config):
 
 
 class UWSGILock:
-    def __init__(self, namespace, key, overwrite_lock_seconds=5):
-        self._namespace = namespace
+    def __init__(self, key, overwrite_lock_seconds=5):
         self._key = key
         self._overwrite_lock_seconds = overwrite_lock_seconds
         self._adapter = get_uwsgi()
@@ -77,8 +81,8 @@ class UWSGILock:
     def __enter__(self):
         initial_time = time.time()
         while True:
-            if not self._adapter.cache_exists(self._key, self._namespace):
-                self._adapter.cache_set(self._key, str('locked'), 0, self._namespace)
+            if not self._adapter.cache_exists(self._key, _SPLITIO_LOCK_CACHE_NAMESPACE):
+                self._adapter.cache_set(self._key, str('locked'), 0, _SPLITIO_LOCK_CACHE_NAMESPACE)
                 return
             else:
                 if time.time() - initial_time > self._overwrite_lock_seconds:
@@ -86,7 +90,7 @@ class UWSGILock:
             time.sleep(0.3)
 
     def __exit__(self, *args):
-        self._adapter.cache_del(self._key, self._namespace)
+        self._adapter.cache_del(self._key, _SPLITIO_LOCK_CACHE_NAMESPACE)
 
 
 def uwsgi_update_splits(user_config):
@@ -174,8 +178,6 @@ def uwsgi_report_events(user_config):
         _logger.exception('Exception caught posting metrics')
 
 
-_SPLITIO_COMMON_CACHE_NAMESPACE = 'splitio'
-_SPLITIO_STATS_CACHE_NAMESPACE = 'splitioStats'
 
 class UWSGISplitCache(SplitCache):
     _KEY_TEMPLATE = 'split.{suffix}'
@@ -246,16 +248,14 @@ class UWSGISplitCache(SplitCache):
         return None
 
     def get_splits_keys(self):
-        if self._adapter.cache_exists(self._KEY_FEATURE_LIST, _SPLITIO_COMMON_CACHE_NAMESPACE):
+        if self._adapter.cache_exists(self._KEY_FEATURE_LIST, _SPLITIO_STATS_CACHE_NAMESPACE):
             try:
                 return list(decode(
-                    self._adapter.cache_get(
-                        self._KEY_FEATURE_LIST,
-                        _SPLITIO_COMMON_CACHE_NAMESPACE)
+                    self._adapter.cache_get(self._KEY_FEATURE_LIST, _SPLITIO_STATS_CACHE_NAMESPACE)
                 ))
             except TypeError: # Thrown by jsonpickle.decode when passed "None"
                 pass # Fall back to default return statement (empty dict)
-        return dict()
+        return []
 
     def get_splits(self):
         current_splits = self.get_splits_keys()
@@ -293,7 +293,7 @@ class UWSGISplitCache(SplitCache):
         """
         added_set = set(added)
         removed_set = set(removed)
-        with UWSGILock(self._KEY_FEATURE_LIST_LOCK, _SPLITIO_COMMON_CACHE_NAMESPACE):
+        with UWSGILock(self._KEY_FEATURE_LIST_LOCK):
             try:
                 current = decode(self._adapter.cache_get(self._KEY_FEATURE_LIST, _SPLITIO_COMMON_CACHE_NAMESPACE))
             except TypeError:
@@ -578,7 +578,6 @@ class UWSGIImpressionsCache(ImpressionsCache):
         :param impression: The impression tuple
         :type impression: Impression
         """
-        # with UWSGILock(UWSGISplitCache._KEY_FEATURE_LIST_LOCK, _SPLITIO_COMMON_CACHE_NAMESPACE):
         features = self._adapter.cache_get(UWSGISplitCache._KEY_FEATURE_LIST, _SPLITIO_COMMON_CACHE_NAMESPACE)
         try:
             features = decode(features)
@@ -594,7 +593,7 @@ class UWSGIImpressionsCache(ImpressionsCache):
             key = self._IMPRESSIONS_KEY.format(feature=self._MISSING)
             lock_key = self._LOCK_IMPRESSION_KEY.format(feature=self._MISSING)
 
-        with UWSGILock(lock_key, _SPLITIO_STATS_CACHE_NAMESPACE):
+        with UWSGILock(lock_key):
             try:
                 impressions = decode(self._adapter.cache_get(key, _SPLITIO_STATS_CACHE_NAMESPACE))
             except TypeError:
@@ -610,7 +609,6 @@ class UWSGIImpressionsCache(ImpressionsCache):
         :return: All cached impressions so far grouped by feature name
         :rtype: dict
         """
-   #     with UWSGILock(UWSGISplitCache._KEY_FEATURE_LIST_LOCK, _SPLITIO_COMMON_CACHE_NAMESPACE):
         features = self._adapter.cache_get(UWSGISplitCache._KEY_FEATURE_LIST, _SPLITIO_COMMON_CACHE_NAMESPACE)
         try:
             features = decode(features)
@@ -624,7 +622,7 @@ class UWSGIImpressionsCache(ImpressionsCache):
         for feature in features:
             key = self._IMPRESSIONS_KEY.format(feature=feature)
             lock_key = self._LOCK_IMPRESSION_KEY.format(feature=feature)
-            with UWSGILock(lock_key, _SPLITIO_STATS_CACHE_NAMESPACE):
+            with UWSGILock(lock_key):
                 raw = self._adapter.cache_get(key, _SPLITIO_STATS_CACHE_NAMESPACE)
                 self._adapter.cache_del(key, _SPLITIO_STATS_CACHE_NAMESPACE)
 
