@@ -104,6 +104,7 @@ def update_splits(split_cache, split_change_fetcher, split_parser):
                 for split_change in response['splits']:
                     if Status(split_change['status']) != Status.ACTIVE:
                         split_cache.remove_split(split_change['name'])
+                        removed_features.append(split_change['name'])
                         continue
 
                     parsed_split = split_parser.parse(split_change)
