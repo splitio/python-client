@@ -28,7 +28,7 @@ from splitio.segments import ApiSegmentChangeFetcher, \
     SelfRefreshingSegmentFetcher, JSONFileSegmentFetcher
 from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, parse_config_file
 from splitio.uwsgi import UWSGISplitCache, UWSGIImpressionsCache, \
-    UWSGIMetricsCache, UWSGIEventsCache, get_uwsgi, start_synchronization_tasks
+    UWSGIMetricsCache, UWSGIEventsCache, get_uwsgi
 from splitio.tasks import EventsSyncTask
 from splitio.events import InMemoryEventStorage
 
@@ -591,7 +591,6 @@ class UWSGIBroker(BaseBroker):
         self._treatment_log = treatment_log
         self._metrics = metrics
 
-        start_synchronization_tasks(config)
 
     def get_split_fetcher(self):
         """

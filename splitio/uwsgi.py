@@ -25,12 +25,10 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 try:
     #uwsgi is loaded at runtime by uwsgi app.
     import uwsgi
-    from uwsgidecorators import spool
 except ImportError:
     def missing_uwsgi_dependencies(*args, **kwargs):
         raise NotImplementedError('Missing uWSGI support dependencies.')
     uwsgi = missing_uwsgi_dependencies
-    spool = lambda fn: missing_uwsgi_dependencies
 
 try:
     from jsonpickle import decode, encode
@@ -130,7 +128,6 @@ class UWSGILock:
         self._adapter.cache_del(self._key, _SPLITIO_LOCK_CACHE_NAMESPACE)
 
 
-@spool
 def uwsgi_update_splits(user_config):
     try:
         config = _get_config(user_config)
@@ -152,7 +149,6 @@ def uwsgi_update_splits(user_config):
         _logger.exception('Exception caught updating splits')
 
 
-@spool
 def uwsgi_update_segments(user_config):
     try:
         config = _get_config(user_config)
@@ -168,7 +164,6 @@ def uwsgi_update_segments(user_config):
         _logger.exception('Exception caught updating segments')
 
 
-@spool
 def uwsgi_report_impressions(user_config):
     try:
         config = _get_config(user_config)
@@ -186,7 +181,6 @@ def uwsgi_report_impressions(user_config):
         _logger.exception('Exception caught posting impressions')
 
 
-@spool
 def uwsgi_report_metrics(user_config):
     try:
         config = _get_config(user_config)
@@ -201,7 +195,6 @@ def uwsgi_report_metrics(user_config):
         _logger.exception('Exception caught posting metrics')
 
 
-@spool
 def uwsgi_report_events(user_config):
     try:
         config = _get_config(user_config)
@@ -220,11 +213,7 @@ def uwsgi_report_events(user_config):
         _logger.exception('Exception caught posting metrics')
 
 
-def start_synchronization_tasks(user_config):
-    """Start all synchronization task (handled by the uwsgi spooler)"""
-    uwsgi_update_splits(user_config)
-    uwsgi_update_segments(user_config)
-    uwsgi_report_impressions(user_config)
+
     uwsgi_report_events(user_config)
     uwsgi_report_metrics(user_config)
 
