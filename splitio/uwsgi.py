@@ -25,10 +25,12 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 try:
     #uwsgi is loaded at runtime by uwsgi app.
     import uwsgi
+    from uwsgidecorators import spool
 except ImportError:
     def missing_uwsgi_dependencies(*args, **kwargs):
         raise NotImplementedError('Missing uWSGI support dependencies.')
     uwsgi = missing_uwsgi_dependencies
+    spool = lambda fn: missing_uwsgi_dependencies
 
 try:
     from jsonpickle import decode, encode
@@ -57,6 +59,8 @@ from splitio.impressions import Impression
 from splitio.metrics import BUCKETS
 from splitio.config import DEFAULT_CONFIG
 from splitio.events import Event
+
+
 
 _logger = logging.getLogger(__name__)
 
@@ -112,6 +116,7 @@ class UWSGILock:
         self._adapter.cache_del(self._key, _SPLITIO_LOCK_CACHE_NAMESPACE)
 
 
+@spool
 def uwsgi_update_splits(user_config):
     try:
         config = _get_config(user_config)
@@ -133,6 +138,7 @@ def uwsgi_update_splits(user_config):
         _logger.exception('Exception caught updating splits')
 
 
+@spool
 def uwsgi_update_segments(user_config):
     try:
         config = _get_config(user_config)
@@ -148,6 +154,7 @@ def uwsgi_update_segments(user_config):
         _logger.exception('Exception caught updating segments')
 
 
+@spool
 def uwsgi_report_impressions(user_config):
     try:
         config = _get_config(user_config)
@@ -165,6 +172,7 @@ def uwsgi_report_impressions(user_config):
         _logger.exception('Exception caught posting impressions')
 
 
+@spool
 def uwsgi_report_metrics(user_config):
     try:
         config = _get_config(user_config)
@@ -179,6 +187,7 @@ def uwsgi_report_metrics(user_config):
         _logger.exception('Exception caught posting metrics')
 
 
+@spool
 def uwsgi_report_events(user_config):
     try:
         config = _get_config(user_config)
@@ -708,7 +717,7 @@ class UWSGIEventsCache:
                 return True
 
             # Set a key to force an events flush
-            uwsgi.cache_set(self._EVENTS_FLUSH, '1', 0, _SPLITIO_LOCK_CACHE_NAMESPACE)
+            self._adapter.cache_set(self._EVENTS_FLUSH, '1', 0, _SPLITIO_LOCK_CACHE_NAMESPACE)
             return False
 
     def pop_many(self, count):
@@ -978,7 +987,8 @@ class UWSGIMetricsCache(MetricsCache):
 
 class UWSGICacheEmulator(object):
     def __init__(self):
-        """UWSGI Cache Emulator for unit tests. Implements uwsgi cache framework interface
+        """
+        UWSGI Cache Emulator for unit tests. Implements uwsgi cache framework interface
         http://uwsgi-docs.readthedocs.io/en/latest/Caching.html#accessing-the-cache-from-your-applications-using-the-cache-api
         """
         self._cache = dict()
