@@ -220,6 +220,14 @@ def uwsgi_report_events(user_config):
         _logger.exception('Exception caught posting metrics')
 
 
+def start_synchronization_tasks(user_config):
+    """Start all synchronization task (handled by the uwsgi spooler)"""
+    uwsgi_update_splits(user_config)
+    uwsgi_update_segments(user_config)
+    uwsgi_report_impressions(user_config)
+    uwsgi_report_events(user_config)
+    uwsgi_report_metrics(user_config)
+
 
 class UWSGISplitCache(SplitCache):
     _KEY_TEMPLATE = 'split.{suffix}'
