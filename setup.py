@@ -14,7 +14,7 @@ install_requires = [
 
 if version_info < (3,):
     tests_require += ['mock']
-    install_requires += ['six>=1.10.0', 'futures>=3.0.5', 'enum34>=1.1.5']
+    install_requires += ['six>=1.10.0', 'futures>=3.0.5', 'enum34>=1.1.5', 'mmh3']
 
 with open(path.join(path.abspath(path.dirname(__file__)),
                     'splitio', 'version.py')) as f:
@@ -31,11 +31,12 @@ setup(name='splitio_client',
       license='Apache License 2.0',
       install_requires=install_requires,
       tests_require=tests_require,
+      dependency_links=['http://github.com/splitio/mmh3/tarball/bug/compilerCompatibility#egg=package-1.0'],
       extras_require={
           'test': tests_require,
           'redis': ['redis>=2.10.5', 'jsonpickle>=0.9.3'],
           'uwsgi': ['uwsgi>=2.0.0', 'jsonpickle>=0.9.3'],
-          'cpphash': ['splitmmh3']
+#          'cpphash': ['splitmmh3'] TODO: REVERT THIS BEFORE RELEASE!
       },
       setup_requires=['nose'],
       classifiers=[
