@@ -591,6 +591,7 @@ class UWSGIBroker(BaseBroker):
         self._treatment_log = treatment_log
         self._metrics = metrics
 
+
     def get_split_fetcher(self):
         """
         Get the split fetcher implementation for the broker.
