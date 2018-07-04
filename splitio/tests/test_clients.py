@@ -17,12 +17,14 @@ from time import sleep
 
 from splitio import get_factory
 from splitio.clients import Client
+from splitio.splits import Split
 from splitio.brokers import JSONFileBroker, LocalhostBroker, RedisBroker, \
     UWSGIBroker, randomize_interval, SelfRefreshingBroker
 from splitio.exceptions import TimeoutException
 from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, SDK_API_BASE_URL, \
     EVENTS_API_BASE_URL
 from splitio.treatments import CONTROL
+from splitio.impressions import Label
 from splitio.tests.utils import MockUtilsMixin
 from splitio.managers import LocalhostSplitManager, \
     SelfRefreshingSplitManager, UWSGISplitManager, RedisSplitManager
@@ -1206,14 +1208,14 @@ class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
 
 
 class LocalhostBrokerOffTheGrid(TestCase):
-    '''
+    """
     Tests for LocalhostEnvironmentClient. Auto update config behaviour
-    '''
+    """
     def test_auto_update_splits(self):
-        '''
+        """
         Verifies that the split file is automatically re-parsed as soon as it's
         modified
-        '''
+        """
         with tempfile.NamedTemporaryFile(mode='w') as split_file:
             split_file.write('a_test_split off\n')
             split_file.flush()
@@ -1264,3 +1266,47 @@ class TestClientDestroy(TestCase):
         self.assertEqual(manager.splits(), [])
         self.assertEqual(manager.split_names(), [])
 
+
+class TestInputSanitization(TestCase):
+
+    def setUp(self):
+        self.broker = LocalhostBroker()
+        self.client = Client(self.broker)
+        self.client._logger.error = mock.MagicMock()
+        self.client._logger.warning = mock.MagicMock()
+        self.client._broker.fetch_feature = mock.MagicMock(return_value=Split(
+            "some_feature",
+            0,
+            False,
+            "default_treatment",
+            "user",
+            "ACTIVE",
+            123
+        ))
+
+        self.client._build_impression = mock.MagicMock()
+
+    def test_get_treatment_key_none(self):
+        result = self.client.get_treatment(None, "some_feature")
+        self.assertEqual(result, CONTROL)
+        self.client._logger.error.assert_called_once_with("Neither Key or FeatureName can be None")
+        self.client._build_impression.assert_called_once_with(
+            "", "some_feature", CONTROL, Label.EXCEPTION, 0, None, mock.ANY
+        )
+
+    def test_get_treatment_feature_name_none(self):
+        result = self.client.get_treatment("some_key", None)
+        self.assertEqual(result, CONTROL)
+        self.client._logger.error.assert_called_once_with("Neither Key or FeatureName can be None")
+
+    def test_get_treatment_key_number(self):
+        result = self.client.get_treatment(123, "feature1")
+        self.client._logger.warning.assert_called_once_with("Key received as Number. Converting to string")
+        self.assertEqual(result, "default_treatment")
+        self.client._build_impression.assert_called_once_with(
+            "123", "feature1", "default_treatment", Label.NO_CONDITION_MATCHED, 123, None, mock.ANY
+        )
+
+    def test_get_treatment_parameters_ok(self):
+        result = self.client.get_treatment("asd", "qwe")
+        self.assertEqual(result, "default_treatment")
