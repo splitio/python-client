@@ -40,19 +40,20 @@ class MainSplitFactory(SplitFactory):
             config = kwargs['config']
 
         labels_enabled = config.get('labelsEnabled', True)
+        impression_listener = config.get('impressionListener', None)
         if 'redisHost' in config:
             broker = get_redis_broker(api_key, **kwargs)
-            self._client = Client(broker, labels_enabled)
+            self._client = Client(broker, labels_enabled, impression_listener)
             self._manager = RedisSplitManager(broker)
         else:
             if 'uwsgiClient' in config and config['uwsgiClient']:
                 broker = get_uwsgi_broker(api_key, **kwargs)
-                self._client = Client(broker, labels_enabled)
+                self._client = Client(broker, labels_enabled, impression_listener)
                 self._manager = UWSGISplitManager(broker)
             else:
                 broker = get_self_refreshing_broker(api_key, **kwargs)
-                self._client = Client(broker, labels_enabled)
-                self._manager = SelfRefreshingSplitManager(broker)
+                self._client = Client(broker, labels_enabled, impression_listener)
+                self._manager = SelfRefreshingSplitManager(broker)            
 
     def client(self):  # pragma: no cover
         """Get the split client implementation. Subclasses need to override this method.

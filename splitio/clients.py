@@ -19,7 +19,7 @@ class Key(object):
 
 
 class Client(object):
-    def __init__(self, broker, labels_enabled=True):
+    def __init__(self, broker, labels_enabled=True, impression_listener=None):
         """Basic interface of a Client. Specific implementations need to override the
         get_split_fetcher method (and optionally the get_splitter method).
         """
@@ -28,6 +28,7 @@ class Client(object):
         self._broker = broker
         self._labels_enabled = labels_enabled
         self._destroyed = False
+        self._impression_listener = impression_listener
 
     @staticmethod
     def _get_keys(key):
@@ -106,6 +107,14 @@ class Client(object):
             impression = self._build_impression(matching_key, feature, _treatment, label,
                                                 _change_number, bucketing_key, start)
             self._record_stats(impression, start, SDK_GET_TREATMENT)
+
+            if (self._impression_listener is not None):
+                try:
+                    self._impression_listener.build_impression(impression, attributes)
+                except:
+                    self._logger.exception('Exception caught in log_impression user\'s method is throwing exceptions')
+                    pass
+
             return _treatment
         except:
             self._logger.exception('Exception caught getting treatment for feature')
@@ -114,6 +123,12 @@ class Client(object):
                 impression = self._build_impression(matching_key, feature, CONTROL, Label.EXCEPTION,
                                                     self._broker.get_change_number(), bucketing_key, start)
                 self._record_stats(impression, start, SDK_GET_TREATMENT)
+
+                if (self._impression_listener is not None):
+                    try:
+                        self._impression_listener.build_impression(impression, attributes)
+                    except:
+                        self._logger.exception('Exception caught in log_impression user\'s method is throwing exceptions')
             except:
                 self._logger.exception('Exception reporting impression into get_treatment exception block')
 

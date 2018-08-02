@@ -4,12 +4,14 @@ from __future__ import absolute_import, division, print_function, \
 
 import logging
 import six
+import abc
 from threading import Thread
 
 from collections import namedtuple, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from threading import RLock, Timer
+from splitio.config import SDK_VERSION
 
 
 Impression = namedtuple(
@@ -458,3 +460,36 @@ class AsyncTreatmentLog(TreatmentLog):
                 self._logger.exception(
                     'Exception caught logging impression asynchronously'
                 )
+
+class ImpressionListenerWrapper(object):
+    """
+    Wrapper in charge of building all the data that client would require in case
+    of adding some logic with the treatment and impression results.
+    """
+
+    impression_listener = None
+
+    def __init__(self, impression_listener):
+        self.impression_listener = impression_listener
+
+    def build_impression(self, impression, attributes):
+        data = {}
+        data['impression'] = impression
+        data['attributes'] = attributes
+        data['instance-id'] = 'test'
+        data['sdk-language-version'] = SDK_VERSION
+
+        self.impression_listener.log_impression(data)
+        
+
+class ImpressionListener(object):
+    """
+    Abstract class defining the interface that concrete client must implement,
+    and including methods that use that interface to add client's logic for each
+    impression.
+    """
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def log_impression(self, data):
+        pass
