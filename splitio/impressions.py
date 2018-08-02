@@ -58,24 +58,6 @@ def build_impressions_data(impressions):
     ]
 
 
-def _notify_listener(listener, impressions_data):
-    """
-    Execute custom callable provided by user with impressions as arguments
-    :param impressions_data: Impressions grouped by feature name.
-    :type impressions_data: list of dicts
-    """
-    if six.callable(listener):
-        try:
-            t = Thread(target=listener, args=(impressions_data,))
-            t.daemon = True
-            t.start()
-        except Exception:
-            logging.getLogger('Impressions-Listener').exception(
-                'Exception caught when executing user provided impression '
-                'listener function.'
-            )
-
-
 class Label(object):
     # Condition: Split Was Killed
     # Treatment: Default treatment
@@ -270,7 +252,7 @@ class CacheBasedTreatmentLog(TreatmentLog):
 
 class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
     def __init__(self, api, interval=180, max_workers=5, max_count=-1,
-                 ignore_impressions=False, listener=None):
+                 ignore_impressions=False):
         """
         An impressions implementation that sends the in impressions stored
         periodically to the Split.io back-end.
@@ -284,9 +266,6 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         :type max_count: int
         :param ignore_impressions: Whether to ignore log requests
         :type ignore_impressions: bool
-        :param listener: callback that will receive impressions bulk fur custom
-            user handling of impressions.
-        :type listener: callable
         """
         super(SelfUpdatingTreatmentLog, self).__init__(
             max_count=max_count,
@@ -296,7 +275,6 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         self._interval = interval
         self._stopped = True
         self._thread_pool_executor = ThreadPoolExecutor(max_workers=max_workers)
-        self._listener = listener
 
     @property
     def stopped(self):
@@ -337,7 +315,6 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
 
             if len(test_impressions_data) > 0:
                 self._api.test_impressions(test_impressions_data)
-                _notify_listener(self._listener, test_impressions_data)
         except:
             self._logger.exception(
                 'Exception caught updating evicted impressions'
@@ -357,7 +334,6 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
 
             if len(test_impressions_data) > 0:
                 self._api.test_impressions(test_impressions_data)
-                _notify_listener(self._listener, test_impressions_data)
         except:
             self._logger.exception('Exception caught updating impressions')
             self._stopped = True

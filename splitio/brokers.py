@@ -311,7 +311,6 @@ class SelfRefreshingBroker(BaseBroker):
             self._sdk_api,
             max_count=self._max_impressions_log_size,
             interval=self._impressions_interval,
-            listener=self._impression_listener
         )
         return AsyncTreatmentLog(self_updating_treatment_log)
 

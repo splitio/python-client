@@ -1017,10 +1017,11 @@ class TrafficAllocationTests(TestCase):
     def setUp(self):
         '''
         '''
+        self.some_config = mock.MagicMock()
         redis = get_redis({})
         segment_cache = RedisSegmentCache(redis)
         split_parser = RedisSplitParser(segment_cache)
-        self._client = Client(RedisBroker(redis))
+        self._client = Client(RedisBroker(redis, self.some_config))
 
         self._splitObjects = {}
 
