@@ -53,6 +53,8 @@ DEFAULT_CONFIG = {
     'redisMaxConnections': None,
     'eventsPushRate' : 60,
     'eventsQueueSize': 500,
+    'redisSentinels': ('localhost', 26379),
+    'redisMasterService': 'mymaster'
 }
 
 MAX_INTERVAL = 180
