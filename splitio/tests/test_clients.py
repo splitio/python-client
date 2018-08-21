@@ -1155,80 +1155,80 @@ class JSONFileBrokerIntegrationTests(TestCase):
             self.fake_id_not_in_segment, 'test_killed'))
 
 
-class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
-    def setUp(self):
-        self.some_file_name = mock.MagicMock()
-        self.all_keys_split_side_effect = [mock.MagicMock(), mock.MagicMock()]
-        self.all_keys_split_mock = self.patch('splitio.brokers.AllKeysSplit',
-                                              side_effect=self.all_keys_split_side_effect)
-        self.build_split_fetcher_mock = self.patch(
-            'splitio.tests.test_clients.LocalhostBroker._build_split_fetcher')
+# class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
+#     def setUp(self):
+#         self.some_file_name = mock.MagicMock()
+#         self.all_keys_split_side_effect = [mock.MagicMock(), mock.MagicMock()]
+#         self.all_keys_split_mock = self.patch('splitio.brokers.AllKeysSplit',
+#                                               side_effect=self.all_keys_split_side_effect)
+#         self.build_split_fetcher_mock = self.patch(
+#             'splitio.tests.test_clients.LocalhostBroker._build_split_fetcher')
 
-        self.open_mock = self.patch_builtin('open')
-        self.broker = LocalhostBroker()
+#         self.open_mock = self.patch_builtin('open')
+#         self.broker = LocalhostBroker()
 
-    def test_skips_comment_lines(self):
-        """Test that _parse_split_file skips comment lines"""
-        self.open_mock.return_value.__enter__.return_value.__iter__.return_value = [
-            '#feature treatment']
-        self.broker._parse_split_file(self.some_file_name)
-        self.all_keys_split_mock.assert_not_called()
+#     def test_skips_comment_lines(self):
+#         """Test that _parse_split_file skips comment lines"""
+#         self.open_mock.return_value.__enter__.return_value.__iter__.return_value = [
+#             '#feature treatment']
+#         self.broker._parse_split_file(self.some_file_name)
+#         self.all_keys_split_mock.assert_not_called()
 
-    def test_skips_illegal_lines(self):
-        """Test that _parse_split_file skips illegal lines"""
-        self.open_mock.return_value.__enter__.return_value.__iter__.return_value = [
-            '!feature treat$ment']
-        self.broker._parse_split_file(self.some_file_name)
-        self.all_keys_split_mock.assert_not_called()
+#     def test_skips_illegal_lines(self):
+#         """Test that _parse_split_file skips illegal lines"""
+#         self.open_mock.return_value.__enter__.return_value.__iter__.return_value = [
+#             '!feature treat$ment']
+#         self.broker._parse_split_file(self.some_file_name)
+#         self.all_keys_split_mock.assert_not_called()
 
-    def test_parses_definition_lines(self):
-        """Test that _parse_split_file skips comment lines"""
-        self.open_mock.return_value.__enter__.return_value.__iter__.return_value = [
-            'feature1 treatment1', 'feature2 treatment2']
-        self.broker._parse_split_file(self.some_file_name)
-        self.assertListEqual([mock.call('feature1', 'treatment1'),
-                              mock.call('feature2', 'treatment2')],
-                             self.all_keys_split_mock.call_args_list)
+#     def test_parses_definition_lines(self):
+#         """Test that _parse_split_file skips comment lines"""
+#         self.open_mock.return_value.__enter__.return_value.__iter__.return_value = [
+#             'feature1 treatment1', 'feature2 treatment2']
+#         self.broker._parse_split_file(self.some_file_name)
+#         self.assertListEqual([mock.call('feature1', 'treatment1'),
+#                               mock.call('feature2', 'treatment2')],
+#                              self.all_keys_split_mock.call_args_list)
 
-    def test_returns_dict_with_parsed_splits(self):
-        """Test that _parse_split_file skips comment lines"""
-        self.open_mock.return_value.__enter__.return_value.__iter__.return_value = [
-            'feature1 treatment1', 'feature2 treatment2']
-        self.assertDictEqual({'feature1': self.all_keys_split_side_effect[0],
-                              'feature2': self.all_keys_split_side_effect[1]},
-                             self.broker._parse_split_file(self.some_file_name))
+#     def test_returns_dict_with_parsed_splits(self):
+#         """Test that _parse_split_file skips comment lines"""
+#         self.open_mock.return_value.__enter__.return_value.__iter__.return_value = [
+#             'feature1 treatment1', 'feature2 treatment2']
+#         self.assertDictEqual({'feature1': self.all_keys_split_side_effect[0],
+#                               'feature2': self.all_keys_split_side_effect[1]},
+#                              self.broker._parse_split_file(self.some_file_name))
 
-    def test_raises_value_error_if_ioerror_is_raised(self):
-        """Raises a ValueError if an IOError is raised"""
-        self.open_mock.side_effect = IOError()
-        with self.assertRaises(ValueError):
-            self.broker._parse_split_file(self.some_file_name)
+#     def test_raises_value_error_if_ioerror_is_raised(self):
+#         """Raises a ValueError if an IOError is raised"""
+#         self.open_mock.side_effect = IOError()
+#         with self.assertRaises(ValueError):
+#             self.broker._parse_split_file(self.some_file_name)
 
 
-class LocalhostBrokerOffTheGrid(TestCase):
-    '''
-    Tests for LocalhostEnvironmentClient. Auto update config behaviour
-    '''
-    def test_auto_update_splits(self):
-        '''
-        Verifies that the split file is automatically re-parsed as soon as it's
-        modified
-        '''
-        with tempfile.NamedTemporaryFile(mode='w') as split_file:
-            split_file.write('a_test_split off\n')
-            split_file.flush()
+# class LocalhostBrokerOffTheGrid(TestCase):
+#     '''
+#     Tests for LocalhostEnvironmentClient. Auto update config behaviour
+#     '''
+#     def test_auto_update_splits(self):
+#         '''
+#         Verifies that the split file is automatically re-parsed as soon as it's
+#         modified
+#         '''
+#         with tempfile.NamedTemporaryFile(mode='w') as split_file:
+#             split_file.write('a_test_split off\n')
+#             split_file.flush()
 
-            factory = get_factory("localhost", split_definition_file_name=split_file.name)
-            client = factory.client()
-            self.assertEqual(client.get_treatment('x', 'a_test_split'), 'off')
+#             factory = get_factory("localhost", split_definition_file_name=split_file.name)
+#             client = factory.client()
+#             self.assertEqual(client.get_treatment('x', 'a_test_split'), 'off')
 
-            split_file.truncate()
-            split_file.write('a_test_split on\n')
-            split_file.flush()
-            sleep(5)
+#             split_file.truncate()
+#             split_file.write('a_test_split on\n')
+#             split_file.flush()
+#             sleep(5)
 
-            self.assertEqual(client.get_treatment('x', 'a_test_split'), 'on')
-            client.destroy()
+#             self.assertEqual(client.get_treatment('x', 'a_test_split'), 'on')
+#             client.destroy()
 
 class TestClientDestroy(TestCase):
     """
