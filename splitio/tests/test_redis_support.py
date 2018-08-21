@@ -21,6 +21,62 @@ from splitio.redis_support import (RedisSegmentCache, RedisSplitCache, RedisImpr
 from splitio.splits import (JSONFileSplitFetcher, SplitParser)
 from splitio.segments import JSONFileSegmentFetcher
 
+
+class RedisSegmentCacheTests(TestCase):
+    def setUp(self):
+        self.some_segment_name = mock.MagicMock()
+        self.some_segment_name_str = 'some_segment_name'
+        self.some_segment_keys = [mock.MagicMock(), mock.MagicMock()]
+        self.some_key = mock.MagicMock()
+        self.some_change_number = mock.MagicMock()
+        self.some_redis = mock.MagicMock()
+        self.a_segment_cache = RedisSegmentCache(self.some_redis)
+
+    def test_add_keys_to_segment_adds_keys_to_segment_set(self):
+        """Test that add_keys_to_segment adds the keys to the segment key set"""
+        self.a_segment_cache.add_keys_to_segment(self.some_segment_name_str, self.some_segment_keys)
+        self.some_redis.sadd.assert_called_once_with(
+            'SPLITIO.segment.some_segment_name', self.some_segment_keys[0],
+            self.some_segment_keys[1])
+
+    def test_remove_keys_from_segment_remove_keys_from_segment_set(self):
+        """Test that remove_keys_from_segment removes the keys to the segment key set"""
+        self.a_segment_cache.remove_keys_from_segment(self.some_segment_name_str,
+                                                      self.some_segment_keys)
+        self.some_redis.srem.assert_called_once_with(
+            'SPLITIO.segment.some_segment_name', self.some_segment_keys[0],
+            self.some_segment_keys[1])
+
+    def test_is_in_segment_tests_whether_a_key_is_in_a_segments_key_set(self):
+        """Test that is_in_segment checks if a key is in a segment's key set"""
+        self.assertEqual(self.some_redis.sismember.return_value,
+                         self.a_segment_cache.is_in_segment(self.some_segment_name_str,
+                                                            self.some_key))
+        self.some_redis.sismember.assert_called_once_with(
+            'SPLITIO.segment.some_segment_name', self.some_key)
+
+    def test_set_change_number_sets_segment_change_number_key(self):
+        """Test that set_change_number sets the segment's change number key"""
+        self.a_segment_cache.set_change_number(self.some_segment_name_str, self.some_change_number)
+        self.some_redis.set.assert_called_once_with(
+            'SPLITIO.segment.some_segment_name.till', self.some_change_number)
+
+    def test_get_change_number_gets_segment_change_number_key(self):
+        """Test that get_change_number gets the segment's change number key"""
+        self.some_redis.get.return_value = '1234'
+        result = self.a_segment_cache.get_change_number(self.some_segment_name_str)
+        self.assertEqual(int(self.some_redis.get.return_value), result)
+        self.assertIsInstance(result, int)
+        self.some_redis.get.assert_called_once_with(
+            'SPLITIO.segment.some_segment_name.till')
+
+    def test_get_change_number_returns_default_value_if_not_set(self):
+        """Test that get_change_number returns -1 if the value is not set"""
+        self.some_redis.get.return_value = None
+        self.assertEqual(-1,
+                         self.a_segment_cache.get_change_number(self.some_segment_name_str))
+
+                         
 class RedisSplitCacheTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.decode_mock = self.patch('splitio.redis_support.decode')
