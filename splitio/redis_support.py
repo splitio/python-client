@@ -921,28 +921,28 @@ def default_redis_sentinel_factory(config):
     sentinel = Sentinel(
         sentinels,
         0,
-        dict(
-            db=db,
-            password=password,
-            socket_timeout=socket_timeout,
-            socket_connect_timeout=socket_connect_timeout,
-            socket_keepalive=socket_keepalive,
-            socket_keepalive_options=socket_keepalive_options,
-            connection_pool=connection_pool,
-            unix_socket_path=unix_socket_path,
-            encoding=encoding,
-            encoding_errors=encoding_errors,
-            charset=charset,
-            errors=errors,
-            decode_responses=decode_responses,
-            retry_on_timeout=retry_on_timeout,
-            ssl=ssl,
-            ssl_keyfile=ssl_keyfile,
-            ssl_certfile=ssl_certfile,
-            ssl_cert_reqs=ssl_cert_reqs,
-            ssl_ca_certs=ssl_ca_certs,
-            max_connections=max_connections
-        )
+        {
+            'db': db,
+            'password': password,
+            'socket_timeout': socket_timeout,
+            'socket_connect_timeout': socket_connect_timeout,
+            'socket_keepalive': socket_keepalive,
+            'socket_keepalive_options': socket_keepalive_options,
+            'connection_pool': connection_pool,
+            'unix_socket_path': unix_socket_path,
+            'encoding': encoding,
+            'encoding_errors': encoding_errors,
+            'charset': charset,
+            'errors': errors,
+            'decode_responses': decode_responses,
+            'retry_on_timeout': retry_on_timeout,
+            'ssl': ssl,
+            'ssl_keyfile': ssl_keyfile,
+            'ssl_certfile': ssl_certfile,
+            'ssl_cert_reqs': ssl_cert_reqs,
+            'ssl_ca_certs': ssl_ca_certs,
+            'max_connections': max_connections
+        }
     )
 
     redis = sentinel.master_for(master_service)
