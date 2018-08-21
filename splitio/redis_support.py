@@ -39,6 +39,10 @@ _GLOBAL_KEY_PARAMETERS = {
 }
 
 
+class SentinelConfigurationException(Exception):
+    pass
+
+
 class RedisSegmentCache(SegmentCache):
     '''
     '''
@@ -802,8 +806,7 @@ def get_redis(config):
         return redis_factory()
     else:
         if 'redisSentinels' in config:
-            print('default_redis_sentinel_factory')
-            return default_redis_sentinel_factory(config)   
+            return default_redis_sentinel_factory(config)
         else:
             return default_redis_factory(config)
 
@@ -866,6 +869,7 @@ def default_redis_factory(config):
     )
     return PrefixDecorator(redis, prefix=prefix)
 
+
 def default_redis_sentinel_factory(config):
     '''
     Default redis client factory for sentinel mode.
@@ -877,18 +881,21 @@ def default_redis_sentinel_factory(config):
     sentinels = config.get('redisSentinels')
 
     if (sentinels is None):
-        raise Exception('redisSentinels must be specified.')
+        raise SentinelConfigurationException('redisSentinels must be specified.')
     if (not isinstance(sentinels, list)):
-        raise Exception('Sentinels must be an array of elements in the form of [(ip, port)].')
+        raise SentinelConfigurationException('Sentinels must be an array of elements in the form of'
+                                             ' [(ip, port)].')
     if (len(sentinels) == 0):
-        raise Exception('It must be at least one sentinel.')
+        raise SentinelConfigurationException('It must be at least one sentinel.')
     if not all(isinstance(s, tuple) for s in sentinels):
-        raise Exception('Sentinels must respect the tuple structure [(ip, port)].')
+        raise SentinelConfigurationException('Sentinels must respect the tuple structure'
+                                             '[(ip, port)].')
 
-    master_service = config.get('redisMasterService', 'mymaster')
+    master_service = config.get('redisMasterService')
+
     if (master_service is None):
-        raise Exception('redisMasterService must be specified.')
-    
+        raise SentinelConfigurationException('redisMasterService must be specified.')
+
     db = config.get('redisDb', 0)
     password = config.get('redisPassword', None)
     socket_timeout = config.get('redisSocketTimeout', None)
@@ -913,7 +920,7 @@ def default_redis_sentinel_factory(config):
 
     sentinel = Sentinel(
         sentinels,
-        0, 
+        0,
         dict(
             db=db,
             password=password,
@@ -937,5 +944,6 @@ def default_redis_sentinel_factory(config):
             max_connections=max_connections
         )
     )
+
     redis = sentinel.master_for(master_service)
     return PrefixDecorator(redis, prefix=prefix)
