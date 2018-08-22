@@ -513,8 +513,7 @@ class RedisBroker(BaseBroker):
         split_fetcher = CacheBasedSplitFetcher(split_cache)
 
         impressions_cache = RedisImpressionsCache(redis)
-        delegate_treatment_log = CacheBasedTreatmentLog(impressions_cache)
-        treatment_log = AsyncTreatmentLog(delegate_treatment_log)
+        treatment_log = CacheBasedTreatmentLog(impressions_cache)
 
         metrics_cache = RedisMetricsCache(redis)
         delegate_metrics = CacheBasedMetrics(metrics_cache)

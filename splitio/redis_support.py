@@ -71,10 +71,12 @@ class RedisSegmentCache(SegmentCache):
         :param segment_name: Name of the segment.
         :type segment_name: str
         '''
-        self._redis.sadd(
-            RedisSegmentCache._KEY_TEMPLATE.format(suffix='registered'),
-            segment_name
-        )
+        # self._redis.sadd(
+        #     RedisSegmentCache._KEY_TEMPLATE.format(suffix='registered'),
+        #     segment_name
+        # )
+        # @TODO The Segment logic for redis should be removed.
+        pass
 
     def unregister_segment(self, segment_name):
         '''
@@ -82,10 +84,12 @@ class RedisSegmentCache(SegmentCache):
         :param segment_name: Name of the segment.
         :type segment_name: str
         '''
-        self._redis.srem(
-            RedisSegmentCache._KEY_TEMPLATE.format(suffix='registered'),
-            segment_name
-        )
+        # self._redis.srem(
+        #     RedisSegmentCache._KEY_TEMPLATE.format(suffix='registered'),
+        #     segment_name
+        # )
+        # @TODO The Segment logic for redis should be removed.
+        pass
 
     def get_registered_segments(self):
         '''
