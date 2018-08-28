@@ -32,6 +32,84 @@ The following snippet shows you how to create a basic client using the default c
   'SOME_TREATMENT'
 ```
 
+## Logging
+Split SDK uses logging library.
+
+### Logging sample
+```python
+import logging
+logging.basicConfig(level=logging.DEBUG)
+```
+
+## Cache
+Split SDK depends on the popular [redis-py](https://github.com/andymccurdy/redis-py) library.
+
+### Cache Adapter
+The redis-py library is supported as the python interface to the Redis key-value store. This library uses a connection pool to manage connections to a Redis server. For further information about how to configure the ```redis-py``` client, please take a look on [redis-py official docs](https://github.com/andymccurdy/redis-py)
+
+For ```redis-py``` installation you can use ```pip``` running the command ```pip install redis```
+
+```jsonpickle``` is also required. You can install it running the command ```pip install jsonpickle```
+
+#### Provided redis-py connection - sample code
+```python
+#Default imports
+from __future__ import print_function
+
+import sys
+
+from splitio import get_factory
+from splitio.exceptions import TimeoutException
+
+# redis-py options
+# The options below, will be loaded as: r = redis.StrictRedis(host='localhost', port=6379, db=0, prefix='')
+config = {
+    'redisDb' : 0, 
+    'redisHost' : 'localhost',
+    'redisPosrt': 6379,
+    'redisPrefix': ''
+}
+
+# Create the Split Client instance.
+try:
+    factory = get_factory('API_KEY', config=config)
+    split = factory.client()
+except TimeoutException:
+    sys.exit()
+```
+
+#### Provided redis-py connection - sample code for Sentinel Support
+```python
+#Default imports
+from __future__ import print_function
+
+import sys
+
+from splitio import get_factory
+from splitio.exceptions import TimeoutException
+
+# redis-py options
+'''
+The options below, will be loaded as:
+sentinel = Sentinel(redisSentinels, { db: redisDb, socket_timeout: redisSocketTimeout })
+master = sentinel.master_for(redisMasterService)
+'''
+config = {
+    'redisDb': 0,
+    'redisPrefix': '',
+    'redisSentinels': [('IP', 'PORT'), ('IP', 'PORT'), ('IP', 'PORT')],
+    'redisMasterService': 'mymaster',
+    'redisSocketTimeout': 3
+}
+
+# Create the Split Client instance.
+try:
+    factory = get_factory('API_KEY', config=config)
+    split = factory.client()
+except TimeoutException:
+    sys.exit()
+```
+
 ## Additional information
 
 You can get more information on how to use this package in the included documentation.
