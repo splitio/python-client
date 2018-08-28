@@ -47,9 +47,7 @@ Split SDK depends on the popular [redis-py](https://github.com/andymccurdy/redis
 ### Cache Adapter
 The redis-py library is supported as the python interface to the Redis key-value store. This library uses a connection pool to manage connections to a Redis server. For further information about how to configure the ```redis-py``` client, please take a look on [redis-py official docs](https://github.com/andymccurdy/redis-py)
 
-For ```redis-py``` installation you can use ```pip``` running the command ```pip install redis```
-
-```jsonpickle``` is also required. You can install it running the command ```pip install jsonpickle```
+For ```redis``` and their dependencies such as ```jsonpickle``` you can use ```pip``` running the command ```pip install splitio_client[redis,cpphash]==5.5.0```
 
 #### Provided redis-py connection - sample code
 ```python
