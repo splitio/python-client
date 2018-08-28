@@ -33,7 +33,7 @@ The following snippet shows you how to create a basic client using the default c
 ```
 
 ## Logging
-Split SDK uses logging library.
+Split SDK uses logging module from Python.
 
 ### Logging sample
 ```python
@@ -62,7 +62,9 @@ from splitio import get_factory
 from splitio.exceptions import TimeoutException
 
 # redis-py options
-# The options below, will be loaded as: r = redis.StrictRedis(host='localhost', port=6379, db=0, prefix='')
+'''The options below, will be loaded as:
+r = redis.StrictRedis(host='localhost', port=6379, db=0, prefix='')
+'''
 config = {
     'redisDb' : 0, 
     'redisHost' : 'localhost',
@@ -97,8 +99,8 @@ master = sentinel.master_for(redisMasterService)
 config = {
     'redisDb': 0,
     'redisPrefix': '',
-    'redisSentinels': [('IP', 'PORT'), ('IP', 'PORT'), ('IP', 'PORT')],
-    'redisMasterService': 'mymaster',
+    'redisSentinels': [('IP', PORT), ('IP', PORT), ('IP', PORT)],
+    'redisMasterService': 'SERVICE_MASTER_NAME',
     'redisSocketTimeout': 3
 }
 
