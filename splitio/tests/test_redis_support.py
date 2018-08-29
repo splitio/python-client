@@ -32,18 +32,6 @@ class RedisSegmentCacheTests(TestCase):
         self.some_redis = mock.MagicMock()
         self.a_segment_cache = RedisSegmentCache(self.some_redis)
 
-    def test_unregister_segment_removes_segment_name_to_register_segments_set(self):
-        """Test that unregister_segment removes segment name to registered segments set"""
-        self.a_segment_cache.unregister_segment(self.some_segment_name)
-        self.some_redis.srem.assert_called_once_with('SPLITIO.segments.registered',
-                                                     self.some_segment_name)
-
-    def test_get_registered_segments_returns_registered_segments_set_members(self):
-        """Test that get_registered_segments returns the registered segments sets members"""
-        self.assertEqual(self.some_redis.smembers.return_value,
-                         self.a_segment_cache.get_registered_segments())
-        self.some_redis.smembers.assert_called_once_with('SPLITIO.segments.registered')
-
     def test_add_keys_to_segment_adds_keys_to_segment_set(self):
         """Test that add_keys_to_segment adds the keys to the segment key set"""
         self.a_segment_cache.add_keys_to_segment(self.some_segment_name_str, self.some_segment_keys)
@@ -88,7 +76,7 @@ class RedisSegmentCacheTests(TestCase):
         self.assertEqual(-1,
                          self.a_segment_cache.get_change_number(self.some_segment_name_str))
 
-
+                         
 class RedisSplitCacheTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.decode_mock = self.patch('splitio.redis_support.decode')
