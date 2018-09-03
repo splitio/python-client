@@ -1167,6 +1167,8 @@ class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
         self.open_mock = self.patch_builtin('open')
         self.some_config = mock.MagicMock()
         self.broker = LocalhostBroker(self.some_config)
+        self.threading_mock = self.patch('threading.Thread')
+        self.broker = LocalhostBroker()
 
     def test_skips_comment_lines(self):
         """Test that _parse_split_file skips comment lines"""
@@ -1231,6 +1233,7 @@ class LocalhostBrokerOffTheGrid(TestCase):
             client.destroy()
 '''
 
+
 class TestClientDestroy(TestCase):
     """
     """
@@ -1265,4 +1268,3 @@ class TestClientDestroy(TestCase):
         self.assertEqual(client.get_treatment('asd', 'asd'), CONTROL)
         self.assertEqual(manager.splits(), [])
         self.assertEqual(manager.split_names(), [])
-
