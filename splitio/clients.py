@@ -11,6 +11,7 @@ from splitio.metrics import SDK_GET_TREATMENT
 from splitio.splits import ConditionType
 from splitio.events import Event
 
+
 class Key(object):
     def __init__(self, matching_key, bucketing_key):
         """Bucketing Key implementation"""
@@ -112,7 +113,8 @@ class Client(object):
                 try:
                     self._impression_listener.build_impression(impression, attributes)
                 except:
-                    self._logger.exception('Exception caught in log_impression user\'s method is throwing exceptions')
+                    self._logger.exception('Exception caught in log_impression user\'s'
+                                           'method is throwing exceptions')
                     pass
 
             return _treatment
@@ -128,7 +130,8 @@ class Client(object):
                     try:
                         self._impression_listener.build_impression(impression, attributes)
                     except:
-                        self._logger.exception('Exception caught in log_impression user\'s method is throwing exceptions')
+                        self._logger.exception('Exception caught in log_impression user\'s'
+                                               'method is throwing exceptions')
             except:
                 self._logger.exception('Exception reporting impression into get_treatment exception block')
 

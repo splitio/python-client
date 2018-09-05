@@ -11,7 +11,7 @@ from collections import namedtuple, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from threading import RLock, Timer
-from splitio.config import SDK_VERSION
+from splitio.config import SDK_VERSION, DEFAULT_CONFIG
 
 
 Impression = namedtuple(
@@ -437,6 +437,7 @@ class AsyncTreatmentLog(TreatmentLog):
                     'Exception caught logging impression asynchronously'
                 )
 
+
 class ImpressionListenerWrapper(object):
     """
     Wrapper in charge of building all the data that client would require in case
@@ -448,11 +449,11 @@ class ImpressionListenerWrapper(object):
     def __init__(self, impression_listener):
         self.impression_listener = impression_listener
 
-    def build_impression(self, impression, attributes):
+    def build_impression(self, impression, attributes=None):
         data = {}
         data['impression'] = impression
         data['attributes'] = attributes
-        data['instance-id'] = 'test'
+        data['instance-id'] = DEFAULT_CONFIG['splitSdkMachineIp']
         data['sdk-language-version'] = SDK_VERSION
 
         self.impression_listener.log_impression(data)
