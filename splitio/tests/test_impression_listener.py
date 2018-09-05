@@ -33,8 +33,6 @@ class ImpressionListenerClientWithException(ImpressionListener):
 class CustomImpressionListenerTestOnRedis(TestCase):
     def setUp(self):
         self._some_config = mock.MagicMock()
-        self._sdk_api_base_url = mock.MagicMock()
-        self._events_api_base_url = mock.MagicMock()
         self._split_changes_file_name = join(dirname(__file__),
                                              'splitCustomImpressionListener.json')
 
