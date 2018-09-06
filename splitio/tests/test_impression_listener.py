@@ -96,11 +96,10 @@ class CustomImpressionListenerTestOnRedis(TestCase):
 
     def test_client_throwing_exception_in_listener(self):
         impressionListenerClient = ImpressionListenerClientWithException()
-        impressionListenerWrapper = ImpressionListenerWrapper(impressionListenerClient)
 
         config = {
             'ready': 180000,
-            'impressionListener': impressionListenerWrapper,
+            'impressionListener': impressionListenerClient,
             'redisDb': 0,
             'redisHost': 'localhost',
             'redisPosrt': 6379,
@@ -113,11 +112,10 @@ class CustomImpressionListenerTestOnRedis(TestCase):
 
     def test_client(self):
         impressionListenerClient = ImpressionListenerClient()
-        impressionListenerWrapper = ImpressionListenerWrapper(impressionListenerClient)
 
         config = {
             'ready': 180000,
-            'impressionListener': impressionListenerWrapper,
+            'impressionListener': impressionListenerClient,
             'redisDb': 0,
             'redisHost': 'localhost',
             'redisPosrt': 6379,
