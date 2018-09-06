@@ -111,7 +111,7 @@ class Client(object):
 
             if (self._impression_listener is not None):
                 try:
-                    self._impression_listener.build_impression(impression, attributes)
+                    self._impression_listener.log_impression(impression, attributes)
                 except:
                     self._logger.exception('Exception caught in log_impression user\'s'
                                            'method is throwing exceptions')
@@ -128,7 +128,7 @@ class Client(object):
 
                 if (self._impression_listener is not None):
                     try:
-                        self._impression_listener.build_impression(impression, attributes)
+                        self._impression_listener.log_impression(impression, attributes)
                     except:
                         self._logger.exception('Exception caught in log_impression user\'s'
                                                'method is throwing exceptions')

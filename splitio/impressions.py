@@ -449,7 +449,7 @@ class ImpressionListenerWrapper(object):
     def __init__(self, impression_listener):
         self.impression_listener = impression_listener
 
-    def build_impression(self, impression, attributes=None):
+    def log_impression(self, impression, attributes=None):
         data = {}
         data['impression'] = impression
         data['attributes'] = attributes

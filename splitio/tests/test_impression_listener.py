@@ -60,7 +60,7 @@ class CustomImpressionListenerTestOnRedis(TestCase):
         impression_client = ImpressionListenerClient()
         impression_wrapper = ImpressionListenerWrapper(impression_client)
 
-        impression_wrapper.build_impression(self.some_impression_0)
+        impression_wrapper.log_impression(self.some_impression_0)
 
         self.assertIn('impression', impression_client._data_logged)
         impression_logged = impression_client._data_logged['impression']
@@ -117,6 +117,37 @@ class CustomImpressionListenerTestOnRedis(TestCase):
             'ready': 180000,
             'impressionListener': impressionListenerClient,
             'redisDb': 0,
+            'redisHost': 'localhost',
+            'redisPosrt': 6379,
+            'redisPrefix': 'customImpressionListenerTest'
+        }
+        factory = get_factory('asdqwe123456', config=config)
+        split = factory.client()
+
+        self.assertEqual(split.get_treatment('valid', 'iltest'), 'on')
+        self.assertEqual(split.get_treatment('invalid', 'iltest'), 'off')
+        self.assertEqual(split.get_treatment('valid', 'iltest_invalid'), 'control')
+
+    def test_client_without_impression_listener(self):
+        config = {
+            'ready': 180000,
+            'redisDb': 0,
+            'redisHost': 'localhost',
+            'redisPosrt': 6379,
+            'redisPrefix': 'customImpressionListenerTest'
+        }
+        factory = get_factory('asdqwe123456', config=config)
+        split = factory.client()
+
+        self.assertEqual(split.get_treatment('valid', 'iltest'), 'on')
+        self.assertEqual(split.get_treatment('invalid', 'iltest'), 'off')
+        self.assertEqual(split.get_treatment('valid', 'iltest_invalid'), 'control')
+
+    def test_client_when_impression_listener_is_none(self):
+        config = {
+            'ready': 180000,
+            'redisDb': 0,
+            'impressionListener': None,
             'redisHost': 'localhost',
             'redisPosrt': 6379,
             'redisPrefix': 'customImpressionListenerTest'

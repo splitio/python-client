@@ -41,9 +41,13 @@ class MainSplitFactory(SplitFactory):
             config = kwargs['config']
 
         labels_enabled = config.get('labelsEnabled', True)
+
         impression_listener_custom = config.get('impressionListener', None)
         if impression_listener_custom is not None:
             impression_listener = ImpressionListenerWrapper(impression_listener_custom)
+        else:
+            impression_listener = None
+
         if 'redisHost' in config or 'redisSentinels' in config:
             broker = get_redis_broker(api_key, **kwargs)
             self._client = Client(broker, labels_enabled, impression_listener)
