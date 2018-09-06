@@ -30,6 +30,10 @@ class ImpressionListenerClientWithException(ImpressionListener):
         raise Exception('Simulate exception.')
 
 
+class ImpressionListenerClientEmpty:
+    pass
+
+
 class CustomImpressionListenerTestOnRedis(TestCase):
     def setUp(self):
         self._some_config = mock.MagicMock()
@@ -55,6 +59,13 @@ class CustomImpressionListenerTestOnRedis(TestCase):
                                             change_number=mock.MagicMock(),
                                             bucketing_key=mock.MagicMock(),
                                             time=mock.MagicMock())
+
+    def test_client_raise_attribute_error(self):
+        client_1 = Client(RedisBroker(self._redis, self._some_config),
+                          True, ImpressionListenerClientEmpty())
+
+        with self.assertRaises(AttributeError):
+            client_1._impression_listener.log_impression(self.some_impression_0)
 
     def test_send_data_to_client(self):
         impression_client = ImpressionListenerClient()
@@ -148,6 +159,22 @@ class CustomImpressionListenerTestOnRedis(TestCase):
             'ready': 180000,
             'redisDb': 0,
             'impressionListener': None,
+            'redisHost': 'localhost',
+            'redisPosrt': 6379,
+            'redisPrefix': 'customImpressionListenerTest'
+        }
+        factory = get_factory('asdqwe123456', config=config)
+        split = factory.client()
+
+        self.assertEqual(split.get_treatment('valid', 'iltest'), 'on')
+        self.assertEqual(split.get_treatment('invalid', 'iltest'), 'off')
+        self.assertEqual(split.get_treatment('valid', 'iltest_invalid'), 'control')
+
+    def test_client_with_empty_impression_listener(self):
+        config = {
+            'ready': 180000,
+            'redisDb': 0,
+            'impressionListener': ImpressionListenerClientEmpty(),
             'redisHost': 'localhost',
             'redisPosrt': 6379,
             'redisPrefix': 'customImpressionListenerTest'
