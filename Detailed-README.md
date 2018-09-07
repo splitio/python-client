@@ -33,7 +33,7 @@ The following snippet shows you how to create a basic client using the default c
 ```
 
 ## Impression Listener
-In order to handle the result of a `get_treatment`(a.k.a. `Impression`) for own purposes, client is able to access it by using a custom `Impression Listener`. Sdk options have a parameter called `impressionListener` where you could add an implementation of `ImpressionListener`. You **must** implement the `log_impression` method. This method in particular receives a paramater that has data in the following schema:
+Split SDKs send impression data back to Split servers periodically and as a result of evaluating splits. In order to addittionally send this information to a location of your choice, you could define and attach an Impression Listener. For that purpose, SDK's options have a parameter called `impressionListener` where an implementation of `ImpressionListener` could be added. This implementation **must** define the `log_impression` method and it will receive data in the following schema:
 
 | Name | Type | Description |
 | --- | --- | --- |
