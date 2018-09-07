@@ -33,7 +33,7 @@ The following snippet shows you how to create a basic client using the default c
 ```
 
 ## Impression Listener
-In order to handling the result of a `get_treatment`(a.k.a. `Impression`) for own purposes, client is able to access it by using a custom `Impression Listener`. Sdk options have a parameter called `impressionListener` where you could add an implementation of `ImpressionListener`. You **must** implement the `log_impression` method. This method in particular receives a paramater that has data in the following schema:
+In order to handle the result of a `get_treatment`(a.k.a. `Impression`) for own purposes, client is able to access it by using a custom `Impression Listener`. Sdk options have a parameter called `impressionListener` where you could add an implementation of `ImpressionListener`. You **must** implement the `log_impression` method. This method in particular receives a paramater that has data in the following schema:
 
 | Name | Type | Description |
 | --- | --- | --- |
