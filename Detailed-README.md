@@ -37,7 +37,7 @@ In order to handling the result of a `get_treatment`(a.k.a. `Impression`) for ow
 
 | Name | Type | Description |
 | --- | --- | --- |
-| impression | Impression | Impression object that has the featureName, treatment result, label, etc. |
+| impression | Impression | Impression object that has the feature_name, treatment result, label, etc. |
 | attributes | Array | A list of attributes passed by the client. |
 | instance-id | String | Corresponds to the IP of the machine where the SDK is running. |
 | sdk-language-version | String | Indicates the version of the sdk. In this case the language will be python plus the version of it. |
