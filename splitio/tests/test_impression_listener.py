@@ -13,7 +13,8 @@ from unittest import TestCase
 from splitio.clients import Client
 from splitio.redis_support import (RedisSplitCache, get_redis)
 from splitio.brokers import RedisBroker
-from splitio.impressions import (Impression, ImpressionListener, ImpressionListenerWrapper)
+from splitio.impressions import (Impression, ImpressionListener, ImpressionListenerWrapper,
+                                 ImpressionListenerException)
 from splitio import get_factory
 
 
@@ -185,3 +186,11 @@ class CustomImpressionListenerTestOnRedis(TestCase):
         self.assertEqual(split.get_treatment('valid', 'iltest'), 'on')
         self.assertEqual(split.get_treatment('invalid', 'iltest'), 'off')
         self.assertEqual(split.get_treatment('valid', 'iltest_invalid'), 'control')
+
+    def test_throwing_exception_in_listener(self):
+        impression_exception = ImpressionListenerClientWithException()
+
+        impression_wrapper = ImpressionListenerWrapper(impression_exception)
+
+        with self.assertRaises(ImpressionListenerException):
+            impression_wrapper.log_impression(self.some_impression_0)

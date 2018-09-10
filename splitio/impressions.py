@@ -438,6 +438,13 @@ class AsyncTreatmentLog(TreatmentLog):
                 )
 
 
+class ImpressionListenerException(Exception):
+    '''
+    Custom Exception for Impression Listener
+    '''
+    pass
+
+
 class ImpressionListenerWrapper(object):
     """
     Wrapper in charge of building all the data that client would require in case
@@ -455,9 +462,12 @@ class ImpressionListenerWrapper(object):
         data['attributes'] = attributes
         data['instance-id'] = DEFAULT_CONFIG['splitSdkMachineIp']
         data['sdk-language-version'] = SDK_VERSION
+        try:
+            self.impression_listener.log_impression(data)
+        except:
+            raise ImpressionListenerException('Exception caught in log_impression user\'s'
+                                              'method is throwing exceptions')
 
-        self.impression_listener.log_impression(data)
-        
 
 class ImpressionListener(object):
     """

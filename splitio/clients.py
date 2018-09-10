@@ -6,7 +6,7 @@ import logging
 import time
 from splitio.treatments import CONTROL
 from splitio.splitters import Splitter
-from splitio.impressions import Impression, Label
+from splitio.impressions import Impression, Label, ImpressionListenerException
 from splitio.metrics import SDK_GET_TREATMENT
 from splitio.splits import ConditionType
 from splitio.events import Event
@@ -50,6 +50,17 @@ class Client(object):
         """
         self._destroyed = True
         self._broker.destroy()
+
+    def _handle_custom_impression(self, impression, attributes):
+        '''
+        Handles custom impression if is present. Basically, sends the data
+        to client if some logic is wanted to do.
+        '''
+        if self._impression_listener is not None:
+            try:
+                self._impression_listener.log_impression(impression, attributes)
+            except ImpressionListenerException as e:
+                self._logger.exception(e)
 
     def get_treatment(self, key, feature, attributes=None):
         """
@@ -109,13 +120,7 @@ class Client(object):
                                                 _change_number, bucketing_key, start)
             self._record_stats(impression, start, SDK_GET_TREATMENT)
 
-            if (self._impression_listener is not None):
-                try:
-                    self._impression_listener.log_impression(impression, attributes)
-                except:
-                    self._logger.exception('Exception caught in log_impression user\'s'
-                                           'method is throwing exceptions')
-                    pass
+            self._handle_custom_impression(impression, attributes)
 
             return _treatment
         except:
@@ -126,12 +131,7 @@ class Client(object):
                                                     self._broker.get_change_number(), bucketing_key, start)
                 self._record_stats(impression, start, SDK_GET_TREATMENT)
 
-                if (self._impression_listener is not None):
-                    try:
-                        self._impression_listener.log_impression(impression, attributes)
-                    except:
-                        self._logger.exception('Exception caught in log_impression user\'s'
-                                               'method is throwing exceptions')
+                self._handle_custom_impression(impression, attributes)
             except:
                 self._logger.exception('Exception reporting impression into get_treatment exception block')
 
@@ -217,6 +217,7 @@ class Client(object):
             timestamp=int(time.time()*1000)
         )
         return self._broker.get_events_log().log_event(e)
+
 
 class MatcherClient(Client):
     """
