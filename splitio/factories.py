@@ -42,10 +42,7 @@ class MainSplitFactory(SplitFactory):
 
         labels_enabled = config.get('labelsEnabled', True)
 
-        if (config.get('impressionListener')):
-            impression_listener = ImpressionListenerWrapper(config.get('impressionListener'))
-        else:
-            impression_listener = None
+        impression_listener = ImpressionListenerWrapper(config.get('impressionListener')) if 'impressionListener' in config else None # noqa: E501,E261
 
         if 'redisHost' in config or 'redisSentinels' in config:
             broker = get_redis_broker(api_key, **kwargs)
