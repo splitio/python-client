@@ -40,7 +40,7 @@ class MainSplitFactory(SplitFactory):
             config = kwargs['config']
 
         labels_enabled = config.get('labelsEnabled', True)
-        if 'redisHost' in config:
+        if 'redisHost' in config or 'redisSentinels' in config:
             broker = get_redis_broker(api_key, **kwargs)
             self._client = Client(broker, labels_enabled)
             self._manager = RedisSplitManager(broker)
@@ -90,7 +90,6 @@ class LocalhostSplitFactory(SplitFactory):
         :rtype: SplitClient
         """
         return self._client
-
 
     def manager(self):  # pragma: no cover
         """Get the split manager implementation.

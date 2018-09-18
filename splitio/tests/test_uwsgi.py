@@ -22,6 +22,18 @@ from splitio.impressions import Impression
 from splitio.metrics import BUCKETS
 
 
+class MockUWSGILock(object):
+    def __enter__(self, *args, **kwargs):
+        pass
+
+    def __exit__(self, *args, **kwargs):
+        pass
+
+def mock_lock(*args, **kwargs):
+    pass
+
+
+
 class UWSGICacheEmulatorTests(TestCase):
     def setUp(self):
         self.uwsgi = get_uwsgi(emulator=True)
@@ -49,6 +61,7 @@ class UWSGICacheEmulatorTests(TestCase):
 
 class UWSGISplitCacheTests(TestCase):
     def setUp(self):
+        mock.patch('splitio.uwsgi.UWSGILock', autospec=True)
         self.uwsgi_adapter = get_uwsgi(emulator=True)
         self.split_cache = UWSGISplitCache(self.uwsgi_adapter)
         self.split_json = """
@@ -193,13 +206,20 @@ class UWSGISplitCacheTests(TestCase):
         split = self.split_cache.get_split('test_multi_condition')
         self.assertIsNone(split)
 
-    def test_get_split_keys(self):
-        self.split_cache.add_split('test_multi_condition', decode(self.split_json))
-        current_keys = self.split_cache.get_splits_keys()
-        self.assertIn('test_multi_condition', current_keys)
+    # Because accessing the cache and blocking is costly in uwsgi mode,
+    # the split list is maintained by the sync task in order to minimize locking.
+    # So the add_split call doesn't update it. This is an inconsistency with the rest of
+    # the storages but yields for better performance.
+#    def test_get_split_keys(self):
+#        self.split_cache.add_split('test_multi_condition', decode(self.split_json))
+#        current_keys = self.split_cache.get_splits_keys()
+#        self.assertIn('test_multi_condition', current_keys)
 
-    def test_get_splits(self):
+    @mock.patch('splitio.uwsgi.UWSGILock')
+    def test_get_splits(self, lock_mock):
+        lock_mock.return_value = MockUWSGILock()
         self.split_cache.add_split('test_multi_condition', decode(self.split_json))
+        self.split_cache.update_split_list(['test_multi_condition'], [])
         current_splits = self.split_cache.get_splits()
         self.assertEqual(self.split_cache.get_split('test_multi_condition').name, current_splits[0].name)
 
@@ -270,7 +290,9 @@ class UWSGIImpressionCacheTest(TestCase):
 
         self.impression_cache = UWSGIImpressionsCache(get_uwsgi(emulator=True))
 
-    def test_impression(self):
+    @mock.patch('splitio.uwsgi.UWSGILock')
+    def test_impression(self, lock_mock):
+        lock_mock.return_value = MockUWSGILock()
         self.impression_cache.add_impression(self._impression_1)
         self.impression_cache.add_impression(self._impression_2)
         impressions = self.impression_cache.fetch_all_and_clear()

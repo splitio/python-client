@@ -1,3 +1,9 @@
+6.0.0 (Aug 29, 2018)
+ - Add support for redis sentinel
+ - UWSGI performance boost (breaking change)
+ - Add support for more c++ compilers in windows for mumur hash extension
+5.5.0 (Feb 28, 2018)
+ - Add support for .track
 5.4.3 (Jan 7, 2018)
  - Move impressions listener to it's own thread
  - Fix bug in localhost client

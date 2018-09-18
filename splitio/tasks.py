@@ -80,6 +80,8 @@ def update_splits(split_cache, split_change_fetcher, split_parser):
     If an exception is raised, the process is stopped and it won't try to
     update splits again until enabled_updates is called on the splits cache.
     """
+    added_features = []
+    removed_features = []
     try:
         till = split_cache.get_change_number()
 
@@ -87,23 +89,22 @@ def update_splits(split_cache, split_change_fetcher, split_parser):
             response = split_change_fetcher.fetch(till)
 
             if 'till' not in response:
-                return
+                break
 
             if till >= response['till']:
                 _logger.debug("change_number is greater or equal than 'till'")
-                return
+                break
 
             if 'splits' in response and len(response['splits']) > 0:
                 _logger.debug(
                     "Splits field in response. response = %s",
                     response
                 )
-                added_features = []
-                removed_features = []
 
                 for split_change in response['splits']:
                     if Status(split_change['status']) != Status.ACTIVE:
                         split_cache.remove_split(split_change['name'])
+                        removed_features.append(split_change['name'])
                         continue
 
                     parsed_split = split_parser.parse(split_change)
@@ -129,6 +130,9 @@ def update_splits(split_cache, split_change_fetcher, split_parser):
     except:
         _logger.exception('Exception caught updating split definitions')
         split_cache.disable()
+        return [], []
+
+    return added_features, removed_features
 
 
 def report_impressions(impressions_cache, sdk_api, listener=None):

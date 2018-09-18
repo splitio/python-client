@@ -11,6 +11,7 @@ from itertools import groupby, islice
 try:
     from jsonpickle import decode, encode
     from redis import StrictRedis
+    from redis.sentinel import Sentinel
 except ImportError:
     def missing_redis_dependencies(*args, **kwargs):
         raise NotImplementedError('Missing Redis support dependencies.')
@@ -36,6 +37,10 @@ _GLOBAL_KEY_PARAMETERS = {
     'instance-id': 'unknown',
     'ip-address': 'unknown',
 }
+
+
+class SentinelConfigurationException(Exception):
+    pass
 
 
 class RedisSegmentCache(SegmentCache):
@@ -66,10 +71,12 @@ class RedisSegmentCache(SegmentCache):
         :param segment_name: Name of the segment.
         :type segment_name: str
         '''
-        self._redis.sadd(
-            RedisSegmentCache._KEY_TEMPLATE.format(suffix='registered'),
-            segment_name
-        )
+        # self._redis.sadd(
+        #     RedisSegmentCache._KEY_TEMPLATE.format(suffix='registered'),
+        #     segment_name
+        # )
+        # @TODO The Segment logic for redis should be removed.
+        pass
 
     def unregister_segment(self, segment_name):
         '''
@@ -77,10 +84,12 @@ class RedisSegmentCache(SegmentCache):
         :param segment_name: Name of the segment.
         :type segment_name: str
         '''
-        self._redis.srem(
-            RedisSegmentCache._KEY_TEMPLATE.format(suffix='registered'),
-            segment_name
-        )
+        # self._redis.srem(
+        #     RedisSegmentCache._KEY_TEMPLATE.format(suffix='registered'),
+        #     segment_name
+        # )
+        # @TODO The Segment logic for redis should be removed.
+        pass
 
     def get_registered_segments(self):
         '''
@@ -799,8 +808,11 @@ def get_redis(config):
             config['redisFactory'], 'redisFactory'
         )
         return redis_factory()
-
-    return default_redis_factory(config)
+    else:
+        if 'redisSentinels' in config:
+            return default_redis_sentinel_factory(config)
+        else:
+            return default_redis_factory(config)
 
 
 def default_redis_factory(config):
@@ -859,4 +871,83 @@ def default_redis_factory(config):
         ssl_ca_certs=ssl_ca_certs,
         max_connections=max_connections
     )
+    return PrefixDecorator(redis, prefix=prefix)
+
+
+def default_redis_sentinel_factory(config):
+    '''
+    Default redis client factory for sentinel mode.
+    :param config: A dict with the Redis configuration parameters
+    :type config: dict
+    :return: A Sentinel object using the provided config values
+    :rtype: Sentinel
+    '''
+    sentinels = config.get('redisSentinels')
+
+    if (sentinels is None):
+        raise SentinelConfigurationException('redisSentinels must be specified.')
+    if (not isinstance(sentinels, list)):
+        raise SentinelConfigurationException('Sentinels must be an array of elements in the form of'
+                                             ' [(ip, port)].')
+    if (len(sentinels) == 0):
+        raise SentinelConfigurationException('It must be at least one sentinel.')
+    if not all(isinstance(s, tuple) for s in sentinels):
+        raise SentinelConfigurationException('Sentinels must respect the tuple structure'
+                                             '[(ip, port)].')
+
+    master_service = config.get('redisMasterService')
+
+    if (master_service is None):
+        raise SentinelConfigurationException('redisMasterService must be specified.')
+
+    db = config.get('redisDb', 0)
+    password = config.get('redisPassword', None)
+    socket_timeout = config.get('redisSocketTimeout', None)
+    socket_connect_timeout = config.get('redisSocketConnectTimeout', None)
+    socket_keepalive = config.get('redisSocketKeepalive', None)
+    socket_keepalive_options = config.get('redisSocketKeepaliveOptions', None)
+    connection_pool = config.get('redisConnectionPool', None)
+    unix_socket_path = config.get('redisUnixSocketPath', None)
+    encoding = config.get('redisEncoding', 'utf-8')
+    encoding_errors = config.get('redisEncodingErrors', 'strict')
+    charset = config.get('redisCharset', None)
+    errors = config.get('redisErrors', None)
+    decode_responses = config.get('redisDecodeResponses', False)
+    retry_on_timeout = config.get('redisRetryOnTimeout', False)
+    ssl = config.get('redisSsl', False)
+    ssl_keyfile = config.get('redisSslKeyfile', None)
+    ssl_certfile = config.get('redisSslCertfile', None)
+    ssl_cert_reqs = config.get('redisSslCertReqs', None)
+    ssl_ca_certs = config.get('redisSslCaCerts', None)
+    max_connections = config.get('redisMaxConnections', None)
+    prefix = config.get('redisPrefix')
+
+    sentinel = Sentinel(
+        sentinels,
+        0,
+        {
+            'db': db,
+            'password': password,
+            'socket_timeout': socket_timeout,
+            'socket_connect_timeout': socket_connect_timeout,
+            'socket_keepalive': socket_keepalive,
+            'socket_keepalive_options': socket_keepalive_options,
+            'connection_pool': connection_pool,
+            'unix_socket_path': unix_socket_path,
+            'encoding': encoding,
+            'encoding_errors': encoding_errors,
+            'charset': charset,
+            'errors': errors,
+            'decode_responses': decode_responses,
+            'retry_on_timeout': retry_on_timeout,
+            'ssl': ssl,
+            'ssl_keyfile': ssl_keyfile,
+            'ssl_certfile': ssl_certfile,
+            'ssl_cert_reqs': ssl_cert_reqs,
+            'ssl_ca_certs': ssl_ca_certs,
+            'max_connections': max_connections
+        }
+    )
+
+    redis = sentinel.master_for(master_service)
     return PrefixDecorator(redis, prefix=prefix)

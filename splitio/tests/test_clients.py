@@ -1167,6 +1167,7 @@ class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
             'splitio.tests.test_clients.LocalhostBroker._build_split_fetcher')
 
         self.open_mock = self.patch_builtin('open')
+        self.threading_mock = self.patch('threading.Thread')
         self.broker = LocalhostBroker()
 
     def test_skips_comment_lines(self):
