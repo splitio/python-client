@@ -4,33 +4,14 @@ from __future__ import absolute_import, division, print_function, \
 
 import logging
 import time
-import re
-from numbers import Number
-from six import string_types
 from splitio.treatments import CONTROL
 from splitio.splitters import Splitter
 from splitio.impressions import Impression, Label
 from splitio.metrics import SDK_GET_TREATMENT
 from splitio.splits import ConditionType
 from splitio.events import Event
-
-class Key(object):
-    """Key class includes a matching key and bucketing key."""
-
-    def __init__(self, matching_key, bucketing_key):
-        """Construct a key object."""
-        self._matching_key = matching_key
-        self._bucketing_key = bucketing_key
-
-    @property
-    def matching_key(self):
-        """Return matching key."""
-        return self._matching_key
-
-    @property
-    def bucketing_key(self):
-        """Return bucketing key."""
-        return self._bucketing_key
+from splitio.input_validator import InputValidator
+from splitio.key import Key
 
 
 class Client(object):
@@ -54,31 +35,6 @@ class Client(object):
         self._labels_enabled = labels_enabled
         self._destroyed = False
 
-    def _get_keys(self, key):
-        """
-        Parse received key.
-
-        :param key: user submitted key
-        :type key: mixed
-
-        :rtype: tuple(string,string)
-        """
-        if isinstance(key, Key):
-            matching_key = key.matching_key
-            bucketing_key = key.bucketing_key
-        else:
-            if isinstance(key, string_types):
-                matching_key = key
-            elif isinstance(key, Number):
-                self._logger.warning("Key received as Number. Converting to string")
-                matching_key = str(key)
-            else:
-                # If the key is not a string, int or Key,
-                # set keys to None in order to return CONTROL
-                return None, None
-            bucketing_key = None
-        return matching_key, bucketing_key
-
     def destroy(self):
         """
         Disable the split-client and free all allocated resources.
@@ -87,49 +43,6 @@ class Client(object):
         """
         self._destroyed = True
         self._broker.destroy()
-
-    def _validate_input(self, key, feature, start, attributes=None):
-        """
-        Validate the user-supplied arguments. Return True if valid, False otherwhise.
-
-        :param key: user key
-        :type key: mixed
-
-        :param feature: feature name
-        :type feature: str
-
-        :param attributes: custom user data
-        :type attributes: dict
-
-        :rtype: tuple
-        """
-        if feature is None:
-            self._logger.error("Neither Key or FeatureName can be None")
-            return None, None
-
-        if not isinstance(feature, string_types):
-            self._logger.error("feature name must be a string")
-            return None, None
-
-        if key is None:
-            self._logger.error("Neither Key or FeatureName can be None")
-            impression = self._build_impression("", feature, CONTROL, Label.EXCEPTION,
-                                                0, None, start)
-            self._record_stats(impression, start, SDK_GET_TREATMENT)
-            return None, None
-
-
-        matching_key, bucketing_key = self._get_keys(key)
-        if matching_key is None and bucketing_key is None:
-            self._logger.error(
-                "getTreatment: Key should be an object with bucketingKey and matchingKey"
-                "or a string."
-            )
-            return None, None
-
-        return matching_key, bucketing_key
-
-
 
     def get_treatment(self, key, feature, attributes=None):
         """
@@ -153,8 +66,14 @@ class Client(object):
 
         start = int(round(time.time() * 1000))
 
-        matching_key, bucketing_key = self._validate_input(key, feature, start, attributes)
-        if matching_key is None and bucketing_key is None:
+        input_validator = InputValidator()
+        matching_key, bucketing_key = input_validator.validate_key(key)
+        feature = input_validator.validate_feature_name(feature)
+
+        if ((matching_key is None and bucketing_key is None) or (feature is None)):
+            impression = self._build_impression(matching_key, feature, CONTROL, Label.EXCEPTION,
+                                                0, None, start)
+            self._record_stats(impression, start, SDK_GET_TREATMENT)
             return CONTROL
 
         try:
@@ -191,7 +110,7 @@ class Client(object):
                                                 _change_number, bucketing_key, start)
             self._record_stats(impression, start, SDK_GET_TREATMENT)
             return _treatment
-        except Exception: #pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             self._logger.exception('Exception caught getting treatment for feature')
 
             try:
@@ -203,7 +122,7 @@ class Client(object):
                     self._broker.get_change_number(), bucketing_key, start
                 )
                 self._record_stats(impression, start, SDK_GET_TREATMENT)
-            except Exception: #pylint: disable=broad-except
+            except Exception:  # pylint: disable=broad-except
                 self._logger.exception(
                     'Exception reporting impression into get_treatment exception block'
                 )
@@ -245,7 +164,7 @@ class Client(object):
             end = int(round(time.time() * 1000))
             self._broker.log_impression(impression)
             self._broker.log_operation_time(operation, end - start)
-        except Exception: #pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             self._logger.exception('Exception caught recording impressions and metrics')
 
     def _get_treatment_for_split(self, split, matching_key, bucketing_key, attributes=None):
@@ -319,39 +238,13 @@ class Client(object):
 
         :rtype: bool
         """
-        if key is None:
-            self._logger.error("Key cannot be None")
-            return False
+        input_validator = InputValidator()
+        key = input_validator.validate_track_key(key)
+        event_type = input_validator.validate_event_type(event_type)
+        traffic_type = input_validator.validate_traffic_type(traffic_type)
+        value = input_validator.validate_value(value)
 
-        if isinstance(key, Number):
-            self._logger.warning("Key must be string. Number supplied. Converting")
-            key = str(key)
-
-        if not isinstance(key, string_types):
-            self._logger.error("Incorrect type of key supplied. Must be string")
-            return False
-
-        if event_type is None:
-            self._logger.warning("event_type cannot be None")
-            return False
-
-        if not isinstance(event_type, string_types):
-            self._logger.error("event_name must be string")
-            return False
-
-        if not re.match(r'[a-zA-Z0-9][-_\.a-zA-Z0-9]{0,62}', event_type):
-            self._logger.error(
-                'event_type must match the regular expression "'
-                r'[a-zA-Z0-9][-_\.a-zA-Z0-9]{0,62}"'
-            )
-            return False
-
-        if traffic_type is None or not isinstance(traffic_type, string_types) or traffic_type == '':
-            self._logger.error("traffic_type must be a non-empty string")
-            return False
-
-        if value is not None and not isinstance(value, Number):
-            self._logger.error("value must be None or must be a number")
+        if key is None or event_type is None or traffic_type is None or value is None:
             return False
 
         event = Event(
@@ -371,7 +264,7 @@ class MatcherClient(Client):
     TODO: Refactor This!
     """
 
-    def __init__(self, broker, splitter, logger): #pylint: disable=super-init-not-called
+    def __init__(self, broker, splitter, logger):  # pylint: disable=super-init-not-called
         """
         Construct a MatcherClient instance.
 
@@ -406,7 +299,13 @@ class MatcherClient(Client):
         if key is None or feature is None:
             return CONTROL
 
-        matching_key, bucketing_key = self._get_keys(key)
+        input_validator = InputValidator()
+        matching_key, bucketing_key = input_validator.validate_key(key)
+        feature = input_validator.validate_feature_name(feature)
+
+        if ((matching_key is None and bucketing_key is None) or feature is None):
+            return CONTROL
+
         try:
             # Fetching Split definition
             split = self._broker.fetch_feature(feature)
@@ -432,7 +331,7 @@ class MatcherClient(Client):
                 return split.default_treatment
 
             return treatment
-        except Exception: #pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             self._logger.exception(
                 'Exception caught retrieving dependent feature. Returning CONTROL'
             )

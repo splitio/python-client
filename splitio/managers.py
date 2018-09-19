@@ -3,10 +3,10 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import logging
 
-from splitio.uwsgi import UWSGISplitCache
 from splitio.redis_support import RedisSplitCache
-from splitio.splits import (CacheBasedSplitFetcher, SplitView)
+from splitio.splits import SplitView
 from splitio.utils import bytes_to_string
+from splitio.input_validator import InputValidator
 
 
 class SplitManager(object):
@@ -60,7 +60,8 @@ class RedisSplitManager(SplitManager):
         split_names = []
         for split_name in splits:
             split_name = bytes_to_string(split_name)
-            split_names.append(split_name.replace(RedisSplitCache._KEY_TEMPLATE.format(suffix=''), ''))
+            split_names.append(split_name.replace
+                               (RedisSplitCache._KEY_TEMPLATE.format(suffix=''), ''))
 
         return split_names
 
@@ -80,7 +81,9 @@ class RedisSplitManager(SplitManager):
                 for condition in split.conditions:
                     for partition in condition.partitions:
                         treatments.append(partition.treatment)
-                split_views.append(SplitView(name=split.name, traffic_type=split.traffic_type_name, killed=split.killed, treatments=list(set(treatments)), change_number=change_number))
+                split_views.append(SplitView(name=split.name, traffic_type=split.traffic_type_name,
+                                             killed=split.killed, treatments=list(set(treatments)),
+                                             change_number=change_number))
 
         return split_views
 
@@ -89,6 +92,12 @@ class RedisSplitManager(SplitManager):
         :return: The SplitView instance.
         :rtype: SplitView
         """
+        input_validator = InputValidator()
+        feature_name = input_validator.validate_manager_feature_name(feature_name)
+
+        if feature_name is None:
+            return None
+
         split = self._split_fetcher.fetch(feature_name)
 
         if split is None:
@@ -102,8 +111,10 @@ class RedisSplitManager(SplitManager):
             for partition in condition.partitions:
                 treatments.append(partition.treatment)
 
-        #Using sets to avoid duplicate entries
-        split_view = SplitView(name=split.name, traffic_type=split.traffic_type_name, killed=split.killed, treatments=list(set(treatments)), change_number=change_number)
+        # Using sets to avoid duplicate entries
+        split_view = SplitView(name=split.name, traffic_type=split.traffic_type_name,
+                               killed=split.killed, treatments=list(set(treatments)),
+                               change_number=change_number)
         return split_view
 
 
@@ -148,7 +159,9 @@ class UWSGISplitManager(SplitManager):
                 for condition in split.conditions:
                     for partition in condition.partitions:
                         treatments.append(partition.treatment)
-                split_views.append(SplitView(name=split.name, traffic_type=split.traffic_type_name, killed=split.killed, treatments=list(set(treatments)), change_number=split.change_number))
+                split_views.append(SplitView(name=split.name, traffic_type=split.traffic_type_name,
+                                   killed=split.killed, treatments=list(set(treatments)),
+                                   change_number=split.change_number))
 
         return split_views
 
@@ -157,6 +170,13 @@ class UWSGISplitManager(SplitManager):
         :return: The SplitView instance.
         :rtype: SplitView
         """
+        input_validator = InputValidator()
+        feature_name = input_validator.validate_manager_feature_name(feature_name)
+
+        if feature_name is None:
+            return None
+
+        print('FEATUEREEEE', feature_name)
         split = self._split_fetcher.fetch(feature_name)
 
         if split is None:
@@ -168,8 +188,10 @@ class UWSGISplitManager(SplitManager):
             for partition in condition.partitions:
                 treatments.append(partition.treatment)
 
-        #Using sets on treatments to avoid duplicate entries
-        split_view = SplitView(name=split.name, traffic_type=split.traffic_type_name, killed=split.killed, treatments=list(set(treatments)), change_number=split.change_number)
+        # Using sets on treatments to avoid duplicate entries
+        split_view = SplitView(name=split.name, traffic_type=split.traffic_type_name,
+                               killed=split.killed, treatments=list(set(treatments)),
+                               change_number=split.change_number)
         return split_view
 
 
@@ -210,17 +232,23 @@ class SelfRefreshingSplitManager(SplitManager):
             for condition in split.conditions:
                 for partition in condition.partitions:
                     treatments.append(partition.treatment)
-            split_views.append(SplitView(name=split.name, traffic_type=split.traffic_type_name, killed=split.killed,
-                               treatments=list(set(treatments)), change_number=change_number))
+            split_views.append(SplitView(name=split.name, traffic_type=split.traffic_type_name,
+                               killed=split.killed, treatments=list(set(treatments)),
+                               change_number=change_number))
 
         return split_views
-
 
     def split(self, feature_name):
         """Get the splitView of feature_name. Subclasses need to override this method.
         :return: The SplitView instance.
         :rtype: SplitView
         """
+        input_validator = InputValidator()
+        feature_name = input_validator.validate_manager_feature_name(feature_name)
+
+        if feature_name is None:
+            return None
+
         split = self._split_fetcher.fetch(feature_name)
 
         if split is None:
@@ -235,8 +263,9 @@ class SelfRefreshingSplitManager(SplitManager):
                 treatments.append(partition.treatment)
 
         # Using sets to avoid duplicate entries
-        split_view = SplitView(name=split.name, traffic_type=split.traffic_type_name, killed=split.killed,
-                               treatments=list(set(treatments)), change_number=change_number)
+        split_view = SplitView(name=split.name, traffic_type=split.traffic_type_name,
+                               killed=split.killed, treatments=list(set(treatments)),
+                               change_number=change_number)
         return split_view
 
 
@@ -278,7 +307,6 @@ class LocalhostSplitManager(SplitManager):
                                treatments=list(set(treatments)), change_number=change_number))
 
         return split_views
-
 
     def split(self, feature_name):
         """

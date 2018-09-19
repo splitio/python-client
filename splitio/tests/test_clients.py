@@ -17,17 +17,15 @@ from time import sleep
 
 from splitio import get_factory
 from splitio.clients import Client
-from splitio.splits import Split
 from splitio.brokers import JSONFileBroker, LocalhostBroker, RedisBroker, \
     UWSGIBroker, randomize_interval, SelfRefreshingBroker
 from splitio.exceptions import TimeoutException
 from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, SDK_API_BASE_URL, \
     EVENTS_API_BASE_URL
 from splitio.treatments import CONTROL
-from splitio.impressions import Label
 from splitio.tests.utils import MockUtilsMixin
-from splitio.managers import LocalhostSplitManager, \
-    SelfRefreshingSplitManager, UWSGISplitManager, RedisSplitManager
+from splitio.managers import SelfRefreshingSplitManager, UWSGISplitManager, RedisSplitManager
+
 
 class RandomizeIntervalTests(TestCase, MockUtilsMixin):
     def setUp(self):
@@ -68,7 +66,6 @@ class RandomizeIntervalTests(TestCase, MockUtilsMixin):
 
 
 class SelfRefreshingBrokerInitTests(TestCase, MockUtilsMixin):
-
 
     def setUp(self):
         self.build_sdk_api_mock = self.patch('splitio.brokers.SelfRefreshingBroker._build_sdk_api')
@@ -194,7 +191,7 @@ class SelfRefreshingBrokerStartTests(TestCase, MockUtilsMixin):
         """Test that if the event flag is set, a TimeoutException is not raised"""
         try:
             SelfRefreshingBroker(self.some_api_key, config={'ready': 10})
-        except:
+        except:  # noqa E722
             self.fail('An unexpected exception was raised')
 
 
@@ -265,7 +262,7 @@ class SelfRefreshingBrokerInitConfigTests(TestCase, MockUtilsMixin):
             'redisHost': 'localhost',
             'redisPort': 6379,
             'redisDb': 0,
-            'redisPassword':None,
+            'redisPassword': None,
             'redisSocketTimeout': None,
             'redisSocketConnectTimeout': None,
             'redisSocketKeepalive': None,
@@ -284,11 +281,9 @@ class SelfRefreshingBrokerInitConfigTests(TestCase, MockUtilsMixin):
             'redisSslCertReqs': None,
             'redisSslCaCerts': None,
             'redisMaxConnections': None,
-            'eventsPushRate' : 60,
+            'eventsPushRate': 60,
             'eventsQueueSize': 500,
         }
-
-
 
         self.client = SelfRefreshingBroker(self.some_api_key)
 
@@ -490,7 +485,6 @@ class SelfRefreshingBrokerBuildMetricsTests(TestCase, MockUtilsMixin):
         self.assertEqual(self.aync_metrics_mock.return_value, self.client._build_metrics())
 
 
-
 class JSONFileBrokerIntegrationTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -502,7 +496,8 @@ class JSONFileBrokerIntegrationTests(TestCase):
             os.path.dirname(__file__),
             'splitChanges.json'
         )
-        cls.client = Client(JSONFileBroker(cls.segment_changes_file_name, cls.split_changes_file_name))
+        cls.client = Client(JSONFileBroker(cls.segment_changes_file_name,
+                            cls.split_changes_file_name))
         cls.on_treatment = 'on'
         cls.off_treatment = 'off'
         cls.some_key = 'some_key'
@@ -1233,6 +1228,7 @@ class LocalhostBrokerOffTheGrid(TestCase):
             self.assertEqual(client.get_treatment('x', 'a_test_split'), 'on')
             client.destroy()
 
+
 class TestClientDestroy(TestCase):
     """
     """
@@ -1266,48 +1262,3 @@ class TestClientDestroy(TestCase):
         self.assertEqual(client.get_treatment('asd', 'asd'), CONTROL)
         self.assertEqual(manager.splits(), [])
         self.assertEqual(manager.split_names(), [])
-
-
-class TestInputSanitization(TestCase):
-
-    def setUp(self):
-        self.broker = LocalhostBroker()
-        self.client = Client(self.broker)
-        self.client._logger.error = mock.MagicMock()
-        self.client._logger.warning = mock.MagicMock()
-        self.client._broker.fetch_feature = mock.MagicMock(return_value=Split(
-            "some_feature",
-            0,
-            False,
-            "default_treatment",
-            "user",
-            "ACTIVE",
-            123
-        ))
-
-        self.client._build_impression = mock.MagicMock()
-
-    def test_get_treatment_key_none(self):
-        result = self.client.get_treatment(None, "some_feature")
-        self.assertEqual(result, CONTROL)
-        self.client._logger.error.assert_called_once_with("Neither Key or FeatureName can be None")
-        self.client._build_impression.assert_called_once_with(
-            "", "some_feature", CONTROL, Label.EXCEPTION, 0, None, mock.ANY
-        )
-
-    def test_get_treatment_feature_name_none(self):
-        result = self.client.get_treatment("some_key", None)
-        self.assertEqual(result, CONTROL)
-        self.client._logger.error.assert_called_once_with("Neither Key or FeatureName can be None")
-
-    def test_get_treatment_key_number(self):
-        result = self.client.get_treatment(123, "feature1")
-        self.client._logger.warning.assert_called_once_with("Key received as Number. Converting to string")
-        self.assertEqual(result, "default_treatment")
-        self.client._build_impression.assert_called_once_with(
-            "123", "feature1", "default_treatment", Label.NO_CONDITION_MATCHED, 123, None, mock.ANY
-        )
-
-    def test_get_treatment_parameters_ok(self):
-        result = self.client.get_treatment("asd", "qwe")
-        self.assertEqual(result, "default_treatment")
