@@ -296,9 +296,6 @@ class MatcherClient(Client):
         :param attributes: (Optional) attributes associated with the user key
         :type attributes: dict
         """
-        if key is None or feature is None:
-            return CONTROL
-
         input_validator = InputValidator()
         matching_key, bucketing_key = input_validator.validate_key(key)
         feature = input_validator.validate_feature_name(feature)

@@ -86,7 +86,7 @@ class InputValidator:
                                  .format(operation, name, pattern))
         pass
 
-    def _to_string(self, value, name, operation):
+    def _to_string(self, value, name, operation, message):
         """
         Transforms value into string if is only a number, if is other type
         it will raises an Exception
@@ -97,13 +97,14 @@ class InputValidator:
         :type feature: str
         :param operation: operation to inform the error
         :type operation: str
+        :param message: message to inform the error
+        :type message: str
         """
         if not isinstance(value, bool) and isinstance(value, Number):
             self._logger.warning('{}: {} {} is not of type string, converting.'
                                  .format(operation, name, value))
             return str(value)
-        raise InputException('{}: {} {} has to be of type string or object Key.'
-                             .format(operation, name, value))
+        raise InputException('{}: {} {} {}'.format(operation, name, value, message))
 
     def _validate_matching_key(self, matching_key):
         """
@@ -120,12 +121,8 @@ class InputValidator:
             if isinstance(matching_key, six.string_types):
                 self._check_not_empty(matching_key, 'matching_key', 'get_treatment')
                 return matching_key
-            if not isinstance(matching_key, bool) and isinstance(matching_key, Number):
-                self._logger.warning('get_treatment: matching_key {} is not of type string, '
-                                     'converting.'.format(matching_key))
-                return str(matching_key)
-            raise InputException('get_treatment: matching_key {} has to be of type string.'
-                                 .format(matching_key))
+            return self._to_string(matching_key, 'matching_key', 'get_treatment',
+                                   'has to be of type string.')
         except InputException as e:
             raise InputException(e.message)
 
@@ -143,12 +140,8 @@ class InputValidator:
                 return None
             if isinstance(bucketing_key, six.string_types):
                 return bucketing_key
-            if not isinstance(bucketing_key, bool) and isinstance(bucketing_key, Number):
-                self._logger.warning('get_treatment: bucketing_key {} is not of type '
-                                     'string, converting.'.format(bucketing_key))
-                return str(bucketing_key)
-            raise InputException('get_treatment: bucketing_key {} has to be of type string.'
-                                 .format(bucketing_key))
+            return self._to_string(bucketing_key, 'bucketing_key', 'get_treatment',
+                                   'has to be of type string.')
         except InputException as e:
             raise InputException(e.message)
 
@@ -169,7 +162,8 @@ class InputValidator:
                 if isinstance(key, six.string_types):
                     matching_key = key
                 else:
-                    matching_key = self._to_string(key, 'key', 'get_treatment')
+                    matching_key = self._to_string(key, 'key', 'get_treatment',
+                                                   'has to be of type string or object Key.')
                 bucketing_key = None
             return matching_key, bucketing_key
         except InputException as e:
@@ -202,11 +196,7 @@ class InputValidator:
             self._check_not_null(key, 'key', 'track')
             if isinstance(key, six.string_types):
                 return key
-            if not isinstance(key, bool) and isinstance(key, Number):
-                self._logger.warning('track: key {} is not of type string, converting.'
-                                     .format(key))
-                return str(key)
-            self._logger.error('track: key {} has to be of type string.'.format(key))
+            return self._to_string(key, 'key', 'track', 'has to be of type string.')
         except InputException as e:
             self._logger.error(e.message)
             return None
