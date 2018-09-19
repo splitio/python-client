@@ -6,7 +6,7 @@ import logging
 from splitio.redis_support import RedisSplitCache
 from splitio.splits import SplitView
 from splitio.utils import bytes_to_string
-from splitio.input_validator import InputValidator
+from . import input_validator
 
 
 class SplitManager(object):
@@ -92,7 +92,6 @@ class RedisSplitManager(SplitManager):
         :return: The SplitView instance.
         :rtype: SplitView
         """
-        input_validator = InputValidator()
         feature_name = input_validator.validate_manager_feature_name(feature_name)
 
         if feature_name is None:
@@ -170,13 +169,11 @@ class UWSGISplitManager(SplitManager):
         :return: The SplitView instance.
         :rtype: SplitView
         """
-        input_validator = InputValidator()
         feature_name = input_validator.validate_manager_feature_name(feature_name)
 
         if feature_name is None:
             return None
 
-        print('FEATUEREEEE', feature_name)
         split = self._split_fetcher.fetch(feature_name)
 
         if split is None:
@@ -243,7 +240,6 @@ class SelfRefreshingSplitManager(SplitManager):
         :return: The SplitView instance.
         :rtype: SplitView
         """
-        input_validator = InputValidator()
         feature_name = input_validator.validate_manager_feature_name(feature_name)
 
         if feature_name is None:

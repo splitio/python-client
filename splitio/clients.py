@@ -10,7 +10,7 @@ from splitio.impressions import Impression, Label
 from splitio.metrics import SDK_GET_TREATMENT
 from splitio.splits import ConditionType
 from splitio.events import Event
-from splitio.input_validator import InputValidator
+from . import input_validator
 from splitio.key import Key
 
 
@@ -66,13 +66,12 @@ class Client(object):
 
         start = int(round(time.time() * 1000))
 
-        input_validator = InputValidator()
         matching_key, bucketing_key = input_validator.validate_key(key)
         feature = input_validator.validate_feature_name(feature)
 
-        if ((matching_key is None and bucketing_key is None) or (feature is None)):
+        if (matching_key is None and bucketing_key is None) or feature is None:
             impression = self._build_impression(matching_key, feature, CONTROL, Label.EXCEPTION,
-                                                0, None, start)
+                                                0, bucketing_key, start)
             self._record_stats(impression, start, SDK_GET_TREATMENT)
             return CONTROL
 
@@ -238,7 +237,6 @@ class Client(object):
 
         :rtype: bool
         """
-        input_validator = InputValidator()
         key = input_validator.validate_track_key(key)
         event_type = input_validator.validate_event_type(event_type)
         traffic_type = input_validator.validate_traffic_type(traffic_type)
@@ -296,11 +294,10 @@ class MatcherClient(Client):
         :param attributes: (Optional) attributes associated with the user key
         :type attributes: dict
         """
-        input_validator = InputValidator()
         matching_key, bucketing_key = input_validator.validate_key(key)
         feature = input_validator.validate_feature_name(feature)
 
-        if ((matching_key is None and bucketing_key is None) or feature is None):
+        if (matching_key is None and bucketing_key is None) or feature is None:
             return CONTROL
 
         try:
