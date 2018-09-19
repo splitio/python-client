@@ -111,9 +111,8 @@ def _check_can_convert(value, name, operation, message):
         if isinstance(value, bool) or isinstance(value, Number) is False:
             _LOGGER.error('{}: {} {} {}'.format(operation, name, value, message))
             return False
-        if isinstance(value, Number):
-            _LOGGER.warning('{}: {} {} is not of type string, converting.'
-                            .format(operation, name, value))
+    _LOGGER.warning('{}: {} {} is not of type string, converting.'
+                    .format(operation, name, value))
     return True
 
 
