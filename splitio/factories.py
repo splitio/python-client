@@ -5,6 +5,7 @@ from splitio.clients import Client
 from splitio.brokers import get_self_refreshing_broker, get_redis_broker, get_uwsgi_broker
 from splitio.managers import RedisSplitManager, SelfRefreshingSplitManager, \
     LocalhostSplitManager, UWSGISplitManager
+from splitio.impressions import ImpressionListenerWrapper
 
 import logging
 
@@ -40,18 +41,21 @@ class MainSplitFactory(SplitFactory):
             config = kwargs['config']
 
         labels_enabled = config.get('labelsEnabled', True)
+
+        impression_listener = ImpressionListenerWrapper(config.get('impressionListener')) if 'impressionListener' in config else None # noqa: E501,E261
+
         if 'redisHost' in config or 'redisSentinels' in config:
             broker = get_redis_broker(api_key, **kwargs)
-            self._client = Client(broker, labels_enabled)
+            self._client = Client(broker, labels_enabled, impression_listener)
             self._manager = RedisSplitManager(broker)
         else:
             if 'uwsgiClient' in config and config['uwsgiClient']:
                 broker = get_uwsgi_broker(api_key, **kwargs)
-                self._client = Client(broker, labels_enabled)
+                self._client = Client(broker, labels_enabled, impression_listener)
                 self._manager = UWSGISplitManager(broker)
             else:
                 broker = get_self_refreshing_broker(api_key, **kwargs)
-                self._client = Client(broker, labels_enabled)
+                self._client = Client(broker, labels_enabled, impression_listener)
                 self._manager = SelfRefreshingSplitManager(broker)
 
     def client(self):  # pragma: no cover

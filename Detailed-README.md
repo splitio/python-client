@@ -110,6 +110,42 @@ except TimeoutException:
     sys.exit()
 ```
 
+## Impression Listener
+Split SDKs send impression data back to Split servers periodically and as a result of evaluating splits. In order to additionally send this information to a location of your choice, you could define and attach an Impression Listener. For that purpose, SDK's options have a parameter called `impressionListener` where an implementation of `ImpressionListener` could be added. This implementation **must** define the `log_impression` method and it will receive data in the following schema:
+
+| Name | Type | Description |
+| --- | --- | --- |
+| impression | Impression | Impression object that has the feature_name, treatment result, label, etc. |
+| attributes | Array | A list of attributes passed by the client. |
+| instance-id | String | Corresponds to the IP of the machine where the SDK is running. |
+| sdk-language-version | String | Indicates the version of the sdk. In this case the language will be python plus the version of it. |
+
+### Implementing custom Impression Listener
+Below you could find an example of how implement a custom Impression Listener:
+```python
+# Import ImpressionListener interface
+from splitio.impressions import ImpressionListener
+
+# Implementation Sample for a Custom Impression Listener
+class CustomImpressionListener(ImpressionListener)
+{
+  def log_impression(self, data):
+    # Custom behavior
+}
+```
+
+### Attaching custom Impression Listener
+```python
+factory = get_factory(
+  'YOUR_API_KEY',
+  config={
+    # ...
+    'impressionListener': CustomImpressionListener()
+  },
+  # ...
+)
+split = factory.client()
+
 ## Additional information
 
 You can get more information on how to use this package in the included documentation.

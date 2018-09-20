@@ -6,10 +6,11 @@ import logging
 import time
 from splitio.treatments import CONTROL
 from splitio.splitters import Splitter
-from splitio.impressions import Impression, Label
+from splitio.impressions import Impression, Label, ImpressionListenerException
 from splitio.metrics import SDK_GET_TREATMENT
 from splitio.splits import ConditionType
 from splitio.events import Event
+
 
 class Key(object):
     def __init__(self, matching_key, bucketing_key):
@@ -19,7 +20,7 @@ class Key(object):
 
 
 class Client(object):
-    def __init__(self, broker, labels_enabled=True):
+    def __init__(self, broker, labels_enabled=True, impression_listener=None):
         """Basic interface of a Client. Specific implementations need to override the
         get_split_fetcher method (and optionally the get_splitter method).
         """
@@ -28,6 +29,7 @@ class Client(object):
         self._broker = broker
         self._labels_enabled = labels_enabled
         self._destroyed = False
+        self._impression_listener = impression_listener
 
     @staticmethod
     def _get_keys(key):
@@ -48,6 +50,17 @@ class Client(object):
         """
         self._destroyed = True
         self._broker.destroy()
+
+    def _handle_custom_impression(self, impression, attributes):
+        '''
+        Handles custom impression if is present. Basically, sends the data
+        to client if some logic is wanted to do.
+        '''
+        if self._impression_listener is not None:
+            try:
+                self._impression_listener.log_impression(impression, attributes)
+            except ImpressionListenerException as e:
+                self._logger.exception(e)
 
     def get_treatment(self, key, feature, attributes=None):
         """
@@ -106,6 +119,9 @@ class Client(object):
             impression = self._build_impression(matching_key, feature, _treatment, label,
                                                 _change_number, bucketing_key, start)
             self._record_stats(impression, start, SDK_GET_TREATMENT)
+
+            self._handle_custom_impression(impression, attributes)
+
             return _treatment
         except:
             self._logger.exception('Exception caught getting treatment for feature')
@@ -114,6 +130,8 @@ class Client(object):
                 impression = self._build_impression(matching_key, feature, CONTROL, Label.EXCEPTION,
                                                     self._broker.get_change_number(), bucketing_key, start)
                 self._record_stats(impression, start, SDK_GET_TREATMENT)
+
+                self._handle_custom_impression(impression, attributes)
             except:
                 self._logger.exception('Exception reporting impression into get_treatment exception block')
 
@@ -199,6 +217,7 @@ class Client(object):
             timestamp=int(time.time()*1000)
         )
         return self._broker.get_events_log().log_event(e)
+
 
 class MatcherClient(Client):
     """
