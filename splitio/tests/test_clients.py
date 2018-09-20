@@ -191,7 +191,7 @@ class SelfRefreshingBrokerStartTests(TestCase, MockUtilsMixin):
         """Test that if the event flag is set, a TimeoutException is not raised"""
         try:
             SelfRefreshingBroker(self.some_api_key, config={'ready': 10})
-        except:  # noqa E722
+        except Exception:
             self.fail('An unexpected exception was raised')
 
 

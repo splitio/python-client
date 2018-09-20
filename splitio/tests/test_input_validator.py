@@ -8,9 +8,7 @@ except ImportError:
     # Python 2
     import mock
 
-# import logging
 from unittest import TestCase
-# from splitio.tests.utils import MockUtilsMixin
 from splitio.brokers import RedisBroker, SelfRefreshingBroker, UWSGIBroker
 from splitio.clients import Client
 from splitio.treatments import CONTROL
