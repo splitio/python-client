@@ -4,12 +4,14 @@ from __future__ import absolute_import, division, print_function, \
 
 import logging
 import six
+import abc
 from threading import Thread
 
 from collections import namedtuple, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from threading import RLock, Timer
+from splitio.config import SDK_VERSION, DEFAULT_CONFIG
 
 
 Impression = namedtuple(
@@ -54,24 +56,6 @@ def build_impressions_data(impressions):
         for feature_name, feature_impressions in six.iteritems(impressions)
         if len(feature_impressions) > 0
     ]
-
-
-def _notify_listener(listener, impressions_data):
-    """
-    Execute custom callable provided by user with impressions as arguments
-    :param impressions_data: Impressions grouped by feature name.
-    :type impressions_data: list of dicts
-    """
-    if six.callable(listener):
-        try:
-            t = Thread(target=listener, args=(impressions_data,))
-            t.daemon = True
-            t.start()
-        except Exception:
-            logging.getLogger('Impressions-Listener').exception(
-                'Exception caught when executing user provided impression '
-                'listener function.'
-            )
 
 
 class Label(object):
@@ -268,7 +252,7 @@ class CacheBasedTreatmentLog(TreatmentLog):
 
 class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
     def __init__(self, api, interval=180, max_workers=5, max_count=-1,
-                 ignore_impressions=False, listener=None):
+                 ignore_impressions=False):
         """
         An impressions implementation that sends the in impressions stored
         periodically to the Split.io back-end.
@@ -282,9 +266,6 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         :type max_count: int
         :param ignore_impressions: Whether to ignore log requests
         :type ignore_impressions: bool
-        :param listener: callback that will receive impressions bulk fur custom
-            user handling of impressions.
-        :type listener: callable
         """
         super(SelfUpdatingTreatmentLog, self).__init__(
             max_count=max_count,
@@ -294,7 +275,6 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         self._interval = interval
         self._stopped = True
         self._thread_pool_executor = ThreadPoolExecutor(max_workers=max_workers)
-        self._listener = listener
 
     @property
     def stopped(self):
@@ -335,7 +315,6 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
 
             if len(test_impressions_data) > 0:
                 self._api.test_impressions(test_impressions_data)
-                _notify_listener(self._listener, test_impressions_data)
         except:
             self._logger.exception(
                 'Exception caught updating evicted impressions'
@@ -355,7 +334,6 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
 
             if len(test_impressions_data) > 0:
                 self._api.test_impressions(test_impressions_data)
-                _notify_listener(self._listener, test_impressions_data)
         except:
             self._logger.exception('Exception caught updating impressions')
             self._stopped = True
@@ -458,3 +436,47 @@ class AsyncTreatmentLog(TreatmentLog):
                 self._logger.exception(
                     'Exception caught logging impression asynchronously'
                 )
+
+
+class ImpressionListenerException(Exception):
+    '''
+    Custom Exception for Impression Listener
+    '''
+    pass
+
+
+class ImpressionListenerWrapper(object):
+    """
+    Wrapper in charge of building all the data that client would require in case
+    of adding some logic with the treatment and impression results.
+    """
+
+    impression_listener = None
+
+    def __init__(self, impression_listener):
+        self.impression_listener = impression_listener
+
+    def log_impression(self, impression, attributes=None):
+        data = {}
+        data['impression'] = impression
+        data['attributes'] = attributes
+        data['instance-id'] = DEFAULT_CONFIG['splitSdkMachineIp']
+        data['sdk-language-version'] = SDK_VERSION
+        try:
+            self.impression_listener.log_impression(data)
+        except:
+            raise ImpressionListenerException('Exception caught in log_impression user\'s'
+                                              'method is throwing exceptions')
+
+
+class ImpressionListener(object):
+    """
+    Abstract class defining the interface that concrete client must implement,
+    and including methods that use that interface to add client's logic for each
+    impression.
+    """
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def log_impression(self, data):
+        pass

@@ -6,7 +6,7 @@ import logging
 import time
 from splitio.treatments import CONTROL
 from splitio.splitters import Splitter
-from splitio.impressions import Impression, Label
+from splitio.impressions import Impression, Label, ImpressionListenerException
 from splitio.metrics import SDK_GET_TREATMENT
 from splitio.splits import ConditionType
 from splitio.events import Event
@@ -17,7 +17,7 @@ from splitio.key import Key
 class Client(object):
     """Client class that uses a broker for storage."""
 
-    def __init__(self, broker, labels_enabled=True):
+    def __init__(self, broker, labels_enabled=True, impression_listener=None):
         """
         Construct a Client instance.
 
@@ -27,6 +27,9 @@ class Client(object):
         :param labels_enabled: Whether to store labels on impressions
         :type labels_enabled: bool
 
+        :param impression_listener: impression listener implementation
+        :type impression_listener: ImpressionListener
+
         :rtype: Client
         """
         self._logger = logging.getLogger(self.__class__.__name__)
@@ -34,6 +37,7 @@ class Client(object):
         self._broker = broker
         self._labels_enabled = labels_enabled
         self._destroyed = False
+        self._impression_listener = impression_listener
 
     def destroy(self):
         """
@@ -43,6 +47,17 @@ class Client(object):
         """
         self._destroyed = True
         self._broker.destroy()
+
+    def _handle_custom_impression(self, impression, attributes):
+        '''
+        Handles custom impression if is present. Basically, sends the data
+        to client if some logic is wanted to do.
+        '''
+        if self._impression_listener is not None:
+            try:
+                self._impression_listener.log_impression(impression, attributes)
+            except ImpressionListenerException as e:
+                self._logger.exception(e)
 
     def get_treatment(self, key, feature, attributes=None):
         """
@@ -108,6 +123,9 @@ class Client(object):
             impression = self._build_impression(matching_key, feature, _treatment, label,
                                                 _change_number, bucketing_key, start)
             self._record_stats(impression, start, SDK_GET_TREATMENT)
+
+            self._handle_custom_impression(impression, attributes)
+
             return _treatment
         except Exception:  # pylint: disable=broad-except
             self._logger.exception('Exception caught getting treatment for feature')
@@ -125,6 +143,8 @@ class Client(object):
                 self._logger.exception(
                     'Exception reporting impression into get_treatment exception block'
                 )
+
+                self._handle_custom_impression(impression, attributes)
 
             return CONTROL
 

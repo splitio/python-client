@@ -78,10 +78,12 @@ class ReadOnlyRedisMock(PrefixDecorator):
         """
         raise Exception('ReadOnlyError')
 
+
 class RedisReadOnlyTest(TestCase, MockUtilsMixin):
     def setUp(self):
+        self._some_config = mock.MagicMock()
         self._split_changes_file_name = join(dirname(__file__), 'splitChangesReadOnly.json')
-        
+
         with open(self._split_changes_file_name) as f:
             self._json = load(f)
             split_definition = self._json['splits'][0]
@@ -92,7 +94,7 @@ class RedisReadOnlyTest(TestCase, MockUtilsMixin):
         self._mocked_redis = ReadOnlyRedisMock(self._redis)
         self._redis_split_cache = RedisSplitCache(self._redis)
         self._redis_split_cache.add_split(split_name, split_definition)
-        self._client = Client(RedisBroker(self._mocked_redis))
+        self._client = Client(RedisBroker(self._mocked_redis, self._some_config))
 
         self._impression = mock.MagicMock()
         self._start = mock.MagicMock()

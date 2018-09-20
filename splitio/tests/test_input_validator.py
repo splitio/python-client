@@ -24,9 +24,10 @@ from splitio.uwsgi import UWSGICacheEmulator
 class TestInputSanitizationGetTreatment(TestCase):
 
     def setUp(self):
+        self.some_config = mock.MagicMock()
         self.some_api_key = mock.MagicMock()
         self.redis = get_redis({'redisPrefix': 'test'})
-        self.client = Client(RedisBroker(self.redis))
+        self.client = Client(RedisBroker(self.redis, self.some_config))
         self.client._broker.fetch_feature = mock.MagicMock(return_value=Split(
             "some_feature",
             0,
@@ -200,9 +201,10 @@ class TestInputSanitizationGetTreatment(TestCase):
 class TestInputSanitizationTrack(TestCase):
 
     def setUp(self):
+        self.some_config = mock.MagicMock()
         self.some_api_key = mock.MagicMock()
         self.redis = get_redis({'redisPrefix': 'test'})
-        self.client = Client(RedisBroker(self.redis))
+        self.client = Client(RedisBroker(self.redis, self.some_config))
 
         input_validator._LOGGER.error = mock.MagicMock()
         self.logger_error = input_validator._LOGGER.error
@@ -335,9 +337,10 @@ class TestInputSanitizationTrack(TestCase):
 class TestInputSanitizationRedisManager(TestCase):
 
     def setUp(self):
+        self.some_config = mock.MagicMock()
         self.some_api_key = mock.MagicMock()
         self.redis = get_redis({'redisPrefix': 'test'})
-        self.client = Client(RedisBroker(self.redis))
+        self.client = Client(RedisBroker(self.redis, self.some_config))
 
         self.manager = RedisSplitManager(self.client._broker)
 

@@ -32,6 +32,120 @@ The following snippet shows you how to create a basic client using the default c
   'SOME_TREATMENT'
 ```
 
+## Logging
+Split SDK uses logging module from Python.
+
+### Logging sample
+```python
+import logging
+logging.basicConfig(level=logging.DEBUG)
+```
+
+## Cache
+Split SDK depends on the popular [redis-py](https://github.com/andymccurdy/redis-py) library.
+
+### Cache Adapter
+The redis-py library is supported as the python interface to the Redis key-value store. This library uses a connection pool to manage connections to a Redis server. For further information about how to configure the ```redis-py``` client, please take a look on [redis-py official docs](https://github.com/andymccurdy/redis-py)
+
+For ```redis``` and their dependencies such as ```jsonpickle``` you can use ```pip``` running the command ```pip install splitio_client[redis,cpphash]==5.5.0```
+
+#### Provided redis-py connection - sample code
+```python
+#Default imports
+from __future__ import print_function
+
+import sys
+
+from splitio import get_factory
+from splitio.exceptions import TimeoutException
+
+# redis-py options
+'''The options below, will be loaded as:
+r = redis.StrictRedis(host='localhost', port=6379, db=0, prefix='')
+'''
+config = {
+    'redisDb' : 0, 
+    'redisHost' : 'localhost',
+    'redisPosrt': 6379,
+    'redisPrefix': ''
+}
+
+# Create the Split Client instance.
+try:
+    factory = get_factory('API_KEY', config=config)
+    split = factory.client()
+except TimeoutException:
+    sys.exit()
+```
+
+#### Provided redis-py connection - sample code for Sentinel Support
+```python
+#Default imports
+from __future__ import print_function
+
+import sys
+
+from splitio import get_factory
+from splitio.exceptions import TimeoutException
+
+# redis-py options
+'''
+The options below, will be loaded as:
+sentinel = Sentinel(redisSentinels, { db: redisDb, socket_timeout: redisSocketTimeout })
+master = sentinel.master_for(redisMasterService)
+'''
+config = {
+    'redisDb': 0,
+    'redisPrefix': '',
+    'redisSentinels': [('IP', PORT), ('IP', PORT), ('IP', PORT)],
+    'redisMasterService': 'SERVICE_MASTER_NAME',
+    'redisSocketTimeout': 3
+}
+
+# Create the Split Client instance.
+try:
+    factory = get_factory('API_KEY', config=config)
+    split = factory.client()
+except TimeoutException:
+    sys.exit()
+```
+
+## Impression Listener
+Split SDKs send impression data back to Split servers periodically and as a result of evaluating splits. In order to additionally send this information to a location of your choice, you could define and attach an Impression Listener. For that purpose, SDK's options have a parameter called `impressionListener` where an implementation of `ImpressionListener` could be added. This implementation **must** define the `log_impression` method and it will receive data in the following schema:
+
+| Name | Type | Description |
+| --- | --- | --- |
+| impression | Impression | Impression object that has the feature_name, treatment result, label, etc. |
+| attributes | Array | A list of attributes passed by the client. |
+| instance-id | String | Corresponds to the IP of the machine where the SDK is running. |
+| sdk-language-version | String | Indicates the version of the sdk. In this case the language will be python plus the version of it. |
+
+### Implementing custom Impression Listener
+Below you could find an example of how implement a custom Impression Listener:
+```python
+# Import ImpressionListener interface
+from splitio.impressions import ImpressionListener
+
+# Implementation Sample for a Custom Impression Listener
+class CustomImpressionListener(ImpressionListener)
+{
+  def log_impression(self, data):
+    # Custom behavior
+}
+```
+
+### Attaching custom Impression Listener
+```python
+factory = get_factory(
+  'YOUR_API_KEY',
+  config={
+    # ...
+    'impressionListener': CustomImpressionListener()
+  },
+  # ...
+)
+split = factory.client()
+
 ## Additional information
 
 You can get more information on how to use this package in the included documentation.

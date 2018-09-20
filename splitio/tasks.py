@@ -12,7 +12,6 @@ from six.moves import queue
 
 from .splits import Status
 from .impressions import build_impressions_data
-from .impressions import _notify_listener
 from . import asynctask
 from . import events
 
@@ -135,7 +134,7 @@ def update_splits(split_cache, split_change_fetcher, split_parser):
     return added_features, removed_features
 
 
-def report_impressions(impressions_cache, sdk_api, listener=None):
+def report_impressions(impressions_cache, sdk_api):
     """
     If the reporting process is enabled (through the impressions cache),
     this function collects the impressions from the cache and sends them to
@@ -148,7 +147,6 @@ def report_impressions(impressions_cache, sdk_api, listener=None):
 
         impressions = impressions_cache.fetch_all_and_clear()
         test_impressions_data = build_impressions_data(impressions)
-        _notify_listener(listener, {'impressions': test_impressions_data})
 
         _logger.debug('Impressions to send: %s' % test_impressions_data)
 
