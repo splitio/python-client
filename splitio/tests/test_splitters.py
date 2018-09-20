@@ -154,6 +154,16 @@ class SplitterHashKeyTests(TestCase):
                 seed, key, hash_, bucket = line.split(',')
                 self.assertEqual(int(hash_), hashfn(key, int(seed)))
 
+    def test_murmur_with_custom_uuids(self):
+        """
+        Tests murmur32 hash against expected values using non alphanumeric values
+        """
+        hashfn = _HASH_ALGORITHMS[HashAlgorithm.MURMUR]
+        with io.open(join(dirname(__file__), 'murmur3-custom-uuids.csv'), 'r', encoding='utf-8') as f:
+            for line in f:
+                seed, key, hash_, bucket = line.split(',')
+                self.assertEqual(int(hash_), hashfn(key, int(seed)))
+
 
 class SplitterGetBucketUnitTests(TestCase):
     def setUp(self):

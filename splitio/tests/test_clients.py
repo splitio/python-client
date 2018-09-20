@@ -8,24 +8,21 @@ except ImportError:
     # Python 2
     import mock
 
-import tempfile
 import arrow
 import os.path
 
 from unittest import TestCase
-from time import sleep
 
-from splitio import get_factory
 from splitio.clients import Client
-from splitio.brokers import JSONFileBroker, LocalhostBroker, RedisBroker, \
+from splitio.brokers import JSONFileBroker, RedisBroker, \
     UWSGIBroker, randomize_interval, SelfRefreshingBroker
 from splitio.exceptions import TimeoutException
 from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, SDK_API_BASE_URL, \
     EVENTS_API_BASE_URL
 from splitio.treatments import CONTROL
 from splitio.tests.utils import MockUtilsMixin
-from splitio.managers import LocalhostSplitManager, \
-    SelfRefreshingSplitManager, UWSGISplitManager, RedisSplitManager
+from splitio.managers import SelfRefreshingSplitManager, UWSGISplitManager, RedisSplitManager
+
 
 class RandomizeIntervalTests(TestCase, MockUtilsMixin):
     def setUp(self):
@@ -66,7 +63,6 @@ class RandomizeIntervalTests(TestCase, MockUtilsMixin):
 
 
 class SelfRefreshingBrokerInitTests(TestCase, MockUtilsMixin):
-
 
     def setUp(self):
         self.build_sdk_api_mock = self.patch('splitio.brokers.SelfRefreshingBroker._build_sdk_api')
@@ -192,7 +188,7 @@ class SelfRefreshingBrokerStartTests(TestCase, MockUtilsMixin):
         """Test that if the event flag is set, a TimeoutException is not raised"""
         try:
             SelfRefreshingBroker(self.some_api_key, config={'ready': 10})
-        except:
+        except Exception:
             self.fail('An unexpected exception was raised')
 
 
@@ -263,7 +259,7 @@ class SelfRefreshingBrokerInitConfigTests(TestCase, MockUtilsMixin):
             'redisHost': 'localhost',
             'redisPort': 6379,
             'redisDb': 0,
-            'redisPassword':None,
+            'redisPassword': None,
             'redisSocketTimeout': None,
             'redisSocketConnectTimeout': None,
             'redisSocketKeepalive': None,
@@ -282,11 +278,9 @@ class SelfRefreshingBrokerInitConfigTests(TestCase, MockUtilsMixin):
             'redisSslCertReqs': None,
             'redisSslCaCerts': None,
             'redisMaxConnections': None,
-            'eventsPushRate' : 60,
+            'eventsPushRate': 60,
             'eventsQueueSize': 500,
         }
-
-
 
         self.client = SelfRefreshingBroker(self.some_api_key)
 
@@ -487,7 +481,6 @@ class SelfRefreshingBrokerBuildMetricsTests(TestCase, MockUtilsMixin):
         self.assertEqual(self.aync_metrics_mock.return_value, self.client._build_metrics())
 
 
-
 class JSONFileBrokerIntegrationTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -500,7 +493,8 @@ class JSONFileBrokerIntegrationTests(TestCase):
             os.path.dirname(__file__),
             'splitChanges.json'
         )
-        cls.client = Client(JSONFileBroker(cls.some_config, cls.segment_changes_file_name, cls.split_changes_file_name))
+        cls.client = Client(JSONFileBroker(cls.some_config, cls.segment_changes_file_name,
+                            cls.split_changes_file_name))
         cls.on_treatment = 'on'
         cls.off_treatment = 'off'
         cls.some_key = 'some_key'
@@ -1154,6 +1148,7 @@ class JSONFileBrokerIntegrationTests(TestCase):
         self.assertEqual(self.off_treatment, self.client.get_treatment(
             self.fake_id_not_in_segment, 'test_killed'))
 
+
 '''
 class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
     def setUp(self):
@@ -1208,14 +1203,14 @@ class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
             self.broker._parse_split_file(self.some_file_name)
 
 class LocalhostBrokerOffTheGrid(TestCase):
-    \'''
+    """
     Tests for LocalhostEnvironmentClient. Auto update config behaviour
-    \'''
+    """
     def test_auto_update_splits(self):
-        \'''
+        """
         Verifies that the split file is automatically re-parsed as soon as it's
         modified
-        \'''
+        """
         with tempfile.NamedTemporaryFile(mode='w') as split_file:
             split_file.write('a_test_split off\n')
             split_file.flush()
