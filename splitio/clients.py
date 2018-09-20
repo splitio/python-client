@@ -119,6 +119,29 @@ class Client(object):
 
             return CONTROL
 
+    def get_treatments(self, key, features, attributes=None):
+        """
+        Get the treatments for a list of features considering a key, with an optional dictionary of
+        attributes. This method never raises an exception. If there's a problem, the appropriate
+        log message will be generated and the method will return the CONTROL treatment.
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param features: Array of the names of the features for which to get the treatment
+        :type feature: str
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :return: The treatment for the key and feature
+        :rtype: str
+        """
+        if self._destroyed:
+            return CONTROL
+
+        result = dict()
+        for feature in features:
+            result[feature] = self.get_treatment(key, feature, attributes)
+
+        return result
+            
     def _build_impression(self, matching_key, feature_name, treatment, label, change_number, bucketing_key, time):
 
         if not self._labels_enabled:
