@@ -298,10 +298,10 @@ class TestInputSanitizationTrack(TestCase):
                                      "expression [a-zA-Z0-9][-_\\.a-zA-Z0-9]{0,62}.")
 
     def test_track_with_null_value(self):
-        self.assertEqual(False, self.client.track(
+        self.assertEqual(True, self.client.track(
             "some_key", "traffic_type", "event_type", None))
-        self.logger_error \
-            .assert_called_once_with("track: value cannot be None.")
+        self.logger_error.assert_not_called()
+        self.logger_warning.assert_not_called()
 
     def test_track_with_string_value(self):
         self.assertEqual(False, self.client.track(

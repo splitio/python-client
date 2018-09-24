@@ -262,7 +262,7 @@ class Client(object):
         traffic_type = input_validator.validate_traffic_type(traffic_type)
         value = input_validator.validate_value(value)
 
-        if key is None or event_type is None or traffic_type is None or value is None:
+        if key is None or event_type is None or traffic_type is None or value is False:
             return False
 
         event = Event(

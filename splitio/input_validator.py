@@ -261,11 +261,11 @@ def validate_value(value):
     :return: value
     :rtype: number|None
     """
-    if _check_not_null(value, 'value', 'track') is False:
+    if value is None:
         return None
     if not isinstance(value, Number) or isinstance(value, bool):
         _LOGGER.error('track: value must be a number.')
-        return None
+        return False
     return value
 
 
