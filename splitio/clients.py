@@ -139,13 +139,12 @@ class Client(object):
                     self._broker.get_change_number(), bucketing_key, start
                 )
                 self._record_stats(impression, start, SDK_GET_TREATMENT)
+
+                self._handle_custom_impression(impression, attributes)
             except Exception:  # pylint: disable=broad-except
                 self._logger.exception(
                     'Exception reporting impression into get_treatment exception block'
                 )
-
-                self._handle_custom_impression(impression, attributes)
-
             return CONTROL
 
     def _build_impression(
