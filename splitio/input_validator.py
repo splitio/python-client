@@ -49,7 +49,7 @@ def _check_is_string(value, name, operation):
     return True
 
 
-def _check_not_empty(value, name, operation):
+def _check_string_not_empty(value, name, operation):
     """
     Checks if value is an empty string
 
@@ -68,7 +68,7 @@ def _check_not_empty(value, name, operation):
     return True
 
 
-def _check_pattern_match(value, name, operation, pattern):
+def _check_string_matches(value, name, operation, pattern):
     """
     Checks if value is adhere to a regular expression passed
 
@@ -131,7 +131,7 @@ def _check_valid_matching_key(matching_key):
                       'matchingKey with valid string properties.')
         return False
     if isinstance(matching_key, six.string_types):
-        if not _check_not_empty(matching_key, 'matching_key', 'get_treatment'):
+        if not _check_string_not_empty(matching_key, 'matching_key', 'get_treatment'):
             return False
     else:
         if not _check_can_convert(matching_key, 'matching_key', 'get_treatment',
@@ -230,7 +230,7 @@ def validate_traffic_type(traffic_type):
     """
     if (not _check_not_null(traffic_type, 'traffic_type', 'track')) or \
        (not _check_is_string(traffic_type, 'traffic_type', 'track')) or \
-       (not _check_not_empty(traffic_type, 'traffic_type', 'track')):
+       (not _check_string_not_empty(traffic_type, 'traffic_type', 'track')):
         return None
     return traffic_type
 
@@ -246,8 +246,8 @@ def validate_event_type(event_type):
     """
     if (not _check_not_null(event_type, 'event_type', 'track')) or \
        (not _check_is_string(event_type, 'event_type', 'track')) or \
-       (not _check_pattern_match(event_type, 'event_type', 'track',
-                                 r'[a-zA-Z0-9][-_\.a-zA-Z0-9]{0,62}')):
+       (not _check_string_matches(event_type, 'event_type', 'track',
+                                  r'[a-zA-Z0-9][-_\.a-zA-Z0-9]{0,62}')):
         return None
     return event_type
 
