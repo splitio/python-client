@@ -57,12 +57,13 @@ class BaseBroker(object):
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self):
+    def __init__(self, config=None):
         """
         Class constructor, only sets up the logger
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self._destroyed = False
+        self._config = config
 
     def fetch_feature(self, name):
         """
@@ -120,7 +121,7 @@ class BaseBroker(object):
         pass
 
 class JSONFileBroker(BaseBroker):
-    def __init__(self, segment_changes_file_name, split_changes_file_name):
+    def __init__(self, config, segment_changes_file_name, split_changes_file_name):
         """
         A Broker implementation that uses responses from the segmentChanges and
         splitChanges resources to provide access to splits. It is intended to be
@@ -133,7 +134,7 @@ class JSONFileBroker(BaseBroker):
             splitChanges response
         :type split_changes_file_name: str
         """
-        super(JSONFileBroker, self).__init__()
+        super(JSONFileBroker, self).__init__(config)
         self._segment_changes_file_name = segment_changes_file_name
         self._split_changes_file_name = split_changes_file_name
         self._split_fetcher = self._build_split_fetcher()
@@ -310,7 +311,6 @@ class SelfRefreshingBroker(BaseBroker):
             self._sdk_api,
             max_count=self._max_impressions_log_size,
             interval=self._impressions_interval,
-            listener=self._impression_listener
         )
         return AsyncTreatmentLog(self_updating_treatment_log)
 
@@ -388,7 +388,7 @@ class LocalhostBroker(BaseBroker):
         def log(self, event):
             pass
 
-    def __init__(self, split_definition_file_name=None, auto_refresh_period=2):
+    def __init__(self, config, split_definition_file_name=None, auto_refresh_period=2):
         """
         A broker implementation that builds its configuration from a split
         definition file. By default the definition is taken from $HOME/.split
@@ -398,7 +398,7 @@ class LocalhostBroker(BaseBroker):
         :param auto_refresh_period: Number of seconds between split refresh calls
         :type auto_refresh_period: int
         """
-        super(LocalhostBroker, self).__init__()
+        super(LocalhostBroker, self).__init__(config)
 
         if split_definition_file_name is None:
             self._split_definition_file_name = os.path.join(
@@ -503,11 +503,11 @@ class LocalhostBroker(BaseBroker):
 
 
 class RedisBroker(BaseBroker):
-    def __init__(self, redis):
+    def __init__(self, redis, config):
         """A Broker implementation that uses Redis as its backend.
         :param redis: A redis broker
         :type redis: StrctRedis"""
-        super(RedisBroker, self).__init__()
+        super(RedisBroker, self).__init__(config)
 
         split_cache = RedisSplitCache(redis)
         split_fetcher = CacheBasedSplitFetcher(split_cache)
@@ -571,7 +571,7 @@ class UWSGIBroker(BaseBroker):
         :param config: The configuration dictionary
         :type config: dict
         """
-        super(UWSGIBroker, self).__init__()
+        super(UWSGIBroker, self).__init__(config)
 
         split_cache = UWSGISplitCache(uwsgi)
         split_fetcher = CacheBasedSplitFetcher(split_cache)
@@ -712,7 +712,7 @@ def get_self_refreshing_broker(api_key, **kwargs):
     )
 
     if api_key == 'localhost':
-        return LocalhostBroker(**kwargs)
+        return LocalhostBroker(config, **kwargs)
 
     return SelfRefreshingBroker(
         api_key,
@@ -776,11 +776,11 @@ def get_redis_broker(api_key, **kwargs):
     api_key, config, _, _ = _init_config(api_key, **kwargs)
 
     if api_key == 'localhost':
-        return LocalhostBroker(**kwargs)
+        return LocalhostBroker(config, **kwargs)
 
     redis = get_redis(config)
 
-    redis_broker = RedisBroker(redis)
+    redis_broker = RedisBroker(redis, config)
 
     return redis_broker
 
@@ -836,7 +836,7 @@ def get_uwsgi_broker(api_key, **kwargs):
     api_key, config, _, _ = _init_config(api_key, **kwargs)
 
     if api_key == 'localhost':
-        return LocalhostBroker(**kwargs)
+        return LocalhostBroker(config, **kwargs)
 
     uwsgi = get_uwsgi()
     uwsgi_broker = UWSGIBroker(uwsgi, config)

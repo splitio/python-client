@@ -173,8 +173,7 @@ def uwsgi_report_impressions(user_config):
             sdk_api = api_factory(config)
             report_impressions(
                 impressions_cache,
-                sdk_api,
-                user_config.get('impression_listener'))
+                sdk_api)
 
             time.sleep(seconds)
     except:
