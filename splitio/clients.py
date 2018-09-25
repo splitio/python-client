@@ -169,13 +169,13 @@ class Client(object):
         if self._destroyed:
             return CONTROL
 
-        filtered_features = set(filter(lambda x: x is not None, features))
+        features = input_validator.validate_features_get_treatments(features)
 
-        if len(filtered_features) == 0:
+        if features is None:
             return CONTROL
 
         result = dict()
-        for feature in filtered_features:
+        for feature in features:
             result[feature] = self.get_treatment(key, feature, attributes)
 
         return result

@@ -443,3 +443,44 @@ class TestInputSanitizationUWSGIManager(TestCase):
     def test_manager_with_valid_feature_name(self):
         self.assertEqual(None, self.manager.split("valid_feature_name"))
         self.logger_error.assert_not_called()
+
+
+class TestInputSanitizationGetTreatmentS(TestCase):
+
+    def setUp(self):
+        self.some_config = mock.MagicMock()
+        self.some_api_key = mock.MagicMock()
+        self.redis = get_redis({'redisPrefix': 'test'})
+        self.client = Client(RedisBroker(self.redis, self.some_config))
+
+        input_validator._LOGGER.error = mock.MagicMock()
+        self.logger_error = input_validator._LOGGER.error
+        input_validator._LOGGER.warning = mock.MagicMock()
+        self.logger_warning = input_validator._LOGGER.warning
+
+    def test_get_treatments_with_null_features(self):
+        self.assertEqual("control", self.client.get_treatments("some_key", None))
+        self.logger_error \
+            .assert_called_once_with("get_treatments: features cannot be None.")
+
+    def test_get_treatments_with_bool_type_of_features(self):
+        self.assertEqual("control", self.client.get_treatments("some_key", True))
+        self.logger_error \
+            .assert_called_once_with("get_treatments: features must be a list.")
+
+    def test_get_treatments_with_string_type_of_features(self):
+        self.assertEqual("control", self.client.get_treatments("some_key", "some_string"))
+        self.logger_error \
+            .assert_called_once_with("get_treatments: features must be a list.")
+
+    def test_get_treatments_with_empty_features(self):
+        self.assertEqual({}, self.client.get_treatments("some_key", []))
+        self.logger_warning \
+            .assert_called_once_with("get_treatments: features is an empty "
+                                     "list or has None values.")
+
+    def test_get_treatments_with_none_features(self):
+        self.assertEqual({}, self.client.get_treatments("some_key", [None, None]))
+        self.logger_warning \
+            .assert_called_once_with("get_treatments: features is an empty "
+                                     "list or has None values.")
