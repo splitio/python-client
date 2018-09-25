@@ -48,10 +48,15 @@ class Client(object):
         self._destroyed = True
         self._broker.destroy()
 
-    def _handle_custom_impression(self, impression, attributes):
+    def _send_impression_to_listener(self, impression, attributes):
         '''
-        Handles custom impression if is present. Basically, sends the data
-        to client if some logic is wanted to do.
+        Sends impression result to custom listener.
+
+        :param impression: Generated impression
+        :type impression: Impression
+
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
         '''
         if self._impression_listener is not None:
             try:
@@ -124,7 +129,7 @@ class Client(object):
                                                 _change_number, bucketing_key, start)
             self._record_stats(impression, start, SDK_GET_TREATMENT)
 
-            self._handle_custom_impression(impression, attributes)
+            self._send_impression_to_listener(impression, attributes)
 
             return _treatment
         except Exception:  # pylint: disable=broad-except
@@ -140,7 +145,7 @@ class Client(object):
                 )
                 self._record_stats(impression, start, SDK_GET_TREATMENT)
 
-                self._handle_custom_impression(impression, attributes)
+                self._send_impression_to_listener(impression, attributes)
             except Exception:  # pylint: disable=broad-except
                 self._logger.exception(
                     'Exception reporting impression into get_treatment exception block'
@@ -153,8 +158,6 @@ class Client(object):
     ):
         """
         Build an impression.
-
-        TODO: REFACTOR THIS!
         """
         if not self._labels_enabled:
             label = None
@@ -176,7 +179,7 @@ class Client(object):
         :type start: int
 
         :param operation: operation performed.
-        :type operation: string
+        :type operation: str
         """
         try:
             end = int(round(time.time() * 1000))
@@ -243,13 +246,13 @@ class Client(object):
         Track an event.
 
         :param key: user key associated to the event
-        :type key: string
+        :type key: str
 
         :param traffic_type: traffic type name
-        :type traffic_type: string
+        :type traffic_type: str
 
         :param event_type: event type name
-        :type event_type: string
+        :type event_type: str
 
         :param value: (Optional) value associated to the event
         :type value: Number

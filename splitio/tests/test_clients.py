@@ -8,13 +8,16 @@ except ImportError:
     # Python 2
     import mock
 
+import tempfile
 import arrow
 import os.path
 
 from unittest import TestCase
+from time import sleep
 
+from splitio import get_factory
 from splitio.clients import Client
-from splitio.brokers import JSONFileBroker, RedisBroker, \
+from splitio.brokers import JSONFileBroker, RedisBroker, LocalhostBroker, \
     UWSGIBroker, randomize_interval, SelfRefreshingBroker
 from splitio.exceptions import TimeoutException
 from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, SDK_API_BASE_URL, \
@@ -1149,7 +1152,6 @@ class JSONFileBrokerIntegrationTests(TestCase):
             self.fake_id_not_in_segment, 'test_killed'))
 
 
-'''
 class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.some_file_name = mock.MagicMock()
@@ -1161,9 +1163,8 @@ class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
 
         self.open_mock = self.patch_builtin('open')
         self.some_config = mock.MagicMock()
-        self.broker = LocalhostBroker(self.some_config)
         self.threading_mock = self.patch('threading.Thread')
-        self.broker = LocalhostBroker()
+        self.broker = LocalhostBroker(self.some_config)
 
     def test_skips_comment_lines(self):
         """Test that _parse_split_file skips comment lines"""
@@ -1202,6 +1203,7 @@ class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
         with self.assertRaises(ValueError):
             self.broker._parse_split_file(self.some_file_name)
 
+
 class LocalhostBrokerOffTheGrid(TestCase):
     """
     Tests for LocalhostEnvironmentClient. Auto update config behaviour
@@ -1226,7 +1228,6 @@ class LocalhostBrokerOffTheGrid(TestCase):
 
             self.assertEqual(client.get_treatment('x', 'a_test_split'), 'on')
             client.destroy()
-'''
 
 
 class TestClientDestroy(TestCase):

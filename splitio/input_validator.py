@@ -62,7 +62,7 @@ def _check_not_empty(value, name, operation):
     :return: The result of validation
     :rtype: True|False
     """
-    if not value:
+    if value.strip() == "":
         _LOGGER.error('{}: {} must not be empty.'.format(operation, name))
         return False
     return True
@@ -108,7 +108,7 @@ def _check_can_convert(value, name, operation, message):
     if isinstance(value, six.string_types):
         return True
     else:
-        if isinstance(value, bool) or isinstance(value, Number) is False:
+        if isinstance(value, bool) or (not isinstance(value, Number)):
             _LOGGER.error('{}: {} {} {}'.format(operation, name, value, message))
             return False
     _LOGGER.warning('{}: {} {} is not of type string, converting.'
@@ -131,11 +131,11 @@ def _check_valid_matching_key(matching_key):
                       'matchingKey with valid string properties.')
         return False
     if isinstance(matching_key, six.string_types):
-        if _check_not_empty(matching_key, 'matching_key', 'get_treatment') is False:
+        if not _check_not_empty(matching_key, 'matching_key', 'get_treatment'):
             return False
     else:
-        if _check_can_convert(matching_key, 'matching_key', 'get_treatment',
-                              'has to be of type string.') is False:
+        if not _check_can_convert(matching_key, 'matching_key', 'get_treatment',
+                                  'has to be of type string.'):
             return False
     return True
 
@@ -153,8 +153,8 @@ def _check_valid_bucketing_key(bucketing_key):
     if bucketing_key is None:
         _LOGGER.warning('get_treatment: Key object should have bucketingKey set.')
         return None
-    if _check_can_convert(bucketing_key, 'bucketing_key', 'get_treatment',
-                          'has to be of type string.') is False:
+    if not _check_can_convert(bucketing_key, 'bucketing_key', 'get_treatment',
+                              'has to be of type string.'):
         return False
     return str(bucketing_key)
 
@@ -171,7 +171,7 @@ def validate_key(key):
     """
     matching_key_result = None
     bucketing_key_result = None
-    if _check_not_null(key, 'key', 'get_treatment') is False:
+    if not _check_not_null(key, 'key', 'get_treatment'):
         return None, None
     if isinstance(key, Key):
         if _check_valid_matching_key(key.matching_key):
@@ -198,8 +198,8 @@ def validate_feature_name(feature_name):
     :return: feature_name
     :rtype: str|None
     """
-    if _check_not_null(feature_name, 'feature_name', 'get_treatment') is False or \
-       _check_is_string(feature_name, 'feature_name', 'get_treatment') is False:
+    if (not _check_not_null(feature_name, 'feature_name', 'get_treatment')) or \
+       (not _check_is_string(feature_name, 'feature_name', 'get_treatment')):
         return None
     return feature_name
 
@@ -213,8 +213,8 @@ def validate_track_key(key):
     :return: key
     :rtype: str|None
     """
-    if _check_not_null(key, 'key', 'track') is False or \
-       _check_can_convert(key, 'key', 'track', 'has to be of type string.') is False:
+    if (not _check_not_null(key, 'key', 'track')) or \
+       (not _check_can_convert(key, 'key', 'track', 'has to be of type string.')):
         return None
     return str(key)
 
@@ -228,9 +228,9 @@ def validate_traffic_type(traffic_type):
     :return: traffic_type
     :rtype: str|None
     """
-    if _check_not_null(traffic_type, 'traffic_type', 'track') is False or \
-       _check_is_string(traffic_type, 'traffic_type', 'track') is False or \
-       _check_not_empty(traffic_type, 'traffic_type', 'track') is False:
+    if (not _check_not_null(traffic_type, 'traffic_type', 'track')) or \
+       (not _check_is_string(traffic_type, 'traffic_type', 'track')) or \
+       (not _check_not_empty(traffic_type, 'traffic_type', 'track')):
         return None
     return traffic_type
 
@@ -244,10 +244,10 @@ def validate_event_type(event_type):
     :return: event_type
     :rtype: str|None
     """
-    if _check_not_null(event_type, 'event_type', 'track') is False or \
-       _check_is_string(event_type, 'event_type', 'track') is False or \
-       _check_pattern_match(event_type, 'event_type', 'track',
-                            r'[a-zA-Z0-9][-_\.a-zA-Z0-9]{0,62}') is False:
+    if (not _check_not_null(event_type, 'event_type', 'track')) or \
+       (not _check_is_string(event_type, 'event_type', 'track')) or \
+       (not _check_pattern_match(event_type, 'event_type', 'track',
+                                 r'[a-zA-Z0-9][-_\.a-zA-Z0-9]{0,62}')):
         return None
     return event_type
 
@@ -263,7 +263,7 @@ def validate_value(value):
     """
     if value is None:
         return None
-    if not isinstance(value, Number) or isinstance(value, bool):
+    if (not isinstance(value, Number)) or isinstance(value, bool):
         _LOGGER.error('track: value must be a number.')
         return False
     return value
@@ -278,7 +278,7 @@ def validate_manager_feature_name(feature_name):
     :return: feature_name
     :rtype: str|None
     """
-    if _check_not_null(feature_name, 'feature_name', 'split') is False or \
-       _check_is_string(feature_name, 'feature_name', 'split') is False:
+    if (not _check_not_null(feature_name, 'feature_name', 'split')) or \
+       (not _check_is_string(feature_name, 'feature_name', 'split')):
         return None
     return feature_name
