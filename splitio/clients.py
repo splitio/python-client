@@ -160,11 +160,11 @@ class Client(object):
         :param key: The key for which to get the treatment
         :type key: str
         :param features: Array of the names of the features for which to get the treatment
-        :type feature: str
+        :type feature: list
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
-        :return: The treatment for the key and feature
-        :rtype: str
+        :return: Dictionary with the result of all the features provided
+        :rtype: dict
         """
         if self._destroyed:
             return CONTROL
