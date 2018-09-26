@@ -17,15 +17,15 @@ from time import sleep
 
 from splitio import get_factory
 from splitio.clients import Client
-from splitio.brokers import JSONFileBroker, LocalhostBroker, RedisBroker, \
+from splitio.brokers import JSONFileBroker, RedisBroker, LocalhostBroker, \
     UWSGIBroker, randomize_interval, SelfRefreshingBroker
 from splitio.exceptions import TimeoutException
 from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, SDK_API_BASE_URL, \
     EVENTS_API_BASE_URL
 from splitio.treatments import CONTROL
 from splitio.tests.utils import MockUtilsMixin
-from splitio.managers import LocalhostSplitManager, \
-    SelfRefreshingSplitManager, UWSGISplitManager, RedisSplitManager
+from splitio.managers import SelfRefreshingSplitManager, UWSGISplitManager, RedisSplitManager
+
 
 class RandomizeIntervalTests(TestCase, MockUtilsMixin):
     def setUp(self):
@@ -66,7 +66,6 @@ class RandomizeIntervalTests(TestCase, MockUtilsMixin):
 
 
 class SelfRefreshingBrokerInitTests(TestCase, MockUtilsMixin):
-
 
     def setUp(self):
         self.build_sdk_api_mock = self.patch('splitio.brokers.SelfRefreshingBroker._build_sdk_api')
@@ -192,7 +191,7 @@ class SelfRefreshingBrokerStartTests(TestCase, MockUtilsMixin):
         """Test that if the event flag is set, a TimeoutException is not raised"""
         try:
             SelfRefreshingBroker(self.some_api_key, config={'ready': 10})
-        except:
+        except Exception:
             self.fail('An unexpected exception was raised')
 
 
@@ -263,7 +262,7 @@ class SelfRefreshingBrokerInitConfigTests(TestCase, MockUtilsMixin):
             'redisHost': 'localhost',
             'redisPort': 6379,
             'redisDb': 0,
-            'redisPassword':None,
+            'redisPassword': None,
             'redisSocketTimeout': None,
             'redisSocketConnectTimeout': None,
             'redisSocketKeepalive': None,
@@ -282,11 +281,9 @@ class SelfRefreshingBrokerInitConfigTests(TestCase, MockUtilsMixin):
             'redisSslCertReqs': None,
             'redisSslCaCerts': None,
             'redisMaxConnections': None,
-            'eventsPushRate' : 60,
+            'eventsPushRate': 60,
             'eventsQueueSize': 500,
         }
-
-
 
         self.client = SelfRefreshingBroker(self.some_api_key)
 
@@ -439,8 +436,7 @@ class SelfRefreshingBrokerBuildTreatmentLogTests(TestCase, MockUtilsMixin):
         self.self_updating_treatment_log_mock.assert_called_once_with(
             self.client._sdk_api,
             max_count=self.client._max_impressions_log_size,
-            interval=self.client._impressions_interval,
-            listener=None
+            interval=self.client._impressions_interval
         )
 
     def test_calls_async_treatment_log_constructor(self):
@@ -488,10 +484,10 @@ class SelfRefreshingBrokerBuildMetricsTests(TestCase, MockUtilsMixin):
         self.assertEqual(self.aync_metrics_mock.return_value, self.client._build_metrics())
 
 
-
 class JSONFileBrokerIntegrationTests(TestCase):
     @classmethod
     def setUpClass(cls):
+        cls.some_config = mock.MagicMock()
         cls.segment_changes_file_name = os.path.join(
             os.path.dirname(__file__),
             'segmentChanges.json'
@@ -500,7 +496,8 @@ class JSONFileBrokerIntegrationTests(TestCase):
             os.path.dirname(__file__),
             'splitChanges.json'
         )
-        cls.client = Client(JSONFileBroker(cls.segment_changes_file_name, cls.split_changes_file_name))
+        cls.client = Client(JSONFileBroker(cls.some_config, cls.segment_changes_file_name,
+                            cls.split_changes_file_name))
         cls.on_treatment = 'on'
         cls.off_treatment = 'off'
         cls.some_key = 'some_key'
@@ -1165,8 +1162,9 @@ class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
             'splitio.tests.test_clients.LocalhostBroker._build_split_fetcher')
 
         self.open_mock = self.patch_builtin('open')
+        self.some_config = mock.MagicMock()
         self.threading_mock = self.patch('threading.Thread')
-        self.broker = LocalhostBroker()
+        self.broker = LocalhostBroker(self.some_config)
 
     def test_skips_comment_lines(self):
         """Test that _parse_split_file skips comment lines"""
@@ -1207,14 +1205,14 @@ class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
 
 
 class LocalhostBrokerOffTheGrid(TestCase):
-    '''
+    """
     Tests for LocalhostEnvironmentClient. Auto update config behaviour
-    '''
+    """
     def test_auto_update_splits(self):
-        '''
+        """
         Verifies that the split file is automatically re-parsed as soon as it's
         modified
-        '''
+        """
         with tempfile.NamedTemporaryFile(mode='w') as split_file:
             split_file.write('a_test_split off\n')
             split_file.flush()
@@ -1231,12 +1229,14 @@ class LocalhostBrokerOffTheGrid(TestCase):
             self.assertEqual(client.get_treatment('x', 'a_test_split'), 'on')
             client.destroy()
 
+
 class TestClientDestroy(TestCase):
     """
     """
 
     def setUp(self):
         self.some_api_key = mock.MagicMock()
+        self.some_config = mock.MagicMock()
 
     def test_self_refreshing_destroy(self):
         broker = SelfRefreshingBroker(self.some_api_key)
@@ -1248,7 +1248,7 @@ class TestClientDestroy(TestCase):
         self.assertEqual(manager.split_names(), [])
 
     def test_redis_destroy(self):
-        broker = RedisBroker(self.some_api_key)
+        broker = RedisBroker(self.some_api_key, self.some_config)
         client = Client(broker)
         manager = RedisSplitManager(broker)
         client.destroy()
@@ -1264,4 +1264,3 @@ class TestClientDestroy(TestCase):
         self.assertEqual(client.get_treatment('asd', 'asd'), CONTROL)
         self.assertEqual(manager.splits(), [])
         self.assertEqual(manager.split_names(), [])
-

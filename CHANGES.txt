@@ -1,3 +1,6 @@
+6.1.0 (Sep 25, 2018)
+ - Add custom impression listener feature.
+ - Input Sanitization for track, get_treatment and split.
 6.0.0 (Aug 29, 2018)
  - Add support for redis sentinel
  - UWSGI performance boost (breaking change)
