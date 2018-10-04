@@ -174,11 +174,7 @@ class Client(object):
         if features is None:
             return CONTROL
 
-        result = dict()
-        for feature in features:
-            result[feature] = self.get_treatment(key, feature, attributes)
-
-        return result
+        return {feature: self.get_treatment(key, feature, attributes) for feature in features}
 
     def _build_impression(
             self, matching_key, feature_name, treatment, label,
