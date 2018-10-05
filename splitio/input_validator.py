@@ -282,3 +282,23 @@ def validate_manager_feature_name(feature_name):
        (not _check_is_string(feature_name, 'feature_name', 'split')):
         return None
     return feature_name
+
+
+def validate_features_get_treatments(features):
+    """
+    Checks if features is valid for get_treatments
+
+    :param features: array of features
+    :type features: list
+    :return: filtered_features
+    :rtype: list|None
+    """
+    if not _check_not_null(features, 'features', 'get_treatments'):
+        return None
+    if not isinstance(features, list):
+        _LOGGER.error('get_treatments: features must be a list.')
+        return None
+    filtered_features = set(filter(lambda x: x is not None, features))
+    if len(filtered_features) == 0:
+        _LOGGER.warning('get_treatments: features is an empty list or has None values.')
+    return filtered_features

@@ -152,6 +152,30 @@ class Client(object):
                 )
             return CONTROL
 
+    def get_treatments(self, key, features, attributes=None):
+        """
+        Get the treatments for a list of features considering a key, with an optional dictionary of
+        attributes. This method never raises an exception. If there's a problem, the appropriate
+        log message will be generated and the method will return the CONTROL treatment.
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param features: Array of the names of the features for which to get the treatment
+        :type feature: list
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :return: Dictionary with the result of all the features provided
+        :rtype: dict
+        """
+        if self._destroyed:
+            return CONTROL
+
+        features = input_validator.validate_features_get_treatments(features)
+
+        if features is None:
+            return CONTROL
+
+        return {feature: self.get_treatment(key, feature, attributes) for feature in features}
+
     def _build_impression(
             self, matching_key, feature_name, treatment, label,
             change_number, bucketing_key, imp_time

@@ -1,3 +1,5 @@
+6.2.0 (Oct 5, 2018)
+ - Added get_treatments method.
 6.1.0 (Sep 25, 2018)
  - Add custom impression listener feature.
  - Input Sanitization for track, get_treatment and split.
