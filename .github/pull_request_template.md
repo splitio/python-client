@@ -1,7 +1,7 @@
 # Python SDK
 
 ## Tickets covered:
-* [SDKS-{TICKET}](https://splitio.atlassian.net/browse/SDKS-{TICKET})
+*
 
 ## What did you accomplish?
 * Bullet 1
