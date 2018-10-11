@@ -459,17 +459,17 @@ class TestInputSanitizationGetTreatmentS(TestCase):
         self.logger_warning = input_validator._LOGGER.warning
 
     def test_get_treatments_with_null_features(self):
-        self.assertEqual("control", self.client.get_treatments("some_key", None))
+        self.assertEqual(None, self.client.get_treatments("some_key", None))
         self.logger_error \
             .assert_called_once_with("get_treatments: features cannot be None.")
 
     def test_get_treatments_with_bool_type_of_features(self):
-        self.assertEqual("control", self.client.get_treatments("some_key", True))
+        self.assertEqual(None, self.client.get_treatments("some_key", True))
         self.logger_error \
             .assert_called_once_with("get_treatments: features must be a list.")
 
     def test_get_treatments_with_string_type_of_features(self):
-        self.assertEqual("control", self.client.get_treatments("some_key", "some_string"))
+        self.assertEqual(None, self.client.get_treatments("some_key", "some_string"))
         self.logger_error \
             .assert_called_once_with("get_treatments: features must be a list.")
 

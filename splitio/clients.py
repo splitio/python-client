@@ -167,12 +167,12 @@ class Client(object):
         :rtype: dict
         """
         if self._destroyed:
-            return CONTROL
+            return None
 
         features = input_validator.validate_features_get_treatments(features)
 
         if features is None:
-            return CONTROL
+            return None
 
         return {feature: self.get_treatment(key, feature, attributes) for feature in features}
 
