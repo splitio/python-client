@@ -64,7 +64,7 @@ class TestInputSanitizationGetTreatment(TestCase):
         self.assertEqual(CONTROL, self.client.get_treatment(
             True, "some_feature"))
         self.logger_error \
-            .assert_called_once_with("get_treatment: key True has to be of type string "
+            .assert_called_once_with("get_treatment: key has to be of type string "
                                      "or object Key.")
         self.client._build_impression.assert_called_once_with(
             None, "some_feature", CONTROL, Label.EXCEPTION, 0, None, mock.ANY
@@ -74,7 +74,7 @@ class TestInputSanitizationGetTreatment(TestCase):
         self.assertEqual(CONTROL, self.client.get_treatment(
             [], "some_feature"))
         self.logger_error \
-            .assert_called_once_with("get_treatment: key [] has to be of type string "
+            .assert_called_once_with("get_treatment: key has to be of type string "
                                      "or object Key.")
         self.client._build_impression.assert_called_once_with(
             None, "some_feature", CONTROL, Label.EXCEPTION, 0, None, mock.ANY
@@ -93,7 +93,7 @@ class TestInputSanitizationGetTreatment(TestCase):
         self.assertEqual(CONTROL, self.client.get_treatment(
             "some_key", 12345))
         self.logger_error \
-            .assert_called_once_with("get_treatment: feature_name 12345 has to be of type string.")
+            .assert_called_once_with("get_treatment: feature_name has to be of type string.")
         self.client._build_impression.assert_called_once_with(
             "some_key", None, CONTROL, Label.EXCEPTION, 0, None, mock.ANY
         )
@@ -102,7 +102,7 @@ class TestInputSanitizationGetTreatment(TestCase):
         self.assertEqual(CONTROL, self.client.get_treatment(
             "some_key", True))
         self.logger_error \
-            .assert_called_once_with("get_treatment: feature_name True has to be of type string.")
+            .assert_called_once_with("get_treatment: feature_name has to be of type string.")
         self.client._build_impression.assert_called_once_with(
             "some_key", None, CONTROL, Label.EXCEPTION, 0, None, mock.ANY
         )
@@ -111,7 +111,7 @@ class TestInputSanitizationGetTreatment(TestCase):
         self.assertEqual(CONTROL, self.client.get_treatment(
             "some_key", []))
         self.logger_error \
-            .assert_called_once_with("get_treatment: feature_name [] has to be of type string.")
+            .assert_called_once_with("get_treatment: feature_name has to be of type string.")
         self.client._build_impression.assert_called_once_with(
             "some_key", None, CONTROL, Label.EXCEPTION, 0, None, mock.ANY
         )
@@ -145,7 +145,7 @@ class TestInputSanitizationGetTreatment(TestCase):
         self.assertEqual(CONTROL, self.client.get_treatment(
             Key(True, "bucketing_key"), "some_feature"))
         self.logger_error \
-            .assert_called_once_with("get_treatment: matching_key True has to be of type string.")
+            .assert_called_once_with("get_treatment: matching_key has to be of type string.")
         self.client._build_impression.assert_called_once_with(
             None, "some_feature", CONTROL, Label.EXCEPTION, 0, None, mock.ANY
         )
@@ -154,7 +154,7 @@ class TestInputSanitizationGetTreatment(TestCase):
         self.assertEqual(CONTROL, self.client.get_treatment(
             Key([], "bucketing_key"), "some_feature"))
         self.logger_error \
-            .assert_called_once_with("get_treatment: matching_key [] has to be of type string.")
+            .assert_called_once_with("get_treatment: matching_key has to be of type string.")
         self.client._build_impression.assert_called_once_with(
             None, "some_feature", CONTROL, Label.EXCEPTION, 0, None, mock.ANY
         )
@@ -176,7 +176,7 @@ class TestInputSanitizationGetTreatment(TestCase):
         self.assertEqual(CONTROL, self.client.get_treatment(
             Key("matching_key", True), "some_feature"))
         self.logger_error \
-            .assert_called_once_with("get_treatment: bucketing_key True has to be of type string.")
+            .assert_called_once_with("get_treatment: bucketing_key has to be of type string.")
         self.client._build_impression.assert_called_once_with(
             None, "some_feature", CONTROL, Label.EXCEPTION, 0, None, mock.ANY
         )
@@ -185,7 +185,7 @@ class TestInputSanitizationGetTreatment(TestCase):
         self.assertEqual(CONTROL, self.client.get_treatment(
             Key("matching_key", []), "some_feature"))
         self.logger_error \
-            .assert_called_once_with("get_treatment: bucketing_key [] has to be of type string.")
+            .assert_called_once_with("get_treatment: bucketing_key has to be of type string.")
         self.client._build_impression.assert_called_once_with(
             None, "some_feature", CONTROL, Label.EXCEPTION, 0, None, mock.ANY
         )
@@ -228,13 +228,13 @@ class TestInputSanitizationTrack(TestCase):
         self.assertEqual(False, self.client.track(
             True, "traffic_type", "event_type", 1))
         self.logger_error \
-            .assert_called_once_with("track: key True has to be of type string.")
+            .assert_called_once_with("track: key has to be of type string.")
 
     def test_track_with_array_key(self):
         self.assertEqual(False, self.client.track(
             [], "traffic_type", "event_type", 1))
         self.logger_error \
-            .assert_called_once_with("track: key [] has to be of type string.")
+            .assert_called_once_with("track: key has to be of type string.")
 
     def test_track_with_null_traffic_type(self):
         self.assertEqual(False, self.client.track(
@@ -246,19 +246,19 @@ class TestInputSanitizationTrack(TestCase):
         self.assertEqual(False, self.client.track(
             "some_key", True, "event_type", 1))
         self.logger_error \
-            .assert_called_once_with("track: traffic_type True has to be of type string.")
+            .assert_called_once_with("track: traffic_type has to be of type string.")
 
     def test_track_with_array_traffic_type(self):
         self.assertEqual(False, self.client.track(
             "some_key", [], "event_type", 1))
         self.logger_error \
-            .assert_called_once_with("track: traffic_type [] has to be of type string.")
+            .assert_called_once_with("track: traffic_type has to be of type string.")
 
     def test_track_with_numeric_traffic_type(self):
         self.assertEqual(False, self.client.track(
             "some_key", 12345, "event_type", 1))
         self.logger_error \
-            .assert_called_once_with("track: traffic_type 12345 has to be of type string.")
+            .assert_called_once_with("track: traffic_type has to be of type string.")
 
     def test_track_with_empty_traffic_type(self):
         self.assertEqual(False, self.client.track(
@@ -276,19 +276,19 @@ class TestInputSanitizationTrack(TestCase):
         self.assertEqual(False, self.client.track(
             "some_key", "traffic_type", True, 1))
         self.logger_error \
-            .assert_called_once_with("track: event_type True has to be of type string.")
+            .assert_called_once_with("track: event_type has to be of type string.")
 
     def test_track_with_array_event_type(self):
         self.assertEqual(False, self.client.track(
             "some_key", "traffic_type", [], 1))
         self.logger_error \
-            .assert_called_once_with("track: event_type [] has to be of type string.")
+            .assert_called_once_with("track: event_type has to be of type string.")
 
     def test_track_with_numeric_event_type(self):
         self.assertEqual(False, self.client.track(
             "some_key", "traffic_type", 12345, 1))
         self.logger_error \
-            .assert_called_once_with("track: event_type 12345 has to be of type string.")
+            .assert_called_once_with("track: event_type has to be of type string.")
 
     def test_track_with_event_type_does_not_conform_reg_exp(self):
         self.assertEqual(False, self.client.track(
@@ -355,17 +355,17 @@ class TestInputSanitizationRedisManager(TestCase):
     def test_manager_with_bool_feature_name(self):
         self.assertEqual(None, self.manager.split(True))
         self.logger_error \
-            .assert_called_once_with("split: feature_name True has to be of type string.")
+            .assert_called_once_with("split: feature_name has to be of type string.")
 
     def test_manager_with_array_feature_name(self):
         self.assertEqual(None, self.manager.split([]))
         self.logger_error \
-            .assert_called_once_with("split: feature_name [] has to be of type string.")
+            .assert_called_once_with("split: feature_name has to be of type string.")
 
     def test_manager_with_numeric_feature_name(self):
         self.assertEqual(None, self.manager.split(12345))
         self.logger_error \
-            .assert_called_once_with("split: feature_name 12345 has to be of type string.")
+            .assert_called_once_with("split: feature_name has to be of type string.")
 
     def test_manager_with_valid_feature_name(self):
         self.assertEqual(None, self.manager.split("valid_feature_name"))
@@ -391,17 +391,17 @@ class TestInputSanitizationSelfRefreshingManager(TestCase):
     def test_manager_with_bool_feature_name(self):
         self.assertEqual(None, self.manager.split(True))
         self.logger_error \
-            .assert_called_once_with("split: feature_name True has to be of type string.")
+            .assert_called_once_with("split: feature_name has to be of type string.")
 
     def test_manager_with_array_feature_name(self):
         self.assertEqual(None, self.manager.split([]))
         self.logger_error \
-            .assert_called_once_with("split: feature_name [] has to be of type string.")
+            .assert_called_once_with("split: feature_name has to be of type string.")
 
     def test_manager_with_numeric_feature_name(self):
         self.assertEqual(None, self.manager.split(12345))
         self.logger_error \
-            .assert_called_once_with("split: feature_name 12345 has to be of type string.")
+            .assert_called_once_with("split: feature_name has to be of type string.")
 
     def test_manager_with_valid_feature_name(self):
         self.assertEqual(None, self.manager.split("valid_feature_name"))
@@ -428,17 +428,17 @@ class TestInputSanitizationUWSGIManager(TestCase):
     def test_manager_with_bool_feature_name(self):
         self.assertEqual(None, self.manager.split(True))
         self.logger_error \
-            .assert_called_once_with("split: feature_name True has to be of type string.")
+            .assert_called_once_with("split: feature_name has to be of type string.")
 
     def test_manager_with_array_feature_name(self):
         self.assertEqual(None, self.manager.split([]))
         self.logger_error \
-            .assert_called_once_with("split: feature_name [] has to be of type string.")
+            .assert_called_once_with("split: feature_name has to be of type string.")
 
     def test_manager_with_numeric_feature_name(self):
         self.assertEqual(None, self.manager.split(12345))
         self.logger_error \
-            .assert_called_once_with("split: feature_name 12345 has to be of type string.")
+            .assert_called_once_with("split: feature_name has to be of type string.")
 
     def test_manager_with_valid_feature_name(self):
         self.assertEqual(None, self.manager.split("valid_feature_name"))
@@ -488,4 +488,4 @@ class TestInputSanitizationGetTreatmentS(TestCase):
     def test_get_treatments_with_invalid_type_of_features(self):
         self.assertEqual({}, self.client.get_treatments("some_key", [True]))
         self.logger_error \
-            .assert_called_once_with("get_treatments: feature_name True has to be of type string.")
+            .assert_called_once_with("get_treatments: feature_name has to be of type string.")
