@@ -91,3 +91,15 @@ class GetTreatmentsTest(TestCase):
         self.assertEqual(results['some_feature'], 'control')
         self.assertEqual(results['some_feature_2'], 'control')
         self.assertEqual(results['get_treatments_test'], 'on')
+
+    def test_client_with_valid_none_invalid_and_repeated_features_and_valid_key(self):
+        features = ['some_feature', 'get_treatments_test', 'some_feature_2',
+                    'some_feature', 'get_treatments_test', None, 'valid',
+                    True, [], True]
+        results = self._split.get_treatments('valid', features)
+        self.assertIn('some_feature', results)
+        self.assertIn('some_feature_2', results)
+        self.assertIn('get_treatments_test', results)
+        self.assertEqual(results['some_feature'], 'control')
+        self.assertEqual(results['some_feature_2'], 'control')
+        self.assertEqual(results['get_treatments_test'], 'on')
