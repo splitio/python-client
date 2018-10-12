@@ -43,8 +43,8 @@ def _check_is_string(value, name, operation):
     :rtype: True|False
     """
     if isinstance(value, six.string_types) is False:
-        _LOGGER.error('{}: {} {} has to be of type string.'.format(
-                      operation, name, value))
+        _LOGGER.error('{}: {} has to be of type string.'.format(
+                      operation, name))
         return False
     return True
 
@@ -109,7 +109,7 @@ def _check_can_convert(value, name, operation, message):
         return True
     else:
         if isinstance(value, bool) or (not isinstance(value, Number)):
-            _LOGGER.error('{}: {} {} {}'.format(operation, name, value, message))
+            _LOGGER.error('{}: {} {}'.format(operation, name, message))
             return False
     _LOGGER.warning('{}: {} {} is not of type string, converting.'
                     .format(operation, name, value))
