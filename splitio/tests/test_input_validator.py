@@ -484,3 +484,8 @@ class TestInputSanitizationGetTreatmentS(TestCase):
         self.logger_warning \
             .assert_called_once_with("get_treatments: features is an empty "
                                      "list or has None values.")
+
+    def test_get_treatments_with_invalid_type_of_features(self):
+        self.assertEqual({}, self.client.get_treatments("some_key", [True]))
+        self.logger_error \
+            .assert_called_once_with("get_treatments: feature_name True has to be of type string.")

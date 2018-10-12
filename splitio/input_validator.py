@@ -298,7 +298,8 @@ def validate_features_get_treatments(features):
     if not isinstance(features, list):
         _LOGGER.error('get_treatments: features must be a list.')
         return None
-    filtered_features = set(filter(lambda x: x is not None, features))
+    filtered_features = set(filter(lambda x: x is not None and
+                                   _check_is_string(x, 'feature_name', 'get_treatments'), features))
     if len(filtered_features) == 0:
         _LOGGER.warning('get_treatments: features is an empty list or has None values.')
     return filtered_features
