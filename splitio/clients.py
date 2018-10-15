@@ -167,6 +167,7 @@ class Client(object):
         :rtype: dict
         """
         if self._destroyed:
+            self._logger.warning("Client has already been destroyed, returning None")
             return None
 
         features = input_validator.validate_features_get_treatments(features)
