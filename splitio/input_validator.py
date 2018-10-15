@@ -43,8 +43,8 @@ def _check_is_string(value, name, operation):
     :rtype: True|False
     """
     if isinstance(value, six.string_types) is False:
-        _LOGGER.error('{}: {} {} has to be of type string.'.format(
-                      operation, name, value))
+        _LOGGER.error('{}: {} has to be of type string.'.format(
+                      operation, name))
         return False
     return True
 
@@ -109,7 +109,7 @@ def _check_can_convert(value, name, operation, message):
         return True
     else:
         if isinstance(value, bool) or (not isinstance(value, Number)):
-            _LOGGER.error('{}: {} {} {}'.format(operation, name, value, message))
+            _LOGGER.error('{}: {} {}'.format(operation, name, message))
             return False
     _LOGGER.warning('{}: {} {} is not of type string, converting.'
                     .format(operation, name, value))
@@ -282,3 +282,24 @@ def validate_manager_feature_name(feature_name):
        (not _check_is_string(feature_name, 'feature_name', 'split')):
         return None
     return feature_name
+
+
+def validate_features_get_treatments(features):
+    """
+    Checks if features is valid for get_treatments
+
+    :param features: array of features
+    :type features: list
+    :return: filtered_features
+    :rtype: list|None
+    """
+    if not _check_not_null(features, 'features', 'get_treatments'):
+        return None
+    if not isinstance(features, list):
+        _LOGGER.error('get_treatments: features must be a list.')
+        return None
+    filtered_features = set(filter(lambda x: x is not None and
+                                   _check_is_string(x, 'feature_name', 'get_treatments'), features))
+    if len(filtered_features) == 0:
+        _LOGGER.warning('get_treatments: features is an empty list or has None values.')
+    return filtered_features
