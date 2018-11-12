@@ -1075,7 +1075,7 @@ class TrafficAllocationTests(TestCase):
     def testTrafficAllocation(self):
         '''
         '''
-        treatment1, label1 = self._client._get_treatment_for_split(
+        treatment1, label1 = self._client._evaluator.get_treatment_for_split(
             self._splitObjects['whitelist'], 'testKey', None
         )
         self.assertEqual(treatment1, 'on')
@@ -1087,17 +1087,17 @@ class TrafficAllocationTests(TestCase):
             100
         )
 
-        treatment2, label1 = self._client._get_treatment_for_split(
+        treatment2, label1 = self._client._evaluator.get_treatment_for_split(
             self._splitObjects['rollout1'], 'testKey', None
         )
         self.assertEqual(treatment2, 'on')
 
-        treatment3, label1 = self._client._get_treatment_for_split(
+        treatment3, label1 = self._client._evaluator.get_treatment_for_split(
             self._splitObjects['rollout2'], 'testKey', None
         )
         self.assertEqual(treatment3, 'default')
 
-        treatment4, label1 = self._client._get_treatment_for_split(
+        treatment4, label1 = self._client._evaluator.get_treatment_for_split(
             self._splitObjects['rollout3'], 'testKey', None
         )
         self.assertEqual(treatment4, 'on')

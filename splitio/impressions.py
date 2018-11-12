@@ -5,7 +5,6 @@ from __future__ import absolute_import, division, print_function, \
 import logging
 import six
 import abc
-from threading import Thread
 
 from collections import namedtuple, defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -69,9 +68,9 @@ class Label(object):
     # Label: no condition matched
     NO_CONDITION_MATCHED = 'default rule'
 
-    #Condition: Split definition was not found
-    #Treatment: control
-    #Label: split not found
+    # Condition: Split definition was not found
+    # Treatment: control
+    # Label: split not found
     SPLIT_NOT_FOUND = 'definition not found'
 
     # Condition: Traffic allocation failed
@@ -106,8 +105,23 @@ class TreatmentLog(object):
             if impression.feature_name is not None \
                 and impression.matching_key is not None \
                 and impression.treatment is not None \
-                and impression.time > 0:
-                    self._log(impression)
+                    and impression.time > 0:
+                self._log(impression)
+        return
+
+    def _log_impressions(self, impressions):
+        """Log a bulk of impressions. Implementing classes need to override this method.
+        :param impressions: The impressions bulk
+        :type impressions: list
+        """
+        pass  # Do nothing
+
+    def log_impressions(self, impressions):
+        """Log impressions.
+        :param impressions: The impressions bulk
+        :type list: Impressions
+        """
+        self._log_impressions(impressions)
         return
 
     def destroy(self):
@@ -231,6 +245,14 @@ class InMemoryTreatmentLog(TreatmentLog):
                         feature_impressions
                     )
 
+    def _log_impressions(self, impressions):
+        """Log a bulk of impressions.
+        :param impressions: The impressions bulk
+        :type impressions: list
+        """
+        for impression in impressions:
+            self._log(impression)
+
 
 class CacheBasedTreatmentLog(TreatmentLog):
     def __init__(self, impressions_cache):
@@ -246,8 +268,14 @@ class CacheBasedTreatmentLog(TreatmentLog):
         :param impression: The impression class representation
         :type impression: Impression
         """
-        if isinstance(impression, Impression):
-            self._impressions_cache.add_impression(impression)
+        self._impressions_cache.add_impressions([impression])
+
+    def _log_impressions(self, impressions):
+        """Log a bulk of impressions.
+        :param impressions: The impressions bulk
+        :type impressions: list
+        """
+        self._impressions_cache.add_impressions(impressions)
 
 
 class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
@@ -315,12 +343,11 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
 
             if len(test_impressions_data) > 0:
                 self._api.test_impressions(test_impressions_data)
-        except:
+        except Exception:
             self._logger.exception(
                 'Exception caught updating evicted impressions'
             )
             self._stopped = True
-
 
     def _update_impressions(self):
         """
@@ -334,11 +361,9 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
 
             if len(test_impressions_data) > 0:
                 self._api.test_impressions(test_impressions_data)
-        except:
+        except Exception:
             self._logger.exception('Exception caught updating impressions')
             self._stopped = True
-
-
 
     def _notify_eviction(self, feature_name, feature_impressions):
         """
@@ -358,7 +383,7 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
             self._thread_pool_executor.submit(
                 self._update_evictions, feature_name, feature_impressions
             )
-        except:
+        except Exception:
             self._logger.exception(
                 'Exception caught starting evicted impressions update thread'
             )
@@ -373,7 +398,7 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
 
         try:
             self._thread_pool_executor.submit(self._update_impressions)
-        except:
+        except Exception:
             self._logger.exception(
                 'Exception caught starting impressions update thread'
             )
@@ -387,7 +412,7 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
             timer = Timer(interval, self._timer_refresh)
             timer.daemon = True
             timer.start()
-        except:
+        except Exception:
             self._logger.exception('Exception caught refreshing timer')
             self._stopped = True
 
@@ -432,10 +457,18 @@ class AsyncTreatmentLog(TreatmentLog):
         if isinstance(impression, Impression):
             try:
                 self._thread_pool_executor.submit(self._delegate.log, impression)
-            except:
+            except Exception:
                 self._logger.exception(
                     'Exception caught logging impression asynchronously'
                 )
+
+    def _log_impressions(self, impressions):
+        """Log a bulk of impressions.
+        :param impressions: The impressions bulk
+        :type impressions: list
+        """
+        for impression in impressions:
+            self._log(impression)
 
 
 class ImpressionListenerException(Exception):
@@ -464,7 +497,7 @@ class ImpressionListenerWrapper(object):
         data['sdk-language-version'] = SDK_VERSION
         try:
             self.impression_listener.log_impression(data)
-        except:
+        except Exception:
             raise ImpressionListenerException('Exception caught in log_impression user\'s'
                                               'method is throwing exceptions')
 

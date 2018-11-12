@@ -87,6 +87,14 @@ class BaseBroker(object):
         """
         return self.get_impression_log().log(impression)
 
+    def log_impressions(self, impressions):
+        """
+        Logs impressions after a get_treatments call
+        :return: The treatment log implementation.
+        :rtype: TreatmentLog
+        """
+        return self.get_impression_log().log_impressions(impressions)
+
     def log_operation_time(self, operation, elapsed):
         """Get the metrics implementation.
         :return: The metrics implementation.
@@ -120,6 +128,7 @@ class BaseBroker(object):
     def destroy(self):
         pass
 
+
 class JSONFileBroker(BaseBroker):
     def __init__(self, config, segment_changes_file_name, split_changes_file_name):
         """
@@ -138,8 +147,8 @@ class JSONFileBroker(BaseBroker):
         self._segment_changes_file_name = segment_changes_file_name
         self._split_changes_file_name = split_changes_file_name
         self._split_fetcher = self._build_split_fetcher()
-        self._treatment_log = TreatmentLog() # Does nothing on ._log()
-        self._metrics = Metrics() # Does nothing on .count(), .time(), .gauge()
+        self._treatment_log = TreatmentLog()  # Does nothing on ._log()
+        self._metrics = Metrics()  # Does nothing on .count(), .time(), .gauge()
 
     def _build_split_fetcher(self):
         """
@@ -182,6 +191,7 @@ class JSONFileBroker(BaseBroker):
 
     def get_events_log(self):
         return None
+
 
 class SelfRefreshingBroker(BaseBroker):
     def __init__(self, api_key, config=None, sdk_api_base_url=None,
@@ -488,7 +498,7 @@ class LocalhostBroker(BaseBroker):
     def refresh_splits(self):
         while not self._destroyed:
             time.sleep(self._split_refresh_period)
-            if not self._destroyed: # DO NOT REMOVE
+            if not self._destroyed:  # DO NOT REMOVE
                                     # This check is used in case the client was
                                     # destroyed while the thread was sleeping
                                     # and the file was closed, in order to
@@ -589,7 +599,6 @@ class UWSGIBroker(BaseBroker):
         self._split_fetcher = split_fetcher
         self._treatment_log = treatment_log
         self._metrics = metrics
-
 
     def get_split_fetcher(self):
         """

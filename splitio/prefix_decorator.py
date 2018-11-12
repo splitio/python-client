@@ -126,3 +126,6 @@ class PrefixDecorator:
 
     def rpush(self, key, value):
         return self._decorated.rpush(self._add_prefix(key), value)
+
+    def expire(self, key, value):
+        return self._decorated.expire(self._add_prefix(key), value)

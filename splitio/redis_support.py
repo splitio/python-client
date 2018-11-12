@@ -37,6 +37,8 @@ _GLOBAL_KEY_PARAMETERS = {
     'instance-id': 'unknown',
     'ip-address': 'unknown',
 }
+IMPRESSIONS_QUEUE_KEY = 'SPLITIO.impressions'
+IMPRESSION_KEY_DEFAULT_TTL = 3600
 
 
 class SentinelConfigurationException(Exception):
@@ -237,7 +239,7 @@ class RedisSplitCache(SplitCache):
                 split_dump = decode(split)
                 if split_dump is not None:
                     to_return.append(split_parser.parse(split_dump))
-            except:
+            except Exception:
                 self._logger.error(
                     'Error decoding/parsing fetched split or invalid split'
                     ' format: %s' % split
@@ -277,7 +279,7 @@ class RedisEventsCache(ImpressionsCache):
             }
         }
         try:
-            res = self._redis.rpush(key, encode(to_store))
+            self._redis.rpush(key, encode(to_store))
             return True
         except Exception:
             self._logger.exception("Something went wrong when trying to add event to redis")
@@ -310,6 +312,7 @@ class RedisImpressionsCache(ImpressionsCache):
         :type redis: StrictRedis
         '''
         self._redis = redis
+        self._logger = logging.getLogger(self.__class__.__name__)
 
         key_params = _GLOBAL_KEY_PARAMETERS.copy()
         key_params['suffix'] = '{feature_name}'
@@ -382,25 +385,43 @@ class RedisImpressionsCache(ImpressionsCache):
             self._get_impressions_key('*')
         )
 
-    def add_impression(self, impression):
+    def add_impressions(self, impressions):
         '''
-        Adds an impression to the log if it is enabled, otherwise the impression
+        Adds impression to the queue if it is enabled, otherwise the impression
         is dropped.
-        :param impression: The impression tuple
-        :type impression: Impression
+        :param impressions: The impression bulk
+        :type impressions: list
         '''
-        cache_impression = {
-            'keyName': impression.matching_key,
-            'treatment': impression.treatment,
-            'time': impression.time,
-            'changeNumber': impression.change_number,
-            'label': impression.label,
-            'bucketingKey': impression.bucketing_key
-        }
-        self._redis.sadd(
-            self._get_impressions_key(impression.feature_name),
-            encode(cache_impression)
-        )
+        bulk_impressions = []
+        for impression in impressions:
+            if isinstance(impression, Impression):
+                to_store = {
+                    'm': {  # METADATA PORTION
+                        's': _GLOBAL_KEY_PARAMETERS['sdk-language-version'],
+                        'n': _GLOBAL_KEY_PARAMETERS['instance-id'],
+                        'i': _GLOBAL_KEY_PARAMETERS['ip-address'],
+                    },
+                    'i': {  # IMPRESSION PORTION
+                        'k': impression.matching_key,
+                        'b': impression.bucketing_key,
+                        'f': impression.feature_name,
+                        't': impression.treatment,
+                        'r': impression.label,
+                        'c': impression.change_number,
+                        'm': impression.time,
+                    }
+                }
+                bulk_impressions.append(to_store)
+        try:
+            inserted = self._redis.rpush(IMPRESSIONS_QUEUE_KEY, encode(bulk_impressions))
+            if inserted == len(bulk_impressions):
+                self._logger.debug("SET EXPIRE KEY FOR QUEUE")
+                self._redis.expire(IMPRESSIONS_QUEUE_KEY, IMPRESSION_KEY_DEFAULT_TTL)
+            return True
+        except Exception as e:
+            print(e.message)
+            self._logger.exception("Something went wrong when trying to add impression to redis")
+            return False
 
     def fetch_all_and_clear(self):
         '''

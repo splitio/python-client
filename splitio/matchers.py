@@ -221,7 +221,7 @@ class ForDataTypeMixin(object):
 def get_matching_key(key):
     """
     """
-    from splitio.clients import Key
+    from splitio.key import Key
     if isinstance(key, Key):
         return key.matching_key
     else:
