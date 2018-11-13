@@ -413,7 +413,7 @@ class RedisImpressionsCache(ImpressionsCache):
                 }
                 bulk_impressions.append(to_store)
         try:
-            inserted = self._redis.rpush(IMPRESSIONS_QUEUE_KEY, encode(bulk_impressions))
+            inserted = self._redis.rpush(IMPRESSIONS_QUEUE_KEY, bulk_impressions)
             if inserted == len(bulk_impressions):
                 self._logger.debug("SET EXPIRE KEY FOR QUEUE")
                 self._redis.expire(IMPRESSIONS_QUEUE_KEY, IMPRESSION_KEY_DEFAULT_TTL)
