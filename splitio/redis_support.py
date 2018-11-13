@@ -279,7 +279,7 @@ class RedisEventsCache(ImpressionsCache):
             }
         }
         try:
-            self._redis.rpush(key, encode(to_store))
+            self._redis.rpush(key, [encode(to_store)])
             return True
         except Exception:
             self._logger.exception("Something went wrong when trying to add event to redis")
