@@ -173,27 +173,41 @@ class Client(object):
                 treatments[feature] = CONTROL
         else:
             for feature in features:
-                treatment = self._evaluator.evaluate_treatment(
-                    feature,
-                    matching_key,
-                    bucketing_key,
-                    attributes
-                )
+                try:
+                    treatment = self._evaluator.evaluate_treatment(
+                        feature,
+                        matching_key,
+                        bucketing_key,
+                        attributes
+                    )
 
-                impression = self._build_impression(matching_key,
-                                                    feature,
-                                                    treatment['treatment'],
-                                                    treatment['impression']['label'],
-                                                    treatment['impression']['change_number'],
-                                                    bucketing_key,
-                                                    start)
+                    impression = self._build_impression(matching_key,
+                                                        feature,
+                                                        treatment['treatment'],
+                                                        treatment['impression']['label'],
+                                                        treatment['impression']['change_number'],
+                                                        bucketing_key,
+                                                        start)
 
-                bulk_impressions.append(impression)
-                treatments[feature] = treatment['treatment']
+                    bulk_impressions.append(impression)
+                    treatments[feature] = treatment['treatment']
 
-                self._send_impression_to_listener(impression, attributes)
+                except Exception:
+                    self._logger.exception('get_treatments: An exception occured when evaluating '
+                                           'feature ' + feature + ' returning CONTROL.')
+                    treatments[feature] = CONTROL
+                    continue
 
-            self._record_stats(bulk_impressions, start, SDK_GET_TREATMENTS)
+            # Register impressions
+            try:
+                if len(bulk_impressions) > 0:
+                    self._record_stats(bulk_impressions, start, SDK_GET_TREATMENTS)
+
+                    for impression in bulk_impressions:
+                        self._send_impression_to_listener(impression, attributes)
+            except Exception:
+                self._logger.exception('get_treatments: An exception when trying to store '
+                                       'impressions.')
 
         return treatments
 
