@@ -411,7 +411,7 @@ class RedisImpressionsCache(ImpressionsCache):
                         'm': impression.time,
                     }
                 }
-                bulk_impressions.append(to_store)
+                bulk_impressions.append(encode(to_store))
         try:
             inserted = self._redis.rpush(IMPRESSIONS_QUEUE_KEY, bulk_impressions)
             if inserted == len(bulk_impressions):
