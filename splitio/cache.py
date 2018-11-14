@@ -177,6 +177,10 @@ class ImpressionsCache(object):  # pragma: no cover
         """
         pass  # Do nothing
 
+    def add_impressions(self, impressions):
+        for impression in impressions:
+            self.add_impression(impression)
+
     def fetch_all(self):
         """ List all impressions.
         :return: A list of Impression tuples

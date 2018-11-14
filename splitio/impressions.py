@@ -150,6 +150,14 @@ class LoggerBasedTreatmentLog(TreatmentLog):
                 impression.bucketing_key
             )
 
+    def _log_impressions(self, impressions):
+        """Log a bulk of impressions.
+        :param impressions: The impressions bulk
+        :type impressions: list
+        """
+        for impression in impressions:
+            self._log(impression)
+
 
 class InMemoryTreatmentLog(TreatmentLog):
     def __init__(self, max_count=-1, ignore_impressions=False):
@@ -462,13 +470,13 @@ class AsyncTreatmentLog(TreatmentLog):
                     'Exception caught logging impression asynchronously'
                 )
 
-    def _log_impressions(self, impressions):
+    def log_impressions(self, impressions):
         """Log a bulk of impressions.
         :param impressions: The impressions bulk
         :type impressions: list
         """
         for impression in impressions:
-            self._log(impression)
+            self.log(impression)
 
 
 class ImpressionListenerException(Exception):
