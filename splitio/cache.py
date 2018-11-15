@@ -178,6 +178,12 @@ class ImpressionsCache(object):  # pragma: no cover
         pass  # Do nothing
 
     def add_impressions(self, impressions):
+        """
+        Adds impression to the queue if it is enabled, otherwise the impression
+        is dropped.
+        :param impressions: The impression bulk
+        :type impressions: list
+        """
         for impression in impressions:
             self.add_impression(impression)
 
