@@ -231,10 +231,10 @@ class Client(object):
         """
         Record impressions and metrics.
 
-        :param impression: Generated impressions
-        :type impression: list||Impression
+        :param impressions: Generated impressions
+        :type impressions: list||Impression
 
-        :param start: timestamp when get_treatment was called
+        :param start: timestamp when get_treatment or get_treatments was called
         :type start: int
 
         :param operation: operation performed.
@@ -284,28 +284,3 @@ class Client(object):
             timestamp=int(time.time()*1000)
         )
         return self._broker.get_events_log().log_event(event)
-
-
-class MatcherClient(Client):
-    """
-    Client to be used by matchers such as "Dependency Matcher".
-
-    TODO: Refactor This!
-    """
-
-    def __init__(self, broker, splitter, logger):  # pylint: disable=super-init-not-called
-        """
-        Construct a MatcherClient instance.
-
-        :param broker: Broker where splits & segments will be fetched.
-        :type broker: BaseBroker
-
-        :param splitter: splitter
-        :type splitter: Splitter
-
-        :param logger: logger object
-        :type logger: logging.Logger
-        """
-        self._broker = broker
-        self._splitter = splitter
-        self._logger = logger

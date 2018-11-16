@@ -27,7 +27,7 @@ from splitio.matchers import AndCombiner, CombiningMatcher, AllKeysMatcher, \
     NumberLessThanOrEqualToMatcher, LessThanOrEqualToMatcher, \
     StartsWithMatcher, EndsWithMatcher, ContainsStringMatcher, \
     ContainsAllOfSetMatcher, ContainsAnyOfSetMatcher, PartOfSetMatcher, \
-    EqualToSetMatcher, DependencyMatcher, BooleanMatcher, RegexMatcher
+    EqualToSetMatcher, BooleanMatcher, RegexMatcher
 
 from splitio.transformers import AsDateHourMinuteTimestampTransformMixin, \
     AsNumberTransformMixin, AsDateTimestampTransformMixin
@@ -176,7 +176,8 @@ class NegatableMatcherTests(TestCase):
 
         matcher.match(self.some_key, self.some_attributes, self.some_client)
 
-        self.some_delegate.match.assert_called_once_with(self.some_key, self.some_attributes, self.some_client)
+        self.some_delegate.match.assert_called_once_with(self.some_key, self.some_attributes,
+                                                         self.some_client)
 
     def test_if_negate_true_match_negates_result_of_delegate_match(self):
         '''
@@ -233,7 +234,9 @@ class AttributeMatcherTests(TestCase, MockUtilsMixin):
         matcher = AttributeMatcher(None, self.some_matcher, self.some_negate)
         matcher.match(self.some_key, self.some_attributes, self.some_client)
 
-        self.negatable_matcher_mock.match.assert_called_once_with(self.some_key, self.some_attributes, self.some_client)
+        self.negatable_matcher_mock.match.assert_called_once_with(self.some_key,
+                                                                  self.some_attributes,
+                                                                  self.some_client)
 
     def test_match_returns_false_attributes_is_none(self):
         '''
@@ -1032,33 +1035,6 @@ class PartOfSetMatcherTests(TestCase, MockUtilsMixin):
         Tests that None doesn't match.
         '''
         self.assertFalse(self._matcher.match(None))
-
-
-class DependencyMatcherTests(TestCase, MockUtilsMixin):
-    def setUp(self):
-        self._split_parser = SplitParser(object())
-        matcher = {
-            'matcherType': 'IN_SPLIT_TREATMENT',
-            'dependencyMatcherData': {
-                'split': 'someSplit',
-                'treatments': ['on']
-            }
-        }
-        split = {'conditions': [{'matcher': matcher}]}
-        self._matcher = (self._split_parser._parse_matcher(split, matcher)
-                         ._matcher.delegate)
-        self._mock = self.patch('splitio.clients.MatcherClient')
-
-    def test_matcher_construction(self):
-        '''
-        Tests that the correct matcher matcher is constructed.
-        '''
-        self.assertIsInstance(self._matcher, DependencyMatcher)
-
-    def test_matcher_client_is_created_and_get_treatment_called(self):
-        self._matcher.match('abc', None, self._mock)
-        self._mock.get_treatment.assert_called_once_with('abc', 'someSplit', None)
-        self.assertTrue(True)
 
 
 class RegexMatcherTests(TestCase, MockUtilsMixin):
