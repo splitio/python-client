@@ -387,8 +387,8 @@ class RedisImpressionsCache(ImpressionsCache):
 
     def add_impressions(self, impressions):
         '''
-        Adds impression to the queue if it is enabled, otherwise the impression
-        is dropped.
+        Adds impressions to the queue if it is enabled, otherwise the impressions
+        are dropped.
         :param impressions: The impression bulk
         :type impressions: list
         '''
