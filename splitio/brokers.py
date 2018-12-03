@@ -26,7 +26,8 @@ from splitio.splits import SelfRefreshingSplitFetcher, SplitParser, \
     AllKeysSplit, CacheBasedSplitFetcher
 from splitio.segments import ApiSegmentChangeFetcher, \
     SelfRefreshingSegmentFetcher, JSONFileSegmentFetcher
-from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, parse_config_file
+from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, parse_config_file, \
+    set_machine_ip, set_machine_name
 from splitio.uwsgi import UWSGISplitCache, UWSGIImpressionsCache, \
     UWSGIMetricsCache, UWSGIEventsCache, get_uwsgi
 from splitio.tasks import EventsSyncTask
@@ -648,6 +649,9 @@ def _init_config(api_key, **kwargs):
 
         file_config.update(config)
         config = file_config
+
+    set_machine_ip(config.get('splitSdkMachineIp'))
+    set_machine_name(config.get('splitSdkMachineName'))
 
     return api_key, config, sdk_api_base_url, events_api_base_url
 

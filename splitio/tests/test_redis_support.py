@@ -15,11 +15,8 @@ from splitio.impressions import Impression
 from splitio.tests.utils import MockUtilsMixin
 
 from splitio.redis_support import (RedisSegmentCache, RedisSplitCache, RedisImpressionsCache,
-                                   RedisMetricsCache, RedisSplitParser, RedisSplit,
-                                   RedisSplitBasedSegment, get_redis)
-
-from splitio.splits import (JSONFileSplitFetcher, SplitParser)
-from splitio.segments import JSONFileSegmentFetcher
+                                   RedisMetricsCache, RedisSplitParser)
+from splitio.config import GLOBAL_KEY_PARAMETERS
 
 
 class RedisSegmentCacheTests(TestCase):
@@ -76,7 +73,7 @@ class RedisSegmentCacheTests(TestCase):
         self.assertEqual(-1,
                          self.a_segment_cache.get_change_number(self.some_segment_name_str))
 
-                         
+
 class RedisSplitCacheTests(TestCase, MockUtilsMixin):
     def setUp(self):
         self.decode_mock = self.patch('splitio.redis_support.decode')
@@ -207,8 +204,9 @@ class RedisMetricsCacheTests(TestCase, MockUtilsMixin):
     def test_get_latency_calls_get(self):
         """Test that get_latency calls get in last position (22)"""
         self.a_metrics_cache.get_latency(self.some_operation_str)
+        name = GLOBAL_KEY_PARAMETERS['instance-id']
         self.some_redis.get.assert_called_with(
-            'SPLITIO/python-'+__version__+'/unknown/latency.some_operation.bucket.{}'
+            'SPLITIO/python-'+__version__+'/'+name+'/latency.some_operation.bucket.{}'
             .format(22)
         )
 
@@ -228,9 +226,13 @@ class RedisMetricsCacheTests(TestCase, MockUtilsMixin):
         """Test that get_latency_bucket_counter calls get"""
         self.a_metrics_cache.get_latency_bucket_counter(self.some_operation_str,
                                                         self.some_bucket_index)
+        name = GLOBAL_KEY_PARAMETERS['instance-id']
         self.some_redis.get.assert_called_once_with(
-            'SPLITIO/python-'+__version__+'/unknown/latency.{0}.bucket.{1}'.format(
-            self.some_operation_str, self.some_bucket_index))
+            'SPLITIO/python-'+__version__+'/'+name+'/latency.{0}.bucket.{1}'.format
+            (
+             self.some_operation_str,
+             self.some_bucket_index
+            ))
 
     def test_get_latency_bucket_counter_returns_get_result(self):
         """Test that get_latency_bucket_counter returns the result of calling get"""
@@ -319,9 +321,10 @@ class RedisMetricsCacheBuildMetricsFromCacheResponseTests(TestCase):
         some_count_value = mock.MagicMock()
         some_other_count = 'some_other_count'
         some_other_count_value = mock.MagicMock()
+        name = GLOBAL_KEY_PARAMETERS['instance-id']
         count_metrics = [
-            'SPLITIO/python-'+__version__+'/unknown/count.some_count', some_count_value,
-            'SPLITIO/python-'+__version__+'/unknown/count.some_other_count',
+            'SPLITIO/python-'+__version__+'/'+name+'/count.some_count', some_count_value,
+            'SPLITIO/python-'+__version__+'/'+name+'/count.some_other_count',
             some_other_count_value
         ]
         result_count_metrics = [{'name': some_count, 'delta': some_count_value},
@@ -350,7 +353,8 @@ class RedisMetricsCacheBuildMetricsFromCacheResponseTests(TestCase):
         result_time_metris = [{'name': some_other_time, 'latencies': some_other_time_latencies},
                               {'name': some_time, 'latencies': some_time_latencies}]
 
-        self.assertListEqual(result_time_metris, self.a_metrics_cache._build_metrics_times_data(time_metrics))
+        self.assertListEqual(result_time_metris,
+                             self.a_metrics_cache._build_metrics_times_data(time_metrics))
 
     def test_returns_gauge_metrics(self):
         """Test that _build_metrics_from_cache_response returns gauge metrics"""
@@ -358,9 +362,10 @@ class RedisMetricsCacheBuildMetricsFromCacheResponseTests(TestCase):
         some_gauge_value = mock.MagicMock()
         some_other_gauge = 'some_other_gauge'
         some_other_gauge_value = mock.MagicMock()
+        name = GLOBAL_KEY_PARAMETERS['instance-id']
         gauge_metrics = [
-            'SPLITIO/python-'+__version__+'/unknown/gauge.some_gauge', some_gauge_value,
-            'SPLITIO/python-'+__version__+'/unknown/gauge.some_other_gauge',
+            'SPLITIO/python-'+__version__+'/'+name+'/gauge.some_gauge', some_gauge_value,
+            'SPLITIO/python-'+__version__+'/'+name+'/gauge.some_other_gauge',
             some_other_gauge_value
         ]
         result_gauge_metrics = [{'name': some_gauge, 'value': some_gauge_value},
@@ -406,9 +411,14 @@ class RedisSplitParserTests(TestCase, MockUtilsMixin):
         self.split_parser._parse_split(self.some_split,
                                        block_until_ready=self.some_block_until_ready)
         self.redis_split_mock.assert_called_once_with(
-            self.some_split['name'], self.some_split['seed'], self.some_split['killed'],
-            self.some_split['defaultTreatment'],self.some_split['trafficTypeName'],
-            self.some_split['status'], self.some_split['changeNumber'], segment_cache=self.some_segment_cache,
+            self.some_split['name'],
+            self.some_split['seed'],
+            self.some_split['killed'],
+            self.some_split['defaultTreatment'],
+            self.some_split['trafficTypeName'],
+            self.some_split['status'],
+            self.some_split['changeNumber'],
+            segment_cache=self.some_segment_cache,
             traffic_allocation=self.some_split.get('trafficAllocation'),
             traffic_allocation_seed=self.some_split.get('trafficAllocationSeed'),
             algo=self.some_split['algo']

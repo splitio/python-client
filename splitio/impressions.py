@@ -10,7 +10,7 @@ from collections import namedtuple, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from threading import RLock, Timer
-from splitio.config import SDK_VERSION, DEFAULT_CONFIG
+from splitio.config import SDK_VERSION, GLOBAL_KEY_PARAMETERS
 
 
 Impression = namedtuple(
@@ -501,8 +501,8 @@ class ImpressionListenerWrapper(object):
         data = {}
         data['impression'] = impression
         data['attributes'] = attributes
-        data['instance-id'] = DEFAULT_CONFIG['splitSdkMachineIp']
         data['sdk-language-version'] = SDK_VERSION
+        data['instance-id'] = GLOBAL_KEY_PARAMETERS['instance-id']
         try:
             self.impression_listener.log_impression(data)
         except Exception:

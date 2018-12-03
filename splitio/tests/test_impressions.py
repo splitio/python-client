@@ -21,6 +21,7 @@ from splitio.tests.utils import MockUtilsMixin
 from splitio.redis_support import (get_redis, IMPRESSIONS_QUEUE_KEY,
                                    RedisImpressionsCache, IMPRESSION_KEY_DEFAULT_TTL)
 from splitio import get_factory
+from splitio.config import GLOBAL_KEY_PARAMETERS
 
 
 class BuildImpressionsDataTests(TestCase):
@@ -38,7 +39,7 @@ class BuildImpressionsDataTests(TestCase):
                                             feature_name=self.some_other_feature,
                                             treatment=mock.MagicMock(),
                                             label=mock.MagicMock(),
-                                            change_number=mock.MagicMock(), 
+                                            change_number=mock.MagicMock(),
                                             bucketing_key=mock.MagicMock(),
                                             time=mock.MagicMock())
         self.some_impression_2 = Impression(matching_key=mock.MagicMock(),
@@ -210,7 +211,7 @@ class LoggerBasedTreatmentLogTests(TestCase, MockUtilsMixin):
 
         self.some_label = mock.MagicMock()
         self.some_change_number = mock.MagicMock()
-        self.some_impression = Impression(matching_key=self.some_key, 
+        self.some_impression = Impression(matching_key=self.some_key,
                                           feature_name=self.some_feature_name,
                                           treatment=self.some_treatment,
                                           label=self.some_label,
@@ -589,9 +590,9 @@ class ImpressionAsQueueTests(TestCase, MockUtilsMixin):
         self.assertGreaterEqual(int(ttl), IMPRESSION_KEY_DEFAULT_TTL - 10)
 
         impression_stored = decode(self._redis.rpop(IMPRESSIONS_QUEUE_KEY))
-        self.assertEqual(impression_stored['m']['i'], 'unknown')
+        self.assertEqual(impression_stored['m']['i'], GLOBAL_KEY_PARAMETERS['ip-address'])
         self.assertEqual(impression_stored['m']['s'], SDK_VERSION)
-        self.assertEqual(impression_stored['m']['n'], 'unknown')
+        self.assertEqual(impression_stored['m']['n'], GLOBAL_KEY_PARAMETERS['instance-id'])
         self.assertEqual(impression_stored['i']['k'], 'some_matching_key')
         self.assertEqual(impression_stored['i']['f'], 'some_feature_name')
         self.assertEqual(impression_stored['i']['t'], 'on')
@@ -634,3 +635,57 @@ class ImpressionAsQueueTests(TestCase, MockUtilsMixin):
 
         logger_debug \
             .assert_called_once_with("SET EXPIRE KEY FOR QUEUE")
+
+    def test_impression_added_custom_machine_name_and_ip(self):
+        self._some_config = mock.MagicMock()
+
+        self._redis = get_redis({'redisPrefix': 'singleQueueTests2'})
+        self._redis.delete(IMPRESSIONS_QUEUE_KEY)
+
+        self._config = {
+            'ready': 180000,
+            'redisDb': 0,
+            'redisHost': 'localhost',
+            'redisPosrt': 6379,
+            'redisPrefix': 'singleQueueTests',
+            'splitSdkMachineName': 'CustomMachineName',
+            'splitSdkMachineIp': '1.2.3.4'
+        }
+
+        self._factory = get_factory('asdqwe123456', config=self._config)
+
+        impression = Impression(matching_key='some_matching_key',
+                                feature_name='some_feature_name',
+                                treatment='on',
+                                label='label1',
+                                change_number=123456,
+                                bucketing_key='some_bucketing_key',
+                                time=123456)
+
+        self.an_impressions_cache = RedisImpressionsCache(self._redis)
+
+        self.an_impressions_cache._logger.debug = mock.MagicMock()
+        logger_debug = self.an_impressions_cache._logger.debug
+
+        self.an_impressions_cache.add_impressions([impression])
+
+        logger_debug \
+            .assert_called_once_with("SET EXPIRE KEY FOR QUEUE")
+
+        # Assert that the TTL is within a 10-second range (between it was set and retrieved).
+        ttl = self._redis.ttl(IMPRESSIONS_QUEUE_KEY)
+
+        self.assertLessEqual(int(ttl), IMPRESSION_KEY_DEFAULT_TTL)
+        self.assertGreaterEqual(int(ttl), IMPRESSION_KEY_DEFAULT_TTL - 10)
+
+        impression_stored = decode(self._redis.rpop(IMPRESSIONS_QUEUE_KEY))
+        self.assertEqual(impression_stored['m']['i'], '1.2.3.4')
+        self.assertEqual(impression_stored['m']['s'], SDK_VERSION)
+        self.assertEqual(impression_stored['m']['n'], 'CustomMachineName')
+        self.assertEqual(impression_stored['i']['k'], 'some_matching_key')
+        self.assertEqual(impression_stored['i']['f'], 'some_feature_name')
+        self.assertEqual(impression_stored['i']['t'], 'on')
+        self.assertEqual(impression_stored['i']['r'], 'label1')
+        self.assertEqual(impression_stored['i']['c'], 123456)
+        self.assertEqual(impression_stored['i']['b'], 'some_bucketing_key')
+        self.assertEqual(impression_stored['i']['m'], 123456)

@@ -6,6 +6,7 @@ import logging
 import json
 
 from .version import __version__
+from splitio.utils import get_hostname, get_ip
 
 logger = logging.getLogger(__name__)
 
@@ -51,11 +52,32 @@ DEFAULT_CONFIG = {
     'redisSslCertReqs': None,
     'redisSslCaCerts': None,
     'redisMaxConnections': None,
-    'eventsPushRate' : 60,
+    'eventsPushRate': 60,
     'eventsQueueSize': 500,
 }
 
 MAX_INTERVAL = 180
+
+
+GLOBAL_KEY_PARAMETERS = {
+    'sdk-language-version': SDK_VERSION,
+    'instance-id': 'unknown',
+    'ip-address': 'unknown',
+}
+
+
+def set_machine_ip(machine_ip):
+    if machine_ip:
+        GLOBAL_KEY_PARAMETERS['ip-address'] = machine_ip
+    else:
+        GLOBAL_KEY_PARAMETERS['ip-address'] = get_ip()
+
+
+def set_machine_name(machine_name):
+    if machine_name:
+        GLOBAL_KEY_PARAMETERS['instance-id'] = machine_name
+    else:
+        GLOBAL_KEY_PARAMETERS['instance-id'] = get_hostname()
 
 
 def parse_config_file(filename):
@@ -92,7 +114,11 @@ def parse_config_file(filename):
         with open(filename) as fp:
             json_config = json.load(fp)
             config.update(json_config)
-    except:
+            if 'splitSdkMachineName' in config:
+                set_machine_name(config['splitSdkMachineName'])
+            if 'splitSdkMachineIp' in config:
+                set_machine_ip(config['splitSdkMachineIp'])
+    except Exception:
         logger.exception('There was a problem reading the config file: %s', filename)
         return DEFAULT_CONFIG.copy()
 
