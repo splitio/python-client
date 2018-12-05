@@ -1,8 +1,7 @@
-6.2.2 (Dec 3, 2018)
+6.2.1 (Dec 6, 2018)
  - Fixed traffic allocation issue on 1%.
-6.2.1 (Nov 26, 2018)
  - Allowed hypens in 'localhost mode' file values.
- 6.2.0 (Oct 5, 2018)
+6.2.0 (Oct 5, 2018)
  - Added get_treatments method.
 6.1.0 (Sep 25, 2018)
  - Add custom impression listener feature.
