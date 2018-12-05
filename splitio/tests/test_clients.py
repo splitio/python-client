@@ -1183,10 +1183,10 @@ class LocalhostEnvironmentClientParseSplitFileTests(TestCase, MockUtilsMixin):
     def test_parses_definition_lines(self):
         """Test that _parse_split_file skips comment lines"""
         self.open_mock.return_value.__enter__.return_value.__iter__.return_value = [
-            'feature1 treatment1', 'feature2 treatment2']
+            'feature1 treatment1', 'feature-2 treatment-2']
         self.broker._parse_split_file(self.some_file_name)
         self.assertListEqual([mock.call('feature1', 'treatment1'),
-                              mock.call('feature2', 'treatment2')],
+                              mock.call('feature-2', 'treatment-2')],
                              self.all_keys_split_mock.call_args_list)
 
     def test_returns_dict_with_parsed_splits(self):

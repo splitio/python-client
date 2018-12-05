@@ -392,7 +392,7 @@ class SelfRefreshingBroker(BaseBroker):
 class LocalhostBroker(BaseBroker):
     _COMMENT_LINE_RE = re.compile('^#.*$')
     _DEFINITION_LINE_RE = re.compile(
-        '^(?<![^#])(?P<feature>[\w_]+)\s+(?P<treatment>[\w_]+)$'
+        '^(?<![^#])(?P<feature>[\w_-]+)\s+(?P<treatment>[\w_-]+)$'
     )
 
     class LocalhostEventStorage(object):
