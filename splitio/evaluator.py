@@ -111,7 +111,7 @@ class Evaluator(object):
                         split.traffic_allocation_seed,
                         split.algo
                     )
-                    if bucket >= split.traffic_allocation:
+                    if bucket > split.traffic_allocation:
                         return split.default_treatment, Label.NOT_IN_SPLIT
                 roll_out = True
 

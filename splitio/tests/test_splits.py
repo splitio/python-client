@@ -23,6 +23,7 @@ from splitio.redis_support import get_redis, RedisSegmentCache, RedisSplitParser
 from splitio.uwsgi import get_uwsgi, UWSGISegmentCache, UWSGISplitParser
 from splitio.clients import Client
 from splitio.brokers import RedisBroker
+from splitio.splitters import Splitter
 
 
 class InMemorySplitFetcherTests(TestCase):
@@ -345,7 +346,7 @@ class SplitChangeFetcherTests(TestCase, MockUtilsMixin):
 
         try:
             self.fetcher.fetch(self.some_since)
-        except:
+        except Exception:
             self.fail('Unexpected exception raised')
 
     def test_fetch_returns_empty_response_if_fetch_from_backend_raises_an_exception(self):
@@ -718,8 +719,9 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
         Tests that _parse_matcher_greater_than_or_equal_to calls
         GreaterThanOrEqualToMatcher.for_data_type
         """
-        self.parser._parse_matcher_greater_than_or_equal_to(self.some_partial_split,
-            self.some_greater_than_or_equal_to_matcher)
+        self.parser \
+            ._parse_matcher_greater_than_or_equal_to(self.some_partial_split,
+                                                     self.some_greater_than_or_equal_to_matcher)
         self.greater_than_or_equal_to_matcher_mock.for_data_type.assert_called_once_with(
             self.get_matcher_data_data_type_mock.return_value,
             self.some_greater_than_or_equal_to_matcher['unaryNumericMatcherData']['value'])
@@ -731,7 +733,8 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
         """
         self.assertEqual(
             self.greater_than_or_equal_to_matcher_mock.for_data_type.return_value,
-            self.parser._parse_matcher_greater_than_or_equal_to(self.some_partial_split,
+            self.parser._parse_matcher_greater_than_or_equal_to(
+                self.some_partial_split,
                 self.some_greater_than_or_equal_to_matcher))
 
     def test_parse_matcher_less_than_or_equal_to_calls_equal_to_matcher_for_data_type(self):
@@ -739,7 +742,8 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
         Tests that _parse_matcher_less_than_or_equal_to calls
         LessThanOrEqualToMatcher.for_data_type
         """
-        self.parser._parse_matcher_less_than_or_equal_to(self.some_partial_split,
+        self.parser._parse_matcher_less_than_or_equal_to(
+            self.some_partial_split,
             self.some_less_than_or_equal_to_matcher)
         self.less_than_or_equal_to_matcher_mock.for_data_type.assert_called_once_with(
             self.get_matcher_data_data_type_mock.return_value,
@@ -752,7 +756,8 @@ class SplitParserMatcherParseMethodsTests(TestCase, MockUtilsMixin):
         """
         self.assertEqual(
             self.less_than_or_equal_to_matcher_mock.for_data_type.return_value,
-            self.parser._parse_matcher_less_than_or_equal_to(self.some_partial_split,
+            self.parser._parse_matcher_less_than_or_equal_to(
+                self.some_partial_split,
                 self.some_less_than_or_equal_to_matcher))
 
     def test_parse_matcher_between_calls_between_matcher_for_data_type(self):
@@ -927,31 +932,33 @@ class RedisCacheAlgoFieldTests(TestCase):
         fn = join(dirname(__file__), 'algoSplits.json')
         with open(fn, 'r') as flo:
             rawData = json.load(flo)['splits']
-        self._testData = [{
-            'body': rawData[0],
-            'algo': HashAlgorithm.LEGACY,
-            'hashfn': legacy_hash
-        },
-        {
-            'body': rawData[1],
-            'algo': HashAlgorithm.MURMUR,
-            'hashfn': _murmur_hash
-        },
-        {
-            'body': rawData[2],
-            'algo': HashAlgorithm.LEGACY,
-            'hashfn': legacy_hash
-        },
-        {
-            'body': rawData[3],
-            'algo': HashAlgorithm.LEGACY,
-            'hashfn': legacy_hash
-        },
-        {
-            'body': rawData[4],
-            'algo': HashAlgorithm.LEGACY,
-            'hashfn': legacy_hash
-        }]
+        self._testData = [
+            {
+                'body': rawData[0],
+                'algo': HashAlgorithm.LEGACY,
+                'hashfn': legacy_hash
+            },
+            {
+                'body': rawData[1],
+                'algo': HashAlgorithm.MURMUR,
+                'hashfn': _murmur_hash
+            },
+            {
+                'body': rawData[2],
+                'algo': HashAlgorithm.LEGACY,
+                'hashfn': legacy_hash
+            },
+            {
+                'body': rawData[3],
+                'algo': HashAlgorithm.LEGACY,
+                'hashfn': legacy_hash
+            },
+            {
+                'body': rawData[4],
+                'algo': HashAlgorithm.LEGACY,
+                'hashfn': legacy_hash
+            }
+        ]
 
     def testAlgoHandlers(self):
         '''
@@ -972,31 +979,33 @@ class UWSGICacheAlgoFieldTests(TestCase):
         fn = join(dirname(__file__), 'algoSplits.json')
         with open(fn, 'r') as flo:
             rawData = json.load(flo)['splits']
-        self._testData = [{
-            'body': rawData[0],
-            'algo': HashAlgorithm.LEGACY,
-            'hashfn': legacy_hash
-        },
-        {
-            'body': rawData[1],
-            'algo': HashAlgorithm.MURMUR,
-            'hashfn': _murmur_hash
-        },
-        {
-            'body': rawData[2],
-            'algo': HashAlgorithm.LEGACY,
-            'hashfn': legacy_hash
-        },
-        {
-            'body': rawData[3],
-            'algo': HashAlgorithm.LEGACY,
-            'hashfn': legacy_hash
-        },
-        {
-            'body': rawData[4],
-            'algo': HashAlgorithm.LEGACY,
-            'hashfn': legacy_hash
-        }]
+        self._testData = [
+            {
+                'body': rawData[0],
+                'algo': HashAlgorithm.LEGACY,
+                'hashfn': legacy_hash
+            },
+            {
+                'body': rawData[1],
+                'algo': HashAlgorithm.MURMUR,
+                'hashfn': _murmur_hash
+            },
+            {
+                'body': rawData[2],
+                'algo': HashAlgorithm.LEGACY,
+                'hashfn': legacy_hash
+            },
+            {
+                'body': rawData[3],
+                'algo': HashAlgorithm.LEGACY,
+                'hashfn': legacy_hash
+            },
+            {
+                'body': rawData[4],
+                'algo': HashAlgorithm.LEGACY,
+                'hashfn': legacy_hash
+            }
+        ]
 
     def testAlgoHandlers(self):
         '''
@@ -1010,7 +1019,7 @@ class UWSGICacheAlgoFieldTests(TestCase):
             self.assertEqual(get_hash_fn(split.algo), sp['hashfn'])
 
 
-class TrafficAllocationTests(TestCase):
+class TrafficAllocationTests(TestCase, MockUtilsMixin):
     '''
     '''
 
@@ -1067,10 +1076,14 @@ class TrafficAllocationTests(TestCase):
         self._splitObjects['rollout2'] = split_parser.parse(raw_split, True)
 
         raw_split['name'] = 'test4'
-        raw_split['trafficAllocation'] = None #must be mapped as 100
+        raw_split['trafficAllocation'] = None  # must be mapped as 100
         raw_split['trafficAllocationSeed'] = -1
         self._splitObjects['rollout3'] = split_parser.parse(raw_split, True)
 
+        raw_split['name'] = 'test5'
+        raw_split['trafficAllocation'] = 99
+        raw_split['trafficAllocationSeed'] = -1
+        self._splitObjects['rollout4'] = split_parser.parse(raw_split, True)
 
     def testTrafficAllocation(self):
         '''
@@ -1093,11 +1106,18 @@ class TrafficAllocationTests(TestCase):
         self.assertEqual(treatment2, 'on')
 
         treatment3, label1 = self._client._evaluator.get_treatment_for_split(
-            self._splitObjects['rollout2'], 'testKey', None
-        )
-        self.assertEqual(treatment3, 'default')
-
-        treatment4, label1 = self._client._evaluator.get_treatment_for_split(
             self._splitObjects['rollout3'], 'testKey', None
         )
+        self.assertEqual(treatment3, 'on')
+
+        self.patch_object(Splitter, 'get_bucket', return_value=1)
+        treatment4, label1 = self._client._evaluator.get_treatment_for_split(
+            self._splitObjects['rollout2'], 'testKey', None
+        )
         self.assertEqual(treatment4, 'on')
+
+        self.patch_object(Splitter, 'get_bucket', return_value=100)
+        treatment5, label1 = self._client._evaluator.get_treatment_for_split(
+            self._splitObjects['rollout4'], 'testKey', None
+        )
+        self.assertEqual(treatment5, 'default')
