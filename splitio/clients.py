@@ -130,7 +130,7 @@ class Client(object):
                 self._record_stats(impression, start, SDK_GET_TREATMENT)
 
                 self._send_impression_to_listener(impression, attributes)
-            except Exception:
+            except Exception:  # pylint: disable=broad-except
                 self._logger.exception(
                     'Exception reporting impression into get_treatment exception block'
                 )
@@ -165,7 +165,7 @@ class Client(object):
         bulk_impressions = []
         treatments = {}
 
-        if (matching_key is None and bucketing_key is None):
+        if matching_key is None and bucketing_key is None:
             for feature in features:
                 impression = self._build_impression(matching_key, feature, CONTROL, Label.EXCEPTION,
                                                     0, bucketing_key, start)

@@ -17,7 +17,7 @@ def get_ip():
         s.connect(('10.255.255.255', 1))
         IP = s.getsockname()[0]
     except Exception:
-        IP = '127.0.0.1'
+        IP = 'unknown'
     finally:
         s.close()
     return IP
@@ -25,4 +25,4 @@ def get_ip():
 
 def get_hostname():
     ip = get_ip()
-    return 'ip-' + ip.replace('.', '-')
+    return 'unknown' if ip != '' else 'ip-' + ip.replace('.', '-')

@@ -80,14 +80,6 @@ class BaseBroker(object):
         """
         return self.get_split_fetcher().change_number
 
-    def log_impression(self, impression):
-        """
-        Logs an impression after a get_treatment call
-        :return: The treatment log implementation.
-        :rtype: TreatmentLog
-        """
-        return self.get_impression_log().log(impression)
-
     def log_impressions(self, impressions):
         """
         Logs impressions after a get_treatments call
