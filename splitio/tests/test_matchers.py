@@ -176,7 +176,8 @@ class NegatableMatcherTests(TestCase):
 
         matcher.match(self.some_key, self.some_attributes, self.some_client)
 
-        self.some_delegate.match.assert_called_once_with(self.some_key, self.some_attributes, self.some_client)
+        self.some_delegate.match.assert_called_once_with(self.some_key, self.some_attributes,
+                                                         self.some_client)
 
     def test_if_negate_true_match_negates_result_of_delegate_match(self):
         '''
@@ -233,7 +234,9 @@ class AttributeMatcherTests(TestCase, MockUtilsMixin):
         matcher = AttributeMatcher(None, self.some_matcher, self.some_negate)
         matcher.match(self.some_key, self.some_attributes, self.some_client)
 
-        self.negatable_matcher_mock.match.assert_called_once_with(self.some_key, self.some_attributes, self.some_client)
+        self.negatable_matcher_mock.match.assert_called_once_with(self.some_key,
+                                                                  self.some_attributes,
+                                                                  self.some_client)
 
     def test_match_returns_false_attributes_is_none(self):
         '''
@@ -1047,7 +1050,7 @@ class DependencyMatcherTests(TestCase, MockUtilsMixin):
         split = {'conditions': [{'matcher': matcher}]}
         self._matcher = (self._split_parser._parse_matcher(split, matcher)
                          ._matcher.delegate)
-        self._mock = self.patch('splitio.clients.MatcherClient')
+        self._mock = self.patch('splitio.evaluator.Evaluator')
 
     def test_matcher_construction(self):
         '''

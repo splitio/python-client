@@ -19,7 +19,7 @@ except ImportError:
 
 from six import iteritems
 
-from splitio.config import import_from_string
+from splitio.config import import_from_string, GLOBAL_KEY_PARAMETERS
 from splitio.cache import SegmentCache, SplitCache, ImpressionsCache, \
     MetricsCache
 from splitio.matchers import UserDefinedSegmentMatcher
@@ -29,14 +29,11 @@ from splitio.splits import Split, SplitParser
 from splitio.impressions import Impression
 from splitio.utils import bytes_to_string
 from splitio.prefix_decorator import PrefixDecorator
-from splitio.version import __version__ as _SDK_VERSION
 # Template for Split.io related Cache keys
 _SPLITIO_CACHE_KEY_TEMPLATE = 'SPLITIO.{suffix}'
-_GLOBAL_KEY_PARAMETERS = {
-    'sdk-language-version': 'python-{version}'.format(version=_SDK_VERSION),
-    'instance-id': 'unknown',
-    'ip-address': 'unknown',
-}
+
+IMPRESSIONS_QUEUE_KEY = 'SPLITIO.impressions'
+IMPRESSION_KEY_DEFAULT_TTL = 3600
 
 
 class SentinelConfigurationException(Exception):
@@ -237,7 +234,7 @@ class RedisSplitCache(SplitCache):
                 split_dump = decode(split)
                 if split_dump is not None:
                     to_return.append(split_parser.parse(split_dump))
-            except:
+            except Exception:
                 self._logger.error(
                     'Error decoding/parsing fetched split or invalid split'
                     ' format: %s' % split
@@ -271,13 +268,13 @@ class RedisEventsCache(ImpressionsCache):
         to_store = {
             'e': dict(event._asdict()),
             'm': {
-                's': _GLOBAL_KEY_PARAMETERS['sdk-language-version'],
-                'n': _GLOBAL_KEY_PARAMETERS['instance-id'],
-                'i': _GLOBAL_KEY_PARAMETERS['ip-address'],
+                's': GLOBAL_KEY_PARAMETERS['sdk-language-version'],
+                'n': GLOBAL_KEY_PARAMETERS['instance-id'],
+                'i': GLOBAL_KEY_PARAMETERS['ip-address'],
             }
         }
         try:
-            res = self._redis.rpush(key, encode(to_store))
+            self._redis.rpush(key, [encode(to_store)])
             return True
         except Exception:
             self._logger.exception("Something went wrong when trying to add event to redis")
@@ -294,7 +291,7 @@ class RedisImpressionsCache(ImpressionsCache):
         '''
         '''
         return cls._KEY_TEMPLATE.format(
-            **dict(_GLOBAL_KEY_PARAMETERS, feature=feature_name)
+            **dict(GLOBAL_KEY_PARAMETERS, feature=feature_name)
         )
 
     @classmethod
@@ -310,8 +307,9 @@ class RedisImpressionsCache(ImpressionsCache):
         :type redis: StrictRedis
         '''
         self._redis = redis
+        self._logger = logging.getLogger(self.__class__.__name__)
 
-        key_params = _GLOBAL_KEY_PARAMETERS.copy()
+        key_params = GLOBAL_KEY_PARAMETERS.copy()
         key_params['suffix'] = '{feature_name}'
 
     def _build_impressions_dict(self, impressions):
@@ -382,25 +380,43 @@ class RedisImpressionsCache(ImpressionsCache):
             self._get_impressions_key('*')
         )
 
-    def add_impression(self, impression):
+    def add_impressions(self, impressions):
         '''
-        Adds an impression to the log if it is enabled, otherwise the impression
-        is dropped.
-        :param impression: The impression tuple
-        :type impression: Impression
+        Adds impressions to the queue if it is enabled, otherwise the impressions
+        are dropped.
+        :param impressions: The impression bulk
+        :type impressions: list
         '''
-        cache_impression = {
-            'keyName': impression.matching_key,
-            'treatment': impression.treatment,
-            'time': impression.time,
-            'changeNumber': impression.change_number,
-            'label': impression.label,
-            'bucketingKey': impression.bucketing_key
-        }
-        self._redis.sadd(
-            self._get_impressions_key(impression.feature_name),
-            encode(cache_impression)
-        )
+        bulk_impressions = []
+        for impression in impressions:
+            if isinstance(impression, Impression):
+                to_store = {
+                    'm': {  # METADATA PORTION
+                        's': GLOBAL_KEY_PARAMETERS['sdk-language-version'],
+                        'n': GLOBAL_KEY_PARAMETERS['instance-id'],
+                        'i': GLOBAL_KEY_PARAMETERS['ip-address'],
+                    },
+                    'i': {  # IMPRESSION PORTION
+                        'k': impression.matching_key,
+                        'b': impression.bucketing_key,
+                        'f': impression.feature_name,
+                        't': impression.treatment,
+                        'r': impression.label,
+                        'c': impression.change_number,
+                        'm': impression.time,
+                    }
+                }
+                bulk_impressions.append(encode(to_store))
+        try:
+            inserted = self._redis.rpush(IMPRESSIONS_QUEUE_KEY, bulk_impressions)
+            if inserted == len(bulk_impressions):
+                self._logger.debug("SET EXPIRE KEY FOR QUEUE")
+                self._redis.expire(IMPRESSIONS_QUEUE_KEY, IMPRESSION_KEY_DEFAULT_TTL)
+            return True
+        except Exception as e:
+            print(e.message)
+            self._logger.exception("Something went wrong when trying to add impression to redis")
+            return False
 
     def fetch_all_and_clear(self):
         '''
@@ -482,7 +498,7 @@ class RedisMetricsCache(MetricsCache):
         Returns the latency bucket
         '''
         return cls._KEY_LATENCY.format(**dict(
-            _GLOBAL_KEY_PARAMETERS,
+            GLOBAL_KEY_PARAMETERS,
             metric_name=metric_name,
             bucket_number=bucket_number
         ))
@@ -493,7 +509,7 @@ class RedisMetricsCache(MetricsCache):
         Returns the count key
         '''
         return cls._KEY_COUNT.format(**dict(
-            _GLOBAL_KEY_PARAMETERS,
+            GLOBAL_KEY_PARAMETERS,
             counter=counter
         ))
 
@@ -503,7 +519,7 @@ class RedisMetricsCache(MetricsCache):
         Returns the gauge key
         '''
         return cls._KEY_GAUGE.format(**dict(
-            _GLOBAL_KEY_PARAMETERS,
+            GLOBAL_KEY_PARAMETERS,
             gauge=gauge
         ))
 
@@ -513,21 +529,21 @@ class RedisMetricsCache(MetricsCache):
                           .replace('.', '\.')
                           .replace('{metric_name}', '(?P<operation>.+)')
                           .replace('{bucket_number}', '(?P<bucket_index>.+)'))
-                ).format(**_GLOBAL_KEY_PARAMETERS)
+                ).format(**GLOBAL_KEY_PARAMETERS)
 
     @classmethod
     def _get_count_field_re(cls):
         return ("^%s$" % (cls._KEY_COUNT
                           .replace('.', '\.')
                           .replace('{counter}', '(?P<counter>.+)'))
-                ).format(**_GLOBAL_KEY_PARAMETERS)
+                ).format(**GLOBAL_KEY_PARAMETERS)
 
     @classmethod
     def _get_gauge_field_re(cls):
         return ("^%s$" % (cls._KEY_GAUGE
                           .replace('.', '\.')
                           .replace('{gauge}', '(?P<gauge>.+)'))
-                ).format(**_GLOBAL_KEY_PARAMETERS)
+                ).format(**GLOBAL_KEY_PARAMETERS)
 
     def __init__(self, redis):
         '''
@@ -784,17 +800,6 @@ class RedisSplitBasedSegment(Segment):
         return self._split.segment_cache.is_in_segment(self.name, key)
 
 
-def setup_instance_id(instance_id):
-    '''
-    Setup the correct parameters once the redis-client has been instantiated
-    with a configuration from the client
-    '''
-    if instance_id:
-        _GLOBAL_KEY_PARAMETERS['instance-id'] = instance_id
-    else:
-        _GLOBAL_KEY_PARAMETERS['instance-id'] = 'unknown'
-
-
 def get_redis(config):
     '''
     Build a redis client based on the configuration.
@@ -802,7 +807,6 @@ def get_redis(config):
     :type config: dict
     :return: A redis client
     '''
-    setup_instance_id(config.get('instance-id'))
     if 'redisFactory' in config:
         redis_factory = import_from_string(
             config['redisFactory'], 'redisFactory'

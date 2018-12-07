@@ -26,7 +26,8 @@ from splitio.splits import SelfRefreshingSplitFetcher, SplitParser, \
     AllKeysSplit, CacheBasedSplitFetcher
 from splitio.segments import ApiSegmentChangeFetcher, \
     SelfRefreshingSegmentFetcher, JSONFileSegmentFetcher
-from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, parse_config_file
+from splitio.config import DEFAULT_CONFIG, MAX_INTERVAL, parse_config_file, \
+    set_machine_ip, set_machine_name
 from splitio.uwsgi import UWSGISplitCache, UWSGIImpressionsCache, \
     UWSGIMetricsCache, UWSGIEventsCache, get_uwsgi
 from splitio.tasks import EventsSyncTask
@@ -79,13 +80,13 @@ class BaseBroker(object):
         """
         return self.get_split_fetcher().change_number
 
-    def log_impression(self, impression):
+    def log_impressions(self, impressions):
         """
-        Logs an impression after a get_treatment call
+        Logs impressions after a get_treatments call
         :return: The treatment log implementation.
         :rtype: TreatmentLog
         """
-        return self.get_impression_log().log(impression)
+        return self.get_impression_log().log_impressions(impressions)
 
     def log_operation_time(self, operation, elapsed):
         """Get the metrics implementation.
@@ -120,6 +121,7 @@ class BaseBroker(object):
     def destroy(self):
         pass
 
+
 class JSONFileBroker(BaseBroker):
     def __init__(self, config, segment_changes_file_name, split_changes_file_name):
         """
@@ -138,8 +140,8 @@ class JSONFileBroker(BaseBroker):
         self._segment_changes_file_name = segment_changes_file_name
         self._split_changes_file_name = split_changes_file_name
         self._split_fetcher = self._build_split_fetcher()
-        self._treatment_log = TreatmentLog() # Does nothing on ._log()
-        self._metrics = Metrics() # Does nothing on .count(), .time(), .gauge()
+        self._treatment_log = TreatmentLog()  # Does nothing on ._log()
+        self._metrics = Metrics()  # Does nothing on .count(), .time(), .gauge()
 
     def _build_split_fetcher(self):
         """
@@ -182,6 +184,7 @@ class JSONFileBroker(BaseBroker):
 
     def get_events_log(self):
         return None
+
 
 class SelfRefreshingBroker(BaseBroker):
     def __init__(self, api_key, config=None, sdk_api_base_url=None,
@@ -488,7 +491,7 @@ class LocalhostBroker(BaseBroker):
     def refresh_splits(self):
         while not self._destroyed:
             time.sleep(self._split_refresh_period)
-            if not self._destroyed: # DO NOT REMOVE
+            if not self._destroyed:  # DO NOT REMOVE
                                     # This check is used in case the client was
                                     # destroyed while the thread was sleeping
                                     # and the file was closed, in order to
@@ -590,7 +593,6 @@ class UWSGIBroker(BaseBroker):
         self._treatment_log = treatment_log
         self._metrics = metrics
 
-
     def get_split_fetcher(self):
         """
         Get the split fetcher implementation for the broker.
@@ -639,6 +641,9 @@ def _init_config(api_key, **kwargs):
 
         file_config.update(config)
         config = file_config
+
+    set_machine_ip(config.get('splitSdkMachineIp'))
+    set_machine_name(config.get('splitSdkMachineName'))
 
     return api_key, config, sdk_api_base_url, events_api_base_url
 

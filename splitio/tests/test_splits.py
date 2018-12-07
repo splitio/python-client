@@ -1088,7 +1088,7 @@ class TrafficAllocationTests(TestCase, MockUtilsMixin):
     def testTrafficAllocation(self):
         '''
         '''
-        treatment1, label1 = self._client._get_treatment_for_split(
+        treatment1, label1 = self._client._evaluator.get_treatment_for_split(
             self._splitObjects['whitelist'], 'testKey', None
         )
         self.assertEqual(treatment1, 'on')
@@ -1100,24 +1100,24 @@ class TrafficAllocationTests(TestCase, MockUtilsMixin):
             100
         )
 
-        treatment2, label1 = self._client._get_treatment_for_split(
+        treatment2, label1 = self._client._evaluator.get_treatment_for_split(
             self._splitObjects['rollout1'], 'testKey', None
         )
         self.assertEqual(treatment2, 'on')
 
-        treatment3, label1 = self._client._get_treatment_for_split(
+        treatment3, label1 = self._client._evaluator.get_treatment_for_split(
             self._splitObjects['rollout3'], 'testKey', None
         )
         self.assertEqual(treatment3, 'on')
 
         self.patch_object(Splitter, 'get_bucket', return_value=1)
-        treatment4, label1 = self._client._get_treatment_for_split(
+        treatment4, label1 = self._client._evaluator.get_treatment_for_split(
             self._splitObjects['rollout2'], 'testKey', None
         )
         self.assertEqual(treatment4, 'on')
 
         self.patch_object(Splitter, 'get_bucket', return_value=100)
-        treatment5, label1 = self._client._get_treatment_for_split(
+        treatment5, label1 = self._client._evaluator.get_treatment_for_split(
             self._splitObjects['rollout4'], 'testKey', None
         )
         self.assertEqual(treatment5, 'default')
