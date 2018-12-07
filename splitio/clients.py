@@ -243,7 +243,7 @@ class Client(object):
         try:
             end = int(round(time.time() * 1000))
             if operation == SDK_GET_TREATMENT:
-                self._broker.log_impression(impressions)
+                self._broker.log_impressions([impressions])
             else:
                 self._broker.log_impressions(impressions)
             self._broker.log_operation_time(operation, end - start)
