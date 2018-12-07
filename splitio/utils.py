@@ -25,4 +25,4 @@ def get_ip():
 
 def get_hostname():
     ip = get_ip()
-    return 'unknown' if ip != '' else 'ip-' + ip.replace('.', '-')
+    return 'unknown' if ip == 'unknown' else 'ip-' + ip.replace('.', '-')
