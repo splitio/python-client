@@ -10,7 +10,7 @@ from future.utils import python_2_unicode_compatible
 from six import string_types
 from splitio.transformers import AsDateHourMinuteTimestampTransformMixin, \
     AsNumberTransformMixin, AsDateTimestampTransformMixin, TransformMixin
-
+from splitio.key import Key
 
 DataType = Enum('DataType', 'DATETIME NUMBER')
 
@@ -714,12 +714,21 @@ class DependencyMatcher(object):
     def match(self, key, attributes=None, client=None):
         """
         """
-        treatment = client.evaluate_treatment(
-            key,
-            self._data.get('split'),
-            attributes
-        )
-        return treatment in self._data.get('treatments', [])
+        if isinstance(key, Key):
+            treatment = client.evaluate_treatment(
+                self._data.get('split'),
+                key.matching_key,
+                key.bucketing_key,
+                attributes
+            )
+        else:
+            treatment = client.evaluate_treatment(
+                self._data.get('split'),
+                key,
+                None,
+                attributes
+            )
+        return treatment['treatment'] in self._data.get('treatments', [])
 
 
 class BooleanMatcher(object):
