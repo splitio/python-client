@@ -714,20 +714,15 @@ class DependencyMatcher(object):
     def match(self, key, attributes=None, client=None):
         """
         """
-        if isinstance(key, Key):
-            treatment = client.evaluate_treatment(
-                self._data.get('split'),
-                key.matching_key,
-                key.bucketing_key,
-                attributes
-            )
-        else:
-            treatment = client.evaluate_treatment(
-                self._data.get('split'),
-                key,
-                None,
-                attributes
-            )
+        matching, bucketing = (key.matching_key, key.bucketing_key) \
+            if isinstance(key, Key) else (key, None)
+        treatment = client.evaluate_treatment(
+            self._data.get('split'),
+            matching,
+            bucketing,
+            attributes
+        )
+
         return treatment['treatment'] in self._data.get('treatments', [])
 
 
