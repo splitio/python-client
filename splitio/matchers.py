@@ -714,7 +714,7 @@ class DependencyMatcher(object):
     def match(self, key, attributes=None, client=None):
         """
         """
-        treatment = client.get_treatment(
+        treatment = client.evaluate_treatment(
             key,
             self._data.get('split'),
             attributes
