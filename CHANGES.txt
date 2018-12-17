@@ -1,4 +1,4 @@
-6.2.2 (Dec, 2018)
+6.2.2 (Dec 17, 2018)
  - Fixed issue on selecting db for Sentinel.
 6.2.1 (Dec 6, 2018)
  - Fixed traffic allocation issue on 1%.
