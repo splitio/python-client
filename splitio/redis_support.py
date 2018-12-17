@@ -907,46 +907,27 @@ def default_redis_sentinel_factory(config):
     socket_keepalive = config.get('redisSocketKeepalive', None)
     socket_keepalive_options = config.get('redisSocketKeepaliveOptions', None)
     connection_pool = config.get('redisConnectionPool', None)
-    unix_socket_path = config.get('redisUnixSocketPath', None)
     encoding = config.get('redisEncoding', 'utf-8')
     encoding_errors = config.get('redisEncodingErrors', 'strict')
-    charset = config.get('redisCharset', None)
-    errors = config.get('redisErrors', None)
     decode_responses = config.get('redisDecodeResponses', False)
     retry_on_timeout = config.get('redisRetryOnTimeout', False)
-    ssl = config.get('redisSsl', False)
-    ssl_keyfile = config.get('redisSslKeyfile', None)
-    ssl_certfile = config.get('redisSslCertfile', None)
-    ssl_cert_reqs = config.get('redisSslCertReqs', None)
-    ssl_ca_certs = config.get('redisSslCaCerts', None)
     max_connections = config.get('redisMaxConnections', None)
     prefix = config.get('redisPrefix')
 
     sentinel = Sentinel(
         sentinels,
-        0,
-        {
-            'db': db,
-            'password': password,
-            'socket_timeout': socket_timeout,
-            'socket_connect_timeout': socket_connect_timeout,
-            'socket_keepalive': socket_keepalive,
-            'socket_keepalive_options': socket_keepalive_options,
-            'connection_pool': connection_pool,
-            'unix_socket_path': unix_socket_path,
-            'encoding': encoding,
-            'encoding_errors': encoding_errors,
-            'charset': charset,
-            'errors': errors,
-            'decode_responses': decode_responses,
-            'retry_on_timeout': retry_on_timeout,
-            'ssl': ssl,
-            'ssl_keyfile': ssl_keyfile,
-            'ssl_certfile': ssl_certfile,
-            'ssl_cert_reqs': ssl_cert_reqs,
-            'ssl_ca_certs': ssl_ca_certs,
-            'max_connections': max_connections
-        }
+        db=db,
+        password=password,
+        socket_timeout=socket_timeout,
+        socket_connect_timeout=socket_connect_timeout,
+        socket_keepalive=socket_keepalive,
+        socket_keepalive_options=socket_keepalive_options,
+        connection_pool=connection_pool,
+        encoding=encoding,
+        encoding_errors=encoding_errors,
+        decode_responses=decode_responses,
+        retry_on_timeout=retry_on_timeout,
+        max_connections=max_connections
     )
 
     redis = sentinel.master_for(master_service)
