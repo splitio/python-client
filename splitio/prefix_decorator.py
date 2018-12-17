@@ -124,5 +124,14 @@ class PrefixDecorator:
     def getset(self, name, value):
         return self._decorated.getset(self._add_prefix(name), value)
 
-    def rpush(self, key, value):
-        return self._decorated.rpush(self._add_prefix(key), value)
+    def rpush(self, key, values):
+        return self._decorated.rpush(self._add_prefix(key), *values)
+
+    def expire(self, key, value):
+        return self._decorated.expire(self._add_prefix(key), value)
+
+    def rpop(self, key):
+        return self._decorated.rpop(self._add_prefix(key))
+
+    def ttl(self, key):
+        return self._decorated.ttl(self._add_prefix(key))

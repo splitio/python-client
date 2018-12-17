@@ -9,32 +9,46 @@ except ImportError:
 
 from unittest import TestCase
 from itertools import groupby
+from jsonpickle import decode
 
+from splitio.config import SDK_VERSION
 from splitio.impressions import (Impression, build_impressions_data, TreatmentLog,
                                  LoggerBasedTreatmentLog, InMemoryTreatmentLog,
                                  CacheBasedTreatmentLog, SelfUpdatingTreatmentLog,
                                  AsyncTreatmentLog)
 from splitio.tests.utils import MockUtilsMixin
 
-from splitio.tasks import report_impressions
+from splitio.redis_support import (get_redis, IMPRESSIONS_QUEUE_KEY,
+                                   RedisImpressionsCache, IMPRESSION_KEY_DEFAULT_TTL)
+from splitio import get_factory
+from splitio.config import GLOBAL_KEY_PARAMETERS
 
 
 class BuildImpressionsDataTests(TestCase):
     def setUp(self):
         self.some_feature = 'feature_0'
         self.some_other_feature = 'feature_1'
-        self.some_impression_0 = Impression(matching_key=mock.MagicMock(), feature_name=self.some_feature,
-                                          treatment=mock.MagicMock(), label=mock.MagicMock(),
-                                          change_number=mock.MagicMock(), bucketing_key=mock.MagicMock(),
-                                          time=mock.MagicMock())
-        self.some_impression_1 = Impression(matching_key=mock.MagicMock(), feature_name=self.some_other_feature,
-                                           treatment=mock.MagicMock(), label=mock.MagicMock(),
-                                           change_number=mock.MagicMock(), bucketing_key=mock.MagicMock(),
-                                           time=mock.MagicMock())
-        self.some_impression_2 = Impression(matching_key=mock.MagicMock(), feature_name=self.some_other_feature,
-                                           treatment=mock.MagicMock(), label=mock.MagicMock(),
-                                           change_number=mock.MagicMock(), bucketing_key=mock.MagicMock(),
-                                           time=mock.MagicMock())
+        self.some_impression_0 = Impression(matching_key=mock.MagicMock(),
+                                            feature_name=self.some_feature,
+                                            treatment=mock.MagicMock(),
+                                            label=mock.MagicMock(),
+                                            change_number=mock.MagicMock(),
+                                            bucketing_key=mock.MagicMock(),
+                                            time=mock.MagicMock())
+        self.some_impression_1 = Impression(matching_key=mock.MagicMock(),
+                                            feature_name=self.some_other_feature,
+                                            treatment=mock.MagicMock(),
+                                            label=mock.MagicMock(),
+                                            change_number=mock.MagicMock(),
+                                            bucketing_key=mock.MagicMock(),
+                                            time=mock.MagicMock())
+        self.some_impression_2 = Impression(matching_key=mock.MagicMock(),
+                                            feature_name=self.some_other_feature,
+                                            treatment=mock.MagicMock(),
+                                            label=mock.MagicMock(),
+                                            change_number=mock.MagicMock(),
+                                            bucketing_key=mock.MagicMock(),
+                                            time=mock.MagicMock())
 
     def test_build_impressions_data_works(self):
         """Tests that build_impressions_data works"""
@@ -42,7 +56,8 @@ class BuildImpressionsDataTests(TestCase):
         impressions = [self.some_impression_0, self.some_impression_1, self.some_impression_2]
         grouped_impressions = groupby(impressions, key=lambda impression: impression.feature_name)
 
-        impression_dict = dict((feature_name, list(group)) for feature_name, group in grouped_impressions)
+        impression_dict = dict((feature_name, list(group)) for feature_name, group
+                               in grouped_impressions)
 
         result = build_impressions_data(impression_dict)
 
@@ -92,7 +107,8 @@ class BuildImpressionsDataTests(TestCase):
         grouped_impressions = groupby([self.some_impression_0],
                                       key=lambda impression: impression.feature_name)
 
-        impression_dict = dict((feature_name, list(group)) for feature_name, group in grouped_impressions)
+        impression_dict = dict((feature_name, list(group)) for feature_name, group
+                               in grouped_impressions)
 
         result = build_impressions_data(impression_dict)
 
@@ -126,9 +142,12 @@ class TreatmentLogTests(TestCase, MockUtilsMixin):
 
         self.some_label = mock.MagicMock()
         self.some_change_number = mock.MagicMock()
-        self.some_impression = Impression(matching_key=self.some_key, feature_name=self.some_feature_name,
-                                          treatment=self.some_treatment, label=self.some_label,
-                                          change_number=self.some_change_number, bucketing_key=self.some_key,
+        self.some_impression = Impression(matching_key=self.some_key,
+                                          feature_name=self.some_feature_name,
+                                          treatment=self.some_treatment,
+                                          label=self.some_label,
+                                          change_number=self.some_change_number,
+                                          bucketing_key=self.some_key,
                                           time=self.some_time)
 
     def test_log_doesnt_call_internal_log_if_key_is_none(self):
@@ -144,9 +163,9 @@ class TreatmentLogTests(TestCase, MockUtilsMixin):
     def test_log_doesnt_call_internal_log_if_feature_name_is_none(self):
         """Tests that log doesn't call _log if feature name is None"""
         impression = Impression(matching_key=self.some_key, feature_name=None,
-                              treatment=self.some_treatment, label=self.some_label,
-                              change_number=self.some_change_number, bucketing_key=self.some_key,
-                              time=self.some_time)
+                                treatment=self.some_treatment, label=self.some_label,
+                                change_number=self.some_change_number, bucketing_key=self.some_key,
+                                time=self.some_time)
         self.treatment_log.log(impression)
         self.log_mock.assert_not_called()
 
@@ -192,9 +211,12 @@ class LoggerBasedTreatmentLogTests(TestCase, MockUtilsMixin):
 
         self.some_label = mock.MagicMock()
         self.some_change_number = mock.MagicMock()
-        self.some_impression = Impression(matching_key=self.some_key, feature_name=self.some_feature_name,
-                                          treatment=self.some_treatment, label=self.some_label,
-                                          change_number=self.some_change_number, bucketing_key=self.some_key,
+        self.some_impression = Impression(matching_key=self.some_key,
+                                          feature_name=self.some_feature_name,
+                                          treatment=self.some_treatment,
+                                          label=self.some_label,
+                                          change_number=self.some_change_number,
+                                          bucketing_key=self.some_key,
                                           time=self.some_time)
 
     def test_log_calls_logger_info(self):
@@ -202,7 +224,8 @@ class LoggerBasedTreatmentLogTests(TestCase, MockUtilsMixin):
         self.treatment_log._log(self.some_impression)
         self.logger_mock.info.assert_called_once_with(mock.ANY, self.some_feature_name,
                                                       self.some_key, self.some_treatment,
-                                                      self.some_time, self.some_label, self.some_change_number,
+                                                      self.some_time, self.some_label,
+                                                      self.some_change_number,
                                                       self.some_key)
 
 
@@ -225,9 +248,12 @@ class InMemoryTreatmentLogTests(TestCase, MockUtilsMixin):
 
         self.some_label = mock.MagicMock()
         self.some_change_number = mock.MagicMock()
-        self.some_impression = Impression(matching_key=self.some_key, feature_name=self.some_feature_name,
-                                          treatment=self.some_treatment, label=self.some_label,
-                                          change_number=self.some_change_number, bucketing_key=self.some_key,
+        self.some_impression = Impression(matching_key=self.some_key,
+                                          feature_name=self.some_feature_name,
+                                          treatment=self.some_treatment,
+                                          label=self.some_label,
+                                          change_number=self.some_change_number,
+                                          bucketing_key=self.some_key,
                                           time=self.some_time)
 
     def test_impressions_is_defaultdict(self):
@@ -286,9 +312,12 @@ class CacheBasedTreatmentLogTests(TestCase):
         self.some_label = mock.MagicMock()
         self.some_change_number = mock.MagicMock()
 
-        self.some_impression = Impression(matching_key=self.some_key, feature_name=self.some_feature_name,
-                                          treatment=self.some_treatment, label=self.some_label,
-                                          change_number=self.some_change_number, bucketing_key=self.some_key,
+        self.some_impression = Impression(matching_key=self.some_key,
+                                          feature_name=self.some_feature_name,
+                                          treatment=self.some_treatment,
+                                          label=self.some_label,
+                                          change_number=self.some_change_number,
+                                          bucketing_key=self.some_key,
                                           time=self.some_time)
 
     def test_log_calls_cache_add_impression(self):
@@ -477,7 +506,7 @@ class SelfUpdatingTreatmentLogUpdateEvictionsTests(TestCase, MockUtilsMixin):
         try:
             self.treatment_log._update_evictions(self.some_feature_name,
                                                  self.some_feature_impressions)
-        except:
+        except Exception:
             self.fail('Unexpected exception raised')
 
 
@@ -495,10 +524,13 @@ class AsyncTreatmentLogTests(TestCase, MockUtilsMixin):
         self.treatment_log = AsyncTreatmentLog(self.some_delegate_treatment_log,
                                                max_workers=self.some_max_workers)
 
-        self.some_impression = Impression(matching_key=self.some_key, feature_name=self.some_feature_name,
-                                treatment=self.some_treatment, label=self.some_label,
-                                change_number=self.some_change_number, bucketing_key=self.some_key,
-                                time=self.some_time)
+        self.some_impression = Impression(matching_key=self.some_key,
+                                          feature_name=self.some_feature_name,
+                                          treatment=self.some_treatment,
+                                          label=self.some_label,
+                                          change_number=self.some_change_number,
+                                          bucketing_key=self.some_key,
+                                          time=self.some_time)
 
     def test_log_calls_thread_pool_executor_submit(self):
         """Tests that log calls submit on the thread pool executor"""
@@ -514,3 +546,146 @@ class AsyncTreatmentLogTests(TestCase, MockUtilsMixin):
         # try:
         # except:
         #     self.fail('Unexpected exception raised')
+
+
+class ImpressionAsQueueTests(TestCase, MockUtilsMixin):
+    def test_impression_added(self):
+        self._some_config = mock.MagicMock()
+
+        self._redis = get_redis({'redisPrefix': 'singleQueueTests'})
+        self._redis.delete(IMPRESSIONS_QUEUE_KEY)
+
+        self._config = {
+            'ready': 180000,
+            'redisDb': 0,
+            'redisHost': 'localhost',
+            'redisPosrt': 6379,
+            'redisPrefix': 'singleQueueTests'
+        }
+
+        self._factory = get_factory('asdqwe123456', config=self._config)
+
+        impression = Impression(matching_key='some_matching_key',
+                                feature_name='some_feature_name',
+                                treatment='on',
+                                label='label1',
+                                change_number=123456,
+                                bucketing_key='some_bucketing_key',
+                                time=123456)
+
+        self.an_impressions_cache = RedisImpressionsCache(self._redis)
+
+        self.an_impressions_cache._logger.debug = mock.MagicMock()
+        logger_debug = self.an_impressions_cache._logger.debug
+
+        self.an_impressions_cache.add_impressions([impression])
+
+        logger_debug \
+            .assert_called_once_with("SET EXPIRE KEY FOR QUEUE")
+
+        # Assert that the TTL is within a 10-second range (between it was set and retrieved).
+        ttl = self._redis.ttl(IMPRESSIONS_QUEUE_KEY)
+
+        self.assertLessEqual(int(ttl), IMPRESSION_KEY_DEFAULT_TTL)
+        self.assertGreaterEqual(int(ttl), IMPRESSION_KEY_DEFAULT_TTL - 10)
+
+        impression_stored = decode(self._redis.rpop(IMPRESSIONS_QUEUE_KEY))
+        self.assertEqual(impression_stored['m']['i'], GLOBAL_KEY_PARAMETERS['ip-address'])
+        self.assertEqual(impression_stored['m']['s'], SDK_VERSION)
+        self.assertEqual(impression_stored['m']['n'], GLOBAL_KEY_PARAMETERS['instance-id'])
+        self.assertEqual(impression_stored['i']['k'], 'some_matching_key')
+        self.assertEqual(impression_stored['i']['f'], 'some_feature_name')
+        self.assertEqual(impression_stored['i']['t'], 'on')
+        self.assertEqual(impression_stored['i']['r'], 'label1')
+        self.assertEqual(impression_stored['i']['c'], 123456)
+        self.assertEqual(impression_stored['i']['b'], 'some_bucketing_key')
+        self.assertEqual(impression_stored['i']['m'], 123456)
+
+    def test_ttl_called_once(self):
+        self._some_config = mock.MagicMock()
+
+        self._redis = get_redis({'redisPrefix': 'singleQueueTests'})
+        self._redis.delete(IMPRESSIONS_QUEUE_KEY)
+
+        self._config = {
+            'ready': 180000,
+            'redisDb': 0,
+            'redisHost': 'localhost',
+            'redisPosrt': 6379,
+            'redisPrefix': 'singleQueueTests'
+        }
+
+        self._factory = get_factory('asdqwe123456', config=self._config)
+
+        impression = Impression(matching_key='some_matching_key',
+                                feature_name='some_feature_name',
+                                treatment='on',
+                                label='label1',
+                                change_number=123456,
+                                bucketing_key='some_bucketing_key',
+                                time=123456)
+
+        self.an_impressions_cache = RedisImpressionsCache(self._redis)
+
+        self.an_impressions_cache._logger.debug = mock.MagicMock()
+        logger_debug = self.an_impressions_cache._logger.debug
+
+        self.an_impressions_cache.add_impressions([impression])
+        self.an_impressions_cache.add_impressions([impression])
+
+        logger_debug \
+            .assert_called_once_with("SET EXPIRE KEY FOR QUEUE")
+
+    def test_impression_added_custom_machine_name_and_ip(self):
+        self._some_config = mock.MagicMock()
+
+        self._redis = get_redis({'redisPrefix': 'singleQueueTests2'})
+        self._redis.delete(IMPRESSIONS_QUEUE_KEY)
+
+        self._config = {
+            'ready': 180000,
+            'redisDb': 0,
+            'redisHost': 'localhost',
+            'redisPosrt': 6379,
+            'redisPrefix': 'singleQueueTests',
+            'splitSdkMachineName': 'CustomMachineName',
+            'splitSdkMachineIp': '1.2.3.4'
+        }
+
+        self._factory = get_factory('asdqwe123456', config=self._config)
+
+        impression = Impression(matching_key='some_matching_key',
+                                feature_name='some_feature_name',
+                                treatment='on',
+                                label='label1',
+                                change_number=123456,
+                                bucketing_key='some_bucketing_key',
+                                time=123456)
+
+        self.an_impressions_cache = RedisImpressionsCache(self._redis)
+
+        self.an_impressions_cache._logger.debug = mock.MagicMock()
+        logger_debug = self.an_impressions_cache._logger.debug
+
+        self.an_impressions_cache.add_impressions([impression])
+
+        logger_debug \
+            .assert_called_once_with("SET EXPIRE KEY FOR QUEUE")
+
+        # Assert that the TTL is within a 10-second range (between it was set and retrieved).
+        ttl = self._redis.ttl(IMPRESSIONS_QUEUE_KEY)
+
+        self.assertLessEqual(int(ttl), IMPRESSION_KEY_DEFAULT_TTL)
+        self.assertGreaterEqual(int(ttl), IMPRESSION_KEY_DEFAULT_TTL - 10)
+
+        impression_stored = decode(self._redis.rpop(IMPRESSIONS_QUEUE_KEY))
+        self.assertEqual(impression_stored['m']['i'], '1.2.3.4')
+        self.assertEqual(impression_stored['m']['s'], SDK_VERSION)
+        self.assertEqual(impression_stored['m']['n'], 'CustomMachineName')
+        self.assertEqual(impression_stored['i']['k'], 'some_matching_key')
+        self.assertEqual(impression_stored['i']['f'], 'some_feature_name')
+        self.assertEqual(impression_stored['i']['t'], 'on')
+        self.assertEqual(impression_stored['i']['r'], 'label1')
+        self.assertEqual(impression_stored['i']['c'], 123456)
+        self.assertEqual(impression_stored['i']['b'], 'some_bucketing_key')
+        self.assertEqual(impression_stored['i']['m'], 123456)
