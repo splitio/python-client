@@ -31,11 +31,12 @@ setup(name='splitio_client',
       license='Apache License 2.0',
       install_requires=install_requires,
       tests_require=tests_require,
+      dependency_links=['https://github.com/mredolatti/mmh3cffi/tarball/master#egg=mmh3cffi-0.1.1'],
       extras_require={
           'test': tests_require,
           'redis': ['redis>=2.10.5', 'jsonpickle>=0.9.3'],
           'uwsgi': ['uwsgi>=2.0.0', 'jsonpickle>=0.9.3'],
-          'cpphash': ['splitmmh3']
+          'cpphash': ['mmh3cffi']
       },
       setup_requires=['nose'],
       classifiers=[
