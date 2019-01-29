@@ -209,7 +209,7 @@ def _remove_empty_spaces(value, operation):
     :rtype: str
     """
     strip_value = value.strip()
-    if len(value) != len(strip_value):
+    if value != strip_value:
         _LOGGER.warning("{}: feature_name '{}' has extra whitespace,".format(operation, value)
                         + " trimming.")
     return strip_value
