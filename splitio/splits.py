@@ -20,6 +20,7 @@ from splitio.matchers import CombiningMatcher, AndCombiner, AllKeysMatcher, \
     ContainsStringMatcher, ContainsAllOfSetMatcher, ContainsAnyOfSetMatcher, \
     EqualToSetMatcher, PartOfSetMatcher, DependencyMatcher, RegexMatcher, \
     BooleanMatcher
+from splitio.exceptions import UnauthorizedException
 
 SplitView = namedtuple(
     'SplitView',
@@ -639,6 +640,10 @@ class SplitParser(object):
         """
         try:
             return self._parse(split, block_until_ready=block_until_ready)
+        except UnauthorizedException:
+            self._logger.error("factory instantiation: you passed a browser type api_key, " +
+                               "please grab an api key from the Split console that is of type sdk")
+            raise UnauthorizedException()
         except:
             self._logger.exception('Exception caught parsing split')
             return None
@@ -653,17 +658,20 @@ class SplitParser(object):
         :return: A parsed split
         :rtype: Split
         """
-        if Status[split['status']] != Status.ACTIVE:
-            return None
+        try:
+            if Status[split['status']] != Status.ACTIVE:
+                return None
 
-        partial_split = self._parse_split(
-            split, block_until_ready=block_until_ready
-        )
-        self._parse_conditions(
-            partial_split, split, block_until_ready=block_until_ready
-        )
+            partial_split = self._parse_split(
+                split, block_until_ready=block_until_ready
+            )
+            self._parse_conditions(
+                partial_split, split, block_until_ready=block_until_ready
+            )
 
-        return partial_split
+            return partial_split
+        except UnauthorizedException:
+            raise UnauthorizedException()
 
     def _parse_split(self, split, block_until_ready=False):
         """Parse split properties.
@@ -697,32 +705,35 @@ class SplitParser(object):
         :type block_until_ready: bool
         :return:
         """
-        for condition in split['conditions']:
-            parsed_partitions = [
-                Partition(partition['treatment'], partition['size'])
-                for partition in condition['partitions']
-            ]
-            combining_matcher = self._parse_matcher_group(
-                partial_split, condition['matcherGroup'],
-                block_until_ready=block_until_ready
-            )
-            label = None
-            if 'label' in condition:
-                label = condition['label']
-
-            try:
-                condition_type = ConditionType(condition.get('conditionType'))
-            except:
-                condition_type = ConditionType.WHITELIST
-
-            partial_split.conditions.append(
-                Condition(
-                    combining_matcher,
-                    parsed_partitions,
-                    label,
-                    condition_type
+        try:
+            for condition in split['conditions']:
+                parsed_partitions = [
+                    Partition(partition['treatment'], partition['size'])
+                    for partition in condition['partitions']
+                ]
+                combining_matcher = self._parse_matcher_group(
+                    partial_split, condition['matcherGroup'],
+                    block_until_ready=block_until_ready
                 )
-            )
+                label = None
+                if 'label' in condition:
+                    label = condition['label']
+
+                try:
+                    condition_type = ConditionType(condition.get('conditionType'))
+                except:
+                    condition_type = ConditionType.WHITELIST
+
+                partial_split.conditions.append(
+                    Condition(
+                        combining_matcher,
+                        parsed_partitions,
+                        label,
+                        condition_type
+                    )
+                )
+        except UnauthorizedException:
+            raise UnauthorizedException()
 
     def _parse_matcher_group(self, partial_split, matcher_group,
                              block_until_ready=False):
@@ -742,9 +753,13 @@ class SplitParser(object):
            len(matcher_group['matchers']) == 0):
             raise ValueError('Missing or empty matchers')
 
-        delegates = [self._parse_matcher(partial_split, matcher,
-                                         block_until_ready=block_until_ready)
-                     for matcher in matcher_group['matchers']]
+        try:
+            delegates = [self._parse_matcher(partial_split, matcher,
+                                             block_until_ready=block_until_ready)
+                         for matcher in matcher_group['matchers']]
+        except UnauthorizedException:
+            raise UnauthorizedException()
+
         combiner = self._parse_combiner(matcher_group['combiner'])
 
         return CombiningMatcher(combiner, delegates)
@@ -825,9 +840,12 @@ class SplitParser(object):
         matcher_data = self._get_matcher_attribute(
             'userDefinedSegmentMatcherData', matcher
         )
-        segment = self._segment_fetcher.fetch(
-            matcher_data['segmentName'], block_until_ready=block_until_ready
-        )
+        try:
+            segment = self._segment_fetcher.fetch(
+                matcher_data['segmentName'], block_until_ready=block_until_ready
+            )
+        except UnauthorizedException:
+            raise UnauthorizedException()
         delegate = UserDefinedSegmentMatcher(segment)
         return delegate
 
@@ -1144,6 +1162,8 @@ class SplitParser(object):
                 self, '_parse_matcher_{}'.format(matcher_type.strip().lower()))
             delegate = matcher_parse_method(partial_split, matcher,
                                             block_until_ready=block_until_ready)
+        except UnauthorizedException:
+            raise UnauthorizedException()
         except AttributeError:
             raise ValueError('Invalid matcher type: {}'.format(matcher_type))
 

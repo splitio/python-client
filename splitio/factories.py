@@ -6,6 +6,7 @@ from splitio.brokers import get_self_refreshing_broker, get_redis_broker, get_uw
 from splitio.managers import RedisSplitManager, SelfRefreshingSplitManager, \
     LocalhostSplitManager, UWSGISplitManager
 from splitio.impressions import ImpressionListenerWrapper
+from . import input_validator
 
 import logging
 
@@ -109,6 +110,14 @@ def get_factory(api_key, **kwargs):
     :param kwargs:
     :return:
     """
+    config = dict()
+    if 'config' in kwargs:
+        config = kwargs['config']
+
+    if 'redisHost' not in config and 'redisSentinels' not in config \
+       and input_validator.validate_factory_instantiation(api_key) is False:
+        return None
+
     if api_key == 'localhost':
         return LocalhostSplitFactory(**kwargs)
     else:

@@ -5,6 +5,7 @@ import logging
 import requests
 import json
 
+from splitio.exceptions import UnauthorizedException
 from splitio.config import SDK_API_BASE_URL, EVENTS_API_BASE_URL, SDK_VERSION
 
 _SEGMENT_CHANGES_URL_TEMPLATE = '{base_url}/segmentChanges/{segment_name}/'
@@ -92,6 +93,9 @@ class SdkApi(object):
         return headers
 
     def _logHttpError(self, response):
+        if response.status_code == 403:
+            raise UnauthorizedException()
+
         if response.status_code < 200 or response.status_code >= 400:
             respJson = response.json()
             if 'message' in respJson:
@@ -153,7 +157,11 @@ class SdkApi(object):
             'since': since
         }
 
-        return self._get(url, params)
+        try:
+            response = self._get(url, params)
+        except UnauthorizedException:
+            raise UnauthorizedException()
+        return response
 
     def test_impressions(self, test_impressions_data):
         """Makes a request to the testImpressions endpoint. The method takes a dictionary with the

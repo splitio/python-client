@@ -4,7 +4,7 @@ except ImportError:
     # Python 2
     import mock
 
-from splitio.config import SDK_VERSION, DEFAULT_CONFIG
+from splitio.config import SDK_VERSION, GLOBAL_KEY_PARAMETERS
 
 from os.path import dirname, join
 from json import load
@@ -99,7 +99,7 @@ class CustomImpressionListenerTestOnRedis(TestCase):
 
         self.assertIn('instance-id', impression_client._data_logged)
         self.assertEqual(impression_client._data_logged['instance-id'],
-                         DEFAULT_CONFIG['splitSdkMachineIp'])
+                         GLOBAL_KEY_PARAMETERS['instance-id'])
 
         self.assertIn('sdk-language-version', impression_client._data_logged)
         self.assertEqual(impression_client._data_logged['sdk-language-version'], SDK_VERSION)

@@ -5,6 +5,7 @@ from numbers import Number
 import logging
 import six
 import re
+import math
 from splitio.key import Key
 
 _LOGGER = logging.getLogger(__name__)
@@ -24,7 +25,8 @@ def _check_not_null(value, name, operation):
     :rtype: True|False
     """
     if value is None:
-        _LOGGER.error('{}: {} cannot be None.'.format(operation, name))
+        _LOGGER.error('{}: you passed a null {}, {} must be a non-empty string.'
+                      .format(operation, name, name))
         return False
     return True
 
@@ -43,8 +45,8 @@ def _check_is_string(value, name, operation):
     :rtype: True|False
     """
     if isinstance(value, six.string_types) is False:
-        _LOGGER.error('{}: {} has to be of type string.'.format(
-                      operation, name))
+        _LOGGER.error('{}: you passed an invalid {}, {} must be a non-empty string.'.format(
+                      operation, name, name))
         return False
     return True
 
@@ -63,19 +65,18 @@ def _check_string_not_empty(value, name, operation):
     :rtype: True|False
     """
     if value.strip() == "":
-        _LOGGER.error('{}: {} must not be empty.'.format(operation, name))
+        _LOGGER.error('{}: you passed an empty {}, {} must be a non-empty string.'
+                      .format(operation, name, name))
         return False
     return True
 
 
-def _check_string_matches(value, name, operation, pattern):
+def _check_string_matches(value, operation, pattern):
     """
     Checks if value is adhere to a regular expression passed
 
     :param key: value to be checked
     :type key: str
-    :param name: name to inform the error
-    :type feature: str
     :param operation: operation to inform the error
     :type operation: str
     :param pattern: pattern that needs to adhere
@@ -84,13 +85,17 @@ def _check_string_matches(value, name, operation, pattern):
     :rtype: True|False
     """
     if not re.match(pattern, value):
-        _LOGGER.error('{}: {} must adhere to the regular expression {}.'
-                      .format(operation, name, pattern))
+        _LOGGER.error('{}: you passed {}, event_type must '.format(operation, value) +
+                      'adhere to the regular expression {}. '.format(pattern) +
+                      'This means an event name must be alphanumeric, cannot be more ' +
+                      'than 80 characters long, and can only include a dash, underscore, ' +
+                      'period, or colon as separators of alphanumeric characters.'
+                      )
         return False
     return True
 
 
-def _check_can_convert(value, name, operation, message):
+def _check_can_convert(value, name, operation):
     """
     Checks if is a valid convertion.
 
@@ -100,91 +105,128 @@ def _check_can_convert(value, name, operation, message):
     :type feature: str
     :param operation: operation to inform the error
     :type operation: str
-    :param message: message to inform the error
-    :type message: str
     :return: The result of validation
     :rtype: True|False
     """
     if isinstance(value, six.string_types):
         return True
     else:
-        if isinstance(value, bool) or (not isinstance(value, Number)):
-            _LOGGER.error('{}: {} {}'.format(operation, name, message))
+        if isinstance(value, bool) or (not isinstance(value, Number)) or math.isnan(value) \
+           or math.isinf(value):
+            _LOGGER.error('{}: you passed an invalid {}, {} must be a non-empty string.'
+                          .format(operation, name, name))
             return False
     _LOGGER.warning('{}: {} {} is not of type string, converting.'
                     .format(operation, name, value))
     return True
 
 
-def _check_valid_matching_key(matching_key):
+def _check_valid_length(value, name, operation):
+    """
+    Checks value's length
+
+    :param key: value to be checked
+    :type key: str
+    :param name: name to inform the error
+    :type feature: str
+    :param operation: operation to inform the error
+    :type operation: str
+    :return: The result of validation
+    :rtype: True|False
+    """
+    if len(value) > 250:
+        _LOGGER.error('{}: {} too long - must be 250 characters or less.'
+                      .format(operation, name))
+        return False
+    return True
+
+
+def _check_valid_matching_key(matching_key, operation):
     """
     Checks if matching_key is valid for get_treatment when is
     sent as Key Object
 
     :param matching_key: matching_key to be checked
     :type matching_key: str
+    :param operation: user operation
+    :type operation: str
     :return: The result of validation
-    :rtype: True|False
+    :rtype: str|None
     """
     if matching_key is None:
-        _LOGGER.error('get_treatment: Key should be an object with bucketingKey and '
-                      'matchingKey with valid string properties.')
-        return False
+        _LOGGER.error('{}: you passed a null matching_key, matching_key '.format(operation)
+                      + 'must be a non-empty string.')
+        return None
     if isinstance(matching_key, six.string_types):
-        if not _check_string_not_empty(matching_key, 'matching_key', 'get_treatment'):
-            return False
+        if not _check_string_not_empty(matching_key, 'matching_key', operation):
+            return None
     else:
-        if not _check_can_convert(matching_key, 'matching_key', 'get_treatment',
-                                  'has to be of type string.'):
-            return False
-    return True
+        if not _check_can_convert(matching_key, 'matching_key', operation):
+            return None
+    matching_key = str(matching_key)
+    if _check_valid_length(matching_key, 'matching_key', operation):
+        return matching_key
+    return None
 
 
-def _check_valid_bucketing_key(bucketing_key):
+def _check_valid_bucketing_key(bucketing_key, operation):
     """
     Checks if bucketing_key is valid for get_treatment when is
     sent as Key Object
 
     :param bucketing_key: bucketing_key to be checked
     :type bucketing_key: str
+    :param operation: user operation
+    :type operation: str
     :return: The result of validation
-    :rtype: True|False
+    :rtype: str|None
     """
     if bucketing_key is None:
-        _LOGGER.warning('get_treatment: Key object should have bucketingKey set.')
+        _LOGGER.error('{}: you passed a null bucketing_key, '.format(operation)
+                      + 'bucketing_key must be a non-empty string.')
         return None
-    if not _check_can_convert(bucketing_key, 'bucketing_key', 'get_treatment',
-                              'has to be of type string.'):
-        return False
-    return str(bucketing_key)
+    if isinstance(bucketing_key, six.string_types):
+        if not _check_string_not_empty(bucketing_key, 'bucketing_key', operation):
+            return None
+    else:
+        if not _check_can_convert(bucketing_key, 'bucketing_key', operation):
+            return None
+    bucketing_key = str(bucketing_key)
+    if _check_valid_length(bucketing_key, 'bucketing_key', operation):
+        return bucketing_key
+    return None
 
 
-def validate_key(key):
+def validate_key(key, operation):
     """
     Validate Key parameter for get_treatment, if is invalid at some point
     the bucketing_key or matching_key it will return None
 
     :param key: user key
     :type key: mixed
+    :param operation: user operation
+    :type operation: str
     :return: The tuple key
     :rtype: (matching_key,bucketing_key)
     """
     matching_key_result = None
     bucketing_key_result = None
-    if not _check_not_null(key, 'key', 'get_treatment'):
+    if key is None:
+        _LOGGER.error('{}: you passed a null key, key must be a non-empty string.'
+                      .format(operation))
         return None, None
+
     if isinstance(key, Key):
-        if _check_valid_matching_key(key.matching_key):
-            matching_key_result = str(key.matching_key)
-        else:
+        matching_key_result = _check_valid_matching_key(key.matching_key, operation)
+        if matching_key_result is None:
             return None, None
-        bucketing_key_result = _check_valid_bucketing_key(key.bucketing_key)
-        if bucketing_key_result is False:
+        bucketing_key_result = _check_valid_bucketing_key(key.bucketing_key, operation)
+        if bucketing_key_result is None:
             return None, None
-        return matching_key_result, bucketing_key_result
     else:
-        if _check_can_convert(key, 'key', 'get_treatment',
-                              'has to be of type string or object Key.'):
+        if _check_can_convert(key, 'key', operation) and \
+           _check_string_not_empty(str(key), 'key', operation) and \
+           _check_valid_length(str(key), 'key', operation):
             matching_key_result = str(key)
     return matching_key_result, bucketing_key_result
 
@@ -199,7 +241,8 @@ def validate_feature_name(feature_name):
     :rtype: str|None
     """
     if (not _check_not_null(feature_name, 'feature_name', 'get_treatment')) or \
-       (not _check_is_string(feature_name, 'feature_name', 'get_treatment')):
+       (not _check_is_string(feature_name, 'feature_name', 'get_treatment')) or \
+       (not _check_string_not_empty(feature_name, 'feature_name', 'get_treatment')):
         return None
     return feature_name
 
@@ -214,7 +257,9 @@ def validate_track_key(key):
     :rtype: str|None
     """
     if (not _check_not_null(key, 'key', 'track')) or \
-       (not _check_can_convert(key, 'key', 'track', 'has to be of type string.')):
+       (not _check_can_convert(key, 'key', 'track')) or \
+       (not _check_string_not_empty(str(key), 'key', 'track')) or \
+       (not _check_valid_length(str(key), 'key', 'track')):
         return None
     return str(key)
 
@@ -232,6 +277,10 @@ def validate_traffic_type(traffic_type):
        (not _check_is_string(traffic_type, 'traffic_type', 'track')) or \
        (not _check_string_not_empty(traffic_type, 'traffic_type', 'track')):
         return None
+    if not traffic_type.islower():
+        _LOGGER.warning('track: {} should be all lowercase - converting string to lowercase.'
+                        .format(traffic_type))
+        traffic_type = traffic_type.lower()
     return traffic_type
 
 
@@ -246,8 +295,9 @@ def validate_event_type(event_type):
     """
     if (not _check_not_null(event_type, 'event_type', 'track')) or \
        (not _check_is_string(event_type, 'event_type', 'track')) or \
-       (not _check_string_matches(event_type, 'event_type', 'track',
-                                  r'[a-zA-Z0-9][-_\.a-zA-Z0-9]{0,62}')):
+       (not _check_string_not_empty(event_type, 'event_type', 'track')) or \
+       (not _check_string_matches(event_type, 'track',
+                                  r'^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$')):
         return None
     return event_type
 
@@ -279,7 +329,8 @@ def validate_manager_feature_name(feature_name):
     :rtype: str|None
     """
     if (not _check_not_null(feature_name, 'feature_name', 'split')) or \
-       (not _check_is_string(feature_name, 'feature_name', 'split')):
+       (not _check_is_string(feature_name, 'feature_name', 'split')) or \
+       (not _check_string_not_empty(feature_name, 'feature_name', 'split')):
         return None
     return feature_name
 
@@ -293,13 +344,51 @@ def validate_features_get_treatments(features):
     :return: filtered_features
     :rtype: list|None
     """
-    if not _check_not_null(features, 'features', 'get_treatments'):
+    if features is None or not isinstance(features, list):
+        _LOGGER.error('get_treatments: feature_names must be a non-empty array.')
         return None
-    if not isinstance(features, list):
-        _LOGGER.error('get_treatments: features must be a list.')
-        return None
+    if len(features) == 0:
+        _LOGGER.error('get_treatments: feature_names must be a non-empty array.')
+        return []
     filtered_features = set(filter(lambda x: x is not None and
                                    _check_is_string(x, 'feature_name', 'get_treatments'), features))
     if len(filtered_features) == 0:
-        _LOGGER.warning('get_treatments: features is an empty list or has None values.')
+        _LOGGER.error('get_treatments: feature_names must be a non-empty array.')
+        return None
     return filtered_features
+
+
+def validate_attributes(attributes, operation):
+    """
+    Checks if attributes is valid
+
+    :param attributes: dict
+    :type attributes: dict
+    :param operation: user operation
+    :type operation: str
+    :return: bool
+    :rtype: True|False
+    """
+    if attributes is None:
+        return True
+    if not type(attributes) is dict:
+        _LOGGER.error('{}: attributes must be of type dictionary.'
+                      .format(operation))
+        return False
+    return True
+
+
+def validate_factory_instantiation(apikey):
+    """
+    Checks if is a valid instantiation of split client
+
+    :param apikey: str
+    :type apikey: str
+    :return: bool
+    :rtype: True|False
+    """
+    if (not _check_not_null(apikey, 'apikey', 'factory_instantiation')) or \
+       (not _check_is_string(apikey, 'apikey', 'factory_instantiation')) or \
+       (not _check_string_not_empty(apikey, 'apikey', 'factory_instantiation')):
+        return False
+    return True

@@ -56,6 +56,10 @@ class RedisSplitManager(SplitManager):
         :return: A list of str
         :rtype: list
         """
+        if self._split_fetcher._destroyed:
+            self._logger.error("Client has already been destroyed - no calls possible.")
+            return []
+
         splits = self._split_cache.get_splits_keys()
         split_names = []
         for split_name in splits:
@@ -70,6 +74,10 @@ class RedisSplitManager(SplitManager):
         :return: A List of SplitView.
         :rtype: list
         """
+        if self._split_fetcher._destroyed:
+            self._logger.error("Client has already been destroyed - no calls possible.")
+            return []
+
         splits = self._split_fetcher.fetch_all()
         change_number = self._split_cache.get_change_number()
 
@@ -92,6 +100,10 @@ class RedisSplitManager(SplitManager):
         :return: The SplitView instance.
         :rtype: SplitView
         """
+        if self._split_fetcher._destroyed:
+            self._logger.error("Client has already been destroyed - no calls possible.")
+            return None
+
         feature_name = input_validator.validate_manager_feature_name(feature_name)
 
         if feature_name is None:
@@ -135,6 +147,10 @@ class UWSGISplitManager(SplitManager):
         :return: A list of str
         :rtype: list
         """
+        if self._split_fetcher._destroyed:
+            self._logger.error("Client has already been destroyed - no calls possible.")
+            return []
+
         splits = self._split_cache.get_splits_keys()
         split_names = []
         for split_name in splits:
@@ -148,6 +164,10 @@ class UWSGISplitManager(SplitManager):
         :return: A List of SplitView.
         :rtype: list
         """
+        if self._split_fetcher._destroyed:
+            self._logger.error("Client has already been destroyed - no calls possible.")
+            return []
+
         splits = self._split_fetcher.fetch_all()
 
         split_views = []
@@ -169,6 +189,10 @@ class UWSGISplitManager(SplitManager):
         :return: The SplitView instance.
         :rtype: SplitView
         """
+        if self._split_fetcher._destroyed:
+            self._logger.error("Client has already been destroyed - no calls possible.")
+            return None
+
         feature_name = input_validator.validate_manager_feature_name(feature_name)
 
         if feature_name is None:
@@ -207,6 +231,10 @@ class SelfRefreshingSplitManager(SplitManager):
         :return: A list of str
         :rtype: list
         """
+        if self._split_fetcher._destroyed:
+            self._logger.error("Client has already been destroyed - no calls possible.")
+            return []
+
         splits = self._split_fetcher.fetch_all()
         split_names = []
         for split in splits:
@@ -219,6 +247,10 @@ class SelfRefreshingSplitManager(SplitManager):
         :return: A List of SplitView.
         :rtype: list
         """
+        if self._split_fetcher._destroyed:
+            self._logger.error("Client has already been destroyed - no calls possible.")
+            return []
+
         change_number = self._split_fetcher.change_number
         splits = self._split_fetcher.fetch_all()
 
@@ -240,6 +272,10 @@ class SelfRefreshingSplitManager(SplitManager):
         :return: The SplitView instance.
         :rtype: SplitView
         """
+        if self._split_fetcher._destroyed:
+            self._logger.error("Client has already been destroyed - no calls possible.")
+            return None
+
         feature_name = input_validator.validate_manager_feature_name(feature_name)
 
         if feature_name is None:
@@ -280,6 +316,10 @@ class LocalhostSplitManager(SplitManager):
         :return: A list of str
         :rtype: list
         """
+        if self._split_fetcher._destroyed:
+            self._logger.error("Client has already been destroyed - no calls possible.")
+            return []
+
         splits = self._split_fetcher.fetch_all()
         split_names = []
         for split in splits:
@@ -292,6 +332,10 @@ class LocalhostSplitManager(SplitManager):
         :return: A List of SplitView.
         :rtype: list
         """
+        if self._split_fetcher._destroyed:
+            self._logger.error("Client has already been destroyed - no calls possible.")
+            return []
+
         change_number = -1
         splits = self._split_fetcher.fetch_all()
 
@@ -311,6 +355,12 @@ class LocalhostSplitManager(SplitManager):
         :return: The SplitView instance.
         :rtype: SplitView
         """
+        if self._split_fetcher._destroyed:
+            self._logger.error("Client has already been destroyed - no calls possible.")
+            return None
+
+        feature_name = input_validator.validate_manager_feature_name(feature_name)
+
         split = self._split_fetcher.fetch(feature_name)
         if split is None:
             return None

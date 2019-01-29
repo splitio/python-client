@@ -14,6 +14,7 @@ from six import iteritems
 
 
 SDK_GET_TREATMENT = 'sdk.getTreatment'
+SDK_GET_TREATMENTS = 'sdk.getTreatments'
 
 BUCKETS = (
     1000, 1500, 2250, 3375, 5063,

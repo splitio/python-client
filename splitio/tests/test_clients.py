@@ -1242,25 +1242,34 @@ class TestClientDestroy(TestCase):
         broker = SelfRefreshingBroker(self.some_api_key)
         client = Client(broker)
         manager = SelfRefreshingSplitManager(broker)
+        manager._logger.error = mock.MagicMock()
+        logger_error = manager._logger.error
         client.destroy()
         self.assertEqual(client.get_treatment('asd', 'asd'), CONTROL)
         self.assertEqual(manager.splits(), [])
-        self.assertEqual(manager.split_names(), [])
+        logger_error \
+            .assert_called_with("Client has already been destroyed - no calls possible.")
 
     def test_redis_destroy(self):
         broker = RedisBroker(self.some_api_key, self.some_config)
         client = Client(broker)
         manager = RedisSplitManager(broker)
+        manager._logger.error = mock.MagicMock()
+        logger_error = manager._logger.error
         client.destroy()
         self.assertEqual(client.get_treatment('asd', 'asd'), CONTROL)
         self.assertEqual(manager.splits(), [])
-        self.assertEqual(manager.split_names(), [])
+        logger_error \
+            .assert_called_with("Client has already been destroyed - no calls possible.")
 
     def test_uwsgi_destroy(self):
         broker = UWSGIBroker(self.some_api_key, {'eventsQueueSize': 30})
         client = Client(broker)
         manager = UWSGISplitManager(broker)
+        manager._logger.error = mock.MagicMock()
+        logger_error = manager._logger.error
         client.destroy()
         self.assertEqual(client.get_treatment('asd', 'asd'), CONTROL)
         self.assertEqual(manager.splits(), [])
-        self.assertEqual(manager.split_names(), [])
+        logger_error \
+            .assert_called_with("Client has already been destroyed - no calls possible.")
