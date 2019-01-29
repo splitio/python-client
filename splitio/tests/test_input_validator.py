@@ -252,6 +252,20 @@ class TestInputSanitizationGetTreatment(TestCase):
         self.assertEqual("default_treatment", self.client.get_treatment(
             "some_key", "some_feature", None))
 
+    def test_get_treatment_with_whitespaces(self):
+        self.assertEqual("default_treatment", self.client.get_treatment(
+            "some_key", "  some_feature   "))
+        self.logger_warning \
+            .assert_called_once_with("get_treatment: feature_name '  some_feature   ' has extra" +
+                                     " whitespace, trimming.")
+
+    def test_get_treatment_with_whitespaces_2(self):
+        self.assertEqual("default_treatment", self.client.get_treatment(
+            "some_key", "some_feature   "))
+        self.logger_warning \
+            .assert_called_once_with("get_treatment: feature_name 'some_feature   ' has extra" +
+                                     " whitespace, trimming.")
+
 
 class TestInputSanitizationTrack(TestCase):
 
@@ -662,11 +676,34 @@ class TestInputSanitizationGetTreatments(TestCase):
         self.logger_error \
             .assert_called_with("get_treatments: feature_names must be a non-empty array.")
 
+    def test_get_treatments_with_empty_features_array(self):
+        self.assertEqual(None, self.client.get_treatments("some_key", ["", ""]))
+        self.logger_error \
+            .assert_called_with("get_treatments: feature_names must be a non-empty array.")
+
+    def test_get_treatments_with_whitespaces(self):
+        expected = {
+            "some": "control"
+        }
+        self.assertEqual(expected, self.client.get_treatments("some_key", ["  some"]))
+        self.logger_warning \
+            .assert_called_once_with("get_treatments: feature_name '  some' has extra whitespace,"
+                                     + " trimming.")
+
+    def test_get_treatments_with_whitespaces_2(self):
+        expected = {
+            "some": "control",
+            "another": "control"
+        }
+        self.assertEqual(expected, self.client.get_treatments("some_key", ["  some ", "another"]))
+        self.logger_warning \
+            .assert_called_once_with("get_treatments: feature_name '  some ' has extra whitespace,"
+                                     + " trimming.")
+
 
 class TestInputSanitizationFactory(TestCase):
 
     def setUp(self):
-
         input_validator._LOGGER.error = mock.MagicMock()
         self.logger_error = input_validator._LOGGER.error
 

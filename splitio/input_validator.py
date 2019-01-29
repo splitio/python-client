@@ -197,6 +197,24 @@ def _check_valid_bucketing_key(bucketing_key, operation):
     return None
 
 
+def _remove_empty_spaces(value, operation):
+    """
+    Checks if an string has whitespaces
+
+    :param value: value to be checked
+    :type value: str
+    :param operation: user operation
+    :type operation: str
+    :return: The result of trimming
+    :rtype: str
+    """
+    strip_value = value.strip()
+    if len(value) != len(strip_value):
+        _LOGGER.warning("{}: feature_name '{}' has extra whitespace,".format(operation, value)
+                        + " trimming.")
+    return strip_value
+
+
 def validate_key(key, operation):
     """
     Validate Key parameter for get_treatment, if is invalid at some point
@@ -244,7 +262,7 @@ def validate_feature_name(feature_name):
        (not _check_is_string(feature_name, 'feature_name', 'get_treatment')) or \
        (not _check_string_not_empty(feature_name, 'feature_name', 'get_treatment')):
         return None
-    return feature_name
+    return _remove_empty_spaces(feature_name, 'get_treatment')
 
 
 def validate_track_key(key):
@@ -350,8 +368,11 @@ def validate_features_get_treatments(features):
     if len(features) == 0:
         _LOGGER.error('get_treatments: feature_names must be a non-empty array.')
         return []
-    filtered_features = set(filter(lambda x: x is not None and
-                                   _check_is_string(x, 'feature_name', 'get_treatments'), features))
+    filtered_features = set(_remove_empty_spaces(feature, 'get_treatments') for feature in features
+                            if feature is not None and
+                            _check_is_string(feature, 'feature_name', 'get_treatments') and
+                            _check_string_not_empty(feature, 'feature_name', 'get_treatments')
+                            )
     if len(filtered_features) == 0:
         _LOGGER.error('get_treatments: feature_names must be a non-empty array.')
         return None

@@ -641,7 +641,7 @@ class SplitParser(object):
         try:
             return self._parse(split, block_until_ready=block_until_ready)
         except UnauthorizedException:
-            self._logger.error("factory instantiation: you passed a browser type api_key, " +
+            self._logger.error("factory_instantiation: you passed a browser type api_key, " +
                                "please grab an api key from the Split console that is of type sdk")
             raise UnauthorizedException()
         except:
