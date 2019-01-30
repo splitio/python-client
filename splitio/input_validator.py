@@ -141,59 +141,33 @@ def _check_valid_length(value, name, operation):
     return True
 
 
-def _check_valid_matching_key(matching_key, operation):
+def _check_valid_object_key(key, name, operation):
     """
-    Checks if matching_key is valid for get_treatment when is
+    Checks if object key is valid for get_treatment/s when is
     sent as Key Object
 
-    :param matching_key: matching_key to be checked
-    :type matching_key: str
+    :param key: key to be checked
+    :type key: str
+    :param name: name to be checked
+    :type name: str
     :param operation: user operation
     :type operation: str
     :return: The result of validation
     :rtype: str|None
     """
-    if matching_key is None:
-        _LOGGER.error('{}: you passed a null matching_key, matching_key '.format(operation)
-                      + 'must be a non-empty string.')
+    if key is None:
+        _LOGGER.error('{}: you passed a null {}, '.format(operation, name)
+                      + '{} must be a non-empty string.'.format(name))
         return None
-    if isinstance(matching_key, six.string_types):
-        if not _check_string_not_empty(matching_key, 'matching_key', operation):
+    if isinstance(key, six.string_types):
+        if not _check_string_not_empty(key, name, operation):
             return None
     else:
-        if not _check_can_convert(matching_key, 'matching_key', operation):
+        if not _check_can_convert(key, name, operation):
             return None
-    matching_key = str(matching_key)
-    if _check_valid_length(matching_key, 'matching_key', operation):
-        return matching_key
-    return None
-
-
-def _check_valid_bucketing_key(bucketing_key, operation):
-    """
-    Checks if bucketing_key is valid for get_treatment when is
-    sent as Key Object
-
-    :param bucketing_key: bucketing_key to be checked
-    :type bucketing_key: str
-    :param operation: user operation
-    :type operation: str
-    :return: The result of validation
-    :rtype: str|None
-    """
-    if bucketing_key is None:
-        _LOGGER.error('{}: you passed a null bucketing_key, '.format(operation)
-                      + 'bucketing_key must be a non-empty string.')
-        return None
-    if isinstance(bucketing_key, six.string_types):
-        if not _check_string_not_empty(bucketing_key, 'bucketing_key', operation):
-            return None
-    else:
-        if not _check_can_convert(bucketing_key, 'bucketing_key', operation):
-            return None
-    bucketing_key = str(bucketing_key)
-    if _check_valid_length(bucketing_key, 'bucketing_key', operation):
-        return bucketing_key
+    key = str(key)
+    if _check_valid_length(key, name, operation):
+        return key
     return None
 
 
@@ -217,7 +191,7 @@ def _remove_empty_spaces(value, operation):
 
 def validate_key(key, operation):
     """
-    Validate Key parameter for get_treatment, if is invalid at some point
+    Validate Key parameter for get_treatment/s, if is invalid at some point
     the bucketing_key or matching_key it will return None
 
     :param key: user key
@@ -235,10 +209,11 @@ def validate_key(key, operation):
         return None, None
 
     if isinstance(key, Key):
-        matching_key_result = _check_valid_matching_key(key.matching_key, operation)
+        matching_key_result = _check_valid_object_key(key.matching_key, 'matching_key', operation)
         if matching_key_result is None:
             return None, None
-        bucketing_key_result = _check_valid_bucketing_key(key.bucketing_key, operation)
+        bucketing_key_result = _check_valid_object_key(key.bucketing_key, 'bucketing_key',
+                                                       operation)
         if bucketing_key_result is None:
             return None, None
     else:
