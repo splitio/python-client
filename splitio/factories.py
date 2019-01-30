@@ -115,7 +115,7 @@ def get_factory(api_key, **kwargs):
         config = kwargs['config']
 
     if 'redisHost' not in config and 'redisSentinels' not in config \
-       and input_validator.validate_factory_instantiation(api_key) is False:
+       and input_validator.validate_factory_instantiation(api_key, config) is False:
         return None
 
     if api_key == 'localhost':

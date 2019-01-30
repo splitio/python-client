@@ -732,3 +732,30 @@ class TestInputSanitizationFactory(TestCase):
         }
         self.assertNotEqual(None, get_factory(True, config=config))
         self.logger_error.assert_not_called()
+
+    def test_factory_with_invalid_config(self):
+        config = {
+            'some': 0
+        }
+        self.assertEqual(None, get_factory("apikey", config=config))
+        self.logger_error \
+            .assert_called_once_with('no ready parameter has been set - incorrect control '
+                                     + 'treatments could be logged')
+
+    def test_factory_with_invalid_null_ready(self):
+        config = {
+            'ready': None
+        }
+        self.assertEqual(None, get_factory("apikey", config=config))
+        self.logger_error \
+            .assert_called_once_with('no ready parameter has been set - incorrect control '
+                                     + 'treatments could be logged')
+
+    def test_factory_with_invalid_ready(self):
+        config = {
+            'ready': True
+        }
+        self.assertEqual(None, get_factory("apikey", config=config))
+        self.logger_error \
+            .assert_called_once_with('no ready parameter has been set - incorrect control '
+                                     + 'treatments could be logged')

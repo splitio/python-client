@@ -374,17 +374,27 @@ def validate_attributes(attributes, operation):
     return True
 
 
-def validate_factory_instantiation(apikey):
+def validate_factory_instantiation(apikey, config):
     """
     Checks if is a valid instantiation of split client
 
     :param apikey: str
     :type apikey: str
+    :param config: dict
+    :type config: dict
     :return: bool
     :rtype: True|False
     """
+    print(apikey)
+    if apikey == 'localhost':
+        return True
     if (not _check_not_null(apikey, 'apikey', 'factory_instantiation')) or \
        (not _check_is_string(apikey, 'apikey', 'factory_instantiation')) or \
        (not _check_string_not_empty(apikey, 'apikey', 'factory_instantiation')):
+        return False
+    if 'ready' not in config or isinstance(config.get('ready'), bool) or \
+       not isinstance(config.get('ready'), Number):
+        _LOGGER.error('no ready parameter has been set - incorrect control treatments '
+                      + 'could be logged')
         return False
     return True
