@@ -7,6 +7,7 @@ import six
 import re
 import math
 from splitio.key import Key
+from splitio.treatments import CONTROL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -352,6 +353,23 @@ def validate_features_get_treatments(features):
         _LOGGER.error('get_treatments: feature_names must be a non-empty array.')
         return None
     return filtered_features
+
+
+def parse_control_treatments(features):
+    """
+    Parses valid features to control
+
+    :param features: array of features
+    :type features: list
+    :return: dict
+    :rtype: dict|None
+    """
+    filtered_features = validate_features_get_treatments(features)
+
+    if len(filtered_features) == 0:
+        return {}
+
+    return {feature: CONTROL for feature in filtered_features}
 
 
 def validate_attributes(attributes, operation):

@@ -150,7 +150,7 @@ class Client(object):
         """
         if self._destroyed:
             self._logger.error("Client has already been destroyed - no calls possible")
-            return None
+            return input_validator.parse_control_treatments(features)
 
         start = int(round(time.time() * 1000))
 

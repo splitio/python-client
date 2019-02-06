@@ -1247,6 +1247,9 @@ class TestClientDestroy(TestCase):
         client.destroy()
         self.assertEqual(client.get_treatment('asd', 'asd'), CONTROL)
         self.assertEqual(manager.splits(), [])
+        result = client.get_treatments('asd', [None, 'asd'])
+        self.assertEqual(len(result.keys()), 1)
+        self.assertEqual(result["asd"], CONTROL)
         logger_error \
             .assert_called_with("Client has already been destroyed - no calls possible.")
 
@@ -1259,6 +1262,9 @@ class TestClientDestroy(TestCase):
         client.destroy()
         self.assertEqual(client.get_treatment('asd', 'asd'), CONTROL)
         self.assertEqual(manager.splits(), [])
+        result = client.get_treatments('asd', [True, 'asd', None])
+        self.assertEqual(len(result.keys()), 1)
+        self.assertEqual(result["asd"], CONTROL)
         logger_error \
             .assert_called_with("Client has already been destroyed - no calls possible.")
 
@@ -1271,5 +1277,8 @@ class TestClientDestroy(TestCase):
         client.destroy()
         self.assertEqual(client.get_treatment('asd', 'asd'), CONTROL)
         self.assertEqual(manager.splits(), [])
+        result = client.get_treatments('asd', ['asd', None])
+        self.assertEqual(result["asd"], CONTROL)
+        self.assertEqual(len(result.keys()), 1)
         logger_error \
             .assert_called_with("Client has already been destroyed - no calls possible.")
