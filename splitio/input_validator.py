@@ -10,6 +10,8 @@ from splitio.key import Key
 from splitio.treatments import CONTROL
 
 _LOGGER = logging.getLogger(__name__)
+MAX_LENGTH = 250
+EVENT_TYPE_PATTERN = r'^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$'
 
 
 def _check_not_null(value, name, operation):
@@ -135,9 +137,9 @@ def _check_valid_length(value, name, operation):
     :return: The result of validation
     :rtype: True|False
     """
-    if len(value) > 250:
-        _LOGGER.error('{}: {} too long - must be 250 characters or less.'
-                      .format(operation, name))
+    if len(value) > MAX_LENGTH:
+        _LOGGER.error('{}: {} too long - must be {} characters or less.'
+                      .format(operation, name, MAX_LENGTH))
         return False
     return True
 
@@ -290,8 +292,7 @@ def validate_event_type(event_type):
     if (not _check_not_null(event_type, 'event_type', 'track')) or \
        (not _check_is_string(event_type, 'event_type', 'track')) or \
        (not _check_string_not_empty(event_type, 'event_type', 'track')) or \
-       (not _check_string_matches(event_type, 'track',
-                                  r'^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$')):
+       (not _check_string_matches(event_type, 'track', EVENT_TYPE_PATTERN)):
         return None
     return event_type
 
