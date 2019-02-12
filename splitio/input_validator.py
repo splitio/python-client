@@ -8,6 +8,9 @@ import re
 import math
 from splitio.key import Key
 from splitio.treatments import CONTROL
+from splitio.api import SdkApi
+from splitio.exceptions import ForbiddenException
+
 
 _LOGGER = logging.getLogger(__name__)
 MAX_LENGTH = 250
@@ -109,19 +112,20 @@ def _check_can_convert(value, name, operation):
     :param operation: operation to inform the error
     :type operation: str
     :return: The result of validation
-    :rtype: True|False
+    :rtype: None|string
     """
     if isinstance(value, six.string_types):
-        return True
+        return value
     else:
+        # check whether if isnan and isinf are really necessary
         if isinstance(value, bool) or (not isinstance(value, Number)) or math.isnan(value) \
            or math.isinf(value):
             _LOGGER.error('{}: you passed an invalid {}, {} must be a non-empty string.'
                           .format(operation, name, name))
-            return False
+            return None
     _LOGGER.warning('{}: {} {} is not of type string, converting.'
                     .format(operation, name, value))
-    return True
+    return str(value)
 
 
 def _check_valid_length(value, name, operation):
@@ -165,13 +169,10 @@ def _check_valid_object_key(key, name, operation):
     if isinstance(key, six.string_types):
         if not _check_string_not_empty(key, name, operation):
             return None
-    else:
-        if not _check_can_convert(key, name, operation):
-            return None
-    key = str(key)
-    if _check_valid_length(key, name, operation):
-        return key
-    return None
+    keyStr = _check_can_convert(key, name, operation)
+    if keyStr is None or not _check_valid_length(keyStr, name, operation):
+        return None
+    return keyStr
 
 
 def _remove_empty_spaces(value, operation):
@@ -220,10 +221,11 @@ def validate_key(key, operation):
         if bucketing_key_result is None:
             return None, None
     else:
-        if _check_can_convert(key, 'key', operation) and \
-           _check_string_not_empty(str(key), 'key', operation) and \
-           _check_valid_length(str(key), 'key', operation):
-            matching_key_result = str(key)
+        keyStr = _check_can_convert(key, 'key', operation)
+        if keyStr is not None and \
+           _check_string_not_empty(keyStr, 'key', operation) and \
+           _check_valid_length(keyStr, 'key', operation):
+            matching_key_result = keyStr
     return matching_key_result, bucketing_key_result
 
 
@@ -252,12 +254,14 @@ def validate_track_key(key):
     :return: key
     :rtype: str|None
     """
-    if (not _check_not_null(key, 'key', 'track')) or \
-       (not _check_can_convert(key, 'key', 'track')) or \
-       (not _check_string_not_empty(str(key), 'key', 'track')) or \
-       (not _check_valid_length(str(key), 'key', 'track')):
+    if not _check_not_null(key, 'key', 'track'):
         return None
-    return str(key)
+    keyStr = _check_can_convert(key, 'key', 'track')
+    if keyStr is None or \
+       (not _check_string_not_empty(keyStr, 'key', 'track')) or \
+       (not _check_valid_length(keyStr, 'key', 'track')):
+        return None
+    return keyStr
 
 
 def validate_traffic_type(traffic_type):
@@ -356,21 +360,16 @@ def validate_features_get_treatments(features):
     return filtered_features
 
 
-def parse_control_treatments(features):
+def generate_control_treatments(features):
     """
-    Parses valid features to control
+    Generates valid features to control
 
     :param features: array of features
     :type features: list
     :return: dict
     :rtype: dict|None
     """
-    filtered_features = validate_features_get_treatments(features)
-
-    if len(filtered_features) == 0:
-        return {}
-
-    return {feature: CONTROL for feature in filtered_features}
+    return {feature: CONTROL for feature in validate_features_get_treatments(features)}
 
 
 def validate_attributes(attributes, operation):
@@ -393,7 +392,19 @@ def validate_attributes(attributes, operation):
     return True
 
 
-def validate_factory_instantiation(apikey, config):
+def _valid_apikey_type(api_key, sdk_api_base_url):
+    sdk_api = SdkApi(
+        api_key,
+        sdk_api_base_url=sdk_api_base_url,
+    )
+    try:
+        sdk_api.segment_changes('___TEST___', -1)
+    except ForbiddenException:
+        return False
+    return True
+
+
+def validate_factory_instantiation(apikey, config, sdk_api_base_url):
     """
     Checks if is a valid instantiation of split client
 
@@ -404,7 +415,6 @@ def validate_factory_instantiation(apikey, config):
     :return: bool
     :rtype: True|False
     """
-    print(apikey)
     if apikey == 'localhost':
         return True
     if (not _check_not_null(apikey, 'apikey', 'factory_instantiation')) or \
@@ -415,5 +425,10 @@ def validate_factory_instantiation(apikey, config):
        not isinstance(config.get('ready'), Number):
         _LOGGER.error('no ready parameter has been set - incorrect control treatments '
                       + 'could be logged')
+        return False
+    if not _valid_apikey_type(apikey, sdk_api_base_url):
+        _LOGGER.error('factory instantiation: you passed a browser type '
+                      + 'api_key, please grab an api key from the Split '
+                      + 'console that is of type sdk')
         return False
     return True

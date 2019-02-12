@@ -6,5 +6,5 @@ class TimeoutException(Exception):
     pass
 
 
-class UnauthorizedException(Exception):
+class ForbiddenException(Exception):
     pass

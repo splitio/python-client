@@ -604,14 +604,20 @@ class TestInputSanitizationGetTreatments(TestCase):
         self.logger_warning = input_validator._LOGGER.warning
 
     def test_get_treatments_with_null_key(self):
-        self.assertEqual(None, self.client.get_treatments(
+        expected = {
+            "some_feature": "control"
+        }
+        self.assertEqual(expected, self.client.get_treatments(
             None, ["some_feature"]))
         self.logger_error \
             .assert_called_once_with("get_treatments: you passed a null key, key must be a" +
                                      " non-empty string.")
 
     def test_get_treatments_with_empty_key(self):
-        self.assertEqual(None, self.client.get_treatments(
+        expected = {
+            "some_feature": "control"
+        }
+        self.assertEqual(expected, self.client.get_treatments(
             "", ["some_feature"]))
         self.logger_error \
             .assert_called_once_with("get_treatments: you passed an empty key, key must be a" +
@@ -621,7 +627,10 @@ class TestInputSanitizationGetTreatments(TestCase):
         key = ""
         for x in range(0, 255):
             key = key + "a"
-        self.assertEqual(None, self.client.get_treatments(key, ["some_feature"]))
+        expected = {
+            "some_feature": "control"
+        }
+        self.assertEqual(expected, self.client.get_treatments(key, ["some_feature"]))
         self.logger_error \
             .assert_called_once_with("get_treatments: key too long - must be 250 characters or " +
                                      "less.")
@@ -633,31 +642,37 @@ class TestInputSanitizationGetTreatments(TestCase):
             .assert_called_once_with("get_treatments: key 12345 is not of type string, converting.")
 
     def test_get_treatments_with_bool_key(self):
-        self.assertEqual(None, self.client.get_treatments(
+        expected = {
+            "some_feature": "control"
+        }
+        self.assertEqual(expected, self.client.get_treatments(
             True, ["some_feature"]))
         self.logger_error \
             .assert_called_once_with("get_treatments: you passed an invalid key, key must be a" +
                                      " non-empty string.")
 
     def test_get_treatments_with_array_key(self):
-        self.assertEqual(None, self.client.get_treatments(
+        expected = {
+            "some_feature": "control"
+        }
+        self.assertEqual(expected, self.client.get_treatments(
             [], ["some_feature"]))
         self.logger_error \
             .assert_called_once_with("get_treatments: you passed an invalid key, key must be a" +
                                      " non-empty string.")
 
     def test_get_treatments_with_null_features(self):
-        self.assertEqual(None, self.client.get_treatments("some_key", None))
+        self.assertEqual({}, self.client.get_treatments("some_key", None))
         self.logger_error \
             .assert_called_once_with("get_treatments: feature_names must be a non-empty array.")
 
     def test_get_treatments_with_bool_type_of_features(self):
-        self.assertEqual(None, self.client.get_treatments("some_key", True))
+        self.assertEqual({}, self.client.get_treatments("some_key", True))
         self.logger_error \
             .assert_called_once_with("get_treatments: feature_names must be a non-empty array.")
 
     def test_get_treatments_with_string_type_of_features(self):
-        self.assertEqual(None, self.client.get_treatments("some_key", "some_string"))
+        self.assertEqual({}, self.client.get_treatments("some_key", "some_string"))
         self.logger_error \
             .assert_called_once_with("get_treatments: feature_names must be a non-empty array.")
 
@@ -667,17 +682,17 @@ class TestInputSanitizationGetTreatments(TestCase):
             .assert_called_once_with("get_treatments: feature_names must be a non-empty array.")
 
     def test_get_treatments_with_none_features(self):
-        self.assertEqual(None, self.client.get_treatments("some_key", [None, None]))
+        self.assertEqual({}, self.client.get_treatments("some_key", [None, None]))
         self.logger_error \
             .assert_called_once_with("get_treatments: feature_names must be a non-empty array.")
 
     def test_get_treatments_with_invalid_type_of_features(self):
-        self.assertEqual(None, self.client.get_treatments("some_key", [True]))
+        self.assertEqual({}, self.client.get_treatments("some_key", [True]))
         self.logger_error \
             .assert_called_with("get_treatments: feature_names must be a non-empty array.")
 
     def test_get_treatments_with_empty_features_array(self):
-        self.assertEqual(None, self.client.get_treatments("some_key", ["", ""]))
+        self.assertEqual({}, self.client.get_treatments("some_key", ["", ""]))
         self.logger_error \
             .assert_called_with("get_treatments: feature_names must be a non-empty array.")
 

@@ -37,9 +37,7 @@ class MainSplitFactory(SplitFactory):
     def __init__(self, api_key, **kwargs):
         super(MainSplitFactory, self).__init__()
 
-        config = dict()
-        if 'config' in kwargs:
-            config = kwargs['config']
+        config = kwargs.get('config', {})
 
         labels_enabled = config.get('labelsEnabled', True)
 
@@ -110,12 +108,11 @@ def get_factory(api_key, **kwargs):
     :param kwargs:
     :return:
     """
-    config = dict()
-    if 'config' in kwargs:
-        config = kwargs['config']
-
+    config = kwargs.get('config', {})
+    sdk_api_base_url = kwargs.get('sdk_api_base_url', None)
     if 'redisHost' not in config and 'redisSentinels' not in config \
-       and input_validator.validate_factory_instantiation(api_key, config) is False:
+       and input_validator.validate_factory_instantiation(api_key, config, sdk_api_base_url) \
+       is False:
         return None
 
     if api_key == 'localhost':

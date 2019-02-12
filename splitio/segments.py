@@ -8,8 +8,6 @@ from json import load
 from threading import Timer, RLock
 import six
 
-from splitio.exceptions import UnauthorizedException
-
 
 class Segment(object):
     def __init__(self, name):
@@ -135,14 +133,12 @@ class SelfRefreshingSegmentFetcher(object):
                                         self._interval)
         self._segments[name] = segment
 
-        try:
-            if block_until_ready:
-                segment.refresh_segment()
-                segment.start(delayed_update=True)
-            else:
-                segment.start()
-        except UnauthorizedException:
-            raise UnauthorizedException()
+        if block_until_ready:
+            segment.refresh_segment()
+            segment.start(delayed_update=True)
+        else:
+            segment.start()
+
         return segment
 
 
@@ -250,8 +246,6 @@ class SelfRefreshingSegment(InMemorySegment):
 
                     if not self._greedy:
                         return
-        except UnauthorizedException:
-            raise UnauthorizedException()
         except:
             self._logger.exception('Exception caught refreshing segment')
             self._stopped = True
@@ -403,8 +397,6 @@ class SegmentChangeFetcher(object):
 
         try:
             segment_change = self.fetch_from_backend(name, since)
-        except UnauthorizedException:
-            raise UnauthorizedException()
         except:
             self._logger.exception('Exception caught fetching segment changes')
             segment_change = self.build_empty_segment_change(name, since)
@@ -424,10 +416,7 @@ class ApiSegmentChangeFetcher(SegmentChangeFetcher):
         self._api = api
 
     def fetch_from_backend(self, name, since):
-        try:
-            return self._api.segment_changes(name, since)
-        except UnauthorizedException:
-            raise UnauthorizedException()
+        return self._api.segment_changes(name, since)
 
 
 class CacheBasedSegmentFetcher(SegmentFetcher):

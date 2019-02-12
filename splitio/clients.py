@@ -150,23 +150,20 @@ class Client(object):
         """
         if self._destroyed:
             self._logger.error("Client has already been destroyed - no calls possible")
-            return input_validator.parse_control_treatments(features)
+            return input_validator.generate_control_treatments(features)
 
         start = int(round(time.time() * 1000))
 
         matching_key, bucketing_key = input_validator.validate_key(key, 'get_treatments')
         if matching_key is None and bucketing_key is None:
-            return None
+            return input_validator.generate_control_treatments(features)
 
         if input_validator.validate_attributes(attributes, 'get_treatment') is False:
-            return None
+            return input_validator.generate_control_treatments(features)
 
         features = input_validator.validate_features_get_treatments(features)
         if features is None:
-            return None
-        else:
-            if len(features) == 0:
-                return {}
+            return {}
 
         bulk_impressions = []
         treatments = {}
