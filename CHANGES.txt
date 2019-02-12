@@ -1,6 +1,9 @@
 6.3.0 ()
  - Stored Impressions in Queue.
  - Fixed bug related to Machine Name and Machine IP.
+ - Updated Input Validation.
+6.2.2 (Dec 17, 2018)
+ - Fixed issue on selecting db for Sentinel.
 6.2.1 (Dec 6, 2018)
  - Fixed traffic allocation issue on 1%.
  - Allowed hypens in 'localhost mode' file values.

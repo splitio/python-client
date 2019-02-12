@@ -81,18 +81,16 @@ class Client(object):
         :rtype: str
         """
         if self._destroyed:
-            self._logger.warning("Client has already been destroyed, returning CONTROL")
+            self._logger.error("Client has already been destroyed - no calls possible")
             return CONTROL
 
         start = int(round(time.time() * 1000))
 
-        matching_key, bucketing_key = input_validator.validate_key(key)
+        matching_key, bucketing_key = input_validator.validate_key(key, 'get_treatment')
         feature = input_validator.validate_feature_name(feature)
 
-        if (matching_key is None and bucketing_key is None) or feature is None:
-            impression = self._build_impression(matching_key, feature, CONTROL, Label.EXCEPTION,
-                                                0, bucketing_key, start)
-            self._record_stats(impression, start, SDK_GET_TREATMENT)
+        if (matching_key is None and bucketing_key is None) or feature is None or\
+           input_validator.validate_attributes(attributes, 'get_treatment') is False:
             return CONTROL
 
         try:
@@ -151,52 +149,50 @@ class Client(object):
         :rtype: dict
         """
         if self._destroyed:
-            self._logger.warning("Client has already been destroyed, returning None")
-            return None
+            self._logger.error("Client has already been destroyed - no calls possible")
+            return input_validator.generate_control_treatments(features)
 
         start = int(round(time.time() * 1000))
 
+        matching_key, bucketing_key = input_validator.validate_key(key, 'get_treatments')
+        if matching_key is None and bucketing_key is None:
+            return input_validator.generate_control_treatments(features)
+
+        if input_validator.validate_attributes(attributes, 'get_treatment') is False:
+            return input_validator.generate_control_treatments(features)
+
         features = input_validator.validate_features_get_treatments(features)
         if features is None:
-            return None
-
-        matching_key, bucketing_key = input_validator.validate_key(key)
+            return {}
 
         bulk_impressions = []
         treatments = {}
 
-        if matching_key is None and bucketing_key is None:
-            for feature in features:
-                impression = self._build_impression(matching_key, feature, CONTROL, Label.EXCEPTION,
-                                                    0, bucketing_key, start)
-                bulk_impressions.insert(impression)
+        for feature in features:
+            try:
+                treatment = self._evaluator.evaluate_treatment(
+                    feature,
+                    matching_key,
+                    bucketing_key,
+                    attributes
+                )
+
+                impression = self._build_impression(matching_key,
+                                                    feature,
+                                                    treatment['treatment'],
+                                                    treatment['impression']['label'],
+                                                    treatment['impression']['change_number'],
+                                                    bucketing_key,
+                                                    start)
+
+                bulk_impressions.append(impression)
+                treatments[feature] = treatment['treatment']
+
+            except Exception:
+                self._logger.exception('get_treatments: An exception occured when evaluating '
+                                       'feature ' + feature + ' returning CONTROL.')
                 treatments[feature] = CONTROL
-        else:
-            for feature in features:
-                try:
-                    treatment = self._evaluator.evaluate_treatment(
-                        feature,
-                        matching_key,
-                        bucketing_key,
-                        attributes
-                    )
-
-                    impression = self._build_impression(matching_key,
-                                                        feature,
-                                                        treatment['treatment'],
-                                                        treatment['impression']['label'],
-                                                        treatment['impression']['change_number'],
-                                                        bucketing_key,
-                                                        start)
-
-                    bulk_impressions.append(impression)
-                    treatments[feature] = treatment['treatment']
-
-                except Exception:
-                    self._logger.exception('get_treatments: An exception occured when evaluating '
-                                           'feature ' + feature + ' returning CONTROL.')
-                    treatments[feature] = CONTROL
-                    continue
+                continue
 
             # Register impressions
             try:
@@ -268,6 +264,10 @@ class Client(object):
 
         :rtype: bool
         """
+        if self._destroyed:
+            self._logger.error("Client has already been destroyed - no calls possible")
+            return False
+
         key = input_validator.validate_track_key(key)
         event_type = input_validator.validate_event_type(event_type)
         traffic_type = input_validator.validate_traffic_type(traffic_type)
