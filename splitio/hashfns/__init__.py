@@ -11,12 +11,10 @@ from splitio.hashfns import legacy
 
 try:
     # First attempt to import module with C++ core (faster)
-    import mmh3
-    from ctypes import c_uint
+    import mmh3cffi
 
     def _murmur_hash(key, seed):
-        ukey = key.encode('utf8')
-        return c_uint(mmh3.hash(ukey, seed)).value
+        return mmh3cffi.hash_str(key, seed)
 except:
     # Fallback to interpreted python hash algoritm (slower)
     from splitio.hashfns import murmur3py
