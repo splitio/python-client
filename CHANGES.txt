@@ -1,7 +1,8 @@
-6.3.0 (Feb 13, 2019)
+7.0.0 (Feb 19, 2019)
  - Stored Impressions in Queue.
  - Fixed bug related to Machine Name and Machine IP.
  - Updated Input Validation.
+ - New hash implementation supporting more platforms.
 6.2.2 (Dec 17, 2018)
  - Fixed issue on selecting db for Sentinel.
 6.2.1 (Dec 6, 2018)

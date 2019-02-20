@@ -35,7 +35,7 @@ setup(name='splitio_client',
           'test': tests_require,
           'redis': ['redis>=2.10.5', 'jsonpickle>=0.9.3'],
           'uwsgi': ['uwsgi>=2.0.0', 'jsonpickle>=0.9.3'],
-          'cpphash': ['mmh3cffi']
+          'cpphash': ['mmh3cffi>=0.1.2']
       },
       setup_requires=['nose'],
       classifiers=[
