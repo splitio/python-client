@@ -7,11 +7,10 @@ import time
 from splitio.treatments import CONTROL
 from splitio.splitters import Splitter
 from splitio.impressions import Impression, Label, ImpressionListenerException
-from splitio.metrics import SDK_GET_TREATMENT
-from splitio.splits import ConditionType
+from splitio.metrics import SDK_GET_TREATMENT, SDK_GET_TREATMENTS
 from splitio.events import Event
 from . import input_validator
-from splitio.key import Key
+from splitio.evaluator import Evaluator
 
 
 class Client(object):
@@ -38,6 +37,7 @@ class Client(object):
         self._labels_enabled = labels_enabled
         self._destroyed = False
         self._impression_listener = impression_listener
+        self._evaluator = Evaluator(broker)
 
     def destroy(self):
         """
@@ -81,58 +81,40 @@ class Client(object):
         :rtype: str
         """
         if self._destroyed:
-            self._logger.warning("Client has already been destroyed, returning CONTROL")
+            self._logger.error("Client has already been destroyed - no calls possible")
             return CONTROL
 
         start = int(round(time.time() * 1000))
 
-        matching_key, bucketing_key = input_validator.validate_key(key)
+        matching_key, bucketing_key = input_validator.validate_key(key, 'get_treatment')
         feature = input_validator.validate_feature_name(feature)
 
-        if (matching_key is None and bucketing_key is None) or feature is None:
-            impression = self._build_impression(matching_key, feature, CONTROL, Label.EXCEPTION,
-                                                0, bucketing_key, start)
-            self._record_stats(impression, start, SDK_GET_TREATMENT)
+        if (matching_key is None and bucketing_key is None) or feature is None or\
+           input_validator.validate_attributes(attributes, 'get_treatment') is False:
             return CONTROL
 
         try:
-            label = ''
-            _treatment = CONTROL
-            _change_number = -1
+            result = self._evaluator.evaluate_treatment(
+                feature,
+                matching_key,
+                bucketing_key,
+                attributes
+            )
 
-            # Fetching Split definition
-            split = self._broker.fetch_feature(feature)
+            impression = self._build_impression(matching_key,
+                                                feature,
+                                                result['treatment'],
+                                                result['impression']['label'],
+                                                result['impression']['change_number'],
+                                                bucketing_key,
+                                                start)
 
-            if split is None:
-                self._logger.warning('Unknown or invalid feature: %s', feature)
-                label = Label.SPLIT_NOT_FOUND
-                _treatment = CONTROL
-            else:
-                _change_number = split.change_number
-                if split.killed:
-                    label = Label.KILLED
-                    _treatment = split.default_treatment
-                else:
-                    treatment, label = self._get_treatment_for_split(
-                        split,
-                        matching_key,
-                        bucketing_key,
-                        attributes
-                    )
-                    if treatment is None:
-                        label = Label.NO_CONDITION_MATCHED
-                        _treatment = split.default_treatment
-                    else:
-                        _treatment = treatment
-
-            impression = self._build_impression(matching_key, feature, _treatment, label,
-                                                _change_number, bucketing_key, start)
             self._record_stats(impression, start, SDK_GET_TREATMENT)
 
             self._send_impression_to_listener(impression, attributes)
 
-            return _treatment
-        except Exception:  # pylint: disable=broad-except
+            return result['treatment']
+        except Exception:
             self._logger.exception('Exception caught getting treatment for feature')
 
             try:
@@ -167,15 +149,63 @@ class Client(object):
         :rtype: dict
         """
         if self._destroyed:
-            self._logger.warning("Client has already been destroyed, returning None")
-            return None
+            self._logger.error("Client has already been destroyed - no calls possible")
+            return input_validator.generate_control_treatments(features)
+
+        start = int(round(time.time() * 1000))
+
+        matching_key, bucketing_key = input_validator.validate_key(key, 'get_treatments')
+        if matching_key is None and bucketing_key is None:
+            return input_validator.generate_control_treatments(features)
+
+        if input_validator.validate_attributes(attributes, 'get_treatment') is False:
+            return input_validator.generate_control_treatments(features)
 
         features = input_validator.validate_features_get_treatments(features)
-
         if features is None:
-            return None
+            return {}
 
-        return {feature: self.get_treatment(key, feature, attributes) for feature in features}
+        bulk_impressions = []
+        treatments = {}
+
+        for feature in features:
+            try:
+                treatment = self._evaluator.evaluate_treatment(
+                    feature,
+                    matching_key,
+                    bucketing_key,
+                    attributes
+                )
+
+                impression = self._build_impression(matching_key,
+                                                    feature,
+                                                    treatment['treatment'],
+                                                    treatment['impression']['label'],
+                                                    treatment['impression']['change_number'],
+                                                    bucketing_key,
+                                                    start)
+
+                bulk_impressions.append(impression)
+                treatments[feature] = treatment['treatment']
+
+            except Exception:
+                self._logger.exception('get_treatments: An exception occured when evaluating '
+                                       'feature ' + feature + ' returning CONTROL.')
+                treatments[feature] = CONTROL
+                continue
+
+            # Register impressions
+            try:
+                if len(bulk_impressions) > 0:
+                    self._record_stats(bulk_impressions, start, SDK_GET_TREATMENTS)
+
+                    for impression in bulk_impressions:
+                        self._send_impression_to_listener(impression, attributes)
+            except Exception:
+                self._logger.exception('get_treatments: An exception when trying to store '
+                                       'impressions.')
+
+        return treatments
 
     def _build_impression(
             self, matching_key, feature_name, treatment, label,
@@ -193,14 +223,14 @@ class Client(object):
             bucketing_key=bucketing_key, time=imp_time
         )
 
-    def _record_stats(self, impression, start, operation):
+    def _record_stats(self, impressions, start, operation):
         """
-        Record impression and metrics.
+        Record impressions and metrics.
 
-        :param impression: Generated impression
-        :type impression: Impression
+        :param impressions: Generated impressions
+        :type impressions: list||Impression
 
-        :param start: timestamp when get_treatment was called
+        :param start: timestamp when get_treatment or get_treatments was called
         :type start: int
 
         :param operation: operation performed.
@@ -208,63 +238,13 @@ class Client(object):
         """
         try:
             end = int(round(time.time() * 1000))
-            self._broker.log_impression(impression)
+            if operation == SDK_GET_TREATMENT:
+                self._broker.log_impressions([impressions])
+            else:
+                self._broker.log_impressions(impressions)
             self._broker.log_operation_time(operation, end - start)
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             self._logger.exception('Exception caught recording impressions and metrics')
-
-    def _get_treatment_for_split(self, split, matching_key, bucketing_key, attributes=None):
-        """
-        Evaluate the user submitted data againt a feature and return the resulting treatment.
-
-        This method might raise exceptions and should never be used directly.
-        :param split: The split for which to get the treatment
-        :type split: Split
-
-        :param key: The key for which to get the treatment
-        :type key: str
-
-        :param attributes: An optional dictionary of attributes
-        :type attributes: dict
-
-        :return: The treatment for the key and split
-        :rtype: str
-        """
-        if bucketing_key is None:
-            bucketing_key = matching_key
-
-        matcher_client = MatcherClient(self._broker, self._splitter, self._logger)
-
-        roll_out = False
-        for condition in split.conditions:
-            if (not roll_out and
-                    condition.condition_type == ConditionType.ROLLOUT):
-                if split.traffic_allocation < 100:
-                    bucket = self._splitter.get_bucket(
-                        bucketing_key,
-                        split.traffic_allocation_seed,
-                        split.algo
-                    )
-                    if bucket > split.traffic_allocation:
-                        return split.default_treatment, Label.NOT_IN_SPLIT
-                roll_out = True
-
-            condition_matches = condition.matcher.match(
-                Key(matching_key, bucketing_key),
-                attributes=attributes,
-                client=matcher_client
-            )
-
-            if condition_matches:
-                return self._splitter.get_treatment(
-                    bucketing_key,
-                    split.seed,
-                    condition.partitions,
-                    split.algo
-                ), condition.label
-
-        # No condition matches
-        return None, None
 
     def track(self, key, traffic_type, event_type, value=None):
         """
@@ -284,6 +264,10 @@ class Client(object):
 
         :rtype: bool
         """
+        if self._destroyed:
+            self._logger.error("Client has already been destroyed - no calls possible")
+            return False
+
         key = input_validator.validate_track_key(key)
         event_type = input_validator.validate_event_type(event_type)
         traffic_type = input_validator.validate_traffic_type(traffic_type)
@@ -300,80 +284,3 @@ class Client(object):
             timestamp=int(time.time()*1000)
         )
         return self._broker.get_events_log().log_event(event)
-
-
-class MatcherClient(Client):
-    """
-    Client to be used by matchers such as "Dependency Matcher".
-
-    TODO: Refactor This!
-    """
-
-    def __init__(self, broker, splitter, logger):  # pylint: disable=super-init-not-called
-        """
-        Construct a MatcherClient instance.
-
-        :param broker: Broker where splits & segments will be fetched.
-        :type broker: BaseBroker
-
-        :param splitter: splitter
-        :type splitter: Splitter
-
-        :param logger: logger object
-        :type logger: logging.Logger
-        """
-        self._broker = broker
-        self._splitter = splitter
-        self._logger = logger
-
-    def get_treatment(self, key, feature, attributes=None):
-        """
-        Evaluate a feature and return the appropriate traetment.
-
-        Will not generate impressions nor metrics
-
-        :param key: user key
-        :type key: mixed
-
-        :param feature: feature name
-        :type feature: str
-
-        :param attributes: (Optional) attributes associated with the user key
-        :type attributes: dict
-        """
-        matching_key, bucketing_key = input_validator.validate_key(key)
-        feature = input_validator.validate_feature_name(feature)
-
-        if (matching_key is None and bucketing_key is None) or feature is None:
-            return CONTROL
-
-        try:
-            # Fetching Split definition
-            split = self._broker.fetch_feature(feature)
-
-            if split is None:
-                self._logger.warning(
-                    'Unknown or invalid dependent feature: %s',
-                    feature
-                )
-                return CONTROL
-
-            if split.killed:
-                return split.default_treatment
-
-            treatment, _ = self._get_treatment_for_split(
-                split,
-                matching_key,
-                bucketing_key,
-                attributes
-            )
-
-            if treatment is None:
-                return split.default_treatment
-
-            return treatment
-        except Exception:  # pylint: disable=broad-except
-            self._logger.exception(
-                'Exception caught retrieving dependent feature. Returning CONTROL'
-            )
-            return CONTROL
