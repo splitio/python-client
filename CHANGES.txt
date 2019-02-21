@@ -1,4 +1,4 @@
-7.0.0 (Feb 19, 2019)
+7.0.0 (Feb 21, 2019)
  - Stored Impressions in Queue.
  - Fixed bug related to Machine Name and Machine IP.
  - Updated Input Validation.
