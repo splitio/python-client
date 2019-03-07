@@ -10,6 +10,7 @@ import requests
 from splitio.key import Key
 from splitio.treatments import CONTROL
 from splitio.api import SdkApi
+from splitio.exceptions import NetworkingException
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -404,10 +405,13 @@ def _valid_apikey_type(api_key, sdk_api_base_url):
         'since': -1
     }
     headers = sdk_api._build_headers()
-    response = requests.get(url, params=params, headers=headers, timeout=sdk_api._timeout)
-    if response.status_code == requests.codes.forbidden:
-        return False
-    return True
+    try:
+        response = requests.get(url, params=params, headers=headers, timeout=sdk_api._timeout)
+        if response.status_code == requests.codes.forbidden:
+            return False
+        return True
+    except requests.exceptions.RequestException:
+        raise NetworkingException()
 
 
 def validate_factory_instantiation(apikey, config, sdk_api_base_url):
@@ -432,9 +436,12 @@ def validate_factory_instantiation(apikey, config, sdk_api_base_url):
         _LOGGER.error('no ready parameter has been set - incorrect control treatments '
                       + 'could be logged')
         return False
-    if not _valid_apikey_type(apikey, sdk_api_base_url):
-        _LOGGER.error('factory instantiation: you passed a browser type '
-                      + 'api_key, please grab an api key from the Split '
-                      + 'console that is of type sdk')
-        return False
-    return True
+    try:
+        if not _valid_apikey_type(apikey, sdk_api_base_url):
+            _LOGGER.error('factory instantiation: you passed a browser type '
+                          + 'api_key, please grab an api key from the Split '
+                          + 'console that is of type sdk')
+            return False
+        return True
+    except NetworkingException:
+        _LOGGER.error("Error occured when tried to connect with Split servers")
