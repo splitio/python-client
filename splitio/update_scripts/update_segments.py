@@ -33,7 +33,7 @@ def run(arguments):
         segment_change_fetcher = ApiSegmentChangeFetcher(sdk_api)
         update_segments(segment_cache, segment_change_fetcher)
     except:
-        logger.exception('Exception caught updating segments')
+        logger.error('Error updating segments')
 
 
 if __name__ == '__main__':

@@ -146,7 +146,7 @@ def uwsgi_update_splits(user_config):
 
             time.sleep(seconds)
     except:
-        _logger.exception('Exception caught updating splits')
+        _logger.error('Error updating splits')
 
 
 def uwsgi_update_segments(user_config):
@@ -161,7 +161,7 @@ def uwsgi_update_segments(user_config):
 
             time.sleep(seconds)
     except:
-        _logger.exception('Exception caught updating segments')
+        _logger.error('Error updating segments')
 
 
 def uwsgi_report_impressions(user_config):
@@ -177,7 +177,7 @@ def uwsgi_report_impressions(user_config):
 
             time.sleep(seconds)
     except:
-        _logger.exception('Exception caught posting impressions')
+        _logger.error('Error posting impressions')
 
 
 def uwsgi_report_metrics(user_config):
@@ -191,7 +191,7 @@ def uwsgi_report_metrics(user_config):
 
             time.sleep(seconds)
     except:
-        _logger.exception('Exception caught posting metrics')
+        _logger.error('Error posting metrics')
 
 
 def uwsgi_report_events(user_config):
@@ -209,7 +209,7 @@ def uwsgi_report_events(user_config):
                     break
                 time.sleep(1)
     except:
-        _logger.exception('Exception caught posting metrics')
+        _logger.error('Error posting metrics')
 
 
 

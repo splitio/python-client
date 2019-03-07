@@ -264,7 +264,6 @@ class SelfRefreshingBroker(BaseBroker):
             self._segment_fetcher_interval = segment_fetcher_interval
             self._split_fetcher_interval = split_fetcher_interval
             self._impressions_interval = impressions_interval
-
         self._metrics_max_time_between_calls = min(
             MAX_INTERVAL,
             self._config['metricsRefreshRate']
@@ -661,7 +660,7 @@ def get_self_refreshing_broker(api_key, **kwargs):
       "eventsApiBaseUrl": "https://events.split.io/api",
       "connectionTimeout": 1500,
       "readTimeout": 1500,
-      "featuresRefreshRate": 30,
+      "featuresRefreshRate": 5,
       "segmentsRefreshRate": 60,
       "metricsRefreshRate": 60,
       "impressionsRefreshRate": 60,
@@ -676,7 +675,7 @@ def get_self_refreshing_broker(api_key, **kwargs):
 
     * connectionTimeout: The TCP connection timeout (Default: 1500ms)
     * readTimeout: The HTTP read timeout (Default: 1500ms)
-    * featuresRefreshRate: The refresh rate for features (Default: 30s)
+    * featuresRefreshRate: The refresh rate for features (Default: 5s)
     * segmentsRefreshRate: The refresh rate for segments (Default: 60s)
     * metricsRefreshRate: The refresh rate for metrics (Default: 60s)
     * impressionsRefreshRate: The refresh rate for impressions (Default: 60s)
@@ -808,7 +807,7 @@ def get_uwsgi_broker(api_key, **kwargs):
       "apiKey": "some-api-key",
       "sdkApiBaseUrl": "https://sdk.split.io/api",
       "eventsApiBaseUrl": "https://events.split.io/api",
-      "featuresRefreshRate": 30,
+      "featuresRefreshRate": 5,
       "segmentsRefreshRate": 60,
       "metricsRefreshRate": 60,
       "impressionsRefreshRate": 60

@@ -6,10 +6,10 @@ import logging
 import six
 import re
 import math
+import requests
 from splitio.key import Key
 from splitio.treatments import CONTROL
 from splitio.api import SdkApi
-from splitio.exceptions import ForbiddenException
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -397,9 +397,15 @@ def _valid_apikey_type(api_key, sdk_api_base_url):
         api_key,
         sdk_api_base_url=sdk_api_base_url,
     )
-    try:
-        sdk_api.segment_changes('___TEST___', -1)
-    except ForbiddenException:
+    _SEGMENT_CHANGES_URL_TEMPLATE = '{base_url}/segmentChanges/{segment_name}/'
+    url = _SEGMENT_CHANGES_URL_TEMPLATE.format(base_url=sdk_api_base_url,
+                                               segment_name='___TEST___')
+    params = {
+        'since': -1
+    }
+    headers = sdk_api._build_headers()
+    response = requests.get(url, params=params, headers=headers, timeout=sdk_api._timeout)
+    if response.status_code == requests.codes.forbidden:
         return False
     return True
 

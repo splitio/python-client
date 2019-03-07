@@ -35,7 +35,7 @@ def run(arguments):
         split_parser = RedisSplitParser(segment_cache)
         update_splits(split_cache, split_change_fetcher, split_parser)
     except:
-        logger.exception('Exception caught updating splits')
+        logger.error('Error updating splits')
 
 
 if __name__ == '__main__':

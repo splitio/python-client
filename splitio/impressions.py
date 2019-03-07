@@ -352,9 +352,7 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
             if len(test_impressions_data) > 0:
                 self._api.test_impressions(test_impressions_data)
         except Exception:
-            self._logger.exception(
-                'Exception caught updating evicted impressions'
-            )
+            self._logger.error('Error updating evicted impressions')
             self._stopped = True
 
     def _update_impressions(self):
@@ -370,7 +368,7 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
             if len(test_impressions_data) > 0:
                 self._api.test_impressions(test_impressions_data)
         except Exception:
-            self._logger.exception('Exception caught updating impressions')
+            self._logger.error('Error updating impressions')
             self._stopped = True
 
     def _notify_eviction(self, feature_name, feature_impressions):
@@ -392,9 +390,7 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
                 self._update_evictions, feature_name, feature_impressions
             )
         except Exception:
-            self._logger.exception(
-                'Exception caught starting evicted impressions update thread'
-            )
+            self._logger.error('Error starting evicted impressions update thread')
 
     def _timer_refresh(self):
         """
@@ -407,9 +403,7 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
         try:
             self._thread_pool_executor.submit(self._update_impressions)
         except Exception:
-            self._logger.exception(
-                'Exception caught starting impressions update thread'
-            )
+            self._logger.error('Error starting impressions update thread')
 
         try:
             if hasattr(self._interval, '__call__'):
@@ -421,7 +415,7 @@ class SelfUpdatingTreatmentLog(InMemoryTreatmentLog):
             timer.daemon = True
             timer.start()
         except Exception:
-            self._logger.exception('Exception caught refreshing timer')
+            self._logger.error('Error refreshing timer')
             self._stopped = True
 
 
@@ -466,9 +460,7 @@ class AsyncTreatmentLog(TreatmentLog):
             try:
                 self._thread_pool_executor.submit(self._delegate.log, impression)
             except Exception:
-                self._logger.exception(
-                    'Exception caught logging impression asynchronously'
-                )
+                self._logger.error('Error logging impression asynchronously')
 
     def log_impressions(self, impressions):
         """Log a bulk of impressions.
@@ -506,7 +498,7 @@ class ImpressionListenerWrapper(object):
         try:
             self.impression_listener.log_impression(data)
         except Exception:
-            raise ImpressionListenerException('Exception caught in log_impression user\'s'
+            raise ImpressionListenerException('Error in log_impression user\'s'
                                               'method is throwing exceptions')
 
 
