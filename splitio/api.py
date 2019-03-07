@@ -5,7 +5,6 @@ import logging
 import requests
 import json
 
-from splitio.exceptions import ForbiddenException
 from splitio.config import SDK_API_BASE_URL, EVENTS_API_BASE_URL, SDK_VERSION
 
 _SEGMENT_CHANGES_URL_TEMPLATE = '{base_url}/segmentChanges/{segment_name}/'
@@ -93,9 +92,6 @@ class SdkApi(object):
         return headers
 
     def _logHttpError(self, response):
-        if response.status_code == requests.codes.forbidden:
-            raise ForbiddenException()
-
         if response.status_code < requests.codes.ok or response.status_code >= requests.codes.bad:
             respJson = response.json()
             if 'message' in respJson:
