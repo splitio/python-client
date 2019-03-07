@@ -247,7 +247,7 @@ class SelfRefreshingSegment(InMemorySegment):
                     if not self._greedy:
                         return
         except:
-            self._logger.exception('Exception caught refreshing segment')
+            self._logger.error('Error refreshing segment')
             self._stopped = True
 
     def _summarize_changes(self, changes):
@@ -268,7 +268,7 @@ class SelfRefreshingSegment(InMemorySegment):
             timer.daemon = True
             timer.start()
         except:
-            self._logger.exception('Exception caught starting timer')
+            self._logger.error('Error starting timer')
             self._stopped = True
 
     def _timer_refresh(self):
@@ -290,7 +290,7 @@ class SelfRefreshingSegment(InMemorySegment):
             self._executor.submit(self.refresh_segment)
             self._timer_start()
         except:
-            self._logger.exception('Exception caught refreshing timer')
+            self._logger.error('Error refreshing timer')
             self._stopped = True
 
 
@@ -398,7 +398,7 @@ class SegmentChangeFetcher(object):
         try:
             segment_change = self.fetch_from_backend(name, since)
         except:
-            self._logger.exception('Exception caught fetching segment changes')
+            self._logger.error('Error fetching segment changes')
             segment_change = self.build_empty_segment_change(name, since)
 
         return segment_change

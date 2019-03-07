@@ -22,7 +22,7 @@ DEFAULT_CONFIG = {
     'splitSdkMachineName': None,
     'splitSdkMachineIp': None,
     'readTimeout': 1500,
-    'featuresRefreshRate': 30,
+    'featuresRefreshRate': 5,
     'segmentsRefreshRate': 60,
     'metricsRefreshRate': 60,
     'impressionsRefreshRate': 60,
@@ -85,7 +85,7 @@ def parse_config_file(filename):
       "eventsApiBaseUrl": "https://events-loadtesting.split.io/api",
       "connectionTimeout": 1500,
       "readTimeout": 1500,
-      "featuresRefreshRate": 30,
+      "featuresRefreshRate": 5,
       "segmentsRefreshRate": 60,
       "metricsRefreshRate": 60,
       "impressionsRefreshRate": 60,
@@ -115,7 +115,7 @@ def parse_config_file(filename):
             if 'splitSdkMachineIp' in config:
                 set_machine_ip(config['splitSdkMachineIp'])
     except Exception:
-        logger.exception('There was a problem reading the config file: %s', filename)
+        logger.error('There was a problem reading the config file: %s', filename)
         return DEFAULT_CONFIG.copy()
 
     return config

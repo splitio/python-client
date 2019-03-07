@@ -31,7 +31,7 @@ def run(arguments):
         sdk_api = api_factory(config)
         report_impressions(impressions_cache, sdk_api)
     except:
-        logger.exception('Exception caught posting impressions')
+        logger.error('Error posting impressions')
 
 
 if __name__ == '__main__':

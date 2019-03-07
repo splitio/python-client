@@ -478,7 +478,7 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
                     if not self._greedy:
                         return
         except:
-            self._logger.info('Exception caught refreshing splits')
+            self._logger.info('Error refreshing splits')
             self._stopped = True
         finally:
             self._logger.info('split fetch before: %s, after: %s',
@@ -496,7 +496,7 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
             timer.daemon = True
             timer.start()
         except:
-            self._logger.exception('Exception caught refreshing timer')
+            self._logger.error('Error refreshing timer')
             self._stopped = True
 
     def _timer_refresh(self):
@@ -519,9 +519,7 @@ class SelfRefreshingSplitFetcher(InMemorySplitFetcher):
             thread.daemon = True
             thread.start()
         except:
-            self._logger.exception(
-                'Exception caught starting splits update thread'
-            )
+            self._logger.error('Error starting splits update thread')
 
         self._timer_start()
 
@@ -585,7 +583,7 @@ class SplitChangeFetcher(object):
         try:
             split_change = self.fetch_from_backend(since)
         except:
-            self._logger.exception('Exception caught fetching split changes')
+            self._logger.error('Error fetching split changes')
             split_change = self.build_empty_response(since)
 
         return split_change
@@ -640,7 +638,7 @@ class SplitParser(object):
         try:
             return self._parse(split, block_until_ready=block_until_ready)
         except:
-            self._logger.exception('Exception caught parsing split')
+            self._logger.error('Error parsing split')
             return None
 
     def _parse(self, split, block_until_ready=False):

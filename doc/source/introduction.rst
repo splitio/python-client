@@ -79,7 +79,7 @@ All the possible configuration options are:
 +------------------------+------+--------------------------------------------------------+---------+
 | readTimeout            | int  | The read timeout for HTTP connections in milliseconds. | 1500    |
 +------------------------+------+--------------------------------------------------------+---------+
-| featuresRefreshRate    | int  | The features (splits) update refresh period in         | 30      |
+| featuresRefreshRate    | int  | The features (splits) update refresh period in         | 5      |
 |                        |      | seconds.                                               |         |
 +------------------------+------+--------------------------------------------------------+---------+
 | segmentsRefreshRate    | int  | The segments update refresh period in seconds.         | 60      |
