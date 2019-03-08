@@ -32,7 +32,7 @@ class TransformMixin(object):
         try:
             return self._transform_key(value)
         except:
-            logger.exception('Exception caught transforming value. value = %s', value)
+            logger.error('Error transforming value. value = %s', value)
 
     def _transform_condition_parameter(self, source_value):
         """
@@ -55,8 +55,7 @@ class TransformMixin(object):
         try:
             return self._transform_condition_parameter(source_value)
         except:
-            logger.exception('Exception caught transforming source value. source_value = %s',
-                             source_value)
+            logger.error('Error transforming source value. source_value = %s', source_value)
 
 
 class AsNumberTransformMixin(TransformMixin):

@@ -277,7 +277,7 @@ class RedisEventsCache(ImpressionsCache):
             self._redis.rpush(key, [encode(to_store)])
             return True
         except Exception:
-            self._logger.exception("Something went wrong when trying to add event to redis")
+            self._logger.error("Something went wrong when trying to add event to redis")
             return False
 
 
@@ -413,9 +413,8 @@ class RedisImpressionsCache(ImpressionsCache):
                 self._logger.debug("SET EXPIRE KEY FOR QUEUE")
                 self._redis.expire(IMPRESSIONS_QUEUE_KEY, IMPRESSION_KEY_DEFAULT_TTL)
             return True
-        except Exception as e:
-            print(e.message)
-            self._logger.exception("Something went wrong when trying to add impression to redis")
+        except Exception:
+            self._logger.error("Something went wrong when trying to add impression to redis")
             return False
 
     def fetch_all_and_clear(self):

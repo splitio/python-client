@@ -363,8 +363,7 @@ class ApiMetrics(InMemoryMetrics):
         try:
             self._api.metrics_counters(build_metrics_counter_data(count_metrics))
         except:
-            self._logger.exception('Exception caught sending count metrics to the back-end. '
-                                   'Ignoring metrics.')
+            self._logger.error('Error sending count metrics to the back-end. Ignoring metrics.')
             self._ignore_metrics = True
 
     def update_count(self):
@@ -372,7 +371,7 @@ class ApiMetrics(InMemoryMetrics):
         try:
             self._thread_pool_executor.submit(self._update_count_fn)
         except:
-            self._logger.exception('Exception caught submitting count metrics update task.')
+            self._logger.error('Error submitting count metrics update task.')
 
     def _update_time_fn(self):
         time_metrics = self._fetch_time_metrics_and_clear()
@@ -380,8 +379,7 @@ class ApiMetrics(InMemoryMetrics):
         try:
             self._api.metrics_times(build_metrics_times_data(time_metrics))
         except:
-            self._logger.exception('Exception caught sending time metrics to the back-end. '
-                                   'Ignoring metrics.')
+            self._logger.error('Error sending time metrics to the back-end. Ignoring metrics.')
             self._ignore_metrics = True
 
     def update_time(self):
@@ -389,7 +387,7 @@ class ApiMetrics(InMemoryMetrics):
         try:
             self._thread_pool_executor.submit(self._update_time_fn)
         except:
-            self._logger.exception('Exception caught submitting time metrics update task.')
+            self._logger.error('Error submitting time metrics update task.')
 
     def _update_gauge_fn(self):
         gauge_metrics = self._fetch_gauge_metrics_and_clear()
@@ -397,8 +395,8 @@ class ApiMetrics(InMemoryMetrics):
         try:
             self._api.metrics_gauge(build_metrics_gauge_data(gauge_metrics))
         except:
-            self._logger.exception('Exception caught sending gauge metrics to the back-end. '
-                                   'Ignoring metrics.')
+            self._logger.error('Error sending gauge metrics to the back-end. '
+                               'Ignoring metrics.')
             self._ignore_metrics = True
 
     def update_gauge(self):
@@ -406,7 +404,7 @@ class ApiMetrics(InMemoryMetrics):
         try:
             self._thread_pool_executor.submit(self._update_gauge_fn)
         except:
-            self._logger.exception('Exception caught submitting gauge metrics update task.')
+            self._logger.error('Error submitting gauge metrics update task.')
 
 
 class LoggerMetrics(InMemoryMetrics):
@@ -469,7 +467,7 @@ class AsyncMetrics(Metrics):
         try:
             self._thread_pool_executor.submit(self._delegate.count, counter, delta)
         except:
-            self._logger.exception('Exception caught submitting count metric')
+            self._logger.error('Error submitting count metric')
 
     def time(self, operation, time_in_ms):
         """Records an execution time in milliseconds for the specified named operation. This method
@@ -485,7 +483,7 @@ class AsyncMetrics(Metrics):
         try:
             self._thread_pool_executor.submit(self._delegate.time, operation, time_in_ms)
         except:
-            self._logger.exception('Exception caught submitting time metric')
+            self._logger.error('Error submitting time metric')
 
     def gauge(self, gauge, value):
         """Records the latest fixed value for the specified named gauge. This method is
@@ -501,7 +499,7 @@ class AsyncMetrics(Metrics):
         try:
             self._thread_pool_executor.submit(self._delegate.gauge, gauge, value)
         except:
-            self._logger.exception('Exception caught submitting gauge metric')
+            self._logger.error('Error submitting gauge metric')
 
 
 class CacheBasedMetrics(Metrics):

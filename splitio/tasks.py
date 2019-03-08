@@ -35,7 +35,7 @@ def update_segments(segment_cache, segment_change_fetcher):
         for name in registered_segments:
             update_segment(segment_cache, name, segment_change_fetcher)
     except:
-        _logger.exception('Exception caught updating segment definitions')
+        _logger.error('Error updating segment definitions')
         segment_cache.disable()
 
 
@@ -127,7 +127,7 @@ def update_splits(split_cache, split_change_fetcher, split_parser):
             till = response['till']
             split_cache.set_change_number(response['till'])
     except:
-        _logger.exception('Exception caught updating split definitions')
+        _logger.error('Error updating split definitions')
         split_cache.disable()
         return [], []
 
@@ -157,9 +157,7 @@ def report_impressions(impressions_cache, sdk_api):
             )
             sdk_api.test_impressions(test_impressions_data)
     except:
-        _logger.exception(
-            'Exception caught report impressions. Disabling impressions log.'
-        )
+        _logger.error('Error reporting impressions. Disabling impressions log.')
         impressions_cache.disable()
 
 
@@ -188,7 +186,7 @@ def report_metrics(metrics_cache, sdk_api):
             _logger.info('Sending gauge metrics...')
             sdk_api.metrics_gauge(metrics['gauge'])
     except:
-        _logger.exception('Exception caught reporting metrics')
+        _logger.error('Error reporting metrics')
         metrics_cache.disable()
 
 
@@ -230,7 +228,6 @@ class EventsSyncTask:
         """
         for e in events:
             self._failed.put(e, False)
-
 
     def _send_events(self):
         """

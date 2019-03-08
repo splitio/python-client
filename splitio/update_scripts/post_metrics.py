@@ -31,7 +31,7 @@ def run(arguments):
         sdk_api = api_factory(config)
         report_metrics(metrics_cache, sdk_api)
     except:
-        logger.exception('Exception caught posting metrics')
+        logger.error('Error posting metrics')
 
 
 if __name__ == '__main__':

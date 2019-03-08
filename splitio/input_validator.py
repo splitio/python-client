@@ -6,10 +6,11 @@ import logging
 import six
 import re
 import math
+import requests
 from splitio.key import Key
 from splitio.treatments import CONTROL
 from splitio.api import SdkApi
-from splitio.exceptions import ForbiddenException
+from splitio.exceptions import NetworkingException
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -397,11 +398,20 @@ def _valid_apikey_type(api_key, sdk_api_base_url):
         api_key,
         sdk_api_base_url=sdk_api_base_url,
     )
+    _SEGMENT_CHANGES_URL_TEMPLATE = '{base_url}/segmentChanges/{segment_name}/'
+    url = _SEGMENT_CHANGES_URL_TEMPLATE.format(base_url=sdk_api_base_url,
+                                               segment_name='___TEST___')
+    params = {
+        'since': -1
+    }
+    headers = sdk_api._build_headers()
     try:
-        sdk_api.segment_changes('___TEST___', -1)
-    except ForbiddenException:
-        return False
-    return True
+        response = requests.get(url, params=params, headers=headers, timeout=sdk_api._timeout)
+        if response.status_code == requests.codes.forbidden:
+            return False
+        return True
+    except requests.exceptions.RequestException:
+        raise NetworkingException()
 
 
 def validate_factory_instantiation(apikey, config, sdk_api_base_url):
@@ -426,9 +436,12 @@ def validate_factory_instantiation(apikey, config, sdk_api_base_url):
         _LOGGER.error('no ready parameter has been set - incorrect control treatments '
                       + 'could be logged')
         return False
-    if not _valid_apikey_type(apikey, sdk_api_base_url):
-        _LOGGER.error('factory instantiation: you passed a browser type '
-                      + 'api_key, please grab an api key from the Split '
-                      + 'console that is of type sdk')
-        return False
-    return True
+    try:
+        if not _valid_apikey_type(apikey, sdk_api_base_url):
+            _LOGGER.error('factory instantiation: you passed a browser type '
+                          + 'api_key, please grab an api key from the Split '
+                          + 'console that is of type sdk')
+            return False
+        return True
+    except NetworkingException:
+        _LOGGER.error("Error occured when tried to connect with Split servers")

@@ -6,5 +6,5 @@ class TimeoutException(Exception):
     pass
 
 
-class ForbiddenException(Exception):
+class NetworkingException(Exception):
     pass

@@ -62,7 +62,7 @@ class Client(object):
             try:
                 self._impression_listener.log_impression(impression, attributes)
             except ImpressionListenerException as e:
-                self._logger.exception(e)
+                self._logger.error(e)
 
     def get_treatment(self, key, feature, attributes=None):
         """
@@ -115,7 +115,7 @@ class Client(object):
 
             return result['treatment']
         except Exception:
-            self._logger.exception('Exception caught getting treatment for feature')
+            self._logger.error('Error getting treatment for feature')
 
             try:
                 impression = self._build_impression(
@@ -129,9 +129,7 @@ class Client(object):
 
                 self._send_impression_to_listener(impression, attributes)
             except Exception:  # pylint: disable=broad-except
-                self._logger.exception(
-                    'Exception reporting impression into get_treatment exception block'
-                )
+                self._logger.error('Error reporting impression into get_treatment exception block')
             return CONTROL
 
     def get_treatments(self, key, features, attributes=None):
@@ -189,8 +187,8 @@ class Client(object):
                 treatments[feature] = treatment['treatment']
 
             except Exception:
-                self._logger.exception('get_treatments: An exception occured when evaluating '
-                                       'feature ' + feature + ' returning CONTROL.')
+                self._logger.error('get_treatments: An exception occured when evaluating '
+                                   'feature ' + feature + ' returning CONTROL.')
                 treatments[feature] = CONTROL
                 continue
 
@@ -202,8 +200,8 @@ class Client(object):
                     for impression in bulk_impressions:
                         self._send_impression_to_listener(impression, attributes)
             except Exception:
-                self._logger.exception('get_treatments: An exception when trying to store '
-                                       'impressions.')
+                self._logger.error('get_treatments: An exception when trying to store '
+                                   'impressions.')
 
         return treatments
 
@@ -244,7 +242,7 @@ class Client(object):
                 self._broker.log_impressions(impressions)
             self._broker.log_operation_time(operation, end - start)
         except Exception:
-            self._logger.exception('Exception caught recording impressions and metrics')
+            self._logger.error('Error recording impressions and metrics')
 
     def track(self, key, traffic_type, event_type, value=None):
         """
