@@ -76,6 +76,7 @@ class Evaluator(object):  #pylint: disable=too-few-public-methods
 
         return {
             'treatment': _treatment,
+            'configurations': split.get_configurations_for(_treatment) if split else None,
             'impression': {
                 'label': label,
                 'change_number': _change_number
