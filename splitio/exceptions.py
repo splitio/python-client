@@ -8,3 +8,7 @@ class TimeoutException(Exception):
 
 class NetworkingException(Exception):
     pass
+
+
+class SentinelConfigurationException(Exception):
+    pass

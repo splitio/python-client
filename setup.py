@@ -1,12 +1,12 @@
+"""Setup module."""
 #!/usr/bin/env python
 
-from setuptools import setup
+from setuptools import setup, find_packages
 from os import path
 from sys import version_info
 
-tests_require = ['flake8', 'nose', 'coverage']
+tests_require = ['flake8', 'pytest', 'pytest-mock', 'coverage', 'pytest-cov']
 install_requires = [
-    'arrow>=0.7.0',
     'requests>=2.9.1',
     'future>=0.15.2',
     'docopt>=0.6.2',
@@ -33,11 +33,11 @@ setup(name='splitio_client',
       tests_require=tests_require,
       extras_require={
           'test': tests_require,
-          'redis': ['redis>=2.10.5', 'jsonpickle>=0.9.3'],
-          'uwsgi': ['uwsgi>=2.0.0', 'jsonpickle>=0.9.3'],
+          'redis': ['redis>=2.10.5'],
+          'uwsgi': ['uwsgi>=2.0.0'],
           'cpphash': ['mmh3cffi>=0.1.4']
       },
-      setup_requires=['nose'],
+      setup_requires=['pytest-runner'],
       classifiers=[
           'Development Status :: 3 - Alpha',
           'Environment :: Console',
@@ -47,4 +47,4 @@ setup(name='splitio_client',
           'Programming Language :: Python :: 3',
           'Topic :: Software Development :: Libraries'
       ],
-      packages=['splitio', 'splitio.update_scripts', 'splitio.bin', 'splitio.hashfns'])
+      packages=find_packages())
