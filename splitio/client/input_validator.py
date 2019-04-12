@@ -8,6 +8,7 @@ import re
 import math
 import requests
 from splitio.client.key import Key
+from splitio.client.util import get_calls
 from splitio.engine.evaluator import CONTROL
 # from splitio.api import SdkApi
 # from splitio.exceptions import NetworkingException
@@ -17,6 +18,22 @@ _LOGGER = logging.getLogger(__name__)
 MAX_LENGTH = 250
 EVENT_TYPE_PATTERN = r'^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$'
 
+
+def _get_first_split_sdk_call():
+    """
+    Get the method name of the original call on the SplitClient methods.
+
+    :return: Name of the method called by the user.
+    :rtype: str
+    """
+    unknown_method = 'unknown-method'
+    try:
+        calls = get_calls(['Client', 'SplitManager'])
+        if calls:
+            return calls[-1]
+        return unknown_method
+    except Exception:  #pylint: disable=broad-except
+        return unknown_method
 
 def _check_not_null(value, name, operation):
     """
@@ -194,7 +211,7 @@ def _remove_empty_spaces(value, operation):
     return strip_value
 
 
-def validate_key(key, operation):
+def validate_key(key):
     """
     Validate Key parameter for get_treatment/s, if is invalid at some point
     the bucketing_key or matching_key it will return None
@@ -206,6 +223,7 @@ def validate_key(key, operation):
     :return: The tuple key
     :rtype: (matching_key,bucketing_key)
     """
+    operation = _get_first_split_sdk_call()
     matching_key_result = None
     bucketing_key_result = None
     if key is None:
@@ -239,11 +257,12 @@ def validate_feature_name(feature_name):
     :return: feature_name
     :rtype: str|None
     """
-    if (not _check_not_null(feature_name, 'feature_name', 'get_treatment')) or \
-       (not _check_is_string(feature_name, 'feature_name', 'get_treatment')) or \
-       (not _check_string_not_empty(feature_name, 'feature_name', 'get_treatment')):
+    operation = _get_first_split_sdk_call()
+    if (not _check_not_null(feature_name, 'feature_name', operation)) or \
+       (not _check_is_string(feature_name, 'feature_name', operation)) or \
+       (not _check_string_not_empty(feature_name, 'feature_name', operation)):
         return None
-    return _remove_empty_spaces(feature_name, 'get_treatment')
+    return _remove_empty_spaces(feature_name, operation)
 
 
 def validate_track_key(key):
@@ -344,19 +363,20 @@ def validate_features_get_treatments(features):
     :return: filtered_features
     :rtype: list|None
     """
+    operation = _get_first_split_sdk_call()
     if features is None or not isinstance(features, list):
-        _LOGGER.error('get_treatments: feature_names must be a non-empty array.')
+        _LOGGER.error("%s: feature_names must be a non-empty array." % operation)
         return None
     if len(features) == 0:
-        _LOGGER.error('get_treatments: feature_names must be a non-empty array.')
+        _LOGGER.error("%s: feature_names must be a non-empty array." % operation)
         return []
-    filtered_features = set(_remove_empty_spaces(feature, 'get_treatments') for feature in features
+    filtered_features = set(_remove_empty_spaces(feature, operation) for feature in features
                             if feature is not None and
-                            _check_is_string(feature, 'feature_name', 'get_treatments') and
-                            _check_string_not_empty(feature, 'feature_name', 'get_treatments')
+                            _check_is_string(feature, 'feature_name', operation) and
+                            _check_string_not_empty(feature, 'feature_name', operation)
                             )
     if len(filtered_features) == 0:
-        _LOGGER.error('get_treatments: feature_names must be a non-empty array.')
+        _LOGGER.error("%s: feature_names must be a non-empty array." % operation)
         return None
     return filtered_features
 
@@ -370,10 +390,10 @@ def generate_control_treatments(features):
     :return: dict
     :rtype: dict|None
     """
-    return {feature: CONTROL for feature in validate_features_get_treatments(features)}
+    return {feature: (CONTROL, None) for feature in validate_features_get_treatments(features)}
 
 
-def validate_attributes(attributes, operation):
+def validate_attributes(attributes):
     """
     Checks if attributes is valid
 
@@ -384,6 +404,7 @@ def validate_attributes(attributes, operation):
     :return: bool
     :rtype: True|False
     """
+    operation = _get_first_split_sdk_call()
     if attributes is None:
         return True
     if not type(attributes) is dict:
