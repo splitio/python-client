@@ -56,7 +56,10 @@ class SplitTests(object):
                     'combiner': 'AND'
                 }
             }
-        ]
+        ],
+        'configurations': {
+            'on': '{"color": "blue", "size": 13}'
+        },
     }
 
     def test_from_raw(self):
@@ -74,6 +77,8 @@ class SplitTests(object):
         assert parsed.default_treatment == 'off'
         assert parsed.algo == splits.HashAlgorithm.MURMUR
         assert len(parsed.conditions) == 2
+        assert parsed.get_configurations_for('on') == '{"color": "blue", "size": 13}'
+        assert parsed._configurations == {'on': '{"color": "blue", "size": 13}'}
 
     def test_get_segment_names(self, mocker):
         """Test fetching segment names."""
