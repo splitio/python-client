@@ -3,9 +3,10 @@
 import io
 import json
 import os
-import sys
 
 import pytest
+import six
+
 from splitio.engine import hashfns, splitters
 from splitio.models import splits
 
@@ -32,7 +33,7 @@ class HashFunctionsTests(object):
             assert hashfns.legacy.legacy_hash(key, seed) == hashed
             assert splitter.get_bucket(key, seed, splits.HashAlgorithm.LEGACY) == bucket
 
-    @pytest.mark.skipif(sys.version_info > (3, 0), reason='Should skip this on python3.')
+    @pytest.mark.skipif(six.PY3, reason='Should skip this on python3.')
     def test_legacy_hash_non_ascii_data(self):
         """Test legacy hash function against known results."""
         splitter = splitters.Splitter()

@@ -1,12 +1,14 @@
 """Abstract matcher module."""
 import abc
+
+from six import add_metaclass
+
 from splitio.client.key import Key
 
 
+@add_metaclass(abc.ABCMeta)
 class Matcher(object):
     """Matcher abstract class."""
-
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, raw_matcher):
         """

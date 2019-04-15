@@ -2,6 +2,8 @@
 
 import abc
 
+from six import add_metaclass
+
 
 class ImpressionListenerException(Exception):
     """Custom Exception for Impression Listener."""
@@ -51,11 +53,9 @@ class ImpressionListenerWrapper(object):  #pylint: disable=too-few-public-method
             raise ImpressionListenerException('Error in log_impression user\'s'
                                               'method is throwing exceptions')
 
-
-class ImpressionListener(object):  #pylint: disable=too-few-public-methods
+@add_metaclass(abc.ABCMeta)  #pylint: disable=too-few-public-methods
+class ImpressionListener(object):
     """Impression listener interface."""
-
-    __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def log_impression(self, data):
