@@ -255,9 +255,9 @@ def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  #
     }
 
     # Start tasks that have no dependencies
+    tasks['splits'].start()
     tasks['impressions'].start()
     tasks['events'].start()
-    tasks['splits'].start()
     tasks['telemetry'].start()
 
     def split_ready_task():
