@@ -81,6 +81,21 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
                 self._logger.debug('Error', exc_info=True)
 
     def get_treatment_with_config(self, key, feature, attributes=None):
+        """
+        Get the treatment and config for a feature and key, with optional dictionary of attributes.
+
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param feature: The name of the feature for which to get the treatment
+        :type feature: str
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :return: The treatment for the key and feature
+        :rtype: tuple(str, str)
+        """
         try:
             if self.destroyed:
                 self._logger.error("Client has already been destroyed - no calls possible")
@@ -157,7 +172,7 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
 
     def get_treatments_with_config(self, key, features, attributes=None):
         """
-        Evaluate multiple features and return a dictionary with all the feature/treatments.
+        Evaluate multiple features and return a dict with feature -> (treatment, config).
 
         Get the treatments for a list of features considering a key, with an optional dictionary of
         attributes. This method never raises an exception. If there's a problem, the appropriate
@@ -235,7 +250,21 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
 
 
     def get_treatments(self, key, features, attributes=None):
-        """TODO"""
+        """
+        Evaluate multiple features and return a dictionary with all the feature/treatments.
+
+        Get the treatments for a list of features considering a key, with an optional dictionary of
+        attributes. This method never raises an exception. If there's a problem, the appropriate
+        log message will be generated and the method will return the CONTROL treatment.
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param features: Array of the names of the features for which to get the treatment
+        :type feature: list
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :return: Dictionary with the result of all the features provided
+        :rtype: dict
+        """
         with_config = self.get_treatments_with_config(key, features, attributes)
         return {feature: result[0] for (feature, result) in six.iteritems(with_config)}
 

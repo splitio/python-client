@@ -1,0 +1,14 @@
+events_write_es on
+events_routing sqs
+impressions_routing sqs
+workspaces_v1 on
+create_org_with_workspace on
+sqs_events_processing on
+sqs_impressions_processing on
+sqs_events_fetch on
+sqs_impressions_fetch off
+sqs_impressions_fetch_period 700
+sqs_impressions_fetch_threads 10
+sqs_events_fetch_period 500
+sqs_events_fetch_threads 5
+

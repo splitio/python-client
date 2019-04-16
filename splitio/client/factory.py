@@ -334,6 +334,7 @@ def _build_localhost_factory(config):
     tasks = {'splits': LocalhostSplitSynchronizationTask(
         cfg['splitFile'],
         storages['splits'],
+        cfg['featuresRefreshRate'],
         ready_event
     )}
     tasks['splits'].start()
