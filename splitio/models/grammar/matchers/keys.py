@@ -41,12 +41,6 @@ class AllKeysMatcher(Matcher):
         return {}
 
 
-
-
-
-
-
-
 class UserDefinedSegmentMatcher(Matcher):
     """Matcher that returns true when the submitted key belongs to a segment."""
 

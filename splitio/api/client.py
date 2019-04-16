@@ -12,16 +12,14 @@ HttpResponse = namedtuple('HttpResponse', ['status_code', 'body'])
 class HttpClientException(Exception):
     """HTTP Client exception."""
 
-    def __init__(self, custom_message):
+    def __init__(self, message):
         """
         Class constructor.
 
         :param message: Information on why this exception happened.
         :type message: str
-        :param original_exception: Original exception being caught if any.
-        :type original_exception: Exception.
         """
-        Exception.__init__(self, custom_message)
+        Exception.__init__(self, message)
 
 
 class HttpClient(object):
@@ -34,12 +32,12 @@ class HttpClient(object):
         """
         Class constructor.
 
+        :param timeout: How many milliseconds to wait until the server responds.
+        :type timeout: int
         :param sdk_url: Optional alternative sdk URL.
         :type sdk_url: str
         :param events_url: Optional alternative events URL.
         :type events_url: str
-        :param timeout: How many milliseconds to wait until the server responds.
-        :type timeout: int
         """
         self._timeout = timeout / 1000  if timeout else None  # Convert ms to seconds.
         self._urls = {
@@ -61,24 +59,37 @@ class HttpClient(object):
         """
         return self._urls[server] + path
 
+    def _build_basic_headers(self, apikey):
+        """
+        Build basic headers with auth.
+
+        :param apikey: API token used to identify backend calls.
+        :type apikey: str
+        """
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': "Bearer %s" % apikey
+        }
+
     def get(self, server, path, apikey, query=None, extra_headers=None):  #pylint: disable=too-many-arguments
         """
         Issue a get request.
 
+        :param server: Whether the request is for SDK server or Events server.
+        :typee server: str
         :param path: path to append to the host url.
         :type path: str
         :param apikey: api token.
         :type apikey: str
+        :param query: Query string passed as dictionary.
+        :type query: dict
         :param extra_headers: key/value pairs of possible extra headers.
         :type extra_headers: dict
 
         :return: Tuple of status_code & response text
         :rtype: HttpResponse
         """
-        headers = {
-            'Content-Type': 'application/json',
-            'Authorization': "Bearer %s" % apikey
-        }
+        headers = self._build_basic_headers(apikey)
 
         if extra_headers is not None:
             headers.update(extra_headers)
@@ -98,22 +109,23 @@ class HttpClient(object):
         """
         Issue a POST request.
 
+        :param server: Whether the request is for SDK server or Events server.
+        :typee server: str
         :param path: path to append to the host url.
         :type path: str
         :param apikey: api token.
         :type apikey: str
         :param body: body sent in the request.
         :type body: str
+        :param query: Query string passed as dictionary.
+        :type query: dict
         :param extra_headers: key/value pairs of possible extra headers.
         :type extra_headers: dict
 
         :return: Tuple of status_code & response text
         :rtype: HttpResponse
         """
-        headers = {
-            'Content-Type': 'application/json',
-            'Authorization': "Bearer %s" % apikey
-        }
+        headers = self._build_basic_headers(apikey)
 
         if extra_headers is not None:
             headers.update(extra_headers)

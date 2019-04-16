@@ -74,8 +74,16 @@ class SplitFactory(object):  #pylint: disable=too-many-instance-attributes
 
         :param storages: Dictionary of storages for all split models.
         :type storages: dict
-        :param tasks: Dictionary of synchronization tasks.
+        :param labels_enabled: Whether the impressions should store labels or not.
+        :type labels_enabled: bool
+        :param apis: Dictionary of apis client wrappers
+        :type apis: dict
+        :param tasks: Dictionary of sychronization tasks
         :type tasks: dict
+        :param sdk_ready_flag: Event to set when the sdk is ready.
+        :type sdk_ready_flag: threading.Event
+        :param impression_listener: User custom listener to handle impressions locally.
+        :type impression_listener: splitio.client.listener.ImpressionListener
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self._storages = storages
@@ -139,7 +147,7 @@ class SplitFactory(object):  #pylint: disable=too-many-instance-attributes
             ready = self._sdk_ready_flag.wait(timeout)
 
             if not ready:
-                raise TimeoutException('Waited %d seconds, and sdk was not ready')
+                raise TimeoutException('SDK Initialization: time of %d exceeded' % timeout)
 
     def destroy(self, destroyed_event=None):
         """

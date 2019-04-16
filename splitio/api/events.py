@@ -14,10 +14,12 @@ class EventsAPI(object):  #pylint: disable=too-few-public-methods
         """
         Class constructor.
 
-        :param client: HTTP Client responsble for issuing calls to the backend.
-        :type client: HttpClient
+        :param http_client: HTTP Client responsble for issuing calls to the backend.
+        :type http_client: HttpClient
         :param apikey: User apikey token.
         :type apikey: string
+        :param sdk_metadata: SDK version & machine name & IP.
+        :type sdk_metadata: splitio.client.util.SdkMetadata
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self._client = http_client
