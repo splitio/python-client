@@ -38,7 +38,7 @@ class EventsAPITests(object):
 
         httpclient.reset_mock()
         def raise_exception(*args, **kwargs):
-            raise client.HttpClientException('some_message', Exception('something'))
+            raise client.HttpClientException('some_message')
         httpclient.post.side_effect = raise_exception
         with pytest.raises(APIException) as exc_info:
             response = telemetry_api.flush_latencies({
@@ -75,7 +75,7 @@ class EventsAPITests(object):
 
         httpclient.reset_mock()
         def raise_exception(*args, **kwargs):
-            raise client.HttpClientException('some_message', Exception('something'))
+            raise client.HttpClientException('some_message')
         httpclient.post.side_effect = raise_exception
         with pytest.raises(APIException) as exc_info:
             response = telemetry_api.flush_counters({'counter1': 1, 'counter2': 2})
@@ -110,7 +110,7 @@ class EventsAPITests(object):
 
         httpclient.reset_mock()
         def raise_exception(*args, **kwargs):
-            raise client.HttpClientException('some_message', Exception('something'))
+            raise client.HttpClientException('some_message')
         httpclient.post.side_effect = raise_exception
         with pytest.raises(APIException) as exc_info:
             response = telemetry_api.flush_gauges({'gauge1': 1, 'gauge2': 2})

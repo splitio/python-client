@@ -2,6 +2,8 @@
 from __future__ import division
 
 from collections import namedtuple
+
+from six import raise_from
 import requests
 
 HttpResponse = namedtuple('HttpResponse', ['status_code', 'body'])
@@ -10,7 +12,7 @@ HttpResponse = namedtuple('HttpResponse', ['status_code', 'body'])
 class HttpClientException(Exception):
     """HTTP Client exception."""
 
-    def __init__(self, custom_message, original_exception=None):
+    def __init__(self, custom_message):
         """
         Class constructor.
 
@@ -20,18 +22,6 @@ class HttpClientException(Exception):
         :type original_exception: Exception.
         """
         Exception.__init__(self, custom_message)
-        self._custom_message = custom_message
-        self._original_exception = original_exception
-
-    @property
-    def custom_message(self):
-        """Return custom message."""
-        return self._custom_message
-
-    @property
-    def original_exception(self):
-        """Return original exception."""
-        return self._original_exception
 
 
 class HttpClient(object):
@@ -101,8 +91,8 @@ class HttpClient(object):
                 timeout=self._timeout
             )
             return HttpResponse(response.status_code, response.text)
-        except Exception as exc:
-            raise HttpClientException('requests library is throwing exceptions', exc)
+        except Exception as exc:  #pylint: disable=broad-except
+            raise_from(HttpClientException('requests library is throwing exceptions'), exc)
 
     def post(self, server, path, apikey, body, query=None, extra_headers=None):  #pylint: disable=too-many-arguments
         """
@@ -137,5 +127,5 @@ class HttpClient(object):
                 timeout=self._timeout
             )
             return HttpResponse(response.status_code, response.text)
-        except Exception as exc:
-            raise HttpClientException('requests library is throwing exceptions', exc)
+        except Exception as exc:  #pylint: disable=broad-except
+            raise_from(HttpClientException('requests library is throwing exceptions'), exc)

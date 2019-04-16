@@ -60,7 +60,9 @@ class TelemetryAPI(object):
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            raise APIException(exc.custom_message, original_exception=exc.original_exception)
+            self._logger.error('Http client is throwing exceptions')
+            self._logger.debug('Error: ', exc_info=True)
+            six.raise_from(APIException('Latencies not flushed correctly.'), exc)
 
     @staticmethod
     def _build_gauges(gauges):
@@ -94,7 +96,9 @@ class TelemetryAPI(object):
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            raise APIException(exc.custom_message, original_exception=exc.original_exception)
+            self._logger.error('Http client is throwing exceptions')
+            self._logger.debug('Error: ', exc_info=True)
+            six.raise_from(APIException('Gauges not flushed correctly.'), exc)
 
     @staticmethod
     def _build_counters(counters):
@@ -128,5 +132,6 @@ class TelemetryAPI(object):
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            self._logger.debug('Error flushing events: ', exc_info=True)
-            raise APIException(exc.custom_message, original_exception=exc.original_exception)
+            self._logger.error('Http client is throwing exceptions')
+            self._logger.debug('Error: ', exc_info=True)
+            six.raise_from(APIException('Counters not flushed correctly.'), exc)
