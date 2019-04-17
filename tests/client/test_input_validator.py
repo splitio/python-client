@@ -4,7 +4,9 @@
 from __future__ import absolute_import, division, print_function, \
     unicode_literals
 
-from splitio.client.factory import SplitFactory
+import logging
+
+from splitio.client.factory import SplitFactory, get_factory
 from splitio.client.client import CONTROL, Client
 from splitio.client.manager import SplitManager
 from splitio.client.key import Key
@@ -537,61 +539,35 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
 
 
 
-#class TestInputSanitizationFactory(TestCase):
-#
-#    def setUp(self):
-#        input_validator._LOGGER.error = mock.MagicMock()
-#        self.logger_error = input_validator._LOGGER.error
-#
-#    def test_factory_with_null_apikey(self):
-#        self.assertEqual(None, get_factory(None))
-#        self.logger_error \
-#            .assert_called_once_with("factory_instantiation: you passed a null apikey, apikey" +
-#                                     " must be a non-empty string.")
-#
-#    def test_factory_with_empty_apikey(self):
-#        self.assertEqual(None, get_factory(''))
-#        self.logger_error \
-#            .assert_called_once_with("factory_instantiation: you passed an empty apikey, apikey" +
-#                                     " must be a non-empty string.")
-#
-#    def test_factory_with_invalid_apikey(self):
-#        self.assertEqual(None, get_factory(True))
-#        self.logger_error \
-#            .assert_called_once_with("factory_instantiation: you passed an invalid apikey, apikey" +
-#                                     " must be a non-empty string.")
-#
-#    def test_factory_with_invalid_apikey_redis(self):
-#        config = {
-#            'redisDb': 0,
-#            'redisHost': 'localhost'
-#        }
-#        self.assertNotEqual(None, get_factory(True, config=config))
-#        self.logger_error.assert_not_called()
-#
-#    def test_factory_with_invalid_config(self):
-#        config = {
-#            'some': 0
-#        }
-#        self.assertEqual(None, get_factory("apikey", config=config))
-#        self.logger_error \
-#            .assert_called_once_with('no ready parameter has been set - incorrect control '
-#                                     + 'treatments could be logged')
-#
-#    def test_factory_with_invalid_null_ready(self):
-#        config = {
-#            'ready': None
-#        }
-#        self.assertEqual(None, get_factory("apikey", config=config))
-#        self.logger_error \
-#            .assert_called_once_with('no ready parameter has been set - incorrect control '
-#                                     + 'treatments could be logged')
-#
-#    def test_factory_with_invalid_ready(self):
-#        config = {
-#            'ready': True
-#        }
-#        self.assertEqual(None, get_factory("apikey", config=config))
-#        self.logger_error \
-#            .assert_called_once_with('no ready parameter has been set - incorrect control '
-#                                     + 'treatments could be logged')
+class FactoryInputValidationTests(object):  #pylint: disable=too-few-public-methods
+    """Factory instantiation input validation test cases."""
+
+    def test_input_validation_factory(self, mocker):
+        """Test the input validators for factory instantiation."""
+        logger = mocker.Mock(spec=logging.Logger)
+        mocker.patch('splitio.client.input_validator._LOGGER', new=logger)
+
+        assert get_factory(None) is None
+        assert logger.error.mock_calls == [
+            mocker.call("%s: you passed a null %s, %s must be a non-empty string.", 'factory_instantiation', 'apikey', 'apikey')
+        ]
+
+        logger.reset_mock()
+        assert get_factory('') is None
+        assert logger.error.mock_calls == [
+            mocker.call("%s: you passed an empty %s, %s must be a non-empty string.", 'factory_instantiation', 'apikey', 'apikey')
+        ]
+
+        logger.reset_mock()
+        assert get_factory(True) is None
+        assert logger.error.mock_calls == [
+            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'factory_instantiation', 'apikey', 'apikey')
+        ]
+
+        logger.reset_mock()
+        assert get_factory(True, config={'uwsgiCache': True}) is not None
+        assert logger.error.mock_calls == []
+
+        logger.reset_mock()
+        assert get_factory(True, config={'redisHost': 'some-host'}) is not None
+        assert logger.error.mock_calls == []

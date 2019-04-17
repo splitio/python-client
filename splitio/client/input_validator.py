@@ -402,7 +402,7 @@ class _ApiLogFilter(logging.Filter):  # pylint: disable=too-few-public-methods
         return record.name not in ('SegmentsAPI', 'HttpClient')
 
 
-def _valid_apikey_type(segment_api):
+def validate_apikey_type(segment_api):
     """
     Try to guess if the apikey is of browser type and let the user know.
 
@@ -411,21 +411,22 @@ def _valid_apikey_type(segment_api):
     """
     api_messages_filter = _ApiLogFilter()
     try:
-        segment_api._client._logger.addFilter(api_messages_filter)  #pylint: disable=protected-access
         segment_api._logger.addFilter(api_messages_filter)  #pylint: disable=protected-access
         segment_api.fetch_segment('__SOME_INVALID_SEGMENT__', -1)
     except APIException as exc:
         if exc.status_code == 403:
+            _LOGGER.error('factory instantiation: you passed a browser type '
+                          + 'api_key, please grab an api key from the Split '
+                          + 'console that is of type sdk')
             return False
     finally:
-        segment_api._client._logger.removeFilter(api_messages_filter)  #pylint: disable=protected-access
         segment_api._logger.removeFilter(api_messages_filter)  #pylint: disable=protected-access
 
     # True doesn't mean that the APIKEY is right, only that it's not of type "browser"
     return True
 
 
-def validate_factory_instantiation(apikey, segment_api):
+def validate_factory_instantiation(apikey):
     """
     Check if the factory if being instantiated with the appropriate arguments.
 
@@ -444,13 +445,4 @@ def validate_factory_instantiation(apikey, segment_api):
        (not _check_is_string(apikey, 'apikey', 'factory_instantiation')) or \
        (not _check_string_not_empty(apikey, 'apikey', 'factory_instantiation')):
         return False
-    try:
-        if not _valid_apikey_type(segment_api):
-            _LOGGER.error('factory instantiation: you passed a browser type '
-                          + 'api_key, please grab an api key from the Split '
-                          + 'console that is of type sdk')
-            return False
-        return True
-    except Exception:  #pylint: disable=broad-except
-        _LOGGER.error("Something went wrong when trying to check apikey type.")
-        _LOGGER.debug("Error: ", exc_info=True)
+    return True

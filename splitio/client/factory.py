@@ -9,6 +9,7 @@ from enum import Enum
 import six
 
 from splitio.client.client import Client
+from splitio.client import input_validator
 from splitio.client.manager import SplitManager
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.client import util
@@ -195,6 +196,9 @@ class SplitFactory(object):  #pylint: disable=too-many-instance-attributes
 
 def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  #pylint: disable=too-many-locals
     """Build and return a split factory tailored to the supplied config."""
+    if not input_validator.validate_factory_instantiation(api_key):
+        return None
+
     cfg = DEFAULT_CONFIG.copy()
     cfg.update(config)
     http_client = HttpClient(
@@ -211,6 +215,9 @@ def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  #
         'events': EventsAPI(http_client, api_key, sdk_metadata),
         'telemetry': TelemetryAPI(http_client, api_key, sdk_metadata)
     }
+
+    if not input_validator.validate_apikey_type(apis['segments']):
+        return None
 
     storages = {
         'splits': InMemorySplitStorage(),
