@@ -91,16 +91,19 @@ class SplitFactory(object):  #pylint: disable=too-many-instance-attributes
         self._labels_enabled = labels_enabled
         self._apis = apis if apis else {}
         self._tasks = tasks if tasks else {}
-        self._status = Status.NOT_INITIALIZED
         self._sdk_ready_flag = sdk_ready_flag
         self._impression_listener = impression_listener
 
-        # If we have a ready flag, add a listener that updates the status
-        # to READY once the flag is set.
+        # If we have a ready flag, it means we have sync tasks that need to finish
+        # before the SDK client becomes ready.
         if self._sdk_ready_flag is not None:
+            self._status = Status.NOT_INITIALIZED
+            # add a listener that updates the status to READY once the flag is set.
             ready_updater = threading.Thread(target=self._update_status_when_ready)
             ready_updater.setDaemon(True)
             ready_updater.start()
+        else:
+            self._status = Status.READY
 
     def _update_status_when_ready(self):
         """Wait until the sdk is ready and update the status."""
@@ -150,6 +153,16 @@ class SplitFactory(object):  #pylint: disable=too-many-instance-attributes
             if not ready:
                 raise TimeoutException('SDK Initialization: time of %d exceeded' % timeout)
 
+    @property
+    def ready(self):
+        """
+        Return whether the factory is ready.
+
+        :return: True if the factory is ready. False otherwhise.
+        :rtype: bool
+        """
+        return self._status == Status.READY
+
     def destroy(self, destroyed_event=None):
         """
         Destroy the factory and render clients unusable.
@@ -164,24 +177,25 @@ class SplitFactory(object):  #pylint: disable=too-many-instance-attributes
             self._logger.info('Factory already destroyed.')
             return
 
-        if destroyed_event is not None:
-            stop_events = {name: threading.Event() for name in self._tasks.keys()}
-            for name, task in six.iteritems(self._tasks):
-                task.stop(stop_events[name])
+        try:
+            if destroyed_event is not None:
+                stop_events = {name: threading.Event() for name in self._tasks.keys()}
+                for name, task in six.iteritems(self._tasks):
+                    task.stop(stop_events[name])
 
-            def _wait_for_tasks_to_stop():
-                for event in stop_events.values():
-                    event.wait()
-                destroyed_event.set()
+                def _wait_for_tasks_to_stop():
+                    for event in stop_events.values():
+                        event.wait()
+                    destroyed_event.set()
 
-            wait_thread = threading.Thread(target=_wait_for_tasks_to_stop)
-            wait_thread.setDaemon(True)
-            wait_thread.start()
-        else:
-            for task in self._tasks.values():
-                task.stop()
-
-        self._status = Status.DESTROYED
+                wait_thread = threading.Thread(target=_wait_for_tasks_to_stop)
+                wait_thread.setDaemon(True)
+                wait_thread.start()
+            else:
+                for task in self._tasks.values():
+                    task.stop()
+        finally:
+            self._status = Status.DESTROYED
 
     @property
     def destroyed(self):
