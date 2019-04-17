@@ -4,6 +4,7 @@
 import os
 import tempfile
 
+from splitio.client.factory import get_factory
 from splitio.client import localhost
 from splitio.models.splits import Split
 from splitio.models.grammar.matchers import AllKeysMatcher
@@ -194,3 +195,21 @@ class SplitFetchingTaskTests(object):
         task._update_splits()
         assert parse_legacy.mock_calls == [mocker.call('yaml')]
         assert parse_yaml.mock_calls == []
+
+    def test_localhost_e2e(self):
+        """Instantiate a client with a YAML file and issue get_treatment() calls."""
+        filename = os.path.join(os.path.dirname(__file__), 'files', 'file2.yaml')
+        factory = get_factory('localhost', config={'splitFile': filename})
+        client = factory.client()
+        assert client.get_treatment_with_config('key', 'my_feature') == ('on', '{"desc" : "this applies only to ON treatment"}')
+        assert client.get_treatment_with_config('only_key', 'my_feature') == (
+            'off', '{"desc" : "this applies only to OFF and only for only_key. The rest will receive ON"}'
+        )
+        assert client.get_treatment_with_config('another_key', 'my_feature') == ('control', None)
+        assert client.get_treatment_with_config('key2', 'other_feature') == ('on', None)
+        assert client.get_treatment_with_config('key3', 'other_feature') == ('on', None)
+        assert client.get_treatment_with_config('some_key', 'other_feature_2') == ('on', None)
+        assert client.get_treatment_with_config('key_whitelist', 'other_feature_3') == ('on', None)
+        assert client.get_treatment_with_config('any_other_key', 'other_feature_3') == ('off', None)
+
+
