@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function, \
 
 import logging
 import time
+import six
 from splitio.engine.evaluator import Evaluator, CONTROL
 from splitio.engine.splitters import Splitter
 from splitio.models.impressions import Impression, Label
@@ -84,36 +85,21 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
                 )
                 self._logger.debug('Error', exc_info=True)
 
-    def get_treatment(self, key, feature, attributes=None):
-        """
-        Get the treatment for a feature and key, with an optional dictionary of attributes.
-
-        This method never raises an exception. If there's a problem, the appropriate log message
-        will be generated and the method will return the CONTROL treatment.
-
-        :param key: The key for which to get the treatment
-        :type key: str
-        :param feature: The name of the feature for which to get the treatment
-        :type feature: str
-        :param attributes: An optional dictionary of attributes
-        :type attributes: dict
-        :return: The treatment for the key and feature
-        :rtype: str
-        """
+    def get_treatment_with_config(self, key, feature, attributes=None):
         try:
             if self.destroyed:
                 self._logger.error("Client has already been destroyed - no calls possible")
-                return CONTROL
+                return CONTROL, None
 
             start = int(round(time.time() * 1000))
 
-            matching_key, bucketing_key = input_validator.validate_key(key, 'get_treatment')
+            matching_key, bucketing_key = input_validator.validate_key(key)
             feature = input_validator.validate_feature_name(feature)
 
             if (matching_key is None and bucketing_key is None) \
                     or feature is None \
-                    or not input_validator.validate_attributes(attributes, 'get_treatment'):
-                return CONTROL
+                    or not input_validator.validate_attributes(attributes):
+                return CONTROL, None
 
             result = self._evaluator.evaluate_treatment(
                 feature,
@@ -134,7 +120,7 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
 
             self._record_stats(impression, start, self._METRIC_GET_TREATMENT)
             self._send_impression_to_listener(impression, attributes)
-            return result['treatment']
+            return result['treatment'], result['configurations']
         except Exception:  #pylint: disable=broad-except
             self._logger.error('Error getting treatment for feature')
             self._logger.debug('Error: ', exc_info=True)
@@ -153,9 +139,28 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
             except Exception:  # pylint: disable=broad-except
                 self._logger.error('Error reporting impression into get_treatment exception block')
                 self._logger.debug('Error: ', exc_info=True)
-            return CONTROL
+            return CONTROL, None
 
-    def get_treatments(self, key, features, attributes=None):
+    def get_treatment(self, key, feature, attributes=None):
+        """
+        Get the treatment for a feature and key, with an optional dictionary of attributes.
+
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param feature: The name of the feature for which to get the treatment
+        :type feature: str
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :return: The treatment for the key and feature
+        :rtype: str
+        """
+        treatment, _ = self.get_treatment_with_config(key, feature, attributes)
+        return treatment
+
+    def get_treatments_with_config(self, key, features, attributes=None):
         """
         Evaluate multiple features and return a dictionary with all the feature/treatments.
 
@@ -177,11 +182,11 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
 
         start = int(round(time.time() * 1000))
 
-        matching_key, bucketing_key = input_validator.validate_key(key, 'get_treatments')
+        matching_key, bucketing_key = input_validator.validate_key(key)
         if matching_key is None and bucketing_key is None:
             return input_validator.generate_control_treatments(features)
 
-        if input_validator.validate_attributes(attributes, 'get_treatments') is False:
+        if input_validator.validate_attributes(attributes) is False:
             return input_validator.generate_control_treatments(features)
 
         features = input_validator.validate_features_get_treatments(features)
@@ -209,13 +214,15 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
                                                     start)
 
                 bulk_impressions.append(impression)
-                treatments[feature] = treatment['treatment']
+                treatments[feature] = (treatment['treatment'], treatment['configurations'])
 
             except Exception:  #pylint: disable=broad-except
                 self._logger.error('get_treatments: An exception occured when evaluating '
                                    'feature ' + feature + ' returning CONTROL.')
-                treatments[feature] = CONTROL
+                treatments[feature] = CONTROL, None
                 self._logger.debug('Error: ', exc_info=True)
+                import traceback
+                traceback.print_exc()
                 continue
 
             # Register impressions
@@ -230,6 +237,12 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
                 self._logger.debug('Error: ', exc_info=True)
 
         return treatments
+
+
+    def get_treatments(self, key, features, attributes=None):
+        """TODO"""
+        with_config = self.get_treatments_with_config(key, features, attributes)
+        return {feature: result[0] for (feature, result) in six.iteritems(with_config)}
 
     def _build_impression(  #pylint: disable=too-many-arguments
             self,
