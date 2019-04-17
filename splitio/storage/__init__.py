@@ -3,10 +3,11 @@ from __future__ import absolute_import
 
 import abc
 
+from six import add_metaclass
+
+@add_metaclass(abc.ABCMeta)
 class SplitStorage(object):
     """Split storage interface implemented as an abstract class."""
-
-    __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def get(self, split_name):
@@ -92,10 +93,9 @@ class SplitStorage(object):
         return set([name for spl in self.get_all_splits() for name in spl.get_segment_names()])
 
 
+@add_metaclass(abc.ABCMeta)
 class SegmentStorage(object):
     """Segment storage interface implemented as an abstract class."""
-
-    __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def get(self, segment_name):
@@ -173,10 +173,9 @@ class SegmentStorage(object):
         pass
 
 
+@add_metaclass(abc.ABCMeta)
 class ImpressionStorage(object):
     """Impressions storage interface."""
-
-    __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def put(self, impressions):
@@ -199,10 +198,9 @@ class ImpressionStorage(object):
         pass
 
 
+@add_metaclass(abc.ABCMeta)
 class EventStorage(object):
     """Events storage interface."""
-
-    __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def put(self, events):
@@ -225,10 +223,9 @@ class EventStorage(object):
         pass
 
 
+@add_metaclass(abc.ABCMeta)
 class TelemetryStorage(object):
     """Telemetry storage interface."""
-
-    __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def inc_latency(self, name, bucket):

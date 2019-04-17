@@ -1,9 +1,11 @@
 """Redis storage test module."""
 #pylint: disable=no-self-use
+
 import json
+
+from splitio.client.util import get_metadata
 from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \
     RedisSegmentStorage, RedisSplitStorage, RedisTelemetryStorage
-
 from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
 from splitio.models.events import Event
@@ -41,7 +43,7 @@ class RedisSplitStorageTests(object):
         """Test fetching changenumber."""
         adapter = mocker.Mock(spec=RedisAdapter)
         storage = RedisSplitStorage(adapter)
-        adapter.get.return_value = -1
+        adapter.get.return_value = '-1'
         assert storage.get_change_number() == -1
         assert adapter.get.mock_calls == [mocker.call('SPLITIO.splits.till')]
 
@@ -58,7 +60,7 @@ class RedisSplitStorageTests(object):
             'SPLITIO.split.split3'
         ]
         def _mget_mock(*_):
-            return ['{"name": split1}', '{"name": split2}', '{"name": split3}']
+            return ['{"name": "split1"}', '{"name": "split2"}', '{"name": "split3"}']
         adapter.mget.side_effect = _mget_mock
 
         storage.get_all_splits()
@@ -69,9 +71,9 @@ class RedisSplitStorageTests(object):
         ]
 
         assert len(from_raw.mock_calls) == 3
-        assert mocker.call('{"name": split1}') in from_raw.mock_calls
-        assert mocker.call('{"name": split2}') in from_raw.mock_calls
-        assert mocker.call('{"name": split3}') in from_raw.mock_calls
+        assert mocker.call({'name': 'split1'}) in from_raw.mock_calls
+        assert mocker.call({'name': 'split2'}) in from_raw.mock_calls
+        assert mocker.call({'name': 'split3'}) in from_raw.mock_calls
 
     def test_get_split_names(self, mocker):
         """Test getching split names."""
@@ -91,8 +93,8 @@ class RedisSegmentStorageTests(object):
     def test_fetch_segment(self, mocker):
         """Test fetching a whole segment."""
         adapter = mocker.Mock(spec=RedisAdapter)
-        adapter.smembers.return_value = ["key1", "key2", "key3"]
-        adapter.get.return_value = 100
+        adapter.smembers.return_value = set(["key1", "key2", "key3"])
+        adapter.get.return_value = '100'
         from_raw = mocker.Mock()
         mocker.patch('splitio.models.segments.from_raw', new=from_raw)
 
@@ -110,7 +112,7 @@ class RedisSegmentStorageTests(object):
         # Assert that if segment doesn't exist, None is returned
         adapter.reset_mock()
         from_raw.reset_mock()
-        adapter.smembers.return_value = None
+        adapter.smembers.return_value = set()
         assert storage.get('some_segment') is None
         assert adapter.smembers.mock_calls == [mocker.call('SPLITIO.segment.some_segment')]
         assert adapter.get.mock_calls == [mocker.call('SPLITIO.segment.some_segment.till')]
@@ -118,7 +120,7 @@ class RedisSegmentStorageTests(object):
     def test_fetch_change_number(self, mocker):
         """Test fetching change number."""
         adapter = mocker.Mock(spec=RedisAdapter)
-        adapter.get.return_value = 100
+        adapter.get.return_value = '100'
 
         storage = RedisSegmentStorage(adapter)
         result = storage.get_change_number('some_segment')
@@ -142,12 +144,8 @@ class RedisImpressionsStorageTests(object):  #pylint: disable=too-few-public-met
     def test_add_impressions(self, mocker):
         """Test that adding impressions to storage works."""
         adapter = mocker.Mock(spec=RedisAdapter)
-        sdk_metadata = {
-            'sdk-language-version': 'python-1.2.3',
-            'instance-id': 'some_instance_id',
-            'ip-address': '123.123.123.123'
-        }
-        storage = RedisImpressionsStorage(adapter, sdk_metadata)
+        metadata = get_metadata()
+        storage = RedisImpressionsStorage(adapter, metadata)
 
         impressions = [
             Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
@@ -160,9 +158,9 @@ class RedisImpressionsStorageTests(object):  #pylint: disable=too-few-public-met
 
         to_validate = [json.dumps({
             'm': {  # METADATA PORTION
-                's': sdk_metadata['sdk-language-version'],
-                'n': sdk_metadata['instance-id'],
-                'i': sdk_metadata['ip-address'],
+                's': metadata.sdk_version,
+                'n': metadata.instance_name,
+                'i': metadata.instance_ip,
             },
             'i': {  # IMPRESSION PORTION
                 'k': impression.matching_key,
@@ -175,7 +173,7 @@ class RedisImpressionsStorageTests(object):  #pylint: disable=too-few-public-met
             }
         }) for impression in impressions]
 
-        assert adapter.rpush.mock_calls == [mocker.call('SPLITIO.impressions', to_validate)]
+        assert adapter.rpush.mock_calls == [mocker.call('SPLITIO.impressions', *to_validate)]
 
         # Assert that if an exception is thrown it's caught and False is returned
         adapter.reset_mock()
@@ -191,12 +189,9 @@ class RedisEventsStorageTests(object):  #pylint: disable=too-few-public-methods
     def test_add_events(self, mocker):
         """Test that adding impressions to storage works."""
         adapter = mocker.Mock(spec=RedisAdapter)
-        sdk_metadata = {
-            'sdk-language-version': 'python-1.2.3',
-            'instance-id': 'some_instance_id',
-            'ip-address': '123.123.123.123'
-        }
-        storage = RedisEventsStorage(adapter, sdk_metadata)
+        metadata = get_metadata()
+
+        storage = RedisEventsStorage(adapter, metadata)
 
         events = [
             Event('key1', 'user', 'purchase', 10, 123456),
@@ -208,9 +203,9 @@ class RedisEventsStorageTests(object):  #pylint: disable=too-few-public-methods
 
         list_of_raw_events = [json.dumps({
             'm': {  # METADATA PORTION
-                's': sdk_metadata['sdk-language-version'],
-                'n': sdk_metadata['instance-id'],
-                'i': sdk_metadata['ip-address'],
+                's': metadata.sdk_version,
+                'n': metadata.instance_name,
+                'i': metadata.instance_ip,
             },
             'i': {  # IMPRESSION PORTION
                 'key': event.key,
@@ -222,7 +217,7 @@ class RedisEventsStorageTests(object):  #pylint: disable=too-few-public-methods
         }) for event in events]
 
         # To deal with python2 & 3 differences in hashing/order when dumping json.
-        list_of_raw_json_strings_called = adapter.rpush.mock_calls[0][1][1]
+        list_of_raw_json_strings_called = adapter.rpush.mock_calls[0][1][1:]
         list_of_events_called = [json.loads(event) for event in list_of_raw_json_strings_called]
         list_of_events_sent = [json.loads(event) for event in list_of_raw_events]
         for item in list_of_events_sent:
@@ -243,58 +238,49 @@ class RedisTelemetryStorageTests(object):
     def test_inc_latency(self, mocker):
         """Test incrementing latency."""
         adapter = mocker.Mock(spec=RedisAdapter)
-        sdk_metadata = {
-            'sdk-language-version': 'python-1.2.3',
-            'instance-id': 'some_instance_id',
-            'ip-address': '123.123.123.123'
-        }
-        storage = RedisTelemetryStorage(adapter, sdk_metadata)
+        metadata = get_metadata()
+
+        storage = RedisTelemetryStorage(adapter, metadata)
         storage.inc_latency('some_latency', 0)
         storage.inc_latency('some_latency', 1)
         storage.inc_latency('some_latency', 5)
         storage.inc_latency('some_latency', 5)
         storage.inc_latency('some_latency', 22)
         assert adapter.incr.mock_calls == [
-            mocker.call('SPLITIO/python-1.2.3/some_instance_id/latency.some_latency.bucket.0'),
-            mocker.call('SPLITIO/python-1.2.3/some_instance_id/latency.some_latency.bucket.1'),
-            mocker.call('SPLITIO/python-1.2.3/some_instance_id/latency.some_latency.bucket.5'),
-            mocker.call('SPLITIO/python-1.2.3/some_instance_id/latency.some_latency.bucket.5')
+            mocker.call('SPLITIO/' + metadata.sdk_version + '/' + metadata.instance_name + '/latency.some_latency.bucket.0'),
+            mocker.call('SPLITIO/' + metadata.sdk_version + '/' + metadata.instance_name + '/latency.some_latency.bucket.1'),
+            mocker.call('SPLITIO/' + metadata.sdk_version + '/' + metadata.instance_name + '/latency.some_latency.bucket.5'),
+            mocker.call('SPLITIO/' + metadata.sdk_version + '/' + metadata.instance_name + '/latency.some_latency.bucket.5')
         ]
 
     def test_inc_counter(self, mocker):
         """Test incrementing latency."""
         adapter = mocker.Mock(spec=RedisAdapter)
-        sdk_metadata = {
-            'sdk-language-version': 'python-1.2.3',
-            'instance-id': 'some_instance_id',
-            'ip-address': '123.123.123.123'
-        }
-        storage = RedisTelemetryStorage(adapter, sdk_metadata)
+        metadata = get_metadata()
+
+        storage = RedisTelemetryStorage(adapter, metadata)
         storage.inc_counter('some_counter_1')
         storage.inc_counter('some_counter_1')
         storage.inc_counter('some_counter_1')
         storage.inc_counter('some_counter_2')
         storage.inc_counter('some_counter_2')
         assert adapter.incr.mock_calls == [
-            mocker.call('SPLITIO/python-1.2.3/some_instance_id/count.some_counter_1'),
-            mocker.call('SPLITIO/python-1.2.3/some_instance_id/count.some_counter_1'),
-            mocker.call('SPLITIO/python-1.2.3/some_instance_id/count.some_counter_1'),
-            mocker.call('SPLITIO/python-1.2.3/some_instance_id/count.some_counter_2'),
-            mocker.call('SPLITIO/python-1.2.3/some_instance_id/count.some_counter_2')
+            mocker.call('SPLITIO/' + metadata.sdk_version + '/' + metadata.instance_name + '/count.some_counter_1'),
+            mocker.call('SPLITIO/' + metadata.sdk_version + '/' + metadata.instance_name + '/count.some_counter_1'),
+            mocker.call('SPLITIO/' + metadata.sdk_version + '/' + metadata.instance_name + '/count.some_counter_1'),
+            mocker.call('SPLITIO/' + metadata.sdk_version + '/' + metadata.instance_name + '/count.some_counter_2'),
+            mocker.call('SPLITIO/' + metadata.sdk_version + '/' + metadata.instance_name + '/count.some_counter_2')
         ]
 
     def test_inc_gauge(self, mocker):
         """Test incrementing latency."""
         adapter = mocker.Mock(spec=RedisAdapter)
-        sdk_metadata = {
-            'sdk-language-version': 'python-1.2.3',
-            'instance-id': 'some_instance_id',
-            'ip-address': '123.123.123.123'
-        }
-        storage = RedisTelemetryStorage(adapter, sdk_metadata)
+        metadata = get_metadata()
+
+        storage = RedisTelemetryStorage(adapter, metadata)
         storage.put_gauge('gauge1', 123)
         storage.put_gauge('gauge2', 456)
         assert adapter.set.mock_calls == [
-            mocker.call('SPLITIO/python-1.2.3/some_instance_id/gauge.gauge1', 123),
-            mocker.call('SPLITIO/python-1.2.3/some_instance_id/gauge.gauge2', 456)
+            mocker.call('SPLITIO/' + metadata.sdk_version + '/' + metadata.instance_name + '/gauge.gauge1', 123),
+            mocker.call('SPLITIO/' + metadata.sdk_version + '/' + metadata.instance_name + '/gauge.gauge2', 456)
         ]

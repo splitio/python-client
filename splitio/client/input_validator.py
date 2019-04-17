@@ -1,16 +1,17 @@
+"""Input validation module."""
 from __future__ import absolute_import, division, print_function, \
     unicode_literals
 
 from numbers import Number
 import logging
-import six
 import re
 import math
-import requests
+
+import six
+
+from splitio.api import APIException
 from splitio.client.key import Key
 from splitio.engine.evaluator import CONTROL
-# from splitio.api import SdkApi
-# from splitio.exceptions import NetworkingException
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ EVENT_TYPE_PATTERN = r'^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$'
 
 def _check_not_null(value, name, operation):
     """
-    Checks if value is null
+    Check if value is null.
 
     :param key: value to be checked
     :type key: str
@@ -32,15 +33,15 @@ def _check_not_null(value, name, operation):
     :rtype: True|False
     """
     if value is None:
-        _LOGGER.error('{}: you passed a null {}, {} must be a non-empty string.'
-                      .format(operation, name, name))
+        _LOGGER.error('%s: you passed a null %s, %s must be a non-empty string.',
+                      operation, name, name)
         return False
     return True
 
 
 def _check_is_string(value, name, operation):
     """
-    Checks if value is not string
+    Check if value is not string.
 
     :param key: value to be checked
     :type key: str
@@ -52,15 +53,17 @@ def _check_is_string(value, name, operation):
     :rtype: True|False
     """
     if isinstance(value, six.string_types) is False:
-        _LOGGER.error('{}: you passed an invalid {}, {} must be a non-empty string.'.format(
-                      operation, name, name))
+        _LOGGER.error(
+            '%s: you passed an invalid %s, %s must be a non-empty string.',
+            operation, name, name
+        )
         return False
     return True
 
 
 def _check_string_not_empty(value, name, operation):
     """
-    Checks if value is an empty string
+    Check if value is an empty string.
 
     :param key: value to be checked
     :type key: str
@@ -72,15 +75,15 @@ def _check_string_not_empty(value, name, operation):
     :rtype: True|False
     """
     if value.strip() == "":
-        _LOGGER.error('{}: you passed an empty {}, {} must be a non-empty string.'
-                      .format(operation, name, name))
+        _LOGGER.error('%s: you passed an empty %s, %s must be a non-empty string.',
+                      operation, name, name)
         return False
     return True
 
 
 def _check_string_matches(value, operation, pattern):
     """
-    Checks if value is adhere to a regular expression passed
+    Check if value is adhere to a regular expression passed.
 
     :param key: value to be checked
     :type key: str
@@ -92,19 +95,21 @@ def _check_string_matches(value, operation, pattern):
     :rtype: True|False
     """
     if not re.match(pattern, value):
-        _LOGGER.error('{}: you passed {}, event_type must '.format(operation, value) +
-                      'adhere to the regular expression {}. '.format(pattern) +
-                      'This means an event name must be alphanumeric, cannot be more ' +
-                      'than 80 characters long, and can only include a dash, underscore, ' +
-                      'period, or colon as separators of alphanumeric characters.'
-                      )
+        _LOGGER.error(
+            '%s: you passed %s, event_type must ' +
+            'adhere to the regular expression %s. ' +
+            'This means an event name must be alphanumeric, cannot be more ' +
+            'than 80 characters long, and can only include a dash, underscore, ' +
+            'period, or colon as separators of alphanumeric characters.',
+            operation, value, pattern
+        )
         return False
     return True
 
 
 def _check_can_convert(value, name, operation):
     """
-    Checks if is a valid convertion.
+    Check if is a valid convertion.
 
     :param key: value to be checked
     :type key: bool|number|array|
@@ -121,17 +126,17 @@ def _check_can_convert(value, name, operation):
         # check whether if isnan and isinf are really necessary
         if isinstance(value, bool) or (not isinstance(value, Number)) or math.isnan(value) \
            or math.isinf(value):
-            _LOGGER.error('{}: you passed an invalid {}, {} must be a non-empty string.'
-                          .format(operation, name, name))
+            _LOGGER.error('%s: you passed an invalid %s, %s must be a non-empty string.',
+                          operation, name, name)
             return None
-    _LOGGER.warning('{}: {} {} is not of type string, converting.'
-                    .format(operation, name, value))
+    _LOGGER.warning('%s: %s %s is not of type string, converting.',
+                    operation, name, value)
     return str(value)
 
 
 def _check_valid_length(value, name, operation):
     """
-    Checks value's length
+    Check value's length.
 
     :param key: value to be checked
     :type key: str
@@ -143,16 +148,15 @@ def _check_valid_length(value, name, operation):
     :rtype: True|False
     """
     if len(value) > MAX_LENGTH:
-        _LOGGER.error('{}: {} too long - must be {} characters or less.'
-                      .format(operation, name, MAX_LENGTH))
+        _LOGGER.error('%s: %s too long - must be %s characters or less.',
+                      operation, name, MAX_LENGTH)
         return False
     return True
 
 
 def _check_valid_object_key(key, name, operation):
     """
-    Checks if object key is valid for get_treatment/s when is
-    sent as Key Object
+    Check if object key is valid for get_treatment/s when is sent as Key Object.
 
     :param key: key to be checked
     :type key: str
@@ -164,21 +168,22 @@ def _check_valid_object_key(key, name, operation):
     :rtype: str|None
     """
     if key is None:
-        _LOGGER.error('{}: you passed a null {}, '.format(operation, name)
-                      + '{} must be a non-empty string.'.format(name))
+        _LOGGER.error(
+            '%s: you passed a null %s, %s must be a non-empty string.',
+            operation, name, name)
         return None
     if isinstance(key, six.string_types):
         if not _check_string_not_empty(key, name, operation):
             return None
-    keyStr = _check_can_convert(key, name, operation)
-    if keyStr is None or not _check_valid_length(keyStr, name, operation):
+    key_str = _check_can_convert(key, name, operation)
+    if key_str is None or not _check_valid_length(key_str, name, operation):
         return None
-    return keyStr
+    return key_str
 
 
 def _remove_empty_spaces(value, operation):
     """
-    Checks if an string has whitespaces
+    Check if an string has whitespaces.
 
     :param value: value to be checked
     :type value: str
@@ -189,15 +194,15 @@ def _remove_empty_spaces(value, operation):
     """
     strip_value = value.strip()
     if value != strip_value:
-        _LOGGER.warning("{}: feature_name '{}' has extra whitespace,".format(operation, value)
-                        + " trimming.")
+        _LOGGER.warning("%s: feature_name '%s' has extra whitespace, trimming.", operation, value)
     return strip_value
 
 
 def validate_key(key, operation):
     """
-    Validate Key parameter for get_treatment/s, if is invalid at some point
-    the bucketing_key or matching_key it will return None
+    Validate Key parameter for get_treatment/s.
+
+    If the matching or bucketing key is invalid, will return None.
 
     :param key: user key
     :type key: mixed
@@ -209,8 +214,7 @@ def validate_key(key, operation):
     matching_key_result = None
     bucketing_key_result = None
     if key is None:
-        _LOGGER.error('{}: you passed a null key, key must be a non-empty string.'
-                      .format(operation))
+        _LOGGER.error('%s: you passed a null key, key must be a non-empty string.', operation)
         return None, None
 
     if isinstance(key, Key):
@@ -222,17 +226,17 @@ def validate_key(key, operation):
         if bucketing_key_result is None:
             return None, None
     else:
-        keyStr = _check_can_convert(key, 'key', operation)
-        if keyStr is not None and \
-           _check_string_not_empty(keyStr, 'key', operation) and \
-           _check_valid_length(keyStr, 'key', operation):
-            matching_key_result = keyStr
+        key_str = _check_can_convert(key, 'key', operation)
+        if key_str is not None and \
+           _check_string_not_empty(key_str, 'key', operation) and \
+           _check_valid_length(key_str, 'key', operation):
+            matching_key_result = key_str
     return matching_key_result, bucketing_key_result
 
 
 def validate_feature_name(feature_name):
     """
-    Checks if feature_name is valid for get_treatment
+    Check if feature_name is valid for get_treatment.
 
     :param feature_name: feature_name to be checked
     :type feature_name: str
@@ -248,7 +252,7 @@ def validate_feature_name(feature_name):
 
 def validate_track_key(key):
     """
-    Checks if key is valid for track
+    Check if key is valid for track.
 
     :param key: key to be checked
     :type key: str
@@ -257,17 +261,17 @@ def validate_track_key(key):
     """
     if not _check_not_null(key, 'key', 'track'):
         return None
-    keyStr = _check_can_convert(key, 'key', 'track')
-    if keyStr is None or \
-       (not _check_string_not_empty(keyStr, 'key', 'track')) or \
-       (not _check_valid_length(keyStr, 'key', 'track')):
+    key_str = _check_can_convert(key, 'key', 'track')
+    if key_str is None or \
+       (not _check_string_not_empty(key_str, 'key', 'track')) or \
+       (not _check_valid_length(key_str, 'key', 'track')):
         return None
-    return keyStr
+    return key_str
 
 
 def validate_traffic_type(traffic_type):
     """
-    Checks if traffic_type is valid for track
+    Check if traffic_type is valid for track.
 
     :param traffic_type: traffic_type to be checked
     :type traffic_type: str
@@ -279,15 +283,15 @@ def validate_traffic_type(traffic_type):
        (not _check_string_not_empty(traffic_type, 'traffic_type', 'track')):
         return None
     if not traffic_type.islower():
-        _LOGGER.warning('track: {} should be all lowercase - converting string to lowercase.'
-                        .format(traffic_type))
+        _LOGGER.warning('track: %s should be all lowercase - converting string to lowercase.',
+                        traffic_type)
         traffic_type = traffic_type.lower()
     return traffic_type
 
 
 def validate_event_type(event_type):
     """
-    Checks if event_type is valid for track
+    Check if event_type is valid for track.
 
     :param event_type: event_type to be checked
     :type event_type: str
@@ -304,7 +308,7 @@ def validate_event_type(event_type):
 
 def validate_value(value):
     """
-    Checks if value is valid for track
+    Check if value is valid for track.
 
     :param value: value to be checked
     :type value: number
@@ -321,7 +325,7 @@ def validate_value(value):
 
 def validate_manager_feature_name(feature_name):
     """
-    Checks if feature_name is valid for track
+    Check if feature_name is valid for track.
 
     :param feature_name: feature_name to be checked
     :type feature_name: str
@@ -335,9 +339,9 @@ def validate_manager_feature_name(feature_name):
     return feature_name
 
 
-def validate_features_get_treatments(features):
+def validate_features_get_treatments(features):  #pylint: disable=invalid-name
     """
-    Checks if features is valid for get_treatments
+    Check if features is valid for get_treatments.
 
     :param features: array of features
     :type features: list
@@ -347,15 +351,16 @@ def validate_features_get_treatments(features):
     if features is None or not isinstance(features, list):
         _LOGGER.error('get_treatments: feature_names must be a non-empty array.')
         return None
-    if len(features) == 0:
+    if not features:
         _LOGGER.error('get_treatments: feature_names must be a non-empty array.')
         return []
-    filtered_features = set(_remove_empty_spaces(feature, 'get_treatments') for feature in features
-                            if feature is not None and
-                            _check_is_string(feature, 'feature_name', 'get_treatments') and
-                            _check_string_not_empty(feature, 'feature_name', 'get_treatments')
-                            )
-    if len(filtered_features) == 0:
+    filtered_features = set(
+        _remove_empty_spaces(feature, 'get_treatments') for feature in features
+        if feature is not None and
+        _check_is_string(feature, 'feature_name', 'get_treatments') and
+        _check_string_not_empty(feature, 'feature_name', 'get_treatments')
+    )
+    if not filtered_features:
         _LOGGER.error('get_treatments: feature_names must be a non-empty array.')
         return None
     return filtered_features
@@ -363,7 +368,7 @@ def validate_features_get_treatments(features):
 
 def generate_control_treatments(features):
     """
-    Generates valid features to control
+    Generate valid features to control.
 
     :param features: array of features
     :type features: list
@@ -375,7 +380,7 @@ def generate_control_treatments(features):
 
 def validate_attributes(attributes, operation):
     """
-    Checks if attributes is valid
+    Check if attributes is valid.
 
     :param attributes: dict
     :type attributes: dict
@@ -386,43 +391,51 @@ def validate_attributes(attributes, operation):
     """
     if attributes is None:
         return True
-    if not type(attributes) is dict:
-        _LOGGER.error('{}: attributes must be of type dictionary.'
-                      .format(operation))
+    if not isinstance(attributes, dict):
+        _LOGGER.error('%s: attributes must be of type dictionary.', operation)
         return False
     return True
 
 
-# TODO: Fix this!
-# def _valid_apikey_type(api_key, sdk_api_base_url):
-#     sdk_api = SdkApi(
-#         api_key,
-#         sdk_api_base_url=sdk_api_base_url,
-#     )
-#     _SEGMENT_CHANGES_URL_TEMPLATE = '{base_url}/segmentChanges/{segment_name}/'
-#     url = _SEGMENT_CHANGES_URL_TEMPLATE.format(base_url=sdk_api_base_url,
-#                                                segment_name='___TEST___')
-#     params = {
-#         'since': -1
-#     }
-#     headers = sdk_api._build_headers()
-#     try:
-#         response = requests.get(url, params=params, headers=headers, timeout=sdk_api._timeout)
-#         if response.status_code == requests.codes.forbidden:
-#             return False
-#         return True
-#     except requests.exceptions.RequestException:
-#         raise NetworkingException()
+class _ApiLogFilter(logging.Filter):  # pylint: disable=too-few-public-methods
+    def filter(self, record):
+        return record.name not in ('SegmentsAPI', 'HttpClient')
 
 
-def validate_factory_instantiation(apikey, config, sdk_api_base_url):
+def validate_apikey_type(segment_api):
     """
-    Checks if is a valid instantiation of split client
+    Try to guess if the apikey is of browser type and let the user know.
+
+    :param segment_api: Segments API client.
+    :type segment_api: splitio.api.segments.SegmentsAPI
+    """
+    api_messages_filter = _ApiLogFilter()
+    try:
+        segment_api._logger.addFilter(api_messages_filter)  #pylint: disable=protected-access
+        segment_api.fetch_segment('__SOME_INVALID_SEGMENT__', -1)
+    except APIException as exc:
+        if exc.status_code == 403:
+            _LOGGER.error('factory instantiation: you passed a browser type '
+                          + 'api_key, please grab an api key from the Split '
+                          + 'console that is of type sdk')
+            return False
+    finally:
+        segment_api._logger.removeFilter(api_messages_filter)  #pylint: disable=protected-access
+
+    # True doesn't mean that the APIKEY is right, only that it's not of type "browser"
+    return True
+
+
+def validate_factory_instantiation(apikey):
+    """
+    Check if the factory if being instantiated with the appropriate arguments.
 
     :param apikey: str
     :type apikey: str
     :param config: dict
     :type config: dict
+    :param segment_api: Segment API client
+    :type segment_api: splitio.api.segments.SegmentsAPI
     :return: bool
     :rtype: True|False
     """
@@ -432,17 +445,4 @@ def validate_factory_instantiation(apikey, config, sdk_api_base_url):
        (not _check_is_string(apikey, 'apikey', 'factory_instantiation')) or \
        (not _check_string_not_empty(apikey, 'apikey', 'factory_instantiation')):
         return False
-    if 'ready' not in config or isinstance(config.get('ready'), bool) or \
-       not isinstance(config.get('ready'), Number):
-        _LOGGER.error('no ready parameter has been set - incorrect control treatments '
-                      + 'could be logged')
-        return False
-    try:
-        if not _valid_apikey_type(apikey, sdk_api_base_url):
-            _LOGGER.error('factory instantiation: you passed a browser type '
-                          + 'api_key, please grab an api key from the Split '
-                          + 'console that is of type sdk')
-            return False
-        return True
-    except NetworkingException:
-        _LOGGER.error("Error occured when tried to connect with Split servers")
+    return True
