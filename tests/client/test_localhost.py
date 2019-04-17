@@ -212,4 +212,13 @@ class SplitFetchingTaskTests(object):
         assert client.get_treatment_with_config('key_whitelist', 'other_feature_3') == ('on', None)
         assert client.get_treatment_with_config('any_other_key', 'other_feature_3') == ('off', None)
 
+        manager = factory.manager()
+        assert manager.split('my_feature').configs == {
+            'on': '{"desc" : "this applies only to ON treatment"}',
+            'off': '{"desc" : "this applies only to OFF and only for only_key. The rest will receive ON"}'
+        }
+        assert manager.split('other_feature').configs == {}
+        assert manager.split('other_feature_2').configs == {}
+        assert manager.split('other_feature_3').configs == {}
+
 
