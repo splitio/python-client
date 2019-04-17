@@ -1,5 +1,8 @@
 """Events API module."""
 import logging
+
+from six import raise_from
+
 from splitio.api import APIException
 from splitio.api.client import HttpClientException
 
@@ -11,10 +14,12 @@ class EventsAPI(object):  #pylint: disable=too-few-public-methods
         """
         Class constructor.
 
-        :param client: HTTP Client responsble for issuing calls to the backend.
-        :type client: HttpClient
+        :param http_client: HTTP Client responsble for issuing calls to the backend.
+        :type http_client: HttpClient
         :param apikey: User apikey token.
         :type apikey: string
+        :param sdk_metadata: SDK version & machine name & IP.
+        :type sdk_metadata: splitio.client.util.SdkMetadata
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self._client = http_client
@@ -69,5 +74,6 @@ class EventsAPI(object):  #pylint: disable=too-few-public-methods
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            self._logger.debug('Error flushing events: ', exc_info=True)
-            raise APIException(exc.custom_message, original_exception=exc.original_exception)
+            self._logger.error('Http client is throwing exceptions')
+            self._logger.debug('Error: ', exc_info=True)
+            raise_from(APIException('Events not flushed properly.'), exc)

@@ -57,6 +57,11 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
         self._factory.destroy()
 
     @property
+    def ready(self):
+        """Return whether the SDK initialization has finished."""
+        return self._factory.ready
+
+    @property
     def destroyed(self):
         """Return whether the factory holding this client has been destroyed."""
         return self._factory.destroyed
