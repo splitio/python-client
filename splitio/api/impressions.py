@@ -43,7 +43,7 @@ class ImpressionsAPI(object): # pylint: disable=too-few-public-methods
         """
         return [
             {
-                'testName': group[0],
+                'testName': test_name,
                 'keyImpressions': [
                     {
                         'keyName': impression.matching_key,
@@ -53,10 +53,10 @@ class ImpressionsAPI(object): # pylint: disable=too-few-public-methods
                         'label': impression.label,
                         'bucketingKey': impression.bucketing_key
                     }
-                    for impression in group[1]
+                    for impression in imps
                 ]
             }
-            for group in groupby(
+            for (test_name, imps) in groupby(
                 sorted(impressions, key=lambda i: i.feature_name),
                 lambda i: i.feature_name
             )

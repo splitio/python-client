@@ -8,6 +8,7 @@ from sys import version_info
 tests_require = ['flake8', 'pytest', 'pytest-mock', 'coverage', 'pytest-cov']
 install_requires = [
     'requests>=2.9.1',
+    'pyyaml>=5.1',
     'future>=0.15.2',
     'docopt>=0.6.2',
 ]

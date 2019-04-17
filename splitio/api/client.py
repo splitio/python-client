@@ -25,8 +25,8 @@ class HttpClientException(Exception):
 class HttpClient(object):
     """HttpClient wrapper."""
 
-    SDK_URL = 'https://split.io/api'
-    EVENTS_URL = 'https://split.io/api'
+    SDK_URL = 'https://sdk.split.io/api'
+    EVENTS_URL = 'https://events.split.io/api'
 
     def __init__(self, timeout=None, sdk_url=None, events_url=None):
         """
