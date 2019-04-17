@@ -53,7 +53,8 @@ class RedisSplitStorage(SplitStorage):
             raw = self._redis.get(self._get_key(split_name))
             return splits.from_raw(json.loads(raw)) if raw is not None else None
         except RedisAdapterException:
-            self._logger.error('Error fetching split from storage', exc_info=True)
+            self._logger.error('Error fetching split from storage')
+            self._logger.debug('Error: ', exc_info=True)
             return None
 
     def put(self, split):
@@ -84,9 +85,11 @@ class RedisSplitStorage(SplitStorage):
         :rtype: int
         """
         try:
-            return self._redis.get(self._SPLIT_TILL_KEY)
+            stored_value = self._redis.get(self._SPLIT_TILL_KEY)
+            return json.loads(stored_value) if stored_value is not None else None
         except RedisAdapterException:
-            self._logger.exception('Error fetching split change number from storage')
+            self._logger.error('Error fetching split change number from storage')
+            self._logger.debug('Error: ', exc_info=True)
             return None
 
     def set_change_number(self, new_change_number):
@@ -109,7 +112,8 @@ class RedisSplitStorage(SplitStorage):
             keys = self._redis.keys(self._get_key('*'))
             return [key.replace(self._get_key(''), '') for key in keys]
         except RedisAdapterException:
-            self._logger.exception('Error fetching change number from redis.')
+            self._logger.error('Error fetching split names from storage')
+            self._logger.debug('Error: ', exc_info=True)
             return []
 
     def get_all_splits(self):
@@ -119,17 +123,20 @@ class RedisSplitStorage(SplitStorage):
         :return: List of all splits in cache.
         :rtype: list(splitio.models.splits.Split)
         """
+        keys = self._redis.keys(self._get_key('*'))
+        to_return = []
         try:
-            keys = self._redis.keys(self._get_key('*'))
-            return [
-                splits.from_raw(raw_split)
-                for raw_split in self._redis.mget(keys)
-                if raw_split is not None
-            ]
+            raw_splits = self._redis.mget(keys)
+            for raw in raw_splits:
+                try:
+                    print(raw, type(raw))
+                    to_return.append(splits.from_raw(json.loads(raw)))
+                except ValueError:
+                    self._logger.error('Could not parse split. Skipping')
         except RedisAdapterException:
-            self._logger.exception('Error when fetching all splits from redis.')
-            return []
-
+            self._logger.error('Error fetching all splits from storage')
+            self._logger.debug('Error: ', exc_info=True)
+        return to_return
 
 
 class RedisSegmentStorage(SegmentStorage):
@@ -184,12 +191,13 @@ class RedisSegmentStorage(SegmentStorage):
         """
         try:
             keys = (self._redis.smembers(self._get_key(segment_name)))
-            till = self._redis.get(self._get_till_key(segment_name))
-            if keys is None or till is None:
+            till = self.get_change_number(segment_name)
+            if not keys or till is None:
                 return None
             return segments.Segment(segment_name, keys, till)
         except RedisAdapterException:
-            self._logger.exception('Error fetching segment from redis.')
+            self._logger.error('Error fetching segment from storage')
+            self._logger.debug('Error: ', exc_info=True)
             return None
 
     def update(self, segment_name, to_add, to_remove, change_number=None):
@@ -215,9 +223,12 @@ class RedisSegmentStorage(SegmentStorage):
         :rtype: int
         """
         try:
-            return self._redis.get(self._get_till_key(segment_name))
+            stored_value = self._redis.get(self._get_till_key(segment_name))
+            print('aaa', stored_value)
+            return json.loads(stored_value) if stored_value is not None else None
         except RedisAdapterException:
-            self._logger.exception('Unable to fetch segment change number from redis.')
+            self._logger.error('Error fetching segment change number from storage')
+            self._logger.debug('Error: ', exc_info=True)
             return None
 
     def set_change_number(self, segment_name, new_change_number):
@@ -255,8 +266,9 @@ class RedisSegmentStorage(SegmentStorage):
         try:
             return self._redis.sismember(self._get_key(segment_name), key)
         except RedisAdapterException:
-            self._logger.exception('Unable to test segment members in redis.')
-            return False
+            self._logger.error('Error testing members in segment stored in redis')
+            self._logger.debug('Error: ', exc_info=True)
+            return None
 
 
 class RedisImpressionsStorage(ImpressionStorage):
@@ -272,7 +284,7 @@ class RedisImpressionsStorage(ImpressionStorage):
         :param redis_client: Redis client or compliant interface.
         :type redis_client: splitio.storage.adapters.redis.RedisAdapter
         :param sdk_metadata: SDK & Machine information.
-        :type sdk_metadata: dict
+        :type sdk_metadata: splitio.client.util.SdkMetadata
         """
         self._redis = redis_client
         self._sdk_metadata = sdk_metadata
@@ -293,9 +305,9 @@ class RedisImpressionsStorage(ImpressionStorage):
             if isinstance(impression, Impression):
                 to_store = {
                     'm': {  # METADATA PORTION
-                        's': self._sdk_metadata['sdk-language-version'],
-                        'n': self._sdk_metadata['instance-id'],
-                        'i': self._sdk_metadata['ip-address'],
+                        's': self._sdk_metadata.sdk_version,
+                        'n': self._sdk_metadata.instance_name,
+                        'i': self._sdk_metadata.instance_ip,
                     },
                     'i': {  # IMPRESSION PORTION
                         'k': impression.matching_key,
@@ -309,13 +321,14 @@ class RedisImpressionsStorage(ImpressionStorage):
                 }
                 bulk_impressions.append(json.dumps(to_store))
         try:
-            inserted = self._redis.rpush(self.IMPRESSIONS_QUEUE_KEY, bulk_impressions)
+            inserted = self._redis.rpush(self.IMPRESSIONS_QUEUE_KEY, *bulk_impressions)
             if inserted == len(bulk_impressions):
                 self._logger.debug("SET EXPIRE KEY FOR QUEUE")
                 self._redis.expire(self.IMPRESSIONS_QUEUE_KEY, self.IMPRESSIONS_KEY_DEFAULT_TTL)
             return True
         except RedisAdapterException:
-            self._logger.exception('Something went wrong when trying to add impression to redis')
+            self._logger.error('Something went wrong when trying to add impression to redis')
+            self._logger.error('Error: ', exc_info=True)
             return False
 
     def pop_many(self, count):
@@ -340,7 +353,7 @@ class RedisEventsStorage(EventStorage):
         :param redis_client: Redis client or compliant interface.
         :type redis_client: splitio.storage.adapters.redis.RedisAdapter
         :param sdk_metadata: SDK & Machine information.
-        :type sdk_metadata: dict
+        :type sdk_metadata: splitio.client.util.SdkMetadata
         """
         self._redis = redis_client
         self._sdk_metadata = sdk_metadata
@@ -367,18 +380,19 @@ class RedisEventsStorage(EventStorage):
                     'timestamp': event.timestamp
                 },
                 'm': {
-                    's': self._sdk_metadata['sdk-language-version'],
-                    'n': self._sdk_metadata['instance-id'],
-                    'i': self._sdk_metadata['ip-address'],
+                    's': self._sdk_metadata.sdk_version,
+                    'n': self._sdk_metadata.instance_name,
+                    'i': self._sdk_metadata.instance_ip,
                 }
             })
             for event in events
         ]
         try:
-            self._redis.rpush(key, to_store)
+            self._redis.rpush(key, *to_store)
             return True
         except RedisAdapterException:
-            self._logger.exception('Something went wrong when trying to add event to redis')
+            self._logger.error('Something went wrong when trying to add event to redis')
+            self._logger.debug('Error: ', exc_info=True)
             return False
 
     def pop_many(self, count):
@@ -405,7 +419,7 @@ class RedisTelemetryStorage(object):
         :param redis_client: Redis client or compliant interface.
         :type redis_client: splitio.storage.adapters.redis.RedisAdapter
         :param sdk_metadata: SDK & Machine information.
-        :type sdk_metadata: dict
+        :type sdk_metadata: splitio.client.util.SdkMetadata
         """
         self._redis = redis_client
         self._metadata = sdk_metadata
@@ -424,8 +438,8 @@ class RedisTelemetryStorage(object):
         :rtype: str
         """
         return self._LATENCY_KEY_TEMPLATE.format(
-            sdk=self._metadata['sdk-language-version'],
-            instance=self._metadata['instance-id'],
+            sdk=self._metadata.sdk_version,
+            instance=self._metadata.instance_name,
             name=name,
             bucket=bucket
         )
@@ -441,8 +455,8 @@ class RedisTelemetryStorage(object):
         :rtype: str
         """
         return self._COUNTER_KEY_TEMPLATE.format(
-            sdk=self._metadata['sdk-language-version'],
-            instance=self._metadata['instance-id'],
+            sdk=self._metadata.sdk_version,
+            instance=self._metadata.instance_name,
             name=name
         )
 
@@ -457,8 +471,8 @@ class RedisTelemetryStorage(object):
         :rtype: str
         """
         return self._GAUGE_KEY_TEMPLATE.format(
-            sdk=self._metadata['sdk-language-version'],
-            instance=self._metadata['instance-id'],
+            sdk=self._metadata.sdk_version,
+            instance=self._metadata.instance_name,
             name=name,
         )
 
@@ -479,7 +493,8 @@ class RedisTelemetryStorage(object):
         try:
             self._redis.incr(key)
         except RedisAdapterException:
-            self._logger.error("Error recording latency for metric \"%s\"", name)
+            self._logger.error('Something went wrong when trying to store latency in redis')
+            self._logger.debug('Error: ', exc_info=True)
 
     def inc_counter(self, name):
         """
@@ -492,7 +507,8 @@ class RedisTelemetryStorage(object):
         try:
             self._redis.incr(key)
         except RedisAdapterException:
-            self._logger.error("Error recording counter for metric \"%s\"", name)
+            self._logger.error('Something went wrong when trying to increment counter in redis')
+            self._logger.debug('Error: ', exc_info=True)
 
     def put_gauge(self, name, value):
         """
@@ -507,7 +523,8 @@ class RedisTelemetryStorage(object):
         try:
             self._redis.set(key, value)
         except RedisAdapterException:
-            self._logger.error("Error recording gauge for metric \"%s\"", name)
+            self._logger.error('Something went wrong when trying to set gauge in redis')
+            self._logger.debug('Error: ', exc_info=True)
 
     def pop_counters(self):
         """

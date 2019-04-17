@@ -83,6 +83,9 @@ class SplitFactoryTests(object):
         assert factory._tasks['telemetry']._storage == factory._storages['telemetry']
         assert factory._tasks['telemetry']._api == factory._apis['telemetry']
         assert factory._labels_enabled is True
+        factory.block_until_ready()
+        time.sleep(1) # give a chance for the bg thread to set the ready status
+        assert factory.ready
 
     def test_redis_client_creation(self, mocker):
         """Test that a client with redis storage is created correctly."""
@@ -157,6 +160,9 @@ class SplitFactoryTests(object):
         )]
         assert factory._labels_enabled is False
         assert factory._impression_listener == 123
+        factory.block_until_ready()
+        time.sleep(1) # give a chance for the bg thread to set the ready status
+        assert factory.ready
 
 
     def test_uwsgi_client_creation(self):
@@ -171,6 +177,9 @@ class SplitFactoryTests(object):
         assert factory._tasks == {}
         assert factory._labels_enabled is True
         assert factory._impression_listener == 123
+        factory.block_until_ready()
+        time.sleep(1) # give a chance for the bg thread to set the ready status
+        assert factory.ready
 
     def test_destroy(self, mocker):
         """Test that tasks are shutdown and data is flushed when destroy is called."""
@@ -218,7 +227,9 @@ class SplitFactoryTests(object):
 
         # Start factory and make assertions
         factory = get_factory('some_api_key')
-
+        factory.block_until_ready()
+        time.sleep(1) # give a chance for the bg thread to set the ready status
+        assert factory.ready
         assert factory.destroyed is False
 
         factory.destroy()
@@ -284,8 +295,11 @@ class SplitFactoryTests(object):
 
         # Start factory and make assertions
         factory = get_factory('some_api_key')
-
         assert factory.destroyed is False
+
+        factory.block_until_ready()
+        time.sleep(1) # give a chance for the bg thread to set the ready status
+        assert factory.ready
 
         event = threading.Event()
         factory.destroy(event)
@@ -322,3 +336,4 @@ class SplitFactoryTests(object):
                         # a chance to run and set the main event.
 
         assert event.is_set()
+        assert factory.destroyed

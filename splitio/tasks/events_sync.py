@@ -69,14 +69,11 @@ class EventsSyncTask(BaseSynchronizationTask):
             return
 
         try:
-            status_code = self._events_api.flush_events(to_send)
-            if status_code >= 300:
-                self._logger.error("Event reporting failed with status code %d", status_code)
-                self._add_to_failed_queue(to_send)
+            self._events_api.flush_events(to_send)
         except APIException as exc:
             self._logger.error(
                 'Exception raised while reporting events: %s -- %d',
-                exc.custom_message,
+                exc.message,
                 exc.status_code
             )
             self._add_to_failed_queue(to_send)

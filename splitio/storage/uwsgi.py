@@ -30,6 +30,7 @@ class UWSGISplitStorage(SplitStorage):
         :param uwsgi_entrypoint: UWSGI module. Can be the actual module or a mock.
         :type uwsgi_entrypoint: module
         """
+        self._logger = logging.getLogger(self.__class__.__name__)
         self._uwsgi = uwsgi_entrypoint
 
     def get(self, split_name):
@@ -45,7 +46,10 @@ class UWSGISplitStorage(SplitStorage):
             self._KEY_TEMPLATE.format(suffix=split_name),
             _SPLITIO_SPLITS_CACHE_NAMESPACE
         )
-        return splits.from_raw(json.loads(raw)) if raw is not None else None
+        to_return = splits.from_raw(json.loads(raw)) if raw is not None else None
+        if not to_return:
+            self._logger.warning("Trying to retrieve nonexistant split %s. Ignoring.", split_name)
+        return to_return
 
     def put(self, split):
         """
@@ -102,10 +106,13 @@ class UWSGISplitStorage(SplitStorage):
                 # Split list not found, no need to delete anything
                 pass
 
-        return self._uwsgi.cache_del(
+        result = self._uwsgi.cache_del(
             self._KEY_TEMPLATE.format(suffix=split_name),
             _SPLITIO_SPLITS_CACHE_NAMESPACE
         )
+        if not result is False:
+            self._logger.warning("Trying to retrieve nonexistant split %s. Ignoring.", split_name)
+        return result
 
     def get_change_number(self):
         """
@@ -168,6 +175,7 @@ class UWSGISegmentStorage(SegmentStorage):
         :param uwsgi_entrypoint: UWSGI module. Can be the actual module or a mock.
         :type uwsgi_entrypoint: module
         """
+        self._logger = logging.getLogger(self.__class__.__name__)
         self._uwsgi = uwsgi_entrypoint
 
     def get(self, segment_name):
@@ -192,6 +200,10 @@ class UWSGISegmentStorage(SegmentStorage):
                 'till': change_number
             })
         except TypeError:
+            self._logger.warning(
+                "Trying to retrieve nonexistant segment %s. Ignoring.",
+                segment_name
+            )
             return None
 
     def update(self, segment_name, to_add, to_remove, change_number=None):
@@ -297,6 +309,7 @@ class UWSGIImpressionStorage(ImpressionStorage):
         :param adapter: UWSGI Adapter/Emulator/Module.
         :type: object
         """
+        self._logger = logging.getLogger(self.__class__.__name__)
         self._uwsgi = adapter
 
     def put(self, impressions):
@@ -334,7 +347,8 @@ class UWSGIImpressionStorage(ImpressionStorage):
                     self._IMPRESSIONS_KEY, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE
                 ))
             except TypeError:
-                current = []
+                return []
+
             self._uwsgi.cache_update(
                 self._IMPRESSIONS_KEY,
                 json.dumps(current[count:]),
@@ -388,6 +402,7 @@ class UWSGIEventStorage(EventStorage):
         :param adapter: UWSGI Adapter/Emulator/Module.
         :type: object
         """
+        self._logger = logging.getLogger(self.__class__.__name__)
         self._uwsgi = adapter
 
     def put(self, events):
@@ -424,7 +439,8 @@ class UWSGIEventStorage(EventStorage):
                     self._EVENTS_KEY, _SPLITIO_EVENTS_CACHE_NAMESPACE
                 ))
             except TypeError:
-                current = []
+                return []
+
             self._uwsgi.cache_update(
                 self._EVENTS_KEY,
                 json.dumps(current[count:]),

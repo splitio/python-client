@@ -70,14 +70,11 @@ class ImpressionsSyncTask(BaseSynchronizationTask):
             return
 
         try:
-            status_code = self._impressions_api.flush_impressions(to_send)
-            if status_code >= 300:
-                self._logger.error("Impressions reporting failed with status code %s", status_code)
-                self._add_to_failed_queue(to_send)
+            self._impressions_api.flush_impressions(to_send)
         except APIException as exc:
             self._logger.error(
                 'Exception raised while reporting impressions: %s -- %d',
-                exc.custom_message,
+                exc.message,
                 exc.status_code
             )
             self._add_to_failed_queue(to_send)
