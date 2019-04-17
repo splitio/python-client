@@ -7,7 +7,7 @@ import tempfile
 from splitio.client import localhost
 from splitio.models.splits import Split
 from splitio.models.grammar.matchers import AllKeysMatcher
-
+from splitio.storage import SplitStorage
 
 class LocalHostStoragesTests(object):
     """Localhost storages test cases."""
@@ -140,3 +140,57 @@ class SplitFetchingTaskTests(object):
             'WhitelistMatcher' not in c[c.index('AllKeysMatcher'):] if 'AllKeysMatcher' in c else True
             for c in condition_types
         )
+
+    def test_update_splits(self, mocker):
+        """Test update spltis."""
+        parse_legacy = mocker.Mock()
+        parse_legacy.return_value = {}
+        parse_yaml = mocker.Mock()
+        parse_yaml.return_value = {}
+        storage_mock = mocker.Mock(spec=SplitStorage)
+        storage_mock.get_split_names.return_value = []
+
+        parse_legacy.reset_mock()
+        parse_yaml.reset_mock()
+        task = localhost.LocalhostSplitSynchronizationTask('something', storage_mock, 0, None)
+        task._read_splits_from_legacy_file = parse_legacy
+        task._read_splits_from_yaml_file = parse_yaml
+        task._update_splits()
+        assert parse_legacy.mock_calls == [mocker.call('something')]
+        assert parse_yaml.mock_calls == []
+
+        parse_legacy.reset_mock()
+        parse_yaml.reset_mock()
+        task = localhost.LocalhostSplitSynchronizationTask('something.yaml', storage_mock, 0, None)
+        task._read_splits_from_legacy_file = parse_legacy
+        task._read_splits_from_yaml_file = parse_yaml
+        task._update_splits()
+        assert parse_legacy.mock_calls == []
+        assert parse_yaml.mock_calls == [mocker.call('something.yaml')]
+
+        parse_legacy.reset_mock()
+        parse_yaml.reset_mock()
+        task = localhost.LocalhostSplitSynchronizationTask('something.yml', storage_mock, 0, None)
+        task._read_splits_from_legacy_file = parse_legacy
+        task._read_splits_from_yaml_file = parse_yaml
+        task._update_splits()
+        assert parse_legacy.mock_calls == []
+        assert parse_yaml.mock_calls == [mocker.call('something.yml')]
+
+        parse_legacy.reset_mock()
+        parse_yaml.reset_mock()
+        task = localhost.LocalhostSplitSynchronizationTask('something.YAML', storage_mock, 0, None)
+        task._read_splits_from_legacy_file = parse_legacy
+        task._read_splits_from_yaml_file = parse_yaml
+        task._update_splits()
+        assert parse_legacy.mock_calls == []
+        assert parse_yaml.mock_calls == [mocker.call('something.YAML')]
+
+        parse_legacy.reset_mock()
+        parse_yaml.reset_mock()
+        task = localhost.LocalhostSplitSynchronizationTask('yaml', storage_mock, 0, None)
+        task._read_splits_from_legacy_file = parse_legacy
+        task._read_splits_from_yaml_file = parse_yaml
+        task._update_splits()
+        assert parse_legacy.mock_calls == [mocker.call('yaml')]
+        assert parse_yaml.mock_calls == []

@@ -243,7 +243,7 @@ class LocalhostSplitSynchronizationTask(BaseSynchronizationTask):
     def _update_splits(self):
         """Update splits in storage."""
         _LOGGER.info('Synchronizing splits now.')
-        if self._filename.split('.')[-1].lower() in ('yaml', 'yml'):
+        if self._filename.lower().endswith(('.yaml', '.yml')):
             fetched = self._read_splits_from_yaml_file(self._filename)
         else:
             fetched = self._read_splits_from_legacy_file(self._filename)
