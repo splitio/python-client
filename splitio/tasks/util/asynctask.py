@@ -133,9 +133,9 @@ class AsyncTask(object):  #pylint: disable=too-many-instance-attributes
         try:
             self._thread.start()
 
-        except RuntimeError as exc:
+        except RuntimeError:
             _LOGGER.error("Couldn't create new thread for async task")
-            _LOGGER.exception(exc)
+            _LOGGER.debug('Error: ', exc_info=True)
 
     def stop(self, event=None):
         """

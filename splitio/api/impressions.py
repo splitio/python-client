@@ -2,6 +2,9 @@
 
 import logging
 from itertools import groupby
+
+from six import raise_from
+
 from splitio.api import APIException
 from splitio.api.client import HttpClientException
 
@@ -78,5 +81,6 @@ class ImpressionsAPI(object): # pylint: disable=too-few-public-methods
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            self._logger.debug('Error flushing events: ', exc_info=True)
-            raise APIException(exc.custom_message, original_exception=exc.original_exception)
+            self._logger.error('Http client is throwing exceptions')
+            self._logger.debug('Error: ', exc_info=True)
+            raise_from(APIException('Impressions not flushed properly.'), exc)

@@ -9,6 +9,7 @@ from enum import Enum
 import six
 
 from splitio.client.client import Client
+from splitio.client import input_validator
 from splitio.client.manager import SplitManager
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.client import util
@@ -74,24 +75,35 @@ class SplitFactory(object):  #pylint: disable=too-many-instance-attributes
 
         :param storages: Dictionary of storages for all split models.
         :type storages: dict
-        :param tasks: Dictionary of synchronization tasks.
+        :param labels_enabled: Whether the impressions should store labels or not.
+        :type labels_enabled: bool
+        :param apis: Dictionary of apis client wrappers
+        :type apis: dict
+        :param tasks: Dictionary of sychronization tasks
         :type tasks: dict
+        :param sdk_ready_flag: Event to set when the sdk is ready.
+        :type sdk_ready_flag: threading.Event
+        :param impression_listener: User custom listener to handle impressions locally.
+        :type impression_listener: splitio.client.listener.ImpressionListener
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self._storages = storages
         self._labels_enabled = labels_enabled
         self._apis = apis if apis else {}
         self._tasks = tasks if tasks else {}
-        self._status = Status.NOT_INITIALIZED
         self._sdk_ready_flag = sdk_ready_flag
         self._impression_listener = impression_listener
 
-        # If we have a ready flag, add a listener that updates the status
-        # to READY once the flag is set.
+        # If we have a ready flag, it means we have sync tasks that need to finish
+        # before the SDK client becomes ready.
         if self._sdk_ready_flag is not None:
+            self._status = Status.NOT_INITIALIZED
+            # add a listener that updates the status to READY once the flag is set.
             ready_updater = threading.Thread(target=self._update_status_when_ready)
             ready_updater.setDaemon(True)
             ready_updater.start()
+        else:
+            self._status = Status.READY
 
     def _update_status_when_ready(self):
         """Wait until the sdk is ready and update the status."""
@@ -139,7 +151,17 @@ class SplitFactory(object):  #pylint: disable=too-many-instance-attributes
             ready = self._sdk_ready_flag.wait(timeout)
 
             if not ready:
-                raise TimeoutException('Waited %d seconds, and sdk was not ready')
+                raise TimeoutException('SDK Initialization: time of %d exceeded' % timeout)
+
+    @property
+    def ready(self):
+        """
+        Return whether the factory is ready.
+
+        :return: True if the factory is ready. False otherwhise.
+        :rtype: bool
+        """
+        return self._status == Status.READY
 
     def destroy(self, destroyed_event=None):
         """
@@ -155,24 +177,25 @@ class SplitFactory(object):  #pylint: disable=too-many-instance-attributes
             self._logger.info('Factory already destroyed.')
             return
 
-        if destroyed_event is not None:
-            stop_events = {name: threading.Event() for name in self._tasks.keys()}
-            for name, task in six.iteritems(self._tasks):
-                task.stop(stop_events[name])
+        try:
+            if destroyed_event is not None:
+                stop_events = {name: threading.Event() for name in self._tasks.keys()}
+                for name, task in six.iteritems(self._tasks):
+                    task.stop(stop_events[name])
 
-            def _wait_for_tasks_to_stop():
-                for event in stop_events.values():
-                    event.wait()
-                destroyed_event.set()
+                def _wait_for_tasks_to_stop():
+                    for event in stop_events.values():
+                        event.wait()
+                    destroyed_event.set()
 
-            wait_thread = threading.Thread(target=_wait_for_tasks_to_stop)
-            wait_thread.setDaemon(True)
-            wait_thread.start()
-        else:
-            for task in self._tasks.values():
-                task.stop()
-
-        self._status = Status.DESTROYED
+                wait_thread = threading.Thread(target=_wait_for_tasks_to_stop)
+                wait_thread.setDaemon(True)
+                wait_thread.start()
+            else:
+                for task in self._tasks.values():
+                    task.stop()
+        finally:
+            self._status = Status.DESTROYED
 
     @property
     def destroyed(self):
@@ -187,6 +210,9 @@ class SplitFactory(object):  #pylint: disable=too-many-instance-attributes
 
 def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  #pylint: disable=too-many-locals
     """Build and return a split factory tailored to the supplied config."""
+    if not input_validator.validate_factory_instantiation(api_key):
+        return None
+
     cfg = DEFAULT_CONFIG.copy()
     cfg.update(config)
     http_client = HttpClient(
@@ -203,6 +229,9 @@ def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  #
         'events': EventsAPI(http_client, api_key, sdk_metadata),
         'telemetry': TelemetryAPI(http_client, api_key, sdk_metadata)
     }
+
+    if not input_validator.validate_apikey_type(apis['segments']):
+        return None
 
     storages = {
         'splits': InMemorySplitStorage(),
@@ -255,9 +284,9 @@ def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  #
     }
 
     # Start tasks that have no dependencies
+    tasks['splits'].start()
     tasks['impressions'].start()
     tasks['events'].start()
-    tasks['splits'].start()
     tasks['telemetry'].start()
 
     def split_ready_task():

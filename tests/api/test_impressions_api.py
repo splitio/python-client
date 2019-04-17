@@ -51,7 +51,7 @@ class ImpressionsAPITests(object):
 
         httpclient.reset_mock()
         def raise_exception(*args, **kwargs):
-            raise client.HttpClientException('some_message', Exception('something'))
+            raise client.HttpClientException('some_message')
         httpclient.post.side_effect = raise_exception
         with pytest.raises(APIException) as exc_info:
             response = impressions_api.flush_impressions([
