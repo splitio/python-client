@@ -43,7 +43,8 @@ class Split(object):  #pylint: disable=too-many-instance-attributes
             conditions=None,
             algo=None,
             traffic_allocation=None,
-            traffic_allocation_seed=None
+            traffic_allocation_seed=None,
+            configurations=None
     ):
         """
         Class constructor.
@@ -90,6 +91,8 @@ class Split(object):  #pylint: disable=too-many-instance-attributes
             self._algo = HashAlgorithm(algo)
         except ValueError:
             self._algo = HashAlgorithm.LEGACY
+
+        self._configurations = configurations
 
     @property
     def name(self):
@@ -146,6 +149,10 @@ class Split(object):  #pylint: disable=too-many-instance-attributes
         """Return the traffic allocation seed of the split."""
         return self._traffic_allocation_seed
 
+    def get_configurations_for(self, treatment):
+        """Return the mapping of treatments to configurations."""
+        return self._configurations.get(treatment) if self._configurations else None
+
     def get_segment_names(self):
         """
         Return a list of segment names referenced in all matchers from this split.
@@ -168,7 +175,8 @@ class Split(object):  #pylint: disable=too-many-instance-attributes
             'killed': self.killed,
             'defaultTreatment': self.default_treatment,
             'algo': self.algo.value,
-            'conditions': [c.to_json() for c in self.conditions]
+            'conditions': [c.to_json() for c in self.conditions],
+            'configurations': self._configurations
         }
 
     def to_split_view(self):
@@ -219,5 +227,6 @@ def from_raw(raw_split):
         [condition.from_raw(c) for c in raw_split['conditions']],
         raw_split.get('algo'),
         traffic_allocation=raw_split.get('trafficAllocation'),
-        traffic_allocation_seed=raw_split.get('trafficAllocationSeed')
+        traffic_allocation_seed=raw_split.get('trafficAllocationSeed'),
+        configurations=raw_split.get('configurations')
     )
