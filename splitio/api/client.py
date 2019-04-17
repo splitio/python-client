@@ -59,7 +59,8 @@ class HttpClient(object):
         """
         return self._urls[server] + path
 
-    def _build_basic_headers(self, apikey):
+    @staticmethod
+    def _build_basic_headers(apikey):
         """
         Build basic headers with auth.
 
