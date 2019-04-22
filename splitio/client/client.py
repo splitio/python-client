@@ -236,20 +236,18 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
                                    'feature ' + feature + ' returning CONTROL.')
                 treatments[feature] = CONTROL, None
                 self._logger.debug('Error: ', exc_info=True)
-                import traceback
-                traceback.print_exc()
                 continue
 
-            # Register impressions
-            try:
-                if bulk_impressions:
-                    self._record_stats(bulk_impressions, start, self._METRIC_GET_TREATMENTS)
-                    for impression in bulk_impressions:
-                        self._send_impression_to_listener(impression, attributes)
-            except Exception:  #pylint: disable=broad-except
-                self._logger.error('get_treatments: An exception when trying to store '
-                                   'impressions.')
-                self._logger.debug('Error: ', exc_info=True)
+        # Register impressions
+        try:
+            if bulk_impressions:
+                self._record_stats(bulk_impressions, start, self._METRIC_GET_TREATMENTS)
+                for impression in bulk_impressions:
+                    self._send_impression_to_listener(impression, attributes)
+        except Exception:  #pylint: disable=broad-except
+            self._logger.error('get_treatments: An exception when trying to store '
+                               'impressions.')
+            self._logger.debug('Error: ', exc_info=True)
 
         return treatments
 

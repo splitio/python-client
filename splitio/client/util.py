@@ -11,8 +11,6 @@ SdkMetadata = namedtuple(
 )
 
 
-
-
 def _get_ip():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
