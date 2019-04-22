@@ -241,7 +241,6 @@ class InMemoryImpressionStorage(ImpressionStorage):
             with self._lock:
                 for impression in impressions:
                     self._impressions.put(impression, False)
-                print self._impressions.qsize()
             return True
         except queue.Full:
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
