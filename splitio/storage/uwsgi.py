@@ -105,6 +105,9 @@ class UWSGISplitStorage(SplitStorage):
             except TypeError:
                 # Split list not found, no need to delete anything
                 pass
+            except KeyError:
+                # Split not found in list. nothing to do.
+                pass
 
         result = self._uwsgi.cache_del(
             self._KEY_TEMPLATE.format(suffix=split_name),
