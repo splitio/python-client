@@ -400,7 +400,7 @@ def get_factory(api_key, **kwargs):
     if api_key == 'localhost':
         return _build_localhost_factory(config)
 
-    if 'redisHost' in config:
+    if 'redisHost' in config or 'redisSentinels' in config:
         return _build_redis_factory(config)
 
     if 'uwsgiClient' in config:
