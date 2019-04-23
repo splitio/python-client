@@ -1,14 +1,5 @@
 """This module contains everything related to split.io exceptions"""
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-
-class TimeoutException(Exception):
-    pass
-
-
-class NetworkingException(Exception):
-    pass
-
-
-class SentinelConfigurationException(Exception):
-    pass
+from splitio.client.factory import TimeoutException
+from splitio.storage.adapters.redis import SentinelConfigurationException

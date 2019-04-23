@@ -5,7 +5,6 @@ from __future__ import absolute_import, division, print_function, \
 from builtins import str
 from six import string_types, binary_type
 from future.utils import raise_from
-from splitio.exceptions import SentinelConfigurationException
 
 try:
     from redis import StrictRedis
@@ -46,6 +45,10 @@ class RedisAdapterException(Exception):
     def original_exception(self):
         """Return original exception."""
         return self._original_exception
+
+
+class SentinelConfigurationException(Exception):
+    pass
 
 
 class RedisAdapter(object):  #pylint: disable=too-many-public-methods
