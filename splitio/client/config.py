@@ -39,5 +39,7 @@ DEFAULT_CONFIG = {
     'redisSslCertReqs': None,
     'redisSslCaCerts': None,
     'redisMaxConnections': None,
+    'machineName': None,
+    'machineIp': None,
     'splitFile': os.path.join(os.path.expanduser('~'), '.split')
 }

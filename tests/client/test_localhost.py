@@ -105,18 +105,15 @@ class SplitFetchingTaskTests(object):
 
     def test_parse_legacy_file(self):
         """Test that aprsing a legacy file works."""
-        with tempfile.NamedTemporaryFile() as temp_flo:
-            temp_flo.write('split1 on\n')
-            temp_flo.write('split2 off\n')
-            temp_flo.flush()
-            splits = localhost.LocalhostSplitSynchronizationTask._read_splits_from_legacy_file(temp_flo.name)
-            assert len(splits) == 2
-            for split in splits.values():
-                assert isinstance(split, Split)
-            assert splits['split1'].name == 'split1'
-            assert splits['split2'].name == 'split2'
-            assert isinstance(splits['split1'].conditions[0].matchers[0], AllKeysMatcher)
-            assert isinstance(splits['split2'].conditions[0].matchers[0], AllKeysMatcher)
+        filename = os.path.join(os.path.dirname(__file__), 'files', 'file1.split')
+        splits = localhost.LocalhostSplitSynchronizationTask._read_splits_from_legacy_file(filename)
+        assert len(splits) == 2
+        for split in splits.values():
+            assert isinstance(split, Split)
+        assert splits['split1'].name == 'split1'
+        assert splits['split2'].name == 'split2'
+        assert isinstance(splits['split1'].conditions[0].matchers[0], AllKeysMatcher)
+        assert isinstance(splits['split2'].conditions[0].matchers[0], AllKeysMatcher)
 
     def test_parse_yaml_file(self):
         """Test that parsing a yaml file works."""

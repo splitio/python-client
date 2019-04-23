@@ -11,6 +11,7 @@ from splitio.storage.inmemmory import InMemoryEventStorage, InMemoryImpressionSt
     InMemorySegmentStorage, InMemorySplitStorage, InMemoryTelemetryStorage
 from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \
     RedisSplitStorage, RedisSegmentStorage, RedisTelemetryStorage
+from splitio.storage.adapters.redis import RedisAdapter
 from splitio.models import splits, segments
 
 
@@ -262,7 +263,7 @@ class RedisIntegrationTests(object):
     def setup_method(self):
         """Prepare storages with test data."""
         metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
-        redis_client = StrictRedis()
+        redis_client = RedisAdapter(StrictRedis())
         split_storage = RedisSplitStorage(redis_client)
         segment_storage = RedisSegmentStorage(redis_client)
 
@@ -306,8 +307,6 @@ class RedisIntegrationTests(object):
             for i in impressions_raw
         )
 
-        print set(to_validate)
-        print as_tup_set
         assert as_tup_set == set(to_validate)
 
     def test_get_treatment(self):
@@ -531,7 +530,7 @@ class RedisIntegrationTests(object):
             "SPLITIO.split.dependency_test"
         ]
 
-        redis_client = StrictRedis()
+        redis_client = RedisAdapter(StrictRedis())
         for key in keys_to_delete:
             redis_client.delete(key)
 
