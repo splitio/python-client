@@ -207,7 +207,7 @@ class RedisEventsStorageTests(object):  #pylint: disable=too-few-public-methods
                 'n': metadata.instance_name,
                 'i': metadata.instance_ip,
             },
-            'i': {  # IMPRESSION PORTION
+            'e': {  # EVENT PORTION
                 'key': event.key,
                 'trafficTypeName': event.traffic_type_name,
                 'eventTypeId': event.event_type_id,

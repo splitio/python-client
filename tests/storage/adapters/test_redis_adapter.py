@@ -29,6 +29,7 @@ class RedisStorageAdapterTests(object):
         adapter.delete('some_key')
         assert redis_mock.delete.mock_calls[0] == mocker.call('some_prefix.some_key')
 
+        redis_mock.mget.return_value = ['value1', 'value2', 'value3']
         adapter.mget(['key1', 'key2', 'key3'])
         assert redis_mock.mget.mock_calls[0] == mocker.call(['some_prefix.key1', 'some_prefix.key2', 'some_prefix.key3'])
 

@@ -370,7 +370,7 @@ class RedisEventsStorage(EventStorage):
         key = self._KEY_TEMPLATE
         to_store = [
             json.dumps({
-                'i': {
+                'e': {
                     'key': event.key,
                     'trafficTypeName': event.traffic_type_name,
                     'eventTypeId': event.event_type_id,
