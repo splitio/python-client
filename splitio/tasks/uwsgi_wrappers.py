@@ -117,7 +117,7 @@ def uwsgi_report_impressions(user_config):
             ),
             storage,
             None, # Period not needed. Task is being triggered manually.
-            config['impressionsRefreshRate']
+            config['impressionsBulkSize']
         )
 
         while True:
@@ -151,7 +151,7 @@ def uwsgi_report_events(user_config):
             ),
             storage,
             None, # Period not needed. Task is being triggered manually.
-            config['eventsPushRate']
+            config['eventsBulkSize']
         )
         while True:
             task._send_events()  #pylint: disable=protected-access

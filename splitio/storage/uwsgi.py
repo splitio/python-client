@@ -166,7 +166,6 @@ class UWSGISegmentStorage(SegmentStorage):
     _KEY_TEMPLATE = 'segments.{suffix}'
     _SEGMENT_DATA_KEY_TEMPLATE = 'segmentData.{segment_name}'
     _SEGMENT_CHANGE_NUMBER_KEY_TEMPLATE = 'segment.{segment_name}.till'
-    _SEGMENT_REGISTERED = _KEY_TEMPLATE.format(suffix='registered')
 
     def __init__(self, uwsgi_entrypoint):
         """
@@ -319,6 +318,7 @@ class UWSGIImpressionStorage(ImpressionStorage):
         :param impressions: List of one or more impressions to store.
         :type impressions: list
         """
+        to_store = [i._asdict() for i in impressions]
         with UWSGILock(self._uwsgi, self._LOCK_IMPRESSION_KEY):
             try:
                 current = json.loads(self._uwsgi.cache_get(
@@ -329,7 +329,7 @@ class UWSGIImpressionStorage(ImpressionStorage):
 
             self._uwsgi.cache_update(
                 self._IMPRESSIONS_KEY,
-                json.dumps(current + [i._asdict() for i in impressions]),
+                json.dumps(current + to_store),
                 0,
                 _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE
             )
@@ -356,17 +356,17 @@ class UWSGIImpressionStorage(ImpressionStorage):
                 _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE
             )
 
-            return [
-                Impression(
-                    impression['matching_key'],
-                    impression['feature_name'],
-                    impression['treatment'],
-                    impression['label'],
-                    impression['change_number'],
-                    impression['bucketing_key'],
-                    impression['time']
-                ) for impression in current[:count]
-            ]
+        return [
+            Impression(
+                impression['matching_key'],
+                impression['feature_name'],
+                impression['treatment'],
+                impression['label'],
+                impression['change_number'],
+                impression['bucketing_key'],
+                impression['time']
+            ) for impression in current[:count]
+        ]
 
     def request_flush(self):
         """Set a marker in the events cache to indicate that a flush has been requested."""
@@ -447,15 +447,16 @@ class UWSGIEventStorage(EventStorage):
                 0,
                 _SPLITIO_EVENTS_CACHE_NAMESPACE
             )
-            return [
-                Event(
-                    event['key'],
-                    event['traffic_type_name'],
-                    event['event_type_id'],
-                    event['value'],
-                    event['timestamp']
-                )   for event in current[:count]
-            ]
+
+        return [
+            Event(
+                event['key'],
+                event['traffic_type_name'],
+                event['event_type_id'],
+                event['value'],
+                event['timestamp']
+            )   for event in current[:count]
+        ]
 
     def request_flush(self):
         """Set a marker in the events cache to indicate that a flush has been requested."""
