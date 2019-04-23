@@ -312,7 +312,7 @@ def _build_redis_factory(config):
     """Build and return a split factory with redis-based storage."""
     cfg = DEFAULT_CONFIG.copy()
     cfg.update(config)
-    sdk_metadata = util.get_metadata()
+    sdk_metadata = util.get_metadata(config)
     redis_adapter = redis.build(config)
     storages = {
         'splits': RedisSplitStorage(redis_adapter),

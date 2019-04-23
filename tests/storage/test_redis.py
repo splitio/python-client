@@ -144,7 +144,7 @@ class RedisImpressionsStorageTests(object):  #pylint: disable=too-few-public-met
     def test_add_impressions(self, mocker):
         """Test that adding impressions to storage works."""
         adapter = mocker.Mock(spec=RedisAdapter)
-        metadata = get_metadata()
+        metadata = get_metadata({})
         storage = RedisImpressionsStorage(adapter, metadata)
 
         impressions = [
@@ -189,7 +189,7 @@ class RedisEventsStorageTests(object):  #pylint: disable=too-few-public-methods
     def test_add_events(self, mocker):
         """Test that adding impressions to storage works."""
         adapter = mocker.Mock(spec=RedisAdapter)
-        metadata = get_metadata()
+        metadata = get_metadata({})
 
         storage = RedisEventsStorage(adapter, metadata)
 
@@ -238,7 +238,7 @@ class RedisTelemetryStorageTests(object):
     def test_inc_latency(self, mocker):
         """Test incrementing latency."""
         adapter = mocker.Mock(spec=RedisAdapter)
-        metadata = get_metadata()
+        metadata = get_metadata({})
 
         storage = RedisTelemetryStorage(adapter, metadata)
         storage.inc_latency('some_latency', 0)
@@ -256,7 +256,7 @@ class RedisTelemetryStorageTests(object):
     def test_inc_counter(self, mocker):
         """Test incrementing latency."""
         adapter = mocker.Mock(spec=RedisAdapter)
-        metadata = get_metadata()
+        metadata = get_metadata({})
 
         storage = RedisTelemetryStorage(adapter, metadata)
         storage.inc_counter('some_counter_1')
@@ -275,7 +275,7 @@ class RedisTelemetryStorageTests(object):
     def test_inc_gauge(self, mocker):
         """Test incrementing latency."""
         adapter = mocker.Mock(spec=RedisAdapter)
-        metadata = get_metadata()
+        metadata = get_metadata({})
 
         storage = RedisTelemetryStorage(adapter, metadata)
         storage.put_gauge('gauge1', 123)

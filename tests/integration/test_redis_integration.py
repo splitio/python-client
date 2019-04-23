@@ -1,11 +1,11 @@
 """Redis storage end to end tests."""
-#pylint: disable=no-self-use,protected-access
+#pylint: disable=no-self-use,protected-access,line-too-long,too-few-public-methods
 
 import json
 import os
 
 from splitio.client.util import get_metadata
-from splitio.models import splits, segments, impressions, events, telemetry
+from splitio.models import splits, impressions, events
 from splitio.storage.redis import RedisSplitStorage, RedisSegmentStorage, RedisImpressionsStorage, \
     RedisEventsStorage, RedisTelemetryStorage
 from splitio.storage.adapters.redis import _build_default_client
@@ -142,7 +142,7 @@ class ImpressionsStorageTests(object):
         """Test storing and retrieving splits in redis."""
         adapter = _build_default_client({})
         try:
-            metadata = get_metadata()
+            metadata = get_metadata({})
             storage = RedisImpressionsStorage(adapter, metadata)
             storage.put([
                 impressions.Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654),
@@ -163,7 +163,7 @@ class EventsStorageTests(object):
         """Test storing and retrieving splits in redis."""
         adapter = _build_default_client({})
         try:
-            metadata = get_metadata()
+            metadata = get_metadata({})
             storage = RedisEventsStorage(adapter, metadata)
             storage.put([
                 events.Event('key1', 'user', 'purchase', 3.5, 123456),
@@ -183,7 +183,7 @@ class TelemetryStorageTests(object):
     def test_put_fetch_contains(self):
         """Test storing and retrieving splits in redis."""
         adapter = _build_default_client({})
-        metadata = get_metadata()
+        metadata = get_metadata({})
         storage = RedisTelemetryStorage(adapter, metadata)
         try:
 

@@ -308,7 +308,7 @@ class InMemoryEventStorage(EventStorage):
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
                 self._queue_full_hook()
             self._logger.warning(
-                'Impressions queue is full, failing to add more events. \n'
+                'Events queue is full, failing to add more events. \n'
                 'Consider increasing parameter `impressionsQueueSize` in configuration'
             )
             return False

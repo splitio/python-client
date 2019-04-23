@@ -110,6 +110,7 @@ class RedisSplitStorage(SplitStorage):
         """
         try:
             keys = self._redis.keys(self._get_key('*'))
+            for key in keys:
             return [key.replace(self._get_key(''), '') for key in keys]
         except RedisAdapterException:
             self._logger.error('Error fetching split names from storage')
@@ -129,7 +130,6 @@ class RedisSplitStorage(SplitStorage):
             raw_splits = self._redis.mget(keys)
             for raw in raw_splits:
                 try:
-                    print(raw, type(raw))
                     to_return.append(splits.from_raw(json.loads(raw)))
                 except ValueError:
                     self._logger.error('Could not parse split. Skipping')
@@ -224,7 +224,6 @@ class RedisSegmentStorage(SegmentStorage):
         """
         try:
             stored_value = self._redis.get(self._get_till_key(segment_name))
-            print('aaa', stored_value)
             return json.loads(stored_value) if stored_value is not None else None
         except RedisAdapterException:
             self._logger.error('Error fetching segment change number from storage')

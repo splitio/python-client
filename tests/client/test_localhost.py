@@ -4,7 +4,6 @@
 import os
 import tempfile
 
-from splitio.client.factory import get_factory
 from splitio.client import localhost
 from splitio.models.splits import Split
 from splitio.models.grammar.matchers import AllKeysMatcher
@@ -106,18 +105,15 @@ class SplitFetchingTaskTests(object):
 
     def test_parse_legacy_file(self):
         """Test that aprsing a legacy file works."""
-        with tempfile.NamedTemporaryFile() as temp_flo:
-            temp_flo.write('split1 on\n')
-            temp_flo.write('split2 off\n')
-            temp_flo.flush()
-            splits = localhost.LocalhostSplitSynchronizationTask._read_splits_from_legacy_file(temp_flo.name)
-            assert len(splits) == 2
-            for split in splits.values():
-                assert isinstance(split, Split)
-            assert splits['split1'].name == 'split1'
-            assert splits['split2'].name == 'split2'
-            assert isinstance(splits['split1'].conditions[0].matchers[0], AllKeysMatcher)
-            assert isinstance(splits['split2'].conditions[0].matchers[0], AllKeysMatcher)
+        filename = os.path.join(os.path.dirname(__file__), 'files', 'file1.split')
+        splits = localhost.LocalhostSplitSynchronizationTask._read_splits_from_legacy_file(filename)
+        assert len(splits) == 2
+        for split in splits.values():
+            assert isinstance(split, Split)
+        assert splits['split1'].name == 'split1'
+        assert splits['split2'].name == 'split2'
+        assert isinstance(splits['split1'].conditions[0].matchers[0], AllKeysMatcher)
+        assert isinstance(splits['split2'].conditions[0].matchers[0], AllKeysMatcher)
 
     def test_parse_yaml_file(self):
         """Test that parsing a yaml file works."""
@@ -195,30 +191,3 @@ class SplitFetchingTaskTests(object):
         task._update_splits()
         assert parse_legacy.mock_calls == [mocker.call('yaml')]
         assert parse_yaml.mock_calls == []
-
-    def test_localhost_e2e(self):
-        """Instantiate a client with a YAML file and issue get_treatment() calls."""
-        filename = os.path.join(os.path.dirname(__file__), 'files', 'file2.yaml')
-        factory = get_factory('localhost', config={'splitFile': filename})
-        client = factory.client()
-        assert client.get_treatment_with_config('key', 'my_feature') == ('on', '{"desc" : "this applies only to ON treatment"}')
-        assert client.get_treatment_with_config('only_key', 'my_feature') == (
-            'off', '{"desc" : "this applies only to OFF and only for only_key. The rest will receive ON"}'
-        )
-        assert client.get_treatment_with_config('another_key', 'my_feature') == ('control', None)
-        assert client.get_treatment_with_config('key2', 'other_feature') == ('on', None)
-        assert client.get_treatment_with_config('key3', 'other_feature') == ('on', None)
-        assert client.get_treatment_with_config('some_key', 'other_feature_2') == ('on', None)
-        assert client.get_treatment_with_config('key_whitelist', 'other_feature_3') == ('on', None)
-        assert client.get_treatment_with_config('any_other_key', 'other_feature_3') == ('off', None)
-
-        manager = factory.manager()
-        assert manager.split('my_feature').configs == {
-            'on': '{"desc" : "this applies only to ON treatment"}',
-            'off': '{"desc" : "this applies only to OFF and only for only_key. The rest will receive ON"}'
-        }
-        assert manager.split('other_feature').configs == {}
-        assert manager.split('other_feature_2').configs == {}
-        assert manager.split('other_feature_3').configs == {}
-
-

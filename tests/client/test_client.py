@@ -1,6 +1,8 @@
 """SDK main client test module."""
 #pylint: disable=no-self-use,protected-access
 
+import json
+import os
 from splitio.client.client import Client
 from splitio.client.factory import SplitFactory
 from splitio.engine.evaluator import Evaluator
@@ -8,6 +10,9 @@ from splitio.models.impressions import Impression
 from splitio.models.events import Event
 from splitio.storage import EventStorage, ImpressionStorage, SegmentStorage, SplitStorage, \
     TelemetryStorage
+from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
+    InMemoryImpressionStorage, InMemoryTelemetryStorage, InMemoryEventStorage
+from splitio.models import splits, segments
 
 class ClientTests(object):  #pylint: disable=too-few-public-methods
     """Split client test cases."""
@@ -197,7 +202,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
             raise Exception('something')
         client._evaluator.evaluate_treatment.side_effect = _raise
         assert client.get_treatments('key', ['f1', 'f2']) == {'f1': 'control', 'f2': 'control'}
-        assert len(telemetry_storage.inc_latency.mock_calls) == 2
+        assert len(telemetry_storage.inc_latency.mock_calls) == 1
 
     def test_get_treatments_with_config(self, mocker):
         """Test get_treatment execution paths."""
@@ -265,7 +270,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
             'f1': ('control', None),
             'f2': ('control', None)
         }
-        assert len(telemetry_storage.inc_latency.mock_calls) == 2
+        assert len(telemetry_storage.inc_latency.mock_calls) == 1
 
     def test_destroy(self, mocker):
         """Test that destroy/destroyed calls are forwarded to the factory."""

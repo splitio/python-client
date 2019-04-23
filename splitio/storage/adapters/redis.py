@@ -279,6 +279,13 @@ class RedisAdapter(object):  #pylint: disable=too-many-public-methods
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing ttl operation'), exc)
 
+    def lpop(self, key):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return self._decorated.lpop(self._add_prefix(key))
+        except RedisError as exc:
+            raise_from(RedisAdapterException('Error executing lpop operation'), exc)
+
 
 def _build_default_client(config):  #pylint: disable=too-many-locals
     """
