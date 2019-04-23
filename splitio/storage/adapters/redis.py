@@ -185,7 +185,10 @@ class RedisAdapter(object):  #pylint: disable=too-many-public-methods
     def mget(self, names):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return _bytes_to_string(self._decorated.mget(self._add_prefix(names)))
+            return [
+                _bytes_to_string(item)
+                for item in self._decorated.mget(self._add_prefix(names))
+            ]
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing mget operation'), exc)
 
