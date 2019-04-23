@@ -126,7 +126,7 @@ class StartsWithMatcher(Matcher):
         """Return StartsWith specific properties."""
         return {
             'whitelistMatcherData': {
-                'whitelist': self._whitelist
+                'whitelist': list(self._whitelist)
             }
         }
 
@@ -174,7 +174,7 @@ class EndsWithMatcher(Matcher):
         """Return EndsWith specific properties."""
         return {
             'whitelistMatcherData': {
-                'whitelist': self._whitelist
+                'whitelist': list(self._whitelist)
             }
         }
 
@@ -222,7 +222,7 @@ class ContainsStringMatcher(Matcher):
         """Return ContainsString specific properties."""
         return {
             'whitelistMatcherData': {
-                'whitelist': self._whitelist
+                'whitelist': list(self._whitelist)
             }
         }
 

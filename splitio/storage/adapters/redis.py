@@ -3,7 +3,8 @@ from __future__ import absolute_import, division, print_function, \
     unicode_literals
 
 from builtins import str
-from six import string_types, binary_type, raise_from
+from six import string_types, binary_type
+from future.utils import raise_from
 from splitio.exceptions import SentinelConfigurationException
 
 try:

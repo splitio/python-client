@@ -885,7 +885,7 @@ class FactoryInputValidationTests(object):  #pylint: disable=too-few-public-meth
         ]
 
         logger.reset_mock()
-        assert get_factory(True, config={'uwsgiCache': True}) is not None
+        assert get_factory(True, config={'uwsgiClient': True}) is not None
         assert logger.error.mock_calls == []
 
         logger.reset_mock()

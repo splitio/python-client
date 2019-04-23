@@ -1,6 +1,9 @@
 """Telemetry API Module."""
 import logging
+
 import six
+from future.utils import raise_from
+
 from splitio.api import APIException
 from splitio.api.client import HttpClientException
 
@@ -62,7 +65,7 @@ class TelemetryAPI(object):
         except HttpClientException as exc:
             self._logger.error('Http client is throwing exceptions')
             self._logger.debug('Error: ', exc_info=True)
-            six.raise_from(APIException('Latencies not flushed correctly.'), exc)
+            raise_from(APIException('Latencies not flushed correctly.'), exc)
 
     @staticmethod
     def _build_gauges(gauges):
@@ -98,7 +101,7 @@ class TelemetryAPI(object):
         except HttpClientException as exc:
             self._logger.error('Http client is throwing exceptions')
             self._logger.debug('Error: ', exc_info=True)
-            six.raise_from(APIException('Gauges not flushed correctly.'), exc)
+            raise_from(APIException('Gauges not flushed correctly.'), exc)
 
     @staticmethod
     def _build_counters(counters):
@@ -134,4 +137,4 @@ class TelemetryAPI(object):
         except HttpClientException as exc:
             self._logger.error('Http client is throwing exceptions')
             self._logger.debug('Error: ', exc_info=True)
-            six.raise_from(APIException('Counters not flushed correctly.'), exc)
+            raise_from(APIException('Counters not flushed correctly.'), exc)

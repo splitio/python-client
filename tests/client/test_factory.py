@@ -3,6 +3,7 @@
 
 import time
 import threading
+from splitio.client.listener import ImpressionListenerWrapper
 from splitio.client.factory import get_factory
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.storage import redis, inmemmory, uwsgi
@@ -159,7 +160,7 @@ class SplitFactoryTests(object):
             max_connections=999
         )]
         assert factory._labels_enabled is False
-        assert factory._impression_listener == 123
+        assert isinstance(factory._impression_listener, ImpressionListenerWrapper)
         factory.block_until_ready()
         time.sleep(1) # give a chance for the bg thread to set the ready status
         assert factory.ready
@@ -167,7 +168,7 @@ class SplitFactoryTests(object):
 
     def test_uwsgi_client_creation(self):
         """Test that a client with redis storage is created correctly."""
-        factory = get_factory('some_api_key', config={'uwsgiCache': True, 'impressionListener': 123})
+        factory = get_factory('some_api_key', config={'uwsgiClient': True})
         assert isinstance(factory._get_storage('splits'), uwsgi.UWSGISplitStorage)
         assert isinstance(factory._get_storage('segments'), uwsgi.UWSGISegmentStorage)
         assert isinstance(factory._get_storage('impressions'), uwsgi.UWSGIImpressionStorage)
@@ -176,7 +177,7 @@ class SplitFactoryTests(object):
         assert factory._apis == {}
         assert factory._tasks == {}
         assert factory._labels_enabled is True
-        assert factory._impression_listener == 123
+        assert factory._impression_listener is None
         factory.block_until_ready()
         time.sleep(1) # give a chance for the bg thread to set the ready status
         assert factory.ready

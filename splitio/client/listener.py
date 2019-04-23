@@ -3,6 +3,7 @@
 import abc
 
 from six import add_metaclass
+from future.utils import raise_from
 
 
 class ImpressionListenerException(Exception):
@@ -49,9 +50,13 @@ class ImpressionListenerWrapper(object):  #pylint: disable=too-few-public-method
         data['instance-id'] = self._metadata.instance_name
         try:
             self.impression_listener.log_impression(data)
-        except Exception:
-            raise ImpressionListenerException('Error in log_impression user\'s'
-                                              'method is throwing exceptions')
+        except Exception as exc:  #pylint: disable=broad-except
+            import traceback
+            traceback.print_exc()
+            raise_from(
+                ImpressionListenerException('Error in log_impression user\'s method is throwing exceptions'),
+                exc
+            )
 
 @add_metaclass(abc.ABCMeta)  #pylint: disable=too-few-public-methods
 class ImpressionListener(object):

@@ -13,6 +13,7 @@ from splitio.client import input_validator
 from splitio.client.manager import SplitManager
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.client import util
+from splitio.client.listener import ImpressionListenerWrapper
 
 #Storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
@@ -208,6 +209,20 @@ class SplitFactory(object):  #pylint: disable=too-many-instance-attributes
         return self._status == Status.DESTROYED
 
 
+def _wrap_impression_listener(listener, metadata):
+    """
+    Wrap the impression listener if any.
+
+    :param listener: User supplied impression listener or None
+    :type listener: splitio.client.listener.ImpressionListener | None
+    :param metadata: SDK Metadata
+    :type metadata: splitio.client.util.SdkMetadata
+    """
+    if listener is not None:
+        return ImpressionListenerWrapper(listener, metadata)
+    return None
+
+
 def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  #pylint: disable=too-many-locals
     """Build and return a split factory tailored to the supplied config."""
     if not input_validator.validate_factory_instantiation(api_key):
@@ -305,7 +320,14 @@ def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  #
     segment_completion_thread = threading.Thread(target=segment_ready_task)
     segment_completion_thread.setDaemon(True)
     segment_completion_thread.start()
-    return SplitFactory(storages, cfg['labelsEnabled'], apis, tasks, sdk_ready_flag)
+    return SplitFactory(
+        storages,
+        cfg['labelsEnabled'],
+        apis,
+        tasks,
+        sdk_ready_flag,
+        impression_listener=_wrap_impression_listener(cfg['impressionListener'], sdk_metadata)
+    )
 
 
 def _build_redis_factory(config):
@@ -324,7 +346,7 @@ def _build_redis_factory(config):
     return SplitFactory(
         storages,
         cfg['labelsEnabled'],
-        impression_listener=cfg['impressionListener']
+        impression_listener=_wrap_impression_listener(cfg['impressionListener'], sdk_metadata)
     )
 
 
@@ -332,6 +354,7 @@ def _build_uwsgi_factory(config):
     """Build and return a split factory with redis-based storage."""
     cfg = DEFAULT_CONFIG.copy()
     cfg.update(config)
+    sdk_metadata = util.get_metadata(cfg)
     uwsgi_adapter = get_uwsgi()
     storages = {
         'splits': UWSGISplitStorage(uwsgi_adapter),
@@ -343,7 +366,7 @@ def _build_uwsgi_factory(config):
     return SplitFactory(
         storages,
         cfg['labelsEnabled'],
-        impression_listener=cfg['impressionListener']
+        impression_listener=_wrap_impression_listener(cfg['impressionListener'], sdk_metadata)
     )
 
 
@@ -380,7 +403,7 @@ def get_factory(api_key, **kwargs):
     if 'redisHost' in config:
         return _build_redis_factory(config)
 
-    if 'uwsgiCache' in config:
+    if 'uwsgiClient' in config:
         return _build_uwsgi_factory(config)
 
     return _build_in_memory_factory(

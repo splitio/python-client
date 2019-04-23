@@ -4,7 +4,7 @@ import itertools
 import logging
 import re
 
-from six import raise_from
+from future.utils import raise_from
 import yaml
 
 from splitio.models import splits

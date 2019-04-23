@@ -3,7 +3,7 @@
 import logging
 import json
 
-from six import raise_from
+from future.utils import raise_from
 
 from splitio.api import APIException
 from splitio.api.client import HttpClientException

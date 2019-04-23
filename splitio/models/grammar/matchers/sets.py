@@ -45,7 +45,7 @@ class ContainsAllOfSetMatcher(Matcher):
         """Return ContainsAllOfSet specific properties."""
         return {
             'whitelistMatcherData': {
-                'whitelist': self._whitelist
+                'whitelist': list(list(self._whitelist))
             }
         }
 
@@ -95,7 +95,7 @@ class ContainsAnyOfSetMatcher(Matcher):
         """Return ContainsAnyOfSet specific properties."""
         return {
             'whitelistMatcherData': {
-                'whitelist': self._whitelist
+                'whitelist': list(self._whitelist)
             }
         }
 
@@ -145,7 +145,7 @@ class EqualToSetMatcher(Matcher):
         """Return EqualToSet specific properties."""
         return {
             'whitelistMatcherData': {
-                'whitelist': self._whitelist
+                'whitelist': list(self._whitelist)
             }
         }
 
@@ -196,7 +196,7 @@ class PartOfSetMatcher(Matcher):
         """Return PartOfSet specific properties."""
         return {
             'whitelistMatcherData': {
-                'whitelist': self._whitelist
+                'whitelist': list(self._whitelist)
             }
         }
 

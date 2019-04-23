@@ -110,7 +110,6 @@ class RedisSplitStorage(SplitStorage):
         """
         try:
             keys = self._redis.keys(self._get_key('*'))
-            for key in keys:
             return [key.replace(self._get_key(''), '') for key in keys]
         except RedisAdapterException:
             self._logger.error('Error fetching split names from storage')

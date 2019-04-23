@@ -3,7 +3,7 @@ from __future__ import division
 
 from collections import namedtuple
 
-from six import raise_from
+from future.utils import raise_from
 import requests
 
 HttpResponse = namedtuple('HttpResponse', ['status_code', 'body'])

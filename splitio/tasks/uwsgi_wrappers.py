@@ -33,7 +33,7 @@ def _get_config(user_config):
     :return: Calculated configuration.
     :rtype: dict
     """
-    sdk_config = DEFAULT_CONFIG
+    sdk_config = DEFAULT_CONFIG.copy()
     sdk_config.update(user_config)
     return sdk_config
 
@@ -50,9 +50,9 @@ def uwsgi_update_splits(user_config):
         seconds = config['featuresRefreshRate']
         split_sync_task = SplitSynchronizationTask(
             SplitsAPI(
-                HttpClient(config.get('sdk_url'), config.get('events_url')), config['apikey']
+                HttpClient(1500, config.get('sdk_url'), config.get('events_url')), config['apikey']
             ),
-            UWSGISplitStorage(get_uwsgi),
+            UWSGISplitStorage(get_uwsgi()),
             None, # Time not needed since the task will be triggered manually.
             None  # Ready flag not needed since it will never be set and consumed.
         )
@@ -62,6 +62,7 @@ def uwsgi_update_splits(user_config):
             time.sleep(seconds)
     except Exception:  #pylint: disable=broad-except
         _LOGGER.error('Error updating splits')
+        _LOGGER.debug('Error: ', exc_info=True)
 
 
 def uwsgi_update_segments(user_config):
@@ -76,7 +77,7 @@ def uwsgi_update_segments(user_config):
         seconds = config['segmentsRefreshRate']
         segment_sync_task = SegmentSynchronizationTask(
             SegmentsAPI(
-                HttpClient(config.get('sdk_url'), config.get('events_url')), config['apikey']
+                HttpClient(1500, config.get('sdk_url'), config.get('events_url')), config['apikey']
             ),
             UWSGISegmentStorage(get_uwsgi()),
             None, # Split sotrage not needed, segments provided manually,
@@ -91,6 +92,7 @@ def uwsgi_update_segments(user_config):
             time.sleep(seconds)
     except Exception:  #pylint: disable=broad-except
         _LOGGER.error('Error updating segments')
+        _LOGGER.debug('Error: ', exc_info=True)
 
 
 def uwsgi_report_impressions(user_config):
@@ -107,13 +109,13 @@ def uwsgi_report_impressions(user_config):
         storage = UWSGIImpressionStorage(get_uwsgi())
         impressions_sync_task = ImpressionsSyncTask(
             ImpressionsAPI(
-                HttpClient(config.get('sdk_url'), config.get('events_url')),
+                HttpClient(1500, config.get('sdk_url'), config.get('events_url')),
                 config['apikey'],
                 metadata
             ),
             storage,
             None, # Period not needed. Task is being triggered manually.
-            5000 # TODO: Parametrize!
+            config['impressionsRefreshRate']
         )
 
         while True:
@@ -125,6 +127,7 @@ def uwsgi_report_impressions(user_config):
                 time.sleep(1)
     except Exception:  #pylint: disable=broad-except
         _LOGGER.error('Error posting impressions')
+        _LOGGER.debug('Error: ', exc_info=True)
 
 def uwsgi_report_events(user_config):
     """
@@ -140,13 +143,13 @@ def uwsgi_report_events(user_config):
         storage = UWSGIEventStorage(get_uwsgi())
         task = EventsSyncTask(
             EventsAPI(
-                HttpClient(config.get('sdk_url'), config.get('events_url')),
+                HttpClient(1500, config.get('sdk_url'), config.get('events_url')),
                 config['apikey'],
                 metadata
             ),
             storage,
             None, # Period not needed. Task is being triggered manually.
-            5000  # TODO: Parametrize
+            config['eventsPushRate']
         )
         while True:
             task._send_events()  #pylint: disable=protected-access
@@ -157,6 +160,7 @@ def uwsgi_report_events(user_config):
                 time.sleep(1)
     except Exception:  #pylint: disable=broad-except
         _LOGGER.error('Error posting metrics')
+        _LOGGER.debug('Error: ', exc_info=True)
 
 def uwsgi_report_telemetry(user_config):
     """
@@ -172,7 +176,7 @@ def uwsgi_report_telemetry(user_config):
         storage = UWSGITelemetryStorage(get_uwsgi())
         task = TelemetrySynchronizationTask(
             TelemetryAPI(
-                HttpClient(config.get('sdk_url'), config.get('events_url')),
+                HttpClient(1500, config.get('sdk_url'), config.get('events_url')),
                 config['apikey'],
                 metadata
             ),
@@ -184,3 +188,4 @@ def uwsgi_report_telemetry(user_config):
             time.sleep(seconds)
     except Exception:  #pylint: disable=broad-except
         _LOGGER.error('Error posting metrics')
+        _LOGGER.debug('Error: ', exc_info=True)
