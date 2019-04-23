@@ -90,8 +90,9 @@ def uwsgi_update_segments(user_config):
         pool.start()
         split_storage = UWSGISplitStorage(get_uwsgi())
         while True:
-            for name in split_storage.get_split_names():
-                pool.submit_work(name)
+            for split in split_storage.get_all_splits():
+                for segment_name in split.get_segment_names():
+                    pool.submit_work(segment_name)
             time.sleep(seconds)
     except Exception:  #pylint: disable=broad-except
         _LOGGER.error('Error updating segments')
