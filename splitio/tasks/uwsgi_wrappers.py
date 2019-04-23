@@ -2,6 +2,7 @@
 
 import logging
 import time
+
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.client.util import get_metadata
 from splitio.storage.adapters.uwsgi_cache import get_uwsgi
@@ -18,7 +19,7 @@ from splitio.tasks.segment_sync import SegmentSynchronizationTask
 from splitio.tasks.impressions_sync import ImpressionsSyncTask
 from splitio.tasks.events_sync import EventsSyncTask
 from splitio.tasks.telemetry_sync import TelemetrySynchronizationTask
-
+from splitio.tasks.util import workerpool
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -84,11 +85,12 @@ def uwsgi_update_segments(user_config):
             None, # Period not needed, task executed manually
             None  # Flag not needed, never consumed or set.
         )
+
+        pool = workerpool.WorkerPool(20, segment_sync_task._update_segment)  #pylint: disable=protected-access
         split_storage = UWSGISplitStorage(get_uwsgi())
         while True:
-            segment_names = split_storage.get_segment_names()
-            for segment_name in segment_names:
-                segment_sync_task._update_segment(segment_name)  #pylint: disable=protected-access
+            for name in split_storage.get_split_names():
+                pool.submit_work(name)
             time.sleep(seconds)
     except Exception:  #pylint: disable=broad-except
         _LOGGER.error('Error updating segments')
