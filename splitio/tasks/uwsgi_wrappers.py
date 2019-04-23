@@ -87,6 +87,7 @@ def uwsgi_update_segments(user_config):
         )
 
         pool = workerpool.WorkerPool(20, segment_sync_task._update_segment)  #pylint: disable=protected-access
+        pool.start()
         split_storage = UWSGISplitStorage(get_uwsgi())
         while True:
             for name in split_storage.get_split_names():
