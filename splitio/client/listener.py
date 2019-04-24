@@ -51,8 +51,6 @@ class ImpressionListenerWrapper(object):  #pylint: disable=too-few-public-method
         try:
             self.impression_listener.log_impression(data)
         except Exception as exc:  #pylint: disable=broad-except
-            import traceback
-            traceback.print_exc()
             raise_from(
                 ImpressionListenerException('Error in log_impression user\'s method is throwing exceptions'),
                 exc

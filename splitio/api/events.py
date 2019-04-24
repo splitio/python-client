@@ -3,7 +3,7 @@ import logging
 
 from future.utils import raise_from
 
-from splitio.api import APIException
+from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException
 
 
@@ -24,11 +24,7 @@ class EventsAPI(object):  #pylint: disable=too-few-public-methods
         self._logger = logging.getLogger(self.__class__.__name__)
         self._client = http_client
         self._apikey = apikey
-        self._metadata = {
-            'SplitSDKVersion': sdk_metadata.sdk_version,
-            'SplitSDKMachineIP': sdk_metadata.instance_ip,
-            'SplitSDKMachineName': sdk_metadata.instance_name
-        }
+        self._metadata = headers_from_metadata(sdk_metadata)
 
     @staticmethod
     def _build_bulk(events):
