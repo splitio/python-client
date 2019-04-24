@@ -4,8 +4,9 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import logging
 import threading
-from enum import Enum
+from collections import Counter
 
+from enum import Enum
 import six
 
 from splitio.client.client import Client
@@ -45,6 +46,11 @@ from splitio.client.localhost import LocalhostEventsStorage, LocalhostImpression
     LocalhostSplitSynchronizationTask, LocalhostTelemetryStorage
 
 
+_LOGGER = logging.getLogger(__name__)
+_INSTANTIATED_FACTORIES = Counter()
+_INSTANTIATED_FACTORIES_LOCK = threading.RLock()
+
+
 class Status(Enum):
     """Factory Status."""
 
@@ -64,6 +70,7 @@ class SplitFactory(object):  #pylint: disable=too-many-instance-attributes
 
     def __init__(  #pylint: disable=too-many-arguments
             self,
+            apikey,
             storages,
             labels_enabled,
             apis=None,
@@ -87,6 +94,7 @@ class SplitFactory(object):  #pylint: disable=too-many-instance-attributes
         :param impression_listener: User custom listener to handle impressions locally.
         :type impression_listener: splitio.client.listener.ImpressionListener
         """
+        self._apikey = apikey
         self._logger = logging.getLogger(self.__class__.__name__)
         self._storages = storages
         self._labels_enabled = labels_enabled
@@ -197,6 +205,8 @@ class SplitFactory(object):  #pylint: disable=too-many-instance-attributes
                     task.stop()
         finally:
             self._status = Status.DESTROYED
+            with _INSTANTIATED_FACTORIES_LOCK:
+                _INSTANTIATED_FACTORIES.subtract([self._apikey])
 
     @property
     def destroyed(self):
@@ -321,6 +331,7 @@ def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  #
     segment_completion_thread.setDaemon(True)
     segment_completion_thread.start()
     return SplitFactory(
+        api_key,
         storages,
         cfg['labelsEnabled'],
         apis,
@@ -330,7 +341,7 @@ def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  #
     )
 
 
-def _build_redis_factory(config):
+def _build_redis_factory(api_key, config):
     """Build and return a split factory with redis-based storage."""
     cfg = DEFAULT_CONFIG.copy()
     cfg.update(config)
@@ -344,13 +355,14 @@ def _build_redis_factory(config):
         'telemetry': RedisTelemetryStorage(redis_adapter, sdk_metadata)
     }
     return SplitFactory(
+        api_key,
         storages,
         cfg['labelsEnabled'],
         impression_listener=_wrap_impression_listener(cfg['impressionListener'], sdk_metadata)
     )
 
 
-def _build_uwsgi_factory(config):
+def _build_uwsgi_factory(api_key, config):
     """Build and return a split factory with redis-based storage."""
     cfg = DEFAULT_CONFIG.copy()
     cfg.update(config)
@@ -364,6 +376,7 @@ def _build_uwsgi_factory(config):
         'telemetry': UWSGITelemetryStorage(uwsgi_adapter)
     }
     return SplitFactory(
+        api_key,
         storages,
         cfg['labelsEnabled'],
         impression_listener=_wrap_impression_listener(cfg['impressionListener'], sdk_metadata)
@@ -390,25 +403,46 @@ def _build_localhost_factory(config):
         ready_event
     )}
     tasks['splits'].start()
-    return SplitFactory(storages, False, None, tasks, ready_event)
+    return SplitFactory('localhost', storages, False, None, tasks, ready_event)
 
 
 def get_factory(api_key, **kwargs):
     """Build and return the appropriate factory."""
-    config = kwargs.get('config', {})
+    try:
+        _INSTANTIATED_FACTORIES_LOCK.acquire()
+        if _INSTANTIATED_FACTORIES:
+            if api_key in _INSTANTIATED_FACTORIES:
+                _LOGGER.warning(
+                    "factory instantiation: You already have %d factories with this API Key. "
+                    "We recommend keeping only one instance of the factory at all times "
+                    "(Singleton pattern) and reusing it throughout your application.",
+                    _INSTANTIATED_FACTORIES[api_key]
+                )
+            else:
+                _LOGGER.warning(
+                    "factory instantiation: You already have an instance of the Split factory. "
+                    "Make sure you definitely want this additional instance. "
+                    "We recommend keeping only one instance of the factory at all times "
+                    "(Singleton pattern) and reusing it throughout your application."
+                )
 
-    if api_key == 'localhost':
-        return _build_localhost_factory(config)
+        config = kwargs.get('config', {})
 
-    if 'redisHost' in config or 'redisSentinels' in config:
-        return _build_redis_factory(config)
+        if api_key == 'localhost':
+            return _build_localhost_factory(config)
 
-    if 'uwsgiClient' in config:
-        return _build_uwsgi_factory(config)
+        if 'redisHost' in config or 'redisSentinels' in config:
+            return _build_redis_factory(api_key, config)
 
-    return _build_in_memory_factory(
-        api_key,
-        config,
-        kwargs.get('sdk_api_base_url'),
-        kwargs.get('events_api_base_url')
-    )
+        if 'uwsgiClient' in config:
+            return _build_uwsgi_factory(api_key, config)
+
+        return _build_in_memory_factory(
+            api_key,
+            config,
+            kwargs.get('sdk_api_base_url'),
+            kwargs.get('events_api_base_url')
+        )
+    finally:
+        _INSTANTIATED_FACTORIES.update([api_key])
+        _INSTANTIATED_FACTORIES_LOCK.release()
