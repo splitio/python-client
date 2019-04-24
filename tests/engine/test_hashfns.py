@@ -33,25 +33,6 @@ class HashFunctionsTests(object):
             assert hashfns.legacy.legacy_hash(key, seed) == hashed
             assert splitter.get_bucket(key, seed, splits.HashAlgorithm.LEGACY) == bucket
 
-    @pytest.mark.skipif(six.PY3, reason='Should skip this on python3.')
-    def test_legacy_hash_non_ascii_data(self):
-        """Test legacy hash function against known results."""
-        splitter = splitters.Splitter()
-        file_name = os.path.join(
-            os.path.dirname(__file__),
-            'files',
-            'sample-data-non-alpha-numeric.jsonl'
-        )
-        with open(file_name, 'r') as flo:
-            lines = flo.read().split('\n')
-
-        for line in lines:
-            if line is None or line == '':
-                continue
-            seed, key, hashed, bucket = json.loads(line)
-            assert hashfns.legacy.legacy_hash(key, seed) == hashed
-            assert splitter.get_bucket(key, seed, splits.HashAlgorithm.LEGACY) == bucket
-
     def test_murmur_hash_ascii_data(self):
         """Test legacy hash function against known results."""
         splitter = splitters.Splitter()
