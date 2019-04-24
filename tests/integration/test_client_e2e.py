@@ -542,6 +542,7 @@ class LocalhostIntegrationTests(object):
         """Instantiate a client with a YAML file and issue get_treatment() calls."""
         filename = os.path.join(os.path.dirname(__file__), 'files', 'file2.yaml')
         factory = get_factory('localhost', config={'splitFile': filename})
+        factory.block_until_ready()
         client = factory.client()
         assert client.get_treatment_with_config('key', 'my_feature') == ('on', '{"desc" : "this applies only to ON treatment"}')
         assert client.get_treatment_with_config('only_key', 'my_feature') == (
