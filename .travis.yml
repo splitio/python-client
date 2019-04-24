@@ -2,15 +2,14 @@ language: python
 
 python:
   - "2.7"
+  - "3.6"
 
 services:
   - redis-server
 
 install:
-  - pip install --upgrade setuptools
-  - pip install redis>=2.6
-  - pip install jsonpickle>=0.9.3
-  - pip install uwsgi>=2.0.0
+  - pip install -U setuptools pip
+  - pip install -e .[cpphash,redis,uwsgi]
 
 script:
-  - python setup.py nosetests
+  - python setup.py test

@@ -1,0 +1,18 @@
+- my_feature:
+    treatment: "on"
+    keys: "key"
+    config: "{\"desc\" : \"this applies only to ON treatment\"}"
+- other_feature_3:
+    treatment: "off"
+- my_feature:
+    treatment: "off"
+    keys: "only_key"
+    config: "{\"desc\" : \"this applies only to OFF and only for only_key. The rest will receive ON\"}"
+- other_feature_3:
+    treatment: "on"
+    keys: "key_whitelist"
+- other_feature:
+    treatment: "on"
+    keys: ["key2","key3"]
+- other_feature_2:
+    treatment: "on"
