@@ -369,15 +369,27 @@ class SplitFactoryTests(object):
         get_factory('some_api_key')
         assert _INSTANTIATED_FACTORIES['some_api_key'] == 2
         assert factory_module_logger.warning.mock_calls == [mocker.call(
-            "factory instantiation: You already have %d factories with this API Key. "
+            "factory instantiation: You already have %d %s with this API Key. "
             "We recommend keeping only one instance of the factory at all times "
             "(Singleton pattern) and reusing it throughout your application.",
-            1
+            1,
+            'factory'
+        )]
+
+        factory_module_logger.reset_mock()
+        get_factory('some_api_key')
+        assert _INSTANTIATED_FACTORIES['some_api_key'] == 3
+        assert factory_module_logger.warning.mock_calls == [mocker.call(
+            "factory instantiation: You already have %d %s with this API Key. "
+            "We recommend keeping only one instance of the factory at all times "
+            "(Singleton pattern) and reusing it throughout your application.",
+            2,
+            'factories'
         )]
 
         factory_module_logger.reset_mock()
         get_factory('some_other_api_key')
-        assert _INSTANTIATED_FACTORIES['some_api_key'] == 2
+        assert _INSTANTIATED_FACTORIES['some_api_key'] == 3
         assert _INSTANTIATED_FACTORIES['some_other_api_key'] == 1
         assert factory_module_logger.warning.mock_calls == [mocker.call(
             "factory instantiation: You already have an instance of the Split factory. "
@@ -390,4 +402,4 @@ class SplitFactoryTests(object):
         factory1.destroy(event)
         event.wait()
         assert _INSTANTIATED_FACTORIES['some_other_api_key'] == 1
-        assert _INSTANTIATED_FACTORIES['some_api_key'] == 1
+        assert _INSTANTIATED_FACTORIES['some_api_key'] == 2
