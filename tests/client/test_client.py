@@ -318,6 +318,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         destroyed_mock = mocker.PropertyMock()
         destroyed_mock.return_value = False
         type(factory).destroyed = destroyed_mock
+        factory._apikey = 'test'
         mocker.patch('splitio.client.client.time.time', new=lambda: 1)
 
         client = Client(factory)
