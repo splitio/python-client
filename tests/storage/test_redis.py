@@ -86,6 +86,21 @@ class RedisSplitStorageTests(object):
         ]
         assert storage.get_split_names() == ['split1', 'split2', 'split3']
 
+    def test_is_valid_traffic_type(self, mocker):
+        """Test that traffic type validation works."""
+        adapter = mocker.Mock(spec=RedisAdapter)
+        storage = RedisSplitStorage(adapter)
+
+        adapter.get.return_value = '1'
+        assert storage.is_valid_traffic_type('any') is True
+
+        adapter.get.return_value = '0'
+        assert storage.is_valid_traffic_type('any') is False
+
+        adapter.get.return_value = None
+        assert storage.is_valid_traffic_type('any') is False
+
+
 
 class RedisSegmentStorageTests(object):
     """Redis segment storage test cases."""

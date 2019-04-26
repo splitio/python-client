@@ -3,6 +3,8 @@ from __future__ import absolute_import
 
 import logging
 import threading
+from collections import Counter
+
 from six.moves import queue
 from splitio.models.segments import Segment
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, \
@@ -18,6 +20,7 @@ class InMemorySplitStorage(SplitStorage):
         self._lock = threading.RLock()
         self._splits = {}
         self._change_number = -1
+        self._traffic_types = Counter()
 
     def get(self, split_name):
         """
@@ -40,6 +43,7 @@ class InMemorySplitStorage(SplitStorage):
         """
         with self._lock:
             self._splits[split.name] = split
+            self._increase_traffic_type_count(split.traffic_type_name)
 
     def remove(self, split_name):
         """
@@ -52,12 +56,14 @@ class InMemorySplitStorage(SplitStorage):
         :rtype: bool
         """
         with self._lock:
-            try:
-                self._splits.pop(split_name)
-                return True
-            except KeyError:
+            split = self._splits.get(split_name)
+            if not split:
                 self._logger.warning("Tried to delete nonexistant split %s. Skipping", split_name)
                 return False
+
+            self._splits.pop(split_name)
+            self._decrease_traffic_type_count(split.traffic_type_name)
+            return True
 
     def get_change_number(self):
         """
@@ -97,6 +103,38 @@ class InMemorySplitStorage(SplitStorage):
         """
         with self._lock:
             return list(self._splits.values())
+
+    def is_valid_traffic_type(self, traffic_type_name):
+        """
+        Return whether the traffic type exists in at least one split in cache.
+
+        :param traffic_type_name: Traffic type to validate.
+        :type traffic_type_name: str
+
+        :return: True if the traffic type is valid. False otherwise.
+        :rtype: bool
+        """
+        with self._lock:
+            return traffic_type_name in self._traffic_types
+
+    def _increase_traffic_type_count(self, traffic_type_name):
+        """
+        Increase by one the count for a specific traffic type name.
+
+        :param traffic_type_name: Traffic type to increase the count.
+        :type traffic_type_name: str
+        """
+        self._traffic_types.update([traffic_type_name])
+
+    def _decrease_traffic_type_count(self, traffic_type_name):
+        """
+        Decrease by one the count for a specific traffic type name.
+
+        :param traffic_type_name: Traffic type to decrease the count.
+        :type traffic_type_name: str
+        """
+        self._traffic_types.subtract([traffic_type_name])
+        self._traffic_types += Counter()
 
 
 class InMemorySegmentStorage(SegmentStorage):
