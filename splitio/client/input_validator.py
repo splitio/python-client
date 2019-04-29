@@ -252,7 +252,7 @@ def validate_key(key):
     return matching_key_result, bucketing_key_result
 
 
-def validate_feature_name(feature_name):
+def validate_feature_name(feature_name, should_validate_existance, split_storage):
     """
     Check if feature_name is valid for get_treatment.
 
@@ -266,6 +266,16 @@ def validate_feature_name(feature_name):
        (not _check_is_string(feature_name, 'feature_name', operation)) or \
        (not _check_string_not_empty(feature_name, 'feature_name', operation)):
         return None
+
+    if should_validate_existance and split_storage.get(feature_name) is None:
+        _LOGGER.error(
+            "%s: you passed \"%s\" that does not exist in this environment, "
+            "please double check what Splits exist in the web console.",
+            operation,
+            feature_name
+        )
+        return None
+
     return _remove_empty_spaces(feature_name, operation)
 
 
