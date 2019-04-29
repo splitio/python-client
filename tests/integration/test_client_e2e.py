@@ -65,7 +65,7 @@ class InMemoryIntegrationTests(object):
         self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
 
         assert client.get_treatment('invalidKey', 'invalid_feature') == 'control'
-        self._validate_last_impressions(client, ('invalid_feature', 'invalidKey', 'control'))
+        self._validate_last_impressions(client)  # No impressions should be present
 
         # testing a killed feature. No matter what the key, must return default treatment
         assert client.get_treatment('invalidKey', 'killed_feature') == 'defTreatment'
@@ -83,7 +83,7 @@ class InMemoryIntegrationTests(object):
 
         #  testing INVALID matcher
         assert client.get_treatment('some_user_key', 'invalid_matcher_feature') == 'control'
-        self._validate_last_impressions(client, ('invalid_matcher_feature', 'some_user_key', 'control'))
+        self._validate_last_impressions(client)  # No impressions should be present
 
         #  testing Dependency matcher
         assert client.get_treatment('somekey', 'dependency_test') == 'off'
@@ -111,7 +111,7 @@ class InMemoryIntegrationTests(object):
 
         result = client.get_treatment_with_config('invalidKey', 'invalid_feature')
         assert result == ('control', None)
-        self._validate_last_impressions(client, ('invalid_feature', 'invalidKey', 'control'))
+        self._validate_last_impressions(client)
 
         # testing a killed feature. No matter what the key, must return default treatment
         result = client.get_treatment_with_config('invalidKey', 'killed_feature')
@@ -320,7 +320,7 @@ class RedisIntegrationTests(object):
         self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
 
         assert client.get_treatment('invalidKey', 'invalid_feature') == 'control'
-        self._validate_last_impressions(client, ('invalid_feature', 'invalidKey', 'control'))
+        self._validate_last_impressions(client)
 
         # testing a killed feature. No matter what the key, must return default treatment
         assert client.get_treatment('invalidKey', 'killed_feature') == 'defTreatment'
@@ -338,7 +338,7 @@ class RedisIntegrationTests(object):
 
         #  testing INVALID matcher
         assert client.get_treatment('some_user_key', 'invalid_matcher_feature') == 'control'
-        self._validate_last_impressions(client, ('invalid_matcher_feature', 'some_user_key', 'control'))
+        self._validate_last_impressions(client)
 
         #  testing Dependency matcher
         assert client.get_treatment('somekey', 'dependency_test') == 'off'
@@ -366,7 +366,7 @@ class RedisIntegrationTests(object):
 
         result = client.get_treatment_with_config('invalidKey', 'invalid_feature')
         assert result == ('control', None)
-        self._validate_last_impressions(client, ('invalid_feature', 'invalidKey', 'control'))
+        self._validate_last_impressions(client)
 
         # testing a killed feature. No matter what the key, must return default treatment
         result = client.get_treatment_with_config('invalidKey', 'killed_feature')
