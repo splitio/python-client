@@ -381,22 +381,22 @@ def validate_manager_feature_name(feature_name):
     return feature_name
 
 
-def validate_features_get_treatments(features):  #pylint: disable=invalid-name
+def validate_features_get_treatments(features, should_validate_existance=False, split_storage=None):  #pylint: disable=invalid-name
     """
     Check if features is valid for get_treatments.
 
     :param features: array of features
     :type features: list
     :return: filtered_features
-    :rtype: list|None
+    :rtype: tuple
     """
     operation = _get_first_split_sdk_call()
     if features is None or not isinstance(features, list):
         _LOGGER.error("%s: feature_names must be a non-empty array.", operation)
-        return None
+        return None, None
     if not features:
         _LOGGER.error("%s: feature_names must be a non-empty array.", operation)
-        return []
+        return None, None
     filtered_features = set(
         _remove_empty_spaces(feature, operation) for feature in features
         if feature is not None and
@@ -405,8 +405,20 @@ def validate_features_get_treatments(features):  #pylint: disable=invalid-name
     )
     if not filtered_features:
         _LOGGER.error("%s: feature_names must be a non-empty array.", operation)
-        return None
-    return filtered_features
+        return None, None
+
+    if not should_validate_existance:
+        return filtered_features, []
+
+    valid_missing_features = set(f for f in filtered_features if split_storage.get(f) is None)
+    for missing_feature in valid_missing_features:
+        _LOGGER.error(
+            "%s: you passed \"%s\" that does not exist in this environment, "
+            "please double check what Splits exist in the web console.",
+            operation,
+            missing_feature
+        )
+    return filtered_features - valid_missing_features, valid_missing_features
 
 
 def generate_control_treatments(features):
@@ -418,7 +430,7 @@ def generate_control_treatments(features):
     :return: dict
     :rtype: dict|None
     """
-    return {feature: (CONTROL, None) for feature in validate_features_get_treatments(features)}
+    return {feature: (CONTROL, None) for feature in validate_features_get_treatments(features)[0]}
 
 
 def validate_attributes(attributes):
