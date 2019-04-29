@@ -342,7 +342,6 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
         key = input_validator.validate_track_key(key)
         event_type = input_validator.validate_event_type(event_type)
         should_validate_existance = self.ready and self._factory._apikey != 'localhost' #pylint: disable=protected-access
-        print(self.ready, self._factory._apikey, should_validate_existance)
         traffic_type = input_validator.validate_traffic_type(
             traffic_type,
             should_validate_existance,
