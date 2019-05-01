@@ -39,7 +39,7 @@ class InMemoryIntegrationTests(object):
             data = json.loads(flo.read())
         segment_storage.put(segments.from_raw(data))
 
-        self.factory = SplitFactory({  #pylint:disable=attribute-defined-outside-init
+        self.factory = SplitFactory('some_api_key', {  #pylint:disable=attribute-defined-outside-init
             'splits': split_storage,
             'segments': segment_storage,
             'impressions': InMemoryImpressionStorage(5000),
@@ -286,7 +286,7 @@ class RedisIntegrationTests(object):
         redis_client.sadd(segment_storage._get_key(data['name']), *data['added'])
         redis_client.set(segment_storage._get_till_key(data['name']), data['till'])
 
-        self.factory = SplitFactory({  #pylint:disable=attribute-defined-outside-init
+        self.factory = SplitFactory('some_api_key', {  #pylint:disable=attribute-defined-outside-init
             'splits': split_storage,
             'segments': segment_storage,
             'impressions': RedisImpressionsStorage(redis_client, metadata),
@@ -535,7 +535,7 @@ class RedisIntegrationTests(object):
             redis_client.delete(key)
 
 
-class LocalhostIntegrationTests(object):
+class LocalhostIntegrationTests(object):  #pylint: disable=too-few-public-methods
     """Client & Manager integration tests."""
 
     def test_localhost_e2e(self):
