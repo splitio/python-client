@@ -73,6 +73,54 @@ class InMemorySplitStorageTests(object):
         assert next(s for s in all_splits if s.name == 'split1')
         assert next(s for s in all_splits if s.name == 'split2')
 
+    def test_is_valid_traffic_type(self, mocker):
+        """Test that traffic type validation works properly."""
+        split1 = mocker.Mock()
+        name1_prop = mocker.PropertyMock()
+        name1_prop.return_value = 'split1'
+        type(split1).name = name1_prop
+        split2 = mocker.Mock()
+        name2_prop = mocker.PropertyMock()
+        name2_prop.return_value = 'split2'
+        type(split2).name = name2_prop
+        split3 = mocker.Mock()
+        tt_user = mocker.PropertyMock()
+        tt_user.return_value = 'user'
+        tt_account = mocker.PropertyMock()
+        tt_account.return_value = 'account'
+        name3_prop = mocker.PropertyMock()
+        name3_prop.return_value = 'split3'
+        type(split3).name = name3_prop
+        type(split1).traffic_type_name = tt_user
+        type(split2).traffic_type_name = tt_account
+        type(split3).traffic_type_name = tt_user
+
+        storage = InMemorySplitStorage()
+
+        storage.put(split1)
+        assert storage.is_valid_traffic_type('user') is True
+        assert storage.is_valid_traffic_type('account') is False
+
+        storage.put(split2)
+        assert storage.is_valid_traffic_type('user') is True
+        assert storage.is_valid_traffic_type('account') is True
+
+        storage.put(split3)
+        assert storage.is_valid_traffic_type('user') is True
+        assert storage.is_valid_traffic_type('account') is True
+
+        storage.remove('split1')
+        assert storage.is_valid_traffic_type('user') is True
+        assert storage.is_valid_traffic_type('account') is True
+
+        storage.remove('split2')
+        assert storage.is_valid_traffic_type('user') is True
+        assert storage.is_valid_traffic_type('account') is False
+
+        storage.remove('split3')
+        assert storage.is_valid_traffic_type('user') is False
+        assert storage.is_valid_traffic_type('account') is False
+
 
 class InMemorySegmentStorageTests(object):
     """In memory segment storage tests."""

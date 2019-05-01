@@ -288,12 +288,16 @@ def validate_track_key(key):
     return key_str
 
 
-def validate_traffic_type(traffic_type):
+def validate_traffic_type(traffic_type, should_validate_existance, split_storage):
     """
     Check if traffic_type is valid for track.
 
     :param traffic_type: traffic_type to be checked
     :type traffic_type: str
+    :param should_validate_existance: Whether to check for existante in the split storage.
+    :type should_validate_existance: bool
+    :param split_storage: Split storage.
+    :param split_storage: splitio.storages.SplitStorage
     :return: traffic_type
     :rtype: str|None
     """
@@ -305,6 +309,15 @@ def validate_traffic_type(traffic_type):
         _LOGGER.warning('track: %s should be all lowercase - converting string to lowercase.',
                         traffic_type)
         traffic_type = traffic_type.lower()
+
+    if should_validate_existance and not split_storage.is_valid_traffic_type(traffic_type):
+        _LOGGER.warning(
+            'track: Traffic Type %s does not have any corresponding Splits in this environment, '
+            'make sure you\'re tracking your events to a valid traffic type defined '
+            'in the Split console.',
+            traffic_type
+        )
+
     return traffic_type
 
 

@@ -83,6 +83,19 @@ class SplitStorage(object):
         """
         pass
 
+    @abc.abstractmethod
+    def is_valid_traffic_type(self, traffic_type_name):
+        """
+        Return whether the traffic type exists in at least one split in cache.
+
+        :param traffic_type_name: Traffic type to validate.
+        :type traffic_type_name: str
+
+        :return: True if the traffic type is valid. False otherwise.
+        :rtype: bool
+        """
+        pass
+
     def get_segment_names(self):
         """
         Return a set of all segments referenced by splits in storage.

@@ -453,6 +453,7 @@ class ClientInputValidationTests(object):
         factory_destroyed = mocker.PropertyMock()
         factory_destroyed.return_value = False
         type(factory_mock).destroyed = factory_destroyed
+        factory_mock._apikey = 'some-test'
 
         client = Client(factory_mock)
         client._events_storage = mocker.Mock(spec=EventStorage)
@@ -601,6 +602,50 @@ class ClientInputValidationTests(object):
         assert client._logger.error.mock_calls == [
             mocker.call("track: value must be a number.")
         ]
+
+        # Test traffic type existance
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = True
+        type(factory_mock).ready = ready_property
+
+        split_storage_mock = mocker.Mock(spec=SplitStorage)
+        split_storage_mock.is_valid_traffic_type.return_value = True
+        factory_mock._get_storage.return_value = split_storage_mock
+
+        # Test that it doesn't warn if tt is cached, not in localhost mode and sdk is ready
+        client._logger.reset_mock()
+        assert client.track("some_key", "traffic_type", "event_type", None) is True
+        assert client._logger.error.mock_calls == []
+        assert client._logger.warning.mock_calls == []
+
+        # Test that it does warn if tt is cached, not in localhost mode and sdk is ready
+        split_storage_mock.is_valid_traffic_type.return_value = False
+        client._logger.reset_mock()
+        assert client.track("some_key", "traffic_type", "event_type", None) is True
+        assert client._logger.error.mock_calls == []
+        assert client._logger.warning.mock_calls == [mocker.call(
+            'track: Traffic Type %s does not have any corresponding Splits in this environment, '
+            'make sure you\'re tracking your events to a valid traffic type defined '
+            'in the Split console.',
+            'traffic_type'
+        )]
+
+        # Test that it does not warn when in localhost mode.
+        factory_mock._apikey = 'localhost'
+        client._logger.reset_mock()
+        assert client.track("some_key", "traffic_type", "event_type", None) is True
+        assert client._logger.error.mock_calls == []
+        assert client._logger.warning.mock_calls == []
+
+        # Test that it does not warn when not in localhost mode and not ready
+        factory_mock._apikey = 'not-localhost'
+        ready_property.return_value = False
+        type(factory_mock).ready = ready_property
+        client._logger.reset_mock()
+        assert client.track("some_key", "traffic_type", "event_type", None) is True
+        assert client._logger.error.mock_calls == []
+        assert client._logger.warning.mock_calls == []
+
 
     def test_get_treatments(self, mocker):
         """Test getTreatments() method."""
