@@ -1,3 +1,11 @@
+8.0.0 (Apr 24, 2019)
+ - Full SDK Refactor/rewrite.
+ - New block until ready behaviour.
+ - Support for async destroy.
+ - Dynamic configs.
+ - Impressions not flushing on destroy bugfix.
+ - Removed unnecessary dependencies.
+ - Test suite rewritten.
 7.0.1 (Mar 8, 2019)
  - Updated Splits refreshing rate.
  - Replaced exception log level to error level.
