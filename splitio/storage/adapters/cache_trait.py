@@ -2,57 +2,185 @@
 
 import threading
 import time
+from functools import update_wrapper
+
+import six
 
 
-class ElementExpiredException(Exception):
-    """Exception to be thrown when an element requested is present but expired."""
-
-    pass
+DEFAULT_MAX_AGE = 5
+DEFAULT_MAX_SIZE = 100
 
 
-class ElementNotPresentException(Exception):
-    """Exception to be thrown when an element requested is not present."""
+class LocalMemoryCache(object):  #pylint: disable=too-many-instance-attributes
+    """
+    Key/Value local memory cache. with expiration & LRU eviction.
 
-    pass
+    LRU double-linked-list format:
 
+    {
+        'key1'---------------------------------------------------------------
+        'key2'------------------------------------                           |
+        'key3'------------                        |                          |
+    }                     |                       |                          |
+                          V                       V                          V
+                     || MRU  ||  -previous-> ||   X  || ... -previous-> || LRU  || -previous-> None
+    None <---next--- || node ||  <---next--- || node || ... <---next--- || node ||
+    """
 
-class LocalMemoryCache(object):
-    """Key/Value local memory cache. with deprecation."""
+    class _Node(object):  #pylint: disable=too-few-public-methods
+        """Links to previous an next items in the circular list."""
 
-    def __init__(self, max_age_seconds=5):
+        def __init__(self, key, value, last_update, previous_element, next_element):  #pylint: disable=too-many-arguments
+            """Class constructor."""
+            self.key = key  # we also keep the key for O(1) access when removing the LRU.
+            self.value = value
+            self.last_update = last_update
+            self.previous = previous_element
+            self.next = next_element
+
+        def __str__(self):
+            """Return string representation."""
+            return '(%s, %s)' % (self.key, self.value)
+
+    def __init__(
+            self,
+            key_func,
+            user_func,
+            max_age_seconds=DEFAULT_MAX_AGE,
+            max_size=DEFAULT_MAX_SIZE
+    ):
         """Class constructor."""
         self._data = {}
         self._lock = threading.RLock()
         self._max_age_seconds = max_age_seconds
+        self._max_size = max_size
+        self._lru = None
+        self._mru = None
+        self._key_func = key_func
+        self._user_func = user_func
 
-    def set(self, key, value):
+    def get(self, *args, **kwargs):
         """
-        Set a key/value pair.
+        Fetch an item from the cache. If it's a miss, call user function to refill.
 
-        :param key: Key used to reference the value.
-        :type key: str
-        :param value: Value to store.
-        :type value: object
-        """
-        with self._lock:
-            self._data[key] = (value, time.time())
+        :param args: User supplied positional arguments
+        :type args: list
+        :param kwargs: User supplied keyword arguments
+        :type kwargs: dict
 
-    def get(self, key):
-        """
-        Attempt to get a value based on a key.
-
-        :param key: Key associated with the value.
-        :type key: str
-
-        :return: The value associated with the key. None if it doesn't exist.
+        :return: Cached/Fetched object
         :rtype: object
         """
-        try:
-            value, set_time = self._data[key]
-        except KeyError:
-            raise ElementNotPresentException('Element %s not present in local storage' % key)
+        with self._lock:
+            key = self._key_func(*args, **kwargs)
+            node = self._data.get(key)
+            if node is not None:
+                if self._is_expired(node):
+                    node.value = self._user_func(*args, **kwargs)
+                    node.last_update = time.time()
+            else:
+                value = self._user_func(*args, **kwargs)
+                node = LocalMemoryCache._Node(key, value, time.time(), None, None)
+            node = self._bubble_up(node)
+            self._data[key] = node
+            self._rollover()
+            return node.value
 
-        if (time.time() - set_time) > self._max_age_seconds:
-            raise ElementExpiredException('Element %s present but expired' % key)
+    def remove_expired(self):
+        """Remove expired elements."""
+        with self._lock:
+            self._data = {
+                key: value for (key, value) in six.iteritems(self._data)
+                if not self._is_expired(value)
+            }
 
-        return value
+    def clear(self):
+        """Clear the cache."""
+        self._data = {}
+        self._lru = None
+        self._mru = None
+
+    def _is_expired(self, node):
+        """Return whether the data held by the node is expired."""
+        return time.time() - self._max_age_seconds > node.last_update
+
+    def _bubble_up(self, node):
+        """Send node to the top of the list (mark it as the MRU)."""
+        if node is None:
+            return None
+
+        if node.previous is not None:
+            node.previous.next = node.next
+
+        if node.next is not None:
+            node.next.previous = node.previous
+
+        if self._lru == node:
+            if node.next is not None: #only update lru pointer if there are more than 1 elements.
+                self._lru = node.next
+
+        if not self._data:
+            # if there are no items, set the LRU to this node
+            self._lru = node
+        else:
+            # if there is at least one item, update the MRU chain
+            self._mru.next = node
+
+        node.next = None
+        node.previous = self._mru
+        self._mru = node
+        return node
+
+    def _rollover(self):
+        """Check we're within the size limit. Otherwise drop the LRU."""
+        if len(self._data) > self._max_size:
+            next_item = self._lru.next
+            del self._data[self._lru.key]
+            self._lru = next_item
+
+    def __str__(self):
+        """User friendly representation of cache."""
+        nodes = []
+        node = self._mru
+        while node is not None:
+            nodes.append('<%s: %s>  -->' % (node.key, node.value))
+            node = node.previous
+        return '<MRU>\n' + '\n'.join(nodes) + '\n<LRU>'
+
+
+def decorate(key_func, max_age_seconds=DEFAULT_MAX_AGE, max_size=DEFAULT_MAX_SIZE):
+    """
+    Decorate a function or method to cache results up  to `max_age_seconds`.
+
+    :param key_func: user specified function to execute over the arguments to determine the key.
+    :type key_func: callable
+    :param max_age_seconds: Maximum number of seconds during which the cached value is valid.
+    :type max_age_seconds: int
+
+    :return: Decorating function wrapper.
+    :rtype: callable
+    """
+    if max_age_seconds < 0:
+        raise TypeError('Max cache age cannot be a negative number.')
+
+    if max_size < 0:
+        raise TypeError('Max cache size cannot be a negative number.')
+
+    if max_age_seconds == 0 or max_size == 0:
+        return lambda function: function  # bypass cache overlay.
+
+    def _decorator(user_function):
+        """
+        Decorate function to be used with `@` syntax.
+
+        :param user_function: Function to decorate with cacheable results
+        :type user_function: callable
+
+        :return: A function that looks exactly the same but with cacheable results.
+        :rtype: callable
+        """
+        _cache = LocalMemoryCache(key_func, user_function, max_age_seconds, max_size)
+        wrapper = _cache.get
+        return update_wrapper(wrapper, user_function)
+
+    return _decorator
