@@ -531,6 +531,44 @@ class RedisIntegrationTests(object):
             redis_client.delete(key)
 
 
+class RedisWithCacheIntegrationTests(RedisIntegrationTests):
+    """Run the same tests as RedisIntegratioTests but with LRU/Expirable cache overlay."""
+
+    def setup_method(self):
+        """Prepare storages with test data."""
+        metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
+        redis_client = RedisAdapter(StrictRedis())
+        split_storage = RedisSplitStorage(redis_client, True)
+        segment_storage = RedisSegmentStorage(redis_client)
+
+        split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
+        with open(split_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        for split in data['splits']:
+            redis_client.set(split_storage._get_key(split['name']), json.dumps(split))
+        redis_client.set(split_storage._SPLIT_TILL_KEY, data['till'])
+
+        segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
+        with open(segment_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        redis_client.sadd(segment_storage._get_key(data['name']), *data['added'])
+        redis_client.set(segment_storage._get_till_key(data['name']), data['till'])
+
+        segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentHumanBeignsChanges.json')
+        with open(segment_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        redis_client.sadd(segment_storage._get_key(data['name']), *data['added'])
+        redis_client.set(segment_storage._get_till_key(data['name']), data['till'])
+
+        self.factory = SplitFactory('some_api_key', {  #pylint:disable=attribute-defined-outside-init
+            'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': RedisImpressionsStorage(redis_client, metadata),
+            'events': RedisEventsStorage(redis_client, metadata),
+            'telemetry': RedisTelemetryStorage(redis_client, metadata)
+        }, True)
+
+
 class LocalhostIntegrationTests(object):  #pylint: disable=too-few-public-methods
     """Client & Manager integration tests."""
 

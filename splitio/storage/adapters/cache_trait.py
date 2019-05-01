@@ -180,7 +180,9 @@ def decorate(key_func, max_age_seconds=DEFAULT_MAX_AGE, max_size=DEFAULT_MAX_SIZ
         :rtype: callable
         """
         _cache = LocalMemoryCache(key_func, user_function, max_age_seconds, max_size)
-        wrapper = _cache.get
+        # The lambda below IS necessary, otherwise update_wrapper fails since the function
+        # is an instance method and has no reference to the __module__ namespace.
+        wrapper = lambda *args, **kwargs: _cache.get(*args, **kwargs)  #pylint: disable=unnecessary-lambda
         return update_wrapper(wrapper, user_function)
 
     return _decorator

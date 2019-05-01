@@ -365,7 +365,7 @@ def validate_value(value):
     return value
 
 
-def validate_manager_feature_name(feature_name):
+def validate_manager_feature_name(feature_name, should_validate_existance, split_storage):
     """
     Check if feature_name is valid for track.
 
@@ -378,6 +378,15 @@ def validate_manager_feature_name(feature_name):
        (not _check_is_string(feature_name, 'feature_name', 'split')) or \
        (not _check_string_not_empty(feature_name, 'feature_name', 'split')):
         return None
+
+    if should_validate_existance and split_storage.get(feature_name) is None:
+        _LOGGER.error(
+            "split: you passed \"%s\" that does not exist in this environment, "
+            "please double check what Splits exist in the web console.",
+            feature_name
+        )
+        return None
+
     return feature_name
 
 

@@ -967,6 +967,16 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
         assert split_mock.to_split_view.mock_calls == [mocker.call()]
         assert manager._logger.error.mock_calls == []
 
+        manager._logger.reset_mock()
+        split_mock.reset_mock()
+        storage_mock.get.return_value = None
+        manager.split('nonexistant-split')
+        assert split_mock.to_split_view.mock_calls == []
+        assert manager._logger.error.mock_calls == [mocker.call(
+            "split: you passed \"%s\" that does not exist in this environment, "
+            "please double check what Splits exist in the web console.",
+            'nonexistant-split'
+        )]
 
 class FactoryInputValidationTests(object):  #pylint: disable=too-few-public-methods
     """Factory instantiation input validation test cases."""

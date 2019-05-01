@@ -97,7 +97,7 @@ class  CacheTraitTests(object):
         user_func = mocker.Mock()
 
         cache_trait.decorate(key_func)(user_func)
-        assert update_wrapper_mock.mock_calls == [mocker.call(returned_instance_mock.get, user_func)]
+        assert update_wrapper_mock.mock_calls == [mocker.call(mocker.ANY, user_func)]
         assert local_memory_cache_mock.mock_calls == [
             mocker.call(key_func, user_func, cache_trait.DEFAULT_MAX_AGE, cache_trait.DEFAULT_MAX_SIZE)
         ]
