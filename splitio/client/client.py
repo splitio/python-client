@@ -109,7 +109,11 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
             start = int(round(time.time() * 1000))
 
             matching_key, bucketing_key = input_validator.validate_key(key)
-            feature = input_validator.validate_feature_name(feature)
+            feature = input_validator.validate_feature_name(
+                feature,
+                self.ready,
+                self._factory._get_storage('splits')  #pylint: disable=protected-access
+            )
 
             if (matching_key is None and bucketing_key is None) \
                     or feature is None \
@@ -204,12 +208,16 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
         if input_validator.validate_attributes(attributes) is False:
             return input_validator.generate_control_treatments(features)
 
-        features = input_validator.validate_features_get_treatments(features)
+        features, missing = input_validator.validate_features_get_treatments(
+            features,
+            self.ready,
+            self._factory._get_storage('splits')  # pylint: disable=protected-access
+        )
         if features is None:
             return {}
 
         bulk_impressions = []
-        treatments = {}
+        treatments = {name: (CONTROL, None) for name in missing}
 
         for feature in features:
             try:

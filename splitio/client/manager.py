@@ -18,7 +18,7 @@ class SplitManager(object):
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self._factory = factory
-        self._storage = factory._get_storage('splits')
+        self._storage = factory._get_storage('splits')  #pylint: disable=protected-access
 
     def split_names(self):
         """
@@ -60,7 +60,12 @@ class SplitManager(object):
             self._logger.error("Client has already been destroyed - no calls possible.")
             return []
 
-        feature_name = input_validator.validate_manager_feature_name(feature_name)
+        feature_name = input_validator.validate_manager_feature_name(
+            feature_name,
+            self._factory.ready,
+            self._storage
+        )
+
         if feature_name is None:
             return None
 

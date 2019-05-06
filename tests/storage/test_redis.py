@@ -2,6 +2,7 @@
 #pylint: disable=no-self-use
 
 import json
+import time
 
 from splitio.client.util import get_metadata
 from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \
@@ -32,12 +33,42 @@ class RedisSplitStorageTests(object):
         adapter.reset_mock()
         from_raw.reset_mock()
         adapter.get.return_value = None
-
         result = storage.get('some_split')
         assert result is None
         assert adapter.get.mock_calls == [mocker.call('SPLITIO.split.some_split')]
         assert not from_raw.mock_calls
 
+    def test_get_split_with_cache(self, mocker):
+        """Test retrieving a split works."""
+        adapter = mocker.Mock(spec=RedisAdapter)
+        adapter.get.return_value = '{"name": "some_split"}'
+        from_raw = mocker.Mock()
+        mocker.patch('splitio.models.splits.from_raw', new=from_raw)
+
+        storage = RedisSplitStorage(adapter, True, 1)
+        storage.get('some_split')
+        assert adapter.get.mock_calls == [mocker.call('SPLITIO.split.some_split')]
+        assert from_raw.mock_calls == [mocker.call({"name": "some_split"})]
+
+        # hit the cache:
+        storage.get('some_split')
+        storage.get('some_split')
+        storage.get('some_split')
+        assert adapter.get.mock_calls == [mocker.call('SPLITIO.split.some_split')]
+        assert from_raw.mock_calls == [mocker.call({"name": "some_split"})]
+
+        # Test that a missing split returns None and doesn't call from_raw
+        adapter.reset_mock()
+        from_raw.reset_mock()
+        adapter.get.return_value = None
+
+        result = storage.get('some_split')
+        assert result is not None
+        time.sleep(1)  # wait for expiration
+        result = storage.get('some_split')
+        assert result is None
+        assert adapter.get.mock_calls == [mocker.call('SPLITIO.split.some_split')]
+        assert not from_raw.mock_calls
 
     def test_get_changenumber(self, mocker):
         """Test fetching changenumber."""
@@ -100,6 +131,22 @@ class RedisSplitStorageTests(object):
         adapter.get.return_value = None
         assert storage.is_valid_traffic_type('any') is False
 
+    def test_is_valid_traffic_type_with_cache(self, mocker):
+        """Test that traffic type validation works."""
+        adapter = mocker.Mock(spec=RedisAdapter)
+        storage = RedisSplitStorage(adapter, True, 1)
+
+        adapter.get.return_value = '1'
+        assert storage.is_valid_traffic_type('any') is True
+
+        adapter.get.return_value = '0'
+        assert storage.is_valid_traffic_type('any') is True
+        time.sleep(1)
+        assert storage.is_valid_traffic_type('any') is False
+
+        adapter.get.return_value = None
+        time.sleep(1)
+        assert storage.is_valid_traffic_type('any') is False
 
 
 class RedisSegmentStorageTests(object):
