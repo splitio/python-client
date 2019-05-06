@@ -11,6 +11,7 @@ from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, Eve
 from splitio.storage.adapters.redis import RedisAdapterException
 from splitio.storage.adapters.cache_trait import decorate as add_cache, DEFAULT_MAX_AGE
 
+
 class RedisSplitStorage(SplitStorage):
     """Redis-based storage for splits."""
 
