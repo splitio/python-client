@@ -166,8 +166,9 @@ class RedisSplitStorage(SplitStorage):
             for raw in raw_splits:
                 try:
                     to_return.append(splits.from_raw(json.loads(raw)))
-                except ValueError:
+                except (ValueError, TypeError):
                     self._logger.error('Could not parse split. Skipping')
+                    self._logger.debug("Raw split that failed parsing attempt: %s", raw)
         except RedisAdapterException:
             self._logger.error('Error fetching all splits from storage')
             self._logger.debug('Error: ', exc_info=True)
