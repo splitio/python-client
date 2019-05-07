@@ -31,6 +31,12 @@ class SplitManager(object):
             self._logger.error("Client has already been destroyed - no calls possible.")
             return []
 
+        if not self._factory.ready:
+            self._logger.warning(
+                "split_names: The SDK is not ready, results may be incorrect. "
+                "Make sure to wait for SDK readiness before using this method"
+            )
+
         return self._storage.get_split_names()
 
     def splits(self):
@@ -43,6 +49,12 @@ class SplitManager(object):
         if self._factory.destroyed:
             self._logger.error("Client has already been destroyed - no calls possible.")
             return []
+
+        if not self._factory.ready:
+            self._logger.warning(
+                "splits: The SDK is not ready, results may be incorrect. "
+                "Make sure to wait for SDK readiness before using this method"
+            )
 
         return [split.to_split_view() for split in self._storage.get_all_splits()]
 
@@ -65,6 +77,12 @@ class SplitManager(object):
             self._factory.ready,
             self._storage
         )
+
+        if not self._factory.ready:
+            self._logger.warning(
+                "split: The SDK is not ready, results may be incorrect. "
+                "Make sure to wait for SDK readiness before using this method"
+            )
 
         if feature_name is None:
             return None
