@@ -671,7 +671,6 @@ class ClientInputValidationTests(object):
         assert client._logger.error.mock_calls == []
         assert client._logger.warning.mock_calls == []
 
-
     def test_get_treatments(self, mocker):
         """Test getTreatments() method."""
         split_mock = mocker.Mock(spec=Split)

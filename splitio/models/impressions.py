@@ -46,3 +46,8 @@ class Label(object):  #pylint: disable=too-few-public-methods
     # Treatment: control
     # Label: exception
     EXCEPTION = 'exception'
+
+    # Condition: Evaluation requested while client not ready
+    # Treatment: control
+    # Label: not ready
+    NOT_READY = 'not ready'

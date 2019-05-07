@@ -85,6 +85,25 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
                 )
                 self._logger.debug('Error', exc_info=True)
 
+    def _evaluate_if_ready(self, matching_key, bucketing_key, feature, attributes=None):
+        if not self.ready:
+            return {
+                'treatment': CONTROL,
+                'configurations': None,
+                'impression': {
+                    'label': Label.NOT_READY,
+                    'change_number': None
+                }
+            }
+
+        return self._evaluator.evaluate_treatment(
+            feature,
+            matching_key,
+            bucketing_key,
+            attributes
+        )
+
+
     def get_treatment_with_config(self, key, feature, attributes=None):
         """
         Get the treatment and config for a feature and key, with optional dictionary of attributes.
@@ -120,12 +139,7 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
                     or not input_validator.validate_attributes(attributes):
                 return CONTROL, None
 
-            result = self._evaluator.evaluate_treatment(
-                feature,
-                matching_key,
-                bucketing_key,
-                attributes
-            )
+            result = self._evaluate_if_ready(matching_key, bucketing_key, feature, attributes)
 
             impression = self._build_impression(
                 matching_key,
@@ -221,23 +235,17 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
 
         for feature in features:
             try:
-                treatment = self._evaluator.evaluate_treatment(
-                    feature,
-                    matching_key,
-                    bucketing_key,
-                    attributes
-                )
-
+                result = self._evaluate_if_ready(matching_key, bucketing_key, feature, attributes)
                 impression = self._build_impression(matching_key,
                                                     feature,
-                                                    treatment['treatment'],
-                                                    treatment['impression']['label'],
-                                                    treatment['impression']['change_number'],
+                                                    result['treatment'],
+                                                    result['impression']['label'],
+                                                    result['impression']['change_number'],
                                                     bucketing_key,
                                                     start)
 
                 bulk_impressions.append(impression)
-                treatments[feature] = (treatment['treatment'], treatment['configurations'])
+                treatments[feature] = (result['treatment'], result['configurations'])
 
             except Exception:  #pylint: disable=broad-except
                 self._logger.error('get_treatments: An exception occured when evaluating '

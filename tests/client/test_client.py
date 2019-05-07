@@ -6,7 +6,7 @@ import os
 from splitio.client.client import Client
 from splitio.client.factory import SplitFactory
 from splitio.engine.evaluator import Evaluator
-from splitio.models.impressions import Impression
+from splitio.models.impressions import Impression, Label
 from splitio.models.events import Event
 from splitio.storage import EventStorage, ImpressionStorage, SegmentStorage, SplitStorage, \
     TelemetryStorage
@@ -67,7 +67,18 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
             None
         ) in client._send_impression_to_listener.mock_calls
 
+        # Test with client not ready
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = False
+        type(factory).ready = ready_property
+        impression_storage.put.reset_mock()
+        assert client.get_treatment('some_key', 'some_feature', {'some_attribute': 1}) == 'control'
+        assert mocker.call(
+            [Impression('some_key', 'some_feature', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+        ) in impression_storage.put.mock_calls
+
         # Test with exception:
+        ready_property.return_value = True
         split_storage.get_change_number.return_value = -1
         def _raise(*_):
             raise Exception('something')
@@ -76,7 +87,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         assert mocker.call(
             [Impression('some_key', 'some_feature', 'control', 'exception', -1, None, 1000)]
         ) in impression_storage.put.mock_calls
-        assert len(telemetry_storage.inc_latency.mock_calls) == 2
+        assert len(telemetry_storage.inc_latency.mock_calls) == 3
 
     def test_get_treatment_with_config(self, mocker):
         """Test get_treatment execution paths."""
@@ -131,7 +142,18 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
             None
         ) in client._send_impression_to_listener.mock_calls
 
+        # Test with client not ready
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = False
+        type(factory).ready = ready_property
+        impression_storage.put.reset_mock()
+        assert client.get_treatment_with_config('some_key', 'some_feature', {'some_attribute': 1}) == ('control', None)
+        assert mocker.call(
+            [Impression('some_key', 'some_feature', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+        ) in impression_storage.put.mock_calls
+
         # Test with exception:
+        ready_property.return_value = True
         split_storage.get_change_number.return_value = -1
         def _raise(*_):
             raise Exception('something')
@@ -140,7 +162,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         assert mocker.call(
             [Impression('some_key', 'some_feature', 'control', 'exception', -1, None, 1000)]
         ) in impression_storage.put.mock_calls
-        assert len(telemetry_storage.inc_latency.mock_calls) == 2
+        assert len(telemetry_storage.inc_latency.mock_calls) == 3
 
     def test_get_treatments(self, mocker):
         """Test get_treatment execution paths."""
@@ -196,13 +218,24 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
             None
         ) in client._send_impression_to_listener.mock_calls
 
+        # Test with client not ready
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = False
+        type(factory).ready = ready_property
+        impression_storage.put.reset_mock()
+        assert client.get_treatments('some_key', ['some_feature'], {'some_attribute': 1}) == {'some_feature': 'control'}
+        assert mocker.call(
+            [Impression('some_key', 'some_feature', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+        ) in impression_storage.put.mock_calls
+
         # Test with exception:
+        ready_property.return_value = True
         split_storage.get_change_number.return_value = -1
         def _raise(*_):
             raise Exception('something')
         client._evaluator.evaluate_treatment.side_effect = _raise
         assert client.get_treatments('key', ['f1', 'f2']) == {'f1': 'control', 'f2': 'control'}
-        assert len(telemetry_storage.inc_latency.mock_calls) == 1
+        assert len(telemetry_storage.inc_latency.mock_calls) == 2
 
     def test_get_treatments_with_config(self, mocker):
         """Test get_treatment execution paths."""
@@ -261,7 +294,18 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
             None
         ) in client._send_impression_to_listener.mock_calls
 
+        # Test with client not ready
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = False
+        type(factory).ready = ready_property
+        impression_storage.put.reset_mock()
+        assert client.get_treatments_with_config('some_key', ['some_feature'], {'some_attribute': 1}) == {'some_feature': ('control', None)}
+        assert mocker.call(
+            [Impression('some_key', 'some_feature', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+        ) in impression_storage.put.mock_calls
+
         # Test with exception:
+        ready_property.return_value = True
         split_storage.get_change_number.return_value = -1
         def _raise(*_):
             raise Exception('something')
@@ -270,7 +314,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
             'f1': ('control', None),
             'f2': ('control', None)
         }
-        assert len(telemetry_storage.inc_latency.mock_calls) == 1
+        assert len(telemetry_storage.inc_latency.mock_calls) == 2
 
     def test_destroy(self, mocker):
         """Test that destroy/destroyed calls are forwarded to the factory."""
