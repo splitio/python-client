@@ -13,6 +13,7 @@ from splitio.client.key import Key
 from splitio.storage import SplitStorage, EventStorage, ImpressionStorage, TelemetryStorage, \
     SegmentStorage
 from splitio.models.splits import Split
+from splitio.client import input_validator
 
 
 class ClientInputValidationTests(object):
@@ -445,6 +446,41 @@ class ClientInputValidationTests(object):
             mocker.call('%s: feature_name \'%s\' has extra whitespace, trimming.', 'get_treatment_with_config', '  some_feature   ')
         ]
 
+    def test_valid_properties(self, mocker):
+        """Test valid_properties() method"""
+        assert input_validator.valid_properties(None) == (True, None)
+        assert input_validator.valid_properties([]) == (False, None)
+        assert input_validator.valid_properties(True) == (False, None)
+
+        props1 = {
+            "test1": "test",
+            "test2": 1,
+            "test3": True,
+            "test4": None,
+            "test5": [],
+            2: "t",
+        }
+        r1, r2 = input_validator.valid_properties(props1)
+        assert r1 == True
+        assert len(r2.keys()) == 5
+        assert r2["test1"] == "test"
+        assert r2["test2"] == 1
+        assert r2["test3"] == True
+        assert r2["test4"] == None
+        assert r2["test5"] == None
+
+        props2 = dict();
+        for i in range(301):
+            props2[str(i)] = i
+        assert input_validator.valid_properties(props2) == (True, props2)
+
+        props3 = dict();
+        for i in range(110):
+            props3[str(i)] = str(i) * 300
+        r1, r2 = input_validator.valid_properties(props3)
+        assert r1 == False
+
+
     def test_track(self, mocker):
         """Test track method()."""
         events_storage_mock = mocker.Mock(spec=EventStorage)
@@ -601,6 +637,57 @@ class ClientInputValidationTests(object):
         assert client._logger.error.mock_calls == [
             mocker.call("track: value must be a number.")
         ]
+
+        client._logger.reset_mock()
+        assert client.track("some_key", "traffic_type", "event_type", 1, []) is False
+        assert client._logger.error.mock_calls == [
+            mocker.call("track: properties must be of type dictionary.")
+        ]
+
+        client._logger.reset_mock()
+        assert client.track("some_key", "traffic_type", "event_type", 1, []) is False
+        assert client._logger.error.mock_calls == [
+            mocker.call("track: properties must be of type dictionary.")
+        ]
+
+        client._logger.reset_mock()
+        assert client.track("some_key", "traffic_type", "event_type", 1, True) is False
+        assert client._logger.error.mock_calls == [
+            mocker.call("track: properties must be of type dictionary.")
+        ]
+
+        props1 = {
+            "test1": "test",
+            "test2": 1,
+            "test3": True,
+            "test4": None,
+            "test5": [],
+            2: "t",
+        }
+        client._logger.reset_mock()
+        assert client.track("some_key", "traffic_type", "event_type", 1, props1) is True
+        assert client._logger.warning.mock_calls == [
+            mocker.call("Property %s is of invalid type. Setting value to None", [])
+        ]
+
+        props2 = dict();
+        for i in range(301):
+            props2[str(i)] = i
+        client._logger.reset_mock()
+        assert client.track("some_key", "traffic_type", "event_type", 1, props2) is True
+        assert client._logger.warning.mock_calls == [
+            mocker.call("Event has more than 300 properties. Some of them will be trimmed when processed")
+        ]
+
+        client._logger.reset_mock()
+        props3 = dict();
+        for i in range(110):
+            props3[str(i)] = str(i) * 300
+        assert client.track("some_key", "traffic_type", "event_type", 1, props3) is False
+        assert client._logger.error.mock_calls == [
+            mocker.call("The maximum size allowed for the properties is 32768 bytes. Current one is 32949 bytes. Event not queued")
+        ]
+
 
     def test_get_treatments(self, mocker):
         """Test getTreatments() method."""

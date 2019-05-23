@@ -14,4 +14,5 @@ Event = namedtuple('Event', [
     'event_type_id',
     'value',
     'timestamp',
+    'properties',
 ])
