@@ -7,7 +7,7 @@ from splitio.client.client import Client
 from splitio.client.factory import SplitFactory
 from splitio.engine.evaluator import Evaluator
 from splitio.models.impressions import Impression
-from splitio.models.events import Event
+from splitio.models.events import Event, EventWrapper
 from splitio.storage import EventStorage, ImpressionStorage, SegmentStorage, SplitStorage, \
     TelemetryStorage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
@@ -323,5 +323,8 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         client = Client(factory)
         assert client.track('key', 'user', 'purchase', 12) is True
         assert mocker.call([
-            Event('key', 'user', 'purchase', 12, 1000)
+            EventWrapper(
+                event=Event('key', 'user', 'purchase', 12, 1000, None),
+                size=1024
+            )
         ]) in event_storage.put.mock_calls

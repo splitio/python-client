@@ -448,9 +448,10 @@ class ClientInputValidationTests(object):
 
     def test_valid_properties(self, mocker):
         """Test valid_properties() method"""
-        assert input_validator.valid_properties(None) == (True, None)
-        assert input_validator.valid_properties([]) == (False, None)
-        assert input_validator.valid_properties(True) == (False, None)
+        assert input_validator.valid_properties(None) == (True, None, 1024)
+        assert input_validator.valid_properties([]) == (False, None, 0)
+        assert input_validator.valid_properties(True) == (False, None, 0)
+
 
         props1 = {
             "test1": "test",
@@ -460,7 +461,7 @@ class ClientInputValidationTests(object):
             "test5": [],
             2: "t",
         }
-        r1, r2 = input_validator.valid_properties(props1)
+        r1, r2, r3 = input_validator.valid_properties(props1)
         assert r1 == True
         assert len(r2.keys()) == 5
         assert r2["test1"] == "test"
@@ -468,17 +469,19 @@ class ClientInputValidationTests(object):
         assert r2["test3"] == True
         assert r2["test4"] == None
         assert r2["test5"] == None
+        assert r3 == 1053
 
         props2 = dict();
         for i in range(301):
             props2[str(i)] = i
-        assert input_validator.valid_properties(props2) == (True, props2)
+        assert input_validator.valid_properties(props2) == (True, props2, 1817)
 
         props3 = dict();
-        for i in range(110):
-            props3[str(i)] = str(i) * 300
-        r1, r2 = input_validator.valid_properties(props3)
+        for i in range(100, 210):
+            props3["prop" + str(i)] = "a" * 300
+        r1, r2, r3 = input_validator.valid_properties(props3)
         assert r1 == False
+        assert r3 == 32952
 
 
     def test_track(self, mocker):
@@ -681,11 +684,11 @@ class ClientInputValidationTests(object):
 
         client._logger.reset_mock()
         props3 = dict();
-        for i in range(110):
-            props3[str(i)] = str(i) * 300
+        for i in range(100, 210):
+            props3["prop" + str(i)] = "a" * 300
         assert client.track("some_key", "traffic_type", "event_type", 1, props3) is False
         assert client._logger.error.mock_calls == [
-            mocker.call("The maximum size allowed for the properties is 32768 bytes. Current one is 32949 bytes. Event not queued")
+            mocker.call("The maximum size allowed for the properties is 32768 bytes. Current one is 32952 bytes. Event not queued")
         ]
 
 

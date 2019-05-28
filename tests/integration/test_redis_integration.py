@@ -166,9 +166,18 @@ class EventsStorageTests(object):
             metadata = get_metadata({})
             storage = RedisEventsStorage(adapter, metadata)
             storage.put([
-                events.Event('key1', 'user', 'purchase', 3.5, 123456),
-                events.Event('key2', 'user', 'purchase', 3.5, 123456),
-                events.Event('key3', 'user', 'purchase', 3.5, 123456)
+                events.EventWrapper(
+                    event=events.Event('key1', 'user', 'purchase', 3.5, 123456, None),
+                    size=1024,
+                ),
+                events.EventWrapper(
+                    event=events.Event('key2', 'user', 'purchase', 3.5, 123456, None),
+                    size=1024,
+                ),
+                events.EventWrapper(
+                    event=events.Event('key3', 'user', 'purchase', 3.5, 123456, None),
+                    size=1024,
+                ),
             ])
 
             evts = adapter.lrange('SPLITIO.events', 0, 2)

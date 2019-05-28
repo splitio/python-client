@@ -304,6 +304,9 @@ def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  #
     tasks['events'].start()
     tasks['telemetry'].start()
 
+    storages['events'].set_queue_full_hook(tasks['events'].flush())
+    storages['impressions'].set_queue_full_hook(tasks['impressions'].flush())
+
     def split_ready_task():
         """Wait for splits to be ready and start fetching segments."""
         splits_ready_flag.wait()

@@ -9,7 +9,7 @@ from splitio.models.impressions import Impression
 from splitio.models.events import Event
 from splitio.storage.adapters.uwsgi_cache import _SPLITIO_CHANGE_NUMBERS, \
     _SPLITIO_EVENTS_CACHE_NAMESPACE, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE, \
-     _SPLITIO_METRICS_CACHE_NAMESPACE, _SPLITIO_MISC_NAMESPACE, UWSGILock, \
+    _SPLITIO_METRICS_CACHE_NAMESPACE, _SPLITIO_MISC_NAMESPACE, UWSGILock, \
     _SPLITIO_SEGMENTS_CACHE_NAMESPACE, _SPLITIO_SPLITS_CACHE_NAMESPACE, \
     _SPLITIO_LOCK_CACHE_NAMESPACE
 
@@ -113,7 +113,7 @@ class UWSGISplitStorage(SplitStorage):
             self._KEY_TEMPLATE.format(suffix=split_name),
             _SPLITIO_SPLITS_CACHE_NAMESPACE
         )
-        if not result is False:
+        if result is not False:
             self._logger.warning("Trying to retrieve nonexistant split %s. Ignoring.", split_name)
         return result
 
@@ -149,8 +149,8 @@ class UWSGISplitStorage(SplitStorage):
                 return json.loads(
                     self._uwsgi.cache_get(self._KEY_FEATURE_LIST, _SPLITIO_MISC_NAMESPACE)
                 )
-            except TypeError: # Thrown by json.loads when passing none
-                pass # Fall back to default return statement (empty list)
+            except TypeError:  # Thrown by json.loads when passing none
+                pass  # Fall back to default return statement (empty list)
         return []
 
     def get_all_splits(self):
@@ -250,7 +250,6 @@ class UWSGISegmentStorage(SegmentStorage):
             _SPLITIO_SEGMENTS_CACHE_NAMESPACE
         )
         self.set_change_number(segment.name, segment.change_number)
-
 
     def get_change_number(self, segment_name):
         """
@@ -424,7 +423,7 @@ class UWSGIEventStorage(EventStorage):
                 current = []
             self._uwsgi.cache_update(
                 self._EVENTS_KEY,
-                json.dumps(current + [e._asdict() for e in events]),
+                json.dumps(current + [e.event._asdict() for e in events]),
                 0,
                 _SPLITIO_EVENTS_CACHE_NAMESPACE
             )
@@ -457,8 +456,17 @@ class UWSGIEventStorage(EventStorage):
                 event['traffic_type_name'],
                 event['event_type_id'],
                 event['value'],
-                event['timestamp']
-            )   for event in current[:count]
+                event['timestamp'],
+                event['properties']
+            ) if 'properties' in event else
+            Event(
+                event['key'],
+                event['traffic_type_name'],
+                event['event_type_id'],
+                event['value'],
+                event['timestamp'],
+            )
+            for event in current[:count]
         ]
 
     def request_flush(self):
@@ -501,7 +509,6 @@ class UWSGITelemetryStorage(TelemetryStorage):
         self._uwsgi = uwsgi_entrypoint
         self._logger = logging.getLogger(self.__class__.__name__)
 
-
     def inc_latency(self, name, bucket):
         """
         Add a latency.
@@ -516,7 +523,8 @@ class UWSGITelemetryStorage(TelemetryStorage):
             return
 
         with UWSGILock(self._uwsgi, self._LATENCIES_LOCK_KEY):
-            latencies_raw = self._uwsgi.cache_get(self._LATENCIES_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
+            latencies_raw = self._uwsgi.cache_get(
+                self._LATENCIES_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
             latencies = json.loads(latencies_raw) if latencies_raw else {}
             to_update = latencies.get(name, [0] * 22)
             to_update[bucket] += 1
@@ -536,7 +544,8 @@ class UWSGITelemetryStorage(TelemetryStorage):
         :type name: str
         """
         with UWSGILock(self._uwsgi, self._COUNTERS_LOCK_KEY):
-            counters_raw = self._uwsgi.cache_get(self._COUNTERS_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
+            counters_raw = self._uwsgi.cache_get(
+                self._COUNTERS_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
             counters = json.loads(counters_raw) if counters_raw else {}
             value = counters.get(name, 0)
             value += 1
@@ -575,7 +584,8 @@ class UWSGITelemetryStorage(TelemetryStorage):
         :rtype: list
         """
         with UWSGILock(self._uwsgi, self._COUNTERS_LOCK_KEY):
-            counters_raw = self._uwsgi.cache_get(self._COUNTERS_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
+            counters_raw = self._uwsgi.cache_get(
+                self._COUNTERS_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
             self._uwsgi.cache_del(self._COUNTERS_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
             return json.loads(counters_raw) if counters_raw else {}
 
@@ -598,6 +608,7 @@ class UWSGITelemetryStorage(TelemetryStorage):
         :rtype: list
         """
         with UWSGILock(self._uwsgi, self._LATENCIES_LOCK_KEY):
-            latencies_raw = self._uwsgi.cache_get(self._LATENCIES_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
+            latencies_raw = self._uwsgi.cache_get(
+                self._LATENCIES_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
             self._uwsgi.cache_del(self._LATENCIES_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
             return json.loads(latencies_raw) if latencies_raw else {}

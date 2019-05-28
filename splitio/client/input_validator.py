@@ -8,7 +8,6 @@ import re
 import math
 
 import six
-import sys
 
 from splitio.api import APIException
 from splitio.client.key import Key
@@ -476,15 +475,16 @@ def valid_properties(properties):
     :param properties: dict
     :type properties: dict
     :return: tuple
-    :rtype: (bool,dict)
+    :rtype: (bool,dict,int)
     """
+    size = 1024  # We assume 1kb events without properties (750 bytes avg measured)
+
     if properties is None:
-        return True, None
+        return True, None, size
     if not isinstance(properties, dict):
         _LOGGER.error('track: properties must be of type dictionary.')
-        return False, None
+        return False, None, 0
 
-    size = 1024  # We assume 1kb events without properties (750 bytes avg measured)
     valid_properties = None
 
     for property, element in properties.items():
@@ -495,7 +495,7 @@ def valid_properties(properties):
             valid_properties = dict()
 
         valid_properties[property] = None
-        size += sys.getsizeof(property)
+        size += len(property)
 
         if element is None:
             continue
@@ -506,17 +506,18 @@ def valid_properties(properties):
             element = None
 
         valid_properties[property] = element
-        size += sys.getsizeof(str(element))
+
+        if isinstance(element, six.string_types):
+            size += len(element)
 
         if size > MAX_PROPERTIES_LENGTH_BYTES:
             _LOGGER.error(
                 'The maximum size allowed for the properties is 32768 bytes. ' +
                 'Current one is ' + str(size) + ' bytes. Event not queued'
             )
-            return False, None
+            return False, None, size
 
     if isinstance(valid_properties, dict) and len(valid_properties.keys()) > 300:
         _LOGGER.warning('Event has more than 300 properties. Some of them will be trimmed' +
                         ' when processed')
-
-    return True, valid_properties
+    return True, valid_properties, size

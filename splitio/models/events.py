@@ -16,3 +16,8 @@ Event = namedtuple('Event', [
     'timestamp',
     'properties',
 ])
+
+EventWrapper = namedtuple('EventWrapper', [
+    'event',
+    'size',
+])

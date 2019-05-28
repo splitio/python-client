@@ -16,10 +16,10 @@ class EventsAPITests(object):
         sdk_metadata = SdkMetadata('python-1.2.3', 'some_machine_name', '123.123.123.123')
         events_api = events.EventsAPI(httpclient, 'some_api_key', sdk_metadata)
         response = events_api.flush_events([
-            Event('k1', 'user', 'purchase', 12.50, 123456),
-            Event('k2', 'user', 'purchase', 12.50, 123456),
-            Event('k3', 'user', 'purchase', None, 123456),
-            Event('k4', 'user', 'purchase', None, 123456)
+            Event('k1', 'user', 'purchase', 12.50, 123456, None),
+            Event('k2', 'user', 'purchase', 12.50, 123456, None),
+            Event('k3', 'user', 'purchase', None, 123456, {"test": 1234}),
+            Event('k4', 'user', 'purchase', None, 123456, None)
         ])
 
         call_made = httpclient.post.mock_calls[0]
@@ -38,7 +38,7 @@ class EventsAPITests(object):
         assert call_made[2]['body'] == [
             {'key': 'k1', 'trafficTypeName': 'user', 'eventTypeId': 'purchase', 'value': 12.50, 'timestamp': 123456},
             {'key': 'k2', 'trafficTypeName': 'user', 'eventTypeId': 'purchase', 'value': 12.50, 'timestamp': 123456},
-            {'key': 'k3', 'trafficTypeName': 'user', 'eventTypeId': 'purchase', 'value': None, 'timestamp': 123456},
+            {'key': 'k3', 'trafficTypeName': 'user', 'eventTypeId': 'purchase', 'value': None, 'timestamp': 123456, 'properties': {"test": 1234}},
             {'key': 'k4', 'trafficTypeName': 'user', 'eventTypeId': 'purchase', 'value': None, 'timestamp': 123456}
         ]
 
@@ -48,10 +48,10 @@ class EventsAPITests(object):
         httpclient.post.side_effect = raise_exception
         with pytest.raises(APIException) as exc_info:
             response = events_api.flush_events([
-                Event('k1', 'user', 'purchase', 12.50, 123456),
-                Event('k2', 'user', 'purchase', 12.50, 123456),
-                Event('k3', 'user', 'purchase', None, 123456),
-                Event('k4', 'user', 'purchase', None, 123456)
+                Event('k1', 'user', 'purchase', 12.50, 123456, None),
+                Event('k2', 'user', 'purchase', 12.50, 123456, None),
+                Event('k3', 'user', 'purchase', None, 123456, None),
+                Event('k4', 'user', 'purchase', None, 123456, None)
             ])
             assert exc_info.type == APIException
             assert exc_info.value.message == 'some_message'

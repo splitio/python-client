@@ -8,7 +8,7 @@ import six
 from splitio.engine.evaluator import Evaluator, CONTROL
 from splitio.engine.splitters import Splitter
 from splitio.models.impressions import Impression, Label
-from splitio.models.events import Event
+from splitio.models.events import Event, EventWrapper
 from splitio.models.telemetry import get_latency_bucket_index
 from splitio.client import input_validator
 from splitio.client.listener import ImpressionListenerException
@@ -340,7 +340,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         event_type = input_validator.validate_event_type(event_type)
         traffic_type = input_validator.validate_traffic_type(traffic_type)
         value = input_validator.validate_value(value)
-        valid, properties = input_validator.valid_properties(properties)
+        valid, properties, size = input_validator.valid_properties(properties)
 
         if key is None or event_type is None or traffic_type is None or value is False \
            or valid is False:
@@ -354,4 +354,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             timestamp=int(time.time()*1000),
             properties=properties,
         )
-        return self._events_storage.put([event])
+        return self._events_storage.put([EventWrapper(
+            event=event,
+            size=size,
+        )])
