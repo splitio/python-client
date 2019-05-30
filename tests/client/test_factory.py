@@ -1,10 +1,11 @@
 """Split factory test module."""
-#pylint: disable=no-self-use,protected-access
+#pylint: disable=no-self-use,protected-access,line-too-long,too-many-statements
+#pylint: disable=too-many-locals, too-many-arguments
 
 import time
 import threading
 from splitio.client.listener import ImpressionListenerWrapper
-from splitio.client.factory import get_factory
+from splitio.client.factory import get_factory, SplitFactory, _INSTANTIATED_FACTORIES
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.storage import redis, inmemmory, uwsgi
 from splitio.tasks import events_sync, impressions_sync, split_sync, segment_sync, telemetry_sync
@@ -338,3 +339,67 @@ class SplitFactoryTests(object):
 
         assert event.is_set()
         assert factory.destroyed
+
+    def test_multiple_factories(self, mocker):
+        """Test multiple factories instantiation and tracking."""
+        def _make_factory_with_apikey(apikey, *_, **__):
+            return SplitFactory(apikey, {}, True)
+
+        factory_module_logger = mocker.Mock()
+        build_in_memory = mocker.Mock()
+        build_in_memory.side_effect = _make_factory_with_apikey
+        build_redis = mocker.Mock()
+        build_redis.side_effect = _make_factory_with_apikey
+        build_uwsgi = mocker.Mock()
+        build_uwsgi.side_effect = _make_factory_with_apikey
+        build_localhost = mocker.Mock()
+        build_localhost.side_effect = _make_factory_with_apikey
+        mocker.patch('splitio.client.factory._LOGGER', new=factory_module_logger)
+        mocker.patch('splitio.client.factory._build_in_memory_factory', new=build_in_memory)
+        mocker.patch('splitio.client.factory._build_redis_factory', new=build_redis)
+        mocker.patch('splitio.client.factory._build_uwsgi_factory', new=build_uwsgi)
+        mocker.patch('splitio.client.factory._build_localhost_factory', new=build_localhost)
+
+        _INSTANTIATED_FACTORIES.clear()  # Clear all factory counters for testing purposes
+
+        factory1 = get_factory('some_api_key')
+        assert _INSTANTIATED_FACTORIES['some_api_key'] == 1
+        assert factory_module_logger.warning.mock_calls == []
+
+        get_factory('some_api_key')
+        assert _INSTANTIATED_FACTORIES['some_api_key'] == 2
+        assert factory_module_logger.warning.mock_calls == [mocker.call(
+            "factory instantiation: You already have %d %s with this API Key. "
+            "We recommend keeping only one instance of the factory at all times "
+            "(Singleton pattern) and reusing it throughout your application.",
+            1,
+            'factory'
+        )]
+
+        factory_module_logger.reset_mock()
+        get_factory('some_api_key')
+        assert _INSTANTIATED_FACTORIES['some_api_key'] == 3
+        assert factory_module_logger.warning.mock_calls == [mocker.call(
+            "factory instantiation: You already have %d %s with this API Key. "
+            "We recommend keeping only one instance of the factory at all times "
+            "(Singleton pattern) and reusing it throughout your application.",
+            2,
+            'factories'
+        )]
+
+        factory_module_logger.reset_mock()
+        get_factory('some_other_api_key')
+        assert _INSTANTIATED_FACTORIES['some_api_key'] == 3
+        assert _INSTANTIATED_FACTORIES['some_other_api_key'] == 1
+        assert factory_module_logger.warning.mock_calls == [mocker.call(
+            "factory instantiation: You already have an instance of the Split factory. "
+            "Make sure you definitely want this additional instance. "
+            "We recommend keeping only one instance of the factory at all times "
+            "(Singleton pattern) and reusing it throughout your application."
+        )]
+
+        event = threading.Event()
+        factory1.destroy(event)
+        event.wait()
+        assert _INSTANTIATED_FACTORIES['some_other_api_key'] == 1
+        assert _INSTANTIATED_FACTORIES['some_api_key'] == 2

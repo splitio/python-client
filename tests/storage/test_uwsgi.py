@@ -16,24 +16,41 @@ from splitio.storage.adapters.uwsgi_cache import get_uwsgi
 class UWSGISplitStorageTests(object):
     """UWSGI Split Storage test cases."""
 
+    @staticmethod
+    def _get_from_raw_mock(mocker):
+        def _do(raw):
+            mock_split = mocker.Mock()
+            mock_split = mocker.Mock(spec=Split)
+            mock_split.to_json.return_value = raw
+            split_name = mocker.PropertyMock()
+            split_name.return_value = raw['name']
+            type(mock_split).name = split_name
+            traffic_type_name = mocker.PropertyMock()
+            traffic_type_name.return_value = raw['trafficTypeName']
+            type(mock_split).traffic_type_name = traffic_type_name
+            return mock_split
+
+        from_raw_mock = mocker.Mock()
+        from_raw_mock.side_effect = lambda x: _do(x)
+        return from_raw_mock
+
     def test_store_retrieve_split(self, mocker):
         """Test storing and retrieving splits."""
         uwsgi = get_uwsgi(True)
         storage = UWSGISplitStorage(uwsgi)
-        split = mocker.Mock(spec=Split)
-        split.to_json.return_value = '{}'
-        split_name = mocker.PropertyMock()
-        split_name.return_value = 'some_split'
-        type(split).name = split_name
+        from_raw_mock = self._get_from_raw_mock(mocker)
+        mocker.patch('splitio.models.splits.from_raw', new=from_raw_mock)
+
+        raw_split = {'name': 'some_split', 'trafficTypeName': 'user'}
+        split = from_raw_mock(raw_split)
+
+        from_raw_mock.reset_mock()  # clear mock calls so they don't interfere with the testing itself.
         storage.put(split)
 
-        from_raw_mock = mocker.Mock()
-        from_raw_mock.return_value = 'ok'
-        mocker.patch('splitio.models.splits.from_raw', new=from_raw_mock)
         retrieved = storage.get('some_split')
 
-        assert retrieved == 'ok'
-        assert from_raw_mock.mock_calls == [mocker.call('{}')]
+        assert retrieved.name == split.name and retrieved.traffic_type_name == split.traffic_type_name
+        assert from_raw_mock.mock_calls == [mocker.call(raw_split)]
         assert split.to_json.mock_calls == [mocker.call()]
 
         assert storage.get('nonexistant_split') is None
@@ -54,18 +71,14 @@ class UWSGISplitStorageTests(object):
         """Test getting all split names."""
         uwsgi = get_uwsgi(True)
         storage = UWSGISplitStorage(uwsgi)
-        split_1 = mocker.Mock(spec=Split)
-        split_1.to_json.return_value = '{"name": "split1"}'
-        split_name_1 = mocker.PropertyMock()
-        split_name_1.return_value = 'some_split_1'
-        type(split_1).name = split_name_1
-        split_2 = mocker.Mock(spec=Split)
-        split_2.to_json.return_value = '{"name": "split2"}'
-        split_name_2 = mocker.PropertyMock()
-        split_name_2.return_value = 'some_split_2'
-        type(split_2).name = split_name_2
+        from_raw_mock = self._get_from_raw_mock(mocker)
+        mocker.patch('splitio.models.splits.from_raw', new=from_raw_mock)
+
+        split_1 = from_raw_mock({'name': 'some_split_1', 'trafficTypeName': 'user'})
+        split_2 = from_raw_mock({'name': 'some_split_2', 'trafficTypeName': 'user'})
         storage.put(split_1)
         storage.put(split_2)
+
         assert set(storage.get_split_names()) == set(['some_split_1', 'some_split_2'])
         storage.remove('some_split_1')
         assert storage.get_split_names() == ['some_split_2']
@@ -74,25 +87,11 @@ class UWSGISplitStorageTests(object):
         """Test fetching all splits."""
         uwsgi = get_uwsgi(True)
         storage = UWSGISplitStorage(uwsgi)
-        split_1 = mocker.Mock(spec=Split)
-        split_1.to_json.return_value = '{"name": "some_split_1"}'
-        split_name_1 = mocker.PropertyMock()
-        split_name_1.return_value = 'some_split_1'
-        type(split_1).name = split_name_1
-        split_2 = mocker.Mock(spec=Split)
-        split_2.to_json.return_value = '{"name": "some_split_2"}'
-        split_name_2 = mocker.PropertyMock()
-        split_name_2.return_value = 'some_split_2'
-        type(split_2).name = split_name_2
+        from_raw_mock = self._get_from_raw_mock(mocker)
+        mocker.patch('splitio.models.splits.from_raw', new=from_raw_mock)
 
-        def _from_raw_mock(split_json):
-            split_mock = mocker.Mock(spec=Split)
-            name = mocker.PropertyMock()
-            name.return_value = json.loads(split_json)['name']
-            type(split_mock).name = name
-            return split_mock
-        mocker.patch('splitio.storage.uwsgi.splits.from_raw', new=_from_raw_mock)
-
+        split_1 = from_raw_mock({'name': 'some_split_1', 'trafficTypeName': 'user'})
+        split_2 = from_raw_mock({'name': 'some_split_2', 'trafficTypeName': 'user'})
         storage.put(split_1)
         storage.put(split_2)
 
@@ -100,7 +99,42 @@ class UWSGISplitStorageTests(object):
         s1 = next(split for split in splits if split.name == 'some_split_1')
         s2 = next(split for split in splits if split.name == 'some_split_2')
 
+        assert s1.traffic_type_name == 'user'
+        assert s2.traffic_type_name == 'user'
 
+    def test_is_valid_traffic_type(self, mocker):
+        """Test that traffic type validation works properly."""
+        uwsgi = get_uwsgi(True)
+        storage = UWSGISplitStorage(uwsgi)
+        from_raw_mock = self._get_from_raw_mock(mocker)
+        mocker.patch('splitio.models.splits.from_raw', new=from_raw_mock)
+
+        split_1 = from_raw_mock({'name': 'some_split_1', 'trafficTypeName': 'user'})
+        storage.put(split_1)
+        assert storage.is_valid_traffic_type('user') is True
+        assert storage.is_valid_traffic_type('account') is False
+
+        split_2 = from_raw_mock({'name': 'some_split_2', 'trafficTypeName': 'account'})
+        storage.put(split_2)
+        assert storage.is_valid_traffic_type('user') is True
+        assert storage.is_valid_traffic_type('account') is True
+
+        split_3 = from_raw_mock({'name': 'some_split_3', 'trafficTypeName': 'user'})
+        storage.put(split_3)
+        assert storage.is_valid_traffic_type('user') is True
+        assert storage.is_valid_traffic_type('account') is True
+
+        storage.remove('some_split_1')
+        assert storage.is_valid_traffic_type('user') is True
+        assert storage.is_valid_traffic_type('account') is True
+
+        storage.remove('some_split_2')
+        assert storage.is_valid_traffic_type('user') is True
+        assert storage.is_valid_traffic_type('account') is False
+
+        storage.remove('some_split_3')
+        assert storage.is_valid_traffic_type('user') is False
+        assert storage.is_valid_traffic_type('account') is False
 
 class UWSGISegmentStorageTests(object):
     """UWSGI Segment storage test cases."""

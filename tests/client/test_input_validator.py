@@ -182,54 +182,67 @@ class ClientInputValidationTests(object):
         ]
 
         client._logger.reset_mock()
-        assert client.get_treatment(Key('mathcing_key', None), 'some_feature') == CONTROL
+        assert client.get_treatment(Key('matching_key', None), 'some_feature') == CONTROL
         assert client._logger.error.mock_calls == [
             mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment', 'bucketing_key', 'bucketing_key')
         ]
 
         client._logger.reset_mock()
-        assert client.get_treatment(Key('mathcing_key', True), 'some_feature') == CONTROL
+        assert client.get_treatment(Key('matching_key', True), 'some_feature') == CONTROL
         assert client._logger.error.mock_calls == [
             mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'bucketing_key', 'bucketing_key')
         ]
 
         client._logger.reset_mock()
-        assert client.get_treatment(Key('mathcing_key', []), 'some_feature') == CONTROL
+        assert client.get_treatment(Key('matching_key', []), 'some_feature') == CONTROL
         assert client._logger.error.mock_calls == [
             mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'bucketing_key', 'bucketing_key')
         ]
 
         client._logger.reset_mock()
-        assert client.get_treatment(Key('mathcing_key', ''), 'some_feature') == CONTROL
+        assert client.get_treatment(Key('matching_key', ''), 'some_feature') == CONTROL
         assert client._logger.error.mock_calls == [
             mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatment', 'bucketing_key', 'bucketing_key')
         ]
 
         client._logger.reset_mock()
-        assert client.get_treatment(Key('mathcing_key', 12345), 'some_feature') == 'default_treatment'
+        assert client.get_treatment(Key('matching_key', 12345), 'some_feature') == 'default_treatment'
         assert client._logger.warning.mock_calls == [
             mocker.call('%s: %s %s is not of type string, converting.', 'get_treatment', 'bucketing_key', 12345)
         ]
 
         client._logger.reset_mock()
-        assert client.get_treatment('mathcing_key', 'some_feature', True) == CONTROL
+        assert client.get_treatment('matching_key', 'some_feature', True) == CONTROL
         assert client._logger.error.mock_calls == [
             mocker.call('%s: attributes must be of type dictionary.', 'get_treatment')
         ]
 
         client._logger.reset_mock()
-        assert client.get_treatment('mathcing_key', 'some_feature', {'test': 'test'}) == 'default_treatment'
+        assert client.get_treatment('matching_key', 'some_feature', {'test': 'test'}) == 'default_treatment'
         assert client._logger.error.mock_calls == []
 
         client._logger.reset_mock()
-        assert client.get_treatment('mathcing_key', 'some_feature', None) == 'default_treatment'
+        assert client.get_treatment('matching_key', 'some_feature', None) == 'default_treatment'
         assert client._logger.error.mock_calls == []
 
         client._logger.reset_mock()
-        assert client.get_treatment('mathcing_key', '  some_feature   ', None) == 'default_treatment'
+        assert client.get_treatment('matching_key', '  some_feature   ', None) == 'default_treatment'
         assert client._logger.warning.mock_calls == [
             mocker.call('%s: feature_name \'%s\' has extra whitespace, trimming.', 'get_treatment', '  some_feature   ')
         ]
+
+        client._logger.reset_mock()
+        storage_mock.get.return_value = None
+        assert client.get_treatment('matching_key', 'some_feature', None) == CONTROL
+        assert client._logger.warning.mock_calls == [
+            mocker.call(
+                "%s: you passed \"%s\" that does not exist in this environment, "
+                "please double check what Splits exist in the web console.",
+                'get_treatment',
+                'some_feature'
+            )
+        ]
+
 
     def test_get_treatment_with_config(self, mocker):
         """Test get_treatment validation."""
@@ -397,53 +410,65 @@ class ClientInputValidationTests(object):
         ]
 
         client._logger.reset_mock()
-        assert client.get_treatment_with_config(Key('mathcing_key', None), 'some_feature') == (CONTROL, None)
+        assert client.get_treatment_with_config(Key('matching_key', None), 'some_feature') == (CONTROL, None)
         assert client._logger.error.mock_calls == [
             mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment_with_config', 'bucketing_key', 'bucketing_key')
         ]
 
         client._logger.reset_mock()
-        assert client.get_treatment_with_config(Key('mathcing_key', True), 'some_feature') == (CONTROL, None)
+        assert client.get_treatment_with_config(Key('matching_key', True), 'some_feature') == (CONTROL, None)
         assert client._logger.error.mock_calls == [
             mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'bucketing_key', 'bucketing_key')
         ]
 
         client._logger.reset_mock()
-        assert client.get_treatment_with_config(Key('mathcing_key', []), 'some_feature') == (CONTROL, None)
+        assert client.get_treatment_with_config(Key('matching_key', []), 'some_feature') == (CONTROL, None)
         assert client._logger.error.mock_calls == [
             mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'bucketing_key', 'bucketing_key')
         ]
 
         client._logger.reset_mock()
-        assert client.get_treatment_with_config(Key('mathcing_key', ''), 'some_feature') == (CONTROL, None)
+        assert client.get_treatment_with_config(Key('matching_key', ''), 'some_feature') == (CONTROL, None)
         assert client._logger.error.mock_calls == [
             mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatment_with_config', 'bucketing_key', 'bucketing_key')
         ]
 
         client._logger.reset_mock()
-        assert client.get_treatment_with_config(Key('mathcing_key', 12345), 'some_feature') == ('default_treatment', '{"some": "property"}')
+        assert client.get_treatment_with_config(Key('matching_key', 12345), 'some_feature') == ('default_treatment', '{"some": "property"}')
         assert client._logger.warning.mock_calls == [
             mocker.call('%s: %s %s is not of type string, converting.', 'get_treatment_with_config', 'bucketing_key', 12345)
         ]
 
         client._logger.reset_mock()
-        assert client.get_treatment_with_config('mathcing_key', 'some_feature', True) == (CONTROL, None)
+        assert client.get_treatment_with_config('matching_key', 'some_feature', True) == (CONTROL, None)
         assert client._logger.error.mock_calls == [
             mocker.call('%s: attributes must be of type dictionary.', 'get_treatment_with_config')
         ]
 
         client._logger.reset_mock()
-        assert client.get_treatment_with_config('mathcing_key', 'some_feature', {'test': 'test'}) == ('default_treatment', '{"some": "property"}')
+        assert client.get_treatment_with_config('matching_key', 'some_feature', {'test': 'test'}) == ('default_treatment', '{"some": "property"}')
         assert client._logger.error.mock_calls == []
 
         client._logger.reset_mock()
-        assert client.get_treatment_with_config('mathcing_key', 'some_feature', None) == ('default_treatment', '{"some": "property"}')
+        assert client.get_treatment_with_config('matching_key', 'some_feature', None) == ('default_treatment', '{"some": "property"}')
         assert client._logger.error.mock_calls == []
 
         client._logger.reset_mock()
-        assert client.get_treatment_with_config('mathcing_key', '  some_feature   ', None) == ('default_treatment', '{"some": "property"}')
+        assert client.get_treatment_with_config('matching_key', '  some_feature   ', None) == ('default_treatment', '{"some": "property"}')
         assert client._logger.warning.mock_calls == [
             mocker.call('%s: feature_name \'%s\' has extra whitespace, trimming.', 'get_treatment_with_config', '  some_feature   ')
+        ]
+
+        client._logger.reset_mock()
+        storage_mock.get.return_value = None
+        assert client.get_treatment_with_config('matching_key', 'some_feature', None) == (CONTROL, None)
+        assert client._logger.warning.mock_calls == [
+            mocker.call(
+                "%s: you passed \"%s\" that does not exist in this environment, "
+                "please double check what Splits exist in the web console.",
+                'get_treatment_with_config',
+                'some_feature'
+            )
         ]
 
     def test_valid_properties(self, mocker):
@@ -490,7 +515,6 @@ class ClientInputValidationTests(object):
         assert r1 == False
         assert r3 == 32952
 
-
     def test_track(self, mocker):
         """Test track method()."""
         events_storage_mock = mocker.Mock(spec=EventStorage)
@@ -499,6 +523,7 @@ class ClientInputValidationTests(object):
         factory_destroyed = mocker.PropertyMock()
         factory_destroyed.return_value = False
         type(factory_mock).destroyed = factory_destroyed
+        factory_mock._apikey = 'some-test'
 
         client = Client(factory_mock)
         client._events_storage = mocker.Mock(spec=EventStorage)
@@ -648,24 +673,64 @@ class ClientInputValidationTests(object):
             mocker.call("track: value must be a number.")
         ]
 
+        # Test traffic type existance
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = True
+        type(factory_mock).ready = ready_property
+
+        split_storage_mock = mocker.Mock(spec=SplitStorage)
+        split_storage_mock.is_valid_traffic_type.return_value = True
+        factory_mock._get_storage.return_value = split_storage_mock
+
+        # Test that it doesn't warn if tt is cached, not in localhost mode and sdk is ready
+        client._logger.reset_mock()
+        assert client.track("some_key", "traffic_type", "event_type", None) is True
+        assert client._logger.error.mock_calls == []
+        assert client._logger.warning.mock_calls == []
+
+        # Test that it does warn if tt is cached, not in localhost mode and sdk is ready
+        split_storage_mock.is_valid_traffic_type.return_value = False
+        client._logger.reset_mock()
+        assert client.track("some_key", "traffic_type", "event_type", None) is True
+        assert client._logger.error.mock_calls == []
+        assert client._logger.warning.mock_calls == [mocker.call(
+            'track: Traffic Type %s does not have any corresponding Splits in this environment, '
+            'make sure you\'re tracking your events to a valid traffic type defined '
+            'in the Split console.',
+            'traffic_type'
+        )]
+
+        # Test that it does not warn when in localhost mode.
+        factory_mock._apikey = 'localhost'
+        client._logger.reset_mock()
+        assert client.track("some_key", "traffic_type", "event_type", None) is True
+        assert client._logger.error.mock_calls == []
+        assert client._logger.warning.mock_calls == []
+
+        # Test that it does not warn when not in localhost mode and not ready
+        factory_mock._apikey = 'not-localhost'
+        ready_property.return_value = False
+        type(factory_mock).ready = ready_property
+        client._logger.reset_mock()
+        assert client.track("some_key", "traffic_type", "event_type", None) is True
+        assert client._logger.error.mock_calls == []
+        assert client._logger.warning.mock_calls == []
+
+        # Test track with invalid properties
         client._logger.reset_mock()
         assert client.track("some_key", "traffic_type", "event_type", 1, []) is False
         assert client._logger.error.mock_calls == [
             mocker.call("track: properties must be of type dictionary.")
         ]
 
-        client._logger.reset_mock()
-        assert client.track("some_key", "traffic_type", "event_type", 1, []) is False
-        assert client._logger.error.mock_calls == [
-            mocker.call("track: properties must be of type dictionary.")
-        ]
-
+        # Test track with invalid properties
         client._logger.reset_mock()
         assert client.track("some_key", "traffic_type", "event_type", 1, True) is False
         assert client._logger.error.mock_calls == [
             mocker.call("track: properties must be of type dictionary.")
         ]
 
+        # Test track with properties
         props1 = {
             "test1": "test",
             "test2": 1,
@@ -680,6 +745,7 @@ class ClientInputValidationTests(object):
             mocker.call("Property %s is of invalid type. Setting value to None", [])
         ]
 
+        # Test track with more than 300 properties
         props2 = dict();
         for i in range(301):
             props2[str(i)] = i
@@ -689,6 +755,7 @@ class ClientInputValidationTests(object):
             mocker.call("Event has more than 300 properties. Some of them will be trimmed when processed")
         ]
 
+        # Test track with properties higher than 32kb
         client._logger.reset_mock()
         props3 = dict();
         for i in range(100, 210):
@@ -697,7 +764,6 @@ class ClientInputValidationTests(object):
         assert client._logger.error.mock_calls == [
             mocker.call("The maximum size allowed for the properties is 32768 bytes. Current one is 32952 bytes. Event not queued")
         ]
-
 
     def test_get_treatments(self, mocker):
         """Test getTreatments() method."""
@@ -712,8 +778,16 @@ class ClientInputValidationTests(object):
         storage_mock = mocker.Mock(spec=SplitStorage)
         storage_mock.get.return_value = split_mock
 
+        def _get_storage_mock(storage):
+            return {
+                'splits': storage_mock,
+                'segments': mocker.Mock(spec=SegmentStorage),
+                'impressions': mocker.Mock(spec=ImpressionStorage),
+                'events': mocker.Mock(spec=EventStorage),
+                'telemetry': mocker.Mock(spec=TelemetryStorage)
+            }[storage]
         factory_mock = mocker.Mock(spec=SplitFactory)
-        factory_mock._get_storage.return_value = storage_mock
+        factory_mock._get_storage.side_effect = _get_storage_mock
         factory_destroyed = mocker.PropertyMock()
         factory_destroyed.return_value = False
         type(factory_mock).destroyed = factory_destroyed
@@ -800,6 +874,21 @@ class ClientInputValidationTests(object):
         assert client.get_treatments('some_key', ['some   ']) == {'some': 'default_treatment'}
         assert client._logger.warning.mock_calls == [
             mocker.call('%s: feature_name \'%s\' has extra whitespace, trimming.', 'get_treatments', 'some   ')
+        ]
+
+        client._logger.reset_mock()
+        storage_mock.get.return_value = None
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory_mock).ready = ready_mock
+        assert client.get_treatments('matching_key', ['some_feature'], None) == {'some_feature': CONTROL}
+        assert client._logger.warning.mock_calls == [
+            mocker.call(
+                "%s: you passed \"%s\" that does not exist in this environment, "
+                "please double check what Splits exist in the web console.",
+                'get_treatments',
+                'some_feature'
+            )
         ]
 
     def test_get_treatments_with_config(self, mocker):
@@ -908,6 +997,22 @@ class ClientInputValidationTests(object):
             mocker.call('%s: feature_name \'%s\' has extra whitespace, trimming.', 'get_treatments_with_config', 'some_feature   ')
         ]
 
+        client._logger.reset_mock()
+        storage_mock.get.return_value = None
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory_mock).ready = ready_mock
+        assert client.get_treatments('matching_key', ['some_feature'], None) == {'some_feature': CONTROL}
+        assert client._logger.warning.mock_calls == [
+            mocker.call(
+                "%s: you passed \"%s\" that does not exist in this environment, "
+                "please double check what Splits exist in the web console.",
+                'get_treatments',
+                'some_feature'
+            )
+        ]
+
+
 
 class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-methods
     """Manager input validation test cases."""
@@ -955,6 +1060,16 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
         assert split_mock.to_split_view.mock_calls == [mocker.call()]
         assert manager._logger.error.mock_calls == []
 
+        manager._logger.reset_mock()
+        split_mock.reset_mock()
+        storage_mock.get.return_value = None
+        manager.split('nonexistant-split')
+        assert split_mock.to_split_view.mock_calls == []
+        assert manager._logger.warning.mock_calls == [mocker.call(
+            "split: you passed \"%s\" that does not exist in this environment, "
+            "please double check what Splits exist in the web console.",
+            'nonexistant-split'
+        )]
 
 class FactoryInputValidationTests(object):  #pylint: disable=too-few-public-methods
     """Factory instantiation input validation test cases."""

@@ -85,6 +85,25 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                 )
                 self._logger.debug('Error', exc_info=True)
 
+    def _evaluate_if_ready(self, matching_key, bucketing_key, feature, attributes=None):
+        if not self.ready:
+            return {
+                'treatment': CONTROL,
+                'configurations': None,
+                'impression': {
+                    'label': Label.NOT_READY,
+                    'change_number': None
+                }
+            }
+
+        return self._evaluator.evaluate_treatment(
+            feature,
+            matching_key,
+            bucketing_key,
+            attributes
+        )
+
+
     def get_treatment_with_config(self, key, feature, attributes=None):
         """
         Get the treatment and config for a feature and key, with optional dictionary of attributes.
@@ -109,19 +128,18 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             start = int(round(time.time() * 1000))
 
             matching_key, bucketing_key = input_validator.validate_key(key)
-            feature = input_validator.validate_feature_name(feature)
+            feature = input_validator.validate_feature_name(
+                feature,
+                self.ready,
+                self._factory._get_storage('splits')  #pylint: disable=protected-access
+            )
 
             if (matching_key is None and bucketing_key is None) \
                     or feature is None \
                     or not input_validator.validate_attributes(attributes):
                 return CONTROL, None
 
-            result = self._evaluator.evaluate_treatment(
-                feature,
-                matching_key,
-                bucketing_key,
-                attributes
-            )
+            result = self._evaluate_if_ready(matching_key, bucketing_key, feature, attributes)
 
             impression = self._build_impression(
                 matching_key,
@@ -204,32 +222,30 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         if input_validator.validate_attributes(attributes) is False:
             return input_validator.generate_control_treatments(features)
 
-        features = input_validator.validate_features_get_treatments(features)
+        features, missing = input_validator.validate_features_get_treatments(
+            features,
+            self.ready,
+            self._factory._get_storage('splits')  # pylint: disable=protected-access
+        )
         if features is None:
             return {}
 
         bulk_impressions = []
-        treatments = {}
+        treatments = {name: (CONTROL, None) for name in missing}
 
         for feature in features:
             try:
-                treatment = self._evaluator.evaluate_treatment(
-                    feature,
-                    matching_key,
-                    bucketing_key,
-                    attributes
-                )
-
+                result = self._evaluate_if_ready(matching_key, bucketing_key, feature, attributes)
                 impression = self._build_impression(matching_key,
                                                     feature,
-                                                    treatment['treatment'],
-                                                    treatment['impression']['label'],
-                                                    treatment['impression']['change_number'],
+                                                    result['treatment'],
+                                                    result['impression']['label'],
+                                                    result['impression']['change_number'],
                                                     bucketing_key,
                                                     start)
 
                 bulk_impressions.append(impression)
-                treatments[feature] = (treatment['treatment'], treatment['configurations'])
+                treatments[feature] = (result['treatment'], result['configurations'])
 
             except Exception:  # pylint: disable=broad-except
                 self._logger.error('get_treatments: An exception occured when evaluating '
@@ -338,7 +354,13 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
         key = input_validator.validate_track_key(key)
         event_type = input_validator.validate_event_type(event_type)
-        traffic_type = input_validator.validate_traffic_type(traffic_type)
+        should_validate_existance = self.ready and self._factory._apikey != 'localhost' #pylint: disable=protected-access
+        traffic_type = input_validator.validate_traffic_type(
+            traffic_type,
+            should_validate_existance,
+            self._factory._get_storage('splits'), #pylint: disable=protected-access
+        )
+
         value = input_validator.validate_value(value)
         valid, properties, size = input_validator.valid_properties(properties)
 

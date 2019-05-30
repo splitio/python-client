@@ -39,7 +39,7 @@ class InMemoryIntegrationTests(object):
             data = json.loads(flo.read())
         segment_storage.put(segments.from_raw(data))
 
-        self.factory = SplitFactory({  #pylint:disable=attribute-defined-outside-init
+        self.factory = SplitFactory('some_api_key', {  #pylint:disable=attribute-defined-outside-init
             'splits': split_storage,
             'segments': segment_storage,
             'impressions': InMemoryImpressionStorage(5000),
@@ -65,7 +65,7 @@ class InMemoryIntegrationTests(object):
         self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
 
         assert client.get_treatment('invalidKey', 'invalid_feature') == 'control'
-        self._validate_last_impressions(client, ('invalid_feature', 'invalidKey', 'control'))
+        self._validate_last_impressions(client)  # No impressions should be present
 
         # testing a killed feature. No matter what the key, must return default treatment
         assert client.get_treatment('invalidKey', 'killed_feature') == 'defTreatment'
@@ -83,7 +83,7 @@ class InMemoryIntegrationTests(object):
 
         #  testing INVALID matcher
         assert client.get_treatment('some_user_key', 'invalid_matcher_feature') == 'control'
-        self._validate_last_impressions(client, ('invalid_matcher_feature', 'some_user_key', 'control'))
+        self._validate_last_impressions(client)  # No impressions should be present
 
         #  testing Dependency matcher
         assert client.get_treatment('somekey', 'dependency_test') == 'off'
@@ -111,7 +111,7 @@ class InMemoryIntegrationTests(object):
 
         result = client.get_treatment_with_config('invalidKey', 'invalid_feature')
         assert result == ('control', None)
-        self._validate_last_impressions(client, ('invalid_feature', 'invalidKey', 'control'))
+        self._validate_last_impressions(client)
 
         # testing a killed feature. No matter what the key, must return default treatment
         result = client.get_treatment_with_config('invalidKey', 'killed_feature')
@@ -140,7 +140,7 @@ class InMemoryIntegrationTests(object):
         result = client.get_treatments('invalidKey', ['invalid_feature'])
         assert len(result) == 1
         assert result['invalid_feature'] == 'control'
-        self._validate_last_impressions(client, ('invalid_feature', 'invalidKey', 'control'))
+        self._validate_last_impressions(client)
 
         # testing a killed feature. No matter what the key, must return default treatment
         result = client.get_treatments('invalidKey', ['killed_feature'])
@@ -170,7 +170,6 @@ class InMemoryIntegrationTests(object):
             client,
             ('all_feature', 'invalidKey', 'on'),
             ('killed_feature', 'invalidKey', 'defTreatment'),
-            ('invalid_feature', 'invalidKey', 'control'),
             ('sample_feature', 'invalidKey', 'off')
         )
 
@@ -191,7 +190,7 @@ class InMemoryIntegrationTests(object):
         result = client.get_treatments_with_config('invalidKey', ['invalid_feature'])
         assert len(result) == 1
         assert result['invalid_feature'] == ('control', None)
-        self._validate_last_impressions(client, ('invalid_feature', 'invalidKey', 'control'))
+        self._validate_last_impressions(client)
 
         # testing a killed feature. No matter what the key, must return default treatment
         result = client.get_treatments_with_config('invalidKey', ['killed_feature'])
@@ -221,7 +220,6 @@ class InMemoryIntegrationTests(object):
             client,
             ('all_feature', 'invalidKey', 'on'),
             ('killed_feature', 'invalidKey', 'defTreatment'),
-            ('invalid_feature', 'invalidKey', 'control'),
             ('sample_feature', 'invalidKey', 'off'),
         )
 
@@ -286,7 +284,7 @@ class RedisIntegrationTests(object):
         redis_client.sadd(segment_storage._get_key(data['name']), *data['added'])
         redis_client.set(segment_storage._get_till_key(data['name']), data['till'])
 
-        self.factory = SplitFactory({  #pylint:disable=attribute-defined-outside-init
+        self.factory = SplitFactory('some_api_key', {  #pylint:disable=attribute-defined-outside-init
             'splits': split_storage,
             'segments': segment_storage,
             'impressions': RedisImpressionsStorage(redis_client, metadata),
@@ -320,7 +318,7 @@ class RedisIntegrationTests(object):
         self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
 
         assert client.get_treatment('invalidKey', 'invalid_feature') == 'control'
-        self._validate_last_impressions(client, ('invalid_feature', 'invalidKey', 'control'))
+        self._validate_last_impressions(client)
 
         # testing a killed feature. No matter what the key, must return default treatment
         assert client.get_treatment('invalidKey', 'killed_feature') == 'defTreatment'
@@ -338,7 +336,7 @@ class RedisIntegrationTests(object):
 
         #  testing INVALID matcher
         assert client.get_treatment('some_user_key', 'invalid_matcher_feature') == 'control'
-        self._validate_last_impressions(client, ('invalid_matcher_feature', 'some_user_key', 'control'))
+        self._validate_last_impressions(client)
 
         #  testing Dependency matcher
         assert client.get_treatment('somekey', 'dependency_test') == 'off'
@@ -366,7 +364,7 @@ class RedisIntegrationTests(object):
 
         result = client.get_treatment_with_config('invalidKey', 'invalid_feature')
         assert result == ('control', None)
-        self._validate_last_impressions(client, ('invalid_feature', 'invalidKey', 'control'))
+        self._validate_last_impressions(client)
 
         # testing a killed feature. No matter what the key, must return default treatment
         result = client.get_treatment_with_config('invalidKey', 'killed_feature')
@@ -395,7 +393,7 @@ class RedisIntegrationTests(object):
         result = client.get_treatments('invalidKey', ['invalid_feature'])
         assert len(result) == 1
         assert result['invalid_feature'] == 'control'
-        self._validate_last_impressions(client, ('invalid_feature', 'invalidKey', 'control'))
+        self._validate_last_impressions(client)
 
         # testing a killed feature. No matter what the key, must return default treatment
         result = client.get_treatments('invalidKey', ['killed_feature'])
@@ -425,7 +423,6 @@ class RedisIntegrationTests(object):
             client,
             ('all_feature', 'invalidKey', 'on'),
             ('killed_feature', 'invalidKey', 'defTreatment'),
-            ('invalid_feature', 'invalidKey', 'control'),
             ('sample_feature', 'invalidKey', 'off')
         )
 
@@ -446,7 +443,7 @@ class RedisIntegrationTests(object):
         result = client.get_treatments_with_config('invalidKey', ['invalid_feature'])
         assert len(result) == 1
         assert result['invalid_feature'] == ('control', None)
-        self._validate_last_impressions(client, ('invalid_feature', 'invalidKey', 'control'))
+        self._validate_last_impressions(client)
 
         # testing a killed feature. No matter what the key, must return default treatment
         result = client.get_treatments_with_config('invalidKey', ['killed_feature'])
@@ -476,7 +473,6 @@ class RedisIntegrationTests(object):
             client,
             ('all_feature', 'invalidKey', 'on'),
             ('killed_feature', 'invalidKey', 'defTreatment'),
-            ('invalid_feature', 'invalidKey', 'control'),
             ('sample_feature', 'invalidKey', 'off'),
         )
 
@@ -535,7 +531,45 @@ class RedisIntegrationTests(object):
             redis_client.delete(key)
 
 
-class LocalhostIntegrationTests(object):
+class RedisWithCacheIntegrationTests(RedisIntegrationTests):
+    """Run the same tests as RedisIntegratioTests but with LRU/Expirable cache overlay."""
+
+    def setup_method(self):
+        """Prepare storages with test data."""
+        metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
+        redis_client = RedisAdapter(StrictRedis())
+        split_storage = RedisSplitStorage(redis_client, True)
+        segment_storage = RedisSegmentStorage(redis_client)
+
+        split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
+        with open(split_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        for split in data['splits']:
+            redis_client.set(split_storage._get_key(split['name']), json.dumps(split))
+        redis_client.set(split_storage._SPLIT_TILL_KEY, data['till'])
+
+        segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
+        with open(segment_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        redis_client.sadd(segment_storage._get_key(data['name']), *data['added'])
+        redis_client.set(segment_storage._get_till_key(data['name']), data['till'])
+
+        segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentHumanBeignsChanges.json')
+        with open(segment_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        redis_client.sadd(segment_storage._get_key(data['name']), *data['added'])
+        redis_client.set(segment_storage._get_till_key(data['name']), data['till'])
+
+        self.factory = SplitFactory('some_api_key', {  #pylint:disable=attribute-defined-outside-init
+            'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': RedisImpressionsStorage(redis_client, metadata),
+            'events': RedisEventsStorage(redis_client, metadata),
+            'telemetry': RedisTelemetryStorage(redis_client, metadata)
+        }, True)
+
+
+class LocalhostIntegrationTests(object):  #pylint: disable=too-few-public-methods
     """Client & Manager integration tests."""
 
     def test_localhost_e2e(self):

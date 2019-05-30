@@ -26,6 +26,7 @@ class SplitStorageTests(object):
             for split_object in split_objects:
                 raw = split_object.to_json()
                 adapter.set(RedisSplitStorage._SPLIT_KEY.format(split_name=split_object.name), json.dumps(raw))
+                adapter.incr(RedisSplitStorage._TRAFFIC_TYPE_KEY.format(traffic_type_name=split_object.traffic_type_name))
 
             original_splits = {split.name: split for split in split_objects}
             fetched_splits = {name: storage.get(name) for name in original_splits.keys()}
@@ -50,6 +51,11 @@ class SplitStorageTests(object):
 
             adapter.set(RedisSplitStorage._SPLIT_TILL_KEY, split_changes['till'])
             assert storage.get_change_number() == split_changes['till']
+
+            assert storage.is_valid_traffic_type('user') is True
+            assert storage.is_valid_traffic_type('account') is True
+            assert storage.is_valid_traffic_type('anything-else') is False
+
         finally:
             to_delete = [
                 "SPLITIO.split.sample_feature",
@@ -60,10 +66,16 @@ class SplitStorageTests(object):
                 "SPLITIO.split.whitelist_feature",
                 "SPLITIO.split.regex_test",
                 "SPLITIO.split.boolean_test",
-                "SPLITIO.split.dependency_test"
+                "SPLITIO.split.dependency_test",
+                "SPLITIO.trafficType.user",
+                "SPLITIO.trafficType.account"
             ]
             for item in to_delete:
                 adapter.delete(item)
+
+            storage = RedisSplitStorage(adapter)
+            assert storage.is_valid_traffic_type('user') is False
+            assert storage.is_valid_traffic_type('account') is False
 
     def test_get_all(self):
         """Test get all names & splits."""

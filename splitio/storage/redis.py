@@ -9,6 +9,7 @@ from splitio.models.impressions import Impression
 from splitio.models import splits, segments
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage
 from splitio.storage.adapters.redis import RedisAdapterException
+from splitio.storage.adapters.cache_trait import decorate as add_cache, DEFAULT_MAX_AGE
 
 
 class RedisSplitStorage(SplitStorage):
@@ -16,8 +17,9 @@ class RedisSplitStorage(SplitStorage):
 
     _SPLIT_KEY = 'SPLITIO.split.{split_name}'
     _SPLIT_TILL_KEY = 'SPLITIO.splits.till'
+    _TRAFFIC_TYPE_KEY = 'SPLITIO.trafficType.{traffic_type_name}'
 
-    def __init__(self, redis_client):
+    def __init__(self, redis_client, enable_caching=False, max_age=DEFAULT_MAX_AGE):
         """
         Class constructor.
 
@@ -26,6 +28,9 @@ class RedisSplitStorage(SplitStorage):
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self._redis = redis_client
+        if enable_caching:
+            self.get = add_cache(lambda *p, **_: p[0], max_age)(self.get)
+            self.is_valid_traffic_type = add_cache(lambda *p, **_: p[0], max_age)(self.is_valid_traffic_type)  #pylint: disable=line-too-long
 
     def _get_key(self, split_name):
         """
@@ -39,7 +44,19 @@ class RedisSplitStorage(SplitStorage):
         """
         return self._SPLIT_KEY.format(split_name=split_name)
 
-    def get(self, split_name):
+    def _get_traffic_type_key(self, traffic_type_name):
+        """
+        Use the provided split_name to build the appropriate redis key.
+
+        :param split_name: Name of the split to interact with in redis.
+        :type split_name: str
+
+        :return: Redis key.
+        :rtype: str.
+        """
+        return self._TRAFFIC_TYPE_KEY.format(traffic_type_name=traffic_type_name)
+
+    def get(self, split_name):  #pylint: disable=method-hidden
         """
         Retrieve a split.
 
@@ -56,6 +73,25 @@ class RedisSplitStorage(SplitStorage):
             self._logger.error('Error fetching split from storage')
             self._logger.debug('Error: ', exc_info=True)
             return None
+
+    def is_valid_traffic_type(self, traffic_type_name):  #pylint: disable=method-hidden
+        """
+        Return whether the traffic type exists in at least one split in cache.
+
+        :param traffic_type_name: Traffic type to validate.
+        :type traffic_type_name: str
+
+        :return: True if the traffic type is valid. False otherwise.
+        :rtype: bool
+        """
+        try:
+            raw = self._redis.get(self._get_traffic_type_key(traffic_type_name))
+            count = json.loads(raw) if raw else 0
+            return count > 0
+        except RedisAdapterException:
+            self._logger.error('Error fetching split from storage')
+            self._logger.debug('Error: ', exc_info=True)
+            return False
 
     def put(self, split):
         """
@@ -130,8 +166,9 @@ class RedisSplitStorage(SplitStorage):
             for raw in raw_splits:
                 try:
                     to_return.append(splits.from_raw(json.loads(raw)))
-                except ValueError:
+                except (ValueError, TypeError):
                     self._logger.error('Could not parse split. Skipping')
+                    self._logger.debug("Raw split that failed parsing attempt: %s", raw)
         except RedisAdapterException:
             self._logger.error('Error fetching all splits from storage')
             self._logger.debug('Error: ', exc_info=True)
