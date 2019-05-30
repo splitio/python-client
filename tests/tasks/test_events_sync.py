@@ -16,11 +16,11 @@ class EventsSyncTests(object):
         """Test that the task works properly under normal circumstances."""
         storage = mocker.Mock(spec=EventStorage)
         events = [
-            Event('key1', 'user', 'purchase', 5.3, 123456),
-            Event('key2', 'user', 'purchase', 5.3, 123456),
-            Event('key3', 'user', 'purchase', 5.3, 123456),
-            Event('key4', 'user', 'purchase', 5.3, 123456),
-            Event('key5', 'user', 'purchase', 5.3, 123456),
+            Event('key1', 'user', 'purchase', 5.3, 123456, None),
+            Event('key2', 'user', 'purchase', 5.3, 123456, None),
+            Event('key3', 'user', 'purchase', 5.3, 123456, None),
+            Event('key4', 'user', 'purchase', 5.3, 123456, None),
+            Event('key5', 'user', 'purchase', 5.3, 123456, None),
         ]
 
         storage.pop_many.return_value = events

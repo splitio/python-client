@@ -7,7 +7,7 @@ from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException
 
 
-class EventsAPI(object):  #pylint: disable=too-few-public-methods
+class EventsAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the events API."""
 
     def __init__(self, http_client, apikey, sdk_metadata):
@@ -43,7 +43,8 @@ class EventsAPI(object):  #pylint: disable=too-few-public-methods
                 'trafficTypeName': event.traffic_type_name,
                 'eventTypeId': event.event_type_id,
                 'value': event.value,
-                'timestamp': event.timestamp
+                'timestamp': event.timestamp,
+                'properties': event.properties,
             }
             for event in events
         ]

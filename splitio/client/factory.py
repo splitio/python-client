@@ -15,7 +15,7 @@ from splitio.client.config import DEFAULT_CONFIG
 from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper
 
-#Storage
+# Storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
     InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage
 from splitio.storage.adapters import redis
@@ -59,10 +59,10 @@ class TimeoutException(Exception):
     pass
 
 
-class SplitFactory(object):  #pylint: disable=too-many-instance-attributes
+class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
     """Split Factory/Container class."""
 
-    def __init__(  #pylint: disable=too-many-arguments
+    def __init__(  # pylint: disable=too-many-arguments
             self,
             storages,
             labels_enabled,
@@ -223,7 +223,7 @@ def _wrap_impression_listener(listener, metadata):
     return None
 
 
-def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  #pylint: disable=too-many-locals
+def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  # pylint: disable=too-many-locals
     """Build and return a split factory tailored to the supplied config."""
     if not input_validator.validate_factory_instantiation(api_key):
         return None
@@ -303,6 +303,9 @@ def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  #
     tasks['impressions'].start()
     tasks['events'].start()
     tasks['telemetry'].start()
+
+    storages['events'].set_queue_full_hook(tasks['events'].flush)
+    storages['impressions'].set_queue_full_hook(tasks['impressions'].flush)
 
     def split_ready_task():
         """Wait for splits to be ready and start fetching segments."""
