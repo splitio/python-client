@@ -451,7 +451,14 @@ class ClientInputValidationTests(object):
         assert input_validator.valid_properties(None) == (True, None, 1024)
         assert input_validator.valid_properties([]) == (False, None, 0)
         assert input_validator.valid_properties(True) == (False, None, 0)
+        assert input_validator.valid_properties(dict()) == (True, None, 1024)
+        assert input_validator.valid_properties({ 2: 123 }) == (True, None, 1024)
 
+        class Test:
+            pass
+        assert input_validator.valid_properties({
+            "test": Test()
+        }) == (True, { "test": None }, 1028)
 
         props1 = {
             "test1": "test",

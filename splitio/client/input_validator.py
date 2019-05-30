@@ -485,14 +485,11 @@ def valid_properties(properties):
         _LOGGER.error('track: properties must be of type dictionary.')
         return False, None, 0
 
-    valid_properties = None
+    valid_properties = dict()
 
     for property, element in properties.items():
         if not isinstance(property, six.string_types):  # Exclude property if is not string
             continue
-
-        if valid_properties is None:
-            valid_properties = dict()
 
         valid_properties[property] = None
         size += len(property)
@@ -517,7 +514,7 @@ def valid_properties(properties):
             )
             return False, None, size
 
-    if isinstance(valid_properties, dict) and len(valid_properties.keys()) > 300:
+    if len(valid_properties.keys()) > 300:
         _LOGGER.warning('Event has more than 300 properties. Some of them will be trimmed' +
                         ' when processed')
-    return True, valid_properties, size
+    return True, valid_properties if len(valid_properties.keys()) > 0 else None, size
