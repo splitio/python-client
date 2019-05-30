@@ -9,7 +9,7 @@ from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException
 
 
-class ImpressionsAPI(object): # pylint: disable=too-few-public-methods
+class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the impressions API."""
 
     def __init__(self, client, apikey, sdk_metadata):

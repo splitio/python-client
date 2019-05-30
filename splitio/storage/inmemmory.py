@@ -10,6 +10,8 @@ from splitio.models.segments import Segment
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, \
     TelemetryStorage
 
+MAX_SIZE_BYTES = 5 * 1024 * 1024
+
 
 class InMemorySplitStorage(SplitStorage):
     """InMemory implementation of a split storage."""
@@ -187,7 +189,7 @@ class InMemorySegmentStorage(SegmentStorage):
         :type to_remove: Set
         """
         with self._lock:
-            if not segment_name in self._segments:
+            if segment_name not in self._segments:
                 self._segments[segment_name] = Segment(segment_name, to_add, change_number)
                 return
 
@@ -205,7 +207,7 @@ class InMemorySegmentStorage(SegmentStorage):
         :rtype: int
         """
         with self._lock:
-            if not segment_name in self._segments:
+            if segment_name not in self._segments:
                 return None
             return self._segments[segment_name].change_number
 
@@ -219,7 +221,7 @@ class InMemorySegmentStorage(SegmentStorage):
         :type new_change_number: int
         """
         with self._lock:
-            if not segment_name in self._segments:
+            if segment_name not in self._segments:
                 return
             self._segments[segment_name].change_number = new_change_number
 
@@ -236,7 +238,7 @@ class InMemorySegmentStorage(SegmentStorage):
         :rtype: bool
         """
         with self._lock:
-            if not segment_name in self._segments:
+            if segment_name not in self._segments:
                 self._logger.warning(
                     "Tried to query members for nonexistant segment %s. Returning False",
                     segment_name
@@ -321,6 +323,7 @@ class InMemoryEventStorage(EventStorage):
         self._lock = threading.Lock()
         self._events = queue.Queue(maxsize=eventsQueueSize)
         self._queue_full_hook = None
+        self._size = 0
 
     def set_queue_full_hook(self, hook):
         """
@@ -333,21 +336,27 @@ class InMemoryEventStorage(EventStorage):
 
     def put(self, events):
         """
-        Add an avent to storage.
+        Add an event to storage.
 
         :param event: Event to be added in the storage
         """
         try:
             with self._lock:
                 for event in events:
-                    self._events.put(event, False)
+                    self._size += event.size
+
+                    if self._size >= MAX_SIZE_BYTES:
+                        self._queue_full_hook()
+                        return False
+
+                    self._events.put(event.event, False)
             return True
         except queue.Full:
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
                 self._queue_full_hook()
             self._logger.warning(
                 'Events queue is full, failing to add more events. \n'
-                'Consider increasing parameter `impressionsQueueSize` in configuration'
+                'Consider increasing parameter `eventsQueueSize` in configuration'
             )
             return False
 
@@ -362,6 +371,7 @@ class InMemoryEventStorage(EventStorage):
             while not self._events.empty() and count > 0:
                 events.append(self._events.get(False))
                 count -= 1
+        self._size = 0
         return events
 
 

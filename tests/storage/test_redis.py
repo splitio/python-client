@@ -9,7 +9,7 @@ from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \
     RedisSegmentStorage, RedisSplitStorage, RedisTelemetryStorage
 from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
-from splitio.models.events import Event
+from splitio.models.events import Event, EventWrapper
 from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterException
 
 
@@ -256,10 +256,10 @@ class RedisEventsStorageTests(object):  #pylint: disable=too-few-public-methods
         storage = RedisEventsStorage(adapter, metadata)
 
         events = [
-            Event('key1', 'user', 'purchase', 10, 123456),
-            Event('key2', 'user', 'purchase', 10, 123456),
-            Event('key3', 'user', 'purchase', 10, 123456),
-            Event('key4', 'user', 'purchase', 10, 123456),
+            EventWrapper(event=Event('key1', 'user', 'purchase', 10, 123456, None),  size=32768),
+            EventWrapper(event=Event('key2', 'user', 'purchase', 10, 123456, None),  size=32768),
+            EventWrapper(event=Event('key3', 'user', 'purchase', 10, 123456, None),  size=32768),
+            EventWrapper(event=Event('key4', 'user', 'purchase', 10, 123456, None),  size=32768),
         ]
         assert storage.put(events) is True
 
@@ -270,13 +270,14 @@ class RedisEventsStorageTests(object):  #pylint: disable=too-few-public-methods
                 'i': metadata.instance_ip,
             },
             'e': {  # EVENT PORTION
-                'key': event.key,
-                'trafficTypeName': event.traffic_type_name,
-                'eventTypeId': event.event_type_id,
-                'value': event.value,
-                'timestamp': event.timestamp,
+                'key': e.event.key,
+                'trafficTypeName': e.event.traffic_type_name,
+                'eventTypeId': e.event.event_type_id,
+                'value': e.event.value,
+                'timestamp': e.event.timestamp,
+                'properties': e.event.properties,
             }
-        }) for event in events]
+        }) for e in events]
 
         # To deal with python2 & 3 differences in hashing/order when dumping json.
         list_of_raw_json_strings_called = adapter.rpush.mock_calls[0][1][1:]

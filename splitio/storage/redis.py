@@ -408,11 +408,12 @@ class RedisEventsStorage(EventStorage):
         to_store = [
             json.dumps({
                 'e': {
-                    'key': event.key,
-                    'trafficTypeName': event.traffic_type_name,
-                    'eventTypeId': event.event_type_id,
-                    'value': event.value,
-                    'timestamp': event.timestamp
+                    'key': e.event.key,
+                    'trafficTypeName': e.event.traffic_type_name,
+                    'eventTypeId': e.event.event_type_id,
+                    'value': e.event.value,
+                    'timestamp': e.event.timestamp,
+                    'properties': e.event.properties,
                 },
                 'm': {
                     's': self._sdk_metadata.sdk_version,
@@ -420,7 +421,7 @@ class RedisEventsStorage(EventStorage):
                     'i': self._sdk_metadata.instance_ip,
                 }
             })
-            for event in events
+            for e in events
         ]
         try:
             self._redis.rpush(key, *to_store)

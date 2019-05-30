@@ -8,7 +8,7 @@ from splitio.storage.uwsgi import UWSGIEventStorage, UWSGIImpressionStorage,  \
 from splitio.models.splits import Split
 from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
-from splitio.models.events import Event
+from splitio.models.events import Event, EventWrapper
 
 from splitio.storage.adapters.uwsgi_cache import get_uwsgi
 
@@ -235,15 +235,20 @@ class UWSGIEventsStorageTests(object):
         uwsgi = get_uwsgi(True)
         storage = UWSGIEventStorage(uwsgi)
         events = [
-            Event('key1', 'user', 'purchase', 10, 123456),
-            Event('key2', 'user', 'purchase', 10, 123456),
-            Event('key3', 'user', 'purchase', 10, 123456),
-            Event('key4', 'user', 'purchase', 10, 123456),
+            EventWrapper(event=Event('key1', 'user', 'purchase', 10, 123456, None),  size=32768),
+            EventWrapper(event=Event('key2', 'user', 'purchase', 10, 123456, None),  size=32768),
+            EventWrapper(event=Event('key3', 'user', 'purchase', 10, 123456, None),  size=32768),
+            EventWrapper(event=Event('key4', 'user', 'purchase', 10, 123456, None),  size=32768),
         ]
 
         storage.put(events)
         res = storage.pop_many(10)
-        assert res == events
+        assert res == [
+            Event('key1', 'user', 'purchase', 10, 123456, None),
+            Event('key2', 'user', 'purchase', 10, 123456, None),
+            Event('key3', 'user', 'purchase', 10, 123456, None),
+            Event('key4', 'user', 'purchase', 10, 123456, None)
+        ]
 
 class UWSGITelemetryStorageTests(object):
     """UWSGI-based telemetry storage test cases."""

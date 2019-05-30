@@ -8,13 +8,13 @@ import six
 from splitio.engine.evaluator import Evaluator, CONTROL
 from splitio.engine.splitters import Splitter
 from splitio.models.impressions import Impression, Label
-from splitio.models.events import Event
+from splitio.models.events import Event, EventWrapper
 from splitio.models.telemetry import get_latency_bucket_index
 from splitio.client import input_validator
 from splitio.client.listener import ImpressionListenerException
 
 
-class Client(object):  #pylint: disable=too-many-instance-attributes
+class Client(object):  # pylint: disable=too-many-instance-attributes
     """Entry point for the split sdk."""
 
     _METRIC_GET_TREATMENT = 'sdk.getTreatment'
@@ -41,11 +41,11 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
         self._impression_listener = impression_listener
 
         self._splitter = Splitter()
-        self._split_storage = factory._get_storage('splits')  #pylint: disable=protected-access
-        self._segment_storage = factory._get_storage('segments')  #pylint: disable=protected-access
-        self._impressions_storage = factory._get_storage('impressions')  #pylint: disable=protected-access
-        self._events_storage = factory._get_storage('events')  #pylint: disable=protected-access
-        self._telemetry_storage = factory._get_storage('telemetry')  #pylint: disable=protected-access
+        self._split_storage = factory._get_storage('splits')  # pylint: disable=protected-access
+        self._segment_storage = factory._get_storage('segments')  # pylint: disable=protected-access
+        self._impressions_storage = factory._get_storage('impressions')  # pylint: disable=protected-access
+        self._events_storage = factory._get_storage('events')  # pylint: disable=protected-access
+        self._telemetry_storage = factory._get_storage('telemetry')  # pylint: disable=protected-access
         self._evaluator = Evaluator(self._split_storage, self._segment_storage, self._splitter)
 
     def destroy(self):
@@ -154,7 +154,7 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
             self._record_stats(impression, start, self._METRIC_GET_TREATMENT)
             self._send_impression_to_listener(impression, attributes)
             return result['treatment'], result['configurations']
-        except Exception:  #pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             self._logger.error('Error getting treatment for feature')
             self._logger.debug('Error: ', exc_info=True)
             try:
@@ -247,7 +247,7 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
                 bulk_impressions.append(impression)
                 treatments[feature] = (result['treatment'], result['configurations'])
 
-            except Exception:  #pylint: disable=broad-except
+            except Exception:  # pylint: disable=broad-except
                 self._logger.error('get_treatments: An exception occured when evaluating '
                                    'feature ' + feature + ' returning CONTROL.')
                 treatments[feature] = CONTROL, None
@@ -260,13 +260,12 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
                 self._record_stats(bulk_impressions, start, self._METRIC_GET_TREATMENTS)
                 for impression in bulk_impressions:
                     self._send_impression_to_listener(impression, attributes)
-        except Exception:  #pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             self._logger.error('get_treatments: An exception when trying to store '
                                'impressions.')
             self._logger.debug('Error: ', exc_info=True)
 
         return treatments
-
 
     def get_treatments(self, key, features, attributes=None):
         """
@@ -287,7 +286,7 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
         with_config = self.get_treatments_with_config(key, features, attributes)
         return {feature: result[0] for (feature, result) in six.iteritems(with_config)}
 
-    def _build_impression(  #pylint: disable=too-many-arguments
+    def _build_impression(  # pylint: disable=too-many-arguments
             self,
             matching_key,
             feature_name,
@@ -327,11 +326,11 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
             else:
                 self._impressions_storage.put(impressions)
             self._telemetry_storage.inc_latency(operation, get_latency_bucket_index(end - start))
-        except Exception:  #pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             self._logger.error('Error recording impressions and metrics')
             self._logger.debug('Error: ', exc_info=True)
 
-    def track(self, key, traffic_type, event_type, value=None):
+    def track(self, key, traffic_type, event_type, value=None, properties=None):
         """
         Track an event.
 
@@ -343,6 +342,8 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
         :type event_type: str
         :param value: (Optional) value associated to the event
         :type value: Number
+        :param properties: (Optional) properties associated to the event
+        :type properties: dict
 
         :return: Whether the event was created or not.
         :rtype: bool
@@ -361,8 +362,10 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
         )
 
         value = input_validator.validate_value(value)
+        valid, properties, size = input_validator.valid_properties(properties)
 
-        if key is None or event_type is None or traffic_type is None or value is False:
+        if key is None or event_type is None or traffic_type is None or value is False \
+           or valid is False:
             return False
 
         event = Event(
@@ -370,6 +373,10 @@ class Client(object):  #pylint: disable=too-many-instance-attributes
             traffic_type_name=traffic_type,
             event_type_id=event_type,
             value=value,
-            timestamp=int(time.time()*1000)
+            timestamp=int(time.time()*1000),
+            properties=properties,
         )
-        return self._events_storage.put([event])
+        return self._events_storage.put([EventWrapper(
+            event=event,
+            size=size,
+        )])

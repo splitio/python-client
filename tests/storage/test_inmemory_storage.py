@@ -3,7 +3,7 @@
 from splitio.models.splits import Split
 from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
-from splitio.models.events import Event
+from splitio.models.events import Event, EventWrapper
 
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
     InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage
@@ -242,37 +242,63 @@ class InMemoryEventsStorageTests(object):
     def test_push_pop_events(self):
         """Test pushing and retrieving events."""
         storage = InMemoryEventStorage(100)
-        storage.put([Event('key1', 'user', 'purchase', 3.5, 123456)])
-        storage.put([Event('key2', 'user', 'purchase', 3.5, 123456)])
-        storage.put([Event('key3', 'user', 'purchase', 3.5, 123456)])
+        storage.put([EventWrapper(
+            event=Event('key1', 'user', 'purchase', 3.5, 123456, None),
+            size=1024,
+        )])
+        storage.put([EventWrapper(
+            event=Event('key2', 'user', 'purchase', 3.5, 123456, None),
+            size=1024,
+        )])
+        storage.put([EventWrapper(
+            event=Event('key3', 'user', 'purchase', 3.5, 123456, None),
+            size=1024,
+        )])
 
         # Assert impressions are retrieved in the same order they are inserted.
-        assert storage.pop_many(1) == [Event('key1', 'user', 'purchase', 3.5, 123456)]
-        assert storage.pop_many(1) == [Event('key2', 'user', 'purchase', 3.5, 123456)]
-        assert storage.pop_many(1) == [Event('key3', 'user', 'purchase', 3.5, 123456)]
+        assert storage.pop_many(1) == [Event('key1', 'user', 'purchase', 3.5, 123456, None)]
+        assert storage.pop_many(1) == [Event('key2', 'user', 'purchase', 3.5, 123456, None)]
+        assert storage.pop_many(1) == [Event('key3', 'user', 'purchase', 3.5, 123456, None)]
 
         # Assert inserting multiple impressions at once works and maintains order.
         events = [
-            Event('key1', 'user', 'purchase', 3.5, 123456),
-            Event('key2', 'user', 'purchase', 3.5, 123456),
-            Event('key3', 'user', 'purchase', 3.5, 123456),
+            EventWrapper(
+                event=Event('key1', 'user', 'purchase', 3.5, 123456, None),
+                size=1024,
+            ),
+            EventWrapper(
+                event=Event('key2', 'user', 'purchase', 3.5, 123456, None),
+                size=1024,
+            ),
+            EventWrapper(
+                event=Event('key3', 'user', 'purchase', 3.5, 123456, None),
+                size=1024,
+            ),
         ]
         assert storage.put(events)
 
-        # Assert impressions are retrieved in the same order they are inserted.
-        assert storage.pop_many(1) == [Event('key1', 'user', 'purchase', 3.5, 123456)]
-        assert storage.pop_many(1) == [Event('key2', 'user', 'purchase', 3.5, 123456)]
-        assert storage.pop_many(1) == [Event('key3', 'user', 'purchase', 3.5, 123456)]
+        # Assert events are retrieved in the same order they are inserted.
+        assert storage.pop_many(1) == [Event('key1', 'user', 'purchase', 3.5, 123456, None)]
+        assert storage.pop_many(1) == [Event('key2', 'user', 'purchase', 3.5, 123456, None)]
+        assert storage.pop_many(1) == [Event('key3', 'user', 'purchase', 3.5, 123456, None)]
 
     def test_queue_full_hook(self, mocker):
         """Test queue_full_hook is executed when the queue is full."""
         storage = InMemoryEventStorage(100)
         queue_full_hook = mocker.Mock()
         storage.set_queue_full_hook(queue_full_hook)
-        events = [Event('key%d' % i, 'user', 'purchase', 12.5, 321654) for i in range(0, 101)]
+        events = [EventWrapper(event=Event('key%d' % i, 'user', 'purchase', 12.5, 321654, None),  size=1024) for i in range(0, 101)]
         storage.put(events)
-        assert queue_full_hook.mock_calls == mocker.call()
+        assert queue_full_hook.mock_calls == [mocker.call()]
 
+    def test_queue_full_hook_properties(self, mocker):
+        """Test queue_full_hook is executed when the queue is full regarding properties."""
+        storage = InMemoryEventStorage(200)
+        queue_full_hook = mocker.Mock()
+        storage.set_queue_full_hook(queue_full_hook)
+        events = [EventWrapper(event=Event('key%d' % i, 'user', 'purchase', 12.5, 1, None),  size=32768) for i in range(160)]
+        storage.put(events)
+        assert queue_full_hook.mock_calls == [mocker.call()]
 
 class InMemoryTelemetryStorageTests(object):
     """In-Memory telemetry storage unit tests."""

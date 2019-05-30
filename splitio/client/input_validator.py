@@ -18,6 +18,7 @@ from splitio.engine.evaluator import CONTROL
 _LOGGER = logging.getLogger(__name__)
 MAX_LENGTH = 250
 EVENT_TYPE_PATTERN = r'^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$'
+MAX_PROPERTIES_LENGTH_BYTES = 32768
 
 
 def _get_first_split_sdk_call():
@@ -33,8 +34,9 @@ def _get_first_split_sdk_call():
         if calls:
             return calls[-1]
         return unknown_method
-    except Exception:  #pylint: disable=broad-except
+    except Exception:  # pylint: disable=broad-except
         return unknown_method
+
 
 def _check_not_null(value, name, operation):
     """
@@ -390,7 +392,7 @@ def validate_manager_feature_name(feature_name, should_validate_existance, split
     return feature_name
 
 
-def validate_features_get_treatments(features, should_validate_existance=False, split_storage=None):  #pylint: disable=invalid-name
+def validate_features_get_treatments(features, should_validate_existance=False, split_storage=None):  # pylint: disable=invalid-name
     """
     Check if features is valid for get_treatments.
 
@@ -476,7 +478,7 @@ def validate_apikey_type(segment_api):
     """
     api_messages_filter = _ApiLogFilter()
     try:
-        segment_api._logger.addFilter(api_messages_filter)  #pylint: disable=protected-access
+        segment_api._logger.addFilter(api_messages_filter)  # pylint: disable=protected-access
         segment_api.fetch_segment('__SOME_INVALID_SEGMENT__', -1)
     except APIException as exc:
         if exc.status_code == 403:
@@ -485,7 +487,7 @@ def validate_apikey_type(segment_api):
                           + 'console that is of type sdk')
             return False
     finally:
-        segment_api._logger.removeFilter(api_messages_filter)  #pylint: disable=protected-access
+        segment_api._logger.removeFilter(api_messages_filter)  # pylint: disable=protected-access
 
     # True doesn't mean that the APIKEY is right, only that it's not of type "browser"
     return True
@@ -497,10 +499,6 @@ def validate_factory_instantiation(apikey):
 
     :param apikey: str
     :type apikey: str
-    :param config: dict
-    :type config: dict
-    :param segment_api: Segment API client
-    :type segment_api: splitio.api.segments.SegmentsAPI
     :return: bool
     :rtype: True|False
     """
@@ -511,3 +509,56 @@ def validate_factory_instantiation(apikey):
        (not _check_string_not_empty(apikey, 'apikey', 'factory_instantiation')):
         return False
     return True
+
+
+def valid_properties(properties):
+    """
+    Check if properties is a valid dict and returns the properties
+    that will be sent to the track method, avoiding unexpected types.
+
+    :param properties: dict
+    :type properties: dict
+    :return: tuple
+    :rtype: (bool,dict,int)
+    """
+    size = 1024  # We assume 1kb events without properties (750 bytes avg measured)
+
+    if properties is None:
+        return True, None, size
+    if not isinstance(properties, dict):
+        _LOGGER.error('track: properties must be of type dictionary.')
+        return False, None, 0
+
+    valid_properties = dict()
+
+    for property, element in six.iteritems(properties):
+        if not isinstance(property, six.string_types):  # Exclude property if is not string
+            continue
+
+        valid_properties[property] = None
+        size += len(property)
+
+        if element is None:
+            continue
+
+        if not isinstance(element, six.string_types) and not isinstance(element, Number) \
+           and not isinstance(element, bool):
+            _LOGGER.warning('Property %s is of invalid type. Setting value to None', element)
+            element = None
+
+        valid_properties[property] = element
+
+        if isinstance(element, six.string_types):
+            size += len(element)
+
+        if size > MAX_PROPERTIES_LENGTH_BYTES:
+            _LOGGER.error(
+                'The maximum size allowed for the properties is 32768 bytes. ' +
+                'Current one is ' + str(size) + ' bytes. Event not queued'
+            )
+            return False, None, size
+
+    if len(valid_properties.keys()) > 300:
+        _LOGGER.warning('Event has more than 300 properties. Some of them will be trimmed' +
+                        ' when processed')
+    return True, valid_properties if len(valid_properties) else None, size
