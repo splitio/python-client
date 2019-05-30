@@ -233,7 +233,7 @@ class ClientInputValidationTests(object):
         client._logger.reset_mock()
         storage_mock.get.return_value = None
         assert client.get_treatment('matching_key', 'some_feature', None) == CONTROL
-        assert client._logger.error.mock_calls == [
+        assert client._logger.warning.mock_calls == [
             mocker.call(
                 "%s: you passed \"%s\" that does not exist in this environment, "
                 "please double check what Splits exist in the web console.",
@@ -461,7 +461,7 @@ class ClientInputValidationTests(object):
         client._logger.reset_mock()
         storage_mock.get.return_value = None
         assert client.get_treatment_with_config('matching_key', 'some_feature', None) == (CONTROL, None)
-        assert client._logger.error.mock_calls == [
+        assert client._logger.warning.mock_calls == [
             mocker.call(
                 "%s: you passed \"%s\" that does not exist in this environment, "
                 "please double check what Splits exist in the web console.",
@@ -788,7 +788,7 @@ class ClientInputValidationTests(object):
         ready_mock.return_value = True
         type(factory_mock).ready = ready_mock
         assert client.get_treatments('matching_key', ['some_feature'], None) == {'some_feature': CONTROL}
-        assert client._logger.error.mock_calls == [
+        assert client._logger.warning.mock_calls == [
             mocker.call(
                 "%s: you passed \"%s\" that does not exist in this environment, "
                 "please double check what Splits exist in the web console.",
@@ -909,7 +909,7 @@ class ClientInputValidationTests(object):
         ready_mock.return_value = True
         type(factory_mock).ready = ready_mock
         assert client.get_treatments('matching_key', ['some_feature'], None) == {'some_feature': CONTROL}
-        assert client._logger.error.mock_calls == [
+        assert client._logger.warning.mock_calls == [
             mocker.call(
                 "%s: you passed \"%s\" that does not exist in this environment, "
                 "please double check what Splits exist in the web console.",
@@ -971,7 +971,7 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
         storage_mock.get.return_value = None
         manager.split('nonexistant-split')
         assert split_mock.to_split_view.mock_calls == []
-        assert manager._logger.error.mock_calls == [mocker.call(
+        assert manager._logger.warning.mock_calls == [mocker.call(
             "split: you passed \"%s\" that does not exist in this environment, "
             "please double check what Splits exist in the web console.",
             'nonexistant-split'

@@ -268,7 +268,7 @@ def validate_feature_name(feature_name, should_validate_existance, split_storage
         return None
 
     if should_validate_existance and split_storage.get(feature_name) is None:
-        _LOGGER.error(
+        _LOGGER.warning(
             "%s: you passed \"%s\" that does not exist in this environment, "
             "please double check what Splits exist in the web console.",
             operation,
@@ -380,7 +380,7 @@ def validate_manager_feature_name(feature_name, should_validate_existance, split
         return None
 
     if should_validate_existance and split_storage.get(feature_name) is None:
-        _LOGGER.error(
+        _LOGGER.warning(
             "split: you passed \"%s\" that does not exist in this environment, "
             "please double check what Splits exist in the web console.",
             feature_name
@@ -421,7 +421,7 @@ def validate_features_get_treatments(features, should_validate_existance=False, 
 
     valid_missing_features = set(f for f in filtered_features if split_storage.get(f) is None)
     for missing_feature in valid_missing_features:
-        _LOGGER.error(
+        _LOGGER.warning(
             "%s: you passed \"%s\" that does not exist in this environment, "
             "please double check what Splits exist in the web console.",
             operation,
