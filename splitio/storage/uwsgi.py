@@ -458,13 +458,6 @@ class UWSGIEventStorage(EventStorage):
                 event['value'],
                 event['timestamp'],
                 event['properties']
-            ) if 'properties' in event else
-            Event(
-                event['key'],
-                event['traffic_type_name'],
-                event['event_type_id'],
-                event['value'],
-                event['timestamp'],
             )
             for event in current[:count]
         ]

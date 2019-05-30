@@ -7,7 +7,7 @@ from splitio.models.impressions import Label
 CONTROL = 'control'
 
 
-class Evaluator(object):  #pylint: disable=too-few-public-methods
+class Evaluator(object):  # pylint: disable=too-few-public-methods
     """Split Evaluator class."""
 
     def __init__(self, split_storage, segment_storage, splitter):

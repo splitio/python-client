@@ -487,7 +487,7 @@ def valid_properties(properties):
 
     valid_properties = dict()
 
-    for property, element in properties.items():
+    for property, element in six.iteritems(properties):
         if not isinstance(property, six.string_types):  # Exclude property if is not string
             continue
 
@@ -517,4 +517,4 @@ def valid_properties(properties):
     if len(valid_properties.keys()) > 300:
         _LOGGER.warning('Event has more than 300 properties. Some of them will be trimmed' +
                         ' when processed')
-    return True, valid_properties if len(valid_properties.keys()) > 0 else None, size
+    return True, valid_properties if len(valid_properties) else None, size

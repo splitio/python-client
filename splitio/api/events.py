@@ -45,12 +45,6 @@ class EventsAPI(object):  # pylint: disable=too-few-public-methods
                 'value': event.value,
                 'timestamp': event.timestamp,
                 'properties': event.properties,
-            } if event.properties is not None else {
-                'key': event.key,
-                'trafficTypeName': event.traffic_type_name,
-                'eventTypeId': event.event_type_id,
-                'value': event.value,
-                'timestamp': event.timestamp,
             }
             for event in events
         ]
