@@ -1,3 +1,6 @@
+8.1.0 (3 Jun, 2019)
+ - Added properties to track method.
+ - Input Validation: added validation for traffic types, split names and multiple factory instantiation.
 8.0.0 (Apr 24, 2019)
  - Full SDK Refactor/rewrite.
  - New block until ready behaviour.

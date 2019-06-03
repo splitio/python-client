@@ -18,6 +18,7 @@ from splitio.engine.evaluator import CONTROL
 _LOGGER = logging.getLogger(__name__)
 MAX_LENGTH = 250
 EVENT_TYPE_PATTERN = r'^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$'
+MAX_PROPERTIES_LENGTH_BYTES = 32768
 
 
 def _get_first_split_sdk_call():
@@ -33,8 +34,9 @@ def _get_first_split_sdk_call():
         if calls:
             return calls[-1]
         return unknown_method
-    except Exception:  #pylint: disable=broad-except
+    except Exception:  # pylint: disable=broad-except
         return unknown_method
+
 
 def _check_not_null(value, name, operation):
     """
@@ -252,7 +254,7 @@ def validate_key(key):
     return matching_key_result, bucketing_key_result
 
 
-def validate_feature_name(feature_name):
+def validate_feature_name(feature_name, should_validate_existance, split_storage):
     """
     Check if feature_name is valid for get_treatment.
 
@@ -266,6 +268,16 @@ def validate_feature_name(feature_name):
        (not _check_is_string(feature_name, 'feature_name', operation)) or \
        (not _check_string_not_empty(feature_name, 'feature_name', operation)):
         return None
+
+    if should_validate_existance and split_storage.get(feature_name) is None:
+        _LOGGER.warning(
+            "%s: you passed \"%s\" that does not exist in this environment, "
+            "please double check what Splits exist in the web console.",
+            operation,
+            feature_name
+        )
+        return None
+
     return _remove_empty_spaces(feature_name, operation)
 
 
@@ -288,12 +300,16 @@ def validate_track_key(key):
     return key_str
 
 
-def validate_traffic_type(traffic_type):
+def validate_traffic_type(traffic_type, should_validate_existance, split_storage):
     """
     Check if traffic_type is valid for track.
 
     :param traffic_type: traffic_type to be checked
     :type traffic_type: str
+    :param should_validate_existance: Whether to check for existante in the split storage.
+    :type should_validate_existance: bool
+    :param split_storage: Split storage.
+    :param split_storage: splitio.storages.SplitStorage
     :return: traffic_type
     :rtype: str|None
     """
@@ -305,6 +321,15 @@ def validate_traffic_type(traffic_type):
         _LOGGER.warning('track: %s should be all lowercase - converting string to lowercase.',
                         traffic_type)
         traffic_type = traffic_type.lower()
+
+    if should_validate_existance and not split_storage.is_valid_traffic_type(traffic_type):
+        _LOGGER.warning(
+            'track: Traffic Type %s does not have any corresponding Splits in this environment, '
+            'make sure you\'re tracking your events to a valid traffic type defined '
+            'in the Split console.',
+            traffic_type
+        )
+
     return traffic_type
 
 
@@ -342,7 +367,7 @@ def validate_value(value):
     return value
 
 
-def validate_manager_feature_name(feature_name):
+def validate_manager_feature_name(feature_name, should_validate_existance, split_storage):
     """
     Check if feature_name is valid for track.
 
@@ -355,25 +380,34 @@ def validate_manager_feature_name(feature_name):
        (not _check_is_string(feature_name, 'feature_name', 'split')) or \
        (not _check_string_not_empty(feature_name, 'feature_name', 'split')):
         return None
+
+    if should_validate_existance and split_storage.get(feature_name) is None:
+        _LOGGER.warning(
+            "split: you passed \"%s\" that does not exist in this environment, "
+            "please double check what Splits exist in the web console.",
+            feature_name
+        )
+        return None
+
     return feature_name
 
 
-def validate_features_get_treatments(features):  #pylint: disable=invalid-name
+def validate_features_get_treatments(features, should_validate_existance=False, split_storage=None):  # pylint: disable=invalid-name
     """
     Check if features is valid for get_treatments.
 
     :param features: array of features
     :type features: list
     :return: filtered_features
-    :rtype: list|None
+    :rtype: tuple
     """
     operation = _get_first_split_sdk_call()
     if features is None or not isinstance(features, list):
         _LOGGER.error("%s: feature_names must be a non-empty array.", operation)
-        return None
+        return None, None
     if not features:
         _LOGGER.error("%s: feature_names must be a non-empty array.", operation)
-        return []
+        return None, None
     filtered_features = set(
         _remove_empty_spaces(feature, operation) for feature in features
         if feature is not None and
@@ -382,8 +416,20 @@ def validate_features_get_treatments(features):  #pylint: disable=invalid-name
     )
     if not filtered_features:
         _LOGGER.error("%s: feature_names must be a non-empty array.", operation)
-        return None
-    return filtered_features
+        return None, None
+
+    if not should_validate_existance:
+        return filtered_features, []
+
+    valid_missing_features = set(f for f in filtered_features if split_storage.get(f) is None)
+    for missing_feature in valid_missing_features:
+        _LOGGER.warning(
+            "%s: you passed \"%s\" that does not exist in this environment, "
+            "please double check what Splits exist in the web console.",
+            operation,
+            missing_feature
+        )
+    return filtered_features - valid_missing_features, valid_missing_features
 
 
 def generate_control_treatments(features):
@@ -395,7 +441,7 @@ def generate_control_treatments(features):
     :return: dict
     :rtype: dict|None
     """
-    return {feature: (CONTROL, None) for feature in validate_features_get_treatments(features)}
+    return {feature: (CONTROL, None) for feature in validate_features_get_treatments(features)[0]}
 
 
 def validate_attributes(attributes):
@@ -432,7 +478,7 @@ def validate_apikey_type(segment_api):
     """
     api_messages_filter = _ApiLogFilter()
     try:
-        segment_api._logger.addFilter(api_messages_filter)  #pylint: disable=protected-access
+        segment_api._logger.addFilter(api_messages_filter)  # pylint: disable=protected-access
         segment_api.fetch_segment('__SOME_INVALID_SEGMENT__', -1)
     except APIException as exc:
         if exc.status_code == 403:
@@ -441,7 +487,7 @@ def validate_apikey_type(segment_api):
                           + 'console that is of type sdk')
             return False
     finally:
-        segment_api._logger.removeFilter(api_messages_filter)  #pylint: disable=protected-access
+        segment_api._logger.removeFilter(api_messages_filter)  # pylint: disable=protected-access
 
     # True doesn't mean that the APIKEY is right, only that it's not of type "browser"
     return True
@@ -453,10 +499,6 @@ def validate_factory_instantiation(apikey):
 
     :param apikey: str
     :type apikey: str
-    :param config: dict
-    :type config: dict
-    :param segment_api: Segment API client
-    :type segment_api: splitio.api.segments.SegmentsAPI
     :return: bool
     :rtype: True|False
     """
@@ -467,3 +509,56 @@ def validate_factory_instantiation(apikey):
        (not _check_string_not_empty(apikey, 'apikey', 'factory_instantiation')):
         return False
     return True
+
+
+def valid_properties(properties):
+    """
+    Check if properties is a valid dict and returns the properties
+    that will be sent to the track method, avoiding unexpected types.
+
+    :param properties: dict
+    :type properties: dict
+    :return: tuple
+    :rtype: (bool,dict,int)
+    """
+    size = 1024  # We assume 1kb events without properties (750 bytes avg measured)
+
+    if properties is None:
+        return True, None, size
+    if not isinstance(properties, dict):
+        _LOGGER.error('track: properties must be of type dictionary.')
+        return False, None, 0
+
+    valid_properties = dict()
+
+    for property, element in six.iteritems(properties):
+        if not isinstance(property, six.string_types):  # Exclude property if is not string
+            continue
+
+        valid_properties[property] = None
+        size += len(property)
+
+        if element is None:
+            continue
+
+        if not isinstance(element, six.string_types) and not isinstance(element, Number) \
+           and not isinstance(element, bool):
+            _LOGGER.warning('Property %s is of invalid type. Setting value to None', element)
+            element = None
+
+        valid_properties[property] = element
+
+        if isinstance(element, six.string_types):
+            size += len(element)
+
+        if size > MAX_PROPERTIES_LENGTH_BYTES:
+            _LOGGER.error(
+                'The maximum size allowed for the properties is 32768 bytes. ' +
+                'Current one is ' + str(size) + ' bytes. Event not queued'
+            )
+            return False, None, size
+
+    if len(valid_properties.keys()) > 300:
+        _LOGGER.warning('Event has more than 300 properties. Some of them will be trimmed' +
+                        ' when processed')
+    return True, valid_properties if len(valid_properties) else None, size

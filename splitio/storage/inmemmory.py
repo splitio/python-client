@@ -3,10 +3,14 @@ from __future__ import absolute_import
 
 import logging
 import threading
+from collections import Counter
+
 from six.moves import queue
 from splitio.models.segments import Segment
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, \
     TelemetryStorage
+
+MAX_SIZE_BYTES = 5 * 1024 * 1024
 
 
 class InMemorySplitStorage(SplitStorage):
@@ -18,6 +22,7 @@ class InMemorySplitStorage(SplitStorage):
         self._lock = threading.RLock()
         self._splits = {}
         self._change_number = -1
+        self._traffic_types = Counter()
 
     def get(self, split_name):
         """
@@ -40,6 +45,7 @@ class InMemorySplitStorage(SplitStorage):
         """
         with self._lock:
             self._splits[split.name] = split
+            self._increase_traffic_type_count(split.traffic_type_name)
 
     def remove(self, split_name):
         """
@@ -52,12 +58,14 @@ class InMemorySplitStorage(SplitStorage):
         :rtype: bool
         """
         with self._lock:
-            try:
-                self._splits.pop(split_name)
-                return True
-            except KeyError:
+            split = self._splits.get(split_name)
+            if not split:
                 self._logger.warning("Tried to delete nonexistant split %s. Skipping", split_name)
                 return False
+
+            self._splits.pop(split_name)
+            self._decrease_traffic_type_count(split.traffic_type_name)
+            return True
 
     def get_change_number(self):
         """
@@ -97,6 +105,38 @@ class InMemorySplitStorage(SplitStorage):
         """
         with self._lock:
             return list(self._splits.values())
+
+    def is_valid_traffic_type(self, traffic_type_name):
+        """
+        Return whether the traffic type exists in at least one split in cache.
+
+        :param traffic_type_name: Traffic type to validate.
+        :type traffic_type_name: str
+
+        :return: True if the traffic type is valid. False otherwise.
+        :rtype: bool
+        """
+        with self._lock:
+            return traffic_type_name in self._traffic_types
+
+    def _increase_traffic_type_count(self, traffic_type_name):
+        """
+        Increase by one the count for a specific traffic type name.
+
+        :param traffic_type_name: Traffic type to increase the count.
+        :type traffic_type_name: str
+        """
+        self._traffic_types.update([traffic_type_name])
+
+    def _decrease_traffic_type_count(self, traffic_type_name):
+        """
+        Decrease by one the count for a specific traffic type name.
+
+        :param traffic_type_name: Traffic type to decrease the count.
+        :type traffic_type_name: str
+        """
+        self._traffic_types.subtract([traffic_type_name])
+        self._traffic_types += Counter()
 
 
 class InMemorySegmentStorage(SegmentStorage):
@@ -149,7 +189,7 @@ class InMemorySegmentStorage(SegmentStorage):
         :type to_remove: Set
         """
         with self._lock:
-            if not segment_name in self._segments:
+            if segment_name not in self._segments:
                 self._segments[segment_name] = Segment(segment_name, to_add, change_number)
                 return
 
@@ -167,7 +207,7 @@ class InMemorySegmentStorage(SegmentStorage):
         :rtype: int
         """
         with self._lock:
-            if not segment_name in self._segments:
+            if segment_name not in self._segments:
                 return None
             return self._segments[segment_name].change_number
 
@@ -181,7 +221,7 @@ class InMemorySegmentStorage(SegmentStorage):
         :type new_change_number: int
         """
         with self._lock:
-            if not segment_name in self._segments:
+            if segment_name not in self._segments:
                 return
             self._segments[segment_name].change_number = new_change_number
 
@@ -198,7 +238,7 @@ class InMemorySegmentStorage(SegmentStorage):
         :rtype: bool
         """
         with self._lock:
-            if not segment_name in self._segments:
+            if segment_name not in self._segments:
                 self._logger.warning(
                     "Tried to query members for nonexistant segment %s. Returning False",
                     segment_name
@@ -283,6 +323,7 @@ class InMemoryEventStorage(EventStorage):
         self._lock = threading.Lock()
         self._events = queue.Queue(maxsize=eventsQueueSize)
         self._queue_full_hook = None
+        self._size = 0
 
     def set_queue_full_hook(self, hook):
         """
@@ -295,21 +336,27 @@ class InMemoryEventStorage(EventStorage):
 
     def put(self, events):
         """
-        Add an avent to storage.
+        Add an event to storage.
 
         :param event: Event to be added in the storage
         """
         try:
             with self._lock:
                 for event in events:
-                    self._events.put(event, False)
+                    self._size += event.size
+
+                    if self._size >= MAX_SIZE_BYTES:
+                        self._queue_full_hook()
+                        return False
+
+                    self._events.put(event.event, False)
             return True
         except queue.Full:
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
                 self._queue_full_hook()
             self._logger.warning(
                 'Events queue is full, failing to add more events. \n'
-                'Consider increasing parameter `impressionsQueueSize` in configuration'
+                'Consider increasing parameter `eventsQueueSize` in configuration'
             )
             return False
 
@@ -324,6 +371,7 @@ class InMemoryEventStorage(EventStorage):
             while not self._events.empty() and count > 0:
                 events.append(self._events.get(False))
                 count -= 1
+        self._size = 0
         return events
 
 

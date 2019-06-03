@@ -2,13 +2,14 @@
 #pylint: disable=no-self-use
 
 import json
+import time
 
 from splitio.client.util import get_metadata
 from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \
     RedisSegmentStorage, RedisSplitStorage, RedisTelemetryStorage
 from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
-from splitio.models.events import Event
+from splitio.models.events import Event, EventWrapper
 from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterException
 
 
@@ -32,12 +33,42 @@ class RedisSplitStorageTests(object):
         adapter.reset_mock()
         from_raw.reset_mock()
         adapter.get.return_value = None
-
         result = storage.get('some_split')
         assert result is None
         assert adapter.get.mock_calls == [mocker.call('SPLITIO.split.some_split')]
         assert not from_raw.mock_calls
 
+    def test_get_split_with_cache(self, mocker):
+        """Test retrieving a split works."""
+        adapter = mocker.Mock(spec=RedisAdapter)
+        adapter.get.return_value = '{"name": "some_split"}'
+        from_raw = mocker.Mock()
+        mocker.patch('splitio.models.splits.from_raw', new=from_raw)
+
+        storage = RedisSplitStorage(adapter, True, 1)
+        storage.get('some_split')
+        assert adapter.get.mock_calls == [mocker.call('SPLITIO.split.some_split')]
+        assert from_raw.mock_calls == [mocker.call({"name": "some_split"})]
+
+        # hit the cache:
+        storage.get('some_split')
+        storage.get('some_split')
+        storage.get('some_split')
+        assert adapter.get.mock_calls == [mocker.call('SPLITIO.split.some_split')]
+        assert from_raw.mock_calls == [mocker.call({"name": "some_split"})]
+
+        # Test that a missing split returns None and doesn't call from_raw
+        adapter.reset_mock()
+        from_raw.reset_mock()
+        adapter.get.return_value = None
+
+        result = storage.get('some_split')
+        assert result is not None
+        time.sleep(1)  # wait for expiration
+        result = storage.get('some_split')
+        assert result is None
+        assert adapter.get.mock_calls == [mocker.call('SPLITIO.split.some_split')]
+        assert not from_raw.mock_calls
 
     def test_get_changenumber(self, mocker):
         """Test fetching changenumber."""
@@ -85,6 +116,37 @@ class RedisSplitStorageTests(object):
             'SPLITIO.split.split3'
         ]
         assert storage.get_split_names() == ['split1', 'split2', 'split3']
+
+    def test_is_valid_traffic_type(self, mocker):
+        """Test that traffic type validation works."""
+        adapter = mocker.Mock(spec=RedisAdapter)
+        storage = RedisSplitStorage(adapter)
+
+        adapter.get.return_value = '1'
+        assert storage.is_valid_traffic_type('any') is True
+
+        adapter.get.return_value = '0'
+        assert storage.is_valid_traffic_type('any') is False
+
+        adapter.get.return_value = None
+        assert storage.is_valid_traffic_type('any') is False
+
+    def test_is_valid_traffic_type_with_cache(self, mocker):
+        """Test that traffic type validation works."""
+        adapter = mocker.Mock(spec=RedisAdapter)
+        storage = RedisSplitStorage(adapter, True, 1)
+
+        adapter.get.return_value = '1'
+        assert storage.is_valid_traffic_type('any') is True
+
+        adapter.get.return_value = '0'
+        assert storage.is_valid_traffic_type('any') is True
+        time.sleep(1)
+        assert storage.is_valid_traffic_type('any') is False
+
+        adapter.get.return_value = None
+        time.sleep(1)
+        assert storage.is_valid_traffic_type('any') is False
 
 
 class RedisSegmentStorageTests(object):
@@ -194,10 +256,10 @@ class RedisEventsStorageTests(object):  #pylint: disable=too-few-public-methods
         storage = RedisEventsStorage(adapter, metadata)
 
         events = [
-            Event('key1', 'user', 'purchase', 10, 123456),
-            Event('key2', 'user', 'purchase', 10, 123456),
-            Event('key3', 'user', 'purchase', 10, 123456),
-            Event('key4', 'user', 'purchase', 10, 123456),
+            EventWrapper(event=Event('key1', 'user', 'purchase', 10, 123456, None),  size=32768),
+            EventWrapper(event=Event('key2', 'user', 'purchase', 10, 123456, None),  size=32768),
+            EventWrapper(event=Event('key3', 'user', 'purchase', 10, 123456, None),  size=32768),
+            EventWrapper(event=Event('key4', 'user', 'purchase', 10, 123456, None),  size=32768),
         ]
         assert storage.put(events) is True
 
@@ -208,13 +270,14 @@ class RedisEventsStorageTests(object):  #pylint: disable=too-few-public-methods
                 'i': metadata.instance_ip,
             },
             'e': {  # EVENT PORTION
-                'key': event.key,
-                'trafficTypeName': event.traffic_type_name,
-                'eventTypeId': event.event_type_id,
-                'value': event.value,
-                'timestamp': event.timestamp,
+                'key': e.event.key,
+                'trafficTypeName': e.event.traffic_type_name,
+                'eventTypeId': e.event.event_type_id,
+                'value': e.event.value,
+                'timestamp': e.event.timestamp,
+                'properties': e.event.properties,
             }
-        }) for event in events]
+        }) for e in events]
 
         # To deal with python2 & 3 differences in hashing/order when dumping json.
         list_of_raw_json_strings_called = adapter.rpush.mock_calls[0][1][1:]

@@ -9,7 +9,7 @@ from splitio.models.impressions import Impression
 from splitio.models.events import Event
 from splitio.storage.adapters.uwsgi_cache import _SPLITIO_CHANGE_NUMBERS, \
     _SPLITIO_EVENTS_CACHE_NAMESPACE, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE, \
-     _SPLITIO_METRICS_CACHE_NAMESPACE, _SPLITIO_MISC_NAMESPACE, UWSGILock, \
+    _SPLITIO_METRICS_CACHE_NAMESPACE, _SPLITIO_MISC_NAMESPACE, UWSGILock, \
     _SPLITIO_SEGMENTS_CACHE_NAMESPACE, _SPLITIO_SPLITS_CACHE_NAMESPACE, \
     _SPLITIO_LOCK_CACHE_NAMESPACE
 
@@ -19,8 +19,10 @@ class UWSGISplitStorage(SplitStorage):
 
     _KEY_TEMPLATE = 'split.{suffix}'
     _KEY_TILL = 'splits.till'
-    _KEY_FEATURE_LIST_LOCK = 'splits.list.lock'
     _KEY_FEATURE_LIST = 'splits.list'
+    _KEY_FEATURE_LIST_LOCK = 'splits.list.lock'
+    _KEY_TRAFFIC_TYPES = 'splits.traffic_types'
+    _KEY_TRAFFIC_TYPES_LOCK = 'splits.traffic_types.lock'
     _OVERWRITE_LOCK_SECONDS = 5
 
     def __init__(self, uwsgi_entrypoint):
@@ -64,21 +66,8 @@ class UWSGISplitStorage(SplitStorage):
             0,
             _SPLITIO_SPLITS_CACHE_NAMESPACE
         )
-
-        with UWSGILock(self._uwsgi, self._KEY_FEATURE_LIST_LOCK):
-            try:
-                current = set(json.loads(
-                    self._uwsgi.cache_get(self._KEY_FEATURE_LIST, _SPLITIO_MISC_NAMESPACE)
-                ))
-            except TypeError:
-                current = set()
-            current.add(split.name)
-            self._uwsgi.cache_update(
-                self._KEY_FEATURE_LIST,
-                json.dumps(list(current)),
-                0,
-                _SPLITIO_MISC_NAMESPACE
-            )
+        self._add_split_to_list(split.name)
+        self._increase_traffic_type_count(split.traffic_type_name)
 
     def remove(self, split_name):
         """
@@ -90,31 +79,24 @@ class UWSGISplitStorage(SplitStorage):
         :return: True if the split was found and removed. False otherwise.
         :rtype: bool
         """
-        with UWSGILock(self._uwsgi, self._KEY_FEATURE_LIST_LOCK):
-            try:
-                current = set(json.loads(
-                    self._uwsgi.cache_get(self._KEY_FEATURE_LIST, _SPLITIO_MISC_NAMESPACE)
-                ))
-                current.remove(split_name)
-                self._uwsgi.cache_update(
-                    self._KEY_FEATURE_LIST,
-                    json.dumps(list(current)),
-                    0,
-                    _SPLITIO_MISC_NAMESPACE
-                )
-            except TypeError:
-                # Split list not found, no need to delete anything
-                pass
-            except KeyError:
-                # Split not found in list. nothing to do.
-                pass
+        # We need to fetch the split to get the traffic type name prior to deleting.
+        fetched = self.get(split_name)
+        if fetched is None:
+            self._logger.warning(
+                "Tried to remove feature \"%s\" not present in cache. Ignoring.", split_name
+            )
+            return
 
         result = self._uwsgi.cache_del(
             self._KEY_TEMPLATE.format(suffix=split_name),
             _SPLITIO_SPLITS_CACHE_NAMESPACE
         )
-        if not result is False:
-            self._logger.warning("Trying to retrieve nonexistant split %s. Ignoring.", split_name)
+        if result is not False:
+            self._logger.warning("Trying to delete nonexistant split %s. Ignoring.", split_name)
+
+        self._remove_split_from_list(split_name)
+        self._decrease_traffic_type_count(fetched.traffic_type_name)
+
         return result
 
     def get_change_number(self):
@@ -149,8 +131,8 @@ class UWSGISplitStorage(SplitStorage):
                 return json.loads(
                     self._uwsgi.cache_get(self._KEY_FEATURE_LIST, _SPLITIO_MISC_NAMESPACE)
                 )
-            except TypeError: # Thrown by json.loads when passing none
-                pass # Fall back to default return statement (empty list)
+            except TypeError:  # Thrown by json.loads when passing none
+                pass  # Fall back to default return statement (empty list)
         return []
 
     def get_all_splits(self):
@@ -161,6 +143,116 @@ class UWSGISplitStorage(SplitStorage):
         :rtype: list(splitio.models.splits.Split)
         """
         return [self.get(split_name) for split_name in self.get_split_names()]
+
+    def is_valid_traffic_type(self, traffic_type_name):
+        """
+        Return whether the traffic type exists in at least one split in cache.
+
+        :param traffic_type_name: Traffic type to validate.
+        :type traffic_type_name: str
+
+        :return: True if the traffic type is valid. False otherwise.
+        :rtype: bool
+        """
+        try:
+            tts = json.loads(
+                self._uwsgi.cache_get(self._KEY_TRAFFIC_TYPES, _SPLITIO_MISC_NAMESPACE)
+            )
+            return traffic_type_name in tts
+        except TypeError:
+            return False
+
+    def _add_split_to_list(self, split_name):
+        """
+        Add a specific split to the list we keep track of.
+
+        :param split_name: Name of the split to add.
+        :type split_name: str
+        """
+        with UWSGILock(self._uwsgi, self._KEY_FEATURE_LIST_LOCK):
+            try:
+                current = set(json.loads(
+                    self._uwsgi.cache_get(self._KEY_FEATURE_LIST, _SPLITIO_MISC_NAMESPACE)
+                ))
+            except TypeError:
+                current = set()
+            current.add(split_name)
+            self._uwsgi.cache_update(
+                self._KEY_FEATURE_LIST,
+                json.dumps(list(current)),
+                0,
+                _SPLITIO_MISC_NAMESPACE
+            )
+
+    def _remove_split_from_list(self, split_name):
+        """
+        Remove a specific split from the list we keep track of.
+
+        :param split_name: Name of the split to remove.
+        :type split_name: str
+        """
+        with UWSGILock(self._uwsgi, self._KEY_FEATURE_LIST_LOCK):
+            try:
+                current = set(json.loads(
+                    self._uwsgi.cache_get(self._KEY_FEATURE_LIST, _SPLITIO_MISC_NAMESPACE)
+                ))
+                current.remove(split_name)
+                self._uwsgi.cache_update(
+                    self._KEY_FEATURE_LIST,
+                    json.dumps(list(current)),
+                    0,
+                    _SPLITIO_MISC_NAMESPACE
+                )
+            except TypeError:
+                # Split list not found, no need to delete anything
+                pass
+            except KeyError:
+                # Split not found in list. nothing to do.
+                pass
+
+    def _increase_traffic_type_count(self, traffic_type_name):
+        """
+        Increase by 1 the count for a specific traffic type.
+
+        :param traffic_type_name: Traffic type name to increase count.
+        :type traffic_type_name: str
+        """
+        with UWSGILock(self._uwsgi, self._KEY_TRAFFIC_TYPES_LOCK):
+            try:
+                tts = json.loads(
+                    self._uwsgi.cache_get(self._KEY_TRAFFIC_TYPES, _SPLITIO_MISC_NAMESPACE)
+                )
+                tts[traffic_type_name] = tts.get(traffic_type_name, 0) + 1
+
+            except TypeError:
+                tts = {traffic_type_name: 1}
+
+            self._uwsgi.cache_update(
+                self._KEY_TRAFFIC_TYPES, json.dumps(tts), 0, _SPLITIO_MISC_NAMESPACE
+            )
+
+    def _decrease_traffic_type_count(self, traffic_type_name):
+        """
+        Decreaase by 1 the count for a specific traffic type.
+
+        :param traffic_type_name: Traffic type name to decrease count.
+        :type traffic_type_name: str
+        """
+        with UWSGILock(self._uwsgi, self._KEY_TRAFFIC_TYPES_LOCK):
+            try:
+                tts = json.loads(
+                    self._uwsgi.cache_get(self._KEY_TRAFFIC_TYPES, _SPLITIO_MISC_NAMESPACE)
+                )
+                tts[traffic_type_name] = tts.get(traffic_type_name, 0) - 1
+                if tts[traffic_type_name] <= 0:
+                    del tts[traffic_type_name]
+            except TypeError:
+                # Traffic type list not present. nothing to do here.
+                return
+
+            self._uwsgi.cache_update(
+                self._KEY_TRAFFIC_TYPES, json.dumps(tts), 0, _SPLITIO_MISC_NAMESPACE
+            )
 
 
 class UWSGISegmentStorage(SegmentStorage):
@@ -250,7 +342,6 @@ class UWSGISegmentStorage(SegmentStorage):
             _SPLITIO_SEGMENTS_CACHE_NAMESPACE
         )
         self.set_change_number(segment.name, segment.change_number)
-
 
     def get_change_number(self, segment_name):
         """
@@ -424,7 +515,7 @@ class UWSGIEventStorage(EventStorage):
                 current = []
             self._uwsgi.cache_update(
                 self._EVENTS_KEY,
-                json.dumps(current + [e._asdict() for e in events]),
+                json.dumps(current + [e.event._asdict() for e in events]),
                 0,
                 _SPLITIO_EVENTS_CACHE_NAMESPACE
             )
@@ -457,8 +548,10 @@ class UWSGIEventStorage(EventStorage):
                 event['traffic_type_name'],
                 event['event_type_id'],
                 event['value'],
-                event['timestamp']
-            )   for event in current[:count]
+                event['timestamp'],
+                event['properties']
+            )
+            for event in current[:count]
         ]
 
     def request_flush(self):
@@ -501,7 +594,6 @@ class UWSGITelemetryStorage(TelemetryStorage):
         self._uwsgi = uwsgi_entrypoint
         self._logger = logging.getLogger(self.__class__.__name__)
 
-
     def inc_latency(self, name, bucket):
         """
         Add a latency.
@@ -516,7 +608,8 @@ class UWSGITelemetryStorage(TelemetryStorage):
             return
 
         with UWSGILock(self._uwsgi, self._LATENCIES_LOCK_KEY):
-            latencies_raw = self._uwsgi.cache_get(self._LATENCIES_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
+            latencies_raw = self._uwsgi.cache_get(
+                self._LATENCIES_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
             latencies = json.loads(latencies_raw) if latencies_raw else {}
             to_update = latencies.get(name, [0] * 22)
             to_update[bucket] += 1
@@ -536,7 +629,8 @@ class UWSGITelemetryStorage(TelemetryStorage):
         :type name: str
         """
         with UWSGILock(self._uwsgi, self._COUNTERS_LOCK_KEY):
-            counters_raw = self._uwsgi.cache_get(self._COUNTERS_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
+            counters_raw = self._uwsgi.cache_get(
+                self._COUNTERS_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
             counters = json.loads(counters_raw) if counters_raw else {}
             value = counters.get(name, 0)
             value += 1
@@ -575,7 +669,8 @@ class UWSGITelemetryStorage(TelemetryStorage):
         :rtype: list
         """
         with UWSGILock(self._uwsgi, self._COUNTERS_LOCK_KEY):
-            counters_raw = self._uwsgi.cache_get(self._COUNTERS_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
+            counters_raw = self._uwsgi.cache_get(
+                self._COUNTERS_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
             self._uwsgi.cache_del(self._COUNTERS_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
             return json.loads(counters_raw) if counters_raw else {}
 
@@ -598,6 +693,7 @@ class UWSGITelemetryStorage(TelemetryStorage):
         :rtype: list
         """
         with UWSGILock(self._uwsgi, self._LATENCIES_LOCK_KEY):
-            latencies_raw = self._uwsgi.cache_get(self._LATENCIES_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
+            latencies_raw = self._uwsgi.cache_get(
+                self._LATENCIES_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
             self._uwsgi.cache_del(self._LATENCIES_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
             return json.loads(latencies_raw) if latencies_raw else {}
