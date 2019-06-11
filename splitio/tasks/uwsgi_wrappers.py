@@ -124,7 +124,7 @@ def uwsgi_report_impressions(user_config):
     while True:
         try:
             impressions_sync_task._send_impressions()  #pylint: disable=protected-access
-            for _ in xrange(0, seconds):
+            for _ in range(0, seconds):
                 if storage.should_flush():
                     storage.acknowledge_flush()
                     break
@@ -157,7 +157,7 @@ def uwsgi_report_events(user_config):
     while True:
         try:
             task._send_events()  #pylint: disable=protected-access
-            for _ in xrange(0, seconds):
+            for _ in range(0, seconds):
                 if storage.should_flush():
                     storage.acknowledge_flush()
                     break
