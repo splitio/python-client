@@ -80,7 +80,7 @@ def uwsgi_update_segments(user_config):
             HttpClient(1500, config.get('sdk_url'), config.get('events_url')), config['apikey']
         ),
         UWSGISegmentStorage(get_uwsgi()),
-        None, # Split sotrage not needed, segments provided manually,
+        None, # Split storage not needed, segments provided manually,
         None, # Period not needed, task executed manually
         None  # Flag not needed, never consumed or set.
     )
@@ -90,9 +90,8 @@ def uwsgi_update_segments(user_config):
     split_storage = UWSGISplitStorage(get_uwsgi())
     while True:
         try:
-            for split in split_storage.get_all_splits():
-                for segment_name in split.get_segment_names():
-                    pool.submit_work(segment_name)
+            for segment_name in split_storage.get_segment_names():
+                pool.submit_work(segment_name)
             time.sleep(seconds)
         except Exception:  #pylint: disable=broad-except
             _LOGGER.error('Error updating segments')
