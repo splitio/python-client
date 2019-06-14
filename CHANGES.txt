@@ -1,3 +1,5 @@
+8.1.1 (14 Jun, 2019)
+ - Fixed python3 compatibility issue in uwsgi caching mode.
 8.1.0 (3 Jun, 2019)
  - Added properties to track method.
  - Input Validation: added validation for traffic types, split names and multiple factory instantiation.
