@@ -178,5 +178,3 @@ class RedisStorageAdapterTests(object):
                 'redisSentinels': ['a', 'b'],
                 'redisSsl': True,
             })
-
-
