@@ -121,6 +121,37 @@ class InMemorySplitStorageTests(object):
         assert storage.is_valid_traffic_type('user') is False
         assert storage.is_valid_traffic_type('account') is False
 
+    def test_traffic_type_inc_dec_logic(self, mocker):
+        """Test that adding/removing split, handles traffic types correctly."""
+        storage = InMemorySplitStorage()
+
+        split1 = mocker.Mock()
+        name1_prop = mocker.PropertyMock()
+        name1_prop.return_value = 'split1'
+        type(split1).name = name1_prop
+
+        split2 = mocker.Mock()
+        name2_prop = mocker.PropertyMock()
+        name2_prop.return_value = 'split1'
+        type(split2).name = name2_prop
+
+        tt_user = mocker.PropertyMock()
+        tt_user.return_value = 'user'
+
+        tt_account = mocker.PropertyMock()
+        tt_account.return_value = 'account'
+
+        type(split1).traffic_type_name = tt_user
+        type(split2).traffic_type_name = tt_account
+
+        storage.put(split1)
+        assert storage.is_valid_traffic_type('user') is True
+        assert storage.is_valid_traffic_type('account') is False
+
+        storage.put(split2)
+        assert storage.is_valid_traffic_type('user') is False
+        assert storage.is_valid_traffic_type('account') is True
+
 
 class InMemorySegmentStorageTests(object):
     """In memory segment storage tests."""

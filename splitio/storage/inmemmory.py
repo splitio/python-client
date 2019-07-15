@@ -44,6 +44,8 @@ class InMemorySplitStorage(SplitStorage):
         :type split: splitio.models.split.Split
         """
         with self._lock:
+            if split.name in self._splits:
+                self._decrease_traffic_type_count(self._splits[split.name].traffic_type_name)
             self._splits[split.name] = split
             self._increase_traffic_type_count(split.traffic_type_name)
 
