@@ -48,6 +48,8 @@ class RedisAdapterException(Exception):
 
 
 class SentinelConfigurationException(Exception):
+    """Exception to be raised when sentinel config options are incorrect."""
+
     pass
 
 
@@ -366,6 +368,9 @@ def _build_sentinel_client(config):  #pylint: disable=too-many-locals
     :rtype: splitio.storage.adapters.redis.RedisAdapter
     """
     sentinels = config.get('redisSentinels')
+
+    if config.get('redisSsl', False):
+        raise SentinelConfigurationException('Redis Sentinel cannot be used with SSL/TLS.')
 
     if sentinels is None:
         raise SentinelConfigurationException('redisSentinels must be specified.')

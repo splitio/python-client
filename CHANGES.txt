@@ -1,3 +1,6 @@
+8.1.2 (TBD)
+ - Validated TLS support for redis connections
+ - Fixed traffic type count issue
 8.1.1 (14 Jun, 2019)
  - Fixed python3 compatibility issue in uwsgi caching mode.
 8.1.0 (3 Jun, 2019)
