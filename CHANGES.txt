@@ -1,4 +1,4 @@
-8.1.2 (TBD)
+8.1.2 (Jul 19, 2019)
  - Validated TLS support for redis connections
  - Fixed traffic type count issue
 8.1.1 (14 Jun, 2019)
