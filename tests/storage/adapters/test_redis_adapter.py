@@ -1,6 +1,6 @@
 """Redis storage adapter test module."""
 
-
+import pytest
 from splitio.storage.adapters import redis
 from redis import StrictRedis
 from redis.sentinel import Sentinel
@@ -145,7 +145,7 @@ class RedisStorageAdapterTests(object):
             'redisErrors': 'abc',
             'redisDecodeResponses': True,
             'redisRetryOnTimeout': True,
-            'redisSsl': True,
+            'redisSsl': False,
             'redisSslKeyfile': '/ssl.cert',
             'redisSslCertfile': '/ssl2.cert',
             'redisSslCertReqs': 'abc',
@@ -170,3 +170,11 @@ class RedisStorageAdapterTests(object):
             retry_on_timeout=True,
             max_connections=5
         )
+
+    def test_sentinel_ssl_fails(self):
+        """Test that SSL/TLS & Sentinel don't return a valid client."""
+        with pytest.raises(redis.SentinelConfigurationException) as exc:
+            redis.build({
+                'redisSentinels': ['a', 'b'],
+                'redisSsl': True,
+            })
