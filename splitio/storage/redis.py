@@ -35,7 +35,7 @@ class RedisSplitStorage(SplitStorage):
                 max_age
                 )(self.is_valid_traffic_type)  # pylint: disable=line-too-long
             self.fetch_many = add_cache(
-                lambda *p, **_: tuple(p[0]),
+                lambda *p, **_: frozenset(p[0]),
                 max_age
             )(self.fetch_many)
 
