@@ -1,3 +1,5 @@
+8.1.3 (Oct XX, 2019)
+ - Added logic to fetch multiple splits at once on get_treatments/get_treatments_with_config.
 8.1.2 (Jul 19, 2019)
  - Validated TLS support for redis connections
  - Fixed traffic type count issue
