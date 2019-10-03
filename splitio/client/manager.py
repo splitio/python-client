@@ -18,7 +18,7 @@ class SplitManager(object):
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self._factory = factory
-        self._storage = factory._get_storage('splits')  #pylint: disable=protected-access
+        self._storage = factory._get_storage('splits')  # pylint: disable=protected-access
 
     def split_names(self):
         """

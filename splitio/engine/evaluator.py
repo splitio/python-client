@@ -25,8 +25,7 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
         self._segment_storage = segment_storage
         self._splitter = splitter
 
-    def evaluate_treatment(self, feature, matching_key,
-                           bucketing_key, attributes=None):
+    def _evaluate_treatment(self, feature, matching_key, bucketing_key, attributes, split):
         """
         Evaluate the user submitted data against a feature and return the resulting treatment.
 
@@ -42,6 +41,9 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
 
+        :param split: Split object
+        :type attributes: splitio.models.splits.Split|None
+
         :return: The treatment for the key and split
         :rtype: object
         """
@@ -49,13 +51,9 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
         _treatment = CONTROL
         _change_number = -1
 
-        # Fetching Split definition
-        split = self._split_storage.get(feature)
-
         if split is None:
             self._logger.warning('Unknown or invalid feature: %s', feature)
             label = Label.SPLIT_NOT_FOUND
-            _treatment = CONTROL
         else:
             _change_number = split.change_number
             if split.killed:
@@ -82,6 +80,65 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
                 'change_number': _change_number
             }
         }
+
+    def evaluate_feature(self, feature, matching_key, bucketing_key, attributes=None):
+        """
+        Evaluate the user submitted data against a feature and return the resulting treatment.
+
+        :param feature: The feature for which to get the treatment
+        :type feature:  str
+
+        :param matching_key: The matching_key for which to get the treatment
+        :type matching_key: str
+
+        :param bucketing_key: The bucketing_key for which to get the treatment
+        :type bucketing_key: str
+
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+
+        :return: The treatment for the key and split
+        :rtype: object
+        """
+        # Fetching Split definition
+        split = self._split_storage.get(feature)
+
+        # Calling evaluation
+        evaluation = self._evaluate_treatment(feature, matching_key,
+                                              bucketing_key, attributes, split)
+
+        return evaluation
+
+    def evaluate_features(self, features, matching_key, bucketing_key, attributes=None):
+        """
+        Evaluate the user submitted data against multiple features and return the resulting
+        treatment.
+
+        :param features: The features for which to get the treatments
+        :type feature:  list(str)
+
+        :param matching_key: The matching_key for which to get the treatment
+        :type matching_key: str
+
+        :param bucketing_key: The bucketing_key for which to get the treatment
+        :type bucketing_key: str
+
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+
+        :return: The treatments for the key and splits
+        :rtype: object
+        """
+        evaluations = dict()
+
+        # Fetching Split definition
+        splits = self._split_storage.fetch_many(features)
+        # Calling evaluations
+        for feature in features:
+            split = splits[feature]
+            evaluations[feature] = self._evaluate_treatment(feature, matching_key,
+                                                            bucketing_key, attributes, split)
+        return evaluations
 
     def _get_treatment_for_split(self, split, matching_key, bucketing_key, attributes=None):
         """

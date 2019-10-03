@@ -34,6 +34,10 @@ class RedisSplitStorage(SplitStorage):
                 lambda *p, **_: p[0],
                 max_age
                 )(self.is_valid_traffic_type)  # pylint: disable=line-too-long
+            self.fetch_many = add_cache(
+                lambda *p, **_: tuple(p[0]),
+                max_age
+            )(self.fetch_many)
 
     def _get_key(self, split_name):
         """

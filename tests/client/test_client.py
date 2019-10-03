@@ -45,13 +45,13 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
 
         client = Client(factory, True, None)
         client._evaluator = mocker.Mock(spec=Evaluator)
-        client._evaluator.evaluate_treatment.return_value = {
+        client._evaluator.evaluate_feature.return_value = {
             'treatment': 'on',
             'configurations': None,
             'impression': {
                 'label': 'some_label',
                 'change_number': 123
-            }
+            },
         }
         client._logger = mocker.Mock()
         client._send_impression_to_listener = mocker.Mock()
@@ -82,7 +82,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         split_storage.get_change_number.return_value = -1
         def _raise(*_):
             raise Exception('something')
-        client._evaluator.evaluate_treatment.side_effect = _raise
+        client._evaluator.evaluate_feature.side_effect = _raise
         assert client.get_treatment('some_key', 'some_feature') == 'control'
         assert mocker.call(
             [Impression('some_key', 'some_feature', 'control', 'exception', -1, None, 1000)]
@@ -117,7 +117,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
 
         client = Client(factory, True, None)
         client._evaluator = mocker.Mock(spec=Evaluator)
-        client._evaluator.evaluate_treatment.return_value = {
+        client._evaluator.evaluate_feature.return_value = {
             'treatment': 'on',
             'configurations': '{"some_config": True}',
             'impression': {
@@ -157,7 +157,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         split_storage.get_change_number.return_value = -1
         def _raise(*_):
             raise Exception('something')
-        client._evaluator.evaluate_treatment.side_effect = _raise
+        client._evaluator.evaluate_feature.side_effect = _raise
         assert client.get_treatment_with_config('some_key', 'some_feature') == ('control', None)
         assert mocker.call(
             [Impression('some_key', 'some_feature', 'control', 'exception', -1, None, 1000)]
@@ -192,13 +192,17 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
 
         client = Client(factory, True, None)
         client._evaluator = mocker.Mock(spec=Evaluator)
-        client._evaluator.evaluate_treatment.return_value = {
+        evaluation = {
             'treatment': 'on',
             'configurations': '{"color": "red"}',
             'impression': {
                 'label': 'some_label',
                 'change_number': 123
             }
+        }
+        client._evaluator.evaluate_features.return_value = {
+            'f1': evaluation,
+            'f2': evaluation
         }
         client._logger = mocker.Mock()
         client._send_impression_to_listener = mocker.Mock()
@@ -233,7 +237,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         split_storage.get_change_number.return_value = -1
         def _raise(*_):
             raise Exception('something')
-        client._evaluator.evaluate_treatment.side_effect = _raise
+        client._evaluator.evaluate_features.side_effect = _raise
         assert client.get_treatments('key', ['f1', 'f2']) == {'f1': 'control', 'f2': 'control'}
         assert len(telemetry_storage.inc_latency.mock_calls) == 2
 
@@ -265,13 +269,17 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
 
         client = Client(factory, True, None)
         client._evaluator = mocker.Mock(spec=Evaluator)
-        client._evaluator.evaluate_treatment.return_value = {
+        evaluation = {
             'treatment': 'on',
-            'configurations': '{"color": "red"}',
-            'impression': {
-                'label': 'some_label',
-                'change_number': 123
-            }
+                'configurations': '{"color": "red"}',
+                'impression': {
+                    'label': 'some_label',
+                    'change_number': 123
+                }
+        }
+        client._evaluator.evaluate_features.return_value = {
+            'f1': evaluation,
+            'f2': evaluation
         }
         client._logger = mocker.Mock()
         client._send_impression_to_listener = mocker.Mock()
@@ -309,7 +317,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         split_storage.get_change_number.return_value = -1
         def _raise(*_):
             raise Exception('something')
-        client._evaluator.evaluate_treatment.side_effect = _raise
+        client._evaluator.evaluate_features.side_effect = _raise
         assert client.get_treatments_with_config('key', ['f1', 'f2']) == {
             'f1': ('control', None),
             'f2': ('control', None)
