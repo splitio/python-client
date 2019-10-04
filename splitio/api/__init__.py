@@ -1,5 +1,6 @@
 """Split API module."""
 
+
 class APIException(Exception):
     """Exception to raise when an API call fails."""
 
@@ -28,4 +29,6 @@ def headers_from_metadata(sdk_metadata):
         'SplitSDKVersion': sdk_metadata.sdk_version,
         'SplitSDKMachineIP': sdk_metadata.instance_ip,
         'SplitSDKMachineName': sdk_metadata.instance_name
+    } if sdk_metadata.instance_ip != 'NA' and sdk_metadata.instance_ip != 'unknown' else {
+        'SplitSDKVersion': sdk_metadata.sdk_version,
     }
