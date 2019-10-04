@@ -1,3 +1,6 @@
+8.1.3 (Oct 4, 2019)
+ - Fixed race condition related to segment fetching and SDK_READY event
+
 8.1.2 (Jul 19, 2019)
  - Validated TLS support for redis connections
  - Fixed traffic type count issue
