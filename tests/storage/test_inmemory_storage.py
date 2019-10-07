@@ -30,6 +30,27 @@ class InMemorySplitStorageTests(object):
         storage.remove('some_split')
         assert storage.get('some_split') is None
 
+    def test_get_splits(self, mocker):
+        """Test retrieving a list of passed splits."""
+        split1 = mocker.Mock()
+        name1_prop = mocker.PropertyMock()
+        name1_prop.return_value = 'split1'
+        type(split1).name = name1_prop
+        split2 = mocker.Mock()
+        name2_prop = mocker.PropertyMock()
+        name2_prop.return_value = 'split2'
+        type(split2).name = name2_prop
+
+        storage = InMemorySplitStorage()
+        storage.put(split1)
+        storage.put(split2)
+
+        splits = storage.fetch_many(['split1', 'split2', 'split3'])
+        assert len(splits) == 3
+        assert splits['split1'].name == 'split1'
+        assert splits['split2'].name == 'split2'
+        assert 'split3' in splits
+
     def test_store_get_changenumber(self):
         """Test that storing and retrieving change numbers works."""
         storage = InMemorySplitStorage()

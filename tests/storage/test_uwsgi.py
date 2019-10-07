@@ -58,6 +58,24 @@ class UWSGISplitStorageTests(object):
         storage.remove('some_split')
         assert storage.get('some_split') == None
 
+    def test_get_splits(self, mocker):
+        """Test retrieving a list of passed splits."""
+        uwsgi = get_uwsgi(True)
+        storage = UWSGISplitStorage(uwsgi)
+        from_raw_mock = self._get_from_raw_mock(mocker)
+        mocker.patch('splitio.models.splits.from_raw', new=from_raw_mock)
+
+        split_1 = from_raw_mock({'name': 'some_split_1', 'trafficTypeName': 'user'})
+        split_2 = from_raw_mock({'name': 'some_split_2', 'trafficTypeName': 'user'})
+        storage.put(split_1)
+        storage.put(split_2)
+
+        splits = storage.fetch_many(['some_split_1', 'some_split_2', 'some_split_3'])
+        assert len(splits) == 3
+        assert splits['some_split_1'].name == 'some_split_1'
+        assert splits['some_split_2'].name == 'some_split_2'
+        assert 'some_split_3' in splits
+
     def test_set_get_changenumber(self, mocker):
         """Test setting and retrieving changenumber."""
         uwsgi = get_uwsgi(True)

@@ -30,7 +30,8 @@ class RedisSplitStorage(SplitStorage):
         self._redis = redis_client
         if enable_caching:
             self.get = add_cache(lambda *p, **_: p[0], max_age)(self.get)
-            self.is_valid_traffic_type = add_cache(lambda *p, **_: p[0], max_age)(self.is_valid_traffic_type)  #pylint: disable=line-too-long
+            self.is_valid_traffic_type = add_cache(lambda *p, **_: p[0], max_age)(self.is_valid_traffic_type)  # pylint: disable=line-too-long
+            self.fetch_many = add_cache(lambda *p, **_: frozenset(p[0]), max_age)(self.fetch_many)
 
     def _get_key(self, split_name):
         """
@@ -56,7 +57,7 @@ class RedisSplitStorage(SplitStorage):
         """
         return self._TRAFFIC_TYPE_KEY.format(traffic_type_name=traffic_type_name)
 
-    def get(self, split_name):  #pylint: disable=method-hidden
+    def get(self, split_name):  # pylint: disable=method-hidden
         """
         Retrieve a split.
 
@@ -74,7 +75,34 @@ class RedisSplitStorage(SplitStorage):
             self._logger.debug('Error: ', exc_info=True)
             return None
 
-    def is_valid_traffic_type(self, traffic_type_name):  #pylint: disable=method-hidden
+    def fetch_many(self, split_names):
+        """
+        Retrieve splits.
+
+        :param split_names: Names of the features to fetch.
+        :type split_name: list(str)
+
+        :return: A dict with split objects parsed from redis.
+        :rtype: dict(split_name, splitio.models.splits.Split)
+        """
+        to_return = dict()
+        try:
+            keys = map(lambda split_name: self._get_key(split_name), split_names)
+            raw_splits = self._redis.mget(keys)
+            for i in range(len(split_names)):
+                split = None
+                try:
+                    split = splits.from_raw(json.loads(raw_splits[i]))
+                except (ValueError, TypeError):
+                    self._logger.error('Could not parse split.')
+                    self._logger.debug("Raw split that failed parsing attempt: %s", raw_splits[i])
+                to_return[split_names[i]] = split
+        except RedisAdapterException:
+            self._logger.error('Error fetching splits from storage')
+            self._logger.debug('Error: ', exc_info=True)
+        return to_return
+
+    def is_valid_traffic_type(self, traffic_type_name):  # pylint: disable=method-hidden
         """
         Return whether the traffic type exists in at least one split in cache.
 
