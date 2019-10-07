@@ -87,7 +87,7 @@ class RedisSplitStorage(SplitStorage):
         """
         to_return = dict()
         try:
-            keys = map(lambda split_name: self._get_key(split_name), split_names)
+            keys = [self._get_key(split_name) for split_name in split_names]
             raw_splits = self._redis.mget(keys)
             for i in range(len(split_names)):
                 split = None
