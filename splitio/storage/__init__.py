@@ -5,6 +5,7 @@ import abc
 
 from six import add_metaclass
 
+
 @add_metaclass(abc.ABCMeta)
 class SplitStorage(object):
     """Split storage interface implemented as an abstract class."""
@@ -18,6 +19,18 @@ class SplitStorage(object):
         :type split_name: str
 
         :rtype: str
+        """
+        pass
+
+    @abc.abstractmethod
+    def fetch_many(self, split_names):
+        """
+        Retrieve splits.
+
+        :param split_names: Names of the features to fetch.
+        :type split_names: list(str)
+
+        :rtype: dict
         """
         pass
 

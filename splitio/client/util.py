@@ -17,7 +17,7 @@ def _get_ip():
         # doesn't even have to be reachable
         sock.connect(('10.255.255.255', 1))
         ip_address = sock.getsockname()[0]
-    except Exception:  #pylint: disable=broad-except
+    except Exception:  # pylint: disable=broad-except
         ip_address = 'unknown'
     finally:
         sock.close()
@@ -61,7 +61,7 @@ def get_calls(classes_filter=None):
             inspect.getframeinfo(frame[0]).function
             for frame in inspect.stack()
             if classes_filter is None
-            or 'self' in frame[0].f_locals and frame[0].f_locals['self'].__class__.__name__ in classes_filter  #pylint: disable=line-too-long
+            or 'self' in frame[0].f_locals and frame[0].f_locals['self'].__class__.__name__ in classes_filter  # pylint: disable=line-too-long
         ]
-    except Exception:  #pylint: disable=broad-except
+    except Exception:  # pylint: disable=broad-except
         return []

@@ -787,13 +787,13 @@ class DependencyMatcherTests(MatcherTestsBase):
         parsed = matchers.DependencyMatcher(self.raw)
         evaluator = mocker.Mock(spec=Evaluator)
 
-        evaluator.evaluate_treatment.return_value = {'treatment': 'on'}
+        evaluator.evaluate_feature.return_value = {'treatment': 'on'}
         assert parsed.evaluate('test1', {}, {'bucketing_key': 'buck', 'evaluator': evaluator}) is True
 
-        evaluator.evaluate_treatment.return_value = {'treatment': 'off'}
+        evaluator.evaluate_feature.return_value = {'treatment': 'off'}
         assert parsed.evaluate('test1', {}, {'bucketing_key': 'buck', 'evaluator': evaluator}) is False
 
-        assert evaluator.evaluate_treatment.mock_calls == [
+        assert evaluator.evaluate_feature.mock_calls == [
             mocker.call('some_split', 'test1', 'buck', {}),
             mocker.call('some_split', 'test1', 'buck', {})
         ]

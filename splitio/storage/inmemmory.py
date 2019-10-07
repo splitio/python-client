@@ -36,6 +36,18 @@ class InMemorySplitStorage(SplitStorage):
         with self._lock:
             return self._splits.get(split_name)
 
+    def fetch_many(self, split_names):
+        """
+        Retrieve splits.
+
+        :param split_names: Names of the features to fetch.
+        :type split_name: list(str)
+
+        :return: A dict with split objects parsed from queue.
+        :rtype: dict(split_name, splitio.models.splits.Split)
+        """
+        return {split_name: self.get(split_name) for split_name in split_names}
+
     def put(self, split):
         """
         Store a split.
