@@ -9,6 +9,7 @@ from splitio.models import splits, impressions, events
 from splitio.storage.redis import RedisSplitStorage, RedisSegmentStorage, RedisImpressionsStorage, \
     RedisEventsStorage, RedisTelemetryStorage
 from splitio.storage.adapters.redis import _build_default_client
+from splitio.client.config import DEFAULT_CONFIG
 
 
 class SplitStorageTests(object):
@@ -150,50 +151,95 @@ class SegmentStorageTests(object):
 class ImpressionsStorageTests(object):
     """Redis Impressions storage e2e tests."""
 
+    def _put_impressions(self, adapter, metadata):
+        storage = RedisImpressionsStorage(adapter, metadata)
+        storage.put([
+            impressions.Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654),
+            impressions.Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654),
+            impressions.Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654)
+        ])
+
+
     def test_put_fetch_contains(self):
         """Test storing and retrieving splits in redis."""
         adapter = _build_default_client({})
         try:
-            metadata = get_metadata({})
-            storage = RedisImpressionsStorage(adapter, metadata)
-            storage.put([
-                impressions.Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654),
-                impressions.Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654),
-                impressions.Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654)
-            ])
+            self._put_impressions(adapter, get_metadata({}))
 
             imps = adapter.lrange('SPLITIO.impressions', 0, 2)
             assert len(imps) == 3
+            for rawImpression in imps:
+                impression = json.loads(rawImpression)
+                assert impression['m']['i'] != 'NA'
+                assert impression['m']['n'] != 'NA'
+        finally:
+            adapter.delete('SPLITIO.impressions')
+
+    def test_put_fetch_contains_ip_address_disabled(self):
+        """Test storing and retrieving splits in redis."""
+        adapter = _build_default_client({})
+        try:
+            cfg = DEFAULT_CONFIG.copy()
+            cfg.update({'ipAddressesEnabled': False})
+            self._put_impressions(adapter, get_metadata(cfg))
+
+            imps = adapter.lrange('SPLITIO.impressions', 0, 2)
+            assert len(imps) == 3
+            for rawImpression in imps:
+                impression = json.loads(rawImpression)
+                assert impression['m']['i'] == 'NA'
+                assert impression['m']['n'] == 'NA'
         finally:
             adapter.delete('SPLITIO.impressions')
 
 
 class EventsStorageTests(object):
     """Redis Events storage e2e tests."""
+    def _put_events(self, adapter, metadata):
+        storage = RedisEventsStorage(adapter, metadata)
+        storage.put([
+            events.EventWrapper(
+                event=events.Event('key1', 'user', 'purchase', 3.5, 123456, None),
+                size=1024,
+            ),
+            events.EventWrapper(
+                event=events.Event('key2', 'user', 'purchase', 3.5, 123456, None),
+                size=1024,
+            ),
+            events.EventWrapper(
+                event=events.Event('key3', 'user', 'purchase', 3.5, 123456, None),
+                size=1024,
+            ),
+        ])
 
     def test_put_fetch_contains(self):
         """Test storing and retrieving splits in redis."""
         adapter = _build_default_client({})
         try:
-            metadata = get_metadata({})
-            storage = RedisEventsStorage(adapter, metadata)
-            storage.put([
-                events.EventWrapper(
-                    event=events.Event('key1', 'user', 'purchase', 3.5, 123456, None),
-                    size=1024,
-                ),
-                events.EventWrapper(
-                    event=events.Event('key2', 'user', 'purchase', 3.5, 123456, None),
-                    size=1024,
-                ),
-                events.EventWrapper(
-                    event=events.Event('key3', 'user', 'purchase', 3.5, 123456, None),
-                    size=1024,
-                ),
-            ])
+            self._put_events(adapter, get_metadata({}))
+            evts = adapter.lrange('SPLITIO.events', 0, 2)
+            assert len(evts) == 3
+            for rawEvent in evts:
+                event = json.loads(rawEvent)
+                assert event['m']['i'] != 'NA'
+                assert event['m']['n'] != 'NA'
+        finally:
+            adapter.delete('SPLITIO.events')
+
+    def test_put_fetch_contains_ip_address_disabled(self):
+        """Test storing and retrieving splits in redis."""
+        adapter = _build_default_client({})
+        try:
+            cfg = DEFAULT_CONFIG.copy()
+            cfg.update({'ipAddressesEnabled': False})
+            self._put_events(adapter, get_metadata(cfg))
 
             evts = adapter.lrange('SPLITIO.events', 0, 2)
             assert len(evts) == 3
+            for rawEvent in evts:
+                event = json.loads(rawEvent)
+                assert event['m']['i'] == 'NA'
+                assert event['m']['n'] == 'NA'
         finally:
             adapter.delete('SPLITIO.events')
 
@@ -204,7 +250,45 @@ class TelemetryStorageTests(object):
     def test_put_fetch_contains(self):
         """Test storing and retrieving splits in redis."""
         adapter = _build_default_client({})
-        metadata = get_metadata({})
+        cfg = DEFAULT_CONFIG.copy()
+        cfg.update({'ipAddressesEnabled': False})
+        metadata = get_metadata(cfg)
+        storage = RedisTelemetryStorage(adapter, metadata)
+        try:
+
+            storage.inc_counter('counter1')
+            storage.inc_counter('counter1')
+            storage.inc_counter('counter2')
+            assert adapter.get(storage._get_counter_key('counter1')) == '2'
+            assert adapter.get(storage._get_counter_key('counter2')) == '1'
+
+            storage.inc_latency('latency1', 3)
+            storage.inc_latency('latency1', 3)
+            storage.inc_latency('latency2', 6)
+            assert adapter.get(storage._get_latency_key('latency1', 3)) == '2'
+            assert adapter.get(storage._get_latency_key('latency2', 6)) == '1'
+
+            storage.put_gauge('gauge1', 3)
+            storage.put_gauge('gauge2', 1)
+            assert adapter.get(storage._get_gauge_key('gauge1')) == '3'
+            assert adapter.get(storage._get_gauge_key('gauge2')) == '1'
+
+        finally:
+            adapter.delete(
+                storage._get_counter_key('counter1'),
+                storage._get_counter_key('counter2'),
+                storage._get_latency_key('latency1', 3),
+                storage._get_latency_key('latency2', 6),
+                storage._get_gauge_key('gauge1'),
+                storage._get_gauge_key('gauge2')
+            )
+
+    def test_put_fetch_contains_ip_address_disabled(self):
+        """Test storing and retrieving splits in redis."""
+        adapter = _build_default_client({})
+        cfg = DEFAULT_CONFIG.copy()
+        cfg.update({'ipAddressesEnabled': False})
+        metadata = get_metadata(cfg)
         storage = RedisTelemetryStorage(adapter, metadata)
         try:
 

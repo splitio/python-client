@@ -28,6 +28,16 @@ def _get_hostname(ip_address):
     return 'unknown' if ip_address == 'unknown' else 'ip-' + ip_address.replace('.', '-')
 
 
+def _get_hostname_and_ip(config):
+    if config.get('ipAddressesEnabled') is False:
+        return 'NA', 'NA'
+    ip_from_config = config.get('machineIp')
+    machine_from_config = config.get('machineName')
+    ip_address = ip_from_config if ip_from_config is not None else _get_ip()
+    hostname = machine_from_config if machine_from_config is not None else _get_hostname(ip_address)
+    return ip_address, hostname
+
+
 def get_metadata(config):
     """
     Gather SDK metadata and return a tuple with such info.
@@ -39,10 +49,7 @@ def get_metadata(config):
     :rtype: SdkMetadata
     """
     version = 'python-%s' % __version__
-    ip_from_config = config.get('machineIp')
-    machine_from_config = config.get('machineName')
-    ip_address = ip_from_config if ip_from_config is not None else _get_ip()
-    hostname = machine_from_config if machine_from_config is not None else _get_hostname(ip_address)
+    ip_address, hostname = _get_hostname_and_ip(config)
     return SdkMetadata(version, hostname, ip_address)
 
 
