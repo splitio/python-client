@@ -194,17 +194,14 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
     def _evaluate_features_if_ready(self, matching_key, bucketing_key, features, attributes=None):
         if not self.ready:
-            evaluations = dict()
-            for feature in features:
-                evaluations[feature] = {
+            return {
+                feature: {
                     'treatment': CONTROL,
                     'configurations': None,
-                    'impression': {
-                        'label': Label.NOT_READY,
-                        'change_number': None
-                    }
+                    'impression': {'label': Label.NOT_READY, 'change_number': None}
                 }
-            return evaluations
+                for feature in features
+            }
 
         return self._evaluator.evaluate_features(
             features,

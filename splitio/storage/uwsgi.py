@@ -63,10 +63,7 @@ class UWSGISplitStorage(SplitStorage):
         :return: A dict with split objects parsed from queue.
         :rtype: dict(split_name, splitio.models.splits.Split)
         """
-        to_return = dict()
-        for split_name in split_names:
-            to_return[split_name] = self.get(split_name)
-        return to_return
+        return {split_name: self.get(split_name) for split_name in split_names}
 
     def put(self, split):
         """
