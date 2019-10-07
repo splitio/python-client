@@ -63,15 +63,18 @@ class WorkerPool(object):
         while self._should_be_working[worker_number]:
             try:
                 message = self._incoming.get(True, 0.5)
-                self._incoming.task_done()
 
                 # For some reason message can be None in python2 implementation of queue.
                 # This method must be both ignored and acknowledged with .task_done()
                 # otherwise .join() will halt.
                 if message is None:
+                    self._incoming.task_done()
                     continue
 
+                # If the task is successfully executed, the ack is done AFTERWARDS,
+                # to avoid race conditions on SDK initialization.
                 ok = self._safe_run(func, message)  #pylint: disable=invalid-name
+                self._incoming.task_done()
                 if not ok:
                     self._logger.error(
                         ("Something went wrong during the execution, "
