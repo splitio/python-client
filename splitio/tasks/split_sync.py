@@ -56,10 +56,8 @@ class SplitSynchronizationTask(BaseSynchronizationTask):
 
     def _on_start(self):
         """Wait until splits are in sync and set the flag to true."""
-        while True:
-            ready = self._update_splits()
-            if ready:
-                break
+        while not self._update_splits():
+            pass
 
         self._ready_flag.set()
         return True
