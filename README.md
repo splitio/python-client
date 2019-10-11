@@ -22,7 +22,13 @@ factory = get_factory('YOUR_SDK_TYPE_API_KEY', config=config)
 try:
     factory.block_until_ready(5) # wait up to 5 seconds
     split = factory.client()
-    print(split.get_treatment('CUSTOMER_ID', 'SPLIT_NAME'))
+    treatment = split.get_treatment('CUSTOMER_ID', 'SPLIT_NAME')
+    if treatment == "on": 
+        # insert code here to show on treatment
+    elif treatment == "off":
+        # insert code here to show off treatment
+    else:
+        # insert your control treatment code here
 except TimeoutException:
     # Now the user can choose whether to abort the whole execution, or just keep going
     # without a ready client, which if configured properly, should become ready at some point.

@@ -1,4 +1,4 @@
-8.1.4 (Oct XX, 2019)
+8.1.4 (Oct 14, 2019)
  - Added logic to fetch multiple splits at once on get_treatments/get_treatments_with_config.
  - Added flag `ipAddressesEnabled` into config to enable/disable sending machineName and machineIp when data is posted in headers.
 
