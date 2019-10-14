@@ -19,7 +19,7 @@ Impression = namedtuple(
 )
 
 
-class Label(object):  #pylint: disable=too-few-public-methods
+class Label(object):  # pylint: disable=too-few-public-methods
     """Impressions labels."""
 
     # Condition: Split Was Killed

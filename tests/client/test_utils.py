@@ -1,8 +1,12 @@
 """Split client utilities test module."""
 #pylint: disable=no-self-use,too-few-public-methods
 
+import socket
+
+
 from splitio.client import util, config
 from splitio.version import __version__
+from splitio.client.config import DEFAULT_CONFIG
 
 class ClientUtilsTests(object):
     """Client utilities test cases."""
@@ -24,6 +28,12 @@ class ClientUtilsTests(object):
         meta = util.get_metadata(config.DEFAULT_CONFIG)
         assert get_ip_mock.mock_calls == [mocker.call()]
         assert get_host_mock.mock_calls == [mocker.call(mocker.ANY)]
+
+        cfg = DEFAULT_CONFIG.copy()
+        cfg.update({'ipAddressesEnabled': False})
+        meta = util.get_metadata(cfg)
+        assert meta.instance_ip == 'NA'
+        assert meta.instance_name == 'NA'
 
         get_ip_mock.reset_mock()
         get_host_mock.reset_mock()

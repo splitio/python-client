@@ -53,6 +53,18 @@ class UWSGISplitStorage(SplitStorage):
             self._logger.warning("Trying to retrieve nonexistant split %s. Ignoring.", split_name)
         return to_return
 
+    def fetch_many(self, split_names):
+        """
+        Retrieve splits.
+
+        :param split_names: Names of the features to fetch.
+        :type split_name: list(str)
+
+        :return: A dict with split objects parsed from queue.
+        :rtype: dict(split_name, splitio.models.splits.Split)
+        """
+        return {split_name: self.get(split_name) for split_name in split_names}
+
     def put(self, split):
         """
         Store a split.

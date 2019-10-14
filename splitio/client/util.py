@@ -17,7 +17,7 @@ def _get_ip():
         # doesn't even have to be reachable
         sock.connect(('10.255.255.255', 1))
         ip_address = sock.getsockname()[0]
-    except Exception:  #pylint: disable=broad-except
+    except Exception:  # pylint: disable=broad-except
         ip_address = 'unknown'
     finally:
         sock.close()
@@ -26,6 +26,16 @@ def _get_ip():
 
 def _get_hostname(ip_address):
     return 'unknown' if ip_address == 'unknown' else 'ip-' + ip_address.replace('.', '-')
+
+
+def _get_hostname_and_ip(config):
+    if config.get('ipAddressesEnabled') is False:
+        return 'NA', 'NA'
+    ip_from_config = config.get('machineIp')
+    machine_from_config = config.get('machineName')
+    ip_address = ip_from_config if ip_from_config is not None else _get_ip()
+    hostname = machine_from_config if machine_from_config is not None else _get_hostname(ip_address)
+    return ip_address, hostname
 
 
 def get_metadata(config):
@@ -39,10 +49,7 @@ def get_metadata(config):
     :rtype: SdkMetadata
     """
     version = 'python-%s' % __version__
-    ip_from_config = config.get('machineIp')
-    machine_from_config = config.get('machineName')
-    ip_address = ip_from_config if ip_from_config is not None else _get_ip()
-    hostname = machine_from_config if machine_from_config is not None else _get_hostname(ip_address)
+    ip_address, hostname = _get_hostname_and_ip(config)
     return SdkMetadata(version, hostname, ip_address)
 
 
@@ -61,7 +68,7 @@ def get_calls(classes_filter=None):
             inspect.getframeinfo(frame[0]).function
             for frame in inspect.stack()
             if classes_filter is None
-            or 'self' in frame[0].f_locals and frame[0].f_locals['self'].__class__.__name__ in classes_filter  #pylint: disable=line-too-long
+            or 'self' in frame[0].f_locals and frame[0].f_locals['self'].__class__.__name__ in classes_filter  # pylint: disable=line-too-long
         ]
-    except Exception:  #pylint: disable=broad-except
+    except Exception:  # pylint: disable=broad-except
         return []

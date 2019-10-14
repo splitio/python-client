@@ -256,7 +256,7 @@ class InMemoryIntegrationTests(object):
 
 
 class RedisIntegrationTests(object):
-    """Inmemory storage-based integration tests."""
+    """Redis storage-based integration tests."""
 
     def setup_method(self):
         """Prepare storages with test data."""

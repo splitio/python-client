@@ -7,7 +7,7 @@ This SDK is designed to work with Split, the platform for controlled rollouts, w
 [![Twitter Follow](https://img.shields.io/twitter/follow/splitsoftware.svg?style=social&label=Follow&maxAge=1529000)](https://twitter.com/intent/follow?screen_name=splitsoftware)
 
 ## Compatibility
-This SDK is compatible with Python 2.7 and higher.
+This SDK is compatible with **Python 2.7 and higher**.
 
 ## Getting started
 Below is a simple example that describes the instantiation and most basic usage of our SDK:
@@ -22,14 +22,20 @@ factory = get_factory('YOUR_SDK_TYPE_API_KEY', config=config)
 try:
     factory.block_until_ready(5) # wait up to 5 seconds
     split = factory.client()
-    print(split.get_treatment('CUSTOMER_ID', 'SPLIT_NAME'))
+    treatment = split.get_treatment('CUSTOMER_ID', 'SPLIT_NAME')
+    if treatment == "on": 
+        # insert code here to show on treatment
+    elif treatment == "off":
+        # insert code here to show off treatment
+    else:
+        # insert your control treatment code here
 except TimeoutException:
     # Now the user can choose whether to abort the whole execution, or just keep going
     # without a ready client, which if configured properly, should become ready at some point.
     pass
 ```
 
-Please refer to [our official docs](https://help.split.io/hc/en-us/articles/360020359652-Python-SDK)) to learn about all the functionality provided by our SDK and the configuration options available for tailoring it to your current application setup.
+Please refer to [our official docs](https://help.split.io/hc/en-us/articles/360020359652-Python-SDK) to learn about all the functionality provided by our SDK and the configuration options available for tailoring it to your current application setup.
 
 ## Submitting issues
 The Split team monitors all issues submitted to this [issue tracker](https://github.com/splitio/python-client/issues). We encourage you to use this issue tracker to submit any bug reports, feedback, and feature enhancements. We'll do our best to respond in a timely manner.

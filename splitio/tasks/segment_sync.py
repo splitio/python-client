@@ -81,10 +81,8 @@ class SegmentSynchronizationTask(BaseSynchronizationTask):  #pylint: disable=too
         :param segment_name: Name of the segment to update.
         :type segment_name: str
         """
-        while True:
-            ready = self._update_segment(segment_name)
-            if ready:
-                break
+        while not self._update_segment(segment_name):
+            pass
 
     def start(self):
         """Start segment synchronization."""

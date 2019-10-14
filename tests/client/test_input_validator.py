@@ -776,7 +776,10 @@ class ClientInputValidationTests(object):
         type(split_mock).conditions = conditions_mock
 
         storage_mock = mocker.Mock(spec=SplitStorage)
-        storage_mock.get.return_value = split_mock
+        storage_mock.fetch_many.return_value = {
+            'some_feature': split_mock,
+            'some': split_mock,
+        }
 
         def _get_storage_mock(storage):
             return {
@@ -877,6 +880,9 @@ class ClientInputValidationTests(object):
         ]
 
         client._logger.reset_mock()
+        storage_mock.fetch_many.return_value = {
+            'some_feature': None
+        }
         storage_mock.get.return_value = None
         ready_mock = mocker.PropertyMock()
         ready_mock.return_value = True
@@ -902,7 +908,9 @@ class ClientInputValidationTests(object):
         type(split_mock).conditions = conditions_mock
 
         storage_mock = mocker.Mock(spec=SplitStorage)
-        storage_mock.get.return_value = split_mock
+        storage_mock.fetch_many.return_value = {
+            'some_feature': split_mock
+        }
 
         factory_mock = mocker.Mock(spec=SplitFactory)
         factory_mock._get_storage.return_value = storage_mock
@@ -998,6 +1006,9 @@ class ClientInputValidationTests(object):
         ]
 
         client._logger.reset_mock()
+        storage_mock.fetch_many.return_value = {
+            'some_feature': None
+        }
         storage_mock.get.return_value = None
         ready_mock = mocker.PropertyMock()
         ready_mock.return_value = True

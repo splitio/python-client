@@ -41,7 +41,7 @@ class DependencyMatcher(Matcher):
 
         bucketing_key = context.get('bucketing_key')
 
-        result = evaluator.evaluate_treatment(self._split_name, key, bucketing_key, attributes)
+        result = evaluator.evaluate_feature(self._split_name, key, bucketing_key, attributes)
         return result['treatment'] in self._treatments
 
     def _add_matcher_specific_properties_to_json(self):

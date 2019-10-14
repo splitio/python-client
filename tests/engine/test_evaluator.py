@@ -24,7 +24,7 @@ class EvaluatorTests(object):
         """Test that a missing split logs and returns CONTROL."""
         e = self._build_evaluator_with_mocks(mocker)
         e._split_storage.get.return_value = None
-        result = e.evaluate_treatment('feature1', 'some_key', 'some_bucketing_key', {'attr1': 1})
+        result = e.evaluate_feature('feature1', 'some_key', 'some_bucketing_key', {'attr1': 1})
         assert result['configurations'] == None
         assert result['treatment'] == evaluator.CONTROL
         assert result['impression']['change_number'] == -1
@@ -39,7 +39,7 @@ class EvaluatorTests(object):
         mocked_split.change_number = 123
         mocked_split.get_configurations_for.return_value = '{"some_property": 123}'
         e._split_storage.get.return_value = mocked_split
-        result = e.evaluate_treatment('feature1', 'some_key', 'some_bucketing_key', {'attr1': 1})
+        result = e.evaluate_feature('feature1', 'some_key', 'some_bucketing_key', {'attr1': 1})
         assert result['treatment'] == 'off'
         assert result['configurations'] == '{"some_property": 123}'
         assert result['impression']['change_number'] == 123
@@ -57,12 +57,13 @@ class EvaluatorTests(object):
         mocked_split.change_number = 123
         mocked_split.get_configurations_for.return_value = '{"some_property": 123}'
         e._split_storage.get.return_value = mocked_split
-        result = e.evaluate_treatment('feature1', 'some_key', 'some_bucketing_key', {'attr1': 1})
+        result = e.evaluate_feature('feature1', 'some_key', 'some_bucketing_key', {'attr1': 1})
         assert result['treatment'] == 'on'
         assert result['configurations'] == '{"some_property": 123}'
         assert result['impression']['change_number'] == 123
         assert result['impression']['label'] == 'some_label'
         assert mocked_split.get_configurations_for.mock_calls == [mocker.call('on')]
+
 
     def test_evaluate_treatment_ok_no_config(self, mocker):
         """Test that a killed split returns the default treatment."""
@@ -75,12 +76,39 @@ class EvaluatorTests(object):
         mocked_split.change_number = 123
         mocked_split.get_configurations_for.return_value = None
         e._split_storage.get.return_value = mocked_split
-        result = e.evaluate_treatment('feature1', 'some_key', 'some_bucketing_key', {'attr1': 1})
+        result = e.evaluate_feature('feature1', 'some_key', 'some_bucketing_key', {'attr1': 1})
         assert result['treatment'] == 'on'
         assert result['configurations'] == None
         assert result['impression']['change_number'] == 123
         assert result['impression']['label'] == 'some_label'
         assert mocked_split.get_configurations_for.mock_calls == [mocker.call('on')]
+
+    def test_evaluate_treatments(self, mocker):
+        """Test that a missing split logs and returns CONTROL."""
+        e = self._build_evaluator_with_mocks(mocker)
+        e._get_treatment_for_split = mocker.Mock()
+        e._get_treatment_for_split.return_value = ('on', 'some_label')
+        mocked_split = mocker.Mock(spec=Split)
+        mocked_split.name = 'feature2'
+        mocked_split.default_treatment = 'off'
+        mocked_split.killed = False
+        mocked_split.change_number = 123
+        mocked_split.get_configurations_for.return_value = '{"some_property": 123}'
+        e._split_storage.fetch_many.return_value = {
+            'feature1': None,
+            'feature2': mocked_split,
+        }
+        results = e.evaluate_features(['feature1', 'feature2'], 'some_key', 'some_bucketing_key', None)
+        result = results['feature1']
+        assert result['configurations'] == None
+        assert result['treatment'] == evaluator.CONTROL
+        assert result['impression']['change_number'] == -1
+        assert result['impression']['label'] == Label.SPLIT_NOT_FOUND
+        result = results['feature2']
+        assert result['configurations'] == '{"some_property": 123}'
+        assert result['treatment'] == 'on'
+        assert result['impression']['change_number'] == 123
+        assert result['impression']['label'] == 'some_label'
 
     def test_get_gtreatment_for_split_no_condition_matches(self, mocker):
         """Test no condition matches."""

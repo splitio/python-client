@@ -70,6 +70,25 @@ class RedisSplitStorageTests(object):
         assert adapter.get.mock_calls == [mocker.call('SPLITIO.split.some_split')]
         assert not from_raw.mock_calls
 
+    def test_get_splits_with_cache(self, mocker):
+        """Test retrieving a list of passed splits."""
+        adapter = mocker.Mock(spec=RedisAdapter)
+        storage = RedisSplitStorage(adapter)
+        from_raw = mocker.Mock()
+        mocker.patch('splitio.models.splits.from_raw', new=from_raw)
+
+        adapter.mget.return_value = ['{"name": "split1"}', '{"name": "split2"}', None]
+
+        result = storage.fetch_many(['split1', 'split2', 'split3'])
+        assert len(result) == 3
+
+        assert mocker.call({'name': 'split1'}) in from_raw.mock_calls
+        assert mocker.call({'name': 'split2'}) in from_raw.mock_calls
+
+        assert result['split1'] is not None
+        assert result['split2'] is not None
+        assert 'split3' in result
+
     def test_get_changenumber(self, mocker):
         """Test fetching changenumber."""
         adapter = mocker.Mock(spec=RedisAdapter)
