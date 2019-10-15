@@ -16,7 +16,7 @@ DEFAULT_CONFIG = {
     'eventsBulkSize': 5000,
     'eventsQueueSize': 10000,
     'labelsEnabled': True,
-    'ipAddressesEnabled': True,
+    'IPAddressesEnabled': True,
     'impressionListener': None,
     'redisHost': 'localhost',
     'redisPort': 6379,

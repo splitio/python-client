@@ -180,7 +180,7 @@ class ImpressionsStorageTests(object):
         adapter = _build_default_client({})
         try:
             cfg = DEFAULT_CONFIG.copy()
-            cfg.update({'ipAddressesEnabled': False})
+            cfg.update({'IPAddressesEnabled': False})
             self._put_impressions(adapter, get_metadata(cfg))
 
             imps = adapter.lrange('SPLITIO.impressions', 0, 2)
@@ -231,7 +231,7 @@ class EventsStorageTests(object):
         adapter = _build_default_client({})
         try:
             cfg = DEFAULT_CONFIG.copy()
-            cfg.update({'ipAddressesEnabled': False})
+            cfg.update({'IPAddressesEnabled': False})
             self._put_events(adapter, get_metadata(cfg))
 
             evts = adapter.lrange('SPLITIO.events', 0, 2)
@@ -251,7 +251,7 @@ class TelemetryStorageTests(object):
         """Test storing and retrieving splits in redis."""
         adapter = _build_default_client({})
         cfg = DEFAULT_CONFIG.copy()
-        cfg.update({'ipAddressesEnabled': False})
+        cfg.update({'IPAddressesEnabled': False})
         metadata = get_metadata(cfg)
         storage = RedisTelemetryStorage(adapter, metadata)
         try:
@@ -287,7 +287,7 @@ class TelemetryStorageTests(object):
         """Test storing and retrieving splits in redis."""
         adapter = _build_default_client({})
         cfg = DEFAULT_CONFIG.copy()
-        cfg.update({'ipAddressesEnabled': False})
+        cfg.update({'IPAddressesEnabled': False})
         metadata = get_metadata(cfg)
         storage = RedisTelemetryStorage(adapter, metadata)
         try:
