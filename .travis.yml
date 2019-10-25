@@ -1,11 +1,20 @@
 language: python
 
-python:
-  - "2.7"
-  - "3.6"
+git:
+  depth: false
+
+matrix:
+  include:
+      python: '2.7'
+      python: '3.6'
+      after_success:
+      - bash sonar-scanner.sh
 
 services:
   - redis-server
+
+addons:
+  sonarqube: true
 
 install:
   - pip install -U setuptools pip
