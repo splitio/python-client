@@ -11,7 +11,6 @@ import six
 
 from splitio.api import APIException
 from splitio.client.key import Key
-from splitio.client.util import get_calls
 from splitio.engine.evaluator import CONTROL
 
 
@@ -19,23 +18,6 @@ _LOGGER = logging.getLogger(__name__)
 MAX_LENGTH = 250
 EVENT_TYPE_PATTERN = r'^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$'
 MAX_PROPERTIES_LENGTH_BYTES = 32768
-
-
-def _get_first_split_sdk_call():
-    """
-    Get the method name of the original call on the SplitClient methods.
-
-    :return: Name of the method called by the user.
-    :rtype: str
-    """
-    unknown_method = 'unknown-method'
-    try:
-        calls = get_calls(['Client', 'SplitManager'])
-        if calls:
-            return calls[-1]
-        return unknown_method
-    except Exception:  # pylint: disable=broad-except
-        return unknown_method
 
 
 def _check_not_null(value, name, operation):
@@ -217,7 +199,7 @@ def _remove_empty_spaces(value, operation):
     return strip_value
 
 
-def validate_key(key):
+def validate_key(key, method_name):
     """
     Validate Key parameter for get_treatment/s.
 
@@ -230,31 +212,30 @@ def validate_key(key):
     :return: The tuple key
     :rtype: (matching_key,bucketing_key)
     """
-    operation = _get_first_split_sdk_call()
     matching_key_result = None
     bucketing_key_result = None
     if key is None:
-        _LOGGER.error('%s: you passed a null key, key must be a non-empty string.', operation)
+        _LOGGER.error('%s: you passed a null key, key must be a non-empty string.', method_name)
         return None, None
 
     if isinstance(key, Key):
-        matching_key_result = _check_valid_object_key(key.matching_key, 'matching_key', operation)
+        matching_key_result = _check_valid_object_key(key.matching_key, 'matching_key', method_name)
         if matching_key_result is None:
             return None, None
         bucketing_key_result = _check_valid_object_key(key.bucketing_key, 'bucketing_key',
-                                                       operation)
+                                                       method_name)
         if bucketing_key_result is None:
             return None, None
     else:
-        key_str = _check_can_convert(key, 'key', operation)
+        key_str = _check_can_convert(key, 'key', method_name)
         if key_str is not None and \
-           _check_string_not_empty(key_str, 'key', operation) and \
-           _check_valid_length(key_str, 'key', operation):
+           _check_string_not_empty(key_str, 'key', method_name) and \
+           _check_valid_length(key_str, 'key', method_name):
             matching_key_result = key_str
     return matching_key_result, bucketing_key_result
 
 
-def validate_feature_name(feature_name, should_validate_existance, split_storage):
+def validate_feature_name(feature_name, should_validate_existance, split_storage, method_name):
     """
     Check if feature_name is valid for get_treatment.
 
@@ -263,22 +244,21 @@ def validate_feature_name(feature_name, should_validate_existance, split_storage
     :return: feature_name
     :rtype: str|None
     """
-    operation = _get_first_split_sdk_call()
-    if (not _check_not_null(feature_name, 'feature_name', operation)) or \
-       (not _check_is_string(feature_name, 'feature_name', operation)) or \
-       (not _check_string_not_empty(feature_name, 'feature_name', operation)):
+    if (not _check_not_null(feature_name, 'feature_name', method_name)) or \
+       (not _check_is_string(feature_name, 'feature_name', method_name)) or \
+       (not _check_string_not_empty(feature_name, 'feature_name', method_name)):
         return None
 
     if should_validate_existance and split_storage.get(feature_name) is None:
         _LOGGER.warning(
             "%s: you passed \"%s\" that does not exist in this environment, "
             "please double check what Splits exist in the web console.",
-            operation,
+            method_name,
             feature_name
         )
         return None
 
-    return _remove_empty_spaces(feature_name, operation)
+    return _remove_empty_spaces(feature_name, method_name)
 
 
 def validate_track_key(key):
@@ -392,7 +372,12 @@ def validate_manager_feature_name(feature_name, should_validate_existance, split
     return feature_name
 
 
-def validate_features_get_treatments(features, should_validate_existance=False, split_storage=None):  # pylint: disable=invalid-name
+def validate_features_get_treatments(  # pylint: disable=invalid-name
+    method_name,
+    features,
+    should_validate_existance=False,
+    split_storage=None
+):
     """
     Check if features is valid for get_treatments.
 
@@ -401,21 +386,21 @@ def validate_features_get_treatments(features, should_validate_existance=False, 
     :return: filtered_features
     :rtype: tuple
     """
-    operation = _get_first_split_sdk_call()
     if features is None or not isinstance(features, list):
-        _LOGGER.error("%s: feature_names must be a non-empty array.", operation)
+        print(features)
+        _LOGGER.error("%s: feature_names must be a non-empty array.", method_name)
         return None, None
     if not features:
-        _LOGGER.error("%s: feature_names must be a non-empty array.", operation)
+        _LOGGER.error("%s: feature_names must be a non-empty array.", method_name)
         return None, None
     filtered_features = set(
-        _remove_empty_spaces(feature, operation) for feature in features
+        _remove_empty_spaces(feature, method_name) for feature in features
         if feature is not None and
-        _check_is_string(feature, 'feature_name', operation) and
-        _check_string_not_empty(feature, 'feature_name', operation)
+        _check_is_string(feature, 'feature_name', method_name) and
+        _check_string_not_empty(feature, 'feature_name', method_name)
     )
     if not filtered_features:
-        _LOGGER.error("%s: feature_names must be a non-empty array.", operation)
+        _LOGGER.error("%s: feature_names must be a non-empty array.", method_name)
         return None, None
 
     if not should_validate_existance:
@@ -426,13 +411,13 @@ def validate_features_get_treatments(features, should_validate_existance=False, 
         _LOGGER.warning(
             "%s: you passed \"%s\" that does not exist in this environment, "
             "please double check what Splits exist in the web console.",
-            operation,
+            method_name,
             missing_feature
         )
     return filtered_features - valid_missing_features, valid_missing_features
 
 
-def generate_control_treatments(features):
+def generate_control_treatments(features, method_name):
     """
     Generate valid features to control.
 
@@ -441,10 +426,10 @@ def generate_control_treatments(features):
     :return: dict
     :rtype: dict|None
     """
-    return {feature: (CONTROL, None) for feature in validate_features_get_treatments(features)[0]}
+    return {feature: (CONTROL, None) for feature in validate_features_get_treatments(method_name, features)[0]}
 
 
-def validate_attributes(attributes):
+def validate_attributes(attributes, method_name):
     """
     Check if attributes is valid.
 
@@ -455,11 +440,10 @@ def validate_attributes(attributes):
     :return: bool
     :rtype: True|False
     """
-    operation = _get_first_split_sdk_call()
     if attributes is None:
         return True
     if not isinstance(attributes, dict):
-        _LOGGER.error('%s: attributes must be of type dictionary.', operation)
+        _LOGGER.error('%s: attributes must be of type dictionary.', method_name)
         return False
     return True
 

@@ -51,24 +51,3 @@ def get_metadata(config):
     version = 'python-%s' % __version__
     ip_address, hostname = _get_hostname_and_ip(config)
     return SdkMetadata(version, hostname, ip_address)
-
-
-def get_calls(classes_filter=None):
-    """
-    Inspect the stack and retrieve an ordered list of caller functions.
-
-    :param class_filter: If not None, only methods from that classes will be returned.
-    :type class: list(str)
-
-    :return: list of callers ordered by most recent first.
-    :rtype: list(tuple(str, str))
-    """
-    try:
-        return [
-            inspect.getframeinfo(frame[0]).function
-            for frame in inspect.stack()
-            if classes_filter is None
-            or 'self' in frame[0].f_locals and frame[0].f_locals['self'].__class__.__name__ in classes_filter  # pylint: disable=line-too-long
-        ]
-    except Exception:  # pylint: disable=broad-except
-        return []
