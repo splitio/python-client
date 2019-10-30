@@ -387,7 +387,6 @@ def validate_features_get_treatments(  # pylint: disable=invalid-name
     :rtype: tuple
     """
     if features is None or not isinstance(features, list):
-        print(features)
         _LOGGER.error("%s: feature_names must be a non-empty array.", method_name)
         return None, None
     if not features:
