@@ -206,8 +206,8 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                     treatments[feature] = (result['treatment'], result['configurations'])
 
                 except Exception:  # pylint: disable=broad-except
-                    self._logger.error('get_treatments: An exception occured when evaluating '
-                                       'feature ' + feature + ' returning CONTROL.')
+                    self._logger.error('%s: An exception occured when evaluating '
+                                       'feature %s returning CONTROL.' % (method_name, feature))
                     treatments[feature] = CONTROL, None
                     self._logger.debug('Error: ', exc_info=True)
                     continue
@@ -219,8 +219,8 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                     for impression in bulk_impressions:
                         self._send_impression_to_listener(impression, attributes)
             except Exception:  # pylint: disable=broad-except
-                self._logger.error('get_treatments: An exception when trying to store '
-                                   'impressions.')
+                self._logger.error('%s: An exception when trying to store '
+                                   'impressions.' % method_name)
                 self._logger.debug('Error: ', exc_info=True)
 
             return treatments
