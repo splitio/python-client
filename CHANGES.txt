@@ -1,3 +1,6 @@
+8.1.6 (Oct 31, 2019)
+ - Fixed input validation performance issue.
+
 8.1.5 (Oct 15, 2019)
  - Added logic to fetch multiple splits at once on get_treatments/get_treatments_with_config.
  - Added flag `IPAddressesEnabled` into config to enable/disable sending machineName and machineIp when data is posted in headers.

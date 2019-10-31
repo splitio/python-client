@@ -88,6 +88,7 @@ class SplitFactoryTests(object):
         factory.block_until_ready()
         time.sleep(1) # give a chance for the bg thread to set the ready status
         assert factory.ready
+        factory.destroy()
 
     def test_redis_client_creation(self, mocker):
         """Test that a client with redis storage is created correctly."""
@@ -165,6 +166,7 @@ class SplitFactoryTests(object):
         factory.block_until_ready()
         time.sleep(1) # give a chance for the bg thread to set the ready status
         assert factory.ready
+        factory.destroy()
 
 
     def test_uwsgi_client_creation(self):
@@ -182,6 +184,7 @@ class SplitFactoryTests(object):
         factory.block_until_ready()
         time.sleep(1) # give a chance for the bg thread to set the ready status
         assert factory.ready
+        factory.destroy()
 
     def test_destroy(self, mocker):
         """Test that tasks are shutdown and data is flushed when destroy is called."""
@@ -366,7 +369,7 @@ class SplitFactoryTests(object):
         assert _INSTANTIATED_FACTORIES['some_api_key'] == 1
         assert factory_module_logger.warning.mock_calls == []
 
-        get_factory('some_api_key')
+        factory2 = get_factory('some_api_key')
         assert _INSTANTIATED_FACTORIES['some_api_key'] == 2
         assert factory_module_logger.warning.mock_calls == [mocker.call(
             "factory instantiation: You already have %d %s with this API Key. "
@@ -377,7 +380,7 @@ class SplitFactoryTests(object):
         )]
 
         factory_module_logger.reset_mock()
-        get_factory('some_api_key')
+        factory3 = get_factory('some_api_key')
         assert _INSTANTIATED_FACTORIES['some_api_key'] == 3
         assert factory_module_logger.warning.mock_calls == [mocker.call(
             "factory instantiation: You already have %d %s with this API Key. "
@@ -388,7 +391,7 @@ class SplitFactoryTests(object):
         )]
 
         factory_module_logger.reset_mock()
-        get_factory('some_other_api_key')
+        factory4 = get_factory('some_other_api_key')
         assert _INSTANTIATED_FACTORIES['some_api_key'] == 3
         assert _INSTANTIATED_FACTORIES['some_other_api_key'] == 1
         assert factory_module_logger.warning.mock_calls == [mocker.call(
@@ -403,3 +406,6 @@ class SplitFactoryTests(object):
         event.wait()
         assert _INSTANTIATED_FACTORIES['some_other_api_key'] == 1
         assert _INSTANTIATED_FACTORIES['some_api_key'] == 2
+        factory2.destroy()
+        factory3.destroy()
+        factory4.destroy()
