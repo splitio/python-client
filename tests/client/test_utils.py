@@ -30,7 +30,7 @@ class ClientUtilsTests(object):
         assert get_host_mock.mock_calls == [mocker.call(mocker.ANY)]
 
         cfg = DEFAULT_CONFIG.copy()
-        cfg.update({'ipAddressesEnabled': False})
+        cfg.update({'IPAddressesEnabled': False})
         meta = util.get_metadata(cfg)
         assert meta.instance_ip == 'NA'
         assert meta.instance_name == 'NA'
