@@ -135,7 +135,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         assert mocker.call(
             [Impression('some_key', 'some_feature', 'on', 'some_label', 123, None, 1000)]
         ) in impression_storage.put.mock_calls
-        assert mocker.call('sdk.getTreatment', 5) in telemetry_storage.inc_latency.mock_calls
+        assert mocker.call('sdk.getTreatmentWithConfig', 5) in telemetry_storage.inc_latency.mock_calls
         assert client._logger.mock_calls == []
         assert mocker.call(
             Impression('some_key', 'some_feature', 'on', 'some_label', 123, None, 1000),

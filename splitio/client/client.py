@@ -19,6 +19,8 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
     _METRIC_GET_TREATMENT = 'sdk.getTreatment'
     _METRIC_GET_TREATMENTS = 'sdk.getTreatments'
+    _METRIC_GET_TREATMENT_WITH_CONFIG = 'sdk.getTreatmentWithConfig'
+    _METRIC_GET_TREATMENTS_WITH_CONFIG = 'sdk.getTreatmentsWithConfig'
 
     def __init__(self, factory, labels_enabled=True, impression_listener=None):
         """
@@ -103,22 +105,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             attributes
         )
 
-    def get_treatment_with_config(self, key, feature, attributes=None):
-        """
-        Get the treatment and config for a feature and key, with optional dictionary of attributes.
-
-        This method never raises an exception. If there's a problem, the appropriate log message
-        will be generated and the method will return the CONTROL treatment.
-
-        :param key: The key for which to get the treatment
-        :type key: str
-        :param feature: The name of the feature for which to get the treatment
-        :type feature: str
-        :param attributes: An optional dictionary of attributes
-        :type attributes: dict
-        :return: The treatment for the key and feature
-        :rtype: tuple(str, str)
-        """
+    def _make_evaluation(self, key, feature, attributes, method_name, metric_name):
         try:
             if self.destroyed:
                 self._logger.error("Client has already been destroyed - no calls possible")
@@ -126,16 +113,17 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
             start = int(round(time.time() * 1000))
 
-            matching_key, bucketing_key = input_validator.validate_key(key)
+            matching_key, bucketing_key = input_validator.validate_key(key, method_name)
             feature = input_validator.validate_feature_name(
                 feature,
                 self.ready,
-                self._factory._get_storage('splits')  # pylint: disable=protected-access
+                self._factory._get_storage('splits'),  # pylint: disable=protected-access
+                method_name
             )
 
             if (matching_key is None and bucketing_key is None) \
                     or feature is None \
-                    or not input_validator.validate_attributes(attributes):
+                    or not input_validator.validate_attributes(attributes, method_name):
                 return CONTROL, None
 
             result = self._evaluate_if_ready(matching_key, bucketing_key, feature, attributes)
@@ -150,7 +138,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                 start
             )
 
-            self._record_stats(impression, start, self._METRIC_GET_TREATMENT)
+            self._record_stats([impression], start, metric_name)
             self._send_impression_to_listener(impression, attributes)
             return result['treatment'], result['configurations']
         except Exception:  # pylint: disable=broad-except
@@ -166,80 +154,29 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                     bucketing_key,
                     start
                 )
-                self._record_stats(impression, start, self._METRIC_GET_TREATMENT)
+                self._record_stats([impression], start, metric_name)
                 self._send_impression_to_listener(impression, attributes)
             except Exception:  # pylint: disable=broad-except
                 self._logger.error('Error reporting impression into get_treatment exception block')
                 self._logger.debug('Error: ', exc_info=True)
             return CONTROL, None
 
-    def get_treatment(self, key, feature, attributes=None):
-        """
-        Get the treatment for a feature and key, with an optional dictionary of attributes.
-
-        This method never raises an exception. If there's a problem, the appropriate log message
-        will be generated and the method will return the CONTROL treatment.
-
-        :param key: The key for which to get the treatment
-        :type key: str
-        :param feature: The name of the feature for which to get the treatment
-        :type feature: str
-        :param attributes: An optional dictionary of attributes
-        :type attributes: dict
-        :return: The treatment for the key and feature
-        :rtype: str
-        """
-        treatment, _ = self.get_treatment_with_config(key, feature, attributes)
-        return treatment
-
-    def _evaluate_features_if_ready(self, matching_key, bucketing_key, features, attributes=None):
-        if not self.ready:
-            return {
-                feature: {
-                    'treatment': CONTROL,
-                    'configurations': None,
-                    'impression': {'label': Label.NOT_READY, 'change_number': None}
-                }
-                for feature in features
-            }
-
-        return self._evaluator.evaluate_features(
-            features,
-            matching_key,
-            bucketing_key,
-            attributes
-        )
-
-    def get_treatments_with_config(self, key, features, attributes=None):
-        """
-        Evaluate multiple features and return a dict with feature -> (treatment, config).
-
-        Get the treatments for a list of features considering a key, with an optional dictionary of
-        attributes. This method never raises an exception. If there's a problem, the appropriate
-        log message will be generated and the method will return the CONTROL treatment.
-        :param key: The key for which to get the treatment
-        :type key: str
-        :param features: Array of the names of the features for which to get the treatment
-        :type feature: list
-        :param attributes: An optional dictionary of attributes
-        :type attributes: dict
-        :return: Dictionary with the result of all the features provided
-        :rtype: dict
-        """
+    def _make_evaluations(self, key, features, attributes, method_name, metric_name):
         if self.destroyed:
             self._logger.error("Client has already been destroyed - no calls possible")
-            return input_validator.generate_control_treatments(features)
+            return input_validator.generate_control_treatments(features, method_name)
 
         start = int(round(time.time() * 1000))
 
-        matching_key, bucketing_key = input_validator.validate_key(key)
+        matching_key, bucketing_key = input_validator.validate_key(key, method_name)
         if matching_key is None and bucketing_key is None:
-            return input_validator.generate_control_treatments(features)
+            return input_validator.generate_control_treatments(features, method_name)
 
-        if input_validator.validate_attributes(attributes) is False:
-            return input_validator.generate_control_treatments(features)
+        if input_validator.validate_attributes(attributes, method_name) is False:
+            return input_validator.generate_control_treatments(features, method_name)
 
         features, missing = input_validator.validate_features_get_treatments(
+            method_name,
             features,
             self.ready,
             self._factory._get_storage('splits')  # pylint: disable=protected-access
@@ -269,8 +206,8 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                     treatments[feature] = (result['treatment'], result['configurations'])
 
                 except Exception:  # pylint: disable=broad-except
-                    self._logger.error('get_treatments: An exception occured when evaluating '
-                                       'feature ' + feature + ' returning CONTROL.')
+                    self._logger.error('%s: An exception occured when evaluating '
+                                       'feature %s returning CONTROL.' % (method_name, feature))
                     treatments[feature] = CONTROL, None
                     self._logger.debug('Error: ', exc_info=True)
                     continue
@@ -282,15 +219,91 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                     for impression in bulk_impressions:
                         self._send_impression_to_listener(impression, attributes)
             except Exception:  # pylint: disable=broad-except
-                self._logger.error('get_treatments: An exception when trying to store '
-                                   'impressions.')
+                self._logger.error('%s: An exception when trying to store '
+                                   'impressions.' % method_name)
                 self._logger.debug('Error: ', exc_info=True)
 
             return treatments
         except Exception:  # pylint: disable=broad-except
             self._logger.error('Error getting treatment for features')
             self._logger.debug('Error: ', exc_info=True)
-        return input_validator.generate_control_treatments(list(features))
+        return input_validator.generate_control_treatments(list(features), method_name)
+
+    def _evaluate_features_if_ready(self, matching_key, bucketing_key, features, attributes=None):
+        if not self.ready:
+            return {
+                feature: {
+                    'treatment': CONTROL,
+                    'configurations': None,
+                    'impression': {'label': Label.NOT_READY, 'change_number': None}
+                }
+                for feature in features
+            }
+
+        return self._evaluator.evaluate_features(
+            features,
+            matching_key,
+            bucketing_key,
+            attributes
+        )
+
+    def get_treatment_with_config(self, key, feature, attributes=None):
+        """
+        Get the treatment and config for a feature and key, with optional dictionary of attributes.
+
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param feature: The name of the feature for which to get the treatment
+        :type feature: str
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :return: The treatment for the key and feature
+        :rtype: tuple(str, str)
+        """
+        return self._make_evaluation(key, feature, attributes, 'get_treatment_with_config',
+                                     self._METRIC_GET_TREATMENT_WITH_CONFIG)
+
+    def get_treatment(self, key, feature, attributes=None):
+        """
+        Get the treatment for a feature and key, with an optional dictionary of attributes.
+
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param feature: The name of the feature for which to get the treatment
+        :type feature: str
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :return: The treatment for the key and feature
+        :rtype: str
+        """
+        treatment, _ = self._make_evaluation(key, feature, attributes, 'get_treatment',
+                                             self._METRIC_GET_TREATMENT)
+        return treatment
+
+    def get_treatments_with_config(self, key, features, attributes=None):
+        """
+        Evaluate multiple features and return a dict with feature -> (treatment, config).
+
+        Get the treatments for a list of features considering a key, with an optional dictionary of
+        attributes. This method never raises an exception. If there's a problem, the appropriate
+        log message will be generated and the method will return the CONTROL treatment.
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param features: Array of the names of the features for which to get the treatment
+        :type feature: list
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :return: Dictionary with the result of all the features provided
+        :rtype: dict
+        """
+        return self._make_evaluations(key, features, attributes, 'get_treatments_with_config',
+                                      self._METRIC_GET_TREATMENTS_WITH_CONFIG)
 
     def get_treatments(self, key, features, attributes=None):
         """
@@ -308,7 +321,8 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :return: Dictionary with the result of all the features provided
         :rtype: dict
         """
-        with_config = self.get_treatments_with_config(key, features, attributes)
+        with_config = self._make_evaluations(key, features, attributes, 'get_treatments',
+                                             self._METRIC_GET_TREATMENTS)
         return {feature: result[0] for (feature, result) in six.iteritems(with_config)}
 
     def _build_impression(  # pylint: disable=too-many-arguments
@@ -346,10 +360,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         """
         try:
             end = int(round(time.time() * 1000))
-            if operation == self._METRIC_GET_TREATMENT:
-                self._impressions_storage.put([impressions])
-            else:
-                self._impressions_storage.put(impressions)
+            self._impressions_storage.put(impressions)
             self._telemetry_storage.inc_latency(operation, get_latency_bucket_index(end - start))
         except Exception:  # pylint: disable=broad-except
             self._logger.error('Error recording impressions and metrics')
