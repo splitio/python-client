@@ -1,4 +1,4 @@
-8.1.5 (Oct 31, 2019)
+8.1.6 (Oct 31, 2019)
  - Fixed input validation performance issue.
 
 8.1.4 (Oct 14, 2019)
