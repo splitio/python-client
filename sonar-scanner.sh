@@ -10,7 +10,7 @@ sonar_scanner() {
     -Dsonar.sources='splitio' \
     -Dsonar.projectName='python-client' \
     -Dsonar.projectKey='python-client' \
-    _Dsonar.python.coverage.reportPaths='coverage.xml' \
+    -Dsonar.python.coverage.reportPaths='coverage.xml' \
     -Dsonar.links.ci='https://travis-ci.com/splitio/python-client' \
     -Dsonar.links.scm='https://github.com/splitio/python-client' \
     ${params}
