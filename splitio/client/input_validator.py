@@ -545,3 +545,19 @@ def valid_properties(properties):
         _LOGGER.warning('Event has more than 300 properties. Some of them will be trimmed' +
                         ' when processed')
     return True, valid_properties if len(valid_properties) else None, size
+
+def validate_timestamp(timestamp):
+    """
+    Check if timestamp is valid for track.
+
+    :param timestamp: timestamp to be checked
+    :type timestamp: int
+    :return: timestamp
+    :rtype: int|None
+    """
+    if timestamp is None:
+        return None
+    if not isinstance(timestamp, int):
+        _LOGGER.error('track: timestamp must be an integer.')
+        return False
+    return timestamp

@@ -765,6 +765,21 @@ class ClientInputValidationTests(object):
             mocker.call("The maximum size allowed for the properties is 32768 bytes. Current one is 32952 bytes. Event not queued")
         ]
 
+        client._logger.reset_mock()
+        assert client.track("some_key", "traffic_type", "event_type", 1, None, None) is True
+        assert client._logger.error.mock_calls == []
+
+        client._logger.reset_mock()
+        assert client.track("some_key", "traffic_type", "event_type", 1, None, 1573936400000) is True
+        assert client._logger.error.mock_calls == []
+
+        # Test track with invalid timestamp
+        client._logger.reset_mock()
+        assert client.track("some_key", "traffic_type", "event_type", 1, None, "invalid_timestamp") is False
+        assert client._logger.error.mock_calls == [
+            mocker.call("track: timestamp must be an integer.")
+        ]
+
     def test_get_treatments(self, mocker):
         """Test getTreatments() method."""
         split_mock = mocker.Mock(spec=Split)

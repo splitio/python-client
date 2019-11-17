@@ -366,7 +366,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             self._logger.error('Error recording impressions and metrics')
             self._logger.debug('Error: ', exc_info=True)
 
-    def track(self, key, traffic_type, event_type, value=None, properties=None):
+    def track(self, key, traffic_type, event_type, value=None, properties=None, timestamp=None):
         """
         Track an event.
 
@@ -380,6 +380,8 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :type value: Number
         :param properties: (Optional) properties associated to the event
         :type properties: dict
+        :param timestamp: (Optional) Represents the time in milliseconds since epoch that the event occurred
+        :type properties: int
 
         :return: Whether the event was created or not.
         :rtype: bool
@@ -399,17 +401,21 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
         value = input_validator.validate_value(value)
         valid, properties, size = input_validator.valid_properties(properties)
+        timestamp = input_validator.validate_timestamp(timestamp)
 
         if key is None or event_type is None or traffic_type is None or value is False \
-           or valid is False:
+           or valid is False or timestamp is False:
             return False
+
+        if timestamp is None:
+            timestamp=int(time.time()*1000)
 
         event = Event(
             key=key,
             traffic_type_name=traffic_type,
             event_type_id=event_type,
             value=value,
-            timestamp=int(time.time()*1000),
+            timestamp=timestamp,
             properties=properties,
         )
         return self._events_storage.put([EventWrapper(
