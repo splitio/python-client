@@ -3,19 +3,24 @@
 
 from setuptools import setup, find_packages
 from os import path
-from sys import version_info
 
-tests_require = ['flake8', 'pytest', 'pytest-mock', 'coverage', 'pytest-cov']
+tests_require = [
+    'flake8',
+    'pytest',
+    'pytest-mock',
+    'coverage',
+    'pytest-cov',
+    'mock;python_version<"3"'
+]
 install_requires = [
     'requests>=2.9.1',
     'pyyaml>=5.1',
     'future>=0.15.2',
     'docopt>=0.6.2',
+    'enum34;python_version<"3.4"',
+    'six>=1.10.0;python_version<"3"',
+    'futures>=3.0.5;python_version<"3"'
 ]
-
-if version_info < (3,):
-    tests_require += ['mock']
-    install_requires += ['six>=1.10.0', 'futures>=3.0.5', 'enum34>=1.1.5']
 
 with open(path.join(path.abspath(path.dirname(__file__)),
                     'splitio', 'version.py')) as f:
