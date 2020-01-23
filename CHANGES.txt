@@ -1,3 +1,6 @@
+8.1.7 (Jan 23, 2020)
+ - Removed enum34 dependency for python versions > 3.4
+
 8.1.6 (Oct 31, 2019)
  - Fixed input validation performance issue.
 
