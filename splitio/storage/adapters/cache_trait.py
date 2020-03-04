@@ -51,7 +51,7 @@ class LocalMemoryCache(object):  #pylint: disable=too-many-instance-attributes
     ):
         """Class constructor."""
         self._data = {}
-        self._lock = threading.RLock()
+        self._lock = threading.Lock()
         self._max_age_seconds = max_age_seconds
         self._max_size = max_size
         self._lru = None
