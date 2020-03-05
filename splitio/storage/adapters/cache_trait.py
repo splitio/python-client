@@ -140,8 +140,6 @@ class LocalMemoryCache(object):  #pylint: disable=too-many-instance-attributes
         """Check we're within the size limit. Otherwise drop the LRU."""
         if len(self._data) > self._max_size:
             next_item = self._lru.next
-            if next_item is None:
-                print self
             del self._data[self._lru.key]
             self._lru = next_item
             self._lru.previous = None
