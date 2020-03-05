@@ -21,8 +21,6 @@ DEFAULT_CONFIG = {
     'redisHost': 'localhost',
     'redisPort': 6379,
     'redisDb': 0,
-    'redisLocalCache': False,
-    'redisLocalCacheTTL': 5,
     'redisPassword': None,
     'redisSocketTimeout': None,
     'redisSocketConnectTimeout': None,
