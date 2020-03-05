@@ -109,41 +109,49 @@ class LocalMemoryCache(object):  #pylint: disable=too-many-instance-attributes
         if node is None:
             return None
 
+        # First item, just set lru & mru
+        if not self._data:
+            self._lru = node
+            self._mru = node
+            return node
+
+        # MRU, just return it
+        if node is self._mru:
+            return node
+
+        # LRU, update pointer and end-of-list
+        if node is self._lru:
+            self._lru = node.next
+            self._lru.previous = None
+
         if node.previous is not None:
             node.previous.next = node.next
-
         if node.next is not None:
             node.next.previous = node.previous
 
-        if self._lru == node:
-            if node.next is not None: #only update lru pointer if there are more than 1 elements.
-                self._lru = node.next
-
-        if not self._data:
-            # if there are no items, set the LRU to this node
-            self._lru = node
-        else:
-            # if there is at least one item, update the MRU chain
-            self._mru.next = node
-
-        node.next = None
         node.previous = self._mru
+        node.previous.next = node
+        node.next = None
         self._mru = node
+
         return node
 
     def _rollover(self):
         """Check we're within the size limit. Otherwise drop the LRU."""
         if len(self._data) > self._max_size:
             next_item = self._lru.next
+            if next_item is None:
+                print self
             del self._data[self._lru.key]
             self._lru = next_item
+            self._lru.previous = None
 
     def __str__(self):
         """User friendly representation of cache."""
         nodes = []
         node = self._mru
         while node is not None:
-            nodes.append('<%s: %s>  -->' % (node.key, node.value))
+            nodes.append('\t<%s: %s>  -->' % (node.key, node.value))
             node = node.previous
         return '<MRU>\n' + '\n'.join(nodes) + '\n<LRU>'
 
