@@ -1,6 +1,7 @@
 """Cache testing module."""
 #pylint: disable=protected-access,no-self-use,line-too-long
 import time
+from random import choice
 
 import pytest
 
@@ -55,6 +56,9 @@ class  CacheTraitTests(object):
         assert 'some' not in cache._data
         assert len(cache._data) == 5
         assert cache._lru.key == 'some_other'
+        for node in cache._data.values():
+            if node != cache._mru:
+                assert node.next is not None
 
         # `some_other` should be the next key to be evicted.
         # if we issue a get call for it, it should be marked as the MRU,
@@ -63,6 +67,21 @@ class  CacheTraitTests(object):
         assert len(cache._data) == 5
         assert cache._mru.key == 'some_other'
         assert cache._lru.key == 'another'
+
+    def test_intensive_usage_behavior(self, mocker):
+        """Test fetches with random repeated strings."""
+        user_func = mocker.Mock()
+        user_func.side_effect = lambda *p, **kw: len(p[0])
+        key_func = mocker.Mock()
+        key_func.side_effect = lambda *p, **kw: p[0]
+        cache = cache_trait.LocalMemoryCache(key_func, user_func, 1, 5)
+
+        strings = ['a', 'bb', 'ccc', 'dddd', 'eeeee', 'ffffff', 'ggggggg', 'hhhhhhhh',
+                   'jjjjjjjjj', 'kkkkkkkkkk']
+        for _ in range(0, 100000):
+            chosen = choice(strings)
+            assert cache.get(chosen) == len(chosen)
+            assert cache._lru is not None
 
     def test_expiration_behaviour(self, mocker):
         """Test time expiration works as expected."""

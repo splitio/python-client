@@ -246,7 +246,7 @@ def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  #
         timeout=cfg.get('connectionTimeout')
     )
 
-    sdk_metadata = util.get_metadata(config)
+    sdk_metadata = util.get_metadata(cfg)
     apis = {
         'splits': SplitsAPI(http_client, api_key),
         'segments': SegmentsAPI(http_client, api_key),
@@ -348,8 +348,8 @@ def _build_redis_factory(api_key, config):
     """Build and return a split factory with redis-based storage."""
     cfg = DEFAULT_CONFIG.copy()
     cfg.update(config)
-    sdk_metadata = util.get_metadata(config)
-    redis_adapter = redis.build(config)
+    sdk_metadata = util.get_metadata(cfg)
+    redis_adapter = redis.build(cfg)
     storages = {
         'splits': RedisSplitStorage(redis_adapter),
         'segments': RedisSegmentStorage(redis_adapter),
