@@ -18,6 +18,8 @@ DEFAULT_CONFIG = {
     'labelsEnabled': True,
     'IPAddressesEnabled': True,
     'impressionListener': None,
+    'redisLocalCacheEnabled': False,
+    'redisLocalCacheTTL': 5,
     'redisHost': 'localhost',
     'redisPort': 6379,
     'redisDb': 0,
