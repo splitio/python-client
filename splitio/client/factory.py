@@ -350,8 +350,10 @@ def _build_redis_factory(api_key, config):
     cfg.update(config)
     sdk_metadata = util.get_metadata(cfg)
     redis_adapter = redis.build(cfg)
+    cache_enabled = cfg.get('redisLocalCacheEnabled', False)
+    cache_ttl = cfg.get('redisLocalCacheTTL', 5)
     storages = {
-        'splits': RedisSplitStorage(redis_adapter),
+        'splits': RedisSplitStorage(redis_adapter, cache_enabled, cache_ttl),
         'segments': RedisSegmentStorage(redis_adapter),
         'impressions': RedisImpressionsStorage(redis_adapter, sdk_metadata),
         'events': RedisEventsStorage(redis_adapter, sdk_metadata),
