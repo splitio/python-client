@@ -1,3 +1,6 @@
+8.2.1 (Aug 25, 2020)
+ - Use mmh3cffi=0.1.5 which fixes xcode12 issue
+
 8.2.0 (Mar 27, 2020)
  - Support enabling in-memory cache via config options
 

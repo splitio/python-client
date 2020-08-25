@@ -36,15 +36,13 @@ setup(
     url='https://github.com/splitio/python-client',
     download_url=('https://github.com/splitio/python-client/tarball/' + __version__), #  pylint: disable=undefined-variable
     license='Apache License 2.0',
-    dependency_links=['https://github.com/splitio/mmh3cffi/tarball/development#egg=mmh3cffi-0.1.1'],
     install_requires=INSTALL_REQUIRES,
     tests_require=TESTS_REQUIRES,
     extras_require={
         'test': TESTS_REQUIRES,
         'redis': ['redis>=2.10.5'],
         'uwsgi': ['uwsgi>=2.0.0'],
-#        'cpphash': ['mmh3cffi>=0.1.4']
-        'cpphash': ['mmh3cffi']
+        'cpphash': ['mmh3cffi>=0.1.5']
     },
     setup_requires=['pytest-runner'],
     classifiers=[
