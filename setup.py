@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 TESTS_REQUIRES = [
     'flake8',
     'pytest<=4.6',  # for deprecated python versions: https://docs.pytest.org/en/latest/py27-py34-deprecation.html
-    'pytest-mock',
+    'pytest-mock==2.0.0',
     'coverage',
     'pytest-cov',
     'mock;python_version<"3"'
@@ -42,7 +42,7 @@ setup(
         'test': TESTS_REQUIRES,
         'redis': ['redis>=2.10.5'],
         'uwsgi': ['uwsgi>=2.0.0'],
-        'cpphash': ['mmh3cffi>=0.1.4']
+        'cpphash': ['mmh3cffi>=0.1.5']
     },
     setup_requires=['pytest-runner'],
     classifiers=[
