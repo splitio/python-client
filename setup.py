@@ -43,7 +43,7 @@ setup(
         'redis': ['redis>=2.10.5'],
         'uwsgi': ['uwsgi>=2.0.0'],
 #        'cpphash': ['mmh3cffi==0.2.0']
-        'cpphash': ['mmh3cffi@git+ssh://git@github.com/splitio/mmh3cffi@development#egg=mmh3cffi']
+        'cpphash': ['mmh3cffi@git+https://github.com/splitio/mmh3cffi@development#egg=mmh3cffi']
     },
     setup_requires=['pytest-runner'],
     classifiers=[
