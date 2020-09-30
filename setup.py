@@ -38,11 +38,12 @@ setup(
     license='Apache License 2.0',
     install_requires=INSTALL_REQUIRES,
     tests_require=TESTS_REQUIRES,
+    dependency_links=['https://github.com/splitio/mmh3cffi/tarball/feature/hash128#egg=mmh3cffi-0.2.0'],
     extras_require={
         'test': TESTS_REQUIRES,
         'redis': ['redis>=2.10.5'],
         'uwsgi': ['uwsgi>=2.0.0'],
-        'cpphash': ['mmh3cffi>=0.1.5']
+        'cpphash': ['mmh3cffi']
     },
     setup_requires=['pytest-runner'],
     classifiers=[
