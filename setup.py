@@ -23,8 +23,7 @@ INSTALL_REQUIRES = [
     'futures>=3.0.5;python_version<"3"'
 ]
 
-with open(path.join(path.abspath(path.dirname(__file__)),
-                    'splitio', 'version.py')) as f:
+with open(path.join(path.abspath(path.dirname(__file__)), 'splitio', 'version.py')) as f:
     exec(f.read())  # pylint: disable=exec-used
 
 setup(
@@ -38,12 +37,13 @@ setup(
     license='Apache License 2.0',
     install_requires=INSTALL_REQUIRES,
     tests_require=TESTS_REQUIRES,
-    dependency_links=['https://github.com/splitio/mmh3cffi/tarball/feature/development#egg=mmh3cffi-0.2.0'],
+#    dependency_links=['https://github.com/splitio/mmh3cffi/tarball/feature/development#egg=mmh3cffi-0.2.0'],
     extras_require={
         'test': TESTS_REQUIRES,
         'redis': ['redis>=2.10.5'],
         'uwsgi': ['uwsgi>=2.0.0'],
-        'cpphash': ['mmh3cffi']
+#        'cpphash': ['mmh3cffi==0.2.0']
+        'cpphash': ['mmh3cffi@git+ssh://git@github.com/splitio/mmh3cffi@development#egg=mmh3cffi']
     },
     setup_requires=['pytest-runner'],
     classifiers=[
