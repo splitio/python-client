@@ -11,9 +11,18 @@ class Hasher(object):
 
     _PATTERN = "%s:%s:%s:%s:%d"
 
-    def __init__(self, ):
-        """TODO."""
-        pass
+    def __init__(self, hash_fn=murmur_128, seed=0):
+        """
+        Class constructor.
+
+        :param hash_fn: Hash function to apply (str, int) -> int
+        :type hash_fn: callable
+
+        :param seed: seed to be provided when hashing
+        :type seed: int
+        """
+        self._hash_fn = hash_fn
+        self._seed = seed
 
     def _stringify(self, impression):
         """
@@ -41,7 +50,7 @@ class Hasher(object):
         :returns: a hash of the supplied impression's relevant fields.
         :rtype: int
         """
-        return murmur_128(self._stringify(impression), 0)
+        return self._hash_fn(self._stringify(impression), self._seed)
 
 
 class Observer(object):

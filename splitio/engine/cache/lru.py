@@ -24,7 +24,7 @@ class SimpleLruCache(object):  #pylint: disable=too-many-instance-attributes
     class _Node(object):  #pylint: disable=too-few-public-methods
         """Links to previous an next items in the circular list."""
 
-        def __init__(self, key, value, previous_element, next_element):  #pylint: disable=too-many-arguments
+        def __init__(self, key, value, previous_element, next_element):
             """Class constructor."""
             self.key = key  # we also keep the key for O(1) access when removing the LRU.
             self.value = value
