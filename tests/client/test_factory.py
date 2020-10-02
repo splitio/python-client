@@ -86,7 +86,6 @@ class SplitFactoryTests(object):
         assert factory._tasks['telemetry']._api == factory._apis['telemetry']
         assert factory._labels_enabled is True
         factory.block_until_ready()
-        time.sleep(1) # give a chance for the bg thread to set the ready status
         assert factory.ready
         factory.destroy()
 
@@ -164,7 +163,6 @@ class SplitFactoryTests(object):
         assert factory._labels_enabled is False
         assert isinstance(factory._impression_listener, ImpressionListenerWrapper)
         factory.block_until_ready()
-        time.sleep(1) # give a chance for the bg thread to set the ready status
         assert factory.ready
         factory.destroy()
 
@@ -182,7 +180,6 @@ class SplitFactoryTests(object):
         assert factory._labels_enabled is True
         assert factory._impression_listener is None
         factory.block_until_ready()
-        time.sleep(1) # give a chance for the bg thread to set the ready status
         assert factory.ready
         factory.destroy()
 
@@ -233,7 +230,6 @@ class SplitFactoryTests(object):
         # Start factory and make assertions
         factory = get_factory('some_api_key')
         factory.block_until_ready()
-        time.sleep(1) # give a chance for the bg thread to set the ready status
         assert factory.ready
         assert factory.destroyed is False
 
@@ -303,7 +299,6 @@ class SplitFactoryTests(object):
         assert factory.destroyed is False
 
         factory.block_until_ready()
-        time.sleep(1) # give a chance for the bg thread to set the ready status
         assert factory.ready
 
         event = threading.Event()
