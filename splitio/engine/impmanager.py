@@ -12,7 +12,7 @@ from splitio.engine.cache.lru import SimpleLruCache
 from splitio import util
 
 
-_TIME_INTERVAL_MS = 3600 * 1000
+_TIME_INTERVAL_MS = 3600 * 1000  # one hour
 _IMPRESSION_OBSERVER_CACHE_SIZE = 500000
 
 
@@ -36,7 +36,7 @@ def truncate_time(timestamp_ms):
     return timestamp_ms - (timestamp_ms % _TIME_INTERVAL_MS)
 
 
-class Hasher(object):
+class Hasher(object):  # pylint:disable=too-few-public-methods
     """Impression hasher."""
 
     _PATTERN = "%s:%s:%s:%s:%d"
@@ -83,7 +83,7 @@ class Hasher(object):
         return self._hash_fn(self._stringify(impression), self._seed)
 
 
-class Observer(object):
+class Observer(object):  # pylint:disable=too-few-public-methods
     """Observe impression and add a previous time if applicable."""
 
     def __init__(self, size):
@@ -153,7 +153,7 @@ class Counter(object):
                 for (k, v) in six.iteritems(old)]
 
 
-class Manager(object):
+class Manager(object):  # pylint:disable=too-few-public-methods
     """Impression manager."""
 
     def __init__(self, forwarder, mode=ImpressionsMode.OPTIMIZED, standalone=True, listener=None):
@@ -178,7 +178,14 @@ class Manager(object):
         self._listener = listener
 
     def track(self, impressions):
-        """TODO."""
+        """
+        Track impressions.
+
+        Impressions are analyzed to see if they've been seen before and counted.
+
+        :param impressions: List of impression objects
+        :type impressions: list[splitio.models.impression.Impression]
+        """
         imps = [self._observer.test_and_set(i) for i in impressions] if self._observer \
                 else impressions
 
@@ -191,4 +198,4 @@ class Manager(object):
 
         this_hour = truncate_time(util.utctime_ms())
         self._forwarder(imps if self._counter is None
-                        else [i for i in imps if i.previous_time is None or i.previous_time < this_hour])
+                        else [i for i in imps if i.previous_time is None or i.previous_time < this_hour])  # pylint:disable=line-too-long
