@@ -11,7 +11,6 @@ from splitio.models.impressions import Impression, Label
 from splitio.models.events import Event, EventWrapper
 from splitio.models.telemetry import get_latency_bucket_index
 from splitio.client import input_validator
-from splitio.client.listener import ImpressionListenerException
 
 
 class Client(object):  # pylint: disable=too-many-instance-attributes
@@ -22,7 +21,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
     _METRIC_GET_TREATMENT_WITH_CONFIG = 'sdk.getTreatmentWithConfig'
     _METRIC_GET_TREATMENTS_WITH_CONFIG = 'sdk.getTreatmentsWithConfig'
 
-    def __init__(self, factory, labels_enabled=True, impression_listener=None):
+    def __init__(self, factory, impressions_manager, labels_enabled=True):
         """
         Construct a Client instance.
 
@@ -32,15 +31,15 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :param labels_enabled: Whether to store labels on impressions
         :type labels_enabled: bool
 
-        :param impression_listener: impression listener implementation
-        :type impression_listener: ImpressionListener
+        :param impressions_manager: impression manager instance
+        :type impressions_manager: splitio.engine.impressions.Manager
 
         :rtype: Client
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self._factory = factory
         self._labels_enabled = labels_enabled
-        self._impression_listener = impression_listener
+        self._impressions_manager = impressions_manager
 
         self._splitter = Splitter()
         self._split_storage = factory._get_storage('splits')  # pylint: disable=protected-access
@@ -67,25 +66,6 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
     def destroyed(self):
         """Return whether the factory holding this client has been destroyed."""
         return self._factory.destroyed
-
-    def _send_impression_to_listener(self, impression, attributes):
-        """
-        Send impression result to custom listener.
-
-        :param impression: Generated impression
-        :type impression: Impression
-
-        :param attributes: An optional dictionary of attributes
-        :type attributes: dict
-        """
-        if self._impression_listener is not None:
-            try:
-                self._impression_listener.log_impression(impression, attributes)
-            except ImpressionListenerException:
-                self._logger.error(
-                    'An exception was raised while calling user-custom impression listener'
-                )
-                self._logger.debug('Error', exc_info=True)
 
     def _evaluate_if_ready(self, matching_key, bucketing_key, feature, attributes=None):
         if not self.ready:
@@ -138,8 +118,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                 start
             )
 
-            self._record_stats([impression], start, metric_name)
-            self._send_impression_to_listener(impression, attributes)
+            self._record_stats([(impression, attributes)], start, metric_name)
             return result['treatment'], result['configurations']
         except Exception:  # pylint: disable=broad-except
             self._logger.error('Error getting treatment for feature')
@@ -154,8 +133,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                     bucketing_key,
                     start
                 )
-                self._record_stats([impression], start, metric_name)
-                self._send_impression_to_listener(impression, attributes)
+                self._record_stats([(impression, attributes)], start, metric_name)
             except Exception:  # pylint: disable=broad-except
                 self._logger.error('Error reporting impression into get_treatment exception block')
                 self._logger.debug('Error: ', exc_info=True)
@@ -215,9 +193,11 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             # Register impressions
             try:
                 if bulk_impressions:
-                    self._record_stats(bulk_impressions, start, self._METRIC_GET_TREATMENTS)
-                    for impression in bulk_impressions:
-                        self._send_impression_to_listener(impression, attributes)
+                    self._record_stats(
+                        [(i, attributes) for i in bulk_impressions],
+                        start,
+                        metric_name
+                    )
             except Exception:  # pylint: disable=broad-except
                 self._logger.error('%s: An exception when trying to store '
                                    'impressions.' % method_name)
@@ -350,7 +330,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         Record impressions and metrics.
 
         :param impressions: Generated impressions
-        :type impressions: list||Impression
+        :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
 
         :param start: timestamp when get_treatment or get_treatments was called
         :type start: int
@@ -360,7 +340,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         """
         try:
             end = int(round(time.time() * 1000))
-            self._impressions_storage.put(impressions)
+            self._impressions_manager.track(impressions)
             self._telemetry_storage.inc_latency(operation, get_latency_bucket_index(end - start))
         except Exception:  # pylint: disable=broad-except
             self._logger.error('Error recording impressions and metrics')

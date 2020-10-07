@@ -35,19 +35,19 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
         :type impressions: list(splitio.models.impressions.Impression)
 
         :return: Dictionary of lists of impressions.
-        :rtype: dict
+        :rtype: list
         """
         return [
             {
-                'testName': test_name,
-                'keyImpressions': [
+                'f': test_name,
+                'i': [
                     {
-                        'keyName': impression.matching_key,
-                        'treatment': impression.treatment,
-                        'time': impression.time,
-                        'changeNumber': impression.change_number,
-                        'label': impression.label,
-                        'bucketingKey': impression.bucketing_key
+                        'k': impression.matching_key,
+                        't': impression.treatment,
+                        'm': impression.time,
+                        'c': impression.change_number,
+                        'r': impression.label,
+                        'b': impression.bucketing_key
                     }
                     for impression in imps
                 ]
@@ -57,6 +57,27 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
                 lambda i: i.feature_name
             )
         ]
+
+    @staticmethod
+    def _build_counters(counters):
+        """
+        Build an impression bulk formatted as the API expects it.
+
+        :param counters: List of impression counters per feature.
+        :type counters: list[splitio.engine.impressions.Counter.CountPerFeature]
+
+        :return: dict with list of impression count dtos
+        :rtype: dict
+        """
+        return {
+            'pf': [
+                {
+                    'f': pf_count.feature,
+                    'm': pf_count.timeframe,
+                    'c': pf_count.count
+                } for pf_count in counters
+            ]
+        }
 
     def flush_impressions(self, impressions):
         """
@@ -70,6 +91,29 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
             response = self._client.post(
                 'events',
                 '/testImpressions/bulk',
+                self._apikey,
+                body=bulk,
+                extra_headers=self._metadata
+            )
+            if not 200 <= response.status_code < 300:
+                raise APIException(response.body, response.status_code)
+        except HttpClientException as exc:
+            self._logger.error('Http client is throwing exceptions')
+            self._logger.debug('Error: ', exc_info=True)
+            raise_from(APIException('Impressions not flushed properly.'), exc)
+
+    def flush_counters(self, counters):
+        """
+        Send impressions to the backend.
+
+        :param impressions: Impressions bulk
+        :type impressions: list
+        """
+        bulk = self._build_counters(counters)
+        try:
+            response = self._client.post(
+                'events',
+                '/testImpressions/count',
                 self._apikey,
                 body=bulk,
                 extra_headers=self._metadata

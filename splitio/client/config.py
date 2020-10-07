@@ -17,6 +17,7 @@ DEFAULT_CONFIG = {
     'eventsQueueSize': 10000,
     'labelsEnabled': True,
     'IPAddressesEnabled': True,
+    'impressionsMode': 'OPTIMIZED',
     'impressionListener': None,
     'redisLocalCacheEnabled': False,
     'redisLocalCacheTTL': 5,

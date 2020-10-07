@@ -15,6 +15,7 @@ from splitio.client.manager import SplitManager
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper
+from splitio.engine.impressions import Manager as ImpressionsManager
 
 # Storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
@@ -73,10 +74,10 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
             apikey,
             storages,
             labels_enabled,
+            impressions_manager=None,
             apis=None,
             tasks=None,
             sdk_ready_flag=None,
-            impression_listener=None
     ):
         """
         Class constructor.
@@ -91,8 +92,8 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         :type tasks: dict
         :param sdk_ready_flag: Event to set when the sdk is ready.
         :type sdk_ready_flag: threading.Event
-        :param impression_listener: User custom listener to handle impressions locally.
-        :type impression_listener: splitio.client.listener.ImpressionListener
+        :param impression_manager: Impressions manager instance
+        :type impression_listener: ImpressionsManager
         """
         self._apikey = apikey
         self._logger = logging.getLogger(self.__class__.__name__)
@@ -101,7 +102,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         self._apis = apis if apis else {}
         self._tasks = tasks if tasks else {}
         self._sdk_ready_flag = sdk_ready_flag
-        self._impression_listener = impression_listener
+        self._impressions_manager = impressions_manager
 
         # If we have a ready flag, it means we have sync tasks that need to finish
         # before the SDK client becomes ready.
@@ -138,7 +139,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         This client is only a set of references to structures hold by the factory.
         Creating one a fast operation and safe to be used anywhere.
         """
-        return Client(self, self._labels_enabled, self._impression_listener)
+        return Client(self, self._labels_enabled, self._impressions_manager)
 
     def manager(self):
         """
@@ -337,10 +338,11 @@ def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  #
         api_key,
         storages,
         cfg['labelsEnabled'],
+        ImpressionsManager(storages['impressions'].put, cfg['impressionsMode'], True,
+                           _wrap_impression_listener(cfg['impressionListener'], sdk_metadata)),
         apis,
         tasks,
         sdk_ready_flag,
-        impression_listener=_wrap_impression_listener(cfg['impressionListener'], sdk_metadata)
     )
 
 
@@ -363,7 +365,8 @@ def _build_redis_factory(api_key, config):
         api_key,
         storages,
         cfg['labelsEnabled'],
-        impression_listener=_wrap_impression_listener(cfg['impressionListener'], sdk_metadata)
+        ImpressionsManager(storages['impressions'].put, cfg['impressionsMode'], False,
+                           _wrap_impression_listener(cfg['impressionListener'], sdk_metadata))
     )
 
 
@@ -384,7 +387,8 @@ def _build_uwsgi_factory(api_key, config):
         api_key,
         storages,
         cfg['labelsEnabled'],
-        impression_listener=_wrap_impression_listener(cfg['impressionListener'], sdk_metadata)
+        ImpressionsManager(storages['impressions'].put, cfg['impressionsMode'], True,
+                           _wrap_impression_listener(cfg['impressionListener'], sdk_metadata))
     )
 
 
@@ -408,7 +412,15 @@ def _build_localhost_factory(config):
         ready_event
     )}
     tasks['splits'].start()
-    return SplitFactory('localhost', storages, False, None, tasks, ready_event)
+    return SplitFactory(
+        'localhost', 
+        storages, 
+        False, 
+        ImpressionsManager(storages['impressions'].put, cfg['impressionsMode'], True, None),
+        None, 
+        tasks, 
+        ready_event
+    )
 
 
 def get_factory(api_key, **kwargs):
