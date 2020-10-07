@@ -14,7 +14,7 @@ from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \
     RedisSplitStorage, RedisSegmentStorage, RedisTelemetryStorage
 from splitio.storage.adapters.redis import RedisAdapter
 from splitio.models import splits, segments
-from splitio.engine.impressions import Manager as ImpressionsManager
+from splitio.engine.impressions import Manager as ImpressionsManager, ImpressionsMode
 
 
 class InMemoryIntegrationTests(object):
@@ -48,7 +48,7 @@ class InMemoryIntegrationTests(object):
             'events': InMemoryEventStorage(5000),
             'telemetry': InMemoryTelemetryStorage()
         }
-        impmanager = ImpressionsManager(storages['impressions'].put, 'DEBUG')
+        impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
         self.factory = SplitFactory('some_api_key', storages, impmanager, True)  #pylint:disable=attribute-defined-outside-init
 
     def _validate_last_impressions(self, client, *to_validate):
@@ -290,7 +290,7 @@ class InMemoryOptimizedIntegrationTests(object):
             'events': InMemoryEventStorage(5000),
             'telemetry': InMemoryTelemetryStorage()
         }
-        impmanager = ImpressionsManager(storages['impressions'].put, 'OPTIMIZED', standalone=True)
+        impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.OPTIMIZED, standalone=True)
         self.factory = SplitFactory('some_api_key', storages, impmanager, True)  #pylint:disable=attribute-defined-outside-init
 
     def _validate_last_impressions(self, client, *to_validate):
@@ -508,7 +508,7 @@ class RedisIntegrationTests(object):
             'events': RedisEventsStorage(redis_client, metadata),
             'telemetry': RedisTelemetryStorage(redis_client, metadata)
         }
-        impmanager = ImpressionsManager(storages['impressions'].put, 'DEBUG')
+        impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
         self.factory = SplitFactory('some_api_key', storages, impmanager, True)  #pylint:disable=attribute-defined-outside-init
 
     def _validate_last_impressions(self, client, *to_validate):
@@ -786,7 +786,7 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
             'events': RedisEventsStorage(redis_client, metadata),
             'telemetry': RedisTelemetryStorage(redis_client, metadata)
         }
-        impmanager = ImpressionsManager(storages['impressions'].put, 'DEBUG')
+        impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
         self.factory = SplitFactory('some_api_key', storages, impmanager, True)  #pylint:disable=attribute-defined-outside-init
 
 

@@ -12,7 +12,7 @@ import six
 from splitio.client.client import Client
 from splitio.client import input_validator
 from splitio.client.manager import SplitManager
-from splitio.client.config import DEFAULT_CONFIG
+from splitio.client.config import sanitize as sanitize_config
 from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper
 from splitio.engine.impressions import Manager as ImpressionsManager
@@ -38,7 +38,7 @@ from splitio.api.telemetry import TelemetryAPI
 # Tasks
 from splitio.tasks.split_sync import SplitSynchronizationTask
 from splitio.tasks.segment_sync import SegmentSynchronizationTask
-from splitio.tasks.impressions_sync import ImpressionsSyncTask
+from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask
 from splitio.tasks.events_sync import EventsSyncTask
 from splitio.tasks.telemetry_sync import TelemetrySynchronizationTask
 
@@ -234,13 +234,11 @@ def _wrap_impression_listener(listener, metadata):
     return None
 
 
-def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  # pylint: disable=too-many-locals
+def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None):  # pylint: disable=too-many-locals
     """Build and return a split factory tailored to the supplied config."""
     if not input_validator.validate_factory_instantiation(api_key):
         return None
 
-    cfg = DEFAULT_CONFIG.copy()
-    cfg.update(config)
     http_client = HttpClient(
         sdk_url=sdk_url,
         events_url=events_url,
@@ -272,6 +270,12 @@ def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  #
     segments_ready_flag = threading.Event()
     sdk_ready_flag = threading.Event()
 
+    imp_manager = ImpressionsManager(
+        storages['impressions'].put,
+        cfg['impressionsMode'],
+        True,
+        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata))
+
     tasks = {
         'splits': SplitSynchronizationTask(
             apis['splits'],
@@ -295,6 +299,11 @@ def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  #
             cfg['impressionsBulkSize']
         ),
 
+        'impressions_count': ImpressionsCountSyncTask(
+            apis['impressions'],
+            imp_manager
+        ),
+
         'events': EventsSyncTask(
             apis['events'],
             storages['events'],
@@ -312,6 +321,7 @@ def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  #
     # Start tasks that have no dependencies
     tasks['splits'].start()
     tasks['impressions'].start()
+    tasks['impressions_count'].start()
     tasks['events'].start()
     tasks['telemetry'].start()
 
@@ -334,22 +344,13 @@ def _build_in_memory_factory(api_key, config, sdk_url=None, events_url=None):  #
     segment_completion_thread = threading.Thread(target=segment_ready_task)
     segment_completion_thread.setDaemon(True)
     segment_completion_thread.start()
-    return SplitFactory(
-        api_key,
-        storages,
-        cfg['labelsEnabled'],
-        ImpressionsManager(storages['impressions'].put, cfg['impressionsMode'], True,
-                           _wrap_impression_listener(cfg['impressionListener'], sdk_metadata)),
-        apis,
-        tasks,
-        sdk_ready_flag,
-    )
+
+    return SplitFactory(api_key, storages, cfg['labelsEnabled'],
+                        imp_manager, apis, tasks, sdk_ready_flag)
 
 
-def _build_redis_factory(api_key, config):
+def _build_redis_factory(api_key, cfg):
     """Build and return a split factory with redis-based storage."""
-    cfg = DEFAULT_CONFIG.copy()
-    cfg.update(config)
     sdk_metadata = util.get_metadata(cfg)
     redis_adapter = redis.build(cfg)
     cache_enabled = cfg.get('redisLocalCacheEnabled', False)
@@ -370,10 +371,8 @@ def _build_redis_factory(api_key, config):
     )
 
 
-def _build_uwsgi_factory(api_key, config):
+def _build_uwsgi_factory(api_key, cfg):
     """Build and return a split factory with redis-based storage."""
-    cfg = DEFAULT_CONFIG.copy()
-    cfg.update(config)
     sdk_metadata = util.get_metadata(cfg)
     uwsgi_adapter = get_uwsgi()
     storages = {
@@ -392,10 +391,8 @@ def _build_uwsgi_factory(api_key, config):
     )
 
 
-def _build_localhost_factory(config):
+def _build_localhost_factory(cfg):
     """Build and return a localhost factory for testing/development purposes."""
-    cfg = DEFAULT_CONFIG.copy()
-    cfg.update(config)
     storages = {
         'splits': InMemorySplitStorage(),
         'segments': InMemorySegmentStorage(),  # not used, just to avoid possible future errors.
@@ -413,12 +410,12 @@ def _build_localhost_factory(config):
     )}
     tasks['splits'].start()
     return SplitFactory(
-        'localhost', 
-        storages, 
-        False, 
+        'localhost',
+        storages,
+        False,
         ImpressionsManager(storages['impressions'].put, cfg['impressionsMode'], True, None),
-        None, 
-        tasks, 
+        None,
+        tasks,
         ready_event
     )
 
@@ -444,15 +441,15 @@ def get_factory(api_key, **kwargs):
                     "(Singleton pattern) and reusing it throughout your application."
                 )
 
-        config = kwargs.get('config', {})
+        config = sanitize_config(api_key, kwargs.get('config', {}))
 
-        if api_key == 'localhost':
+        if config['operationMode'] == 'localhost-standalone':
             return _build_localhost_factory(config)
 
-        if 'redisHost' in config or 'redisSentinels' in config:
+        if config['operationMode'] == 'redis-consumer':
             return _build_redis_factory(api_key, config)
 
-        if 'uwsgiClient' in config:
+        if config['operationMode'] == 'uwsgi-consumer':
             return _build_uwsgi_factory(api_key, config)
 
         return _build_in_memory_factory(

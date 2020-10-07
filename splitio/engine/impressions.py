@@ -173,12 +173,6 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         :param listener: Optional impressions listener that will capture all seen impressions.
         :type listener: splitio.client.listener.ImpressionListenerWrapper
         """
-        if not isinstance(mode, ImpressionsMode):
-            try:
-                mode = ImpressionsMode(mode)
-            except ValueError:
-                mode = ImpressionsMode.OPTIMIZED
-
         self._forwarder = forwarder
         self._observer = Observer(_IMPRESSION_OBSERVER_CACHE_SIZE) if standalone else None
         self._counter = Counter() if standalone and mode == ImpressionsMode.OPTIMIZED else None
