@@ -93,7 +93,9 @@ def _sanitize_impressions_mode(mode, refresh_rate=None):
         try:
             mode = ImpressionsMode(mode.upper())
         except (ValueError, AttributeError):
-            _LOGGER.warning('unrecognized impressionsMode supplied. Defaulting to OPTIMIZED')
+            _LOGGER.warning('You passed an invalid impressionsMode, impressionsMode should be '
+                            'one of the following values: `debug` or `optimized`. '
+                            'Defaulting to `optimized` mode.')
             mode = ImpressionsMode.OPTIMIZED
 
     if mode == ImpressionsMode.DEBUG:
@@ -119,7 +121,8 @@ def sanitize(apikey, config):
     config['operationMode'] = _parse_operation_mode(apikey, config)
     processed = DEFAULT_CONFIG.copy()
     processed.update(config)
-    imp_mode, imp_rate = _sanitize_impressions_mode(config.get('impressionsMode'), config.get('impressionsRefreshRate'))
+    imp_mode, imp_rate = _sanitize_impressions_mode(config.get('impressionsMode'),
+                                                    config.get('impressionsRefreshRate'))
     processed['impressionsMode'] = imp_mode
     processed['impressionsRefreshRate'] = imp_rate
     return processed
