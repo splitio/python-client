@@ -25,6 +25,10 @@ class ConfigSanitizationTests(object):
         assert mode == ImpressionsMode.DEBUG
         assert rate == 1
 
+        mode, rate = config._sanitize_impressions_mode('debug', 1)
+        assert mode == ImpressionsMode.DEBUG
+        assert rate == 1
+
         mode, rate = config._sanitize_impressions_mode('ANYTHING', 200)
         assert mode == ImpressionsMode.OPTIMIZED
         assert rate == 200

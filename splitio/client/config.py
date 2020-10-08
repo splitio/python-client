@@ -2,8 +2,12 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import os.path
+import logging
 
 from splitio.engine.impressions import ImpressionsMode
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 DEFAULT_CONFIG = {
@@ -87,8 +91,9 @@ def _sanitize_impressions_mode(mode, refresh_rate=None):
     """
     if not isinstance(mode, ImpressionsMode):
         try:
-            mode = ImpressionsMode(mode)
-        except ValueError:
+            mode = ImpressionsMode(mode.upper())
+        except (ValueError, AttributeError):
+            _LOGGER.warning('unrecognized impressionsMode supplied. Defaulting to OPTIMIZED')
             mode = ImpressionsMode.OPTIMIZED
 
     if mode == ImpressionsMode.DEBUG:
