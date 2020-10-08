@@ -14,6 +14,7 @@ from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \
     RedisSplitStorage, RedisSegmentStorage, RedisTelemetryStorage
 from splitio.storage.adapters.redis import RedisAdapter
 from splitio.models import splits, segments
+from splitio.engine.impressions import Manager as ImpressionsManager, ImpressionsMode
 
 
 class InMemoryIntegrationTests(object):
@@ -40,13 +41,15 @@ class InMemoryIntegrationTests(object):
             data = json.loads(flo.read())
         segment_storage.put(segments.from_raw(data))
 
-        self.factory = SplitFactory('some_api_key', {  #pylint:disable=attribute-defined-outside-init
+        storages = {
             'splits': split_storage,
             'segments': segment_storage,
             'impressions': InMemoryImpressionStorage(5000),
             'events': InMemoryEventStorage(5000),
             'telemetry': InMemoryTelemetryStorage()
-        }, True)
+        }
+        impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
+        self.factory = SplitFactory('some_api_key', storages, True, impmanager)  #pylint:disable=attribute-defined-outside-init
 
     def _validate_last_impressions(self, client, *to_validate):
         """Validate the last N impressions are present disregarding the order."""
@@ -256,6 +259,219 @@ class InMemoryIntegrationTests(object):
         assert len(manager.splits()) == 7
 
 
+class InMemoryOptimizedIntegrationTests(object):
+    """Inmemory storage-based integration tests."""
+
+    def setup_method(self):
+        """Prepare storages with test data."""
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+
+        split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
+        with open(split_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        for split in data['splits']:
+            split_storage.put(splits.from_raw(split))
+
+        segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
+        with open(segment_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        segment_storage.put(segments.from_raw(data))
+
+        segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentHumanBeignsChanges.json')
+        with open(segment_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        segment_storage.put(segments.from_raw(data))
+
+        storages = {
+            'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': InMemoryImpressionStorage(5000),
+            'events': InMemoryEventStorage(5000),
+            'telemetry': InMemoryTelemetryStorage()
+        }
+        impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.OPTIMIZED, standalone=True)
+        self.factory = SplitFactory('some_api_key', storages, True, impmanager)  #pylint:disable=attribute-defined-outside-init
+
+    def _validate_last_impressions(self, client, *to_validate):
+        """Validate the last N impressions are present disregarding the order."""
+        imp_storage = client._factory._get_storage('impressions')
+        impressions = imp_storage.pop_many(len(to_validate))
+        as_tup_set = set((i.feature_name, i.matching_key, i.treatment) for i in impressions)
+        assert as_tup_set == set(to_validate)
+
+    def test_get_treatment(self):
+        """Test client.get_treatment()."""
+        client = self.factory.client()
+
+        assert client.get_treatment('user1', 'sample_feature') == 'on'
+        self._validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
+        client.get_treatment('user1', 'sample_feature')
+        client.get_treatment('user1', 'sample_feature')
+        client.get_treatment('user1', 'sample_feature')
+
+        # Only one impression was added, and popped when validating, the rest were ignored
+        assert self.factory._storages['impressions']._impressions.qsize() == 0
+
+        assert client.get_treatment('invalidKey', 'sample_feature') == 'off'
+        self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
+
+        assert client.get_treatment('invalidKey', 'invalid_feature') == 'control'
+        self._validate_last_impressions(client)  # No impressions should be present
+
+        # testing a killed feature. No matter what the key, must return default treatment
+        assert client.get_treatment('invalidKey', 'killed_feature') == 'defTreatment'
+        self._validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
+
+        # testing ALL matcher
+        assert client.get_treatment('invalidKey', 'all_feature') == 'on'
+        self._validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
+
+        # testing WHITELIST matcher
+        assert client.get_treatment('whitelisted_user', 'whitelist_feature') == 'on'
+        self._validate_last_impressions(client, ('whitelist_feature', 'whitelisted_user', 'on'))
+        assert client.get_treatment('unwhitelisted_user', 'whitelist_feature') == 'off'
+        self._validate_last_impressions(client, ('whitelist_feature', 'unwhitelisted_user', 'off'))
+
+        #  testing INVALID matcher
+        assert client.get_treatment('some_user_key', 'invalid_matcher_feature') == 'control'
+        self._validate_last_impressions(client)  # No impressions should be present
+
+        #  testing Dependency matcher
+        assert client.get_treatment('somekey', 'dependency_test') == 'off'
+        self._validate_last_impressions(client, ('dependency_test', 'somekey', 'off'))
+
+        #  testing boolean matcher
+        assert client.get_treatment('True', 'boolean_test') == 'on'
+        self._validate_last_impressions(client, ('boolean_test', 'True', 'on'))
+
+        #  testing regex matcher
+        assert client.get_treatment('abc4', 'regex_test') == 'on'
+        self._validate_last_impressions(client, ('regex_test', 'abc4', 'on'))
+
+    def test_get_treatments(self):
+        """Test client.get_treatments()."""
+        client = self.factory.client()
+
+        result = client.get_treatments('user1', ['sample_feature'])
+        assert len(result) == 1
+        assert result['sample_feature'] == 'on'
+        self._validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
+
+        result = client.get_treatments('invalidKey', ['sample_feature'])
+        assert len(result) == 1
+        assert result['sample_feature'] == 'off'
+        self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
+
+        result = client.get_treatments('invalidKey', ['invalid_feature'])
+        assert len(result) == 1
+        assert result['invalid_feature'] == 'control'
+        self._validate_last_impressions(client)
+
+        # testing a killed feature. No matter what the key, must return default treatment
+        result = client.get_treatments('invalidKey', ['killed_feature'])
+        assert len(result) == 1
+        assert result['killed_feature'] == 'defTreatment'
+        self._validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
+
+        # testing ALL matcher
+        result = client.get_treatments('invalidKey', ['all_feature'])
+        assert len(result) == 1
+        assert result['all_feature'] == 'on'
+        self._validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
+
+        # testing multiple splitNames
+        result = client.get_treatments('invalidKey', [
+            'all_feature',
+            'killed_feature',
+            'invalid_feature',
+            'sample_feature'
+        ])
+        assert len(result) == 4
+        assert result['all_feature'] == 'on'
+        assert result['killed_feature'] == 'defTreatment'
+        assert result['invalid_feature'] == 'control'
+        assert result['sample_feature'] == 'off'
+        assert self.factory._storages['impressions']._impressions.qsize() == 0
+
+    def test_get_treatments_with_config(self):
+        """Test client.get_treatments_with_config()."""
+        client = self.factory.client()
+
+        result = client.get_treatments_with_config('user1', ['sample_feature'])
+        assert len(result) == 1
+        assert result['sample_feature'] == ('on', '{"size":15,"test":20}')
+        self._validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
+
+        result = client.get_treatments_with_config('invalidKey', ['sample_feature'])
+        assert len(result) == 1
+        assert result['sample_feature'] == ('off', None)
+        self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
+
+        result = client.get_treatments_with_config('invalidKey', ['invalid_feature'])
+        assert len(result) == 1
+        assert result['invalid_feature'] == ('control', None)
+        self._validate_last_impressions(client)
+
+        # testing a killed feature. No matter what the key, must return default treatment
+        result = client.get_treatments_with_config('invalidKey', ['killed_feature'])
+        assert len(result) == 1
+        assert result['killed_feature'] == ('defTreatment', '{"size":15,"defTreatment":true}')
+        self._validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
+
+        # testing ALL matcher
+        result = client.get_treatments_with_config('invalidKey', ['all_feature'])
+        assert len(result) == 1
+        assert result['all_feature'] == ('on', None)
+        self._validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
+
+        # testing multiple splitNames
+        result = client.get_treatments_with_config('invalidKey', [
+            'all_feature',
+            'killed_feature',
+            'invalid_feature',
+            'sample_feature'
+        ])
+        assert len(result) == 4
+
+        assert result['all_feature'] == ('on', None)
+        assert result['killed_feature'] == ('defTreatment', '{"size":15,"defTreatment":true}')
+        assert result['invalid_feature'] == ('control', None)
+        assert result['sample_feature'] == ('off', None)
+        assert self.factory._storages['impressions']._impressions.qsize() == 0
+
+    def test_manager_methods(self):
+        """Test manager.split/splits."""
+        manager = self.factory.manager()
+        result = manager.split('all_feature')
+        assert result.name == 'all_feature'
+        assert result.traffic_type is None
+        assert result.killed is False
+        assert len(result.treatments) == 2
+        assert result.change_number == 123
+        assert result.configs == {}
+
+        result = manager.split('killed_feature')
+        assert result.name == 'killed_feature'
+        assert result.traffic_type is None
+        assert result.killed is True
+        assert len(result.treatments) == 2
+        assert result.change_number == 123
+        assert result.configs['defTreatment'] == '{"size":15,"defTreatment":true}'
+        assert result.configs['off'] == '{"size":15,"test":20}'
+
+        result = manager.split('sample_feature')
+        assert result.name == 'sample_feature'
+        assert result.traffic_type is None
+        assert result.killed is False
+        assert len(result.treatments) == 2
+        assert result.change_number == 123
+        assert result.configs['on'] == '{"size":15,"test":20}'
+
+        assert len(manager.split_names()) == 7
+        assert len(manager.splits()) == 7
+
+
 class RedisIntegrationTests(object):
     """Redis storage-based integration tests."""
 
@@ -285,13 +501,15 @@ class RedisIntegrationTests(object):
         redis_client.sadd(segment_storage._get_key(data['name']), *data['added'])
         redis_client.set(segment_storage._get_till_key(data['name']), data['till'])
 
-        self.factory = SplitFactory('some_api_key', {  #pylint:disable=attribute-defined-outside-init
+        storages = {
             'splits': split_storage,
             'segments': segment_storage,
             'impressions': RedisImpressionsStorage(redis_client, metadata),
             'events': RedisEventsStorage(redis_client, metadata),
             'telemetry': RedisTelemetryStorage(redis_client, metadata)
-        }, True)
+        }
+        impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
+        self.factory = SplitFactory('some_api_key', storages, True, impmanager)  #pylint:disable=attribute-defined-outside-init
 
     def _validate_last_impressions(self, client, *to_validate):
         """Validate the last N impressions are present disregarding the order."""
@@ -561,13 +779,15 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
         redis_client.sadd(segment_storage._get_key(data['name']), *data['added'])
         redis_client.set(segment_storage._get_till_key(data['name']), data['till'])
 
-        self.factory = SplitFactory('some_api_key', {  #pylint:disable=attribute-defined-outside-init
+        storages = {
             'splits': split_storage,
             'segments': segment_storage,
             'impressions': RedisImpressionsStorage(redis_client, metadata),
             'events': RedisEventsStorage(redis_client, metadata),
             'telemetry': RedisTelemetryStorage(redis_client, metadata)
-        }, True)
+        }
+        impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
+        self.factory = SplitFactory('some_api_key', storages, True, impmanager)  #pylint:disable=attribute-defined-outside-init
 
 
 class LocalhostIntegrationTests(object):  #pylint: disable=too-few-public-methods

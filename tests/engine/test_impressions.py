@@ -1,6 +1,6 @@
 """Impression manager, observer & hasher tests."""
 from datetime import datetime
-from splitio.engine.impmanager import Hasher, Observer, Counter, Manager, \
+from splitio.engine.impressions import Hasher, Observer, Counter, Manager, \
     ImpressionsMode, truncate_time
 from splitio.models.impressions import Impression
 from splitio.client.listener import ImpressionListenerWrapper
@@ -108,18 +108,18 @@ class ImpressionManagerTests(object):
         assert manager._forwarder is forwarder
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                       Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
+                       (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
         # Tracking the same impression a ms later should call the forwarder function
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
         # Tracking a in impression with a different key makes it to the queue
-        manager.track([Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)])
+        manager.track([(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
@@ -130,8 +130,8 @@ class ImpressionManagerTests(object):
         utc_time_mock.return_value = utc_now
 
         # Track the same impressions but "one hour later"
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1),
-                       Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
+                       (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, old_utc-1),
@@ -167,19 +167,19 @@ class ImpressionManagerTests(object):
         assert manager._forwarder is forwarder
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                       Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
+                       (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
         # Tracking the same impression a ms later should call the forwarder function
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2, utc_now-3)]
 
         # Tracking a in impression with a different key makes it to the queue
-        manager.track([Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)])
+        manager.track([(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2, utc_now-3),
@@ -191,8 +191,8 @@ class ImpressionManagerTests(object):
         utc_time_mock.return_value = utc_now
 
         # Track the same impressions but "one hour later"
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1),
-                       Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
+                       (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3),
                         Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-2, old_utc-3),
@@ -222,19 +222,19 @@ class ImpressionManagerTests(object):
         assert manager._forwarder is forwarder
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                       Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
+                       (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
         # Tracking the same impression a ms later should call the forwarder function
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2)]
 
         # Tracking a in impression with a different key makes it to the queue
-        manager.track([Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)])
+        manager.track([(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2),
@@ -246,8 +246,8 @@ class ImpressionManagerTests(object):
         utc_time_mock.return_value = utc_now
 
         # Track the same impressions but "one hour later"
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1),
-                       Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
+                       (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3),
                         Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-2),
@@ -275,19 +275,19 @@ class ImpressionManagerTests(object):
         assert manager._forwarder is forwarder
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                       Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
+                       (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
         # Tracking the same impression a ms later should call the forwarder function
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2)]
 
         # Tracking a in impression with a different key makes it to the queue
-        manager.track([Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)])
+        manager.track([(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2),
@@ -299,8 +299,8 @@ class ImpressionManagerTests(object):
         utc_time_mock.return_value = utc_now
 
         # Track the same impressions but "one hour later"
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1),
-                       Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
+                       (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3),
                         Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-2),
@@ -330,18 +330,18 @@ class ImpressionManagerTests(object):
         assert manager._forwarder is forwarder
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                       Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
+                       (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
         # Tracking the same impression a ms later should call the forwarder function
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
         # Tracking a in impression with a different key makes it to the queue
-        manager.track([Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)])
+        manager.track([(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
@@ -352,8 +352,8 @@ class ImpressionManagerTests(object):
         utc_time_mock.return_value = utc_now
 
         # Track the same impressions but "one hour later"
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1),
-                       Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
+                       (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, old_utc-1),
@@ -370,12 +370,12 @@ class ImpressionManagerTests(object):
         ])
 
         assert listener.log_impression.mock_calls == [
-            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3)),
-            mocker.call(Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3)),
-            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-2, old_utc-3)),
-            mocker.call(Impression('k2', 'f1', 'on', 'l1', 123, None, old_utc-1)),
-            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3)),
-            mocker.call(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1))
+            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3), None),
+            mocker.call(Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3), None),
+            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-2, old_utc-3), None),
+            mocker.call(Impression('k2', 'f1', 'on', 'l1', 123, None, old_utc-1), None),
+            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3), None),
+            mocker.call(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1), None)
         ]
 
 
@@ -400,19 +400,19 @@ class ImpressionManagerTests(object):
         assert manager._forwarder is forwarder
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                       Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
+                       (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
         # Tracking the same impression a ms later should call the forwarder function
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2, utc_now-3)]
 
         # Tracking a in impression with a different key makes it to the queue
-        manager.track([Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)])
+        manager.track([(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2, utc_now-3),
@@ -424,8 +424,8 @@ class ImpressionManagerTests(object):
         utc_time_mock.return_value = utc_now
 
         # Track the same impressions but "one hour later"
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1),
-                       Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
+                       (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3),
                         Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-2, old_utc-3),
@@ -436,12 +436,12 @@ class ImpressionManagerTests(object):
         assert len(manager._observer._cache._data) == 3  # distinct impressions seen
 
         assert listener.log_impression.mock_calls == [
-            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3)),
-            mocker.call(Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3)),
-            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-2, old_utc-3)),
-            mocker.call(Impression('k2', 'f1', 'on', 'l1', 123, None, old_utc-1)),
-            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3)),
-            mocker.call(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1))
+            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3), None),
+            mocker.call(Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3), None),
+            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-2, old_utc-3), None),
+            mocker.call(Impression('k2', 'f1', 'on', 'l1', 123, None, old_utc-1), None),
+            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3), None),
+            mocker.call(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1), None)
         ]
 
 
@@ -466,19 +466,19 @@ class ImpressionManagerTests(object):
         assert manager._forwarder is forwarder
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                       Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
+                       (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
         # Tracking the same impression a ms later should call the forwarder function
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2)]
 
         # Tracking a in impression with a different key makes it to the queue
-        manager.track([Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)])
+        manager.track([(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2),
@@ -490,8 +490,8 @@ class ImpressionManagerTests(object):
         utc_time_mock.return_value = utc_now
 
         # Track the same impressions but "one hour later"
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1),
-                       Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
+                       (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3),
                         Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-2),
@@ -500,12 +500,12 @@ class ImpressionManagerTests(object):
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2)]
 
         assert listener.log_impression.mock_calls == [
-            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3)),
-            mocker.call(Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3)),
-            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-2)),
-            mocker.call(Impression('k2', 'f1', 'on', 'l1', 123, None, old_utc-1)),
-            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1)),
-            mocker.call(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2))
+            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3), None),
+            mocker.call(Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3), None),
+            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-2), None),
+            mocker.call(Impression('k2', 'f1', 'on', 'l1', 123, None, old_utc-1), None),
+            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
+            mocker.call(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
         ]
 
 
@@ -530,19 +530,19 @@ class ImpressionManagerTests(object):
         assert manager._forwarder is forwarder
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                       Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
+                       (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
         # Tracking the same impression a ms later should call the forwarder function
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2)]
 
         # Tracking a in impression with a different key makes it to the queue
-        manager.track([Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)])
+        manager.track([(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2),
@@ -554,8 +554,8 @@ class ImpressionManagerTests(object):
         utc_time_mock.return_value = utc_now
 
         # Track the same impressions but "one hour later"
-        manager.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1),
-                       Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2)])
+        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
+                       (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3),
                         Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-2),
@@ -564,11 +564,10 @@ class ImpressionManagerTests(object):
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2)]
 
         assert listener.log_impression.mock_calls == [
-            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3)),
-            mocker.call(Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3)),
-            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-2)),
-            mocker.call(Impression('k2', 'f1', 'on', 'l1', 123, None, old_utc-1)),
-            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1)),
-            mocker.call(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2))
+            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3), None),
+            mocker.call(Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3), None),
+            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-2), None),
+            mocker.call(Impression('k2', 'f1', 'on', 'l1', 123, None, old_utc-1), None),
+            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
+            mocker.call(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
         ]
-

@@ -71,13 +71,64 @@ class ImpressionsSyncTask(BaseSynchronizationTask):
 
         try:
             self._impressions_api.flush_impressions(to_send)
-        except APIException as exc:
-            self._logger.error(
-                'Exception raised while reporting impressions: %s -- %d',
-                exc.message,
-                exc.status_code
-            )
+        except APIException:
+            self._logger.error('Exception raised while reporting impressions')
+            self._logger.debug('Exception information: ', exc_info=True)
             self._add_to_failed_queue(to_send)
+
+    def start(self):
+        """Start executing the impressions synchronization task."""
+        self._task.start()
+
+    def stop(self, event=None):
+        """Stop executing the impressions synchronization task."""
+        self._task.stop(event)
+
+    def is_running(self):
+        """
+        Return whether the task is running or not.
+
+        :return: True if the task is running. False otherwise.
+        :rtype: bool
+        """
+        return self._task.running()
+
+    def flush(self):
+        """Flush impressions in storage."""
+        self._task.force_execution()
+
+
+class ImpressionsCountSyncTask(BaseSynchronizationTask):
+    """Impressions synchronization task uses an asynctask.AsyncTask to send impressions."""
+
+    _PERIOD = 5 # 30 * 60 # 30 minutes
+
+    def __init__(self, impressions_api, impressions_manager):
+        """
+        Class constructor.
+
+        :param impressions_api: Impressions Api object to send data to the backend
+        :type impressions_api: splitio.api.impressions.ImpressionsAPI
+
+        :param impressions_manager: Impressions manager instance
+        :type impressions_manager: splitio.engine.impressions.Manager
+        """
+        self._logger = logging.getLogger(self.__class__.__name__)
+        self._impressions_api = impressions_api
+        self._impressions_manager = impressions_manager
+        self._task = AsyncTask(self._send_counters, self._PERIOD, on_stop=self._send_counters)
+
+    def _send_counters(self):
+        """Send impressions from both the failed and new queues."""
+        to_send = self._impressions_manager.get_counts()
+        if not to_send:
+            return
+
+        try:
+            self._impressions_api.flush_counters(to_send)
+        except APIException:
+            self._logger.error('Exception raised while reporting impression counts')
+            self._logger.debug('Exception information: ', exc_info=True)
 
     def start(self):
         """Start executing the impressions synchronization task."""

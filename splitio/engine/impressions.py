@@ -9,6 +9,7 @@ import six
 from splitio.models.impressions import Impression
 from splitio.engine.hashfns import murmur_128
 from splitio.engine.cache.lru import SimpleLruCache
+from splitio.client.listener import ImpressionListenerException
 from splitio import util
 
 
@@ -64,11 +65,11 @@ class Hasher(object):  # pylint:disable=too-few-public-methods
         :returns: a string representation of the impression
         :rtype: str
         """
-        return self._PATTERN % (impression.matching_key,
-                                impression.feature_name,
-                                impression.treatment,
-                                impression.label,
-                                impression.change_number)
+        return self._PATTERN % (impression.matching_key if impression.matching_key else 'UNKNOWN',
+                                impression.feature_name if impression.feature_name else 'UNKNOWN',
+                                impression.treatment if impression.treatment else 'UNKNOWN',
+                                impression.label if impression.label else 'UNKNOWN',
+                                impression.change_number if impression.change_number else 0)
 
     def process(self, impression):
         """
@@ -116,7 +117,7 @@ class Counter(object):
     """Class that counts impressions per timeframe."""
 
     CounterKey = namedtuple('Count', ['feature', 'timeframe'])
-    CountPerFeature = namedtuple('Count', ['feature', 'timeframe', 'count'])
+    CountPerFeature = namedtuple('CountPerFeature', ['feature', 'timeframe', 'count'])
 
     def __init__(self):
         """Class constructor."""
@@ -183,19 +184,42 @@ class Manager(object):  # pylint:disable=too-few-public-methods
 
         Impressions are analyzed to see if they've been seen before and counted.
 
-        :param impressions: List of impression objects
-        :type impressions: list[splitio.models.impression.Impression]
+        :param impressions: List of impression objects with attributes
+        :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
         """
-        imps = [self._observer.test_and_set(i) for i in impressions] if self._observer \
+        imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions] if self._observer \
                 else impressions
 
         if self._counter:
-            self._counter.track(imps)
+            self._counter.track([imp for imp, _ in imps])
 
-        if self._listener:
-            for imp in imps:
-                self._listener.log_impression(imp)
+        self._send_impressions_to_listener(imps)
 
         this_hour = truncate_time(util.utctime_ms())
-        self._forwarder(imps if self._counter is None
-                        else [i for i in imps if i.previous_time is None or i.previous_time < this_hour])  # pylint:disable=line-too-long
+        self._forwarder([imp for imp, _ in imps] if self._counter is None
+                        else [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour])
+
+    def get_counts(self):
+        """
+        Return counts of impressions per features.
+
+        :returns: A list of counter objects.
+        :rtype: list[Counter.CountPerFeature]
+        """
+        return self._counter.pop_all() if self._counter is not None else []
+
+    def _send_impressions_to_listener(self, impressions):
+        """
+        Send impression result to custom listener.
+
+        :param impressions: List of impression objects with attributes
+        :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
+        """
+        if self._listener is not None:
+            try:
+                for impression, attributes in impressions:
+                    self._listener.log_impression(impression, attributes)
+            except ImpressionListenerException:
+                pass
+#                self._logger.error('An exception was raised while calling user-custom impression listener')
+#                self._logger.debug('Error', exc_info=True)
