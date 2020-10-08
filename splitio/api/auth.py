@@ -1,4 +1,4 @@
-"""Splits API module."""
+"""Auth API module."""
 
 import logging
 import json

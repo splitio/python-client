@@ -58,7 +58,7 @@ class Token(object):
 
 
 def decode_token(push_enabled, token):
-    """Return channel_list"""
+    """Decode token"""
     if not push_enabled or len(token.strip()) == 0:
         return None
     
@@ -84,4 +84,3 @@ def from_raw(raw_token):
     if decoded_token is None:
         return None
     return Token(raw_token['pushEnabled'], raw_token['token'], json.loads(decoded_token['x-ably-capability']), decoded_token['exp'], decoded_token['iat'])
-        

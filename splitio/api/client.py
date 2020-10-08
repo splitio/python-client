@@ -39,7 +39,7 @@ class HttpClient(object):
         :type sdk_url: str
         :param events_url: Optional alternative events URL.
         :type events_url: str
-        :param events_url: Optional alternative auth URL.
+        :param auth_url: Optional alternative auth URL.
         :type auth_url: str
         """
         self._timeout = timeout / 1000  if timeout else None  # Convert ms to seconds.
