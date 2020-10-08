@@ -7,12 +7,13 @@ from future.utils import raise_from
 
 from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException
+from splitio.engine.impressions import ImpressionsMode
 
 
 class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the impressions API."""
 
-    def __init__(self, client, apikey, sdk_metadata):
+    def __init__(self, client, apikey, sdk_metadata, mode=ImpressionsMode.OPTIMIZED):
         """
         Class constructor.
 
@@ -25,6 +26,7 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
         self._client = client
         self._apikey = apikey
         self._metadata = headers_from_metadata(sdk_metadata)
+        self._metadata['SplitSDKImpressionsMode'] = mode.name
 
     @staticmethod
     def _build_bulk(impressions):
@@ -47,7 +49,8 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
                         'm': impression.time,
                         'c': impression.change_number,
                         'r': impression.label,
-                        'b': impression.bucketing_key
+                        'b': impression.bucketing_key,
+                        'pt': impression.previous_time
                     }
                     for impression in imps
                 ]
@@ -74,7 +77,7 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
                 {
                     'f': pf_count.feature,
                     'm': pf_count.timeframe,
-                    'c': pf_count.count
+                    'rc': pf_count.count
                 } for pf_count in counters
             ]
         }

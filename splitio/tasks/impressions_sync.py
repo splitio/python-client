@@ -71,12 +71,9 @@ class ImpressionsSyncTask(BaseSynchronizationTask):
 
         try:
             self._impressions_api.flush_impressions(to_send)
-        except APIException as exc:
-            self._logger.error(
-                'Exception raised while reporting impressions: %s -- %d',
-                exc.message,
-                exc.status_code
-            )
+        except APIException:
+            self._logger.error('Exception raised while reporting impressions')
+            self._logger.debug('Exception information: ', exc_info=True)
             self._add_to_failed_queue(to_send)
 
     def start(self):
@@ -104,7 +101,7 @@ class ImpressionsSyncTask(BaseSynchronizationTask):
 class ImpressionsCountSyncTask(BaseSynchronizationTask):
     """Impressions synchronization task uses an asynctask.AsyncTask to send impressions."""
 
-    _PERIOD = 30 * 60 # 30 minutes
+    _PERIOD = 5 # 30 * 60 # 30 minutes
 
     def __init__(self, impressions_api, impressions_manager):
         """
@@ -124,14 +121,14 @@ class ImpressionsCountSyncTask(BaseSynchronizationTask):
     def _send_counters(self):
         """Send impressions from both the failed and new queues."""
         to_send = self._impressions_manager.get_counts()
+        if not to_send:
+            return
+
         try:
             self._impressions_api.flush_counters(to_send)
-        except APIException as exc:
-            self._logger.error(
-                'Exception raised while reporting impressions: %s -- %d',
-                exc.message,
-                exc.status_code
-            )
+        except APIException:
+            self._logger.error('Exception raised while reporting impression counts')
+            self._logger.debug('Exception information: ', exc_info=True)
 
     def start(self):
         """Start executing the impressions synchronization task."""

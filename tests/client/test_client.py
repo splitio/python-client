@@ -42,7 +42,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         factory._get_storage.side_effect = _get_storage_mock
         type(factory).destroyed = destroyed_property
 
-        mocker.patch('splitio.client.client.time.time', new=lambda: 1)
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         impmanager = mocker.Mock(spec=ImpressionManager)
@@ -110,7 +110,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         factory._get_storage.side_effect = _get_storage_mock
         type(factory).destroyed = destroyed_property
 
-        mocker.patch('splitio.client.client.time.time', new=lambda: 1)
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         impmanager = mocker.Mock(spec=ImpressionManager)
@@ -183,7 +183,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         factory._get_storage.side_effect = _get_storage_mock
         type(factory).destroyed = destroyed_property
 
-        mocker.patch('splitio.client.client.time.time', new=lambda: 1)
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         impmanager = mocker.Mock(spec=ImpressionManager)
@@ -253,7 +253,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         factory._get_storage.side_effect = _get_storage_mock
         type(factory).destroyed = destroyed_property
 
-        mocker.patch('splitio.client.client.time.time', new=lambda: 1)
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         impmanager = mocker.Mock(spec=ImpressionManager)
@@ -353,7 +353,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         destroyed_mock.return_value = False
         type(factory).destroyed = destroyed_mock
         factory._apikey = 'test'
-        mocker.patch('splitio.client.client.time.time', new=lambda: 1)
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
 
         impmanager = mocker.Mock(spec=ImpressionManager)
         client = Client(factory, impmanager, True)

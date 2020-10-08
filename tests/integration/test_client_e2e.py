@@ -49,7 +49,7 @@ class InMemoryIntegrationTests(object):
             'telemetry': InMemoryTelemetryStorage()
         }
         impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
-        self.factory = SplitFactory('some_api_key', storages, impmanager, True)  #pylint:disable=attribute-defined-outside-init
+        self.factory = SplitFactory('some_api_key', storages, True, impmanager)  #pylint:disable=attribute-defined-outside-init
 
     def _validate_last_impressions(self, client, *to_validate):
         """Validate the last N impressions are present disregarding the order."""
@@ -291,7 +291,7 @@ class InMemoryOptimizedIntegrationTests(object):
             'telemetry': InMemoryTelemetryStorage()
         }
         impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.OPTIMIZED, standalone=True)
-        self.factory = SplitFactory('some_api_key', storages, impmanager, True)  #pylint:disable=attribute-defined-outside-init
+        self.factory = SplitFactory('some_api_key', storages, True, impmanager)  #pylint:disable=attribute-defined-outside-init
 
     def _validate_last_impressions(self, client, *to_validate):
         """Validate the last N impressions are present disregarding the order."""
@@ -509,7 +509,7 @@ class RedisIntegrationTests(object):
             'telemetry': RedisTelemetryStorage(redis_client, metadata)
         }
         impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
-        self.factory = SplitFactory('some_api_key', storages, impmanager, True)  #pylint:disable=attribute-defined-outside-init
+        self.factory = SplitFactory('some_api_key', storages, True, impmanager)  #pylint:disable=attribute-defined-outside-init
 
     def _validate_last_impressions(self, client, *to_validate):
         """Validate the last N impressions are present disregarding the order."""
@@ -787,7 +787,7 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
             'telemetry': RedisTelemetryStorage(redis_client, metadata)
         }
         impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
-        self.factory = SplitFactory('some_api_key', storages, impmanager, True)  #pylint:disable=attribute-defined-outside-init
+        self.factory = SplitFactory('some_api_key', storages, True, impmanager)  #pylint:disable=attribute-defined-outside-init
 
 
 class LocalhostIntegrationTests(object):  #pylint: disable=too-few-public-methods

@@ -345,7 +345,7 @@ class SplitFactoryTests(object):
     def test_multiple_factories(self, mocker):
         """Test multiple factories instantiation and tracking."""
         def _make_factory_with_apikey(apikey, *_, **__):
-            return SplitFactory(apikey, {}, True)
+            return SplitFactory(apikey, {}, True, mocker.Mock(spec=ImpressionsManager))
 
         factory_module_logger = mocker.Mock()
         build_in_memory = mocker.Mock()

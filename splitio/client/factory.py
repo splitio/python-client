@@ -74,7 +74,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
             apikey,
             storages,
             labels_enabled,
-            impressions_manager=None,
+            impressions_manager,
             apis=None,
             tasks=None,
             sdk_ready_flag=None,
@@ -139,7 +139,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         This client is only a set of references to structures hold by the factory.
         Creating one a fast operation and safe to be used anywhere.
         """
-        return Client(self, self._labels_enabled, self._impressions_manager)
+        return Client(self, self._impressions_manager, self._labels_enabled)
 
     def manager(self):
         """
@@ -249,7 +249,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None):  # py
     apis = {
         'splits': SplitsAPI(http_client, api_key),
         'segments': SegmentsAPI(http_client, api_key),
-        'impressions': ImpressionsAPI(http_client, api_key, sdk_metadata),
+        'impressions': ImpressionsAPI(http_client, api_key, sdk_metadata, cfg['impressionsMode']),
         'events': EventsAPI(http_client, api_key, sdk_metadata),
         'telemetry': TelemetryAPI(http_client, api_key, sdk_metadata)
     }

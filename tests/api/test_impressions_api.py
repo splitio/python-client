@@ -3,7 +3,7 @@
 import pytest
 from splitio.api import impressions, client, APIException
 from splitio.models.impressions import Impression
-from splitio.engine.impressions import Counter
+from splitio.engine.impressions import Counter, ImpressionsMode
 from splitio.client.util import get_metadata
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.version import __version__
@@ -19,13 +19,13 @@ class ImpressionsAPITests(object):
     expectedImpressions = [{
         'f': 'f1',
         'i': [
-            {'k': 'k1', 'b': 'b1', 't': 'on', 'r': 'l1', 'm': 321654, 'c': 123456},
-            {'k': 'k3', 'b': 'b1', 't': 'on', 'r': 'l1', 'm': 321654, 'c': 123456},
+            {'k': 'k1', 'b': 'b1', 't': 'on', 'r': 'l1', 'm': 321654, 'c': 123456, 'pt': None},
+            {'k': 'k3', 'b': 'b1', 't': 'on', 'r': 'l1', 'm': 321654, 'c': 123456, 'pt': None},
         ],
     }, {
         'f': 'f2',
         'i': [
-            {'k': 'k2', 'b': 'b1', 't': 'off', 'r': 'l1', 'm': 321654, 'c': 123456},
+            {'k': 'k2', 'b': 'b1', 't': 'off', 'r': 'l1', 'm': 321654, 'c': 123456, 'pt': None},
         ]
     }]
 
@@ -38,10 +38,10 @@ class ImpressionsAPITests(object):
 
     expected_counters = {
         'pf': [
-            {'f': 'f1', 'm': 123, 'c': 2},
-            {'f': 'f2', 'm': 123, 'c': 123},
-            {'f': 'f1', 'm': 456, 'c': 111},
-            {'f': 'f2', 'm': 456, 'c': 222},
+            {'f': 'f1', 'm': 123, 'rc': 2},
+            {'f': 'f2', 'm': 123, 'rc': 123},
+            {'f': 'f1', 'm': 456, 'rc': 111},
+            {'f': 'f2', 'm': 456, 'rc': 222},
         ]
     }
 
@@ -64,7 +64,8 @@ class ImpressionsAPITests(object):
         assert call_made[2]['extra_headers'] == {
             'SplitSDKVersion': 'python-%s' % __version__,
             'SplitSDKMachineIP': '123.123.123.123',
-            'SplitSDKMachineName': 'some_machine_name'
+            'SplitSDKMachineName': 'some_machine_name',
+            'SplitSDKImpressionsMode': 'OPTIMIZED'
         }
 
         # validate key-value args (body)
@@ -86,7 +87,7 @@ class ImpressionsAPITests(object):
         cfg = DEFAULT_CONFIG.copy()
         cfg.update({'IPAddressesEnabled': False})
         sdk_metadata = get_metadata(cfg)
-        impressions_api = impressions.ImpressionsAPI(httpclient, 'some_api_key', sdk_metadata)
+        impressions_api = impressions.ImpressionsAPI(httpclient, 'some_api_key', sdk_metadata, ImpressionsMode.DEBUG)
         response = impressions_api.flush_impressions(self.impressions)
 
         call_made = httpclient.post.mock_calls[0]
@@ -97,6 +98,7 @@ class ImpressionsAPITests(object):
         # validate key-value args (headers)
         assert call_made[2]['extra_headers'] == {
             'SplitSDKVersion': 'python-%s' % __version__,
+            'SplitSDKImpressionsMode': 'DEBUG'
         }
 
         # validate key-value args (body)
@@ -121,7 +123,8 @@ class ImpressionsAPITests(object):
         assert call_made[2]['extra_headers'] == {
             'SplitSDKVersion': 'python-%s' % __version__,
             'SplitSDKMachineIP': '123.123.123.123',
-            'SplitSDKMachineName': 'some_machine_name'
+            'SplitSDKMachineName': 'some_machine_name',
+            'SplitSDKImpressionsMode': 'OPTIMIZED'
         }
 
         # validate key-value args (body)

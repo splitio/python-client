@@ -11,6 +11,7 @@ from splitio.models.impressions import Impression, Label
 from splitio.models.events import Event, EventWrapper
 from splitio.models.telemetry import get_latency_bucket_index
 from splitio.client import input_validator
+from splitio.util import utctime_ms
 
 
 class Client(object):  # pylint: disable=too-many-instance-attributes
@@ -115,7 +116,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                 result['impression']['label'],
                 result['impression']['change_number'],
                 bucketing_key,
-                start
+                utctime_ms(),
             )
 
             self._record_stats([(impression, attributes)], start, metric_name)
@@ -131,7 +132,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                     Label.EXCEPTION,
                     self._split_storage.get_change_number(),
                     bucketing_key,
-                    start
+                    utctime_ms(),
                 )
                 self._record_stats([(impression, attributes)], start, metric_name)
             except Exception:  # pylint: disable=broad-except
@@ -178,7 +179,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                                                         result['impression']['label'],
                                                         result['impression']['change_number'],
                                                         bucketing_key,
-                                                        start)
+                                                        utctime_ms())
 
                     bulk_impressions.append(impression)
                     treatments[feature] = (result['treatment'], result['configurations'])
@@ -389,7 +390,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             traffic_type_name=traffic_type,
             event_type_id=event_type,
             value=value,
-            timestamp=int(time.time()*1000),
+            timestamp=utctime_ms(),
             properties=properties,
         )
         return self._events_storage.put([EventWrapper(

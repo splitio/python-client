@@ -65,11 +65,11 @@ class Hasher(object):  # pylint:disable=too-few-public-methods
         :returns: a string representation of the impression
         :rtype: str
         """
-        return self._PATTERN % (impression.matching_key,
-                                impression.feature_name,
-                                impression.treatment,
-                                impression.label,
-                                impression.change_number)
+        return self._PATTERN % (impression.matching_key if impression.matching_key else 'UNKNOWN',
+                                impression.feature_name if impression.feature_name else 'UNKNOWN',
+                                impression.treatment if impression.treatment else 'UNKNOWN',
+                                impression.label if impression.label else 'UNKNOWN',
+                                impression.change_number if impression.change_number else 0)
 
     def process(self, impression):
         """
