@@ -46,7 +46,8 @@ class SegmentSynchronizationTask(BaseSynchronizationTask):  #pylint: disable=too
         try:
             segment_changes = self._segment_api.fetch_segment(segment_name, since)
         except APIException:
-            self._logger.error('Error fetching segments')
+            self._logger.error('Exception raised while fetching segment %s', segment_name)
+            self._logger.debug('Exception information: ', exc_info=True)
             return False
 
         if since == -1:  # first time fetching the segment

@@ -70,12 +70,9 @@ class EventsSyncTask(BaseSynchronizationTask):
 
         try:
             self._events_api.flush_events(to_send)
-        except APIException as exc:
-            self._logger.error(
-                'Exception raised while reporting events: %s -- %d',
-                exc.message,
-                exc.status_code
-            )
+        except APIException:
+            self._logger.error('Exception raised while reporting events')
+            self._logger.debug('Exception information: ', exc_info=True)
             self._add_to_failed_queue(to_send)
 
     def start(self):

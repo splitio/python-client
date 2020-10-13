@@ -37,6 +37,7 @@ class TelemetrySynchronizationTask(BaseSynchronizationTask):
                 self._api.flush_latencies(latencies)
         except APIException:
             self._logger.error('Failed send telemetry/latencies to split BE.')
+            self._logger.debug('Exception information: ', exc_info=True)
 
         try:
             counters = self._storage.pop_counters()
@@ -44,6 +45,7 @@ class TelemetrySynchronizationTask(BaseSynchronizationTask):
                 self._api.flush_counters(counters)
         except APIException:
             self._logger.error('Failed send telemetry/counters to split BE.')
+            self._logger.debug('Exception information: ', exc_info=True)
 
         try:
             gauges = self._storage.pop_gauges()
@@ -51,6 +53,7 @@ class TelemetrySynchronizationTask(BaseSynchronizationTask):
                 self._api.flush_gauges(gauges)
         except APIException:
             self._logger.error('Failed send telemetry/gauges to split BE.')
+            self._logger.debug('Exception information: ', exc_info=True)
 
     def start(self):
         """Start the task."""
