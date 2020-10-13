@@ -115,4 +115,4 @@ class HashFunctionsTests(object):
             key, seed, hashed = line.split(',')
             seed = int(seed)
             hashed = int(hashed)
-            assert murmur3_128_py(key, seed) == hashed
+            assert murmur3_128_py(key, seed)[0] == hashed
