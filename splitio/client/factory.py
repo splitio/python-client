@@ -109,16 +109,11 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         if self._sdk_ready_flag is not None:
             self._status = Status.NOT_INITIALIZED
             # add a listener that updates the status to READY once the flag is set.
-            ready_updater = threading.Thread(target=self._update_status_when_ready)
+            ready_updater = threading.Thread(target=self.block_until_ready)
             ready_updater.setDaemon(True)
             ready_updater.start()
         else:
             self._status = Status.READY
-
-    def _update_status_when_ready(self):
-        """Wait until the sdk is ready and update the status."""
-        self._sdk_ready_flag.wait()
-        self._status = Status.READY
 
     def _get_storage(self, name):
         """
@@ -153,6 +148,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
     def block_until_ready(self, timeout=None):
         """
         Blocks until the sdk is ready or the timeout specified by the user expires.
+        When ready, the factory's status is updated accordingly.
 
         :param timeout: Number of seconds to wait (fractions allowed)
         :type timeout: int
@@ -162,6 +158,8 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
 
             if not ready:
                 raise TimeoutException('SDK Initialization: time of %d exceeded' % timeout)
+
+            self._status = Status.READY
 
     @property
     def ready(self):
