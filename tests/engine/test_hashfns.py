@@ -8,6 +8,7 @@ import pytest
 import six
 
 from splitio.engine import hashfns, splitters
+from splitio.engine.hashfns.murmur3py import hash128_x64 as murmur3_128_py
 from splitio.models import splits
 
 
@@ -101,3 +102,17 @@ class HashFunctionsTests(object):
             seed = int(seed)
             hashed = int(hashed)
             assert hashfns.murmur_128(key, seed) == hashed
+
+    def test_murmur128_pure_python(self):
+        """Test legacy hash function against known results."""
+        file_name = os.path.join(os.path.dirname(__file__), 'files', 'murmur128_test_suite.csv')
+        with io.open(file_name, 'r', encoding='utf-8') as flo:
+            lines = flo.read().split('\n')
+
+        for line in lines:
+            if line is None or line == '':
+                continue
+            key, seed, hashed = line.split(',')
+            seed = int(seed)
+            hashed = int(hashed)
+            assert murmur3_128_py(key, seed) == hashed
