@@ -34,8 +34,6 @@ def parse_incoming_event(raw_event):
     if parsed_json is None:
         return None
 
-    print(parsed_json)
-
     if 'statusCode' in parsed_json:
         return AblyError(parsed_json['code'], parsed_json['statusCode'], parsed_json['message'], parsed_json['href'])
     elif 'name' in parsed_json and parsed_json['name'] == TAG_OCCUPANCY:
