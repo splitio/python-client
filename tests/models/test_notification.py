@@ -8,15 +8,21 @@ class NotificationTests(object):
     def test_wrap_notification(self):
         with pytest.raises(ValueError):
             wrap_notification('{"type":"WRONG","controlType":"STREAMING_PAUSED"}', 'control_pri')
-        
+
         with pytest.raises(ValueError):
             wrap_notification('sadasd', 'control_pri')
-        
+
         with pytest.raises(TypeError):
             wrap_notification(None, 'control_pri')
-        
+
         with pytest.raises(ValueError):
             wrap_notification('{"type":"SPLIT_UPDATE","changeNumber":1591996754396}', None)
+
+        with pytest.raises(KeyError):
+            wrap_notification('{"type":"SPLIT_UPDATE"}',  'NDA5ODc2MTAyNg==_MzAyODY0NDkyOA==_splits')
+
+        with pytest.raises(ValueError):
+            wrap_notification('{"type":"CONTROL","controlType":"STREAMING_PAUSEDD"}', 'control_pri')
 
         n0 = wrap_notification('{"type":"SPLIT_UPDATE","changeNumber":1591996754396}', 'NDA5ODc2MTAyNg==_MzAyODY0NDkyOA==_splits')
         assert isinstance(n0, SplitChangeNotification)

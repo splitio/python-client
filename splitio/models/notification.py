@@ -39,10 +39,7 @@ class ControlNotification(object):  # pylint: disable=too-many-instance-attribut
         """
         self._channel = channel
         self._notification_type = Type(notification_type)
-        try:
-            self._control_type = Control(control_type)
-        except ValueError:
-            return None
+        self._control_type = Control(control_type)
         
     @property
     def channel(self):
@@ -76,11 +73,7 @@ class SegmentChangeNotification(object):  # pylint: disable=too-many-instance-at
         """
         self._channel = channel
         self._notification_type = Type(notification_type)
-        if change_number is None:
-            raise ValueError("change_number cannot be None")
         self._change_number = change_number
-        if segment_name is None:
-            raise ValueError("segment_name cannot be None")
         self._segment_name = segment_name
 
     @property
@@ -117,8 +110,6 @@ class SplitChangeNotification(object):  # pylint: disable=too-many-instance-attr
         """
         self._channel = channel
         self._notification_type = Type(notification_type)
-        if change_number is None:
-            raise ValueError("change_number cannot be None")
         self._change_number = change_number
     
     @property
@@ -155,14 +146,8 @@ class SplitKillNotification(object):  # pylint: disable=too-many-instance-attrib
         """
         self._channel = channel
         self._notification_type = Type(notification_type)
-        if change_number is None:
-            raise ValueError("change_number cannot be None")
         self._change_number = change_number
-        if default_treatment is None:
-            raise ValueError("default_treatment cannot be None")
         self._default_treatment = default_treatment
-        if split_name is None:
-            raise ValueError("split_name cannot be None")
         self._split_name = split_name
     
     @property
