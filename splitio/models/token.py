@@ -57,18 +57,23 @@ class Token(object):
         return self._iat
 
 
-def decode_token(push_enabled, token):
+def decode_token(raw_token):
     """Decode token"""
+    if not 'pushEnabled' in raw_token or not 'token' in raw_token:
+        return None, None, None
+
+    token = raw_token['token']
+    push_enabled = raw_token['pushEnabled']
     if not push_enabled or len(token.strip()) == 0:
-        return None
+        return None, None, None
     
     token_parts = token.split('.')
     if len(token_parts) < 2:
-        return None
+        return None, None, None
     
     to_decode = token_parts[1]
     decoded_payload =  base64.b64decode(to_decode + '='*(-len(to_decode) % 4))
-    return json.loads(decoded_payload)
+    return push_enabled, token, json.loads(decoded_payload)
 
 def from_raw(raw_token):
     """
@@ -80,7 +85,5 @@ def from_raw(raw_token):
     :return: New token model object
     :rtype: splitio.models.token.Token
     """
-    decoded_token = decode_token(raw_token['pushEnabled'], raw_token['token'])
-    if decoded_token is None:
-        return None
-    return Token(raw_token['pushEnabled'], raw_token['token'], json.loads(decoded_token['x-ably-capability']), decoded_token['exp'], decoded_token['iat'])
+    push_enabled, token, decoded_token = decode_token(raw_token)
+    return None if push_enabled is None else Token(push_enabled, token, json.loads(decoded_token['x-ably-capability']), decoded_token['exp'], decoded_token['iat'])
