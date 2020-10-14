@@ -36,7 +36,6 @@ class AuthAPITests(object):
             'SplitSDKMachineIP': '123.123.123.123',
             'SplitSDKMachineName': 'some_machine_name'
         }
-        # assert httpclient.get.mock_calls == [mocker.call('auth', '/auth', 'some_api_key', )]
 
         httpclient.reset_mock()
         def raise_exception(*args, **kwargs):
