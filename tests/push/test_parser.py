@@ -1,4 +1,5 @@
 import json
+import pytest
 
 from splitio.push.parser import parse_incoming_event, Update, AblyError, Occupancy
 
@@ -10,6 +11,16 @@ def wrap_json(channel, data):
 
 class ParserTests(object):
     """Parser tests."""
+
+    def test_exception(self):
+        """Test exceptions."""
+        assert parse_incoming_event(None) is None
+        assert parse_incoming_event('') is None
+        assert parse_incoming_event('  ') is None
+        assert parse_incoming_event('{}') is None
+
+        with pytest.raises(ValueError):
+            parse_incoming_event('asd')
 
     def test_event_parsing(self):
         """Test parse Update event."""
