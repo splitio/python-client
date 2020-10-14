@@ -29,6 +29,12 @@ class ParserTests(object):
         with pytest.raises(ValueError):
             parse_incoming_event('asd')
 
+        with pytest.raises(KeyError):
+            parse_incoming_event(json.dumps({
+            'data': json.dumps({'a':1}),
+            'event': 'some'
+        }))
+
     def test_event_parsing(self):
         """Test parse Update event."""
         e0 = wrap_json(
