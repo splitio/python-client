@@ -95,7 +95,6 @@ class HttpClient(object):
         :rtype: HttpResponse
         """
         headers = self._build_basic_headers(apikey)
-
         if extra_headers is not None:
             headers.update(extra_headers)
 
