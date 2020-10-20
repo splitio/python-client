@@ -1,6 +1,7 @@
 import logging
 import threading
 
+_LOGGER = logging.getLogger(__name__)
 
 class SegmentWorker(object):
     """Segment Worker for processing updates."""
@@ -20,7 +21,6 @@ class SegmentWorker(object):
         self._handler = synchronize_segment
         self._running = False
         self._worker = None
-        self._logger = logging.getLogger(self.__class__.__name__)
     
     def set_running(self, value):
         """
@@ -47,7 +47,7 @@ class SegmentWorker(object):
                 break
             if event == self._centinel:
                 continue
-            self._logger.debug('Processing segment_update: %s, change_number: %d', event.segment_name, event.change_number)
+            _LOGGER.debug('Processing segment_update: %s, change_number: %d', event.segment_name, event.change_number)
             self._handler(event.segment_name, event.change_number)
     
     def start(self):
@@ -55,9 +55,9 @@ class SegmentWorker(object):
         Start worker
         """
         if self.is_running():
-            self._logger.debug('Worker is already running')
+            _LOGGER.debug('Worker is already running')
             return
-        self._logger.debug('Starting Segment Worker')
+        _LOGGER.debug('Starting Segment Worker')
         self.set_running(True)
         self._worker = threading.Thread(target=self._run)
         self._worker.setDaemon(True)
@@ -67,6 +67,6 @@ class SegmentWorker(object):
         """
         Stop worker
         """
-        self._logger.debug('Stopping Segment Worker')
+        _LOGGER.debug('Stopping Segment Worker')
         self.set_running(False)
         self._segment_queue.put(self._centinel)
