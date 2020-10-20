@@ -105,7 +105,6 @@ class SSEClient(object):
             response = self._connection.getresponse()
             event_builder = EventBuilder()
             while True:
-                # line = response.readline()
                 line = _http_response_readline(response)
                 if line is None or len(line) <= 0:  # connection ended
                     _LOGGER.info("sse connection has ended.")
@@ -129,15 +128,15 @@ class SSEClient(object):
 
         return self._shutdown_requested
 
-    def start(self, url, headers=None):  #pylint:disable=dangerous-default-value
+    def start(self, url, extra_headers=None):  #pylint:disable=dangerous-default-value
         """
         Connect and start listening for events.
 
         :param url: url to connect to
         :type url: str
 
-        :param headers: additional headers
-        :type headers: dict[str, str]
+        :param extra_headers: additional headers
+        :type extra_headers: dict[str, str]
 
         :returns: True if the connection was ended by us. False if it was closed by the serve.
         :rtype: bool
@@ -147,7 +146,7 @@ class SSEClient(object):
 
         url = urlparse(url)
         headers = self._DEFAULT_HEADERS.copy()
-        headers.update(headers if headers is not None else {})
+        headers.update(extra_headers if extra_headers is not None else {})
         self._connection = HTTPSConnection(url.hostname, url.port) if url.scheme == 'https' \
             else HTTPConnection(url.hostname, port=url.port)
 
