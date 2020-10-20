@@ -24,32 +24,32 @@ class SegmentSynchronizationTask(BaseSynchronizationTask):  #pylint: disable=too
         :type event: threading.Event
         """
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._worker_pool = workerpool.WorkerPool(20, self._ensure_segment_is_updated)
-        self._task = asynctask.AsyncTask(self._main, period, on_init=self._on_init)
+        self._task = asynctask.AsyncTask(self.update_segments, period, on_init=self.update_segments)
         self._segment_api = segment_api
         self._segment_storage = segment_storage
         self._split_storage = split_storage
         self._event = event
-        self._pending_initialization = []
 
-    def _update_segment(self, segment_name):
+    def _update_segment(self, segment_name, till=None):
         """
         Update a segment by hitting the split backend.
 
         :param segment_name: Name of the segment to update.
         :type segment_name: str
         """
-        since = self._segment_storage.get_change_number(segment_name)
-        if since is None:
-            since = -1
+        change_number = self._segment_storage.get_change_number(segment_name)
+        if change_number is None:
+            change_number = -1
+        if till is not None and till < change_number: # the passed till is less than change_number, no need to perform updates
+            return True
 
         try:
-            segment_changes = self._segment_api.fetch_segment(segment_name, since)
+            segment_changes = self._segment_api.fetch_segment(segment_name, change_number)
         except APIException:
             self._logger.error('Error fetching segments')
             return False
 
-        if since == -1:  # first time fetching the segment
+        if change_number == -1:  # first time fetching the segment
             new_segment = segments.from_raw(segment_changes)
             self._segment_storage.put(new_segment)
         else:
@@ -60,19 +60,13 @@ class SegmentSynchronizationTask(BaseSynchronizationTask):  #pylint: disable=too
                 segment_changes['till']
             )
 
-        return segment_changes['till'] == segment_changes['since']
+        return segment_changes['till'] == segment_changes['since'] or (till is not None and segment_changes['till'] >= till)
 
     def _main(self):
         """Submit all current segments and wait for them to finish."""
         segment_names = self._split_storage.get_segment_names()
         for segment_name in segment_names:
             self._worker_pool.submit_work(segment_name)
-
-    def _on_init(self):
-        """Submit all current segments and wait for them to finish, then set the ready flag."""
-        self._main()
-        self._worker_pool.wait_for_completion()
-        self._event.set()
 
     def _ensure_segment_is_updated(self, segment_name):
         """
@@ -86,13 +80,13 @@ class SegmentSynchronizationTask(BaseSynchronizationTask):  #pylint: disable=too
 
     def start(self):
         """Start segment synchronization."""
-        self._worker_pool.start()
         self._task.start()
 
     def stop(self, event=None):
         """Stop segment synchronization."""
         self._task.stop()
-        self._worker_pool.stop(event)
+        if self._worker_pool is not None:
+            self._worker_pool.stop(event)
 
     def is_running(self):
         """
@@ -102,3 +96,20 @@ class SegmentSynchronizationTask(BaseSynchronizationTask):  #pylint: disable=too
         :rtype: bool
         """
         return self._task.running()
+    
+    def update_segment(self, segment_name, till=None):
+        """Synchronize particular segment when is needed after receiving an update from streaming."""
+        while not self._update_segment(segment_name, till):
+            pass
+        return True
+
+    def update_segments(self):
+        print('update_segments')
+        """Submit all current segments and wait for them to finish, then set the ready flag."""
+        self._worker_pool = workerpool.WorkerPool(20, self._ensure_segment_is_updated)
+        self._main()
+        self._worker_pool.start()
+        self._worker_pool.wait_for_completion()
+        self._worker_pool.stop()
+        self._event.set()
+        return True

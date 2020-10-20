@@ -19,16 +19,21 @@ class WorkerPool(object):
         self._incoming = queue.Queue()
         self._should_be_working = [True for _ in range(0, worker_count)]
         self._worker_events = [Event() for _ in range(0, worker_count)]
-        self._threads = [
-            Thread(target=self._wrapper, args=(i, worker_func))
-            for i in range(0, worker_count)
+        self._worker_count = worker_count
+        self._worker_func = worker_func
+    
+    def _wrap_threads(self):
+        threads = [
+            Thread(target=self._wrapper, args=(i, self._worker_func))
+            for i in range(0, self._worker_count)
         ]
-        for thread in self._threads:
+        for thread in threads:
             thread.setDaemon(True)
+        return threads
 
     def start(self):
         """Start the workers."""
-        for thread in self._threads:
+        for thread in self._wrap_threads():
             thread.start()
 
     def _safe_run(self, func, message):
