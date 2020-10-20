@@ -4,7 +4,7 @@ import time
 import threading
 import pytest
 from splitio.push.sse import SSEClient, SSEEvent
-from tests.push.mockserver import SSEMockServer
+from .mockserver import SSEMockServer
 
 
 class SSEClientTests(object):
@@ -22,7 +22,10 @@ class SSEClientTests(object):
 
         client = SSEClient(callback)
 
-        client_task = threading.Thread(target=client.start, args=('http://127.0.0.1:' + str(server.port()),))
+        def runner():
+            """SSE client runner thread."""
+            assert client.start('http://127.0.0.1:' + str(server.port()))
+        client_task = threading.Thread(target=runner)
         client_task.setDaemon(True)
         client_task.setName('client')
         client_task.start()
@@ -60,7 +63,10 @@ class SSEClientTests(object):
 
         client = SSEClient(callback)
 
-        client_task = threading.Thread(target=client.start, args=('http://127.0.0.1:' + str(server.port()),))
+        def runner():
+            """SSE client runner thread."""
+            assert client.start('http://127.0.0.1:' + str(server.port()))
+        client_task = threading.Thread(target=runner)
         client_task.setDaemon(True)
         client_task.setName('client')
         client_task.start()
@@ -87,7 +93,7 @@ class SSEClientTests(object):
         """Test correct initialization. Server ends connection."""
         server = SSEMockServer()
         server.start()
-
+ 
         events = []
         def callback(event):
             """Callback."""
@@ -95,7 +101,10 @@ class SSEClientTests(object):
 
         client = SSEClient(callback)
 
-        client_task = threading.Thread(target=client.start, args=('http://127.0.0.1:' + str(server.port()),))
+        def runner():
+            """SSE client runner thread."""
+            assert client.start('http://127.0.0.1:' + str(server.port()))
+        client_task = threading.Thread(target=runner)
         client_task.setDaemon(True)
         client_task.setName('client')
         client_task.start()

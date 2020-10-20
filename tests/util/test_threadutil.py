@@ -3,7 +3,7 @@
 import time
 import threading
 
-from splitio.util.threading import EventGroup
+from splitio.util.threadutil import EventGroup
 
 
 class EventGroupTests(object):

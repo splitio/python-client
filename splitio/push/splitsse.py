@@ -4,7 +4,7 @@ import threading
 from enum import Enum
 import six
 from splitio.push.sse import SSEClient, SSE_EVENT_ERROR
-from splitio.util.threading import EventGroup
+from splitio.util.threadutil import EventGroup
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -104,9 +104,11 @@ class SplitSSEClient(object):
 
         def connect(url):
             """Connect to sse in a blocking manner."""
-            self._client.start(url)
-            self._sse_connection_closed.set()
-            self._status = SplitSSEClient._Status.IDLE
+            try:
+                self._client.start(url)
+            finally:
+                self._sse_connection_closed.set()
+                self._status = SplitSSEClient._Status.IDLE
 
         url = self._build_url(token)
         task = threading.Thread(target=connect, args=(url,))

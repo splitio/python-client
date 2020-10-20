@@ -7,7 +7,8 @@ import pytest
 from splitio.models.token import Token
 from splitio.push.splitsse import SplitSSEClient
 from splitio.push.sse import SSEEvent
-from tests.push.mockserver import SSEMockServer
+
+from .mockserver import SSEMockServer
 
 
 class SSEClientTests(object):
@@ -47,6 +48,9 @@ class SSEClientTests(object):
             SSEEvent('2', 'message', '1', 'a')
         ]
 
+        server.publish(SSEMockServer.VIOLENT_REQUEST_END)
+        server.stop()
+
     def test_split_sse_error(self):
         """Test correct initialization. Client ends the connection."""
 
@@ -66,10 +70,12 @@ class SSEClientTests(object):
 
         server.publish({'event': 'error'})  # send an error event early to unblock start
         assert not client.start(token)
-        time.sleep(1)
         client.stop(True)
         with pytest.raises(Exception):
             client.stop()
 
         assert request_queue.get() == ('/event-stream?v=1.1&accessToken=some'
                                        '&channels=chan1,[?occupancy=metrics.publishers]chan2')
+
+        server.publish(SSEMockServer.VIOLENT_REQUEST_END)
+        server.stop()

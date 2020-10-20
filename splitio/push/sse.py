@@ -1,13 +1,14 @@
 """Low-level SSE Client."""
 import logging
 import socket
+import sys
 from collections import namedtuple
 
 try:  # try to import python3 names. fallback to python2
     from http.client import HTTPConnection, HTTPSConnection
     from urllib.parse import urlparse
 except ImportError:
-    import urlparse
+    from urlparse import urlparse
     from httplib import HTTPConnection, HTTPSConnection
 
 
@@ -19,6 +20,33 @@ SSE_EVENT_MESSAGE = 'message'
 
 
 SSEEvent = namedtuple('SSEEvent', ['event_id', 'event', 'retry', 'data'])
+
+
+__ENDING_CHARS = set(['\n', ''])
+def __httpresponse_readline_py2(response):
+    """
+    Hacky `readline` implementation to be used with chunked transfers in python2.
+
+    This makes syscalls in a loop, so not particularly efficient. Migrate to py3 now!
+
+    :param response: HTTPConnection's response after a .request() call
+    :type response: httplib.HTTPResponse
+
+    :returns: a string with the read line
+    :rtype: str
+    """
+    buf = []
+    while True:
+        read = response.read(1)
+        buf.append(read)
+        if read in __ENDING_CHARS:
+            break
+
+    return ''.join(buf)
+
+
+_http_response_readline = (__httpresponse_readline_py2 if sys.version_info.major <= 2  #pylint:disable=invalid-name
+                           else lambda response: response.readline())
 
 
 class EventBuilder(object):
@@ -77,7 +105,8 @@ class SSEClient(object):
             response = self._connection.getresponse()
             event_builder = EventBuilder()
             while True:
-                line = response.readline()
+                # line = response.readline()
+                line = _http_response_readline(response)
                 if line is None or len(line) <= 0:  # connection ended
                     _LOGGER.info("sse connection has ended.")
                     break
@@ -93,7 +122,7 @@ class SSEClient(object):
                     event_builder.process_line(line)
         except Exception:  #pylint:disable=broad-except
             _LOGGER.info('sse connection ended.')
-            _LOGGER.debug(exc_info=True)
+            _LOGGER.debug('stack trace: ', exc_info=True)
         finally:
             self._connection.close()
             self._connection = None  # clear so it can be started again
