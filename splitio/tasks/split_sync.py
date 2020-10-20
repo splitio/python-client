@@ -10,7 +10,7 @@ from splitio.tasks.util.asynctask import AsyncTask
 class SplitSynchronizationTask(BaseSynchronizationTask):
     """Split Synchronization task class."""
 
-    def __init__(self, split_api, split_storage, period, ready_flag=None):
+    def __init__(self, split_api, split_storage, period):
         """
         Class constructor.
 
@@ -18,11 +18,8 @@ class SplitSynchronizationTask(BaseSynchronizationTask):
         :type split_api: splitio.api.splits.SplitsAPI
         :param split_storage: Split Storage.
         :type split_storage: splitio.storage.InMemorySplitStorage
-        :param ready_flag: Flag to set when splits initial sync is complete.
-        :type ready_flag: threading.Event
         """
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._ready_flag = ready_flag
         self._api = split_api
         self._period = period
         self._split_storage = split_storage
@@ -85,6 +82,4 @@ class SplitSynchronizationTask(BaseSynchronizationTask):
         """
         while not self._update_splits(till):
             pass
-        if self._ready_flag is not None:
-            self._ready_flag.set()
         return True

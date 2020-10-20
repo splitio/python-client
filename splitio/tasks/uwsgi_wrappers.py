@@ -54,7 +54,6 @@ def uwsgi_update_splits(user_config):
         ),
         UWSGISplitStorage(get_uwsgi()),
         None, # Time not needed since the task will be triggered manually.
-        None  # Ready flag not needed since it will never be set and consumed.
     )
 
     while True:
@@ -82,7 +81,6 @@ def uwsgi_update_segments(user_config):
         UWSGISegmentStorage(get_uwsgi()),
         None, # Split storage not needed, segments provided manually,
         None, # Period not needed, task executed manually
-        None  # Flag not needed, never consumed or set.
     )
 
     pool = workerpool.WorkerPool(20, segment_sync_task._update_segment)  #pylint: disable=protected-access

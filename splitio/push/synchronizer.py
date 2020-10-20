@@ -1,6 +1,7 @@
 """Synchronizer module."""
 
 import logging
+import threading
 
 # Tasks
 from splitio.tasks.split_sync import SplitSynchronizationTask
@@ -96,6 +97,8 @@ class Synchronizer(object):
 
     def stop_periodic_data_recording(self):
         _LOGGER.debug('Stopping periodic data recording')
-        self._split_tasks.impressions_task.stop()
-        self._split_tasks.events_task.stop()
+        stop_event = threading.Event()
+        self._split_tasks.impressions_task.stop(stop_event)
+        self._split_tasks.events_task.stop(stop_event)
+        stop_event.wait()
         self._split_tasks.telemetry_task.stop()

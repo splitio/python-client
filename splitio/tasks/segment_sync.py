@@ -10,7 +10,7 @@ from splitio.models import segments
 class SegmentSynchronizationTask(BaseSynchronizationTask):  #pylint: disable=too-many-instance-attributes
     """Segment Syncrhonization class."""
 
-    def __init__(self, segment_api, segment_storage, split_storage, period, event):  #pylint: disable=too-many-arguments
+    def __init__(self, segment_api, segment_storage, split_storage, period):  #pylint: disable=too-many-arguments
         """
         Clas constructor.
 
@@ -20,15 +20,14 @@ class SegmentSynchronizationTask(BaseSynchronizationTask):  #pylint: disable=too
         :param segment_storage: Segment storage reference.
         :type segment_storage: splitio.storage.SegmentStorage
 
-        :param event: Event to signal when all segments have finished initial sync.
-        :type event: threading.Event
         """
         self._logger = logging.getLogger(self.__class__.__name__)
+        self._worker_pool = workerpool.WorkerPool(10, self._ensure_segment_is_updated)
         self._task = asynctask.AsyncTask(self.update_segments, period, on_init=self.update_segments)
         self._segment_api = segment_api
         self._segment_storage = segment_storage
         self._split_storage = split_storage
-        self._event = event
+        self._worker_pool.start()
 
     def _update_segment(self, segment_name, till=None):
         """
@@ -82,6 +81,10 @@ class SegmentSynchronizationTask(BaseSynchronizationTask):  #pylint: disable=too
         """Start segment synchronization."""
         self._task.start()
 
+    def pause(self):
+        """Pause segment synchronization."""
+        self._task.stop()
+
     def stop(self, event=None):
         """Stop segment synchronization."""
         self._task.stop()
@@ -106,10 +109,6 @@ class SegmentSynchronizationTask(BaseSynchronizationTask):  #pylint: disable=too
     def update_segments(self):
         print('update_segments')
         """Submit all current segments and wait for them to finish, then set the ready flag."""
-        self._worker_pool = workerpool.WorkerPool(20, self._ensure_segment_is_updated)
         self._main()
-        self._worker_pool.start()
         self._worker_pool.wait_for_completion()
-        self._worker_pool.stop()
-        self._event.set()
         return True

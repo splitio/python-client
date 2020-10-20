@@ -76,17 +76,13 @@ class SplitSynchronizationTests(object):
         get_changes.called = 0
 
         api.fetch_splits.side_effect = get_changes
-        splits_ready_event = threading.Event()
-        task = split_sync.SplitSynchronizationTask(api, storage, 1, splits_ready_event)
+        task = split_sync.SplitSynchronizationTask(api, storage, 1)
         task.start()
-        splits_ready_event.wait(5)
         assert task.is_running()
         stop_event = threading.Event()
         task.stop(stop_event)
         stop_event.wait()
-        assert splits_ready_event.is_set()
         assert not task.is_running()
-        api_calls = api.fetch_splits.mock_calls
         assert mocker.call(-1) in api.fetch_splits.mock_calls
         assert mocker.call(123) in api.fetch_splits.mock_calls
 
@@ -109,10 +105,8 @@ class SplitSynchronizationTests(object):
         api.fetch_splits.side_effect = run
         storage.get_change_number.return_value = -1
 
-        splits_ready_event = threading.Event()
-        task = split_sync.SplitSynchronizationTask(api, storage, 0.5, splits_ready_event)
+        task = split_sync.SplitSynchronizationTask(api, storage, 0.5)
         task.start()
-        splits_ready_event.wait(5)
         assert task.is_running()
         time.sleep(1)
         assert task.is_running()

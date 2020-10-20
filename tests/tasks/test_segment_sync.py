@@ -57,17 +57,15 @@ class SegmentSynchronizationTests(object):
         api = mocker.Mock()
         api.fetch_segment.side_effect = fetch_segment_mock
 
-        segment_ready_event = threading.Event()
-        task = segment_sync.SegmentSynchronizationTask(api, storage, split_storage, 1, segment_ready_event)
+        task = segment_sync.SegmentSynchronizationTask(api, storage, split_storage, 1)
         task.start()
+        time.sleep(0.5)
 
-        segment_ready_event.wait(5)
         assert task.is_running()
 
         stop_event = threading.Event()
         task.stop(stop_event)
         stop_event.wait()
-        assert segment_ready_event.is_set()
         assert not task.is_running()
 
         api_calls = [call for call in api.fetch_segment.mock_calls]
