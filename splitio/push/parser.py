@@ -1,10 +1,18 @@
 import json
 
+from future.utils import raise_from
+
 MESSAGE = 'message'
 ERROR = 'error'
 OCCUPANCY = 'occupancy'
 UPDATE = 'update'
 TAG_OCCUPANCY = '[meta]occupancy'
+
+class EventParserException(Exception):
+    """Exception to be raised on parser errors."""
+
+    pass
+
 
 class AblyError(object):
     def __init__(self, code, status_code, message, href):
@@ -59,7 +67,7 @@ def parse_incoming_event(raw_event):
         parsed_data = json.loads(parsed_raw_event['data'])
         mapper = _INCOMMING_EVENT_MAPPERS[parsed_raw_event['event']]
         return mapper(parsed_data)
-    except KeyError:
-        raise KeyError('No mapper registered for that event')
-    except ValueError:
-        raise ValueError('Cannot parse json.')
+    except KeyError as exc:
+        raise_from(EventParserException('No mapper registered for that event'), exc)
+    except ValueError as exc:
+        raise_from(EventParserException('Cannot parse json.'), exc)
