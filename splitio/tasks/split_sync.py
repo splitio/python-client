@@ -42,7 +42,8 @@ class SplitSynchronizationTask(BaseSynchronizationTask):
         try:
             split_changes = self._api.fetch_splits(till)
         except APIException:
-            self._logger.error('Failed to fetch split from servers')
+            self._logger.error('Exception raised while fetching splits')
+            self._logger.debug('Exception information: ', exc_info=True)
             return False
 
         for split in split_changes.get('splits', []):

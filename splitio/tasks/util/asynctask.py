@@ -102,11 +102,13 @@ class AsyncTask(object):  #pylint: disable=too-many-instance-attributes
                 except queue.Empty:
                     # If no message was received, the timeout has expired
                     # and we're ready for a new execution
-                    if not _safe_run(self._main):
-                        _LOGGER.error(
-                            "An error occurred when executing the task. "
-                            "Retrying after perio expires"
-                        )
+                    pass
+
+                if not _safe_run(self._main):
+                    _LOGGER.error(
+                        "An error occurred when executing the task. "
+                        "Retrying after perio expires"
+                    )
         finally:
             self._cleanup()
 
