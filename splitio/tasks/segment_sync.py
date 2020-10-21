@@ -6,6 +6,9 @@ from splitio.tasks import BaseSynchronizationTask
 from splitio.tasks.util import asynctask, workerpool
 
 
+_LOGGER = logging.getLogger(__name__)
+
+
 class SegmentSynchronizationTask(BaseSynchronizationTask):
     """Segment Syncrhonization class."""
 
@@ -20,7 +23,6 @@ class SegmentSynchronizationTask(BaseSynchronizationTask):
         :type worker_pool:  splitio.tasks.util.WorkerPool
 
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._worker_pool = worker_pool
         self._task = asynctask.AsyncTask(synchronize_segments, period, on_init=synchronize_segments)
 

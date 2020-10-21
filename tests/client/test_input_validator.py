@@ -45,7 +45,7 @@ class ClientInputValidationTests(object):
         factory_destroyed.return_value = False
         type(factory_mock).destroyed = factory_destroyed
 
-        client = Client(factory_mock)
+        client = Client(factory_mock, mocker.Mock())
         client._logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=client._logger)
 
@@ -273,7 +273,7 @@ class ClientInputValidationTests(object):
         factory_destroyed.return_value = False
         type(factory_mock).destroyed = factory_destroyed
 
-        client = Client(factory_mock)
+        client = Client(factory_mock, mocker.Mock())
         client._logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=client._logger)
 
@@ -472,7 +472,7 @@ class ClientInputValidationTests(object):
         ]
 
     def test_valid_properties(self, mocker):
-        """Test valid_properties() method"""
+        """Test valid_properties() method."""
         assert input_validator.valid_properties(None) == (True, None, 1024)
         assert input_validator.valid_properties([]) == (False, None, 0)
         assert input_validator.valid_properties(True) == (False, None, 0)
@@ -525,7 +525,7 @@ class ClientInputValidationTests(object):
         type(factory_mock).destroyed = factory_destroyed
         factory_mock._apikey = 'some-test'
 
-        client = Client(factory_mock)
+        client = Client(factory_mock, mocker.Mock())
         client._events_storage = mocker.Mock(spec=EventStorage)
         client._events_storage.put.return_value = True
         client._logger = mocker.Mock()
@@ -795,7 +795,7 @@ class ClientInputValidationTests(object):
         factory_destroyed.return_value = False
         type(factory_mock).destroyed = factory_destroyed
 
-        client = Client(factory_mock)
+        client = Client(factory_mock, mocker.Mock())
         client._logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=client._logger)
 
@@ -921,7 +921,7 @@ class ClientInputValidationTests(object):
             return '{"some": "property"}' if treatment == 'default_treatment' else None
         split_mock.get_configurations_for.side_effect = _configs
 
-        client = Client(factory_mock)
+        client = Client(factory_mock, mocker.Mock())
         client._logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=client._logger)
 

@@ -3,7 +3,7 @@
 import logging
 import time
 
-from splitio.client.config import DEFAULT_CONFIG
+from splitio.client.config import sanitize as sanitize_config
 from splitio.client.util import get_metadata
 from splitio.storage.adapters.uwsgi_cache import get_uwsgi
 from splitio.storage.uwsgi import UWSGIEventStorage, UWSGIImpressionStorage, \
@@ -34,9 +34,7 @@ def _get_config(user_config):
     :return: Calculated configuration.
     :rtype: dict
     """
-    sdk_config = DEFAULT_CONFIG.copy()
-    sdk_config.update(user_config)
-    return sdk_config
+    return sanitize_config(user_config['apikey'], user_config)
 
 
 def uwsgi_update_splits(user_config):
@@ -109,7 +107,8 @@ def uwsgi_report_impressions(user_config):
         ImpressionsAPI(
             HttpClient(1500, config.get('sdk_url'), config.get('events_url')),
             config['apikey'],
-            metadata
+            metadata,
+            config['impressionsMode']
         ),
         storage,
         config['impressionsBulkSize']

@@ -8,14 +8,14 @@ from splitio.api import APIException
 # Synchronizers
 from splitio.synchronizers.split import SplitSynchronizer
 from splitio.synchronizers.segment import SegmentSynchronizer
-from splitio.synchronizers.impression import ImpressionSynchronizer
+from splitio.synchronizers.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.synchronizers.event import EventSynchronizer
 from splitio.synchronizers.telemetry import TelemetrySynchronizer
 
 # Tasks
 from splitio.tasks.split_sync import SplitSynchronizationTask
 from splitio.tasks.segment_sync import SegmentSynchronizationTask
-from splitio.tasks.impressions_sync import ImpressionsSyncTask
+from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask
 from splitio.tasks.events_sync import EventsSyncTask
 from splitio.tasks.telemetry_sync import TelemetrySynchronizationTask
 
@@ -25,7 +25,8 @@ _LOGGER = logging.getLogger(__name__)
 
 class SplitSynchronizers(object):
     """SplitSynchronizers."""
-    def __init__(self, split_sync, segment_sync, impressions_sync, events_sync, telemetry_sync):
+    def __init__(self, split_sync, segment_sync, impressions_sync, events_sync, telemetry_sync,
+                 impressions_count_sync):
         if not isinstance(split_sync, SplitSynchronizer):
             return None
         self._split_sync = split_sync
@@ -41,6 +42,9 @@ class SplitSynchronizers(object):
         if not isinstance(telemetry_sync, TelemetrySynchronizer):
             return None
         self._telemetry_sync = telemetry_sync
+        if not isinstance(impressions_count_sync, ImpressionsCountSynchronizer):
+            return None
+        self._impressions_count_sync = impressions_count_sync
 
     @property
     def split_sync(self):
@@ -62,11 +66,16 @@ class SplitSynchronizers(object):
     def telemetry_sync(self):
         return self._telemetry_sync
 
+    @property
+    def impressions_count_sync(self):
+        return self._impressions_count_sync
+
 
 class SplitTasks(object):
     """SplitTasks."""
 
-    def __init__(self, split_task, segment_task, impressions_task, events_task, telemetry_task):
+    def __init__(self, split_task, segment_task, impressions_task, events_task, telemetry_task,
+                 impressions_count_task):
         if not isinstance(split_task, SplitSynchronizationTask):
             return None
         self._split_task = split_task
@@ -82,6 +91,9 @@ class SplitTasks(object):
         if not isinstance(telemetry_task, TelemetrySynchronizationTask):
             return None
         self._telemetry_task = telemetry_task
+        if not isinstance(impressions_count_task, ImpressionsCountSyncTask):
+            return None
+        self._impressions_count_task = impressions_count_task
 
     @property
     def split_task(self):
@@ -102,6 +114,10 @@ class SplitTasks(object):
     @property
     def telemetry_task(self):
         return self._telemetry_task
+
+    @property
+    def impressions_count_task(self):
+        return self._impressions_count_task
 
 
 class Synchronizer(object):
@@ -156,11 +172,13 @@ class Synchronizer(object):
         self._split_tasks.impressions_task.start()
         self._split_tasks.events_task.start()
         self._split_tasks.telemetry_task.start()
+        self._split_tasks.impressions_count_task.start()
 
     def stop_periodic_data_recording(self):
         _LOGGER.debug('Stopping periodic data recording')
         stop_event = threading.Event()
         self._split_tasks.impressions_task.stop(stop_event)
         self._split_tasks.events_task.stop(stop_event)
+        self._split_tasks.impressions_count_task.stop(stop_event)
         stop_event.wait()
         self._split_tasks.telemetry_task.stop()

@@ -7,7 +7,9 @@ from splitio.tasks import impressions_sync
 from splitio.storage import ImpressionStorage
 from splitio.models.impressions import Impression
 from splitio.api.impressions import ImpressionsAPI
-from splitio.synchronizers.impression import ImpressionSynchronizer
+from splitio.synchronizers.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
+from splitio.engine.impressions import Manager as ImpressionsManager
+from splitio.engine.impressions import Counter
 
 
 class ImpressionsSyncTests(object):
@@ -42,3 +44,38 @@ class ImpressionsSyncTests(object):
         stop_event.wait(5)
         assert stop_event.is_set()
         assert len(api.flush_impressions.mock_calls) > calls_now
+
+
+class ImpressionsCountSyncTests(object):
+    """Impressions Syncrhonization task test cases."""
+
+    def test_normal_operation(self, mocker):
+        """Test that the task works properly under normal circumstances."""
+        manager = mocker.Mock(spec=ImpressionsManager)
+
+        counters = [
+            Counter.CountPerFeature('f1', 123, 2),
+            Counter.CountPerFeature('f2', 123, 123),
+            Counter.CountPerFeature('f1', 456, 111),
+            Counter.CountPerFeature('f2', 456, 222)
+        ]
+
+        manager.get_counts.return_value = counters
+        api = mocker.Mock(spec=ImpressionsAPI)
+        api.flush_counters.return_value = HttpResponse(200, '')
+        impressions_sync.ImpressionsCountSyncTask._PERIOD = 1
+        impression_synchronizer = ImpressionsCountSynchronizer(api, manager)
+        task = impressions_sync.ImpressionsCountSyncTask(
+            impression_synchronizer.synchronize_counters
+        )
+        task.start()
+        time.sleep(2)
+        assert task.is_running()
+        assert manager.get_counts.mock_calls[0] == mocker.call()
+        assert api.flush_counters.mock_calls[0] == mocker.call(counters)
+        stop_event = threading.Event()
+        calls_now = len(api.flush_counters.mock_calls)
+        task.stop(stop_event)
+        stop_event.wait(5)
+        assert stop_event.is_set()
+        assert len(api.flush_counters.mock_calls) > calls_now

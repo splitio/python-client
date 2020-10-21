@@ -19,7 +19,6 @@ class SplitSynchronizationTask(BaseSynchronizationTask):
         :param period: Period of task
         :type period: int
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._period = period
         self._task = AsyncTask(synchronize_splits, period, on_init=synchronize_splits)
 

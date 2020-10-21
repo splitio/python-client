@@ -66,7 +66,8 @@ class SegmentSynchronizer(object):
             try:
                 segment_changes = self._api.fetch_segment(segment_name, change_number)
             except APIException as exc:
-                _LOGGER.error('Error fetching segments')
+                _LOGGER.error('Exception raised while fetching segment %s', segment_name)
+                _LOGGER.debug('Exception information: ', exc_info=True)
                 raise exc
 
             if change_number == -1:  # first time fetching the segment

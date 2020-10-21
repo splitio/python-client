@@ -61,10 +61,7 @@ class EventSynchronizer(object):
 
         try:
             self._api.flush_events(to_send)
-        except APIException as exc:
-            _LOGGER.error(
-                'Exception raised while reporting events: %s -- %d',
-                str(exc),
-                exc.status_code
-            )
+        except APIException:
+            _LOGGER.error('Exception raised while reporting events')
+            _LOGGER.debug('Exception information: ', exc_info=True)
             self._add_to_failed_queue(to_send)

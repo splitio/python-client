@@ -40,7 +40,8 @@ class SplitSynchronizer(object):
             try:
                 split_changes = self._api.fetch_splits(change_number)
             except APIException as exc:
-                _LOGGER.error('Failed to fetch split from servers')
+                _LOGGER.error('Exception raised while fetching splits')
+                _LOGGER.debug('Exception information: ', exc_info=True)
                 raise exc
 
             for split in split_changes.get('splits', []):

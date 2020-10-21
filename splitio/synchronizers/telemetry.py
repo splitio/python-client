@@ -34,6 +34,7 @@ class TelemetrySynchronizer(object):
                 self._api.flush_latencies(latencies)
         except APIException:
             _LOGGER.error('Failed send telemetry/latencies to split BE.')
+            _LOGGER.debug('Exception information: ', exc_info=True)
 
         try:
             counters = self._storage.pop_counters()
@@ -41,6 +42,7 @@ class TelemetrySynchronizer(object):
                 self._api.flush_counters(counters)
         except APIException:
             _LOGGER.error('Failed send telemetry/counters to split BE.')
+            _LOGGER.debug('Exception information: ', exc_info=True)
 
         try:
             gauges = self._storage.pop_gauges()
@@ -48,3 +50,4 @@ class TelemetrySynchronizer(object):
                 self._api.flush_gauges(gauges)
         except APIException:
             _LOGGER.error('Failed send telemetry/gauges to split BE.')
+            _LOGGER.debug('Exception information: ', exc_info=True)
