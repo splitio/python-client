@@ -150,6 +150,7 @@ class Synchronizer(object):
             self.synchronize_splits(None)
             if self._synchronize_segments() is True:
                 _LOGGER.error('Failed syncing segments')
+                raise Exception('Failed syncing segments')
         except APIException as exc:
             _LOGGER.error('Failed syncing splits')
             raise(exc)
@@ -159,7 +160,7 @@ class Synchronizer(object):
         self._split_tasks.split_task.start()
         self._split_tasks.segment_task.start()
 
-    def stop_periodic_fetching(self, shutdown):
+    def stop_periodic_fetching(self, shutdown=False):
         _LOGGER.debug('Stopping periodic fetching')
         self._split_tasks.split_task.stop()
         if shutdown:  # stops task and worker pool
