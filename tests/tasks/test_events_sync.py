@@ -7,6 +7,7 @@ from splitio.tasks import events_sync
 from splitio.storage import EventStorage
 from splitio.models.events import Event
 from splitio.api.events import EventsAPI
+from splitio.synchronizers.event import EventSynchronizer
 
 
 class EventsSyncTests(object):
@@ -26,7 +27,8 @@ class EventsSyncTests(object):
         storage.pop_many.return_value = events
         api = mocker.Mock(spec=EventsAPI)
         api.flush_events.return_value = HttpResponse(200, '')
-        task =events_sync.EventsSyncTask(api, storage, 1, 5)
+        event_synchronizer = EventSynchronizer(api, storage, 5)
+        task = events_sync.EventsSyncTask(event_synchronizer.synchronize_events, 1)
         task.start()
         time.sleep(2)
         assert task.is_running()

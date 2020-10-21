@@ -7,6 +7,8 @@ from splitio.tasks import impressions_sync
 from splitio.storage import ImpressionStorage
 from splitio.models.impressions import Impression
 from splitio.api.impressions import ImpressionsAPI
+from splitio.synchronizers.impression import ImpressionSynchronizer
+
 
 class ImpressionsSyncTests(object):
     """Impressions Syncrhonization task test cases."""
@@ -24,7 +26,11 @@ class ImpressionsSyncTests(object):
         storage.pop_many.return_value = impressions
         api = mocker.Mock(spec=ImpressionsAPI)
         api.flush_impressions.return_value = HttpResponse(200, '')
-        task = impressions_sync.ImpressionsSyncTask(api, storage, 1, 5)
+        impression_synchronizer = ImpressionSynchronizer(api, storage, 5)
+        task = impressions_sync.ImpressionsSyncTask(
+            impression_synchronizer.synchronize_impressions,
+            1
+        )
         task.start()
         time.sleep(2)
         assert task.is_running()
