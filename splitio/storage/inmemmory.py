@@ -145,7 +145,6 @@ class InMemorySplitStorage(SplitStorage):
         :type change_number: int
         """
         with self._lock:
-            print(split_name, self.get_change_number(), change_number)
             if self.get_change_number() > change_number:
                 return
             split = self._splits.get(split_name)

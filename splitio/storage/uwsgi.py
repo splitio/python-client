@@ -277,7 +277,13 @@ class UWSGISplitStorage(SplitStorage):
         :param change_number: change_number
         :type change_number: int
         """
-        pass
+        if self.get_change_number() > change_number:
+            return
+        split = self.get(split_name)
+        if not split:
+            return
+        split.local_kill(default_treatment, change_number)
+        self.put(split)
 
 
 class UWSGISegmentStorage(SegmentStorage):

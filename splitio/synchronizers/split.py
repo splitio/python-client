@@ -33,7 +33,7 @@ class SplitSynchronizer(object):
                 change_number = -1
             if till is not None and till < change_number:
                 # the passed till is less than change_number, no need to perform updates
-                return True
+                return
 
             try:
                 split_changes = self._api.fetch_splits(change_number)

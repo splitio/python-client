@@ -173,7 +173,7 @@ class InMemorySplitStorageTests(object):
         assert storage.is_valid_traffic_type('user') is False
         assert storage.is_valid_traffic_type('account') is True
 
-    def test_kill_locally(self, mocker):
+    def test_kill_locally(self):
         """Test kill local."""
         storage = InMemorySplitStorage()
 

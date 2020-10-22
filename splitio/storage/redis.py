@@ -213,7 +213,7 @@ class RedisSplitStorage(SplitStorage):
         :param change_number: change_number
         :type change_number: int
         """
-        pass
+        raise NotImplementedError('Not supported for redis.')
 
 
 class RedisSegmentStorage(SegmentStorage):
