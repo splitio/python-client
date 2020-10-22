@@ -51,9 +51,6 @@ class SegmentSynchronizer(object):
         :param till: ChangeNumber received.
         :type till: int
 
-        :return: True if the task is running. False otherwise.
-        :rtype: bool
-
         """
         while True:
             change_number = self._segment_storage.get_change_number(segment_name)
@@ -61,7 +58,7 @@ class SegmentSynchronizer(object):
                 change_number = -1
             if till is not None and till < change_number:
                 # the passed till is less than change_number, no need to perform updates
-                return True
+                return
 
             try:
                 segment_changes = self._api.fetch_segment(segment_name, change_number)

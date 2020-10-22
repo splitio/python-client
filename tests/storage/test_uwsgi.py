@@ -1,5 +1,5 @@
 """UWSGI Storage unit tests."""
-#pylint: disable=no-self-usage
+# pylint: disable=no-self-usage
 import json
 
 from splitio.storage.uwsgi import UWSGIEventStorage, UWSGIImpressionStorage,  \
@@ -56,7 +56,7 @@ class UWSGISplitStorageTests(object):
         assert storage.get('nonexistant_split') is None
 
         storage.remove('some_split')
-        assert storage.get('some_split') == None
+        assert storage.get('some_split') is None
 
     def test_get_splits(self, mocker):
         """Test retrieving a list of passed splits."""
@@ -81,7 +81,7 @@ class UWSGISplitStorageTests(object):
         uwsgi = get_uwsgi(True)
         storage = UWSGISplitStorage(uwsgi)
 
-        assert storage.get_change_number() == None
+        assert storage.get_change_number() is None
         storage.set_change_number(123)
         assert storage.get_change_number() == 123
 
@@ -154,6 +154,28 @@ class UWSGISplitStorageTests(object):
         assert storage.is_valid_traffic_type('user') is False
         assert storage.is_valid_traffic_type('account') is False
 
+    def test_kill_locally(self):
+        """Test kill local."""
+        uwsgi = get_uwsgi(True)
+        storage = UWSGISplitStorage(uwsgi)
+
+        split = Split('some_split', 123456789, False, 'some', 'traffic_type',
+                      'ACTIVE', 1)
+        storage.put(split)
+        storage.set_change_number(1)
+
+        storage.kill_locally('test', 'default_treatment', 2)
+        assert storage.get('test') is None
+
+        storage.kill_locally('some_split', 'default_treatment', 0)
+        assert storage.get('some_split').change_number == 1
+        assert storage.get('some_split').killed is False
+        assert storage.get('some_split').default_treatment == 'some'
+
+        storage.kill_locally('some_split', 'default_treatment', 3)
+        assert storage.get('some_split').change_number == 3
+
+
 class UWSGISegmentStorageTests(object):
     """UWSGI Segment storage test cases."""
 
@@ -214,7 +236,6 @@ class UWSGISegmentStorageTests(object):
         assert not storage.segment_contains('some_segment', 'qwe')
 
 
-
 class UWSGIImpressionsStorageTests(object):
     """UWSGI Impressions storage test cases."""
 
@@ -243,8 +264,6 @@ class UWSGIImpressionsStorageTests(object):
         assert storage.should_flush() is False
 
 
-
-
 class UWSGIEventsStorageTests(object):
     """UWSGI Events storage test cases."""
 
@@ -267,6 +286,7 @@ class UWSGIEventsStorageTests(object):
             Event('key3', 'user', 'purchase', 10, 123456, None),
             Event('key4', 'user', 'purchase', 10, 123456, None)
         ]
+
 
 class UWSGITelemetryStorageTests(object):
     """UWSGI-based telemetry storage test cases."""
@@ -298,4 +318,3 @@ class UWSGITelemetryStorageTests(object):
         storage.put_gauge('some_gauge2', 456)
         assert storage.pop_gauges() == {'some_gauge1': 123, 'some_gauge2': 456}
         assert storage.pop_gauges() == {}
-
