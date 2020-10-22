@@ -133,6 +133,27 @@ class InMemorySplitStorage(SplitStorage):
         with self._lock:
             return traffic_type_name in self._traffic_types
 
+    def kill_locally(self, split_name, default_treatment, change_number):
+        """
+        Local kill for split
+
+        :param split_name: name of the split to perform kill
+        :type split_name: str
+        :param default_treatment: name of the default treatment to return
+        :type default_treatment: str
+        :param change_number: change_number
+        :type change_number: int
+        """
+        with self._lock:
+            print(split_name, self.get_change_number(), change_number)
+            if self.get_change_number() > change_number:
+                return
+            split = self._splits.get(split_name)
+            if not split:
+                return
+            split.local_kill(default_treatment, change_number)
+            self.put(split)
+
     def _increase_traffic_type_count(self, traffic_type_name):
         """
         Increase by one the count for a specific traffic type name.

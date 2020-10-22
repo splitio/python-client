@@ -1,5 +1,5 @@
 """In-Memory storage test module."""
-#pylint: disable=no-self-use
+# pylint: disable=no-self-use
 from splitio.models.splits import Split
 from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
@@ -173,6 +173,26 @@ class InMemorySplitStorageTests(object):
         assert storage.is_valid_traffic_type('user') is False
         assert storage.is_valid_traffic_type('account') is True
 
+    def test_kill_locally(self, mocker):
+        """Test kill local."""
+        storage = InMemorySplitStorage()
+
+        split = Split('some_split', 123456789, False, 'some', 'traffic_type',
+                      'ACTIVE', 1)
+        storage.put(split)
+        storage.set_change_number(1)
+
+        storage.kill_locally('test', 'default_treatment', 2)
+        assert storage.get('test') is None
+
+        storage.kill_locally('some_split', 'default_treatment', 0)
+        assert storage.get('some_split').change_number == 1
+        assert storage.get('some_split').killed is False
+        assert storage.get('some_split').default_treatment == 'some'
+
+        storage.kill_locally('some_split', 'default_treatment', 3)
+        assert storage.get('some_split').change_number == 3
+
 
 class InMemorySegmentStorageTests(object):
     """In memory segment storage tests."""
@@ -339,7 +359,7 @@ class InMemoryEventsStorageTests(object):
         storage = InMemoryEventStorage(100)
         queue_full_hook = mocker.Mock()
         storage.set_queue_full_hook(queue_full_hook)
-        events = [EventWrapper(event=Event('key%d' % i, 'user', 'purchase', 12.5, 321654, None),  size=1024) for i in range(0, 101)]
+        events = [EventWrapper(event=Event('key%d' % i, 'user', 'purchase', 12.5, 321654, None), size=1024) for i in range(0, 101)]
         storage.put(events)
         assert queue_full_hook.mock_calls == [mocker.call()]
 
@@ -351,6 +371,7 @@ class InMemoryEventsStorageTests(object):
         events = [EventWrapper(event=Event('key%d' % i, 'user', 'purchase', 12.5, 1, None),  size=32768) for i in range(160)]
         storage.put(events)
         assert queue_full_hook.mock_calls == [mocker.call()]
+
 
 class InMemoryTelemetryStorageTests(object):
     """In-Memory telemetry storage unit tests."""

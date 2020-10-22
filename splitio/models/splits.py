@@ -28,10 +28,10 @@ class HashAlgorithm(Enum):
     MURMUR = 2
 
 
-class Split(object):  #pylint: disable=too-many-instance-attributes
+class Split(object):  # pylint: disable=too-many-instance-attributes
     """Split model object."""
 
-    def __init__(  #pylint: disable=too-many-arguments
+    def __init__(  # pylint: disable=too-many-arguments
             self,
             name,
             seed,
@@ -194,6 +194,19 @@ class Split(object):  #pylint: disable=too-many-instance-attributes
             self.change_number,
             self._configurations if self._configurations is not None else {}
         )
+
+    def local_kill(self, default_treatment, change_number):
+        """
+        Perform split kill.
+
+        :param default_treatment: name of the default treatment to return
+        :type default_treatment: str
+        :param change_number: change_number
+        :type change_number: int
+        """
+        self._default_treatment = default_treatment
+        self._change_number = change_number
+        self._killed = True
 
     @python_2_unicode_compatible
     def __str__(self):
