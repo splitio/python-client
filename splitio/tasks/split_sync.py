@@ -1,67 +1,26 @@
 """Split Synchronization task."""
 
 import logging
-from splitio.models import splits
-from splitio.api import APIException
 from splitio.tasks import BaseSynchronizationTask
 from splitio.tasks.util.asynctask import AsyncTask
 
 
+_LOGGER = logging.getLogger(__name__)
+
+
 class SplitSynchronizationTask(BaseSynchronizationTask):
     """Split Synchronization task class."""
-
-    def __init__(self, split_api, split_storage, period, ready_flag):
+    def __init__(self, synchronize_splits, period):
         """
         Class constructor.
 
-        :param split_api: Split API Client.
-        :type split_api: splitio.api.splits.SplitsAPI
-        :param split_storage: Split Storage.
-        :type split_storage: splitio.storage.InMemorySplitStorage
-        :param ready_flag: Flag to set when splits initial sync is complete.
-        :type ready_flag: threading.Event
+        :param synchronize_splits: Handler
+        :type synchronize_splits: func
+        :param period: Period of task
+        :type period: int
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
-        self._api = split_api
-        self._ready_flag = ready_flag
         self._period = period
-        self._split_storage = split_storage
-        self._task = AsyncTask(self._update_splits, period, self._on_start)
-
-    def _update_splits(self):
-        """
-        Hit endpoint, update storage and return True if sync is complete.
-
-        :return: True if synchronization is complete.
-        :rtype: bool
-        """
-        till = self._split_storage.get_change_number()
-        if till is None:
-            till = -1
-
-        try:
-            split_changes = self._api.fetch_splits(till)
-        except APIException:
-            self._logger.error('Exception raised while fetching splits')
-            self._logger.debug('Exception information: ', exc_info=True)
-            return False
-
-        for split in split_changes.get('splits', []):
-            if split['status'] == splits.Status.ACTIVE.value:
-                self._split_storage.put(splits.from_raw(split))
-            else:
-                self._split_storage.remove(split['name'])
-
-        self._split_storage.set_change_number(split_changes['till'])
-        return split_changes['till'] == split_changes['since']
-
-    def _on_start(self):
-        """Wait until splits are in sync and set the flag to true."""
-        while not self._update_splits():
-            pass
-
-        self._ready_flag.set()
-        return True
+        self._task = AsyncTask(synchronize_splits, period, on_init=synchronize_splits)
 
     def start(self):
         """Start the task."""

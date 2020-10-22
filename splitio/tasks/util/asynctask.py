@@ -23,7 +23,7 @@ def _safe_run(func):
     try:
         func()
         return True
-    except Exception:  #pylint: disable=broad-except
+    except Exception:  # pylint: disable=broad-except
         # Catch any exception that might happen to avoid the periodic task
         # from ending and allowing for a recovery, as well as preventing
         # an exception from propagating and breaking the main thread
@@ -32,7 +32,7 @@ def _safe_run(func):
         return False
 
 
-class AsyncTask(object):  #pylint: disable=too-many-instance-attributes
+class AsyncTask(object):  # pylint: disable=too-many-instance-attributes
     """
     Asyncrhonous controllable task class.
 

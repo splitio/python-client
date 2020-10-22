@@ -1,7 +1,9 @@
-"""Split syncrhonization task test module."""
+"""Split Worker tests."""
 
 import threading
 import time
+import pytest
+
 from splitio.api import APIException
 from splitio.tasks import split_sync
 from splitio.storage import SplitStorage
@@ -9,11 +11,27 @@ from splitio.models.splits import Split
 from splitio.synchronizers.split import SplitSynchronizer
 
 
-class SplitSynchronizationTests(object):
-    """Split synchronization task test cases."""
+class SplitsSynchronizerTests(object):
+    """Split synchronizer test cases."""
 
-    def test_normal_operation(self, mocker):
-        """Test the normal operation flow."""
+    def test_synchronize_splits_error(self, mocker):
+        """Test that if fetching splits fails at some_point, the task will continue running."""
+        storage = mocker.Mock(spec=SplitStorage)
+        api = mocker.Mock()
+
+        def run(x):
+            raise APIException("something broke")
+        run._calls = 0
+        api.fetch_splits.side_effect = run
+        storage.get_change_number.return_value = -1
+
+        split_synchronizer = SplitSynchronizer(api, storage)
+
+        with pytest.raises(APIException):
+            split_synchronizer.synchronize_splits(1)
+
+    def test_synchronize_splits(self, mocker):
+        """Test split sync."""
         storage = mocker.Mock(spec=SplitStorage)
 
         def change_number_mock():
@@ -79,14 +97,8 @@ class SplitSynchronizationTests(object):
 
         api.fetch_splits.side_effect = get_changes
         split_synchronizer = SplitSynchronizer(api, storage)
-        task = split_sync.SplitSynchronizationTask(split_synchronizer.synchronize_splits, 1)
-        task.start()
-        time.sleep(0.1)
-        assert task.is_running()
-        stop_event = threading.Event()
-        task.stop(stop_event)
-        stop_event.wait()
-        assert not task.is_running()
+        split_synchronizer.synchronize_splits()
+
         assert mocker.call(-1) in api.fetch_splits.mock_calls
         assert mocker.call(123) in api.fetch_splits.mock_calls
 
@@ -94,27 +106,24 @@ class SplitSynchronizationTests(object):
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
 
-    def test_that_errors_dont_stop_task(self, mocker):
-        """Test that if fetching splits fails at some_point, the task will continue running."""
+    def test_not_called_on_till(self, mocker):
+        """Test that sync is not called when till is less than previous changenumber"""
         storage = mocker.Mock(spec=SplitStorage)
-        api = mocker.Mock()
 
-        def run(x):
-            run._calls += 1
-            if run._calls == 1:
-                return {'splits': [], 'since': -1, 'till': -1}
-            if run._calls == 2:
-                return {'splits': [], 'since': -1, 'till': -1}
-            raise APIException("something broke")
-        run._calls = 0
-        api.fetch_splits.side_effect = run
-        storage.get_change_number.return_value = -1
+        def change_number_mock():
+            return 2
+        storage.get_change_number.side_effect = change_number_mock
+
+        def get_changes(*args, **kwargs):
+            get_changes.called += 1
+            return None
+
+        get_changes.called = 0
+
+        api = mocker.Mock()
+        api.fetch_splits.side_effect = get_changes
 
         split_synchronizer = SplitSynchronizer(api, storage)
-        task = split_sync.SplitSynchronizationTask(split_synchronizer.synchronize_splits, 0.5)
-        task.start()
-        time.sleep(0.1)
-        assert task.is_running()
-        time.sleep(1)
-        assert task.is_running()
-        task.stop()
+        split_synchronizer.synchronize_splits(1)
+
+        assert get_changes.called == 0

@@ -1,17 +1,20 @@
-"""Telemetry synchronization task unit test module."""
-# pylint: disable=no-self-use
-import time
+"""Split Worker tests."""
+
 import threading
+import time
+import pytest
+
+from splitio.api.client import HttpResponse
+from splitio.api import APIException
 from splitio.storage import TelemetryStorage
-from splitio.api.telemetry import TelemetryAPI
-from splitio.tasks.telemetry_sync import TelemetrySynchronizationTask
 from splitio.synchronizers.telemetry import TelemetrySynchronizer
+from splitio.api.telemetry import TelemetryAPI
 
 
-class TelemetrySyncTests(object):  # pylint: disable=too-few-public-methods
-    """Impressions Syncrhonization task test cases."""
+class TelemetrySynchronizerTests(object):
+    """Telemetry synchronizer test cases."""
 
-    def test_normal_operation(self, mocker):
+    def test_synchronize_impressions(self, mocker):
         """Test normal behaviour of sync task."""
         api = mocker.Mock(spec=TelemetryAPI)
         storage = mocker.Mock(spec=TelemetryStorage)
@@ -27,18 +30,9 @@ class TelemetrySyncTests(object):  # pylint: disable=too-few-public-methods
             'counter1': 1,
             'counter2': 5
         }
-        telemtry_synchronizer = TelemetrySynchronizer(api, storage)
-        task = TelemetrySynchronizationTask(telemtry_synchronizer.synchronize_telemetry, 1)
-        task.start()
-        time.sleep(2)
-        assert task.is_running()
+        telemetry_synchronizer = TelemetrySynchronizer(api, storage)
+        telemetry_synchronizer.synchronize_telemetry()
 
-        stop_event = threading.Event()
-        task.stop(stop_event)
-        stop_event.wait()
-
-        assert stop_event.is_set()
-        assert not task.is_running()
         assert mocker.call() in storage.pop_latencies.mock_calls
         assert mocker.call() in storage.pop_counters.mock_calls
         assert mocker.call() in storage.pop_gauges.mock_calls
