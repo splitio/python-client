@@ -66,7 +66,7 @@ class SegmentSynchronizationTests(object):
         task = segment_sync.SegmentSynchronizationTask(segments_synchronizer.synchronize_segments,
                                                        segments_synchronizer.worker_pool, 1)
         task.start()
-        time.sleep(0.5)
+        time.sleep(0.1)
 
         assert task.is_running()
 

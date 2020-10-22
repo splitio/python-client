@@ -81,6 +81,7 @@ class SplitSynchronizationTests(object):
         split_synchronizer = SplitSynchronizer(api, storage)
         task = split_sync.SplitSynchronizationTask(split_synchronizer.synchronize_splits, 1)
         task.start()
+        time.sleep(0.1)
         assert task.is_running()
         stop_event = threading.Event()
         task.stop(stop_event)
