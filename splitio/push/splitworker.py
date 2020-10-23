@@ -12,7 +12,7 @@ class SplitWorker(object):
         Class constructor.
 
         :param synchronize_split: handler to perform split synchronization on incoming event
-        :type synchronize_split: function
+        :type synchronize_split: callable
 
         :param split_queue: queue with split updates notifications
         :type split_queue: queue

@@ -31,10 +31,10 @@ class AuthAPI(object):  #pylint: disable=too-few-public-methods
 
     def authenticate(self):
         """
-        Performs authentication.
+        Perform authentication.
 
         :return: Json representation of an authentication.
-        :rtype: dict
+        :rtype: splitio.models.token.Token
         """
         try:
             response = self._client.get(
