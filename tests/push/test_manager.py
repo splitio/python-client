@@ -1,5 +1,8 @@
 """Manager tests."""
 
+import pytest
+import threading
+
 from splitio.tasks.split_sync import SplitSynchronizationTask
 from splitio.tasks.segment_sync import SegmentSynchronizationTask
 from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask
@@ -24,13 +27,8 @@ class ManagerTests(object):
 
     def test_error(self, mocker):
         split_task = mocker.Mock(spec=SplitSynchronizationTask)
-        segment_task = mocker.Mock(spec=SegmentSynchronizationTask)
-        impression_task = mocker.Mock(spec=ImpressionsSyncTask)
-        impression_count_task = mocker.Mock(spec=ImpressionsCountSyncTask)
-        event_task = mocker.Mock(spec=EventsSyncTask)
-        telemetry_task = mocker.Mock(spec=TelemetrySynchronizationTask)
-        split_tasks = SplitTasks(split_task, segment_task, impression_task, event_task,
-                                 telemetry_task, impression_count_task)
+        split_tasks = SplitTasks(split_task, mocker.Mock(), mocker.Mock(), mocker.Mock(),
+                                 mocker.Mock(), mocker.Mock())
 
         storage = mocker.Mock(spec=SplitStorage)
         api = mocker.Mock()
@@ -46,4 +44,19 @@ class ManagerTests(object):
                                            mocker.Mock(), mocker.Mock(), mocker.Mock())
 
         synchronizer = Synchronizer(synchronizers, split_tasks)
-        manager = Manager(synchronizer)
+        manager = Manager(threading.Event(), synchronizer)
+
+        with pytest.raises(APIException):
+            manager.start()
+
+    def test_start(self, mocker):
+        splits_ready_event = threading.Event()
+        synchronizer = mocker.Mock(spec=Synchronizer)
+        manager = Manager(splits_ready_event, synchronizer)
+        manager.start()
+
+        splits_ready_event.wait(2)
+        assert splits_ready_event.is_set()
+        assert len(synchronizer.sync_all.mock_calls) == 1
+        assert len(synchronizer.start_periodic_fetching.mock_calls) == 1
+        assert len(synchronizer.start_periodic_data_recording.mock_calls) == 1
