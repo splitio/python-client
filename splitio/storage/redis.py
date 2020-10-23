@@ -202,6 +202,19 @@ class RedisSplitStorage(SplitStorage):
             self._logger.debug('Error: ', exc_info=True)
         return to_return
 
+    def kill_locally(self, split_name, default_treatment, change_number):
+        """
+        Local kill for split
+
+        :param split_name: name of the split to perform kill
+        :type split_name: str
+        :param default_treatment: name of the default treatment to return
+        :type default_treatment: str
+        :param change_number: change_number
+        :type change_number: int
+        """
+        raise NotImplementedError('Not supported for redis.')
+
 
 class RedisSegmentStorage(SegmentStorage):
     """Redis based segment storage class."""

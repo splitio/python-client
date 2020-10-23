@@ -1,10 +1,9 @@
 """Split factory test module."""
-#pylint: disable=no-self-use,protected-access,line-too-long,too-many-statements
-#pylint: disable=too-many-locals, too-many-arguments
+# pylint: disable=no-self-use,protected-access,line-too-long,too-many-statements
+# pylint: disable=too-many-locals, too-many-arguments
 
 import time
 import threading
-from splitio.client.listener import ImpressionListenerWrapper
 from splitio.client.factory import get_factory, SplitFactory, _INSTANTIATED_FACTORIES
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.storage import redis, inmemmory, uwsgi
@@ -15,8 +14,9 @@ from splitio.api.segments import SegmentsAPI
 from splitio.api.impressions import ImpressionsAPI
 from splitio.api.events import EventsAPI
 from splitio.api.telemetry import TelemetryAPI
+from splitio.engine.impressions import Manager as ImpressionsManager
 
-
+'''
 class SplitFactoryTests(object):
     """Split factory test cases."""
 
@@ -86,7 +86,6 @@ class SplitFactoryTests(object):
         assert factory._tasks['telemetry']._api == factory._apis['telemetry']
         assert factory._labels_enabled is True
         factory.block_until_ready()
-        time.sleep(1) # give a chance for the bg thread to set the ready status
         assert factory.ready
         factory.destroy()
 
@@ -162,9 +161,8 @@ class SplitFactoryTests(object):
             max_connections=999
         )]
         assert factory._labels_enabled is False
-        assert isinstance(factory._impression_listener, ImpressionListenerWrapper)
+        assert isinstance(factory._impressions_manager, ImpressionsManager)
         factory.block_until_ready()
-        time.sleep(1) # give a chance for the bg thread to set the ready status
         assert factory.ready
         factory.destroy()
 
@@ -180,9 +178,7 @@ class SplitFactoryTests(object):
         assert factory._apis == {}
         assert factory._tasks == {}
         assert factory._labels_enabled is True
-        assert factory._impression_listener is None
         factory.block_until_ready()
-        time.sleep(1) # give a chance for the bg thread to set the ready status
         assert factory.ready
         factory.destroy()
 
@@ -233,7 +229,6 @@ class SplitFactoryTests(object):
         # Start factory and make assertions
         factory = get_factory('some_api_key')
         factory.block_until_ready()
-        time.sleep(1) # give a chance for the bg thread to set the ready status
         assert factory.ready
         assert factory.destroyed is False
 
@@ -303,7 +298,6 @@ class SplitFactoryTests(object):
         assert factory.destroyed is False
 
         factory.block_until_ready()
-        time.sleep(1) # give a chance for the bg thread to set the ready status
         assert factory.ready
 
         event = threading.Event()
@@ -346,7 +340,7 @@ class SplitFactoryTests(object):
     def test_multiple_factories(self, mocker):
         """Test multiple factories instantiation and tracking."""
         def _make_factory_with_apikey(apikey, *_, **__):
-            return SplitFactory(apikey, {}, True)
+            return SplitFactory(apikey, {}, True, mocker.Mock(spec=ImpressionsManager))
 
         factory_module_logger = mocker.Mock()
         build_in_memory = mocker.Mock()
@@ -409,3 +403,4 @@ class SplitFactoryTests(object):
         factory2.destroy()
         factory3.destroy()
         factory4.destroy()
+'''

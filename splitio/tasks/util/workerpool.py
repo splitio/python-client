@@ -4,6 +4,11 @@ import logging
 from threading import Thread, Event
 from six.moves import queue
 
+from splitio.api import APIException
+
+
+_LOGGER = logging.getLogger(__name__)
+
 
 class WorkerPool(object):
     """Worker pool class to implement single producer/multiple consumer."""
@@ -15,7 +20,7 @@ class WorkerPool(object):
         :param worker_count: Number of workers for the pool.
         :type worker_func: Function to be executed by the workers whenever a messages is fetched.
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
+        self._failed = False
         self._incoming = queue.Queue()
         self._should_be_working = [True for _ in range(0, worker_count)]
         self._worker_events = [Event() for _ in range(0, worker_count)]
@@ -46,9 +51,9 @@ class WorkerPool(object):
         try:
             func(message)
             return True
-        except Exception:  #pylint: disable=broad-except
-            self._logger.error("Something went wrong when processing message %s", message)
-            self._logger.debug('Original traceback: ', exc_info=True)
+        except Exception:  # pylint: disable=broad-except
+            _LOGGER.error("Something went wrong when processing message %s", message)
+            _LOGGER.debug('Original traceback: ', exc_info=True)
             return False
 
     def _wrapper(self, worker_number, func):
@@ -73,10 +78,11 @@ class WorkerPool(object):
 
                 # If the task is successfully executed, the ack is done AFTERWARDS,
                 # to avoid race conditions on SDK initialization.
-                ok = self._safe_run(func, message)  #pylint: disable=invalid-name
+                ok = self._safe_run(func, message)  # pylint: disable=invalid-name
                 self._incoming.task_done()
                 if not ok:
-                    self._logger.error(
+                    self._failed = True
+                    _LOGGER.error(
                         ("Something went wrong during the execution, "
                          "removing message \"%s\" from queue."),
                         message
@@ -100,6 +106,9 @@ class WorkerPool(object):
     def wait_for_completion(self):
         """Block until the work queue is empty."""
         self._incoming.join()
+        old = self._failed
+        self._failed = False
+        return old
 
     def stop(self, event=None):
         """Stop all worker nodes."""

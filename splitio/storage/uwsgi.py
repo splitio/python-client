@@ -266,6 +266,25 @@ class UWSGISplitStorage(SplitStorage):
                 self._KEY_TRAFFIC_TYPES, json.dumps(tts), 0, _SPLITIO_MISC_NAMESPACE
             )
 
+    def kill_locally(self, split_name, default_treatment, change_number):
+        """
+        Local kill for split
+
+        :param split_name: name of the split to perform kill
+        :type split_name: str
+        :param default_treatment: name of the default treatment to return
+        :type default_treatment: str
+        :param change_number: change_number
+        :type change_number: int
+        """
+        if self.get_change_number() > change_number:
+            return
+        split = self.get(split_name)
+        if not split:
+            return
+        split.local_kill(default_treatment, change_number)
+        self.put(split)
+
 
 class UWSGISegmentStorage(SegmentStorage):
     """UWSGI-Cache based implementation of a split storage."""

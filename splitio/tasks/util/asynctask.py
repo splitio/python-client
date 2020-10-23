@@ -23,7 +23,7 @@ def _safe_run(func):
     try:
         func()
         return True
-    except Exception:  #pylint: disable=broad-except
+    except Exception:  # pylint: disable=broad-except
         # Catch any exception that might happen to avoid the periodic task
         # from ending and allowing for a recovery, as well as preventing
         # an exception from propagating and breaking the main thread
@@ -32,7 +32,7 @@ def _safe_run(func):
         return False
 
 
-class AsyncTask(object):  #pylint: disable=too-many-instance-attributes
+class AsyncTask(object):  # pylint: disable=too-many-instance-attributes
     """
     Asyncrhonous controllable task class.
 
@@ -102,11 +102,13 @@ class AsyncTask(object):  #pylint: disable=too-many-instance-attributes
                 except queue.Empty:
                     # If no message was received, the timeout has expired
                     # and we're ready for a new execution
-                    if not _safe_run(self._main):
-                        _LOGGER.error(
-                            "An error occurred when executing the task. "
-                            "Retrying after perio expires"
-                        )
+                    pass
+
+                if not _safe_run(self._main):
+                    _LOGGER.error(
+                        "An error occurred when executing the task. "
+                        "Retrying after perio expires"
+                    )
         finally:
             self._cleanup()
 
