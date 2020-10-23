@@ -51,7 +51,8 @@ from splitio.tasks.events_sync import EventsSyncTask
 from splitio.tasks.telemetry_sync import TelemetrySynchronizationTask
 
 # Push
-from splitio.push.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, LocalhostSynchronizer
+from splitio.push.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, \
+    LocalhostSynchronizer
 from splitio.push.manager import Manager
 
 # Localhost stuff
