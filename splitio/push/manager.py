@@ -6,9 +6,10 @@ from threading import Timer
 
 from splitio.api import APIException
 from splitio.push.splitsse import SplitSSEClient
-from splitio.push.parser import parse_incoming_event, EventParsingException, EventType
+from splitio.push.parser import parse_incoming_event, EventParsingException, EventType, \
+    MessageType
 from splitio.push.processor import MessageProcessor
-from splitio.push.status_tracker import PushStatusTracker
+from splitio.push.status_tracker import PushStatusTracker, Status
 
 
 _TOKEN_REFRESH_GRACE_PERIOD = 10 * 60  # 10 minutes
@@ -25,10 +26,10 @@ class _PushInitializationResult(Enum):
     NONRETRYABLE_ERROR = 2
 
 
-class PushManager(object):
+class PushManager(object):  # pylint:disable=too-many-instance-attributes
     """Push notifications susbsytem manager."""
 
-    def __init__(self, auth_api, sse_url=None):
+    def __init__(self, auth_api, feedback_loop, sse_url=None):
         """
         Class constructor.
 
@@ -36,12 +37,18 @@ class PushManager(object):
         :type auth_api: splitio.api.auth.AuthAPI
         """
         self._auth_api = auth_api
+        self._feedback_loop = feedback_loop
         self._processor = MessageProcessor(object())
         self._status_tracker = PushStatusTracker()
-        self._handlers = {
-            EventType.MESSAGE: self._handle_update,
-            EventType.OCCUPANCY: self._handle_occupancy,
+        self._event_handlers = {
+            EventType.MESSAGE: self._handle_message,
             EventType.ERROR: self._handle_error
+        }
+
+        self._message_handlers = {
+            MessageType.UPDATE: self._handle_update,
+            MessageType.CONTROL: self._handle_control,
+            MessageType.OCCUPANCY: self._handle_occupancy
         }
 
         self._sse_client = SplitSSEClient(self._event_handler) if sse_url is None \
@@ -49,15 +56,44 @@ class PushManager(object):
         self._running = False
         self._next_refresh = Timer(0, lambda: 0)
 
+    def _handle_message(self, event):
+        """
+        Handle incoming update message.
+
+        :param event: Incoming Update message
+        :type event: splitio.push.sse.parser.Update
+        """
+        try:
+            handle = self._message_handlers[event.message_type]
+        except KeyError:
+            _LOGGER.error('no handler for message of type %s', event.message_type)
+            _LOGGER.debug(str(event), exc_info=True)
+            return
+
+        handle(event)
+
     def _handle_update(self, event):
         """
-        Handle incoming data update message.
+        Handle incoming update message.
 
         :param event: Incoming Update message
         :type event: splitio.push.sse.parser.Update
         """
         _LOGGER.debug('handling update event: %s', str(event))
         self._processor.handle(event)
+
+    def _handle_control(self, event):
+        """
+        Handle incoming control message.
+
+        :param event: Incoming control message.
+        :type event: splitio.push.sse.parser.ControlMessage
+        """
+        _LOGGER.debug('handling occupancy event: %s', str(event))
+        feedback = self._status_tracker.handle_control_message(event)
+        if feedback is not None:
+            # Send this event back to sync manager
+            pass
 
     def _handle_occupancy(self, event):
         """
@@ -95,12 +131,12 @@ class PushManager(object):
         try:
             parsed = parse_incoming_event(event)
         except EventParsingException:
-            _LOGGER.error('error parsing event of type %s', event.event)
+            _LOGGER.error('error parsing event of type %s', event.event_type)
             _LOGGER.debug(str(event), exc_info=True)
             return
 
         try:
-            handle = self._handlers[parsed.event_type]
+            handle = self._event_handlers[parsed.event_type]
         except KeyError:
             _LOGGER.error('no handler for message of type %s', parsed.event_type)
             _LOGGER.debug(str(event), exc_info=True)
@@ -119,29 +155,26 @@ class PushManager(object):
         self._trigger_connection_flow()
 
     def _trigger_connection_flow(self):
-        """
-        Authenticate and start a connection.
-
-        :returns: Result of initialization procedure
-        :rtype: _PushInitializationResult
-        """
+        """Authenticate and start a connection."""
         try:
             token = self._auth_api.authenticate()
         except APIException:
             _LOGGER.error('error performing sse auth request.')
             _LOGGER.debug('stack trace: ', exc_info=True)
-            return _PushInitializationResult.RETRYABLE_ERROR
+            self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
+            return
 
         if not token.push_enabled:
-            return _PushInitializationResult.NONRETRYABLE_ERROR
+            self._feedback_loop.put(Status.PUSH_NONRETRYABLE_ERROR)
+            return
 
         self._status_tracker.reset()
         if  self._sse_client.start(token):
-            # TODO: Reset backoff
             self._setup_next_token_refresh(token)
-            return _PushInitializationResult.SUCCESS
+            self._feedback_loop.put(Status.PUSH_SUBSYSTEM_UP)
+            return
 
-        return _PushInitializationResult.RETRYABLE_ERROR
+        self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
 
     def _setup_next_token_refresh(self, token):
         """
@@ -154,6 +187,7 @@ class PushManager(object):
             self._next_refresh.cancel()
         self._next_refresh = Timer((token.exp - token.iat)/1000 - _TOKEN_REFRESH_GRACE_PERIOD,
                                    self._token_refresh)
+        self._next_refresh.start()
 
     def start(self):
         """Start a new connection if not already running."""

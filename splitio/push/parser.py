@@ -22,7 +22,7 @@ class MessageType(Enum):
     """Message type enumeration."""
 
     UPDATE = 0
-    OCUPANCY = 1
+    OCCUPANCY = 1
     CONTROL = 2
 
 
@@ -226,7 +226,7 @@ class BaseMessage(BaseEvent):
         pass
 
 
-class Occupancy(BaseMessage):
+class OccupancyMessage(BaseMessage):
     """Ably publisher occupancy notification."""
 
     def __init__(self, channel, timestamp, publishers):
@@ -424,7 +424,7 @@ class ControlMessage(BaseMessage):
         :returns: The type of this parsed event.
         :rtype: MessageType
         """
-        return MessageType.UPDATE
+        return MessageType.CONTROL
 
     @property
     def control_type(self):
@@ -478,7 +478,7 @@ def _parse_message(data):
     timestamp = data['data']
     parsed_data = json.loads(data['data'])
     if data.get('name') == TAG_OCCUPANCY:
-        return Occupancy(channel, timestamp, parsed_data['metrics']['publishers'])
+        return OccupancyMessage(channel, timestamp, parsed_data['metrics']['publishers'])
     elif parsed_data['type'] == 'CONTROL':
         return ControlMessage(channel, timestamp, parsed_data['controlType'])
     elif parsed_data['type'] in UpdateType.__members__:

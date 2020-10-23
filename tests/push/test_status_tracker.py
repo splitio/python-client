@@ -1,7 +1,7 @@
 """SSE Status tracker unit tests."""
 #pylint:disable=protected-access,no-self-use,line-too-long
 from splitio.push.status_tracker import PushStatusTracker, Status
-from splitio.push.parser import ControlType, AblyError, Occupancy, ControlMessage
+from splitio.push.parser import ControlType, AblyError, OccupancyMessage, ControlMessage
 
 
 class StatusTrackerTests(object):
@@ -30,20 +30,20 @@ class StatusTrackerTests(object):
         tracker = PushStatusTracker()
         assert tracker._occupancy_ok()
 
-        message = Occupancy('[?occupancy=metrics.publishers]control_sec', 123, 0)
+        message = OccupancyMessage('[?occupancy=metrics.publishers]control_sec', 123, 0)
         assert tracker.handle_occupancy(message) is None
 
         # old message
-        message = Occupancy('[?occupancy=metrics.publishers]control_pri', 122, 0)
+        message = OccupancyMessage('[?occupancy=metrics.publishers]control_pri', 122, 0)
         assert tracker.handle_occupancy(message) is None
 
-        message = Occupancy('[?occupancy=metrics.publishers]control_pri', 124, 0)
+        message = OccupancyMessage('[?occupancy=metrics.publishers]control_pri', 124, 0)
         assert tracker.handle_occupancy(message) is Status.PUSH_SUBSYSTEM_DOWN
 
-        message = Occupancy('[?occupancy=metrics.publishers]control_pri', 125, 1)
+        message = OccupancyMessage('[?occupancy=metrics.publishers]control_pri', 125, 1)
         assert tracker.handle_occupancy(message) is Status.PUSH_SUBSYSTEM_UP
 
-        message = Occupancy('[?occupancy=metrics.publishers]control_sec', 125, 2)
+        message = OccupancyMessage('[?occupancy=metrics.publishers]control_sec', 125, 2)
         assert tracker.handle_occupancy(message) is None
 
     def test_handling_control(self):
@@ -88,16 +88,16 @@ class StatusTrackerTests(object):
         message = ControlMessage('control_pri', 122, ControlType.STREAMING_PAUSED)
         assert tracker.handle_control_message(message) is Status.PUSH_SUBSYSTEM_DOWN
 
-        message = Occupancy('[?occupancy=metrics.publishers]control_sec', 123, 0)
+        message = OccupancyMessage('[?occupancy=metrics.publishers]control_sec', 123, 0)
         assert tracker.handle_occupancy(message) is None
 
-        message = Occupancy('[?occupancy=metrics.publishers]control_pri', 124, 0)
+        message = OccupancyMessage('[?occupancy=metrics.publishers]control_pri', 124, 0)
         assert tracker.handle_occupancy(message) is None
 
         message = ControlMessage('control_pri', 125, ControlType.STREAMING_ENABLED)
         assert tracker.handle_control_message(message) is None
 
-        message = Occupancy('[?occupancy=metrics.publishers]control_pri', 126, 1)
+        message = OccupancyMessage('[?occupancy=metrics.publishers]control_pri', 126, 1)
         assert tracker.handle_occupancy(message) is Status.PUSH_SUBSYSTEM_UP
 
     def test_ably_error(self):
@@ -143,5 +143,5 @@ class StatusTrackerTests(object):
         assert tracker.handle_control_message(ControlMessage('control_pri', 124, ControlType.STREAMING_PAUSED)) is None
         assert tracker.handle_control_message(ControlMessage('control_pri', 125, ControlType.STREAMING_DISABLED)) is None
 
-        assert tracker.handle_occupancy(Occupancy('[?occupancy=metrics.publishers]control_sec', 123, 0)) is None
-        assert tracker.handle_occupancy(Occupancy('[?occupancy=metrics.publishers]control_sec', 124, 1)) is None
+        assert tracker.handle_occupancy(OccupancyMessage('[?occupancy=metrics.publishers]control_sec', 123, 0)) is None
+        assert tracker.handle_occupancy(OccupancyMessage('[?occupancy=metrics.publishers]control_sec', 124, 1)) is None

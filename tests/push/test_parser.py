@@ -3,7 +3,7 @@ import json
 import pytest
 
 from splitio.push.sse import SSEEvent
-from splitio.push.parser import parse_incoming_event, BaseUpdate, AblyError, Occupancy, \
+from splitio.push.parser import parse_incoming_event, BaseUpdate, AblyError, OccupancyMessage, \
     SegmentChangeUpdate, SplitChangeUpdate, SplitKillUpdate, EventParsingException
 
 
@@ -96,6 +96,6 @@ class ParserTests(object):
         e0 = make_occupancy('[?occupancy=metrics.publishers]control_sec',
                             {'metrics': {'publishers': 1}})
         parsed = parse_incoming_event(e0)
-        assert isinstance(parsed, Occupancy)
+        assert isinstance(parsed, OccupancyMessage)
         assert parsed.publishers == 1
         assert parsed.channel == 'control_sec'
