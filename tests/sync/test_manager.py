@@ -16,7 +16,8 @@ from splitio.synchronizers.event import EventSynchronizer
 from splitio.synchronizers.telemetry import TelemetrySynchronizer
 
 from splitio.push.synchronizer import Synchronizer, SplitTasks, SplitSynchronizers
-from splitio.push.manager import Manager
+
+from splitio.sync.manager import Manager
 
 from splitio.storage import SplitStorage
 from splitio.api import APIException

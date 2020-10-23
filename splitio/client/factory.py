@@ -53,7 +53,9 @@ from splitio.tasks.telemetry_sync import TelemetrySynchronizationTask
 # Push
 from splitio.push.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, \
     LocalhostSynchronizer
-from splitio.push.manager import Manager
+
+# Synchronizer
+from splitio.sync.manager import Manager
 
 # Localhost stuff
 from splitio.client.localhost import LocalhostEventsStorage, LocalhostImpressionsStorage, \
@@ -101,7 +103,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         :param apis: Dictionary of apis client wrappers
         :type apis: dict
         :param sync_manager: Manager synchronization
-        :type sync_manager: splitio.push.manager.Manager
+        :type sync_manager: splitio.sync.manager.Manager
         :param sdk_ready_flag: Event to set when the sdk is ready.
         :type sdk_ready_flag: threading.Event
         :param impression_manager: Impressions manager instance

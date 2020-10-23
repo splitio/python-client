@@ -15,7 +15,7 @@ from splitio.api.impressions import ImpressionsAPI
 from splitio.api.events import EventsAPI
 from splitio.api.telemetry import TelemetryAPI
 from splitio.engine.impressions import Manager as ImpressionsManager
-from splitio.push.manager import Manager
+from splitio.sync.manager import Manager
 from splitio.push.synchronizer import Synchronizer, SplitSynchronizers, SplitTasks
 from splitio.synchronizers.split import SplitSynchronizer
 from splitio.synchronizers.segment import SegmentSynchronizer
@@ -33,7 +33,7 @@ class SplitFactoryTests(object):
             synchronizer.sync_all.return_values = None
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
-        mocker.patch('splitio.push.manager.Manager.__init__', new=_split_synchronizer)
+        mocker.patch('splitio.sync.manager.Manager.__init__', new=_split_synchronizer)
 
         # Start factory and make assertions
         factory = get_factory('some_api_key')
@@ -220,7 +220,7 @@ class SplitFactoryTests(object):
             synchronizer = Synchronizer(syncs, tasks)
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
-        mocker.patch('splitio.push.manager.Manager.__init__', new=_split_synchronizer)
+        mocker.patch('splitio.sync.manager.Manager.__init__', new=_split_synchronizer)
 
         # Start factory and make assertions
         factory = get_factory('some_api_key')
