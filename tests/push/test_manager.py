@@ -10,14 +10,7 @@ from splitio.push.processor import MessageProcessor
 from splitio.push.status_tracker import PushStatusTracker
 from splitio.push.manager import PushManager, _TOKEN_REFRESH_GRACE_PERIOD
 from splitio.push.status_tracker import Status
-
-
-class Any(object):  #pylint:disable=too-few-public-methods
-    """Crap that matches anything."""
-
-    def __eq__(self, other):
-        """Match anything."""
-        return True
+from tests.helpers import Any
 
 
 class PushManagerTests(object):

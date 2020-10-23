@@ -1,7 +1,6 @@
 """Push subsystem manager class and helpers."""
 
 import logging
-from enum import Enum
 from threading import Timer
 
 from splitio.api import APIException
@@ -16,14 +15,6 @@ _TOKEN_REFRESH_GRACE_PERIOD = 10 * 60  # 10 minutes
 
 
 _LOGGER = logging.getLogger(__name__)
-
-
-class _PushInitializationResult(Enum):
-    """Streming connection initialization result."""
-
-    SUCCESS = 0
-    RETRYABLE_ERROR = 1
-    NONRETRYABLE_ERROR = 2
 
 
 class PushManager(object):  # pylint:disable=too-many-instance-attributes
@@ -89,7 +80,7 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         :param event: Incoming control message.
         :type event: splitio.push.sse.parser.ControlMessage
         """
-        _LOGGER.debug('handling occupancy event: %s', str(event))
+        _LOGGER.debug('handling control event: %s', str(event))
         feedback = self._status_tracker.handle_control_message(event)
         if feedback is not None:
             # Send this event back to sync manager

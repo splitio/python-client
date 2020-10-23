@@ -4,16 +4,12 @@ from queue import Queue
 
 from six import raise_from
 
+from splitio.push.parser import UpdateType
 from splitio.push.splitworker import SplitWorker
 from splitio.push.segmentworker import SegmentWorker
 
 
-NOTIFICATION_SPLIT_CHANGE = "SPLIT_CHANGE"
-NOTIFICATION_SPLIT_KILL = "SPLIT_KILL"
-NOTIFICATION_SEGMENT_CHANGE = "SEGMENT_CHANGE"
-
-
-class MessageProcessor(object):
+class MessageProcessor(object):  #pylint:disable=too-few-public-methods
     """Message processor class."""
 
     def __init__(self, synchronizer):
@@ -21,16 +17,17 @@ class MessageProcessor(object):
         Class constructor.
 
         :param synchronizer: synchronizer component
-        :type synchronizer: splitio.engine.synchronizer.Synchronizer
+        :type synchronizer: splitio.push.synchronizer.Synchronizer
         """
         self._split_queue = Queue()
         self._segments_queue = Queue()
-        self._split_worker = SplitWorker(lambda x: 0, self._split_queue)
-        self._segments_worker = SegmentWorker(lambda x, y: 0, self._split_queue)
+        self._synchronizer = synchronizer
+        self._split_worker = SplitWorker(synchronizer, self._split_queue)
+        self._segments_worker = SegmentWorker(synchronizer, self._split_queue)
         self._handlers = {
-            NOTIFICATION_SPLIT_CHANGE: self._handle_split_update,
-            NOTIFICATION_SPLIT_KILL: self._handle_split_kill,
-            NOTIFICATION_SEGMENT_CHANGE: self._handle_segment_change
+            UpdateType.SPLIT_UPDATE: self._handle_split_update,
+            UpdateType.SPLIT_KILL: self._handle_split_kill,
+            UpdateType.SEGMENT_UPDATE: self._handle_segment_change
         }
 
     def _handle_split_update(self, event):
@@ -38,20 +35,20 @@ class MessageProcessor(object):
         Handle incoming split update notification.
 
         :param event: Incoming split change event
-        :type event: splitio.push.parser.Update
+        :type event: splitio.push.parser.SplitChangeUpdate
         """
-        #TODO
-        print('received a split change event ', event)
+        self._split_queue.put(event)
 
     def _handle_split_kill(self, event):
         """
         Handle incoming split kill notification.
 
         :param event: Incoming split kill event
-        :type event: splitio.push.parser.Update
+        :type event: splitio.push.parser.SplitKillUpdate
         """
-        #TODO
-        print('received a split kill event ', event)
+        self._synchronizer.kill_split(event.split_name, event.default_treatment,
+                                      event.change_number)
+        self._split_queue.put(event)
 
     def _handle_segment_change(self, event):
         """
@@ -60,24 +57,18 @@ class MessageProcessor(object):
         :param event: Incoming segment change event
         :type event: splitio.push.parser.Update
         """
-        #TODO
-        print('received a segment change event ', event)
+        self._segments_queue.put(event)
 
     def handle(self, event):
         """
         Handle incoming update event.
 
         :param event: incoming data update event.
-        :type event: splitio.push.Update
+        :type event: splitio.push.BaseUpdate
         """
         try:
-            notification_type = event.data['type']
+            handle = self._handlers[event.update_type]
         except KeyError as exc:
-            raise_from('update notification without type.', exc)
+            raise_from('no handler for notification type: %s' % event.update_type, exc)
 
-        try:
-            handler = self._handlers[notification_type]
-        except KeyError as exc:
-            raise_from('no handler for notification type: %s' % notification_type, exc)
-
-        handler(event)
+        handle(event)
