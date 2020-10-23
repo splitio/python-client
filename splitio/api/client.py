@@ -42,7 +42,7 @@ class HttpClient(object):
         :param auth_url: Optional alternative auth URL.
         :type auth_url: str
         """
-        self._timeout = timeout / 1000  if timeout else None  # Convert ms to seconds.
+        self._timeout = timeout/1000 if timeout else None  # Convert ms to seconds.
         self._urls = {
             'sdk': sdk_url if sdk_url is not None else self.SDK_URL,
             'events': events_url if events_url is not None else self.EVENTS_URL,
@@ -76,7 +76,7 @@ class HttpClient(object):
             'Authorization': "Bearer %s" % apikey
         }
 
-    def get(self, server, path, apikey, query=None, extra_headers=None):  #pylint: disable=too-many-arguments
+    def get(self, server, path, apikey, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
         Issue a get request.
 
@@ -106,10 +106,10 @@ class HttpClient(object):
                 timeout=self._timeout
             )
             return HttpResponse(response.status_code, response.text)
-        except Exception as exc:  #pylint: disable=broad-except
+        except Exception as exc:  # pylint: disable=broad-except
             raise_from(HttpClientException('requests library is throwing exceptions'), exc)
 
-    def post(self, server, path, apikey, body, query=None, extra_headers=None):  #pylint: disable=too-many-arguments
+    def post(self, server, path, apikey, body, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
         Issue a POST request.
 
@@ -143,5 +143,5 @@ class HttpClient(object):
                 timeout=self._timeout
             )
             return HttpResponse(response.status_code, response.text)
-        except Exception as exc:  #pylint: disable=broad-except
+        except Exception as exc:  # pylint: disable=broad-except
             raise_from(HttpClientException('requests library is throwing exceptions'), exc)
