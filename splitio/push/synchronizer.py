@@ -338,8 +338,6 @@ class LocalhostSynchronizer(BaseSynchronizer):
             _LOGGER.error('Failed syncing splits')
             raise_from(APIException('Failed to sync splits'), exc)
 
-
-'''
     def start_periodic_fetching(self):
         """Start fetchers for splits and segments."""
         _LOGGER.debug('Starting periodic data fetching')
@@ -349,12 +347,3 @@ class LocalhostSynchronizer(BaseSynchronizer):
         """Stop fetchers for splits and segments."""
         _LOGGER.debug('Stopping periodic fetching')
         self._split_tasks.split_task.stop()
-
-    def start_periodic_data_recording(self):
-        """Start recorders."""
-        pass
-
-    def stop_periodic_data_recording(self):
-        """Stop recorders."""
-        pass
-'''

@@ -391,7 +391,7 @@ def _build_localhost_factory(cfg):
         storages,
         False,
         ImpressionsManager(storages['impressions'].put, cfg['impressionsMode'], True, None),
-        synchronizer,
+        manager,
         ready_event
     )
 
