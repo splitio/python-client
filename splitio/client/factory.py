@@ -34,6 +34,7 @@ from splitio.api.segments import SegmentsAPI
 from splitio.api.impressions import ImpressionsAPI
 from splitio.api.events import EventsAPI
 from splitio.api.telemetry import TelemetryAPI
+from splitio.api.auth import AuthAPI
 
 # Synchronizers
 from splitio.synchronizers.split import SplitSynchronizer, LocalSplitSynchronizer
@@ -234,7 +235,8 @@ def _wrap_impression_listener(listener, metadata):
     return None
 
 
-def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None):  # pylint: disable=too-many-locals
+def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,
+                             auth_api_base_url=None, streaming_api_base_url=None):
     """Build and return a split factory tailored to the supplied config."""
     if not input_validator.validate_factory_instantiation(api_key):
         return None
@@ -242,11 +244,13 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None):  # py
     http_client = HttpClient(
         sdk_url=sdk_url,
         events_url=events_url,
+        auth_url=auth_api_base_url,
         timeout=cfg.get('connectionTimeout')
     )
 
     sdk_metadata = util.get_metadata(cfg)
     apis = {
+        'auth': AuthAPI(http_client, api_key, sdk_metadata),
         'splits': SplitsAPI(http_client, api_key),
         'segments': SegmentsAPI(http_client, api_key),
         'impressions': ImpressionsAPI(http_client, api_key, sdk_metadata, cfg['impressionsMode']),
@@ -432,7 +436,9 @@ def get_factory(api_key, **kwargs):
             api_key,
             config,
             kwargs.get('sdk_api_base_url'),
-            kwargs.get('events_api_base_url')
+            kwargs.get('events_api_base_url'),
+            kwargs.get('auth_api_base_url'),
+            kwargs.get('streaming_api_base_url')
         )
     finally:
         _INSTANTIATED_FACTORIES.update([api_key])
