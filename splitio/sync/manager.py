@@ -34,15 +34,26 @@ class Manager(object):
         if self._streaming_enabled:
             self._queue = Queue()
             self._push = PushManager(auth_api, synchronizer, self._queue)
-            self._push_status_handler = Thread(target=self._streaming_feedback_handler, name='push_status_handler')
+            self._push_status_handler = Thread(target=self._streaming_feedback_handler,
+                                               name='push_status_handler')
             self._push_status_handler.setDaemon(True)
 
     def start(self):
         """Start the SDK synchronization tasks."""
-        if self._streaming_enabled:
-            self._start_streaming()
-        else:
-            self._start_polling()
+        try:
+            self._synchronizer.sync_all()
+            self._ready_flag.set()
+            self._synchronizer.start_periodic_data_recording()
+            if self._streaming_enabled:
+                self._push_status_handler.start()
+                self._push.start()
+            else:
+                self._synchronizer.start_periodic_fetching()
+
+        except (APIException, RuntimeError):
+            _LOGGER.error('Exception raised starting Split Manager')
+            _LOGGER.debug('Exception information: ', exc_info=True)
+            raise
 
     def stop(self):
         """Stop manager logic."""
@@ -51,40 +62,6 @@ class Manager(object):
             self._push.stop()
         self._synchronizer.stop_periodic_fetching()
         self._synchronizer.stop_periodic_data_recording()
-
-    def _start_streaming(self):
-        """Start the sdk synchronization with streaming enabled."""
-        try:
-            self._synchronizer.sync_all()
-            self._ready_flag.set()
-            self._synchronizer.start_periodic_data_recording()
-            self._push_status_handler.start()
-            self._push.start()
-
-        except APIException:
-            _LOGGER.error('Exception raised starting Split Manager')
-            _LOGGER.debug('Exception information: ', exc_info=True)
-            raise
-        except RuntimeError:
-            _LOGGER.error('Exception raised starting Split Manager')
-            _LOGGER.debug('Exception information: ', exc_info=True)
-            raise
-
-    def _start_polling(self):
-        """Start manager logic."""
-        try:
-            self._synchronizer.sync_all()
-            self._ready_flag.set()
-            self._synchronizer.start_periodic_fetching()
-            self._synchronizer.start_periodic_data_recording()
-        except APIException:
-            _LOGGER.error('Exception raised starting Split Manager')
-            _LOGGER.debug('Exception information: ', exc_info=True)
-            raise
-        except RuntimeError:
-            _LOGGER.error('Exception raised starting Split Manager')
-            _LOGGER.debug('Exception information: ', exc_info=True)
-            raise
 
     def _streaming_feedback_handler(self):
         """
@@ -104,10 +81,8 @@ class Manager(object):
                 _LOGGER.info('streaming temporarily down. starting periodic fetching')
                 self._push.update_workers_status(False)
                 self._synchronizer.start_periodic_fetching()
-                # TODO: Disable workers
             elif status == Status.PUSH_RETRYABLE_ERROR:
                 _LOGGER.info('error in streaming. restarting flow')
-                # TODO: Disable workers
                 self._synchronizer.start_periodic_fetching()
                 self._push.stop(True)
                 self._push.start()
