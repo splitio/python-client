@@ -8,6 +8,7 @@ from splitio.models.notification import SegmentChangeNotification
 change_number_received = None
 segment_name_received = None
 
+
 def handler_sync(segment_name, change_number):
     global change_number_received
     global segment_name_received
@@ -22,9 +23,9 @@ class SegmentWorkerTests(object):
 
     def test_handler(self):
         global change_number_received
-        assert self.segment_worker.is_running() == False
+        assert not self.segment_worker.is_running()
         self.segment_worker.start()
-        assert self.segment_worker.is_running() == True
+        assert self.segment_worker.is_running()
 
         self.q.put(SegmentChangeNotification('some', 'SEGMENT_UPDATE', 123456789, 'some'))
 
@@ -33,4 +34,4 @@ class SegmentWorkerTests(object):
         assert segment_name_received == 'some'
 
         self.segment_worker.stop()
-        assert self.segment_worker.is_running() == False
+        assert not self.segment_worker.is_running()

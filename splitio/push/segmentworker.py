@@ -57,7 +57,7 @@ class SegmentWorker(object):
     def stop(self):
         """Stop worker."""
         _LOGGER.debug('Stopping Segment Worker')
-        if not self._running():
+        if not self.is_running():
             _LOGGER.debug('Worker is not running. Ignoring.')
             return
         self._running = False

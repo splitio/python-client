@@ -45,15 +45,15 @@ class ManagerTests(object):
                                            mocker.Mock(), mocker.Mock(), mocker.Mock())
 
         synchronizer = Synchronizer(synchronizers, split_tasks)
-        manager = Manager(threading.Event(), synchronizer)
+        manager = Manager(threading.Event(), synchronizer,  mocker.Mock(), False)
 
         with pytest.raises(APIException):
             manager.start()
 
-    def test_start(self, mocker):
+    def test_start_streaming_false(self, mocker):
         splits_ready_event = threading.Event()
         synchronizer = mocker.Mock(spec=Synchronizer)
-        manager = Manager(splits_ready_event, synchronizer)
+        manager = Manager(splits_ready_event, synchronizer, mocker.Mock(), False)
         manager.start()
 
         splits_ready_event.wait(2)
