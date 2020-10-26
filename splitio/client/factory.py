@@ -7,7 +7,6 @@ import threading
 from collections import Counter
 
 from enum import Enum
-import six
 
 from splitio.client.client import Client
 from splitio.client import input_validator
@@ -314,7 +313,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,
     )
 
     synchronizer = Synchronizer(synchronizers, tasks)
-    manager = Manager(sdk_ready_flag, synchronizer)
+    manager = Manager(sdk_ready_flag, synchronizer, apis['auth'])
     manager.start()
 
     storages['events'].set_queue_full_hook(tasks.events_task.flush)
@@ -390,7 +389,7 @@ def _build_localhost_factory(cfg):
 
     ready_event = threading.Event()
     synchronizer = LocalhostSynchronizer(synchronizers, tasks)
-    manager = Manager(ready_event, synchronizer)
+    manager = Manager(ready_event, synchronizer, None)
     manager.start()
 
     return SplitFactory(

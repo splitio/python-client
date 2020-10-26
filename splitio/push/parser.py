@@ -170,6 +170,11 @@ class AblyError(BaseEvent):
         """
         return self._code >= 40140 and self._code <= 40149
 
+    def __str__(self):
+        """Return string representation."""
+        return "AblyError - code=%d, status=%d, message=%s, href=%s" % \
+            (self.code, self.status_code, self.message, self.href)
+
 
 @add_metaclass(abc.ABCMeta)
 class BaseMessage(BaseEvent):
@@ -272,6 +277,10 @@ class OccupancyMessage(BaseMessage):
         """
         return self._publishers
 
+    def __str__(self):
+        """Return string representation."""
+        return "Occupancy - channel=%s, publishers=%d" % (self.channel, self.publishers)
+
 
 @add_metaclass(abc.ABCMeta)
 class BaseUpdate(BaseMessage):
@@ -338,6 +347,10 @@ class SplitChangeUpdate(BaseUpdate):
         """
         return UpdateType.SPLIT_UPDATE
 
+    def __str__(self):
+        """Return string representation."""
+        return "SplitChange - changeNumber=%d" % (self.change_number)
+
 
 class SplitKillUpdate(BaseUpdate):
     """Split Kill notification."""
@@ -378,6 +391,11 @@ class SplitKillUpdate(BaseUpdate):
         """
         return self._default_treatment
 
+    def __str__(self):
+        """Return string representation."""
+        return "SplitKill - changeNumber=%d, name=%s, defaultTreatment=%s" % \
+            (self.change_number, self.split_name, self.default_treatment)
+
 
 class SegmentChangeUpdate(BaseUpdate):
     """Segment Change notification."""
@@ -407,6 +425,10 @@ class SegmentChangeUpdate(BaseUpdate):
         """
         return self._segment_name
 
+    def __str__(self):
+        """Return string representation."""
+        return "SegmentChange - changeNumber=%d, name=%s" % (self.change_number, self.segment_name)
+
 
 class ControlMessage(BaseMessage):
     """Control notification."""
@@ -435,6 +457,10 @@ class ControlMessage(BaseMessage):
         :rtype: ControlType
         """
         return self._control_type
+
+    def __str__(self):
+        """Return string representation."""
+        return "Control - type=%s" % (self.control_type.name)
 
 
 def _parse_update(channel, timestamp, data):
@@ -475,7 +501,7 @@ def _parse_message(data):
     if not all(k in data for k in ['data', 'channel']):
         return None
     channel = data['channel']
-    timestamp = data['data']
+    timestamp = data['timestamp']
     parsed_data = json.loads(data['data'])
     if data.get('name') == TAG_OCCUPANCY:
         return OccupancyMessage(channel, timestamp, parsed_data['metrics']['publishers'])

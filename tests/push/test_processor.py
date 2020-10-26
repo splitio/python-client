@@ -52,3 +52,7 @@ class ProcessorTests(object):
             mocker.call(),  # construction of split queue
             mocker.call().put(update)
         ]
+
+    def test_todo(self):
+        """Fix previous tests so that we validate WHICH queue the update is pushed into."""
+        assert NotImplementedError("DO THAT")

@@ -74,7 +74,7 @@ class SplitSynchronizer(object):
         :param change_number: change_number
         :type change_number: int
         """
-        self._split_storage.kill_split(split_name, default_treatment, change_number)
+        self._split_storage.kill_locally(split_name, default_treatment, change_number)
 
 
 class LocalSplitSynchronizer(object):
