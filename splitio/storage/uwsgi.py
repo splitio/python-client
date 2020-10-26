@@ -14,6 +14,9 @@ from splitio.storage.adapters.uwsgi_cache import _SPLITIO_CHANGE_NUMBERS, \
     _SPLITIO_LOCK_CACHE_NAMESPACE
 
 
+_LOGGER = logging.getLogger(__name__)
+
+
 class UWSGISplitStorage(SplitStorage):
     """UWSGI-Cache based implementation of a split storage."""
 
@@ -32,7 +35,6 @@ class UWSGISplitStorage(SplitStorage):
         :param uwsgi_entrypoint: UWSGI module. Can be the actual module or a mock.
         :type uwsgi_entrypoint: module
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._uwsgi = uwsgi_entrypoint
 
     def get(self, split_name):
@@ -50,7 +52,7 @@ class UWSGISplitStorage(SplitStorage):
         )
         to_return = splits.from_raw(json.loads(raw)) if raw is not None else None
         if not to_return:
-            self._logger.warning("Trying to retrieve nonexistant split %s. Ignoring.", split_name)
+            _LOGGER.warning("Trying to retrieve nonexistant split %s. Ignoring.", split_name)
         return to_return
 
     def fetch_many(self, split_names):
@@ -94,7 +96,7 @@ class UWSGISplitStorage(SplitStorage):
         # We need to fetch the split to get the traffic type name prior to deleting.
         fetched = self.get(split_name)
         if fetched is None:
-            self._logger.warning(
+            _LOGGER.warning(
                 "Tried to remove feature \"%s\" not present in cache. Ignoring.", split_name
             )
             return
@@ -104,7 +106,7 @@ class UWSGISplitStorage(SplitStorage):
             _SPLITIO_SPLITS_CACHE_NAMESPACE
         )
         if result is not False:
-            self._logger.warning("Trying to delete nonexistant split %s. Ignoring.", split_name)
+            _LOGGER.warning("Trying to delete nonexistant split %s. Ignoring.", split_name)
 
         self._remove_split_from_list(split_name)
         self._decrease_traffic_type_count(fetched.traffic_type_name)
@@ -300,7 +302,6 @@ class UWSGISegmentStorage(SegmentStorage):
         :param uwsgi_entrypoint: UWSGI module. Can be the actual module or a mock.
         :type uwsgi_entrypoint: module
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._uwsgi = uwsgi_entrypoint
 
     def get(self, segment_name):
@@ -325,7 +326,7 @@ class UWSGISegmentStorage(SegmentStorage):
                 'till': change_number
             })
         except TypeError:
-            self._logger.warning(
+            _LOGGER.warning(
                 "Trying to retrieve nonexistant segment %s. Ignoring.",
                 segment_name
             )
@@ -433,7 +434,6 @@ class UWSGIImpressionStorage(ImpressionStorage):
         :param adapter: UWSGI Adapter/Emulator/Module.
         :type: object
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._uwsgi = adapter
 
     def put(self, impressions):
@@ -527,7 +527,6 @@ class UWSGIEventStorage(EventStorage):
         :param adapter: UWSGI Adapter/Emulator/Module.
         :type: object
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._uwsgi = adapter
 
     def put(self, events):
@@ -623,7 +622,6 @@ class UWSGITelemetryStorage(TelemetryStorage):
         :type uwsgi_entrypoint: object
         """
         self._uwsgi = uwsgi_entrypoint
-        self._logger = logging.getLogger(self.__class__.__name__)
 
     def inc_latency(self, name, bucket):
         """
@@ -635,7 +633,7 @@ class UWSGITelemetryStorage(TelemetryStorage):
         :tyoe value: int
         """
         if not 0 <= bucket <= 21:
-            self._logger.error('Incorect bucket "%d" for latency "%s". Ignoring.', bucket, name)
+            _LOGGER.error('Incorect bucket "%d" for latency "%s". Ignoring.', bucket, name)
             return
 
         with UWSGILock(self._uwsgi, self._LATENCIES_LOCK_KEY):

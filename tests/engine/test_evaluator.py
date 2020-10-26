@@ -17,7 +17,7 @@ class EvaluatorTests(object):
         segment_storage_mock = mocker.Mock(spec=SegmentStorage)
         logger_mock = mocker.Mock(spec=logging.Logger)
         e = evaluator.Evaluator(split_storage_mock, segment_storage_mock, splitter_mock)
-        e._logger = logger_mock
+        evaluator._LOGGER = logger_mock
         return e
 
     def test_evaluate_treatment_missing_split(self, mocker):

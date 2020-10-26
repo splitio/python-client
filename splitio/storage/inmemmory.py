@@ -13,12 +13,14 @@ from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, Eve
 MAX_SIZE_BYTES = 5 * 1024 * 1024
 
 
+_LOGGER = logging.getLogger(__name__)
+
+
 class InMemorySplitStorage(SplitStorage):
     """InMemory implementation of a split storage."""
 
     def __init__(self):
         """Constructor."""
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._lock = threading.RLock()
         self._splits = {}
         self._change_number = -1
@@ -74,7 +76,7 @@ class InMemorySplitStorage(SplitStorage):
         with self._lock:
             split = self._splits.get(split_name)
             if not split:
-                self._logger.warning("Tried to delete nonexistant split %s. Skipping", split_name)
+                _LOGGER.warning("Tried to delete nonexistant split %s. Skipping", split_name)
                 return False
 
             self._splits.pop(split_name)
@@ -178,7 +180,6 @@ class InMemorySegmentStorage(SegmentStorage):
 
     def __init__(self):
         """Constructor."""
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._segments = {}
         self._change_numbers = {}
         self._lock = threading.RLock()
@@ -195,7 +196,7 @@ class InMemorySegmentStorage(SegmentStorage):
         with self._lock:
             fetched = self._segments.get(segment_name)
             if fetched is None:
-                self._logger.warning(
+                _LOGGER.warning(
                     "Tried to retrieve nonexistant segment %s. Skipping",
                     segment_name
                 )
@@ -273,7 +274,7 @@ class InMemorySegmentStorage(SegmentStorage):
         """
         with self._lock:
             if segment_name not in self._segments:
-                self._logger.warning(
+                _LOGGER.warning(
                     "Tried to query members for nonexistant segment %s. Returning False",
                     segment_name
                 )
@@ -290,7 +291,6 @@ class InMemoryImpressionStorage(ImpressionStorage):
 
         :param eventsQueueSize: How many events to queue before forcing a submission
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._impressions = queue.Queue(maxsize=queue_size)
         self._lock = threading.Lock()
         self._queue_full_hook = None
@@ -319,7 +319,7 @@ class InMemoryImpressionStorage(ImpressionStorage):
         except queue.Full:
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
                 self._queue_full_hook()
-            self._logger.warning(
+            _LOGGER.warning(
                 'Event queue is full, failing to add more events. \n'
                 'Consider increasing parameter `eventQueueSize` in configuration'
             )
@@ -353,7 +353,6 @@ class InMemoryEventStorage(EventStorage):
 
         :param eventsQueueSize: How many events to queue before forcing a submission
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._lock = threading.Lock()
         self._events = queue.Queue(maxsize=eventsQueueSize)
         self._queue_full_hook = None
@@ -388,7 +387,7 @@ class InMemoryEventStorage(EventStorage):
         except queue.Full:
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
                 self._queue_full_hook()
-            self._logger.warning(
+            _LOGGER.warning(
                 'Events queue is full, failing to add more events. \n'
                 'Consider increasing parameter `eventsQueueSize` in configuration'
             )
@@ -414,7 +413,6 @@ class InMemoryTelemetryStorage(TelemetryStorage):
 
     def __init__(self):
         """Constructor."""
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._latencies = {}
         self._gauges = {}
         self._counters = {}
@@ -432,7 +430,7 @@ class InMemoryTelemetryStorage(TelemetryStorage):
         :tyoe value: int
         """
         if not 0 <= bucket <= 21:
-            self._logger.warning('Incorect bucket "%d" for latency "%s". Ignoring.', bucket, name)
+            _LOGGER.warning('Incorect bucket "%d" for latency "%s". Ignoring.', bucket, name)
             return
 
         with self._latencies_lock:
