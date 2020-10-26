@@ -56,5 +56,5 @@ class SplitWorker(object):
     def stop(self):
         """Stop worker."""
         _LOGGER.debug('Stopping Split Worker')
-        self._running = True
+        self._running = False
         self._split_queue.put(self._centinel)

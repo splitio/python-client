@@ -61,5 +61,4 @@ class SegmentWorker(object):
             _LOGGER.debug('Worker is not running. Ignoring.')
             return
         self._running = False
-
         self._segment_queue.put(self._centinel)
