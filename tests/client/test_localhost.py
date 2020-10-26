@@ -1,13 +1,15 @@
 """Localhost mode test module."""
-#pylint: disable=no-self-use,line-too-long,protected-access
+# pylint: disable=no-self-use,line-too-long,protected-access
 
 import os
 import tempfile
 
 from splitio.client import localhost
+from splitio.synchronizers.split import LocalSplitSynchronizer
 from splitio.models.splits import Split
 from splitio.models.grammar.matchers import AllKeysMatcher
 from splitio.storage import SplitStorage
+
 
 class LocalHostStoragesTests(object):
     """Localhost storages test cases."""
@@ -80,7 +82,7 @@ class SplitFetchingTaskTests(object):
 
     def test_make_all_keys_condition(self):
         """Test all keys-based condition construction."""
-        cond = localhost.LocalhostSplitSynchronizationTask._make_all_keys_condition('on')
+        cond = LocalSplitSynchronizer._make_all_keys_condition('on')
         assert cond['conditionType'] == 'WHITELIST'
         assert len(cond['partitions']) == 1
         assert cond['partitions'][0]['treatment'] == 'on'
@@ -92,7 +94,7 @@ class SplitFetchingTaskTests(object):
 
     def test_make_whitelist_condition(self):
         """Test whitelist-based condition construction."""
-        cond = localhost.LocalhostSplitSynchronizationTask._make_whitelist_condition(['key1', 'key2'], 'on')
+        cond = LocalSplitSynchronizer._make_whitelist_condition(['key1', 'key2'], 'on')
         assert cond['conditionType'] == 'WHITELIST'
         assert len(cond['partitions']) == 1
         assert cond['partitions'][0]['treatment'] == 'on'
@@ -106,7 +108,7 @@ class SplitFetchingTaskTests(object):
     def test_parse_legacy_file(self):
         """Test that aprsing a legacy file works."""
         filename = os.path.join(os.path.dirname(__file__), 'files', 'file1.split')
-        splits = localhost.LocalhostSplitSynchronizationTask._read_splits_from_legacy_file(filename)
+        splits = LocalSplitSynchronizer._read_splits_from_legacy_file(filename)
         assert len(splits) == 2
         for split in splits.values():
             assert isinstance(split, Split)
@@ -118,7 +120,7 @@ class SplitFetchingTaskTests(object):
     def test_parse_yaml_file(self):
         """Test that parsing a yaml file works."""
         filename = os.path.join(os.path.dirname(__file__), 'files', 'file2.yaml')
-        splits = localhost.LocalhostSplitSynchronizationTask._read_splits_from_yaml_file(filename)
+        splits = LocalSplitSynchronizer._read_splits_from_yaml_file(filename)
         assert len(splits) == 4
         for split in splits.values():
             assert isinstance(split, Split)
@@ -149,45 +151,45 @@ class SplitFetchingTaskTests(object):
 
         parse_legacy.reset_mock()
         parse_yaml.reset_mock()
-        task = localhost.LocalhostSplitSynchronizationTask('something', storage_mock, 0, None)
-        task._read_splits_from_legacy_file = parse_legacy
-        task._read_splits_from_yaml_file = parse_yaml
-        task._update_splits()
+        sync = LocalSplitSynchronizer('something', storage_mock)
+        sync._read_splits_from_legacy_file = parse_legacy
+        sync._read_splits_from_yaml_file = parse_yaml
+        sync.synchronize_splits()
         assert parse_legacy.mock_calls == [mocker.call('something')]
         assert parse_yaml.mock_calls == []
 
         parse_legacy.reset_mock()
         parse_yaml.reset_mock()
-        task = localhost.LocalhostSplitSynchronizationTask('something.yaml', storage_mock, 0, None)
-        task._read_splits_from_legacy_file = parse_legacy
-        task._read_splits_from_yaml_file = parse_yaml
-        task._update_splits()
+        sync = LocalSplitSynchronizer('something.yaml', storage_mock)
+        sync._read_splits_from_legacy_file = parse_legacy
+        sync._read_splits_from_yaml_file = parse_yaml
+        sync.synchronize_splits()
         assert parse_legacy.mock_calls == []
         assert parse_yaml.mock_calls == [mocker.call('something.yaml')]
 
         parse_legacy.reset_mock()
         parse_yaml.reset_mock()
-        task = localhost.LocalhostSplitSynchronizationTask('something.yml', storage_mock, 0, None)
-        task._read_splits_from_legacy_file = parse_legacy
-        task._read_splits_from_yaml_file = parse_yaml
-        task._update_splits()
+        sync = LocalSplitSynchronizer('something.yml', storage_mock)
+        sync._read_splits_from_legacy_file = parse_legacy
+        sync._read_splits_from_yaml_file = parse_yaml
+        sync.synchronize_splits()
         assert parse_legacy.mock_calls == []
         assert parse_yaml.mock_calls == [mocker.call('something.yml')]
 
         parse_legacy.reset_mock()
         parse_yaml.reset_mock()
-        task = localhost.LocalhostSplitSynchronizationTask('something.YAML', storage_mock, 0, None)
-        task._read_splits_from_legacy_file = parse_legacy
-        task._read_splits_from_yaml_file = parse_yaml
-        task._update_splits()
+        sync = LocalSplitSynchronizer('something.YAML', storage_mock)
+        sync._read_splits_from_legacy_file = parse_legacy
+        sync._read_splits_from_yaml_file = parse_yaml
+        sync.synchronize_splits()
         assert parse_legacy.mock_calls == []
         assert parse_yaml.mock_calls == [mocker.call('something.YAML')]
 
         parse_legacy.reset_mock()
         parse_yaml.reset_mock()
-        task = localhost.LocalhostSplitSynchronizationTask('yaml', storage_mock, 0, None)
-        task._read_splits_from_legacy_file = parse_legacy
-        task._read_splits_from_yaml_file = parse_yaml
-        task._update_splits()
+        sync = LocalSplitSynchronizer('yaml', storage_mock)
+        sync._read_splits_from_legacy_file = parse_legacy
+        sync._read_splits_from_yaml_file = parse_yaml
+        sync.synchronize_splits()
         assert parse_legacy.mock_calls == [mocker.call('yaml')]
         assert parse_yaml.mock_calls == []
