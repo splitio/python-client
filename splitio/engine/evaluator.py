@@ -8,6 +8,9 @@ from splitio.models.impressions import Label
 CONTROL = 'control'
 
 
+_LOGGER = logging.getLogger(__name__)
+
+
 class Evaluator(object):  # pylint: disable=too-few-public-methods
     """Split Evaluator class."""
 
@@ -21,7 +24,6 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
         :param split_storage: Storage storage.
         :type split_storage: splitio.storage.SegmentStorage
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._split_storage = split_storage
         self._segment_storage = segment_storage
         self._splitter = splitter
@@ -53,7 +55,7 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
         _change_number = -1
 
         if split is None:
-            self._logger.warning('Unknown or invalid feature: %s', feature)
+            _LOGGER.warning('Unknown or invalid feature: %s', feature)
             label = Label.SPLIT_NOT_FOUND
         else:
             _change_number = split.change_number
@@ -130,16 +132,6 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
         :return: The treatments for the key and splits
         :rtype: object
         """
-        evaluations = dict()
-
-        # Fetching Split definition
-        splits = self._split_storage.fetch_many(features)
-        # Calling evaluations
-        for feature in features:
-            split = splits[feature]
-            evaluations[feature] = self._evaluate_treatment(feature, matching_key,
-                                                            bucketing_key, attributes, split)
-        return evaluations
         return {
             feature: self._evaluate_treatment(feature, matching_key,
                                               bucketing_key, attributes, split)
