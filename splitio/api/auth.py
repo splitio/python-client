@@ -10,7 +10,10 @@ from splitio.api.client import HttpClientException
 from splitio.models.token import from_raw
 
 
-class AuthAPI(object):  #pylint: disable=too-few-public-methods
+_LOGGER = logging.getLogger(__name__)
+
+
+class AuthAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the SDK Auth Service API."""
 
     def __init__(self, client, apikey, sdk_metadata):
@@ -24,7 +27,6 @@ class AuthAPI(object):  #pylint: disable=too-few-public-methods
         :param sdk_metadata: SDK version & machine name & IP.
         :type sdk_metadata: splitio.client.util.SdkMetadata
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._client = client
         self._apikey = apikey
         self._metadata = headers_from_metadata(sdk_metadata)
@@ -49,6 +51,6 @@ class AuthAPI(object):  #pylint: disable=too-few-public-methods
             else:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            self._logger.error('Exception raised while authenticating')
-            self._logger.debug('Exception information: ', exc_info=True)
+            _LOGGER.error('Exception raised while authenticating')
+            _LOGGER.debug('Exception information: ', exc_info=True)
             raise_from(APIException('Could not perform authentication.'), exc)

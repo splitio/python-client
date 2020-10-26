@@ -14,6 +14,9 @@ from splitio.client import input_validator
 from splitio.util import utctime_ms
 
 
+_LOGGER = logging.getLogger(__name__)
+
+
 class Client(object):  # pylint: disable=too-many-instance-attributes
     """Entry point for the split sdk."""
 
@@ -37,7 +40,6 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
         :rtype: Client
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._factory = factory
         self._labels_enabled = labels_enabled
         self._impressions_manager = impressions_manager
@@ -89,7 +91,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
     def _make_evaluation(self, key, feature, attributes, method_name, metric_name):
         try:
             if self.destroyed:
-                self._logger.error("Client has already been destroyed - no calls possible")
+                _LOGGER.error("Client has already been destroyed - no calls possible")
                 return CONTROL, None
 
             start = int(round(time.time() * 1000))
@@ -122,8 +124,8 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             self._record_stats([(impression, attributes)], start, metric_name)
             return result['treatment'], result['configurations']
         except Exception:  # pylint: disable=broad-except
-            self._logger.error('Error getting treatment for feature')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error('Error getting treatment for feature')
+            _LOGGER.debug('Error: ', exc_info=True)
             try:
                 impression = self._build_impression(
                     matching_key,
@@ -136,13 +138,13 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                 )
                 self._record_stats([(impression, attributes)], start, metric_name)
             except Exception:  # pylint: disable=broad-except
-                self._logger.error('Error reporting impression into get_treatment exception block')
-                self._logger.debug('Error: ', exc_info=True)
+                _LOGGER.error('Error reporting impression into get_treatment exception block')
+                _LOGGER.debug('Error: ', exc_info=True)
             return CONTROL, None
 
     def _make_evaluations(self, key, features, attributes, method_name, metric_name):
         if self.destroyed:
-            self._logger.error("Client has already been destroyed - no calls possible")
+            _LOGGER.error("Client has already been destroyed - no calls possible")
             return input_validator.generate_control_treatments(features, method_name)
 
         start = int(round(time.time() * 1000))
@@ -185,10 +187,10 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                     treatments[feature] = (result['treatment'], result['configurations'])
 
                 except Exception:  # pylint: disable=broad-except
-                    self._logger.error('%s: An exception occured when evaluating '
-                                       'feature %s returning CONTROL.' % (method_name, feature))
+                    _LOGGER.error('%s: An exception occured when evaluating '
+                                  'feature %s returning CONTROL.' % (method_name, feature))
                     treatments[feature] = CONTROL, None
-                    self._logger.debug('Error: ', exc_info=True)
+                    _LOGGER.debug('Error: ', exc_info=True)
                     continue
 
             # Register impressions
@@ -200,14 +202,14 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                         metric_name
                     )
             except Exception:  # pylint: disable=broad-except
-                self._logger.error('%s: An exception when trying to store '
-                                   'impressions.' % method_name)
-                self._logger.debug('Error: ', exc_info=True)
+                _LOGGER.error('%s: An exception when trying to store '
+                              'impressions.' % method_name)
+                _LOGGER.debug('Error: ', exc_info=True)
 
             return treatments
         except Exception:  # pylint: disable=broad-except
-            self._logger.error('Error getting treatment for features')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error('Error getting treatment for features')
+            _LOGGER.debug('Error: ', exc_info=True)
         return input_validator.generate_control_treatments(list(features), method_name)
 
     def _evaluate_features_if_ready(self, matching_key, bucketing_key, features, attributes=None):
@@ -344,8 +346,8 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             self._impressions_manager.track(impressions)
             self._telemetry_storage.inc_latency(operation, get_latency_bucket_index(end - start))
         except Exception:  # pylint: disable=broad-except
-            self._logger.error('Error recording impressions and metrics')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error('Error recording impressions and metrics')
+            _LOGGER.debug('Error: ', exc_info=True)
 
     def track(self, key, traffic_type, event_type, value=None, properties=None):
         """
@@ -366,7 +368,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :rtype: bool
         """
         if self.destroyed:
-            self._logger.error("Client has already been destroyed - no calls possible")
+            _LOGGER.error("Client has already been destroyed - no calls possible")
             return False
 
         key = input_validator.validate_track_key(key)

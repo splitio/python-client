@@ -8,6 +8,9 @@ from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException
 
 
+_LOGGER = logging.getLogger(__name__)
+
+
 class TelemetryAPI(object):
     """Class to handle telemetry submission to the backend."""
 
@@ -22,10 +25,10 @@ class TelemetryAPI(object):
         :param sdk_metadata: SDK Version, IP & Machine name
         :type sdk_metadata: splitio.client.util.SdkMetadata
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._client = client
         self._apikey = apikey
         self._metadata = headers_from_metadata(sdk_metadata)
+
     @staticmethod
     def _build_latencies(latencies):
         """
@@ -58,8 +61,8 @@ class TelemetryAPI(object):
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            self._logger.error('Http client is throwing exceptions')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error('Http client is throwing exceptions')
+            _LOGGER.debug('Error: ', exc_info=True)
             raise_from(APIException('Latencies not flushed correctly.'), exc)
 
     @staticmethod
@@ -94,8 +97,8 @@ class TelemetryAPI(object):
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            self._logger.error('Http client is throwing exceptions')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error('Http client is throwing exceptions')
+            _LOGGER.debug('Error: ', exc_info=True)
             raise_from(APIException('Gauges not flushed correctly.'), exc)
 
     @staticmethod
@@ -130,6 +133,6 @@ class TelemetryAPI(object):
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            self._logger.error('Http client is throwing exceptions')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error('Http client is throwing exceptions')
+            _LOGGER.debug('Error: ', exc_info=True)
             raise_from(APIException('Counters not flushed correctly.'), exc)

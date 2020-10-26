@@ -460,8 +460,9 @@ def validate_apikey_type(segment_api):
     :type segment_api: splitio.api.segments.SegmentsAPI
     """
     api_messages_filter = _ApiLogFilter()
+    _logger = logging.getLogger('splitio.api.segments')
     try:
-        segment_api._logger.addFilter(api_messages_filter)  # pylint: disable=protected-access
+        _logger.addFilter(api_messages_filter)  # pylint: disable=protected-access
         segment_api.fetch_segment('__SOME_INVALID_SEGMENT__', -1)
     except APIException as exc:
         if exc.status_code == 403:
@@ -470,7 +471,7 @@ def validate_apikey_type(segment_api):
                           + 'console that is of type sdk')
             return False
     finally:
-        segment_api._logger.removeFilter(api_messages_filter)  # pylint: disable=protected-access
+        _logger.removeFilter(api_messages_filter)  # pylint: disable=protected-access
 
     # True doesn't mean that the APIKEY is right, only that it's not of type "browser"
     return True

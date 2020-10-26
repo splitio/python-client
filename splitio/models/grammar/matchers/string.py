@@ -11,10 +11,11 @@ from six import string_types
 from splitio.models.grammar.matchers.base import Matcher
 
 
+_LOGGER = logging.getLogger(__name__)
+
+
 class Sanitizer(object):  # pylint: disable=too-few-public-methods
     """Numeric input sanitizer."""
-
-    _logger = logging.getLogger('InputSanitizer')
 
     @classmethod
     def ensure_string(cls, data):
@@ -33,7 +34,7 @@ class Sanitizer(object):  # pylint: disable=too-few-public-methods
         if isinstance(data, string_types):
             return data
 
-        cls._logger.warning(
+        _LOGGER.warning(
             'Supplied attribute is of type %s and should have been a string. ',
             type(data)
         )

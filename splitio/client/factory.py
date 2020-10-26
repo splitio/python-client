@@ -109,7 +109,6 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         :type impression_listener: ImpressionsManager
         """
         self._apikey = apikey
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._storages = storages
         self._labels_enabled = labels_enabled
         self._sync_manager = sync_manager
@@ -199,7 +198,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         :type destroyed_event: threading.Event
         """
         if self.destroyed:
-            self._logger.info('Factory already destroyed.')
+            _LOGGER.info('Factory already destroyed.')
             return
 
         try:
