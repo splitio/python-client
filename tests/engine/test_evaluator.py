@@ -7,6 +7,7 @@ from splitio.models.impressions import Label
 from splitio.engine import evaluator, splitters
 from splitio.storage import SplitStorage, SegmentStorage
 
+
 class EvaluatorTests(object):
     """Test evaluator behavior."""
 

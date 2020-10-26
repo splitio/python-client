@@ -12,7 +12,6 @@ import six
 from splitio.api import APIException
 from splitio.client.key import Key
 from splitio.engine.evaluator import CONTROL
-from splitio.api.segments import _LOGGER as _logger
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -461,6 +460,7 @@ def validate_apikey_type(segment_api):
     :type segment_api: splitio.api.segments.SegmentsAPI
     """
     api_messages_filter = _ApiLogFilter()
+    _logger = logging.getLogger('splitio.api.segments')
     try:
         _logger.addFilter(api_messages_filter)  # pylint: disable=protected-access
         segment_api.fetch_segment('__SOME_INVALID_SEGMENT__', -1)
