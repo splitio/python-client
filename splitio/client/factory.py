@@ -388,7 +388,7 @@ def _build_localhost_factory(cfg):
 
     ready_event = threading.Event()
     synchronizer = LocalhostSynchronizer(synchronizers, tasks)
-    manager = Manager(ready_event, synchronizer, None)
+    manager = Manager(ready_event, synchronizer, None, cfg['streamingEnabled'])
     manager.start()
 
     return SplitFactory(

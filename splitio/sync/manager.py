@@ -60,7 +60,7 @@ class Manager(object):
         _LOGGER.info('Stopping manager tasks')
         if self._streaming_enabled:
             self._push.stop()
-        self._synchronizer.stop_periodic_fetching()
+        self._synchronizer.stop_periodic_fetching(True)
         self._synchronizer.stop_periodic_data_recording()
 
     def _streaming_feedback_handler(self):
