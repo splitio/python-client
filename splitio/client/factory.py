@@ -312,7 +312,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,
     )
 
     synchronizer = Synchronizer(synchronizers, tasks)
-    manager = Manager(sdk_ready_flag, synchronizer, apis['auth'])
+    manager = Manager(sdk_ready_flag, synchronizer, apis['auth'], cfg['streamingEnabled'])
     manager.start()
 
     storages['events'].set_queue_full_hook(tasks.events_task.flush)

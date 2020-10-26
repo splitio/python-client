@@ -12,7 +12,7 @@ _LOGGER = logging.getLogger(__name__)
 class Manager(object):
     """Manager Class."""
 
-    def __init__(self, ready_flag, synchronizer, auth_api):
+    def __init__(self, ready_flag, synchronizer, auth_api, streaming_enabled):
         """
         Construct Manager.
 
@@ -24,23 +24,31 @@ class Manager(object):
 
         :param auth_api: Authentication api client
         :type auth_api: splitio.api.auth.AuthAPI
+
+        :param streaming_enabled: whether to use streaming or not
+        :type streaming_enabled: bool
         """
+        self._streaming_enabled = streaming_enabled
         self._ready_flag = ready_flag
         self._synchronizer = synchronizer
-        self._queue = Queue()
-        self._push = PushManager(auth_api, synchronizer, self._queue)
-        self._push_status_handler = Thread(target=self._streaming_feedback_handler, name='push_status_handler')
-        self._push_status_handler.setDaemon(True)
+        if self._streaming_enabled:
+            self._queue = Queue()
+            self._push = PushManager(auth_api, synchronizer, self._queue)
+            self._push_status_handler = Thread(target=self._streaming_feedback_handler, name='push_status_handler')
+            self._push_status_handler.setDaemon(True)
 
     def start(self):
         """Start the SDK synchronization tasks."""
-        # TODO: Use a config option to choose how to start.
-        self._start_streaming()
+        if self._streaming_enabled:
+            self._start_streaming()
+        else:
+            self._start_polling()
 
     def stop(self):
         """Stop manager logic."""
         _LOGGER.info('Stopping manager tasks')
-        self._push.stop()
+        if self._streaming_enabled:
+            self._push.stop()
         self._synchronizer.stop_periodic_fetching()
         self._synchronizer.stop_periodic_data_recording()
 
