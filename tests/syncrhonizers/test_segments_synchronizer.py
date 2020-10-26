@@ -29,7 +29,7 @@ class SegmentsSynchronizerTests(object):
 
         api.fetch_segment.side_effect = run
         segments_synchronizer = SegmentSynchronizer(api, split_storage, storage)
-        assert segments_synchronizer.synchronize_segments() is True
+        assert not segments_synchronizer.synchronize_segments()
 
     def test_synchronize_segments(self, mocker):
         """Test the normal operation flow."""
@@ -79,7 +79,7 @@ class SegmentsSynchronizerTests(object):
         api.fetch_segment.side_effect = fetch_segment_mock
 
         segments_synchronizer = SegmentSynchronizer(api, split_storage, storage)
-        assert segments_synchronizer.synchronize_segments() is False
+        assert segments_synchronizer.synchronize_segments()
 
         api_calls = [call for call in api.fetch_segment.mock_calls]
         assert mocker.call('segmentA', -1) in api_calls

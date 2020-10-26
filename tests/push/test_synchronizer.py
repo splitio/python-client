@@ -57,7 +57,7 @@ class SynchronizerTests(object):
 
         with pytest.raises(RuntimeError):
             sychronizer.sync_all()
-        assert sychronizer._synchronize_segments() is True
+        assert not sychronizer._synchronize_segments()
 
     splits = [{
         'changeNumber': 123,
