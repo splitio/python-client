@@ -4,8 +4,6 @@ import logging
 from threading import Thread, Event
 from six.moves import queue
 
-from splitio.api import APIException
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,7 +23,7 @@ class WorkerPool(object):
         self._should_be_working = [True for _ in range(0, worker_count)]
         self._worker_events = [Event() for _ in range(0, worker_count)]
         self._threads = [
-            Thread(target=self._wrapper, args=(i, worker_func))
+            Thread(target=self._wrapper, args=(i, worker_func), name="segment_worker_%d" % i)
             for i in range(0, worker_count)
         ]
         for thread in self._threads:
@@ -36,7 +34,8 @@ class WorkerPool(object):
         for thread in self._threads:
             thread.start()
 
-    def _safe_run(self, func, message):
+    @staticmethod
+    def _safe_run(func, message):
         """
         Execute the user funcion for a given message without raising exceptions.
 

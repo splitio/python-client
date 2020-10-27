@@ -92,4 +92,4 @@ class SegmentSynchronizer(object):
         segment_names = self._split_storage.get_segment_names()
         for segment_name in segment_names:
             self._worker_pool.submit_work(segment_name)
-        return self._worker_pool.wait_for_completion()
+        return not self._worker_pool.wait_for_completion()

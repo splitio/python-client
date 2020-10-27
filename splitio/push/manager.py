@@ -20,16 +20,25 @@ _LOGGER = logging.getLogger(__name__)
 class PushManager(object):  # pylint:disable=too-many-instance-attributes
     """Push notifications susbsytem manager."""
 
-    def __init__(self, auth_api, feedback_loop, sse_url=None):
+    def __init__(self, auth_api, synchronizer, feedback_loop, sse_url=None):
         """
         Class constructor.
 
         :param auth_api: sdk-auth-service api client
         :type auth_api: splitio.api.auth.AuthAPI
+
+        :param synchronizer: split data synchronizer facade
+        :type synchronizer: splitio.sync.synchronizer.Synchronizer
+
+        :param feedback_loop: queue where push status updates are published.
+        :type feedback_loop: queue.Queue
+
+        :param sse_url: streaming base url.
+        :type sse_url: str
         """
         self._auth_api = auth_api
         self._feedback_loop = feedback_loop
-        self._processor = MessageProcessor(object())
+        self._processor = MessageProcessor(synchronizer)
         self._status_tracker = PushStatusTracker()
         self._event_handlers = {
             EventType.MESSAGE: self._handle_message,
@@ -142,6 +151,7 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
 
     def _token_refresh(self):
         """Refresh auth token."""
+        _LOGGER.info("retriggering authentication flow.")
         self.stop(True)
         self._trigger_connection_flow()
 
@@ -162,6 +172,7 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         self._status_tracker.reset()
         if  self._sse_client.start(token):
             self._setup_next_token_refresh(token)
+            self._running = True
             self._feedback_loop.put(Status.PUSH_SUBSYSTEM_UP)
             return
 
@@ -176,9 +187,19 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         """
         if self._next_refresh is not None:
             self._next_refresh.cancel()
-        self._next_refresh = Timer((token.exp - token.iat)/1000 - _TOKEN_REFRESH_GRACE_PERIOD,
+        self._next_refresh = Timer((token.exp - token.iat) - _TOKEN_REFRESH_GRACE_PERIOD,
                                    self._token_refresh)
         self._next_refresh.start()
+
+    def update_workers_status(self, enabled):
+        """
+        Enable/Disable push update workers.
+
+        :param enabled: if True, enable workers. If False, disable them.
+        :type enabled: bool
+        """
+        self._processor.update_workers_status(enabled)
+
 
     def start(self):
         """Start a new connection if not already running."""
@@ -199,6 +220,7 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
             _LOGGER.warning('Push manager does not have an open SSE connection. Ignoring')
             return
 
+        self._processor.update_workers_status(False)
         self._status_tracker.notify_sse_shutdown_expected()
         self._next_refresh.cancel()
         self._sse_client.stop(blocking)

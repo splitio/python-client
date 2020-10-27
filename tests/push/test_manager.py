@@ -26,13 +26,13 @@ class PushManagerTests(object):
         mocker.patch('splitio.push.manager.Timer', new=timer_mock)
         mocker.patch('splitio.push.manager.SplitSSEClient', new=sse_mock)
         feedback_loop = Queue()
-        manager = PushManager(api_mock, feedback_loop)
+        manager = PushManager(api_mock, mocker.Mock(), feedback_loop)
         manager.start()
         assert feedback_loop.get() == Status.PUSH_SUBSYSTEM_UP
         assert timer_mock.mock_calls == [
             mocker.call(0, Any()),
             mocker.call().cancel(),
-            mocker.call(1000 - _TOKEN_REFRESH_GRACE_PERIOD, manager._token_refresh),
+            mocker.call(1000000 - _TOKEN_REFRESH_GRACE_PERIOD, manager._token_refresh),
             mocker.call().start()
         ]
 
@@ -46,7 +46,7 @@ class PushManagerTests(object):
         timer_mock = mocker.Mock()
         mocker.patch('splitio.push.manager.Timer', new=timer_mock)
         mocker.patch('splitio.push.manager.SplitSSEClient', new=sse_mock)
-        manager = PushManager(api_mock, feedback_loop)
+        manager = PushManager(api_mock, mocker.Mock(), feedback_loop)
         manager.start()
         assert feedback_loop.get() == Status.PUSH_NONRETRYABLE_ERROR
         assert timer_mock.mock_calls == [mocker.call(0, Any())]
@@ -61,7 +61,7 @@ class PushManagerTests(object):
         timer_mock = mocker.Mock()
         mocker.patch('splitio.push.manager.Timer', new=timer_mock)
         mocker.patch('splitio.push.manager.SplitSSEClient', new=sse_mock)
-        manager = PushManager(api_mock, feedback_loop)
+        manager = PushManager(api_mock, mocker.Mock(), feedback_loop)
         manager.start()
         assert feedback_loop.get() == Status.PUSH_RETRYABLE_ERROR
         assert timer_mock.mock_calls == [mocker.call(0, Any())]
@@ -77,7 +77,7 @@ class PushManagerTests(object):
         processor_mock = mocker.Mock(spec=MessageProcessor)
         mocker.patch('splitio.push.manager.MessageProcessor', new=processor_mock)
 
-        manager = PushManager(mocker.Mock(), mocker.Mock())
+        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock())
         manager._event_handler(sse_event)
         assert parse_event_mock.mock_calls == [mocker.call(sse_event)]
         assert processor_mock.mock_calls == [
@@ -96,7 +96,7 @@ class PushManagerTests(object):
         processor_mock = mocker.Mock(spec=MessageProcessor)
         mocker.patch('splitio.push.manager.MessageProcessor', new=processor_mock)
 
-        manager = PushManager(mocker.Mock(), mocker.Mock())
+        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock())
         manager._event_handler(sse_event)
         assert parse_event_mock.mock_calls == [mocker.call(sse_event)]
         assert processor_mock.mock_calls == [
@@ -115,7 +115,7 @@ class PushManagerTests(object):
         processor_mock = mocker.Mock(spec=MessageProcessor)
         mocker.patch('splitio.push.manager.MessageProcessor', new=processor_mock)
 
-        manager = PushManager(mocker.Mock(), mocker.Mock())
+        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock())
         manager._event_handler(sse_event)
         assert parse_event_mock.mock_calls == [mocker.call(sse_event)]
         assert processor_mock.mock_calls == [
@@ -134,7 +134,7 @@ class PushManagerTests(object):
         status_tracker_mock = mocker.Mock(spec=PushStatusTracker)
         mocker.patch('splitio.push.manager.PushStatusTracker', new=status_tracker_mock)
 
-        manager = PushManager(mocker.Mock(), mocker.Mock())
+        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock())
         manager._event_handler(sse_event)
         assert parse_event_mock.mock_calls == [mocker.call(sse_event)]
         assert status_tracker_mock.mock_calls == [
@@ -153,7 +153,7 @@ class PushManagerTests(object):
         status_tracker_mock = mocker.Mock(spec=PushStatusTracker)
         mocker.patch('splitio.push.manager.PushStatusTracker', new=status_tracker_mock)
 
-        manager = PushManager(mocker.Mock(), mocker.Mock())
+        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock())
         manager._event_handler(sse_event)
         assert parse_event_mock.mock_calls == [mocker.call(sse_event)]
         assert status_tracker_mock.mock_calls == [

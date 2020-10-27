@@ -7,7 +7,6 @@ import threading
 from collections import Counter
 
 from enum import Enum
-import six
 
 from splitio.client.client import Client
 from splitio.client import input_validator
@@ -122,7 +121,8 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         if self._sdk_internal_ready_flag is not None:
             self._status = Status.NOT_INITIALIZED
             # add a listener that updates the status to READY once the flag is set.
-            ready_updater = threading.Thread(target=self._update_status_when_ready)
+            ready_updater = threading.Thread(target=self._update_status_when_ready,
+                                             name='SDKReadyFlagUpdater')
             ready_updater.setDaemon(True)
             ready_updater.start()
         else:
@@ -167,6 +167,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
     def block_until_ready(self, timeout=None):
         """
         Blocks until the sdk is ready or the timeout specified by the user expires.
+
         When ready, the factory's status is updated accordingly.
 
         :param timeout: Number of seconds to wait (fractions allowed)
@@ -237,7 +238,7 @@ def _wrap_impression_listener(listener, metadata):
     return None
 
 
-def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,
+def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pylint:disable=too-many-arguments,too-many-locals
                              auth_api_base_url=None, streaming_api_base_url=None):
     """Build and return a split factory tailored to the supplied config."""
     if not input_validator.validate_factory_instantiation(api_key):
@@ -313,7 +314,8 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,
     )
 
     synchronizer = Synchronizer(synchronizers, tasks)
-    manager = Manager(sdk_ready_flag, synchronizer)
+    manager = Manager(sdk_ready_flag, synchronizer, apis['auth'], cfg['streamingEnabled'],
+                      streaming_api_base_url)
     manager.start()
 
     storages['events'].set_queue_full_hook(tasks.events_task.flush)
@@ -389,7 +391,7 @@ def _build_localhost_factory(cfg):
 
     ready_event = threading.Event()
     synchronizer = LocalhostSynchronizer(synchronizers, tasks)
-    manager = Manager(ready_event, synchronizer)
+    manager = Manager(ready_event, synchronizer, None, False)
     manager.start()
 
     return SplitFactory(

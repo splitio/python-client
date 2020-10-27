@@ -24,15 +24,16 @@ from splitio.synchronizers.segment import SegmentSynchronizer
 class SplitFactoryTests(object):
     """Split factory test cases."""
 
-    def test_inmemory_client_creation(self, mocker):
+    def test_inmemory_client_creation_streaming_false(self, mocker):
         """Test that a client with in-memory storage is created correctly."""
 
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, synchronizer):
+        def _split_synchronizer(self, ready_flag, synchronizer, auth_api, streaming_enabled, sse_url=None):
             synchronizer = mocker.Mock(spec=Synchronizer)
             synchronizer.sync_all.return_values = None
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
+            self._streaming_enabled = False
         mocker.patch('splitio.sync.manager.Manager.__init__', new=_split_synchronizer)
 
         # Start factory and make assertions
@@ -216,10 +217,11 @@ class SplitFactoryTests(object):
                            imp_count_async_task_mock)
 
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, some):
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sse_url=None):
             synchronizer = Synchronizer(syncs, tasks)
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
+            self._streaming_enabled = False
         mocker.patch('splitio.sync.manager.Manager.__init__', new=_split_synchronizer)
 
         # Start factory and make assertions
