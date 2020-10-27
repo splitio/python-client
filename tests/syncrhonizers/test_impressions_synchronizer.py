@@ -8,7 +8,7 @@ from splitio.api.client import HttpResponse
 from splitio.api import APIException
 from splitio.storage import ImpressionStorage
 from splitio.models.impressions import Impression
-from splitio.synchronizers.impression import ImpressionSynchronizer
+from splitio.sync.impression import ImpressionSynchronizer
 
 
 class ImpressionsSynchronizerTests(object):
