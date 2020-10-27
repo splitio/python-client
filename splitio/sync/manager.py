@@ -1,9 +1,11 @@
 """Synchronization manager module."""
 import logging
+import time
 from threading import Thread
 from queue import Queue
 from splitio.push.manager import PushManager, Status
 from splitio.api import APIException
+from splitio.util.backoff import Backoff
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -12,8 +14,7 @@ _LOGGER = logging.getLogger(__name__)
 class Manager(object):
     """Manager Class."""
 
-    def __init__(self, ready_flag, synchronizer, auth_api, streaming_enabled,
-                 sse_url=None):
+    def __init__(self, ready_flag, synchronizer, auth_api, streaming_enabled, sse_url=None):  # pylint:disable=too-many-arguments
         """
         Construct Manager.
 
@@ -33,6 +34,7 @@ class Manager(object):
         self._ready_flag = ready_flag
         self._synchronizer = synchronizer
         if self._streaming_enabled:
+            self._backoff = Backoff()
             self._queue = Queue()
             self._push = PushManager(auth_api, synchronizer, self._queue, sse_url)
             self._push_status_handler = Thread(target=self._streaming_feedback_handler,
@@ -78,6 +80,7 @@ class Manager(object):
                 self._synchronizer.stop_periodic_fetching()
                 self._push.update_workers_status(True)
                 self._synchronizer.sync_all()
+                self._backoff.reset()
             elif status == Status.PUSH_SUBSYSTEM_DOWN:
                 _LOGGER.info('streaming temporarily down. starting periodic fetching')
                 self._push.update_workers_status(False)
@@ -86,6 +89,7 @@ class Manager(object):
                 _LOGGER.info('error in streaming. restarting flow')
                 self._synchronizer.start_periodic_fetching()
                 self._push.stop(True)
+                time.sleep(self._backoff.get())
                 self._push.start()
             elif status == Status.PUSH_NONRETRYABLE_ERROR:
                 _LOGGER.info('non-recoverable error in streaming. switching to polling.')
