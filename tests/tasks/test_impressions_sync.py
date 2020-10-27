@@ -7,7 +7,7 @@ from splitio.tasks import impressions_sync
 from splitio.storage import ImpressionStorage
 from splitio.models.impressions import Impression
 from splitio.api.impressions import ImpressionsAPI
-from splitio.synchronizers.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
+from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.engine.impressions import Manager as ImpressionsManager
 from splitio.engine.impressions import Counter
 

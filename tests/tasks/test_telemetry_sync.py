@@ -5,7 +5,7 @@ import threading
 from splitio.storage import TelemetryStorage
 from splitio.api.telemetry import TelemetryAPI
 from splitio.tasks.telemetry_sync import TelemetrySynchronizationTask
-from splitio.synchronizers.telemetry import TelemetrySynchronizer
+from splitio.sync.telemetry import TelemetrySynchronizer
 
 
 class TelemetrySyncTests(object):  # pylint: disable=too-few-public-methods

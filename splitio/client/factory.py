@@ -35,12 +35,6 @@ from splitio.api.events import EventsAPI
 from splitio.api.telemetry import TelemetryAPI
 from splitio.api.auth import AuthAPI
 
-# Synchronizers
-from splitio.synchronizers.split import SplitSynchronizer, LocalSplitSynchronizer
-from splitio.synchronizers.segment import SegmentSynchronizer
-from splitio.synchronizers.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
-from splitio.synchronizers.event import EventSynchronizer
-from splitio.synchronizers.telemetry import TelemetrySynchronizer
 
 # Tasks
 from splitio.tasks.split_sync import SplitSynchronizationTask
@@ -49,12 +43,15 @@ from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCount
 from splitio.tasks.events_sync import EventsSyncTask
 from splitio.tasks.telemetry_sync import TelemetrySynchronizationTask
 
-# Push
-from splitio.push.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, \
-    LocalhostSynchronizer
-
 # Synchronizer
+from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, \
+    LocalhostSynchronizer
 from splitio.sync.manager import Manager
+from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer
+from splitio.sync.segment import SegmentSynchronizer
+from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
+from splitio.sync.event import EventSynchronizer
+from splitio.sync.telemetry import TelemetrySynchronizer
 
 # Localhost stuff
 from splitio.client.localhost import LocalhostEventsStorage, LocalhostImpressionsStorage, \

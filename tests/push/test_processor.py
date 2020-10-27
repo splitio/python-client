@@ -1,7 +1,7 @@
 """Message processor tests."""
 from queue import Queue
 from splitio.push.processor import MessageProcessor
-from splitio.push.synchronizer import Synchronizer
+from splitio.sync.synchronizer import Synchronizer
 from splitio.push.parser import SplitChangeUpdate, SegmentChangeUpdate, SplitKillUpdate
 
 
