@@ -15,11 +15,11 @@ from splitio.api.impressions import ImpressionsAPI
 from splitio.api.telemetry import TelemetryAPI
 from splitio.api.events import EventsAPI
 from splitio.tasks.util import workerpool
-from splitio.synchronizers.split import SplitSynchronizer
-from splitio.synchronizers.segment import SegmentSynchronizer
-from splitio.synchronizers.impression import ImpressionSynchronizer
-from splitio.synchronizers.event import EventSynchronizer
-from splitio.synchronizers.telemetry import TelemetrySynchronizer
+from splitio.sync.split import SplitSynchronizer
+from splitio.sync.segment import SegmentSynchronizer
+from splitio.sync.impression import ImpressionSynchronizer
+from splitio.sync.event import EventSynchronizer
+from splitio.sync.telemetry import TelemetrySynchronizer
 
 _LOGGER = logging.getLogger(__name__)
 

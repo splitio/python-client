@@ -9,11 +9,11 @@ from future.utils import raise_from
 from splitio.api import APIException
 
 # Synchronizers
-from splitio.synchronizers.split import SplitSynchronizer
-from splitio.synchronizers.segment import SegmentSynchronizer
-from splitio.synchronizers.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
-from splitio.synchronizers.event import EventSynchronizer
-from splitio.synchronizers.telemetry import TelemetrySynchronizer
+from splitio.sync.split import SplitSynchronizer
+from splitio.sync.segment import SegmentSynchronizer
+from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
+from splitio.sync.event import EventSynchronizer
+from splitio.sync.telemetry import TelemetrySynchronizer
 
 # Tasks
 from splitio.tasks.split_sync import SplitSynchronizationTask
@@ -35,17 +35,17 @@ class SplitSynchronizers(object):
         SplitSynchronizer constructor.
 
         :param split_sync: sync for splits
-        :type split_sync: splitio.synchronizers.split.SplitSynchronizer
+        :type split_sync: splitio.sync.split.SplitSynchronizer
         :param segment_sync: sync for segments
-        :type segment_sync: splitio.synchronizers.segment.SegmentSynchronizer
+        :type segment_sync: splitio.sync.segment.SegmentSynchronizer
         :param impressions_sync: sync for impressions
-        :type impressions_sync: splitio.synchronizers.impression.ImpressionSynchronizer
+        :type impressions_sync: splitio.sync.impression.ImpressionSynchronizer
         :param events_sync: sync for events
-        :type events_sync: splitio.synchronizers.event.EventSynchronizer
+        :type events_sync: splitio.sync.event.EventSynchronizer
         :param telemetry_sync: sync for telemetry
-        :type telemetry_sync: splitio.synchronizers.telemetry.TelemetrySynchronizer
+        :type telemetry_sync: splitio.sync.telemetry.TelemetrySynchronizer
         :param impressions_count_sync: sync for impression_counts
-        :type impressions_count_sync: splitio.synchronizers.impression.ImpressionsCountSynchronizer
+        :type impressions_count_sync: splitio.sync.impression.ImpressionsCountSynchronizer
         """
         self._split_sync = split_sync
         self._segment_sync = segment_sync
@@ -212,9 +212,9 @@ class Synchronizer(BaseSynchronizer):
         Synchronizer constructor.
 
         :param split_synchronizers: syncs for performing synchronization of segments and splits
-        :type split_synchronizers: splitio.push.synchronizer.SplitSynchronizers
+        :type split_synchronizers: splitio.sync.synchronizer.SplitSynchronizers
         :param split_tasks: tasks for starting/stopping tasks
-        :type split_tasks: splitio.push.synchronizer.SplitTasks
+        :type split_tasks: splitio.sync.synchronizer.SplitTasks
         """
         self._split_synchronizers = split_synchronizers
         self._split_tasks = split_tasks
@@ -323,9 +323,9 @@ class LocalhostSynchronizer(BaseSynchronizer):
         LocalhostSynchronizer constructor.
 
         :param split_synchronizers: syncs for performing synchronization of segments and splits
-        :type split_synchronizers: splitio.push.synchronizer.SplitSynchronizers
+        :type split_synchronizers: splitio.sync.synchronizer.SplitSynchronizers
         :param split_tasks: tasks for starting/stopping tasks
-        :type split_tasks: splitio.push.synchronizer.SplitTasks
+        :type split_tasks: splitio.sync.synchronizer.SplitTasks
         """
         self._split_synchronizers = split_synchronizers
         self._split_tasks = split_tasks

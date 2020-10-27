@@ -22,7 +22,7 @@ class Manager(object):
         :type ready_flag: threading.Event
 
         :param split_synchronizers: synchronizers for performing start/stop logic
-        :type split_synchronizers: splitio.push.synchronizer.Synchronizer
+        :type split_synchronizers: splitio.sync.synchronizer.Synchronizer
 
         :param auth_api: Authentication api client
         :type auth_api: splitio.api.auth.AuthAPI

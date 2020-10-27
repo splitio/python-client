@@ -5,11 +5,11 @@ from splitio.tasks.util.workerpool import WorkerPool
 from splitio.storage.uwsgi import UWSGISplitStorage
 from splitio.tasks.uwsgi_wrappers import uwsgi_update_splits, uwsgi_update_segments, \
     uwsgi_report_events, uwsgi_report_impressions, uwsgi_report_telemetry
-from splitio.synchronizers.split import SplitSynchronizer
-from splitio.synchronizers.segment import SegmentSynchronizer
-from splitio.synchronizers.impression import ImpressionSynchronizer
-from splitio.synchronizers.event import EventSynchronizer
-from splitio.synchronizers.telemetry import TelemetrySynchronizer
+from splitio.sync.split import SplitSynchronizer
+from splitio.sync.segment import SegmentSynchronizer
+from splitio.sync.impression import ImpressionSynchronizer
+from splitio.sync.event import EventSynchronizer
+from splitio.sync.telemetry import TelemetrySynchronizer
 
 
 class NonCatchableException(BaseException):

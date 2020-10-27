@@ -9,7 +9,7 @@ from splitio.models.splits import Split
 from splitio.models.segments import Segment
 from splitio.models.grammar.condition import Condition
 from splitio.models.grammar.matchers import UserDefinedSegmentMatcher
-from splitio.synchronizers.segment import SegmentSynchronizer
+from splitio.sync.segment import SegmentSynchronizer
 
 
 class SegmentSynchronizationTests(object):

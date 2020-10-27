@@ -78,7 +78,6 @@ class WorkerPool(object):
                 # If the task is successfully executed, the ack is done AFTERWARDS,
                 # to avoid race conditions on SDK initialization.
                 ok = self._safe_run(func, message)  # pylint: disable=invalid-name
-                self._incoming.task_done()
                 if not ok:
                     self._failed = True
                     _LOGGER.error(
@@ -86,6 +85,7 @@ class WorkerPool(object):
                          "removing message \"%s\" from queue."),
                         message
                     )
+                self._incoming.task_done()
             except queue.Empty:
                 # No message was fetched, just keep waiting.
                 pass
