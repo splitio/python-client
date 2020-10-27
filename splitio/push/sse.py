@@ -144,6 +144,7 @@ class SSEClient(object):
         if self._connection is not None:
             raise RuntimeError('Client already started.')
 
+        self._shutdown_requested = False
         url = urlparse(url)
         headers = self._DEFAULT_HEADERS.copy()
         headers.update(extra_headers if extra_headers is not None else {})

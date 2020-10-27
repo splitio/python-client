@@ -151,6 +151,7 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
 
     def _token_refresh(self):
         """Refresh auth token."""
+        _LOGGER.info("retriggering authentication flow.")
         self.stop(True)
         self._trigger_connection_flow()
 
@@ -171,6 +172,7 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         self._status_tracker.reset()
         if  self._sse_client.start(token):
             self._setup_next_token_refresh(token)
+            self._running = True
             self._feedback_loop.put(Status.PUSH_SUBSYSTEM_UP)
             return
 
