@@ -103,7 +103,9 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error('Http client is throwing exceptions')
+            _LOGGER.error(
+                'Error posting impressions because an exception was raised by the HTTPClient'
+            )
             _LOGGER.debug('Error: ', exc_info=True)
             raise_from(APIException('Impressions not flushed properly.'), exc)
 
@@ -126,6 +128,9 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error('Http client is throwing exceptions')
+            _LOGGER.error(
+                'Error posting impressions counters because an exception was raised by the '
+                'HTTPClient'
+            )
             _LOGGER.debug('Error: ', exc_info=True)
             raise_from(APIException('Impressions not flushed properly.'), exc)

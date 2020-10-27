@@ -61,7 +61,9 @@ class TelemetryAPI(object):
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error('Http client is throwing exceptions')
+            _LOGGER.error(
+                'Error posting latencies because an exception was raised by the HTTPClient'
+            )
             _LOGGER.debug('Error: ', exc_info=True)
             raise_from(APIException('Latencies not flushed correctly.'), exc)
 
@@ -97,7 +99,9 @@ class TelemetryAPI(object):
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error('Http client is throwing exceptions')
+            _LOGGER.error(
+                'Error posting gauges because an exception was raised by the HTTPClient'
+            )
             _LOGGER.debug('Error: ', exc_info=True)
             raise_from(APIException('Gauges not flushed correctly.'), exc)
 
@@ -133,6 +137,8 @@ class TelemetryAPI(object):
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error('Http client is throwing exceptions')
+            _LOGGER.error(
+                'Error posting counters because an exception was raised by the HTTPClient'
+            )
             _LOGGER.debug('Error: ', exc_info=True)
             raise_from(APIException('Counters not flushed correctly.'), exc)

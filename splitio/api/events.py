@@ -73,6 +73,6 @@ class EventsAPI(object):  # pylint: disable=too-few-public-methods
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error('Http client is throwing exceptions')
+            _LOGGER.error('Error posting events because an exception was raised by the HTTPClient')
             _LOGGER.debug('Error: ', exc_info=True)
             raise_from(APIException('Events not flushed properly.'), exc)

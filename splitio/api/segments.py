@@ -52,6 +52,9 @@ class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
             else:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error('Http client is throwing exceptions')
+            _LOGGER.error(
+                'Error fetching %s because an exception was raised by the HTTPClient',
+                segment_name
+            )
             _LOGGER.debug('Error: ', exc_info=True)
             raise_from(APIException('Segments not fetched properly.'), exc)

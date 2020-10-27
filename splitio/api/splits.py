@@ -49,6 +49,6 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
             else:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error('Http client is throwing exceptions')
+            _LOGGER.error('Error fetching splits because an exception was raised by the HTTPClient')
             _LOGGER.debug('Error: ', exc_info=True)
             raise_from(APIException('Splits not fetched correctly.'), exc)
