@@ -90,7 +90,7 @@ class SSEClient(object):
         :param callback: function to call when an event is received
         :type callback: callable
         """
-        self._connection = None
+        self._conn = None
         self._event_callback = callback
         self._shutdown_requested = False
 
@@ -102,12 +102,11 @@ class SSEClient(object):
         :rtype: bool
         """
         try:
-            response = self._connection.getresponse()
+            response = self._conn.getresponse()
             event_builder = EventBuilder()
             while True:
                 line = _http_response_readline(response)
                 if line is None or len(line) <= 0:  # connection ended
-                    _LOGGER.info("sse connection has ended.")
                     break
                 elif line.startswith(b':'):  # comment. Skip
                     _LOGGER.debug("skipping sse comment")
@@ -120,15 +119,15 @@ class SSEClient(object):
                 else:
                     event_builder.process_line(line)
         except Exception:  #pylint:disable=broad-except
-            _LOGGER.info('sse connection ended.')
+            _LOGGER.debug('sse connection ended.')
             _LOGGER.debug('stack trace: ', exc_info=True)
         finally:
-            self._connection.close()
-            self._connection = None  # clear so it can be started again
+            self._conn.close()
+            self._conn = None  # clear so it can be started again
 
         return self._shutdown_requested
 
-    def start(self, url, extra_headers=None):  #pylint:disable=dangerous-default-value
+    def start(self, url, extra_headers=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT):  #pylint:disable=protected-access
         """
         Connect and start listening for events.
 
@@ -138,25 +137,29 @@ class SSEClient(object):
         :param extra_headers: additional headers
         :type extra_headers: dict[str, str]
 
+        :param timeout: connection & read timeout
+        :type timeout: float
+
         :returns: True if the connection was ended by us. False if it was closed by the serve.
         :rtype: bool
         """
-        if self._connection is not None:
+        if self._conn is not None:
             raise RuntimeError('Client already started.')
 
         self._shutdown_requested = False
         url = urlparse(url)
         headers = self._DEFAULT_HEADERS.copy()
         headers.update(extra_headers if extra_headers is not None else {})
-        self._connection = HTTPSConnection(url.hostname, url.port) if url.scheme == 'https' \
-            else HTTPConnection(url.hostname, port=url.port)
+        self._conn = (HTTPSConnection(url.hostname, url.port, timeout=timeout)
+                      if url.scheme == 'https'
+                      else HTTPConnection(url.hostname, port=url.port, timeout=timeout))
 
-        self._connection.request('GET', '%s?%s' % (url.path, url.query), headers=headers)
+        self._conn.request('GET', '%s?%s' % (url.path, url.query), headers=headers)
         return self._read_events()
 
     def shutdown(self):
         """Shutdown the current connection."""
-        if self._connection is None:
+        if self._conn is None:
             _LOGGER.warn("no sse connection has been started on this SSEClient instance. Ignoring")
             return
 
@@ -165,4 +168,4 @@ class SSEClient(object):
             return
 
         self._shutdown_requested = True
-        self._connection.sock.shutdown(socket.SHUT_RDWR)
+        self._conn.sock.shutdown(socket.SHUT_RDWR)
