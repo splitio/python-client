@@ -49,12 +49,15 @@ class SplitWorker(object):
         self._running = True
 
         _LOGGER.debug('Starting Split Worker')
-        self._worker = threading.Thread(target=self._run)
+        self._worker = threading.Thread(target=self._run, name='PushSplitWorker')
         self._worker.setDaemon(True)
         self._worker.start()
 
     def stop(self):
         """Stop worker."""
         _LOGGER.debug('Stopping Split Worker')
+        if not self.is_running():
+            _LOGGER.debug('Worker is not running')
+            return
         self._running = False
         self._split_queue.put(self._centinel)

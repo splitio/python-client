@@ -111,7 +111,7 @@ class SplitSSEClient(object):
                 self._status = SplitSSEClient._Status.IDLE
 
         url = self._build_url(token)
-        task = threading.Thread(target=connect, args=(url,))
+        task = threading.Thread(target=connect, args=(url,), name='SSeConnection')
         task.setDaemon(True)
         task.start()
         event_group.wait()

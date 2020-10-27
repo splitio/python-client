@@ -12,7 +12,8 @@ _LOGGER = logging.getLogger(__name__)
 class Manager(object):
     """Manager Class."""
 
-    def __init__(self, ready_flag, synchronizer, auth_api, streaming_enabled):
+    def __init__(self, ready_flag, synchronizer, auth_api, streaming_enabled,
+                 sse_url=None):
         """
         Construct Manager.
 
@@ -33,9 +34,9 @@ class Manager(object):
         self._synchronizer = synchronizer
         if self._streaming_enabled:
             self._queue = Queue()
-            self._push = PushManager(auth_api, synchronizer, self._queue)
+            self._push = PushManager(auth_api, synchronizer, self._queue, sse_url)
             self._push_status_handler = Thread(target=self._streaming_feedback_handler,
-                                               name='push_status_handler')
+                                               name='PushStatusHandler')
             self._push_status_handler.setDaemon(True)
 
     def start(self):
