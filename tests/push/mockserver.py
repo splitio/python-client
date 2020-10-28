@@ -1,4 +1,4 @@
-"""asd."""
+"""SSE mock server."""
 import queue
 import threading
 
