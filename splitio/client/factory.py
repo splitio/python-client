@@ -205,9 +205,17 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
 
         try:
             if self._sync_manager is not None:
-                self._sync_manager.stop()
-            if destroyed_event is not None:
-                destroyed_event.set()
+                if destroyed_event is not None:
+
+                    def _wait_for_tasks_to_stop():
+                        self._sync_manager.stop(True)
+                        destroyed_event.set()
+
+                    wait_thread = threading.Thread(target=_wait_for_tasks_to_stop)
+                    wait_thread.setDaemon(True)
+                    wait_thread.start()
+                else:
+                    self._sync_manager.stop(False)
         finally:
             self._status = Status.DESTROYED
             with _INSTANTIATED_FACTORIES_LOCK:

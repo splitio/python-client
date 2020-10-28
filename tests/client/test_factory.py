@@ -146,7 +146,98 @@ class SplitFactoryTests(object):
     def test_destroy(self, mocker):
         """Test that tasks are shutdown and data is flushed when destroy is called."""
 
+        def stop_mock():
+            return
+
+        split_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
+        split_async_task_mock.stop.side_effect = stop_mock
+
+        def _split_task_init_mock(self, synchronize_splits, period):
+            self._task = split_async_task_mock
+            self._period = period
+        mocker.patch('splitio.client.factory.SplitSynchronizationTask.__init__',
+                     new=_split_task_init_mock)
+
+        segment_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
+        segment_async_task_mock.stop.side_effect = stop_mock
+
+        def _segment_task_init_mock(self, synchronize_segments, worker_pool, period):
+            self._task = segment_async_task_mock
+            self._worker_pool = mocker.Mock()
+            self._period = period
+        mocker.patch('splitio.client.factory.SegmentSynchronizationTask.__init__',
+                     new=_segment_task_init_mock)
+
+        imp_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
+        imp_async_task_mock.stop.side_effect = stop_mock
+
+        def _imppression_task_init_mock(self, synchronize_impressions, period):
+            self._period = period
+            self._task = imp_async_task_mock
+        mocker.patch('splitio.client.factory.ImpressionsSyncTask.__init__',
+                     new=_imppression_task_init_mock)
+
+        evt_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
+        evt_async_task_mock.stop.side_effect = stop_mock
+
+        def _event_task_init_mock(self, synchronize_events, period):
+            self._period = period
+            self._task = evt_async_task_mock
+        mocker.patch('splitio.client.factory.EventsSyncTask.__init__', new=_event_task_init_mock)
+
+        telemetry_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
+        telemetry_async_task_mock.stop.side_effect = stop_mock
+
+        def _telemetry_task_init_mock(self, synchronize_counters, period):
+            self._period = period
+            self._task = telemetry_async_task_mock
+        mocker.patch('splitio.client.factory.ImpressionsCountSyncTask.__init__',
+                     new=_telemetry_task_init_mock)
+
+        imp_count_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
+        imp_count_async_task_mock.stop.side_effect = stop_mock
+
+        def _imppression_count_task_init_mock(self, synchronize_counters):
+            self._task = imp_count_async_task_mock
+        mocker.patch('splitio.client.factory.ImpressionsCountSyncTask.__init__',
+                     new=_imppression_count_task_init_mock)
+
+        split_sync = mocker.Mock(spec=SplitSynchronizer)
+        split_sync.synchronize_splits.return_values = None
+        segment_sync = mocker.Mock(spec=SegmentSynchronizer)
+        segment_sync.synchronize_segments.return_values = None
+        syncs = SplitSynchronizers(split_sync, segment_sync, mocker.Mock(),
+                                   mocker.Mock(), mocker.Mock(), mocker.Mock())
+        tasks = SplitTasks(split_async_task_mock, segment_async_task_mock, imp_async_task_mock,
+                           evt_async_task_mock, telemetry_async_task_mock,
+                           imp_count_async_task_mock)
+
+        # Setup synchronizer
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sse_url=None):
+            synchronizer = Synchronizer(syncs, tasks)
+            self._ready_flag = ready_flag
+            self._synchronizer = synchronizer
+            self._streaming_enabled = False
+        mocker.patch('splitio.sync.manager.Manager.__init__', new=_split_synchronizer)
+
+        # Start factory and make assertions
+        factory = get_factory('some_api_key')
+        factory.block_until_ready()
+        assert factory.ready
+        assert factory.destroyed is False
+
+        factory.destroy()
+        assert len(imp_async_task_mock.stop.mock_calls) == 1
+        assert len(evt_async_task_mock.stop.mock_calls) == 1
+        assert len(telemetry_async_task_mock.stop.mock_calls) == 1
+        assert len(imp_count_async_task_mock.stop.mock_calls) == 1
+        assert factory.destroyed is True
+
+    def test_destroy_with_event(self, mocker):
+        """Test that tasks are shutdown and data is flushed when destroy is called."""
+
         def stop_mock(event):
+            time.sleep(0.1)
             event.set()
             return
 
@@ -230,7 +321,11 @@ class SplitFactoryTests(object):
         assert factory.ready
         assert factory.destroyed is False
 
-        factory.destroy()
+        event = threading.Event()
+        factory.destroy(event)
+        assert not event.is_set()
+        time.sleep(1)
+        assert event.is_set()
         assert len(imp_async_task_mock.stop.mock_calls) == 1
         assert len(evt_async_task_mock.stop.mock_calls) == 1
         assert len(telemetry_async_task_mock.stop.mock_calls) == 1
@@ -239,8 +334,26 @@ class SplitFactoryTests(object):
 
     def test_multiple_factories(self, mocker):
         """Test multiple factories instantiation and tracking."""
+        sdk_ready_flag = threading.Event()
+
+        mockManager = Manager
+
+        def manager(self, ready_flag, some, auth_api, streaming_enabled, sse_url=None):
+            self._ready_flag = ready_flag
+            self._synchronizer = mocker.Mock(spec=Synchronizer)
+            self._streaming_enabled = False
+        mocker.patch.object(Manager, '__init__', new=manager)
+
+        def start(self, *args, **kwargs):
+            sdk_ready_flag.set()
+        mocker.patch.object(Manager, 'start', new=start)
+
+        def stop(self, *args, **kwargs):
+            pass
+        mocker.patch.object(Manager, 'stop', new=stop)
+
         def _make_factory_with_apikey(apikey, *_, **__):
-            return SplitFactory(apikey, {}, True, mocker.Mock(spec=ImpressionsManager))
+            return SplitFactory(apikey, {}, True, mocker.Mock(spec=ImpressionsManager), mockManager)
 
         factory_module_logger = mocker.Mock()
         build_in_memory = mocker.Mock()
@@ -303,106 +416,3 @@ class SplitFactoryTests(object):
         factory2.destroy()
         factory3.destroy()
         factory4.destroy()
-
-
-'''
-    def test_destroy_with_event(self, mocker):
-        """Test that tasks are shutdown and data is flushed when destroy is called."""
-        spl_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
-        def _split_task_init_mock(self, api, storage, period, event):
-            self._task = spl_async_task_mock
-            self._api = api
-            self._storage = storage
-            self._period = period
-            self._event = event
-            event.set()
-        mocker.patch('splitio.client.factory.SplitSynchronizationTask.__init__', new=_split_task_init_mock)
-
-        sgm_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
-        worker_pool_mock = mocker.Mock(spec=workerpool.WorkerPool)
-        def _segment_task_init_mock(self, api, storage, split_storage, period, event):
-            self._task = sgm_async_task_mock
-            self._worker_pool = worker_pool_mock
-            self._api = api
-            self._segment_storage = storage
-            self._split_storage = split_storage
-            self._period = period
-            self._event = event
-            event.set()
-        mocker.patch('splitio.client.factory.SegmentSynchronizationTask.__init__', new=_segment_task_init_mock)
-
-        imp_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
-        def _imppression_task_init_mock(self, api, storage, refresh_rate, bulk_size):
-            self._logger = mocker.Mock()
-            self._impressions_api = api
-            self._storage = storage
-            self._period = refresh_rate
-            self._task = imp_async_task_mock
-            self._failed = mocker.Mock()
-            self._bulk_size = bulk_size
-        mocker.patch('splitio.client.factory.ImpressionsSyncTask.__init__', new=_imppression_task_init_mock)
-
-        evt_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
-        def _event_task_init_mock(self, api, storage, refresh_rate, bulk_size):
-            self._logger = mocker.Mock()
-            self._impressions_api = api
-            self._storage = storage
-            self._period = refresh_rate
-            self._task = evt_async_task_mock
-            self._failed = mocker.Mock()
-            self._bulk_size = bulk_size
-        mocker.patch('splitio.client.factory.EventsSyncTask.__init__', new=_event_task_init_mock)
-
-        tmt_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
-        def _telemetry_task_init_mock(self, api, storage, refresh_rate):
-            self._task = tmt_async_task_mock
-            self._logger = mocker.Mock()
-            self._api = api
-            self._storage = storage
-            self._period = refresh_rate
-        mocker.patch('splitio.client.factory.TelemetrySynchronizationTask.__init__', new=_telemetry_task_init_mock)
-
-        # Start factory and make assertions
-        factory = get_factory('some_api_key')
-        assert factory.destroyed is False
-
-        factory.block_until_ready()
-        assert factory.ready
-
-        event = threading.Event()
-        factory.destroy(event)
-
-        # When destroy is called an event is created and passed to each task when
-        # stop() is called. We will extract those events assert their type, and assert that
-        # by setting them, the main event gets set.
-        splits_event = spl_async_task_mock.stop.mock_calls[0][1][0]
-        segments_event = worker_pool_mock.stop.mock_calls[0][1][0]  # Segment task stops when wp finishes.
-        impressions_event = imp_async_task_mock.stop.mock_calls[0][1][0]
-        events_event = evt_async_task_mock.stop.mock_calls[0][1][0]
-        telemetry_event = tmt_async_task_mock.stop.mock_calls[0][1][0]
-
-        # python2 & 3 compatibility
-        try:
-            from threading import _Event as __EVENT_CLASS
-        except ImportError:
-            from threading import Event as __EVENT_CLASS
-
-        assert isinstance(splits_event, __EVENT_CLASS)
-        assert isinstance(segments_event, __EVENT_CLASS)
-        assert isinstance(impressions_event, __EVENT_CLASS)
-        assert isinstance(events_event, __EVENT_CLASS)
-        assert isinstance(telemetry_event, __EVENT_CLASS)
-        assert not event.is_set()
-
-        splits_event.set()
-        segments_event.set()
-        impressions_event.set()
-        events_event.set()
-        telemetry_event.set()
-
-        time.sleep(1)   # I/O wait to trigger context switch, to give the waiting thread
-                        # a chance to run and set the main event.
-
-        assert event.is_set()
-        assert factory.destroyed
-'''
