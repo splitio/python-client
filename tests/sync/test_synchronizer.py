@@ -168,7 +168,7 @@ class SynchronizerTests(object):
         split_tasks = SplitTasks(mocker.Mock(), mocker.Mock(), impression_task, event_task,
                                  telemetry_task, impression_count_task)
         synchronizer = Synchronizer(mocker.Mock(spec=SplitSynchronizers), split_tasks)
-        synchronizer.stop_periodic_data_recording()
+        synchronizer.stop_periodic_data_recording(True)
 
         assert len(impression_task.stop.mock_calls) == 1
         assert len(impression_count_task.stop.mock_calls) == 1

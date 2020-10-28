@@ -61,15 +61,20 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
             _LOGGER.debug('Exception information: ', exc_info=True)
             raise
 
-    def stop(self):
-        """Stop manager logic."""
+    def stop(self, blocking):
+        """
+        Stop manager logic.
+
+        :param blocking: flag to wait until tasks are stopped
+        :type blocking: bool
+        """
         _LOGGER.info('Stopping manager tasks')
         if self._streaming_enabled:
             self._push_status_handler_active = False
             self._queue.put(self._CENTINEL_EVENT)
             self._push.stop()
         self._synchronizer.stop_periodic_fetching(True)
-        self._synchronizer.stop_periodic_data_recording()
+        self._synchronizer.stop_periodic_data_recording(blocking)
 
     def _streaming_feedback_handler(self):
         """
