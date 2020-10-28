@@ -17,7 +17,7 @@ class MessageProcessor(object):
         Class constructor.
 
         :param synchronizer: synchronizer component
-        :type synchronizer: splitio.push.synchronizer.Synchronizer
+        :type synchronizer: splitio.sync.synchronizer.Synchronizer
         """
         self._split_queue = Queue()
         self._segments_queue = Queue()

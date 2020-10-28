@@ -13,6 +13,8 @@ _LOGGER = logging.getLogger(__name__)
 class SplitSSEClient(object):
     """Split streaming endpoint SSE client."""
 
+    KEEPALIVE_TIMEOUT = 70
+
     class _Status(Enum):
         IDLE = 0
         CONNECTING = 1
@@ -105,13 +107,13 @@ class SplitSSEClient(object):
         def connect(url):
             """Connect to sse in a blocking manner."""
             try:
-                self._client.start(url)
+                self._client.start(url, timeout=self.KEEPALIVE_TIMEOUT)
             finally:
                 self._sse_connection_closed.set()
                 self._status = SplitSSEClient._Status.IDLE
 
         url = self._build_url(token)
-        task = threading.Thread(target=connect, args=(url,), name='SSeConnection')
+        task = threading.Thread(target=connect, name='SSEConnection', args=(url,))
         task.setDaemon(True)
         task.start()
         event_group.wait()

@@ -8,7 +8,7 @@ from splitio.api import APIException
 from splitio.tasks import split_sync
 from splitio.storage import SplitStorage
 from splitio.models.splits import Split
-from splitio.synchronizers.split import SplitSynchronizer
+from splitio.sync.split import SplitSynchronizer
 
 
 class SplitsSynchronizerTests(object):

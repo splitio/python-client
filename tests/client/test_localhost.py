@@ -5,7 +5,7 @@ import os
 import tempfile
 
 from splitio.client import localhost
-from splitio.synchronizers.split import LocalSplitSynchronizer
+from splitio.sync.split import LocalSplitSynchronizer
 from splitio.models.splits import Split
 from splitio.models.grammar.matchers import AllKeysMatcher
 from splitio.storage import SplitStorage

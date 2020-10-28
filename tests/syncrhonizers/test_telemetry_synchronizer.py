@@ -7,7 +7,7 @@ import pytest
 from splitio.api.client import HttpResponse
 from splitio.api import APIException
 from splitio.storage import TelemetryStorage
-from splitio.synchronizers.telemetry import TelemetrySynchronizer
+from splitio.sync.telemetry import TelemetrySynchronizer
 from splitio.api.telemetry import TelemetryAPI
 
 

@@ -47,7 +47,7 @@ class SSEClientTests(object):
             SSEEvent('4', 'message', None, 'ghi')
         ]
 
-        assert client._connection is None
+        assert client._conn is None
         server.publish(server.GRACEFUL_REQUEST_END)
         server.stop()
 
@@ -87,7 +87,7 @@ class SSEClientTests(object):
             SSEEvent('4', 'message', None, 'ghi')
         ]
 
-        assert client._connection is None
+        assert client._conn is None
 
     def test_sse_server_disconnects_abruptly(self):
         """Test correct initialization. Server ends connection."""
@@ -125,4 +125,4 @@ class SSEClientTests(object):
             SSEEvent('4', 'message', None, 'ghi')
         ]
 
-        assert client._connection is None
+        assert client._conn is None

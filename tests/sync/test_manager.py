@@ -9,14 +9,12 @@ from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCount
 from splitio.tasks.events_sync import EventsSyncTask
 from splitio.tasks.telemetry_sync import TelemetrySynchronizationTask
 
-from splitio.synchronizers.split import SplitSynchronizer
-from splitio.synchronizers.segment import SegmentSynchronizer
-from splitio.synchronizers.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
-from splitio.synchronizers.event import EventSynchronizer
-from splitio.synchronizers.telemetry import TelemetrySynchronizer
-
-from splitio.push.synchronizer import Synchronizer, SplitTasks, SplitSynchronizers
-
+from splitio.sync.split import SplitSynchronizer
+from splitio.sync.segment import SegmentSynchronizer
+from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
+from splitio.sync.event import EventSynchronizer
+from splitio.sync.telemetry import TelemetrySynchronizer
+from splitio.sync.synchronizer import Synchronizer, SplitTasks, SplitSynchronizers
 from splitio.sync.manager import Manager
 
 from splitio.storage import SplitStorage

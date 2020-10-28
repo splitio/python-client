@@ -7,7 +7,7 @@ from splitio.tasks import events_sync
 from splitio.storage import EventStorage
 from splitio.models.events import Event
 from splitio.api.events import EventsAPI
-from splitio.synchronizers.event import EventSynchronizer
+from splitio.sync.event import EventSynchronizer
 
 
 class EventsSyncTests(object):

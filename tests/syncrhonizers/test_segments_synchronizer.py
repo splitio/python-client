@@ -7,7 +7,7 @@ import pytest
 from splitio.api import APIException
 from splitio.storage import SplitStorage, SegmentStorage
 from splitio.models.splits import Split
-from splitio.synchronizers.segment import SegmentSynchronizer
+from splitio.sync.segment import SegmentSynchronizer
 from splitio.models.segments import Segment
 
 

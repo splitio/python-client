@@ -16,9 +16,9 @@ from splitio.api.events import EventsAPI
 from splitio.api.telemetry import TelemetryAPI
 from splitio.engine.impressions import Manager as ImpressionsManager
 from splitio.sync.manager import Manager
-from splitio.push.synchronizer import Synchronizer, SplitSynchronizers, SplitTasks
-from splitio.synchronizers.split import SplitSynchronizer
-from splitio.synchronizers.segment import SegmentSynchronizer
+from splitio.sync.synchronizer import Synchronizer, SplitSynchronizers, SplitTasks
+from splitio.sync.split import SplitSynchronizer
+from splitio.sync.segment import SegmentSynchronizer
 
 
 class SplitFactoryTests(object):

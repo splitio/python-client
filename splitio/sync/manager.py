@@ -11,8 +11,10 @@ from splitio.util.backoff import Backoff
 _LOGGER = logging.getLogger(__name__)
 
 
-class Manager(object):
+class Manager(object):  # pylint:disable=too-many-instance-attributes
     """Manager Class."""
+
+    _CENTINEL_EVENT = object()
 
     def __init__(self, ready_flag, synchronizer, auth_api, streaming_enabled, sse_url=None):  # pylint:disable=too-many-arguments
         """
@@ -22,7 +24,7 @@ class Manager(object):
         :type ready_flag: threading.Event
 
         :param split_synchronizers: synchronizers for performing start/stop logic
-        :type split_synchronizers: splitio.push.synchronizer.Synchronizer
+        :type split_synchronizers: splitio.sync.synchronizer.Synchronizer
 
         :param auth_api: Authentication api client
         :type auth_api: splitio.api.auth.AuthAPI
@@ -34,6 +36,7 @@ class Manager(object):
         self._ready_flag = ready_flag
         self._synchronizer = synchronizer
         if self._streaming_enabled:
+            self._push_status_handler_active = True
             self._backoff = Backoff()
             self._queue = Queue()
             self._push = PushManager(auth_api, synchronizer, self._queue, sse_url)
@@ -67,6 +70,8 @@ class Manager(object):
         """
         _LOGGER.info('Stopping manager tasks')
         if self._streaming_enabled:
+            self._push_status_handler_active = False
+            self._queue.put(self._CENTINEL_EVENT)
             self._push.stop()
         self._synchronizer.stop_periodic_fetching(True)
         self._synchronizer.stop_periodic_data_recording(blocking)
@@ -78,8 +83,11 @@ class Manager(object):
         :param status: current status of the streaming pipeline.
         :type status: splitio.push.status_stracker.Status
         """
-        while True:
+        while self._push_status_handler_active:
             status = self._queue.get()
+            if status == self._CENTINEL_EVENT:
+                continue
+
             if status == Status.PUSH_SUBSYSTEM_UP:
                 _LOGGER.info('streaming up and running. disabling periodic fetching.')
                 self._synchronizer.stop_periodic_fetching()
