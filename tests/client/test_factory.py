@@ -336,21 +336,21 @@ class SplitFactoryTests(object):
         """Test multiple factories instantiation and tracking."""
         sdk_ready_flag = threading.Event()
 
-        mockManager = Manager
-
-        def manager(self, ready_flag, some, auth_api, streaming_enabled, sse_url=None):
+        def _init(self, ready_flag, some, auth_api, streaming_enabled, sse_url=None):
             self._ready_flag = ready_flag
             self._synchronizer = mocker.Mock(spec=Synchronizer)
             self._streaming_enabled = False
-        mocker.patch.object(Manager, '__init__', new=manager)
+        mocker.patch('splitio.sync.manager.Manager.__init__', new=_init)
 
-        def start(self, *args, **kwargs):
+        def _start(self, *args, **kwargs):
             sdk_ready_flag.set()
-        mocker.patch.object(Manager, 'start', new=start)
+        mocker.patch('splitio.sync.manager.Manager.start', new=_start)
 
-        def stop(self, *args, **kwargs):
+        def _stop(self, *args, **kwargs):
             pass
-        mocker.patch.object(Manager, 'stop', new=stop)
+        mocker.patch('splitio.sync.manager.Manager.stop', new=_stop)
+
+        mockManager = Manager(sdk_ready_flag, mocker.Mock(), mocker.Mock(), False)
 
         def _make_factory_with_apikey(apikey, *_, **__):
             return SplitFactory(apikey, {}, True, mocker.Mock(spec=ImpressionsManager), mockManager)
