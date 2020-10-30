@@ -213,6 +213,8 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
                     wait_thread.start()
                 else:
                     self._sync_manager.stop(False)
+            elif destroyed_event is not None:
+                destroyed_event.set()
         finally:
             self._status = Status.DESTROYED
             with _INSTANTIATED_FACTORIES_LOCK:
@@ -300,7 +302,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         ),
         SegmentSynchronizationTask(
             synchronizers.segment_sync.synchronize_segments,
-            synchronizers.segment_sync.worker_pool,
             cfg['segmentsRefreshRate'],
         ),
         ImpressionsSyncTask(

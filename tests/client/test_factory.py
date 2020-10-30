@@ -8,7 +8,7 @@ from splitio.client.factory import get_factory, SplitFactory, _INSTANTIATED_FACT
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.storage import redis, inmemmory, uwsgi
 from splitio.tasks import events_sync, impressions_sync, split_sync, segment_sync, telemetry_sync
-from splitio.tasks.util import asynctask, workerpool
+from splitio.tasks.util import asynctask
 from splitio.api.splits import SplitsAPI
 from splitio.api.segments import SegmentsAPI
 from splitio.api.impressions import ImpressionsAPI
@@ -161,9 +161,8 @@ class SplitFactoryTests(object):
         segment_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
         segment_async_task_mock.stop.side_effect = stop_mock
 
-        def _segment_task_init_mock(self, synchronize_segments, worker_pool, period):
+        def _segment_task_init_mock(self, synchronize_segments, period):
             self._task = segment_async_task_mock
-            self._worker_pool = mocker.Mock()
             self._period = period
         mocker.patch('splitio.client.factory.SegmentSynchronizationTask.__init__',
                      new=_segment_task_init_mock)
@@ -256,9 +255,8 @@ class SplitFactoryTests(object):
         segment_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
         segment_async_task_mock.stop.side_effect = stop_mock_2
 
-        def _segment_task_init_mock(self, synchronize_segments, worker_pool, period):
+        def _segment_task_init_mock(self, synchronize_segments, period):
             self._task = segment_async_task_mock
-            self._worker_pool = mocker.Mock()
             self._period = period
         mocker.patch('splitio.client.factory.SegmentSynchronizationTask.__init__',
                      new=_segment_task_init_mock)
@@ -331,6 +329,35 @@ class SplitFactoryTests(object):
         assert len(telemetry_async_task_mock.stop.mock_calls) == 1
         assert len(imp_count_async_task_mock.stop.mock_calls) == 1
         assert factory.destroyed is True
+
+    def test_destroy_with_event_redis(self, mocker):
+        def _make_factory_with_apikey(apikey, *_, **__):
+            return SplitFactory(apikey, {}, True, mocker.Mock(spec=ImpressionsManager), None)
+
+        factory_module_logger = mocker.Mock()
+        build_redis = mocker.Mock()
+        build_redis.side_effect = _make_factory_with_apikey
+        mocker.patch('splitio.client.factory._LOGGER', new=factory_module_logger)
+        mocker.patch('splitio.client.factory._build_redis_factory', new=build_redis)
+
+        config = {
+            'redisDb': 0,
+            'redisHost': 'localhost',
+            'redisPosrt': 6379,
+        }
+
+        factory = get_factory("none", config=config)
+        event = threading.Event()
+        factory.destroy(event)
+        event.wait()
+        assert factory.destroyed
+        assert len(build_redis.mock_calls) == 1
+
+        factory = get_factory("none", config=config)
+        factory.destroy(None)
+        time.sleep(0.1)
+        assert factory.destroyed
+        assert len(build_redis.mock_calls) == 2
 
     def test_multiple_factories(self, mocker):
         """Test multiple factories instantiation and tracking."""
