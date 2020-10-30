@@ -277,9 +277,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'telemetry': InMemoryTelemetryStorage()
     }
 
-    # Synchronization flags
-    sdk_ready_flag = threading.Event()
-
     imp_manager = ImpressionsManager(
         storages['impressions'].put,
         cfg['impressionsMode'],
@@ -319,6 +316,8 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     )
 
     synchronizer = Synchronizer(synchronizers, tasks)
+
+    sdk_ready_flag = threading.Event()
     manager = Manager(sdk_ready_flag, synchronizer, apis['auth'], cfg['streamingEnabled'],
                       streaming_api_base_url)
     manager.start()
