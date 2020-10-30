@@ -1,16 +1,20 @@
 """SDK mock server."""
+from collections import namedtuple
 import threading
 import json
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 
-class SDKMockServer(object):
+Request = namedtuple('Request', ['method', 'path', 'headers', 'body'])
+
+
+class SplitMockServer(object):
     """SDK server mock for testing purposes."""
 
     protocol_version = 'HTTP/1.1'
 
-    def __init__(self, split_changes=None, segment_changes=None):
+    def __init__(self, split_changes=None, segment_changes=None, req_queue=None):
         """
         Consruct a mock server.
 
@@ -20,8 +24,9 @@ class SDKMockServer(object):
         split_changes = split_changes if split_changes is not None else {}
         segment_changes = segment_changes if segment_changes is not None else {}
         self._server = HTTPServer(('localhost', 0),
-                                  lambda *xs: SDKHandler(split_changes, segment_changes, *xs))  # pylint:disable=line-too-long
-        self._server_thread = threading.Thread(target=self._blocking_run, name="SDKMockServer")
+                                  lambda *xs: SDKHandler(split_changes, segment_changes, *xs,
+                                                         req_queue=req_queue))  # pylint:disable=line-too-long
+        self._server_thread = threading.Thread(target=self._blocking_run, name="SplitMockServer")
         self._server_thread.setDaemon(True)
         self._done_event = threading.Event()
 
@@ -50,8 +55,9 @@ class SDKMockServer(object):
 class SDKHandler(BaseHTTPRequestHandler):
     """Handler."""
 
-    def __init__(self, split_changes, segment_changes, *args):
+    def __init__(self, split_changes, segment_changes, *args, **kwargs):
         """Construct a handler."""
+        self._req_queue = kwargs.get('req_queue')
         self._split_changes = split_changes
         self._segment_changes = segment_changes
         BaseHTTPRequestHandler.__init__(self, *args)
@@ -102,6 +108,10 @@ class SDKHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):  #pylint:disable=invalid-name
         """Respond to a GET request."""
+        if self._req_queue is not None:
+            headers = dict(zip(self.headers.keys(), self.headers.values()))
+            self._req_queue.put(Request('GET', self.path, headers, None))
+
         if self.path.startswith('/api/splitChanges'):
             self._handle_split_changes()
         elif self.path.startswith('/api/segmentChanges'):
@@ -113,8 +123,15 @@ class SDKHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):  #pylint:disable=invalid-name
         """Respond to a GET request."""
-        if self.path in set('/api/testImpressions/bulk', '/api/events/bulk',
-                            '/metrics/times', '/metrics/count', '/metrics/gauge'):
+        if self._req_queue is not None:
+            length = int(self.headers.getheader('content-length'))
+            body = self.rfile.read(length) if length else None
+            headers = dict(zip(self.headers.keys(), self.headers.values()))
+            self._req_queue.put(Request('GET', self.path, headers, body))
+
+        if self.path in set(['/api/testImpressions/bulk', '/testImpressions/count',
+                             '/api/events/bulk', '/metrics/times', '/metrics/count',
+                             '/metrics/gauge']):
 
             self.send_response(200)
             self.send_header("Content-type", "application/json")

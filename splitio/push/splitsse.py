@@ -109,8 +109,8 @@ class SplitSSEClient(object):
             try:
                 self._client.start(url, timeout=self.KEEPALIVE_TIMEOUT)
             finally:
-                self._sse_connection_closed.set()
                 self._status = SplitSSEClient._Status.IDLE
+                self._sse_connection_closed.set()
 
         url = self._build_url(token)
         task = threading.Thread(target=connect, name='SSEConnection', args=(url,))
