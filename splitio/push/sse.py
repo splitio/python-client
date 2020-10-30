@@ -80,7 +80,7 @@ class EventBuilder(object):
 class SSEClient(object):
     """SSE Client implementation."""
 
-    _DEFAULT_HEADERS = {'Accept': 'text/event-stream'}
+    _DEFAULT_HEADERS = {'accept': 'text/event-stream'}
     _EVENT_SEPARATORS = set([b'\n', b'\r\n'])
 
     def __init__(self, callback):

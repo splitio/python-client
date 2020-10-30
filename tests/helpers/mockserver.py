@@ -71,7 +71,8 @@ class SSEHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
         if self._req_queue is not None:
-            self._req_queue.put(self.path)
+            headers = dict(zip(self.headers.keys(), self.headers.values()))
+            self._req_queue.put(Request('GET', self.path, headers, None))
 
         def write_chunk(chunk):
             """Write an event/chunk."""

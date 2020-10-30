@@ -4,7 +4,7 @@ import time
 import threading
 import pytest
 from splitio.push.sse import SSEClient, SSEEvent
-from .mockserver import SSEMockServer
+from tests.helpers.mockserver import SSEMockServer
 
 
 class SSEClientTests(object):
