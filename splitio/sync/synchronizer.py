@@ -272,9 +272,8 @@ class Synchronizer(BaseSynchronizer):
         _LOGGER.debug('Stopping periodic fetching')
         self._split_tasks.split_task.stop()
         if shutdown:  # stops task and worker pool
-            self._split_tasks.segment_task.stop()
-        else:  # pauses task not worker pool
-            self._split_tasks.segment_task.pause()
+            self._split_synchronizers.segment_sync.shutdown()
+        self._split_tasks.segment_task.stop()
 
     def start_periodic_data_recording(self):
         """Start recorders."""

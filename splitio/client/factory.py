@@ -300,7 +300,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         ),
         SegmentSynchronizationTask(
             synchronizers.segment_sync.synchronize_segments,
-            synchronizers.segment_sync.worker_pool,
             cfg['segmentsRefreshRate'],
         ),
         ImpressionsSyncTask(

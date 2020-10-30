@@ -8,7 +8,7 @@ from splitio.client.factory import get_factory, SplitFactory, _INSTANTIATED_FACT
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.storage import redis, inmemmory, uwsgi
 from splitio.tasks import events_sync, impressions_sync, split_sync, segment_sync, telemetry_sync
-from splitio.tasks.util import asynctask, workerpool
+from splitio.tasks.util import asynctask
 from splitio.api.splits import SplitsAPI
 from splitio.api.segments import SegmentsAPI
 from splitio.api.impressions import ImpressionsAPI
@@ -161,9 +161,8 @@ class SplitFactoryTests(object):
         segment_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
         segment_async_task_mock.stop.side_effect = stop_mock
 
-        def _segment_task_init_mock(self, synchronize_segments, worker_pool, period):
+        def _segment_task_init_mock(self, synchronize_segments, period):
             self._task = segment_async_task_mock
-            self._worker_pool = mocker.Mock()
             self._period = period
         mocker.patch('splitio.client.factory.SegmentSynchronizationTask.__init__',
                      new=_segment_task_init_mock)
@@ -256,9 +255,8 @@ class SplitFactoryTests(object):
         segment_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
         segment_async_task_mock.stop.side_effect = stop_mock_2
 
-        def _segment_task_init_mock(self, synchronize_segments, worker_pool, period):
+        def _segment_task_init_mock(self, synchronize_segments, period):
             self._task = segment_async_task_mock
-            self._worker_pool = mocker.Mock()
             self._period = period
         mocker.patch('splitio.client.factory.SegmentSynchronizationTask.__init__',
                      new=_segment_task_init_mock)

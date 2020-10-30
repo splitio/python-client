@@ -64,9 +64,9 @@ class SegmentSynchronizationTests(object):
 
         segments_synchronizer = SegmentSynchronizer(api, split_storage, storage)
         task = segment_sync.SegmentSynchronizationTask(segments_synchronizer.synchronize_segments,
-                                                       segments_synchronizer.worker_pool, 0.1)
+                                                       0.5)
         task.start()
-        time.sleep(0.2)
+        time.sleep(0.7)
 
         assert task.is_running()
 

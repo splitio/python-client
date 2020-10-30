@@ -30,16 +30,12 @@ class SegmentSynchronizer(object):
         self._worker_pool = workerpool.WorkerPool(10, self.synchronize_segment)
         self._worker_pool.start()
 
-    @property
-    def worker_pool(self):
+    def shutdown(self):
         """
-        Return worker_pool
-
-        :return: workerpool
-        :rtype: splitio.tasks.util.WorkerPool
+        Shutdown worker_pool
 
         """
-        return self._worker_pool
+        self._worker_pool.stop()
 
     def synchronize_segment(self, segment_name, till=None):
         """
