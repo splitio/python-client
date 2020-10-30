@@ -198,7 +198,7 @@ class BaseSynchronizer(object):
         """
         pass
 
-    @abc.abstractclassmethod
+    @abc.abstractmethod
     def shutdown(self, blocking):
         """
         Stop tasks
