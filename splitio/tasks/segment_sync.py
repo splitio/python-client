@@ -24,7 +24,7 @@ class SegmentSynchronizationTask(BaseSynchronizationTask):
 
         """
         self._worker_pool = worker_pool
-        self._task = asynctask.AsyncTask(synchronize_segments, period, on_init=synchronize_segments)
+        self._task = asynctask.AsyncTask(synchronize_segments, period, on_init=None)
 
     def start(self):
         """Start segment synchronization."""

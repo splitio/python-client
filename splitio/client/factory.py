@@ -202,9 +202,17 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
 
         try:
             if self._sync_manager is not None:
-                self._sync_manager.stop()
-            if destroyed_event is not None:
-                destroyed_event.set()
+                if destroyed_event is not None:
+
+                    def _wait_for_tasks_to_stop():
+                        self._sync_manager.stop(True)
+                        destroyed_event.set()
+
+                    wait_thread = threading.Thread(target=_wait_for_tasks_to_stop)
+                    wait_thread.setDaemon(True)
+                    wait_thread.start()
+                else:
+                    self._sync_manager.stop(False)
         finally:
             self._status = Status.DESTROYED
             with _INSTANTIATED_FACTORIES_LOCK:
@@ -269,9 +277,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'telemetry': InMemoryTelemetryStorage()
     }
 
-    # Synchronization flags
-    sdk_ready_flag = threading.Event()
-
     imp_manager = ImpressionsManager(
         storages['impressions'].put,
         cfg['impressionsMode'],
@@ -311,9 +316,14 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     )
 
     synchronizer = Synchronizer(synchronizers, tasks)
+
+    sdk_ready_flag = threading.Event()
     manager = Manager(sdk_ready_flag, synchronizer, apis['auth'], cfg['streamingEnabled'],
                       streaming_api_base_url)
-    manager.start()
+
+    initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer")
+    initialization_thread.setDaemon(True)
+    initialization_thread.start()
 
     storages['events'].set_queue_full_hook(tasks.events_task.flush)
     storages['impressions'].set_queue_full_hook(tasks.impressions_task.flush)

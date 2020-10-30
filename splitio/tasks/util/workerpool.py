@@ -23,7 +23,7 @@ class WorkerPool(object):
         self._should_be_working = [True for _ in range(0, worker_count)]
         self._worker_events = [Event() for _ in range(0, worker_count)]
         self._threads = [
-            Thread(target=self._wrapper, args=(i, worker_func), name="segment_worker_%d" % i)
+            Thread(target=self._wrapper, args=(i, worker_func), name="pool_worker_%d" % i)
             for i in range(0, worker_count)
         ]
         for thread in self._threads:
@@ -72,11 +72,13 @@ class WorkerPool(object):
                 # This method must be both ignored and acknowledged with .task_done()
                 # otherwise .join() will halt.
                 if message is None:
+                    _LOGGER.debug('spurious message received. acking and ignoring.')
                     self._incoming.task_done()
                     continue
 
                 # If the task is successfully executed, the ack is done AFTERWARDS,
                 # to avoid race conditions on SDK initialization.
+                _LOGGER.debug("processing message '%s'", message)
                 ok = self._safe_run(func, message)  # pylint: disable=invalid-name
                 if not ok:
                     self._failed = True
@@ -101,10 +103,13 @@ class WorkerPool(object):
         :type message: object.
         """
         self._incoming.put(message)
+        _LOGGER.debug('queued message %s for processing.', message)
 
     def wait_for_completion(self):
         """Block until the work queue is empty."""
+        _LOGGER.debug('waiting for all messages to be processed.')
         self._incoming.join()
+        _LOGGER.debug('all messages processed.')
         old = self._failed
         self._failed = False
         return old

@@ -185,7 +185,7 @@ class BaseSynchronizer(object):
         pass
 
     @abc.abstractmethod
-    def stop_periodic_data_recording(self):
+    def stop_periodic_data_recording(self, blocking):
         """Stop recorders."""
         pass
 
@@ -284,20 +284,30 @@ class Synchronizer(BaseSynchronizer):
         self._split_tasks.telemetry_task.start()
         self._split_tasks.impressions_count_task.start()
 
-    def stop_periodic_data_recording(self):
-        """Stop recorders."""
+    def stop_periodic_data_recording(self, blocking):
+        """
+        Stop recorders.
+
+        :param blocking: flag to wait until tasks are stopped
+        :type blocking: bool
+        """
         _LOGGER.debug('Stopping periodic data recording')
-        events = []
-        for task in [
-            self._split_tasks.impressions_task,
-            self._split_tasks.events_task,
-            self._split_tasks.impressions_count_task
-        ]:
-            stop_event = threading.Event()
-            task.stop(stop_event)
-            events.append(stop_event)
-        if all(event.wait() for event in events):
-            _LOGGER.debug('all tasks finished successfully.')
+        if blocking:
+            events = []
+            for task in [
+                self._split_tasks.impressions_task,
+                self._split_tasks.events_task,
+                self._split_tasks.impressions_count_task
+            ]:
+                stop_event = threading.Event()
+                task.stop(stop_event)
+                events.append(stop_event)
+            if all(event.wait() for event in events):
+                _LOGGER.debug('all tasks finished successfully.')
+        else:
+            self._split_tasks.impressions_task.stop()
+            self._split_tasks.events_task.stop()
+            self._split_tasks.impressions_count_task.stop()
         self._split_tasks.telemetry_task.stop()
 
     def kill_split(self, split_name, default_treatment, change_number):
