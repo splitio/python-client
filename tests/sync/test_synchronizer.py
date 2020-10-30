@@ -118,20 +118,23 @@ class SynchronizerTests(object):
     def test_stop_periodic_fetching(self, mocker):
         split_task = mocker.Mock(spec=SplitSynchronizationTask)
         segment_task = mocker.Mock(spec=SegmentSynchronizationTask)
+        segment_sync = mocker.Mock(spec=SegmentSynchronizer)
+        split_synchronizers = SplitSynchronizers(mocker.Mock(), segment_sync, mocker.Mock(),
+                                                 mocker.Mock(), mocker.Mock(), mocker.Mock())
         split_tasks = SplitTasks(split_task, segment_task, mocker.Mock(), mocker.Mock(),
                                  mocker.Mock(), mocker.Mock())
-        synchronizer = Synchronizer(mocker.Mock(spec=SplitSynchronizers), split_tasks)
+        synchronizer = Synchronizer(split_synchronizers, split_tasks)
         synchronizer.stop_periodic_fetching(True)
 
         assert len(split_task.stop.mock_calls) == 1
         assert len(segment_task.stop.mock_calls) == 1
-        assert len(segment_task.pause.mock_calls) == 0
+        assert len(segment_sync.shutdown.mock_calls) == 1
 
         synchronizer.stop_periodic_fetching(False)
 
         assert len(split_task.stop.mock_calls) == 2
-        assert len(segment_task.stop.mock_calls) == 1
-        assert len(segment_task.pause.mock_calls) == 1
+        assert len(segment_task.stop.mock_calls) == 2
+        assert len(segment_sync.shutdown.mock_calls) == 1  # not called here
 
     def test_start_periodic_data_recording(self, mocker):
         impression_task = mocker.Mock(spec=ImpressionsSyncTask)

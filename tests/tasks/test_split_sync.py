@@ -79,9 +79,9 @@ class SplitSynchronizationTests(object):
 
         api.fetch_splits.side_effect = get_changes
         split_synchronizer = SplitSynchronizer(api, storage)
-        task = split_sync.SplitSynchronizationTask(split_synchronizer.synchronize_splits, 1)
+        task = split_sync.SplitSynchronizationTask(split_synchronizer.synchronize_splits, 0.5)
         task.start()
-        time.sleep(0.1)
+        time.sleep(0.7)
         assert task.is_running()
         stop_event = threading.Event()
         task.stop(stop_event)

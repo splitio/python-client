@@ -60,7 +60,7 @@ class SplitSynchronizer(object):
 
             self._split_storage.set_change_number(split_changes['till'])
             if split_changes['till'] == split_changes['since'] \
-               or (till is not None and split_changes['till'] >= till):
+               and (till is None or split_changes['till'] >= till):
                 return
 
     def kill_split(self, split_name, default_treatment, change_number):
