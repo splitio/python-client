@@ -73,8 +73,7 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
             self._push_status_handler_active = False
             self._queue.put(self._CENTINEL_EVENT)
             self._push.stop()
-        self._synchronizer.stop_periodic_fetching(True)
-        self._synchronizer.stop_periodic_data_recording(blocking)
+        self._synchronizer.shutdown(blocking)
 
     def _streaming_feedback_handler(self):
         """
