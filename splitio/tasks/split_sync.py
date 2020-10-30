@@ -20,7 +20,7 @@ class SplitSynchronizationTask(BaseSynchronizationTask):
         :type period: int
         """
         self._period = period
-        self._task = AsyncTask(synchronize_splits, period, on_init=synchronize_splits)
+        self._task = AsyncTask(synchronize_splits, period, on_init=None)
 
     def start(self):
         """Start the task."""

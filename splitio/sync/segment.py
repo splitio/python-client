@@ -78,8 +78,7 @@ class SegmentSynchronizer(object):
                     segment_changes['till']
                 )
 
-            if segment_changes['till'] == segment_changes['since'] \
-               or (till is not None and segment_changes['till'] >= till):
+            if segment_changes['till'] == segment_changes['since']:
                 return
 
     def synchronize_segments(self):
