@@ -170,13 +170,8 @@ class BaseSynchronizer(object):
         pass
 
     @abc.abstractmethod
-    def stop_periodic_fetching(self, shutdown=False):
-        """
-        Stop fetchers for splits and segments.
-
-        :param shutdown: flag to indicates if should pause or stop tasks
-        :type shutdown: bool
-        """
+    def stop_periodic_fetching(self):
+        """Stop fetchers for splits and segments."""
         pass
 
     @abc.abstractmethod
@@ -200,6 +195,16 @@ class BaseSynchronizer(object):
         :type default_treatment: str
         :param change_number: change_number
         :type change_number: int
+        """
+        pass
+
+    @abc.abstractmethod
+    def shutdown(self, blocking):
+        """
+        Stop tasks
+
+        :param blocking:flag to wait until tasks are stopped
+        :type blocking: bool
         """
         pass
 
@@ -256,23 +261,28 @@ class Synchronizer(BaseSynchronizer):
             _LOGGER.error('Failed syncing splits')
             raise_from(APIException('Failed to sync splits'), exc)
 
+    def shutdown(self, blocking):
+        """
+        Stop tasks
+
+        :param blocking:flag to wait until tasks are stopped
+        :type blocking: bool
+        """
+        _LOGGER.debug('Shutting down tasks.')
+        self._split_synchronizers.segment_sync.shutdown()
+        self.stop_periodic_fetching()
+        self.stop_periodic_data_recording(blocking)
+
     def start_periodic_fetching(self):
         """Start fetchers for splits and segments."""
         _LOGGER.debug('Starting periodic data fetching')
         self._split_tasks.split_task.start()
         self._split_tasks.segment_task.start()
 
-    def stop_periodic_fetching(self, shutdown=False):
-        """
-        Stop fetchers for splits and segments.
-
-        :param shutdown: flag to indicates if should pause or stop tasks
-        :type shutdown: bool
-        """
+    def stop_periodic_fetching(self):
+        """Stop fetchers for splits and segments."""
         _LOGGER.debug('Stopping periodic fetching')
         self._split_tasks.split_task.stop()
-        if shutdown:  # stops task and worker pool
-            self._split_synchronizers.segment_sync.shutdown()
         self._split_tasks.segment_task.stop()
 
     def start_periodic_data_recording(self):
@@ -352,7 +362,7 @@ class LocalhostSynchronizer(BaseSynchronizer):
         _LOGGER.debug('Starting periodic data fetching')
         self._split_tasks.split_task.start()
 
-    def stop_periodic_fetching(self, shutdown=False):
+    def stop_periodic_fetching(self):
         """Stop fetchers for splits and segments."""
         _LOGGER.debug('Stopping periodic fetching')
         self._split_tasks.split_task.stop()
