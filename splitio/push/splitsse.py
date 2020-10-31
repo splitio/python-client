@@ -122,7 +122,9 @@ class SplitSSEClient(object):
     def stop(self, blocking=False, timeout=None):
         """Abort the ongoing connection."""
         if self._status == SplitSSEClient._Status.IDLE:
-            raise Exception('SseClient not running')
+            _LOGGER.warn('sse already closed. ignoring')
+            return
+
         self._client.shutdown()
         if blocking:
             self._sse_connection_closed.wait(timeout)
