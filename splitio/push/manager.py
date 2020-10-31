@@ -197,7 +197,8 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         if self._next_refresh is not None:
             self._next_refresh.cancel()
         self._next_refresh = Timer((token.exp - token.iat) - _TOKEN_REFRESH_GRACE_PERIOD,
-                                   self._token_refresh, name='TokenRefresh')
+                                   self._token_refresh)
+        self._next_refresh.setName('TokenRefresh')
         self._next_refresh.start()
 
     def update_workers_status(self, enabled):
