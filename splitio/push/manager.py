@@ -92,8 +92,7 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         _LOGGER.debug('handling control event: %s', str(event))
         feedback = self._status_tracker.handle_control_message(event)
         if feedback is not None:
-            # Send this event back to sync manager
-            pass
+            self._feedback_loop.put(feedback)
 
     def _handle_occupancy(self, event):
         """
@@ -105,8 +104,19 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         _LOGGER.debug('handling occupancy event: %s', str(event))
         feedback = self._status_tracker.handle_occupancy(event)
         if feedback is not None:
-            # Send this event back to sync manager
-            pass
+            self._feedback_loop.put(feedback)
+
+    def _handle_connection_end(self, shutdown_requested):
+        """
+        Handle a connection ending.
+
+        If the connection shutdown was not requested, trigger a restart.
+
+        :param shutdown_requested: whether the shutdown was requested or unexpected.
+        :type shutdown_requested: True
+        """
+        if not shutdown_requested:
+            self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
 
     def _handle_error(self, event):
         """
@@ -118,8 +128,7 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         _LOGGER.debug('handling ably error event: %s', str(event))
         feedback = self._status_tracker.handle_ably_error(event)
         if feedback is not None:
-            # Send this event back to sync manager
-            pass
+            self._feedback_loop.put(feedback)
 
     def _event_handler(self, event):
         """
@@ -188,7 +197,7 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         if self._next_refresh is not None:
             self._next_refresh.cancel()
         self._next_refresh = Timer((token.exp - token.iat) - _TOKEN_REFRESH_GRACE_PERIOD,
-                                   self._token_refresh)
+                                   self._token_refresh, name='TokenRefresh')
         self._next_refresh.start()
 
     def update_workers_status(self, enabled):
