@@ -35,6 +35,13 @@ class SegmentWorkerTests(object):
         with pytest.raises(Exception):
             segment_worker._handler()
 
+        assert segment_worker.is_running()
+        assert segment_worker._worker.is_alive()
+        segment_worker.stop()
+        time.sleep(1)
+        assert not segment_worker.is_running()
+        assert not segment_worker._worker.is_alive()
+
     def test_handler(self):
         q = queue.Queue()
         segment_worker = SegmentWorker(handler_sync, q)

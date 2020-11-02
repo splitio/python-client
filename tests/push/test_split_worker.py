@@ -32,6 +32,13 @@ class SplitWorkerTests(object):
         with pytest.raises(Exception):
             split_worker._handler()
 
+        assert split_worker.is_running()
+        assert split_worker._worker.is_alive()
+        split_worker.stop()
+        time.sleep(1)
+        assert not split_worker.is_running()
+        assert not split_worker._worker.is_alive()
+
     def test_handler(self):
         q = queue.Queue()
         split_worker = SplitWorker(handler_sync, q)
