@@ -7,8 +7,7 @@ import pytest
 from splitio.models.token import Token
 from splitio.push.splitsse import SplitSSEClient
 from splitio.push.sse import SSEEvent
-
-from .mockserver import SSEMockServer
+from tests.helpers.mockserver import SSEMockServer
 
 
 class SSEClientTests(object):
@@ -41,7 +40,9 @@ class SSEClientTests(object):
         time.sleep(1)
         client.stop()
 
-        assert request_queue.get() == '/event-stream?v=1.1&accessToken=some&channels=chan1,[?occupancy=metrics.publishers]chan2'
+        request = request_queue.get(1)
+        assert request.path == '/event-stream?v=1.1&accessToken=some&channels=chan1,[?occupancy=metrics.publishers]chan2'
+        assert request.headers['accept'] == 'text/event-stream'
 
         assert events == [
             SSEEvent('1', 'message', '1', 'a'),
@@ -71,11 +72,13 @@ class SSEClientTests(object):
         server.publish({'event': 'error'})  # send an error event early to unblock start
         assert not client.start(token)
         client.stop(True)
-        with pytest.raises(Exception):
-            client.stop()
 
-        assert request_queue.get() == ('/event-stream?v=1.1&accessToken=some'
-                                       '&channels=chan1,[?occupancy=metrics.publishers]chan2')
+        # should do nothing
+        client.stop()
+
+        request = request_queue.get(1)
+        assert request.path == '/event-stream?v=1.1&accessToken=some&channels=chan1,[?occupancy=metrics.publishers]chan2'
+        assert request.headers['accept'] == 'text/event-stream'
 
         server.publish(SSEMockServer.VIOLENT_REQUEST_END)
         server.stop()

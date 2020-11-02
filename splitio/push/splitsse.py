@@ -109,8 +109,8 @@ class SplitSSEClient(object):
             try:
                 self._client.start(url, timeout=self.KEEPALIVE_TIMEOUT)
             finally:
-                self._sse_connection_closed.set()
                 self._status = SplitSSEClient._Status.IDLE
+                self._sse_connection_closed.set()
 
         url = self._build_url(token)
         task = threading.Thread(target=connect, name='SSEConnection', args=(url,))
@@ -122,7 +122,9 @@ class SplitSSEClient(object):
     def stop(self, blocking=False, timeout=None):
         """Abort the ongoing connection."""
         if self._status == SplitSSEClient._Status.IDLE:
-            raise Exception('SseClient not running')
+            _LOGGER.warn('sse already closed. ignoring')
+            return
+
         self._client.shutdown()
         if blocking:
             self._sse_connection_closed.wait(timeout)
