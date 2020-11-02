@@ -389,4 +389,4 @@ class LocalhostSynchronizer(BaseSynchronizer):
         :param blocking:flag to wait until tasks are stopped
         :type blocking: bool
         """
-        self.start_periodic_fetching()
+        self.stop_periodic_fetching()
