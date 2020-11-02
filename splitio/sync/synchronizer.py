@@ -365,3 +365,28 @@ class LocalhostSynchronizer(BaseSynchronizer):
     def kill_split(self, split_name, default_treatment, change_number):
         """Kill a split locally."""
         raise NotImplementedError()
+
+    def synchronize_splits(self, till):
+        """Synchronize all splits."""
+        raise NotImplementedError()
+
+    def synchronize_segment(self, segment_name, till):
+        """Synchronize particular segment."""
+        raise NotImplementedError()
+
+    def start_periodic_data_recording(self):
+        """Start recorders."""
+        pass
+
+    def stop_periodic_data_recording(self, blocking):
+        """Stop recorders."""
+        pass
+
+    def shutdown(self, blocking):
+        """
+        Stop tasks.
+
+        :param blocking:flag to wait until tasks are stopped
+        :type blocking: bool
+        """
+        self.start_periodic_fetching()
