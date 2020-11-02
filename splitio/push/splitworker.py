@@ -39,7 +39,11 @@ class SplitWorker(object):
             if event == self._centinel:
                 continue
             _LOGGER.debug('Processing split_update %d', event.change_number)
-            self._handler(event.change_number)
+            try:
+                self._handler(event.change_number)
+            except Exception:
+                _LOGGER.error('Exception raised in split synchronization')
+                _LOGGER.debug('Exception information: ', exc_info=True)
 
     def start(self):
         """Start worker."""

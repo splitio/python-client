@@ -40,7 +40,11 @@ class SegmentWorker(object):
                 continue
             _LOGGER.debug('Processing segment_update: %s, change_number: %d',
                           event.segment_name, event.change_number)
-            self._handler(event.segment_name, event.change_number)
+            try:
+                self._handler(event.segment_name, event.change_number)
+            except Exception:
+                _LOGGER.error('Exception raised in segment synchronization')
+                _LOGGER.debug('Exception information: ', exc_info=True)
 
     def start(self):
         """Start worker."""

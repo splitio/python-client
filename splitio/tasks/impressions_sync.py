@@ -56,7 +56,7 @@ class ImpressionsSyncTask(BaseSynchronizationTask):
 class ImpressionsCountSyncTask(BaseSynchronizationTask):
     """Impressions synchronization task uses an asynctask.AsyncTask to send impressions."""
 
-    _PERIOD = 5  # 30 * 60 # 30 minutes
+    _PERIOD = 1800  # 30 * 60 # 30 minutes
 
     def __init__(self, synchronize_counters):
         """
