@@ -1,7 +1,9 @@
 """Split Worker tests."""
 import time
 import queue
+import pytest
 
+from splitio.api import APIException
 from splitio.push.segmentworker import SegmentWorker
 from splitio.models.notification import SegmentChangeNotification
 
@@ -18,20 +20,34 @@ def handler_sync(segment_name, change_number):
 
 
 class SegmentWorkerTests(object):
-    q = queue.Queue()
-    segment_worker = SegmentWorker(handler_sync, q)
+    def test_on_error(self):
+        q = queue.Queue()
+
+        def handler_sync(change_number):
+            raise APIException('some')
+
+        segment_worker = SegmentWorker(handler_sync, q)
+        segment_worker.start()
+        assert segment_worker.is_running()
+
+        q.put(SegmentChangeNotification('some', 'SEGMENT_UPDATE', 123456789, 'some'))
+
+        with pytest.raises(Exception):
+            segment_worker._handler()
 
     def test_handler(self):
+        q = queue.Queue()
+        segment_worker = SegmentWorker(handler_sync, q)
         global change_number_received
-        assert not self.segment_worker.is_running()
-        self.segment_worker.start()
-        assert self.segment_worker.is_running()
+        assert not segment_worker.is_running()
+        segment_worker.start()
+        assert segment_worker.is_running()
 
-        self.q.put(SegmentChangeNotification('some', 'SEGMENT_UPDATE', 123456789, 'some'))
+        q.put(SegmentChangeNotification('some', 'SEGMENT_UPDATE', 123456789, 'some'))
 
         time.sleep(0.1)
         assert change_number_received == 123456789
         assert segment_name_received == 'some'
 
-        self.segment_worker.stop()
-        assert not self.segment_worker.is_running()
+        segment_worker.stop()
+        assert not segment_worker.is_running()
