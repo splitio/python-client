@@ -8,20 +8,6 @@ from six import add_metaclass
 from future.utils import raise_from
 from splitio.api import APIException
 
-# Synchronizers
-from splitio.sync.split import SplitSynchronizer
-from splitio.sync.segment import SegmentSynchronizer
-from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
-from splitio.sync.event import EventSynchronizer
-from splitio.sync.telemetry import TelemetrySynchronizer
-
-# Tasks
-from splitio.tasks.split_sync import SplitSynchronizationTask
-from splitio.tasks.segment_sync import SegmentSynchronizationTask
-from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask
-from splitio.tasks.events_sync import EventsSyncTask
-from splitio.tasks.telemetry_sync import TelemetrySynchronizationTask
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,10 +15,10 @@ _LOGGER = logging.getLogger(__name__)
 class SplitSynchronizers(object):
     """SplitSynchronizers."""
 
-    def __init__(self, split_sync, segment_sync, impressions_sync, events_sync, telemetry_sync,
+    def __init__(self, split_sync, segment_sync, impressions_sync, events_sync, telemetry_sync,  # pylint:disable=too-many-arguments
                  impressions_count_sync):
         """
-        SplitSynchronizer constructor.
+        Class constructor.
 
         :param split_sync: sync for splits
         :type split_sync: splitio.sync.split.SplitSynchronizer
@@ -56,36 +42,42 @@ class SplitSynchronizers(object):
 
     @property
     def split_sync(self):
+        """Return split synchonizer."""
         return self._split_sync
 
     @property
     def segment_sync(self):
+        """Return segment synchonizer."""
         return self._segment_sync
 
     @property
     def impressions_sync(self):
+        """Return impressions synchonizer."""
         return self._impressions_sync
 
     @property
     def events_sync(self):
+        """Return events synchonizer."""
         return self._events_sync
 
     @property
     def telemetry_sync(self):
+        """Return telemetry synchonizer."""
         return self._telemetry_sync
 
     @property
     def impressions_count_sync(self):
+        """Return impressions count synchonizer."""
         return self._impressions_count_sync
 
 
 class SplitTasks(object):
     """SplitTasks."""
 
-    def __init__(self, split_task, segment_task, impressions_task, events_task, telemetry_task,
+    def __init__(self, split_task, segment_task, impressions_task, events_task, telemetry_task,  # pylint:disable=too-many-arguments
                  impressions_count_task):
         """
-        SplitTasks constructor.
+        Class constructor.
 
         :param split_task: sync for splits
         :type split_task: splitio.tasks.split_sync.SplitSynchronizationTask
@@ -109,33 +101,38 @@ class SplitTasks(object):
 
     @property
     def split_task(self):
+        """Return split sync task."""
         return self._split_task
 
     @property
     def segment_task(self):
+        """Return segment sync task."""
         return self._segment_task
 
     @property
     def impressions_task(self):
+        """Return impressions sync task."""
         return self._impressions_task
 
     @property
     def events_task(self):
+        """Return events sync task."""
         return self._events_task
 
     @property
     def telemetry_task(self):
+        """Return telemetry sync task."""
         return self._telemetry_task
 
     @property
     def impressions_count_task(self):
+        """Return impressions count sync task."""
         return self._impressions_count_task
 
 
+@add_metaclass(abc.ABCMeta)
 class BaseSynchronizer(object):
     """Synchronizer interface."""
-
-    __metadata__ = abc.ABCMeta
 
     @abc.abstractmethod
     def synchronize_segment(self, segment_name, till):
@@ -187,7 +184,7 @@ class BaseSynchronizer(object):
     @abc.abstractmethod
     def kill_split(self, split_name, default_treatment, change_number):
         """
-        Local kill for split
+        Kill a split locally.
 
         :param split_name: name of the split to perform kill
         :type split_name: str
@@ -201,7 +198,7 @@ class BaseSynchronizer(object):
     @abc.abstractmethod
     def shutdown(self, blocking):
         """
-        Stop tasks
+        Stop tasks.
 
         :param blocking:flag to wait until tasks are stopped
         :type blocking: bool
@@ -214,7 +211,7 @@ class Synchronizer(BaseSynchronizer):
 
     def __init__(self, split_synchronizers, split_tasks):
         """
-        Synchronizer constructor.
+        Class constructor.
 
         :param split_synchronizers: syncs for performing synchronization of segments and splits
         :type split_synchronizers: splitio.sync.synchronizer.SplitSynchronizers
@@ -263,7 +260,7 @@ class Synchronizer(BaseSynchronizer):
 
     def shutdown(self, blocking):
         """
-        Stop tasks
+        Stop tasks.
 
         :param blocking:flag to wait until tasks are stopped
         :type blocking: bool
@@ -303,11 +300,9 @@ class Synchronizer(BaseSynchronizer):
         _LOGGER.debug('Stopping periodic data recording')
         if blocking:
             events = []
-            for task in [
-                self._split_tasks.impressions_task,
-                self._split_tasks.events_task,
-                self._split_tasks.impressions_count_task
-            ]:
+            for task in [self._split_tasks.impressions_task,
+                         self._split_tasks.events_task,
+                         self._split_tasks.impressions_count_task]:
                 stop_event = threading.Event()
                 task.stop(stop_event)
                 events.append(stop_event)
@@ -321,7 +316,7 @@ class Synchronizer(BaseSynchronizer):
 
     def kill_split(self, split_name, default_treatment, change_number):
         """
-        Local kill for split
+        Kill a split locally.
 
         :param split_name: name of the split to perform kill
         :type split_name: str
@@ -339,7 +334,7 @@ class LocalhostSynchronizer(BaseSynchronizer):
 
     def __init__(self, split_synchronizers, split_tasks):
         """
-        LocalhostSynchronizer constructor.
+        Class constructor.
 
         :param split_synchronizers: syncs for performing synchronization of segments and splits
         :type split_synchronizers: splitio.sync.synchronizer.SplitSynchronizers
@@ -366,3 +361,7 @@ class LocalhostSynchronizer(BaseSynchronizer):
         """Stop fetchers for splits and segments."""
         _LOGGER.debug('Stopping periodic fetching')
         self._split_tasks.split_task.stop()
+
+    def kill_split(self, split_name, default_treatment, change_number):
+        """Kill a split locally."""
+        raise NotImplementedError()

@@ -90,8 +90,8 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
             if status == Status.PUSH_SUBSYSTEM_UP:
                 _LOGGER.info('streaming up and running. disabling periodic fetching.')
                 self._synchronizer.stop_periodic_fetching()
-                self._push.update_workers_status(True)
                 self._synchronizer.sync_all()
+                self._push.update_workers_status(True)
                 self._backoff.reset()
             elif status == Status.PUSH_SUBSYSTEM_DOWN:
                 _LOGGER.info('streaming temporarily down. starting periodic fetching')

@@ -32,7 +32,8 @@ class PushManagerTests(object):
         assert timer_mock.mock_calls == [
             mocker.call(0, Any()),
             mocker.call().cancel(),
-            mocker.call(1000000 - _TOKEN_REFRESH_GRACE_PERIOD, manager._token_refresh, name='TokenRefresh'),
+            mocker.call(1000000 - _TOKEN_REFRESH_GRACE_PERIOD, manager._token_refresh),
+            mocker.call().setName('TokenRefresh'),
             mocker.call().start()
         ]
 

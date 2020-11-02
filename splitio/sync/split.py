@@ -1,3 +1,4 @@
+"""Splits synchronization logic."""
 import logging
 import re
 import itertools
@@ -17,6 +18,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class SplitSynchronizer(object):
+    """Split changes synchronizer."""
+
     def __init__(self, split_api, split_storage):
         """
         Class constructor.
@@ -65,7 +68,7 @@ class SplitSynchronizer(object):
 
     def kill_split(self, split_name, default_treatment, change_number):
         """
-        Local kill for split
+        Local kill for split.
 
         :param split_name: name of the split to perform kill
         :type split_name: str
@@ -78,6 +81,8 @@ class SplitSynchronizer(object):
 
 
 class LocalSplitSynchronizer(object):
+    """Localhost mode split synchronizer."""
+
     def __init__(self, filename, split_storage):
         """
         Class constructor.
@@ -234,14 +239,15 @@ class LocalSplitSynchronizer(object):
                 exc
             )
 
-    def synchronize_splits(self, till=None):
+    def synchronize_splits(self, till=None):  # pylint:disable=unused-argument
         """Update splits in storage."""
         _LOGGER.info('Synchronizing splits now.')
         if self._filename.lower().endswith(('.yaml', '.yml')):
             fetched = self._read_splits_from_yaml_file(self._filename)
         else:
             fetched = self._read_splits_from_legacy_file(self._filename)
-        to_delete = [name for name in self._split_storage.get_split_names() if name not in fetched.keys()]
+        to_delete = [name for name in self._split_storage.get_split_names()
+                     if name not in fetched.keys()]
         for split in fetched.values():
             self._split_storage.put(split)
 
