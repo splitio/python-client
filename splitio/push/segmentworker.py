@@ -43,7 +43,7 @@ class SegmentWorker(object):
             try:
                 self._handler(event.segment_name, event.change_number)
             except Exception:
-                _LOGGER.error('Exception raised in split synchronization')
+                _LOGGER.error('Exception raised in segment synchronization')
                 _LOGGER.debug('Exception information: ', exc_info=True)
 
     def start(self):
