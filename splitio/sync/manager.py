@@ -99,8 +99,10 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
                 self._synchronizer.start_periodic_fetching()
                 _LOGGER.info('streaming temporarily down. starting periodic fetching')
             elif status == Status.PUSH_RETRYABLE_ERROR:
-                self._synchronizer.start_periodic_fetching()
+                self._push.update_workers_status(False)
                 self._push.stop(True)
+                self._synchronizer.sync_all()
+                self._synchronizer.start_periodic_fetching()
                 time.sleep(self._backoff.get())
                 self._push.start()
                 _LOGGER.info('error in streaming. restarting flow')

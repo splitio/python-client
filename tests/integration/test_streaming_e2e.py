@@ -13,9 +13,7 @@ try:  # try to import python3 names. fallback to python2
 except ImportError:
     from urlparse import parse_qs
 
-import pytest
 
-@pytest.mark.skip
 class StreamingIntegrationTests(object):
     """Test streaming operation and failover."""
 
@@ -551,13 +549,7 @@ class StreamingIntegrationTests(object):
         assert req.path == '/api/splitChanges?since=1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
-        # Fetch after first notification
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?since=1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
-        # Iteration until since == till
+        # Second iteration of previous syncAll
         req = split_backend_requests.get()
         assert req.method == 'GET'
         assert req.path == '/api/splitChanges?since=2'
