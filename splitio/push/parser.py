@@ -37,9 +37,9 @@ class UpdateType(Enum):
 class ControlType(Enum):
     """Control type enumeration."""
 
-    STREAMING_ENABLED = 0
-    STREAMING_PAUSED = 1
-    STREAMING_DISABLED = 2
+    STREAMING_ENABLED = 'STREAMING_ENABLED'
+    STREAMING_PAUSED = 'STREAMING_PAUSED'
+    STREAMING_DISABLED = 'STREAMING_DISABLED'
 
 
 TAG_OCCUPANCY = '[meta]occupancy'

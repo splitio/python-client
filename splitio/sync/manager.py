@@ -103,11 +103,14 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
                 self._push.stop(True)
                 self._synchronizer.sync_all()
                 self._synchronizer.start_periodic_fetching()
-                time.sleep(self._backoff.get())
+                how_long = self._backoff.get()
+                _LOGGER.info('error in streaming. restarting flow in %d seconds', how_long)
+                time.sleep(how_long)
                 self._push.start()
-                _LOGGER.info('error in streaming. restarting flow')
             elif status == Status.PUSH_NONRETRYABLE_ERROR:
-                self._synchronizer.start_periodic_fetching()
+                self._push.update_workers_status(False)
                 self._push.stop(False)
+                self._synchronizer.sync_all()
+                self._synchronizer.start_periodic_fetching()
                 _LOGGER.info('non-recoverable error in streaming. switching to polling.')
                 return

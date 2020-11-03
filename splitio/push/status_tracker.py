@@ -1,5 +1,4 @@
 """NotificationManagerKeeper implementation."""
-from collections import defaultdict
 from enum import Enum
 import logging
 import six
@@ -90,7 +89,7 @@ class PushStatusTracker(object):
         :type event: splitio.push.parser.ControlMessage
         """
         # we don't care about control messages if a disconnection is expected
-        if self._shutdown_expected:  
+        if self._shutdown_expected:
             return None
 
         if self._timestamps.control > event.timestamp:

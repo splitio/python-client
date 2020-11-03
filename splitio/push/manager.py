@@ -141,9 +141,7 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
             return
 
         self._status_tracker.reset()
-        res = self._sse_client.start(token)
-        if res:
-            print(res)
+        if self._sse_client.start(token):
             self._setup_next_token_refresh(token)
             self._running = True
 
