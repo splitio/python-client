@@ -88,23 +88,24 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
                 continue
 
             if status == Status.PUSH_SUBSYSTEM_UP:
-                _LOGGER.info('streaming up and running. disabling periodic fetching.')
                 self._synchronizer.stop_periodic_fetching()
                 self._synchronizer.sync_all()
                 self._push.update_workers_status(True)
                 self._backoff.reset()
+                _LOGGER.info('streaming up and running. disabling periodic fetching.')
             elif status == Status.PUSH_SUBSYSTEM_DOWN:
-                _LOGGER.info('streaming temporarily down. starting periodic fetching')
                 self._push.update_workers_status(False)
+                self._synchronizer.sync_all()
                 self._synchronizer.start_periodic_fetching()
+                _LOGGER.info('streaming temporarily down. starting periodic fetching')
             elif status == Status.PUSH_RETRYABLE_ERROR:
-                _LOGGER.info('error in streaming. restarting flow')
                 self._synchronizer.start_periodic_fetching()
                 self._push.stop(True)
                 time.sleep(self._backoff.get())
                 self._push.start()
+                _LOGGER.info('error in streaming. restarting flow')
             elif status == Status.PUSH_NONRETRYABLE_ERROR:
-                _LOGGER.info('non-recoverable error in streaming. switching to polling.')
                 self._synchronizer.start_periodic_fetching()
                 self._push.stop(False)
+                _LOGGER.info('non-recoverable error in streaming. switching to polling.')
                 return

@@ -1,5 +1,6 @@
 """Push notification manager tests."""
 #pylint:disable=no-self-use,protected-access
+from threading import Thread
 from queue import Queue
 from splitio.api.auth import APIException
 from splitio.push.sse import SSEEvent
@@ -9,6 +10,7 @@ from splitio.push.parser import parse_incoming_event, EventType, ControlType, Co
 from splitio.push.processor import MessageProcessor
 from splitio.push.status_tracker import PushStatusTracker
 from splitio.push.manager import PushManager, _TOKEN_REFRESH_GRACE_PERIOD
+from splitio.push.splitsse import SplitSSEClient
 from splitio.push.status_tracker import Status
 from tests.helpers import Any
 
@@ -20,13 +22,25 @@ class PushManagerTests(object):
         """Test the initial status is ok and reset() works as expected."""
         api_mock = mocker.Mock()
         api_mock.authenticate.return_value = Token(True, 'abc', {}, 2000000, 1000000)
-        sse_mock = mocker.Mock()
-        sse_mock.start.return_value = True
+
+        sse_mock = mocker.Mock(spec=SplitSSEClient)
+        sse_constructor_mock = mocker.Mock()
+        sse_constructor_mock.return_value = sse_mock
         timer_mock = mocker.Mock()
         mocker.patch('splitio.push.manager.Timer', new=timer_mock)
-        mocker.patch('splitio.push.manager.SplitSSEClient', new=sse_mock)
+        mocker.patch('splitio.push.manager.SplitSSEClient', new=sse_constructor_mock)
         feedback_loop = Queue()
         manager = PushManager(api_mock, mocker.Mock(), feedback_loop)
+
+        def new_start(*args, **kwargs):  # pylint: disable=unused-argument
+            """splitsse.start mock."""
+            thread = Thread(target=manager._handle_connection_ready)
+            thread.setDaemon(True)
+            thread.start()
+            return True
+
+        sse_mock.start.side_effect = new_start
+
         manager.start()
         assert feedback_loop.get() == Status.PUSH_SUBSYSTEM_UP
         assert timer_mock.mock_calls == [
@@ -37,35 +51,69 @@ class PushManagerTests(object):
             mocker.call().start()
         ]
 
+    def test_connection_failure(self, mocker):
+        """Test the connection fails to be established."""
+        api_mock = mocker.Mock()
+        api_mock.authenticate.return_value = Token(True, 'abc', {}, 2000000, 1000000)
+
+        sse_mock = mocker.Mock(spec=SplitSSEClient)
+        sse_constructor_mock = mocker.Mock()
+        sse_constructor_mock.return_value = sse_mock
+        timer_mock = mocker.Mock()
+        mocker.patch('splitio.push.manager.Timer', new=timer_mock)
+        mocker.patch('splitio.push.manager.SplitSSEClient', new=sse_constructor_mock)
+        feedback_loop = Queue()
+        manager = PushManager(api_mock, mocker.Mock(), feedback_loop)
+
+        def new_start(*args, **kwargs):  # pylint: disable=unused-argument
+            """splitsse.start mock."""
+            thread = Thread(target=manager._handle_connection_end, args=(False,))
+            thread.setDaemon(True)
+            thread.start()
+            return False
+
+        sse_mock.start.side_effect = new_start
+
+        manager.start()
+        assert feedback_loop.get() == Status.PUSH_RETRYABLE_ERROR
+        assert timer_mock.mock_calls == [mocker.call(0, Any())]
+
     def test_push_disabled(self, mocker):
         """Test the initial status is ok and reset() works as expected."""
         api_mock = mocker.Mock()
         api_mock.authenticate.return_value = Token(False, 'abc', {}, 1, 2)
-        sse_mock = mocker.Mock()
-        sse_mock.start.return_value = True
-        feedback_loop = Queue()
+
+        sse_mock = mocker.Mock(spec=SplitSSEClient)
+        sse_constructor_mock = mocker.Mock()
+        sse_constructor_mock.return_value = sse_mock
         timer_mock = mocker.Mock()
         mocker.patch('splitio.push.manager.Timer', new=timer_mock)
-        mocker.patch('splitio.push.manager.SplitSSEClient', new=sse_mock)
+        mocker.patch('splitio.push.manager.SplitSSEClient', new=sse_constructor_mock)
+        feedback_loop = Queue()
         manager = PushManager(api_mock, mocker.Mock(), feedback_loop)
         manager.start()
         assert feedback_loop.get() == Status.PUSH_NONRETRYABLE_ERROR
         assert timer_mock.mock_calls == [mocker.call(0, Any())]
+        assert sse_mock.mock_calls == []
 
     def test_auth_apiexception(self, mocker):
         """Test the initial status is ok and reset() works as expected."""
         api_mock = mocker.Mock()
         api_mock.authenticate.side_effect = APIException('something')
-        sse_mock = mocker.Mock()
-        sse_mock.start.return_value = True
-        feedback_loop = Queue()
+
+        sse_mock = mocker.Mock(spec=SplitSSEClient)
+        sse_constructor_mock = mocker.Mock()
+        sse_constructor_mock.return_value = sse_mock
         timer_mock = mocker.Mock()
         mocker.patch('splitio.push.manager.Timer', new=timer_mock)
-        mocker.patch('splitio.push.manager.SplitSSEClient', new=sse_mock)
+        mocker.patch('splitio.push.manager.SplitSSEClient', new=sse_constructor_mock)
+
+        feedback_loop = Queue()
         manager = PushManager(api_mock, mocker.Mock(), feedback_loop)
         manager.start()
         assert feedback_loop.get() == Status.PUSH_RETRYABLE_ERROR
         assert timer_mock.mock_calls == [mocker.call(0, Any())]
+        assert sse_mock.mock_calls == []
 
     def test_split_change(self, mocker):
         """Test update-type messages are properly forwarded to the processor."""

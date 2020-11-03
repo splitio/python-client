@@ -10,7 +10,7 @@ from splitio.util.threadutil import EventGroup
 _LOGGER = logging.getLogger(__name__)
 
 
-class SplitSSEClient(object):
+class SplitSSEClient(object):  # pylint: disable=too-many-instance-attributes
     """Split streaming endpoint SSE client."""
 
     KEEPALIVE_TIMEOUT = 70
@@ -21,18 +21,27 @@ class SplitSSEClient(object):
         ERRORED = 2
         CONNECTED = 3
 
-    def __init__(self, callback, base_url='https://streaming.split.io'):
+    def __init__(self, event_callback, first_event_callback=None,
+                 connection_closed_callback=None, base_url='https://streaming.split.io'):
         """
         Construct a split sse client.
 
         :param callback: fuction to call when an event is received.
         :type callback: callable
 
+        :param first_event_callback: function to call when the first event is received.
+        :type first_event_callback: callable
+
+        :param connection_closed_callback: funciton to call when the connection ends.
+        :type connection_closed_callback: callable
+
         :param base_url: scheme + :// + host
         :type base_url: str
         """
         self._client = SSEClient(self._raw_event_handler)
-        self._callback = callback
+        self._callback = event_callback
+        self._on_connected = first_event_callback
+        self._on_disconnected = connection_closed_callback
         self._base_url = base_url
         self._status = SplitSSEClient._Status.IDLE
         self._sse_first_event = None
@@ -49,6 +58,8 @@ class SplitSSEClient(object):
             self._status = SplitSSEClient._Status.CONNECTED if event.event != SSE_EVENT_ERROR \
                 else SplitSSEClient._Status.ERRORED
             self._sse_first_event.set()
+            if self._on_connected is not None:
+                self._on_connected()
 
         if event.data is not None:
             self._callback(event)
@@ -106,11 +117,13 @@ class SplitSSEClient(object):
 
         def connect(url):
             """Connect to sse in a blocking manner."""
+            shutdown_requested = False
             try:
-                self._client.start(url, timeout=self.KEEPALIVE_TIMEOUT)
+                shutdown_requested = self._client.start(url, timeout=self.KEEPALIVE_TIMEOUT)
             finally:
                 self._status = SplitSSEClient._Status.IDLE
                 self._sse_connection_closed.set()
+                self._on_disconnected(shutdown_requested)
 
         url = self._build_url(token)
         task = threading.Thread(target=connect, name='SSEConnection', args=(url,))
