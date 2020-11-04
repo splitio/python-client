@@ -9,7 +9,10 @@ from splitio.api import APIException
 from splitio.api.client import HttpClientException
 
 
-class SegmentsAPI(object):  #pylint: disable=too-few-public-methods
+_LOGGER = logging.getLogger(__name__)
+
+
+class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the segments API."""
 
     def __init__(self, http_client, apikey):
@@ -21,7 +24,6 @@ class SegmentsAPI(object):  #pylint: disable=too-few-public-methods
         :param apikey: User apikey token.
         :type apikey: string
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._client = http_client
         self._apikey = apikey
 
@@ -50,6 +52,9 @@ class SegmentsAPI(object):  #pylint: disable=too-few-public-methods
             else:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            self._logger.error('Http client is throwing exceptions')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error(
+                'Error fetching %s because an exception was raised by the HTTPClient',
+                segment_name
+            )
+            _LOGGER.debug('Error: ', exc_info=True)
             raise_from(APIException('Segments not fetched properly.'), exc)

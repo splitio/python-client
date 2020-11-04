@@ -2,7 +2,7 @@
 #pylint: disable=protected-access,line-too-long,no-self-use
 import json
 import os
-import time
+import threading
 
 from redis import StrictRedis
 
@@ -50,6 +50,12 @@ class InMemoryIntegrationTests(object):
         }
         impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
         self.factory = SplitFactory('some_api_key', storages, True, impmanager)  #pylint:disable=attribute-defined-outside-init
+
+    def teardown_method(self):
+        """Shut down the factory."""
+        event = threading.Event()
+        self.factory.destroy(event)
+        event.wait()
 
     def _validate_last_impressions(self, client, *to_validate):
         """Validate the last N impressions are present disregarding the order."""
@@ -789,7 +795,6 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
         impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
         self.factory = SplitFactory('some_api_key', storages, True, impmanager)  #pylint:disable=attribute-defined-outside-init
 
-
 class LocalhostIntegrationTests(object):  #pylint: disable=too-few-public-methods
     """Client & Manager integration tests."""
 
@@ -818,3 +823,11 @@ class LocalhostIntegrationTests(object):  #pylint: disable=too-few-public-method
         assert manager.split('other_feature').configs == {}
         assert manager.split('other_feature_2').configs == {}
         assert manager.split('other_feature_3').configs == {}
+        event = threading.Event()
+        factory.destroy(event)
+        event.wait()
+
+        # hack to increase isolation and prevent conflicts with other tests
+        thread = factory._sync_manager._synchronizer._split_tasks.split_task._task._thread
+        if thread is not None and thread.is_alive():
+            thread.join()

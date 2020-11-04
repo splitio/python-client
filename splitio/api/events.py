@@ -7,6 +7,9 @@ from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException
 
 
+_LOGGER = logging.getLogger(__name__)
+
+
 class EventsAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the events API."""
 
@@ -21,7 +24,6 @@ class EventsAPI(object):  # pylint: disable=too-few-public-methods
         :param sdk_metadata: SDK version & machine name & IP.
         :type sdk_metadata: splitio.client.util.SdkMetadata
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._client = http_client
         self._apikey = apikey
         self._metadata = headers_from_metadata(sdk_metadata)
@@ -71,6 +73,6 @@ class EventsAPI(object):  # pylint: disable=too-few-public-methods
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            self._logger.error('Http client is throwing exceptions')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error('Error posting events because an exception was raised by the HTTPClient')
+            _LOGGER.debug('Error: ', exc_info=True)
             raise_from(APIException('Events not flushed properly.'), exc)

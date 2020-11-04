@@ -9,6 +9,7 @@ from splitio.models.splits import Split
 from splitio.models.segments import Segment
 from splitio.models.grammar.condition import Condition
 from splitio.models.grammar.matchers import UserDefinedSegmentMatcher
+from splitio.sync.segment import SegmentSynchronizer
 
 
 class SegmentSynchronizationTests(object):
@@ -22,6 +23,7 @@ class SegmentSynchronizationTests(object):
         # Setup a mocked segment storage whose changenumber returns -1 on first fetch and
         # 123 afterwards.
         storage = mocker.Mock(spec=SegmentStorage)
+
         def change_number_mock(segment_name):
             if segment_name == 'segmentA' and change_number_mock._count_a == 0:
                 change_number_mock._count_a = 1
@@ -42,13 +44,16 @@ class SegmentSynchronizationTests(object):
         def fetch_segment_mock(segment_name, change_number):
             if segment_name == 'segmentA' and fetch_segment_mock._count_a == 0:
                 fetch_segment_mock._count_a = 1
-                return {'name': 'segmentA', 'added': ['key1', 'key2', 'key3'], 'removed': [], 'since': -1, 'till': 123}
+                return {'name': 'segmentA', 'added': ['key1', 'key2', 'key3'], 'removed': [],
+                        'since': -1, 'till': 123}
             if segment_name == 'segmentB' and fetch_segment_mock._count_b == 0:
                 fetch_segment_mock._count_b = 1
-                return {'name': 'segmentB', 'added': ['key4', 'key5', 'key6'], 'removed': [], 'since': -1, 'till': 123}
+                return {'name': 'segmentB', 'added': ['key4', 'key5', 'key6'], 'removed': [],
+                        'since': -1, 'till': 123}
             if segment_name == 'segmentC' and fetch_segment_mock._count_c == 0:
                 fetch_segment_mock._count_c = 1
-                return {'name': 'segmentC', 'added': ['key7', 'key8', 'key9'], 'removed': [], 'since': -1, 'till': 123}
+                return {'name': 'segmentC', 'added': ['key7', 'key8', 'key9'], 'removed': [],
+                        'since': -1, 'till': 123}
             return {'added': [], 'removed': [], 'since': 123, 'till': 123}
         fetch_segment_mock._count_a = 0
         fetch_segment_mock._count_b = 0
@@ -57,17 +62,17 @@ class SegmentSynchronizationTests(object):
         api = mocker.Mock()
         api.fetch_segment.side_effect = fetch_segment_mock
 
-        segment_ready_event = threading.Event()
-        task = segment_sync.SegmentSynchronizationTask(api, storage, split_storage, 1, segment_ready_event)
+        segments_synchronizer = SegmentSynchronizer(api, split_storage, storage)
+        task = segment_sync.SegmentSynchronizationTask(segments_synchronizer.synchronize_segments,
+                                                       0.5)
         task.start()
+        time.sleep(0.7)
 
-        segment_ready_event.wait(5)
         assert task.is_running()
 
         stop_event = threading.Event()
         task.stop(stop_event)
         stop_event.wait()
-        assert segment_ready_event.is_set()
         assert not task.is_running()
 
         api_calls = [call for call in api.fetch_segment.mock_calls]
@@ -81,7 +86,7 @@ class SegmentSynchronizationTests(object):
         segment_put_calls = storage.put.mock_calls
         segments_to_validate = set(['segmentA', 'segmentB', 'segmentC'])
         for call in segment_put_calls:
-            func_name, positional_args, keyword_args = call
+            _, positional_args, _ = call
             segment = positional_args[0]
             assert isinstance(segment, Segment)
             assert segment.name in segments_to_validate

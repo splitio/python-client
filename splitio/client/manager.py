@@ -6,6 +6,9 @@ import logging
 from . import input_validator
 
 
+_LOGGER = logging.getLogger(__name__)
+
+
 class SplitManager(object):
     """Split Manager. Gives insights on data cached by splits."""
 
@@ -16,7 +19,6 @@ class SplitManager(object):
         :param factory: Factory containing all storage references.
         :type factory: splitio.client.factory.SplitFactory
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._factory = factory
         self._storage = factory._get_storage('splits')  # pylint: disable=protected-access
 
@@ -28,11 +30,11 @@ class SplitManager(object):
         :rtype: list
         """
         if self._factory.destroyed:
-            self._logger.error("Client has already been destroyed - no calls possible.")
+            _LOGGER.error("Client has already been destroyed - no calls possible.")
             return []
 
         if not self._factory.ready:
-            self._logger.warning(
+            _LOGGER.warning(
                 "split_names: The SDK is not ready, results may be incorrect. "
                 "Make sure to wait for SDK readiness before using this method"
             )
@@ -47,11 +49,11 @@ class SplitManager(object):
         :rtype: list()
         """
         if self._factory.destroyed:
-            self._logger.error("Client has already been destroyed - no calls possible.")
+            _LOGGER.error("Client has already been destroyed - no calls possible.")
             return []
 
         if not self._factory.ready:
-            self._logger.warning(
+            _LOGGER.warning(
                 "splits: The SDK is not ready, results may be incorrect. "
                 "Make sure to wait for SDK readiness before using this method"
             )
@@ -69,7 +71,7 @@ class SplitManager(object):
         :rtype: splitio.models.splits.SplitView
         """
         if self._factory.destroyed:
-            self._logger.error("Client has already been destroyed - no calls possible.")
+            _LOGGER.error("Client has already been destroyed - no calls possible.")
             return []
 
         feature_name = input_validator.validate_manager_feature_name(
@@ -79,7 +81,7 @@ class SplitManager(object):
         )
 
         if not self._factory.ready:
-            self._logger.warning(
+            _LOGGER.warning(
                 "split: The SDK is not ready, results may be incorrect. "
                 "Make sure to wait for SDK readiness before using this method"
             )

@@ -1,13 +1,14 @@
 """Telemetry synchronization task unit test module."""
-#pylint: disable=no-self-use
+# pylint: disable=no-self-use
 import time
 import threading
 from splitio.storage import TelemetryStorage
 from splitio.api.telemetry import TelemetryAPI
 from splitio.tasks.telemetry_sync import TelemetrySynchronizationTask
+from splitio.sync.telemetry import TelemetrySynchronizer
 
 
-class TelemetrySyncTests(object):  #pylint: disable=too-few-public-methods
+class TelemetrySyncTests(object):  # pylint: disable=too-few-public-methods
     """Impressions Syncrhonization task test cases."""
 
     def test_normal_operation(self, mocker):
@@ -26,7 +27,8 @@ class TelemetrySyncTests(object):  #pylint: disable=too-few-public-methods
             'counter1': 1,
             'counter2': 5
         }
-        task = TelemetrySynchronizationTask(api, storage, 1)
+        telemtry_synchronizer = TelemetrySynchronizer(api, storage)
+        task = TelemetrySynchronizationTask(telemtry_synchronizer.synchronize_telemetry, 1)
         task.start()
         time.sleep(2)
         assert task.is_running()

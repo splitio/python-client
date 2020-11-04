@@ -1,9 +1,9 @@
 """SDK main client test module."""
-#pylint: disable=no-self-use,protected-access
+# pylint: disable=no-self-use,protected-access
 
 import json
 import os
-from splitio.client.client import Client
+from splitio.client.client import Client, _LOGGER as _logger
 from splitio.client.factory import SplitFactory
 from splitio.engine.evaluator import Evaluator
 from splitio.models.impressions import Impression, Label
@@ -16,7 +16,7 @@ from splitio.models import splits, segments
 from splitio.engine.impressions import Manager as ImpressionManager
 
 
-class ClientTests(object):  #pylint: disable=too-few-public-methods
+class ClientTests(object):  # pylint: disable=too-few-public-methods
     """Split client test cases."""
 
     def test_get_treatment(self, mocker):
@@ -26,6 +26,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
         telemetry_storage = mocker.Mock(spec=TelemetryStorage)
+
         def _get_storage_mock(name):
             return {
                 'splits': split_storage,
@@ -56,14 +57,14 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
                 'change_number': 123
             },
         }
-        client._logger = mocker.Mock()
+        _logger = mocker.Mock()
 
         assert client.get_treatment('some_key', 'some_feature') == 'on'
         assert mocker.call(
             [(Impression('some_key', 'some_feature', 'on', 'some_label', 123, None, 1000), None)]
         ) in impmanager.track.mock_calls
         assert mocker.call('sdk.getTreatment', 5) in telemetry_storage.inc_latency.mock_calls
-        assert client._logger.mock_calls == []
+        assert _logger.mock_calls == []
 
         # Test with client not ready
         ready_property = mocker.PropertyMock()
@@ -78,6 +79,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         # Test with exception:
         ready_property.return_value = True
         split_storage.get_change_number.return_value = -1
+
         def _raise(*_):
             raise Exception('something')
         client._evaluator.evaluate_feature.side_effect = _raise
@@ -94,6 +96,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
         telemetry_storage = mocker.Mock(spec=TelemetryStorage)
+
         def _get_storage_mock(name):
             return {
                 'splits': split_storage,
@@ -124,7 +127,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
                 'change_number': 123
             }
         }
-        client._logger = mocker.Mock()
+        _logger = mocker.Mock()
         client._send_impression_to_listener = mocker.Mock()
 
         assert client.get_treatment_with_config(
@@ -135,7 +138,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
             [(Impression('some_key', 'some_feature', 'on', 'some_label', 123, None, 1000), None)]
         ) in impmanager.track.mock_calls
         assert mocker.call('sdk.getTreatmentWithConfig', 5) in telemetry_storage.inc_latency.mock_calls
-        assert client._logger.mock_calls == []
+        assert _logger.mock_calls == []
 
         # Test with client not ready
         ready_property = mocker.PropertyMock()
@@ -151,6 +154,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         # Test with exception:
         ready_property.return_value = True
         split_storage.get_change_number.return_value = -1
+
         def _raise(*_):
             raise Exception('something')
         client._evaluator.evaluate_feature.side_effect = _raise
@@ -167,6 +171,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
         telemetry_storage = mocker.Mock(spec=TelemetryStorage)
+
         def _get_storage_mock(name):
             return {
                 'splits': split_storage,
@@ -201,7 +206,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
             'f1': evaluation,
             'f2': evaluation
         }
-        client._logger = mocker.Mock()
+        _logger = mocker.Mock()
         client._send_impression_to_listener = mocker.Mock()
         assert client.get_treatments('key', ['f1', 'f2']) == {'f1': 'on', 'f2': 'on'}
 
@@ -209,7 +214,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         assert (Impression('key', 'f1', 'on', 'some_label', 123, None, 1000), None) in impressions_called
         assert (Impression('key', 'f2', 'on', 'some_label', 123, None, 1000), None) in impressions_called
         assert mocker.call('sdk.getTreatments', 5) in telemetry_storage.inc_latency.mock_calls
-        assert client._logger.mock_calls == []
+        assert _logger.mock_calls == []
 
         # Test with client not ready
         ready_property = mocker.PropertyMock()
@@ -224,6 +229,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         # Test with exception:
         ready_property.return_value = True
         split_storage.get_change_number.return_value = -1
+
         def _raise(*_):
             raise Exception('something')
         client._evaluator.evaluate_features.side_effect = _raise
@@ -237,6 +243,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
         telemetry_storage = mocker.Mock(spec=TelemetryStorage)
+
         def _get_storage_mock(name):
             return {
                 'splits': split_storage,
@@ -261,17 +268,17 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
-                'configurations': '{"color": "red"}',
-                'impression': {
-                    'label': 'some_label',
-                    'change_number': 123
-                }
+            'configurations': '{"color": "red"}',
+            'impression': {
+                'label': 'some_label',
+                'change_number': 123
+            }
         }
         client._evaluator.evaluate_features.return_value = {
             'f1': evaluation,
             'f2': evaluation
         }
-        client._logger = mocker.Mock()
+        _logger = mocker.Mock()
         assert client.get_treatments_with_config('key', ['f1', 'f2']) == {
             'f1': ('on', '{"color": "red"}'),
             'f2': ('on', '{"color": "red"}')
@@ -281,7 +288,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         assert (Impression('key', 'f1', 'on', 'some_label', 123, None, 1000), None) in impressions_called
         assert (Impression('key', 'f2', 'on', 'some_label', 123, None, 1000), None) in impressions_called
         assert mocker.call('sdk.getTreatmentsWithConfig', 5) in telemetry_storage.inc_latency.mock_calls
-        assert client._logger.mock_calls == []
+        assert _logger.mock_calls == []
 
         # Test with client not ready
         ready_property = mocker.PropertyMock()
@@ -296,6 +303,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         # Test with exception:
         ready_property.return_value = True
         split_storage.get_change_number.return_value = -1
+
         def _raise(*_):
             raise Exception('something')
         client._evaluator.evaluate_features.side_effect = _raise
@@ -312,6 +320,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
         telemetry_storage = mocker.Mock(spec=TelemetryStorage)
+
         def _get_storage_mock(name):
             return {
                 'splits': split_storage,
@@ -339,6 +348,7 @@ class ClientTests(object):  #pylint: disable=too-few-public-methods
         event_storage = mocker.Mock(spec=EventStorage)
         event_storage.put.return_value = True
         telemetry_storage = mocker.Mock(spec=TelemetryStorage)
+
         def _get_storage_mock(name):
             return {
                 'splits': split_storage,

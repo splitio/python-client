@@ -21,7 +21,7 @@ class RedisSplitStorageTests(object):
         adapter = mocker.Mock(spec=RedisAdapter)
         adapter.get.return_value = '{"name": "some_split"}'
         from_raw = mocker.Mock()
-        mocker.patch('splitio.models.splits.from_raw', new=from_raw)
+        mocker.patch('splitio.storage.redis.splits.from_raw', new=from_raw)
 
         storage = RedisSplitStorage(adapter)
         storage.get('some_split')
@@ -43,7 +43,7 @@ class RedisSplitStorageTests(object):
         adapter = mocker.Mock(spec=RedisAdapter)
         adapter.get.return_value = '{"name": "some_split"}'
         from_raw = mocker.Mock()
-        mocker.patch('splitio.models.splits.from_raw', new=from_raw)
+        mocker.patch('splitio.storage.redis.splits.from_raw', new=from_raw)
 
         storage = RedisSplitStorage(adapter, True, 1)
         storage.get('some_split')
@@ -62,6 +62,7 @@ class RedisSplitStorageTests(object):
         from_raw.reset_mock()
         adapter.get.return_value = None
 
+        # Still cached
         result = storage.get('some_split')
         assert result is not None
         time.sleep(1)  # wait for expiration
@@ -75,7 +76,7 @@ class RedisSplitStorageTests(object):
         adapter = mocker.Mock(spec=RedisAdapter)
         storage = RedisSplitStorage(adapter)
         from_raw = mocker.Mock()
-        mocker.patch('splitio.models.splits.from_raw', new=from_raw)
+        mocker.patch('splitio.storage.redis.splits.from_raw', new=from_raw)
 
         adapter.mget.return_value = ['{"name": "split1"}', '{"name": "split2"}', None]
 
@@ -102,7 +103,7 @@ class RedisSplitStorageTests(object):
         adapter = mocker.Mock(spec=RedisAdapter)
         storage = RedisSplitStorage(adapter)
         from_raw = mocker.Mock()
-        mocker.patch('splitio.models.splits.from_raw', new=from_raw)
+        mocker.patch('splitio.storage.redis.splits.from_raw', new=from_raw)
 
         adapter.keys.return_value = [
             'SPLITIO.split.split1',
@@ -177,7 +178,7 @@ class RedisSegmentStorageTests(object):
         adapter.smembers.return_value = set(["key1", "key2", "key3"])
         adapter.get.return_value = '100'
         from_raw = mocker.Mock()
-        mocker.patch('splitio.models.segments.from_raw', new=from_raw)
+        mocker.patch('splitio.storage.redis.segments.from_raw', new=from_raw)
 
         storage = RedisSegmentStorage(adapter)
         result = storage.get('some_segment')

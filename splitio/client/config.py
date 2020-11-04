@@ -15,8 +15,9 @@ DEFAULT_CONFIG = {
     'connectionTimeout': 1500,
     'splitSdkMachineName': None,
     'splitSdkMachineIp': None,
-    'featuresRefreshRate': 5,
-    'segmentsRefreshRate': 60,
+    'streamingEnabled': True,
+    'featuresRefreshRate': 30,
+    'segmentsRefreshRate': 30,
     'metricsRefreshRate': 60,
     'impressionsRefreshRate': 5 * 60,
     'impressionsBulkSize': 5000,
@@ -79,6 +80,7 @@ def _parse_operation_mode(apikey, config):
 
     return 'inmemory-standalone'
 
+
 def _sanitize_impressions_mode(mode, refresh_rate=None):
     """
     Check supplied impressions mode and adjust refresh rate.
@@ -104,6 +106,7 @@ def _sanitize_impressions_mode(mode, refresh_rate=None):
         refresh_rate = max(60, refresh_rate) if refresh_rate is not None else 5 * 60
 
     return mode, refresh_rate
+
 
 def sanitize(apikey, config):
     """

@@ -7,7 +7,6 @@ import threading
 from collections import Counter
 
 from enum import Enum
-import six
 
 from splitio.client.client import Client
 from splitio.client import input_validator
@@ -34,6 +33,8 @@ from splitio.api.segments import SegmentsAPI
 from splitio.api.impressions import ImpressionsAPI
 from splitio.api.events import EventsAPI
 from splitio.api.telemetry import TelemetryAPI
+from splitio.api.auth import AuthAPI
+
 
 # Tasks
 from splitio.tasks.split_sync import SplitSynchronizationTask
@@ -42,9 +43,19 @@ from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCount
 from splitio.tasks.events_sync import EventsSyncTask
 from splitio.tasks.telemetry_sync import TelemetrySynchronizationTask
 
+# Synchronizer
+from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, \
+    LocalhostSynchronizer
+from splitio.sync.manager import Manager
+from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer
+from splitio.sync.segment import SegmentSynchronizer
+from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
+from splitio.sync.event import EventSynchronizer
+from splitio.sync.telemetry import TelemetrySynchronizer
+
 # Localhost stuff
 from splitio.client.localhost import LocalhostEventsStorage, LocalhostImpressionsStorage, \
-    LocalhostSplitSynchronizationTask, LocalhostTelemetryStorage
+    LocalhostTelemetryStorage
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -75,8 +86,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
             storages,
             labels_enabled,
             impressions_manager,
-            apis=None,
-            tasks=None,
+            sync_manager=None,
             sdk_ready_flag=None,
     ):
         """
@@ -88,19 +98,17 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         :type labels_enabled: bool
         :param apis: Dictionary of apis client wrappers
         :type apis: dict
-        :param tasks: Dictionary of sychronization tasks
-        :type tasks: dict
+        :param sync_manager: Manager synchronization
+        :type sync_manager: splitio.sync.manager.Manager
         :param sdk_ready_flag: Event to set when the sdk is ready.
         :type sdk_ready_flag: threading.Event
         :param impression_manager: Impressions manager instance
         :type impression_listener: ImpressionsManager
         """
         self._apikey = apikey
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._storages = storages
         self._labels_enabled = labels_enabled
-        self._apis = apis if apis else {}
-        self._tasks = tasks if tasks else {}
+        self._sync_manager = sync_manager
         self._sdk_internal_ready_flag = sdk_ready_flag
         self._sdk_ready_flag = threading.Event()
         self._impressions_manager = impressions_manager
@@ -110,7 +118,8 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         if self._sdk_internal_ready_flag is not None:
             self._status = Status.NOT_INITIALIZED
             # add a listener that updates the status to READY once the flag is set.
-            ready_updater = threading.Thread(target=self._update_status_when_ready)
+            ready_updater = threading.Thread(target=self._update_status_when_ready,
+                                             name='SDKReadyFlagUpdater')
             ready_updater.setDaemon(True)
             ready_updater.start()
         else:
@@ -155,6 +164,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
     def block_until_ready(self, timeout=None):
         """
         Blocks until the sdk is ready or the timeout specified by the user expires.
+
         When ready, the factory's status is updated accordingly.
 
         :param timeout: Number of seconds to wait (fractions allowed)
@@ -187,26 +197,24 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         :type destroyed_event: threading.Event
         """
         if self.destroyed:
-            self._logger.info('Factory already destroyed.')
+            _LOGGER.info('Factory already destroyed.')
             return
 
         try:
-            if destroyed_event is not None:
-                stop_events = {name: threading.Event() for name in self._tasks.keys()}
-                for name, task in six.iteritems(self._tasks):
-                    task.stop(stop_events[name])
+            if self._sync_manager is not None:
+                if destroyed_event is not None:
 
-                def _wait_for_tasks_to_stop():
-                    for event in stop_events.values():
-                        event.wait()
-                    destroyed_event.set()
+                    def _wait_for_tasks_to_stop():
+                        self._sync_manager.stop(True)
+                        destroyed_event.set()
 
-                wait_thread = threading.Thread(target=_wait_for_tasks_to_stop)
-                wait_thread.setDaemon(True)
-                wait_thread.start()
-            else:
-                for task in self._tasks.values():
-                    task.stop()
+                    wait_thread = threading.Thread(target=_wait_for_tasks_to_stop)
+                    wait_thread.setDaemon(True)
+                    wait_thread.start()
+                else:
+                    self._sync_manager.stop(False)
+            elif destroyed_event is not None:
+                destroyed_event.set()
         finally:
             self._status = Status.DESTROYED
             with _INSTANTIATED_FACTORIES_LOCK:
@@ -237,7 +245,8 @@ def _wrap_impression_listener(listener, metadata):
     return None
 
 
-def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None):  # pylint: disable=too-many-locals
+def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pylint:disable=too-many-arguments,too-many-locals
+                             auth_api_base_url=None, streaming_api_base_url=None):
     """Build and return a split factory tailored to the supplied config."""
     if not input_validator.validate_factory_instantiation(api_key):
         return None
@@ -245,11 +254,13 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None):  # py
     http_client = HttpClient(
         sdk_url=sdk_url,
         events_url=events_url,
+        auth_url=auth_api_base_url,
         timeout=cfg.get('connectionTimeout')
     )
 
     sdk_metadata = util.get_metadata(cfg)
     apis = {
+        'auth': AuthAPI(http_client, api_key, sdk_metadata),
         'splits': SplitsAPI(http_client, api_key),
         'segments': SegmentsAPI(http_client, api_key),
         'impressions': ImpressionsAPI(http_client, api_key, sdk_metadata, cfg['impressionsMode']),
@@ -268,88 +279,58 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None):  # py
         'telemetry': InMemoryTelemetryStorage()
     }
 
-    # Synchronization flags
-    splits_ready_flag = threading.Event()
-    segments_ready_flag = threading.Event()
-    sdk_ready_flag = threading.Event()
-
     imp_manager = ImpressionsManager(
         storages['impressions'].put,
         cfg['impressionsMode'],
         True,
         _wrap_impression_listener(cfg['impressionListener'], sdk_metadata))
 
-    tasks = {
-        'splits': SplitSynchronizationTask(
-            apis['splits'],
-            storages['splits'],
+    synchronizers = SplitSynchronizers(
+        SplitSynchronizer(apis['splits'], storages['splits']),
+        SegmentSynchronizer(apis['segments'], storages['splits'], storages['segments']),
+        ImpressionSynchronizer(apis['impressions'], storages['impressions'],
+                               cfg['impressionsBulkSize']),
+        EventSynchronizer(apis['events'], storages['events'], cfg['eventsBulkSize']),
+        TelemetrySynchronizer(apis['telemetry'], storages['telemetry']),
+        ImpressionsCountSynchronizer(apis['impressions'], imp_manager),
+    )
+
+    tasks = SplitTasks(
+        SplitSynchronizationTask(
+            synchronizers.split_sync.synchronize_splits,
             cfg['featuresRefreshRate'],
-            splits_ready_flag
         ),
-
-        'segments': SegmentSynchronizationTask(
-            apis['segments'],
-            storages['segments'],
-            storages['splits'],
+        SegmentSynchronizationTask(
+            synchronizers.segment_sync.synchronize_segments,
             cfg['segmentsRefreshRate'],
-            segments_ready_flag
         ),
-
-        'impressions': ImpressionsSyncTask(
-            apis['impressions'],
-            storages['impressions'],
+        ImpressionsSyncTask(
+            synchronizers.impressions_sync.synchronize_impressions,
             cfg['impressionsRefreshRate'],
-            cfg['impressionsBulkSize']
         ),
-
-        'impressions_count': ImpressionsCountSyncTask(
-            apis['impressions'],
-            imp_manager
+        EventsSyncTask(synchronizers.events_sync.synchronize_events, cfg['eventsPushRate']),
+        TelemetrySynchronizationTask(
+            synchronizers.telemetry_sync.synchronize_telemetry,
+            cfg['metricsRefreshRate'],
         ),
+        ImpressionsCountSyncTask(synchronizers.impressions_count_sync.synchronize_counters)
+    )
 
-        'events': EventsSyncTask(
-            apis['events'],
-            storages['events'],
-            cfg['eventsPushRate'],
-            cfg['eventsBulkSize'],
-        ),
+    synchronizer = Synchronizer(synchronizers, tasks)
 
-        'telemetry': TelemetrySynchronizationTask(
-            apis['telemetry'],
-            storages['telemetry'],
-            cfg['metricsRefreshRate']
-        )
-    }
+    sdk_ready_flag = threading.Event()
+    manager = Manager(sdk_ready_flag, synchronizer, apis['auth'], cfg['streamingEnabled'],
+                      streaming_api_base_url)
 
-    # Start tasks that have no dependencies
-    tasks['splits'].start()
-    tasks['impressions'].start()
-    tasks['impressions_count'].start()
-    tasks['events'].start()
-    tasks['telemetry'].start()
+    initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer")
+    initialization_thread.setDaemon(True)
+    initialization_thread.start()
 
-    storages['events'].set_queue_full_hook(tasks['events'].flush)
-    storages['impressions'].set_queue_full_hook(tasks['impressions'].flush)
-
-    def split_ready_task():
-        """Wait for splits to be ready and start fetching segments."""
-        splits_ready_flag.wait()
-        tasks['segments'].start()
-
-    def segment_ready_task():
-        """Wait for segments to be ready and set the main ready flag."""
-        segments_ready_flag.wait()
-        sdk_ready_flag.set()
-
-    split_completion_thread = threading.Thread(target=split_ready_task)
-    split_completion_thread.setDaemon(True)
-    split_completion_thread.start()
-    segment_completion_thread = threading.Thread(target=segment_ready_task)
-    segment_completion_thread.setDaemon(True)
-    segment_completion_thread.start()
+    storages['events'].set_queue_full_hook(tasks.events_task.flush)
+    storages['impressions'].set_queue_full_hook(tasks.impressions_task.flush)
 
     return SplitFactory(api_key, storages, cfg['labelsEnabled'],
-                        imp_manager, apis, tasks, sdk_ready_flag)
+                        imp_manager, manager, sdk_ready_flag)
 
 
 def _build_redis_factory(api_key, cfg):
@@ -404,21 +385,29 @@ def _build_localhost_factory(cfg):
         'telemetry': LocalhostTelemetryStorage()
     }
 
+    synchronizers = SplitSynchronizers(
+        LocalSplitSynchronizer(cfg['splitFile'], storages['splits']),
+        None, None, None, None, None,
+    )
+
+    tasks = SplitTasks(
+        SplitSynchronizationTask(
+            synchronizers.split_sync.synchronize_splits,
+            cfg['featuresRefreshRate'],
+        ), None, None, None, None, None,
+    )
+
     ready_event = threading.Event()
-    tasks = {'splits': LocalhostSplitSynchronizationTask(
-        cfg['splitFile'],
-        storages['splits'],
-        cfg['featuresRefreshRate'],
-        ready_event
-    )}
-    tasks['splits'].start()
+    synchronizer = LocalhostSynchronizer(synchronizers, tasks)
+    manager = Manager(ready_event, synchronizer, None, False)
+    manager.start()
+
     return SplitFactory(
         'localhost',
         storages,
         False,
         ImpressionsManager(storages['impressions'].put, cfg['impressionsMode'], True, None),
-        None,
-        tasks,
+        manager,
         ready_event
     )
 
@@ -459,7 +448,9 @@ def get_factory(api_key, **kwargs):
             api_key,
             config,
             kwargs.get('sdk_api_base_url'),
-            kwargs.get('events_api_base_url')
+            kwargs.get('events_api_base_url'),
+            kwargs.get('auth_api_base_url'),
+            kwargs.get('streaming_api_base_url')
         )
     finally:
         _INSTANTIATED_FACTORIES.update([api_key])

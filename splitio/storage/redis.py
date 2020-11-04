@@ -12,6 +12,9 @@ from splitio.storage.adapters.redis import RedisAdapterException
 from splitio.storage.adapters.cache_trait import decorate as add_cache, DEFAULT_MAX_AGE
 
 
+_LOGGER = logging.getLogger(__name__)
+
+
 class RedisSplitStorage(SplitStorage):
     """Redis-based storage for splits."""
 
@@ -26,7 +29,6 @@ class RedisSplitStorage(SplitStorage):
         :param redis_client: Redis client or compliant interface.
         :type redis_client: splitio.storage.adapters.redis.RedisAdapter
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._redis = redis_client
         if enable_caching:
             self.get = add_cache(lambda *p, **_: p[0], max_age)(self.get)
@@ -71,8 +73,8 @@ class RedisSplitStorage(SplitStorage):
             raw = self._redis.get(self._get_key(split_name))
             return splits.from_raw(json.loads(raw)) if raw is not None else None
         except RedisAdapterException:
-            self._logger.error('Error fetching split from storage')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error('Error fetching split from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
             return None
 
     def fetch_many(self, split_names):
@@ -94,12 +96,12 @@ class RedisSplitStorage(SplitStorage):
                 try:
                     split = splits.from_raw(json.loads(raw_splits[i]))
                 except (ValueError, TypeError):
-                    self._logger.error('Could not parse split.')
-                    self._logger.debug("Raw split that failed parsing attempt: %s", raw_splits[i])
+                    _LOGGER.error('Could not parse split.')
+                    _LOGGER.debug("Raw split that failed parsing attempt: %s", raw_splits[i])
                 to_return[split_names[i]] = split
         except RedisAdapterException:
-            self._logger.error('Error fetching splits from storage')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error('Error fetching splits from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
         return to_return
 
     def is_valid_traffic_type(self, traffic_type_name):  # pylint: disable=method-hidden
@@ -117,8 +119,8 @@ class RedisSplitStorage(SplitStorage):
             count = json.loads(raw) if raw else 0
             return count > 0
         except RedisAdapterException:
-            self._logger.error('Error fetching split from storage')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error('Error fetching split from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
             return False
 
     def put(self, split):
@@ -152,8 +154,8 @@ class RedisSplitStorage(SplitStorage):
             stored_value = self._redis.get(self._SPLIT_TILL_KEY)
             return json.loads(stored_value) if stored_value is not None else None
         except RedisAdapterException:
-            self._logger.error('Error fetching split change number from storage')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error('Error fetching split change number from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
             return None
 
     def set_change_number(self, new_change_number):
@@ -176,8 +178,8 @@ class RedisSplitStorage(SplitStorage):
             keys = self._redis.keys(self._get_key('*'))
             return [key.replace(self._get_key(''), '') for key in keys]
         except RedisAdapterException:
-            self._logger.error('Error fetching split names from storage')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error('Error fetching split names from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
             return []
 
     def get_all_splits(self):
@@ -195,12 +197,25 @@ class RedisSplitStorage(SplitStorage):
                 try:
                     to_return.append(splits.from_raw(json.loads(raw)))
                 except (ValueError, TypeError):
-                    self._logger.error('Could not parse split. Skipping')
-                    self._logger.debug("Raw split that failed parsing attempt: %s", raw)
+                    _LOGGER.error('Could not parse split. Skipping')
+                    _LOGGER.debug("Raw split that failed parsing attempt: %s", raw)
         except RedisAdapterException:
-            self._logger.error('Error fetching all splits from storage')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error('Error fetching all splits from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
         return to_return
+
+    def kill_locally(self, split_name, default_treatment, change_number):
+        """
+        Local kill for split
+
+        :param split_name: name of the split to perform kill
+        :type split_name: str
+        :param default_treatment: name of the default treatment to return
+        :type default_treatment: str
+        :param change_number: change_number
+        :type change_number: int
+        """
+        raise NotImplementedError('Not supported for redis.')
 
 
 class RedisSegmentStorage(SegmentStorage):
@@ -217,7 +232,6 @@ class RedisSegmentStorage(SegmentStorage):
         :type redis_client: splitio.storage.adapters.redis.RedisAdapter
         """
         self._redis = redis_client
-        self._logger = logging.getLogger(self.__class__.__name__)
 
     def _get_till_key(self, segment_name):
         """
@@ -260,8 +274,8 @@ class RedisSegmentStorage(SegmentStorage):
                 return None
             return segments.Segment(segment_name, keys, till)
         except RedisAdapterException:
-            self._logger.error('Error fetching segment from storage')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error('Error fetching segment from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
             return None
 
     def update(self, segment_name, to_add, to_remove, change_number=None):
@@ -290,8 +304,8 @@ class RedisSegmentStorage(SegmentStorage):
             stored_value = self._redis.get(self._get_till_key(segment_name))
             return json.loads(stored_value) if stored_value is not None else None
         except RedisAdapterException:
-            self._logger.error('Error fetching segment change number from storage')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error('Error fetching segment change number from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
             return None
 
     def set_change_number(self, segment_name, new_change_number):
@@ -329,8 +343,8 @@ class RedisSegmentStorage(SegmentStorage):
         try:
             return self._redis.sismember(self._get_key(segment_name), key)
         except RedisAdapterException:
-            self._logger.error('Error testing members in segment stored in redis')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error('Error testing members in segment stored in redis')
+            _LOGGER.debug('Error: ', exc_info=True)
             return None
 
 
@@ -351,7 +365,6 @@ class RedisImpressionsStorage(ImpressionStorage):
         """
         self._redis = redis_client
         self._sdk_metadata = sdk_metadata
-        self._logger = logging.getLogger(self.__class__.__name__)
 
     def put(self, impressions):
         """
@@ -386,12 +399,12 @@ class RedisImpressionsStorage(ImpressionStorage):
         try:
             inserted = self._redis.rpush(self.IMPRESSIONS_QUEUE_KEY, *bulk_impressions)
             if inserted == len(bulk_impressions):
-                self._logger.debug("SET EXPIRE KEY FOR QUEUE")
+                _LOGGER.debug("SET EXPIRE KEY FOR QUEUE")
                 self._redis.expire(self.IMPRESSIONS_QUEUE_KEY, self.IMPRESSIONS_KEY_DEFAULT_TTL)
             return True
         except RedisAdapterException:
-            self._logger.error('Something went wrong when trying to add impression to redis')
-            self._logger.error('Error: ', exc_info=True)
+            _LOGGER.error('Something went wrong when trying to add impression to redis')
+            _LOGGER.error('Error: ', exc_info=True)
             return False
 
     def pop_many(self, count):
@@ -420,7 +433,6 @@ class RedisEventsStorage(EventStorage):
         """
         self._redis = redis_client
         self._sdk_metadata = sdk_metadata
-        self._logger = logging.getLogger(self.__class__.__name__)
 
     def put(self, events):
         """
@@ -455,8 +467,8 @@ class RedisEventsStorage(EventStorage):
             self._redis.rpush(key, *to_store)
             return True
         except RedisAdapterException:
-            self._logger.error('Something went wrong when trying to add event to redis')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error('Something went wrong when trying to add event to redis')
+            _LOGGER.debug('Error: ', exc_info=True)
             return False
 
     def pop_many(self, count):
@@ -487,7 +499,6 @@ class RedisTelemetryStorage(object):
         """
         self._redis = redis_client
         self._metadata = sdk_metadata
-        self._logger = logging.getLogger(self.__class__.__name__)
 
     def _get_latency_key(self, name, bucket):
         """
@@ -550,15 +561,15 @@ class RedisTelemetryStorage(object):
         :tyoe value: int
         """
         if not 0 <= bucket <= 21:
-            self._logger.error('Incorect bucket "%d" for latency "%s". Ignoring.', bucket, name)
+            _LOGGER.error('Incorect bucket "%d" for latency "%s". Ignoring.', bucket, name)
             return
 
         key = self._get_latency_key(name, bucket)
         try:
             self._redis.incr(key)
         except RedisAdapterException:
-            self._logger.error('Something went wrong when trying to store latency in redis')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error('Something went wrong when trying to store latency in redis')
+            _LOGGER.debug('Error: ', exc_info=True)
 
     def inc_counter(self, name):
         """
@@ -571,8 +582,8 @@ class RedisTelemetryStorage(object):
         try:
             self._redis.incr(key)
         except RedisAdapterException:
-            self._logger.error('Something went wrong when trying to increment counter in redis')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error('Something went wrong when trying to increment counter in redis')
+            _LOGGER.debug('Error: ', exc_info=True)
 
     def put_gauge(self, name, value):
         """
@@ -587,8 +598,8 @@ class RedisTelemetryStorage(object):
         try:
             self._redis.set(key, value)
         except RedisAdapterException:
-            self._logger.error('Something went wrong when trying to set gauge in redis')
-            self._logger.debug('Error: ', exc_info=True)
+            _LOGGER.error('Something went wrong when trying to set gauge in redis')
+            _LOGGER.debug('Error: ', exc_info=True)
 
     def pop_counters(self):
         """

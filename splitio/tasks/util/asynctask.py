@@ -23,7 +23,7 @@ def _safe_run(func):
     try:
         func()
         return True
-    except Exception:  #pylint: disable=broad-except
+    except Exception:  # pylint: disable=broad-except
         # Catch any exception that might happen to avoid the periodic task
         # from ending and allowing for a recovery, as well as preventing
         # an exception from propagating and breaking the main thread
@@ -32,7 +32,7 @@ def _safe_run(func):
         return False
 
 
-class AsyncTask(object):  #pylint: disable=too-many-instance-attributes
+class AsyncTask(object):  # pylint: disable=too-many-instance-attributes
     """
     Asyncrhonous controllable task class.
 
@@ -89,15 +89,13 @@ class AsyncTask(object):  #pylint: disable=too-many-instance-attributes
                 try:
                     msg = self._messages.get(True, self._period)
                     if msg == __TASK_STOP__:
-                        _LOGGER.info("Stop signal received. finishing task execution")
+                        _LOGGER.debug("Stop signal received. finishing task execution")
                         break
                     elif msg == __TASK_FORCE_RUN__:
-                        _LOGGER.info("Force execution signal received. Running now")
+                        _LOGGER.debug("Force execution signal received. Running now")
                         if not _safe_run(self._main):
-                            _LOGGER.error(
-                                "An error occurred when executing the task. "
-                                "Retrying after perio expires"
-                            )
+                            _LOGGER.error("An error occurred when executing the task. "
+                                          "Retrying after perio expires")
                         continue
                 except queue.Empty:
                     # If no message was received, the timeout has expired
@@ -130,7 +128,8 @@ class AsyncTask(object):  #pylint: disable=too-many-instance-attributes
             return
 
         # Start execution
-        self._thread = threading.Thread(target=self._execution_wrapper)
+        self._thread = threading.Thread(target=self._execution_wrapper,
+                                        name='AsyncTask::' + getattr(self._main, '__name__', 'N/S'))
         self._thread.setDaemon(True)
         try:
             self._thread.start()
