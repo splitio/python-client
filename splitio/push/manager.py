@@ -140,8 +140,10 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
             self._feedback_loop.put(Status.PUSH_NONRETRYABLE_ERROR)
             return
 
+        _LOGGER.debug("auth token fetched. connecting to streaming.")
         self._status_tracker.reset()
         if self._sse_client.start(token):
+            _LOGGER.debug("connected to streaming, scheduling next refresh")
             self._setup_next_token_refresh(token)
             self._running = True
 
