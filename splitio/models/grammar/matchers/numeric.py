@@ -9,10 +9,11 @@ from splitio.models.grammar.matchers.base import Matcher
 from splitio.models import datatypes
 
 
+_LOGGER = logging.getLogger(__name__)
+
+
 class Sanitizer(object):  # pylint: disable=too-few-public-methods
     """Numeric input sanitizer."""
-
-    _logger = logging.getLogger('InputSanitizer')
 
     @classmethod
     def ensure_int(cls, data):
@@ -32,11 +33,10 @@ class Sanitizer(object):  # pylint: disable=too-few-public-methods
             return data
 
         if not isinstance(data, string_types):
-            cls._logger.error('Cannot convert %s to int. Failing.', type(data))
+            _LOGGER.error('Cannot convert %s to int. Failing.', type(data))
             return None
 
-
-        cls._logger.warning(
+        _LOGGER.warning(
             'Supplied attribute is of type %s and should have been an int. ',
             type(data)
         )
@@ -44,11 +44,11 @@ class Sanitizer(object):  # pylint: disable=too-few-public-methods
         try:
             return int(data)
         except ValueError:
-            cls._logger.error('Cannot convert %s to int. Failing.', type(data))
+            _LOGGER.error('Cannot convert %s to int. Failing.', type(data))
             return None
 
 
-class ZeroSecondDataMatcher(object):  #pylint: disable=too-few-public-methods
+class ZeroSecondDataMatcher(object):  # pylint: disable=too-few-public-methods
     """Mixin to use in matchers that when dealing with datetimes, truncate seconds."""
 
     data_parsers = {
@@ -62,7 +62,7 @@ class ZeroSecondDataMatcher(object):  #pylint: disable=too-few-public-methods
     }
 
 
-class ZeroTimeDataMatcher(object):  #pylint: disable=no-init,too-few-public-methods
+class ZeroTimeDataMatcher(object):  # pylint: disable=no-init,too-few-public-methods
     """Mixin to use in matchers that when dealing with datetimes, truncate time."""
 
     input_parsers = {

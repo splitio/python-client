@@ -14,9 +14,13 @@ Impression = namedtuple(
         'label',
         'change_number',
         'bucketing_key',
-        'time'
+        'time',
+        'previous_time'
     ]
 )
+
+# pre-python3.7 hack to make previous_time optional
+Impression.__new__.__defaults__ = (None,)
 
 
 class Label(object):  # pylint: disable=too-few-public-methods

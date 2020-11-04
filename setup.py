@@ -23,8 +23,7 @@ INSTALL_REQUIRES = [
     'futures>=3.0.5;python_version<"3"'
 ]
 
-with open(path.join(path.abspath(path.dirname(__file__)),
-                    'splitio', 'version.py')) as f:
+with open(path.join(path.abspath(path.dirname(__file__)), 'splitio', 'version.py')) as f:
     exec(f.read())  # pylint: disable=exec-used
 
 setup(
@@ -42,7 +41,7 @@ setup(
         'test': TESTS_REQUIRES,
         'redis': ['redis>=2.10.5'],
         'uwsgi': ['uwsgi>=2.0.0'],
-        'cpphash': ['mmh3cffi>=0.1.5']
+        'cpphash': ['mmh3cffi==0.2.0'],
     },
     setup_requires=['pytest-runner'],
     classifiers=[
