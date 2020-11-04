@@ -117,13 +117,12 @@ class SplitSSEClient(object):  # pylint: disable=too-many-instance-attributes
 
         def connect(url):
             """Connect to sse in a blocking manner."""
-            shutdown_requested = False
             try:
-                shutdown_requested = self._client.start(url, timeout=self.KEEPALIVE_TIMEOUT)
+                self._client.start(url, timeout=self.KEEPALIVE_TIMEOUT)
             finally:
                 self._status = SplitSSEClient._Status.IDLE
                 self._sse_connection_closed.set()
-                self._on_disconnected(shutdown_requested)
+                self._on_disconnected()
 
         url = self._build_url(token)
         task = threading.Thread(target=connect, name='SSEConnection', args=(url,))

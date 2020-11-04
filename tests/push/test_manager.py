@@ -67,7 +67,7 @@ class PushManagerTests(object):
 
         def new_start(*args, **kwargs):  # pylint: disable=unused-argument
             """splitsse.start mock."""
-            thread = Thread(target=manager._handle_connection_end, args=(False,))
+            thread = Thread(target=manager._handle_connection_end)
             thread.setDaemon(True)
             thread.start()
             return False

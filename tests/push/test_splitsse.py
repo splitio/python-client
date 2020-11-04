@@ -22,17 +22,15 @@ class SSEClientTests(object):
         status = {
             'on_connect': False,
             'on_disconnect': False,
-            'requested': False
         }
 
         def on_connect():
             """On connect handler."""
             status['on_connect'] = True
 
-        def on_disconnect(requested):
+        def on_disconnect():
             """On disconnect handler."""
             status['on_disconnect'] = True
-            status['requested'] = requested
 
         request_queue = Queue()
         server = SSEMockServer(request_queue)
@@ -68,7 +66,6 @@ class SSEClientTests(object):
 
         assert status['on_connect']
         assert status['on_disconnect']
-        assert status['requested']
 
     def test_split_sse_error(self):
         """Test correct initialization. Client ends the connection."""
@@ -84,17 +81,15 @@ class SSEClientTests(object):
         status = {
             'on_connect': False,
             'on_disconnect': False,
-            'requested': False
         }
 
         def on_connect():
             """On connect handler."""
             status['on_connect'] = True
 
-        def on_disconnect(requested):
+        def on_disconnect():
             """On disconnect handler."""
             status['on_disconnect'] = True
-            status['requested'] = requested
 
         client = SplitSSEClient(handler, on_connect, on_disconnect,
                                 base_url='http://localhost:' + str(server.port()))
@@ -116,4 +111,3 @@ class SSEClientTests(object):
 
         assert status['on_connect']
         assert status['on_disconnect']
-        assert not status['requested']

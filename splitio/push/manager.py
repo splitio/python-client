@@ -159,23 +159,6 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         self._next_refresh.setName('TokenRefresh')
         self._next_refresh.start()
 
-    def _handle_connection_ready(self):
-        """Handle a successful connection to SSE."""
-        self._feedback_loop.put(Status.PUSH_SUBSYSTEM_UP)
-        _LOGGER.info('sse initial event received. enabling')
-
-    def _handle_connection_end(self, shutdown_requested):
-        """
-        Handle a connection ending.
-
-        If the connection shutdown was not requested, trigger a restart.
-
-        :param shutdown_requested: whether the shutdown was requested or unexpected.
-        :type shutdown_requested: True
-        """
-        if not shutdown_requested:
-            self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
-
     def _handle_message(self, event):
         """
         Handle incoming update message.
@@ -235,5 +218,20 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         """
         _LOGGER.debug('handling ably error event: %s', str(event))
         feedback = self._status_tracker.handle_ably_error(event)
+        if feedback is not None:
+            self._feedback_loop.put(feedback)
+
+    def _handle_connection_ready(self):
+        """Handle a successful connection to SSE."""
+        self._feedback_loop.put(Status.PUSH_SUBSYSTEM_UP)
+        _LOGGER.info('sse initial event received. enabling')
+
+    def _handle_connection_end(self):
+        """
+        Handle a connection ending.
+
+        If the connection shutdown was not requested, trigger a restart.
+        """
+        feedback = self._status_tracker.handle_disconnect()
         if feedback is not None:
             self._feedback_loop.put(feedback)
