@@ -41,7 +41,7 @@ class SplitWorker(object):
             _LOGGER.debug('Processing split_update %d', event.change_number)
             try:
                 self._handler(event.change_number)
-            except Exception:
+            except Exception:  # pylint: disable=broad-except
                 _LOGGER.error('Exception raised in split synchronization')
                 _LOGGER.debug('Exception information: ', exc_info=True)
 

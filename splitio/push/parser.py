@@ -1,13 +1,13 @@
 """SSE Notification definitions."""
 import abc
 import json
-import time
 from enum import Enum
 
 from future.utils import raise_from
 from six import add_metaclass
 
 from splitio.util.decorators import abstract_property
+from splitio.util import utctime_ms
 from splitio.push.sse import SSE_EVENT_ERROR, SSE_EVENT_MESSAGE
 
 
@@ -37,9 +37,9 @@ class UpdateType(Enum):
 class ControlType(Enum):
     """Control type enumeration."""
 
-    STREAMING_ENABLED = 0
-    STREAMING_PAUSED = 1
-    STREAMING_DISABLED = 2
+    STREAMING_ENABLED = 'STREAMING_ENABLED'
+    STREAMING_PAUSED = 'STREAMING_PAUSED'
+    STREAMING_DISABLED = 'STREAMING_DISABLED'
 
 
 TAG_OCCUPANCY = '[meta]occupancy'
@@ -89,7 +89,7 @@ class AblyError(BaseEvent):
         self._status_code = status_code
         self._message = message
         self._href = href
-        self._timestamp = int(time.time() * 1000)  # TODO: replace with UTC function after merge
+        self._timestamp = utctime_ms()
 
     @property
     def event_type(self):  #pylint:disable=no-self-use

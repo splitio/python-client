@@ -1,8 +1,6 @@
 """Localhost mode test module."""
 # pylint: disable=no-self-use,line-too-long,protected-access
-
 import os
-import tempfile
 
 from splitio.client import localhost
 from splitio.sync.split import LocalSplitSynchronizer

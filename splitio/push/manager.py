@@ -51,10 +51,115 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
             MessageType.OCCUPANCY: self._handle_occupancy
         }
 
-        self._sse_client = SplitSSEClient(self._event_handler) if sse_url is None \
-            else SplitSSEClient(self._event_handler, sse_url)
+        kwargs = {} if sse_url is None else {'base_url': sse_url}
+        self._sse_client = SplitSSEClient(self._event_handler, self._handle_connection_ready,
+                                          self._handle_connection_end, **kwargs)
         self._running = False
         self._next_refresh = Timer(0, lambda: 0)
+
+    def update_workers_status(self, enabled):
+        """
+        Enable/Disable push update workers.
+
+        :param enabled: if True, enable workers. If False, disable them.
+        :type enabled: bool
+        """
+        self._processor.update_workers_status(enabled)
+
+
+    def start(self):
+        """Start a new connection if not already running."""
+        if self._running:
+            _LOGGER.warning('Push manager already has a connection running. Ignoring')
+            return
+
+        self._trigger_connection_flow()
+
+    def stop(self, blocking=False):
+        """
+        Stop the current ongoing connection.
+
+        :param blocking: whether to wait for the connection to be successfully closed or not
+        :type blocking: bool
+        """
+        if not self._running:
+            _LOGGER.warning('Push manager does not have an open SSE connection. Ignoring')
+            return
+
+        self._running = False
+        self._processor.update_workers_status(False)
+        self._status_tracker.notify_sse_shutdown_expected()
+        self._next_refresh.cancel()
+        self._sse_client.stop(blocking)
+
+    def _event_handler(self, event):
+        """
+        Process an incoming event.
+
+        :param event: Incoming event
+        :type event: splitio.push.sse.SSEEvent
+        """
+        try:
+            parsed = parse_incoming_event(event)
+        except EventParsingException:
+            _LOGGER.error('error parsing event of type %s', event.event_type)
+            _LOGGER.debug(str(event), exc_info=True)
+            return
+
+        try:
+            handle = self._event_handlers[parsed.event_type]
+        except KeyError:
+            _LOGGER.error('no handler for message of type %s', parsed.event_type)
+            _LOGGER.debug(str(event), exc_info=True)
+            return
+
+        try:
+            handle(parsed)
+        except Exception:  #pylint:disable=broad-except
+            _LOGGER.error('something went wrong when processing message of type %s',
+                          parsed.event_type)
+            _LOGGER.debug(str(parsed), exc_info=True)
+
+    def _token_refresh(self):
+        """Refresh auth token."""
+        _LOGGER.info("retriggering authentication flow.")
+        self.stop(True)
+        self._trigger_connection_flow()
+
+    def _trigger_connection_flow(self):
+        """Authenticate and start a connection."""
+        try:
+            token = self._auth_api.authenticate()
+        except APIException:
+            _LOGGER.error('error performing sse auth request.')
+            _LOGGER.debug('stack trace: ', exc_info=True)
+            self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
+            return
+
+        if not token.push_enabled:
+            self._feedback_loop.put(Status.PUSH_NONRETRYABLE_ERROR)
+            return
+
+        _LOGGER.debug("auth token fetched. connecting to streaming.")
+        self._status_tracker.reset()
+        if self._sse_client.start(token):
+            _LOGGER.debug("connected to streaming, scheduling next refresh")
+            self._setup_next_token_refresh(token)
+            self._running = True
+
+    def _setup_next_token_refresh(self, token):
+        """
+        Schedule next token refresh.
+
+        :param token: Last fetched token.
+        :type token: splitio.models.token.Token
+        """
+        if self._next_refresh is not None:
+            self._next_refresh.cancel()
+        self._next_refresh = Timer((token.exp - token.iat) - _TOKEN_REFRESH_GRACE_PERIOD,
+                                   self._token_refresh)
+        self._next_refresh.setName('TokenRefresh')
+        self._next_refresh.start()
 
     def _handle_message(self, event):
         """
@@ -106,18 +211,6 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         if feedback is not None:
             self._feedback_loop.put(feedback)
 
-    def _handle_connection_end(self, shutdown_requested):
-        """
-        Handle a connection ending.
-
-        If the connection shutdown was not requested, trigger a restart.
-
-        :param shutdown_requested: whether the shutdown was requested or unexpected.
-        :type shutdown_requested: True
-        """
-        if not shutdown_requested:
-            self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
-
     def _handle_error(self, event):
         """
         Handle incoming error message.
@@ -130,107 +223,17 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         if feedback is not None:
             self._feedback_loop.put(feedback)
 
-    def _event_handler(self, event):
+    def _handle_connection_ready(self):
+        """Handle a successful connection to SSE."""
+        self._feedback_loop.put(Status.PUSH_SUBSYSTEM_UP)
+        _LOGGER.info('sse initial event received. enabling')
+
+    def _handle_connection_end(self):
         """
-        Process an incoming event.
+        Handle a connection ending.
 
-        :param event: Incoming event
-        :type event: splitio.push.sse.SSEEvent
+        If the connection shutdown was not requested, trigger a restart.
         """
-        try:
-            parsed = parse_incoming_event(event)
-        except EventParsingException:
-            _LOGGER.error('error parsing event of type %s', event.event_type)
-            _LOGGER.debug(str(event), exc_info=True)
-            return
-
-        try:
-            handle = self._event_handlers[parsed.event_type]
-        except KeyError:
-            _LOGGER.error('no handler for message of type %s', parsed.event_type)
-            _LOGGER.debug(str(event), exc_info=True)
-            return
-
-        try:
-            handle(parsed)
-        except Exception:  #pylint:disable=broad-except
-            _LOGGER.error('something went wrong when processing message of type %s',
-                          parsed.event_type)
-            _LOGGER.debug(str(parsed), exc_info=True)
-
-    def _token_refresh(self):
-        """Refresh auth token."""
-        _LOGGER.info("retriggering authentication flow.")
-        self.stop(True)
-        self._trigger_connection_flow()
-
-    def _trigger_connection_flow(self):
-        """Authenticate and start a connection."""
-        try:
-            token = self._auth_api.authenticate()
-        except APIException:
-            _LOGGER.error('error performing sse auth request.')
-            _LOGGER.debug('stack trace: ', exc_info=True)
-            self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
-            return
-
-        if not token.push_enabled:
-            self._feedback_loop.put(Status.PUSH_NONRETRYABLE_ERROR)
-            return
-
-        self._status_tracker.reset()
-        if  self._sse_client.start(token):
-            self._setup_next_token_refresh(token)
-            self._running = True
-            self._feedback_loop.put(Status.PUSH_SUBSYSTEM_UP)
-            return
-
-        self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
-
-    def _setup_next_token_refresh(self, token):
-        """
-        Schedule next token refresh.
-
-        :param token: Last fetched token.
-        :type token: splitio.models.token.Token
-        """
-        if self._next_refresh is not None:
-            self._next_refresh.cancel()
-        self._next_refresh = Timer((token.exp - token.iat) - _TOKEN_REFRESH_GRACE_PERIOD,
-                                   self._token_refresh)
-        self._next_refresh.setName('TokenRefresh')
-        self._next_refresh.start()
-
-    def update_workers_status(self, enabled):
-        """
-        Enable/Disable push update workers.
-
-        :param enabled: if True, enable workers. If False, disable them.
-        :type enabled: bool
-        """
-        self._processor.update_workers_status(enabled)
-
-
-    def start(self):
-        """Start a new connection if not already running."""
-        if self._running:
-            _LOGGER.warning('Push manager already has a connection running. Ignoring')
-            return
-
-        self._trigger_connection_flow()
-
-    def stop(self, blocking=False):
-        """
-        Stop the current ongoing connection.
-
-        :param blocking: whether to wait for the connection to be successfully closed or not
-        :type blocking: bool
-        """
-        if not self._running:
-            _LOGGER.warning('Push manager does not have an open SSE connection. Ignoring')
-            return
-
-        self._processor.update_workers_status(False)
-        self._status_tracker.notify_sse_shutdown_expected()
-        self._next_refresh.cancel()
-        self._sse_client.stop(blocking)
+        feedback = self._status_tracker.handle_disconnect()
+        if feedback is not None:
+            self._feedback_loop.put(feedback)

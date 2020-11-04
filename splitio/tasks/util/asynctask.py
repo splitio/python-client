@@ -89,15 +89,13 @@ class AsyncTask(object):  # pylint: disable=too-many-instance-attributes
                 try:
                     msg = self._messages.get(True, self._period)
                     if msg == __TASK_STOP__:
-                        _LOGGER.info("Stop signal received. finishing task execution")
+                        _LOGGER.debug("Stop signal received. finishing task execution")
                         break
                     elif msg == __TASK_FORCE_RUN__:
-                        _LOGGER.info("Force execution signal received. Running now")
+                        _LOGGER.debug("Force execution signal received. Running now")
                         if not _safe_run(self._main):
-                            _LOGGER.error(
-                                "An error occurred when executing the task. "
-                                "Retrying after perio expires"
-                            )
+                            _LOGGER.error("An error occurred when executing the task. "
+                                          "Retrying after perio expires")
                         continue
                 except queue.Empty:
                     # If no message was received, the timeout has expired

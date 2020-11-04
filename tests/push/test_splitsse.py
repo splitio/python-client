@@ -1,7 +1,6 @@
 """SSEClient unit tests."""
-
+# pylint:disable=no-self-use,line-too-long
 import time
-import threading
 from queue import Queue
 import pytest
 from splitio.models.token import Token
@@ -15,17 +14,30 @@ class SSEClientTests(object):
 
     def test_split_sse_success(self):
         """Test correct initialization. Client ends the connection."""
-
         events = []
         def handler(event):
             """Handler."""
             events.append(event)
 
+        status = {
+            'on_connect': False,
+            'on_disconnect': False,
+        }
+
+        def on_connect():
+            """On connect handler."""
+            status['on_connect'] = True
+
+        def on_disconnect():
+            """On disconnect handler."""
+            status['on_disconnect'] = True
+
         request_queue = Queue()
         server = SSEMockServer(request_queue)
         server.start()
 
-        client = SplitSSEClient(handler, 'http://localhost:' + str(server.port()))
+        client = SplitSSEClient(handler, on_connect, on_disconnect,
+                                base_url='http://localhost:' + str(server.port()))
 
         token = Token(True, 'some', {'chan1': ['subscribe'], 'chan2': ['subscribe', 'channel-metadata:publishers']},
                       1, 2)
@@ -38,7 +50,7 @@ class SSEClientTests(object):
         server.publish({'id': '1', 'data': 'a', 'retry': '1', 'event': 'message'})
         server.publish({'id': '2', 'data': 'a', 'retry': '1', 'event': 'message'})
         time.sleep(1)
-        client.stop()
+        client.stop(True)
 
         request = request_queue.get(1)
         assert request.path == '/event-stream?v=1.1&accessToken=some&channels=chan1,[?occupancy=metrics.publishers]chan2'
@@ -52,9 +64,11 @@ class SSEClientTests(object):
         server.publish(SSEMockServer.VIOLENT_REQUEST_END)
         server.stop()
 
+        assert status['on_connect']
+        assert status['on_disconnect']
+
     def test_split_sse_error(self):
         """Test correct initialization. Client ends the connection."""
-
         events = []
         def handler(event):
             """Handler."""
@@ -64,17 +78,27 @@ class SSEClientTests(object):
         server = SSEMockServer(request_queue)
         server.start()
 
-        client = SplitSSEClient(handler, 'http://localhost:' + str(server.port()))
+        status = {
+            'on_connect': False,
+            'on_disconnect': False,
+        }
+
+        def on_connect():
+            """On connect handler."""
+            status['on_connect'] = True
+
+        def on_disconnect():
+            """On disconnect handler."""
+            status['on_disconnect'] = True
+
+        client = SplitSSEClient(handler, on_connect, on_disconnect,
+                                base_url='http://localhost:' + str(server.port()))
 
         token = Token(True, 'some', {'chan1': ['subscribe'], 'chan2': ['subscribe', 'channel-metadata:publishers']},
                       1, 2)
 
         server.publish({'event': 'error'})  # send an error event early to unblock start
         assert not client.start(token)
-        client.stop(True)
-
-        # should do nothing
-        client.stop()
 
         request = request_queue.get(1)
         assert request.path == '/event-stream?v=1.1&accessToken=some&channels=chan1,[?occupancy=metrics.publishers]chan2'
@@ -82,3 +106,8 @@ class SSEClientTests(object):
 
         server.publish(SSEMockServer.VIOLENT_REQUEST_END)
         server.stop()
+
+        time.sleep(1)
+
+        assert status['on_connect']
+        assert status['on_disconnect']

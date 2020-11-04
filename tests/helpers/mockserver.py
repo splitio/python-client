@@ -102,7 +102,8 @@ class SplitMockServer(object):
 
     protocol_version = 'HTTP/1.1'
 
-    def __init__(self, split_changes=None, segment_changes=None, req_queue=None):
+    def __init__(self, split_changes=None, segment_changes=None, req_queue=None,
+                 auth_response=None):
         """
         Consruct a mock server.
 
@@ -113,7 +114,8 @@ class SplitMockServer(object):
         segment_changes = segment_changes if segment_changes is not None else {}
         self._server = HTTPServer(('localhost', 0),
                                   lambda *xs: SDKHandler(split_changes, segment_changes, *xs,
-                                                         req_queue=req_queue))  # pylint:disable=line-too-long
+                                                         req_queue=req_queue,
+                                                         auth_response=auth_response))
         self._server_thread = threading.Thread(target=self._blocking_run, name="SplitMockServer")
         self._server_thread.setDaemon(True)
         self._done_event = threading.Event()
@@ -146,6 +148,7 @@ class SDKHandler(BaseHTTPRequestHandler):
     def __init__(self, split_changes, segment_changes, *args, **kwargs):
         """Construct a handler."""
         self._req_queue = kwargs.get('req_queue')
+        self._auth_response = kwargs.get('auth_response')
         self._split_changes = split_changes
         self._segment_changes = segment_changes
         BaseHTTPRequestHandler.__init__(self, *args)
@@ -157,7 +160,7 @@ class SDKHandler(BaseHTTPRequestHandler):
     def _handle_segment_changes(self):
         qstring = self._parse_qs()
         since = int(qstring.get('since', -1))
-        name = qstring.get('name')
+        name = self.path.split('/')[-1].split('?')[0]
         if name is None:
             self.send_response(400)
             self.send_header("Content-type", "application/json")
@@ -194,16 +197,31 @@ class SDKHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(to_send).encode('utf-8'))
 
+    def _handle_auth(self):
+        if not self._auth_response:
+            self.send_response(401)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write('{}'.encode('utf-8'))
+            return
+
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(self._auth_response).encode('utf-8'))
+
     def do_GET(self):  #pylint:disable=invalid-name
         """Respond to a GET request."""
         if self._req_queue is not None:
-            headers = dict(zip(self.headers.keys(), self.headers.values()))
+            headers = self._format_headers()
             self._req_queue.put(Request('GET', self.path, headers, None))
 
         if self.path.startswith('/api/splitChanges'):
             self._handle_split_changes()
         elif self.path.startswith('/api/segmentChanges'):
             self._handle_segment_changes()
+        elif self.path.startswith('/api/auth'):
+            self._handle_auth()
         else:
             self.send_response(404)
             self.send_header("Content-type", "application/json")
@@ -212,10 +230,10 @@ class SDKHandler(BaseHTTPRequestHandler):
     def do_POST(self):  #pylint:disable=invalid-name
         """Respond to a GET request."""
         if self._req_queue is not None:
-            length = int(self.headers.getheader('content-length'))
+            headers = self._format_headers()
+            length = int(headers.get('content-length'))
             body = self.rfile.read(length) if length else None
-            headers = dict(zip(self.headers.keys(), self.headers.values()))
-            self._req_queue.put(Request('GET', self.path, headers, body))
+            self._req_queue.put(Request('POST', self.path, headers, body))
 
         if self.path in set(['/api/testImpressions/bulk', '/testImpressions/count',
                              '/api/events/bulk', '/metrics/times', '/metrics/count',
@@ -228,3 +246,7 @@ class SDKHandler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.send_header("Content-type", "application/json")
             self.end_headers()
+
+    def _format_headers(self):
+        """Format headers and return them as a dict."""
+        return dict(zip([k.lower() for k in self.headers.keys()], self.headers.values()))

@@ -1,5 +1,4 @@
 """NotificationManagerKeeper implementation."""
-from collections import defaultdict
 from enum import Enum
 import logging
 import six
@@ -18,7 +17,7 @@ class Status(Enum):
     PUSH_NONRETRYABLE_ERROR = 3
 
 
-class LastEventTimestamps(object):
+class LastEventTimestamps(object):  # pylint:disable=too-few-public-methods
     """Simple class to keep track of the last time multiple events occurred."""
 
     def __init__(self):
@@ -90,7 +89,7 @@ class PushStatusTracker(object):
         :type event: splitio.push.parser.ControlMessage
         """
         # we don't care about control messages if a disconnection is expected
-        if self._shutdown_expected:  
+        if self._shutdown_expected:
             return None
 
         if self._timestamps.control > event.timestamp:
@@ -111,10 +110,10 @@ class PushStatusTracker(object):
         :returns: A new status if required. None otherwise
         :rtype: Optional[Status]
         """
-        if self._shutdown_expected:  # we don't care about occupancy if a disconnection is expected
+        if self._shutdown_expected:  # we don't care about an incoming error if a shutdown is expected
             return None
 
-        _LOGGER.debug('handling update event: %s', str(event))
+        _LOGGER.debug('handling ably error event: %s', str(event))
         if event.should_be_ignored():
             _LOGGER.debug('ignoring sse error message: %s', event)
             return None
@@ -161,7 +160,7 @@ class PushStatusTracker(object):
 
         return None
 
-    def _handle_disconnect(self):
+    def handle_disconnect(self):
         """
         Handle non-requested SSE disconnection.
 
