@@ -45,8 +45,7 @@ class ManagerTests(object):
         synchronizer = Synchronizer(synchronizers, split_tasks)
         manager = Manager(threading.Event(), synchronizer,  mocker.Mock(), False)
 
-        with pytest.raises(APIException):
-            manager.start()
+        manager.start()  # should not throw!
 
     def test_start_streaming_false(self, mocker):
         splits_ready_event = threading.Event()

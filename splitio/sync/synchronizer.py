@@ -251,12 +251,13 @@ class Synchronizer(BaseSynchronizer):
         """Synchronize all split data."""
         try:
             self.synchronize_splits(None)
-            if not self._synchronize_segments():
-                _LOGGER.error('Failed syncing segments')
-                raise RuntimeError('Failed syncing segments')
-        except APIException as exc:
+        except APIException:
             _LOGGER.error('Failed syncing splits')
-            raise_from(APIException('Failed to sync splits'), exc)
+            _LOGGER.debug('Error: ', exc_info=True)
+
+        if not self._synchronize_segments():
+            _LOGGER.error('Failed syncing segments')
+            _LOGGER.debug('Error: ', exc_info=True)
 
     def shutdown(self, blocking):
         """

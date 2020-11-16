@@ -35,8 +35,8 @@ class SynchronizerTests(object):
 
         with pytest.raises(APIException):
             sychronizer.synchronize_splits(None)
-        with pytest.raises(APIException):
-            sychronizer.sync_all()
+
+        sychronizer.sync_all()  # sync_all should not throw!
 
     def test_sync_all_failed_segments(self, mocker):
         api = mocker.Mock()
@@ -55,8 +55,7 @@ class SynchronizerTests(object):
                                                  mocker.Mock(), mocker.Mock(), mocker.Mock())
         sychronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
 
-        with pytest.raises(RuntimeError):
-            sychronizer.sync_all()
+        sychronizer.sync_all()  # SyncAll should not throw!
         assert not sychronizer._synchronize_segments()
 
     splits = [{
