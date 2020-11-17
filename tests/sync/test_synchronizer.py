@@ -233,7 +233,7 @@ class SynchronizerTests(object):
         assert counts['splits'] == 1
         assert counts['segments'] == 1
 
-    def test_sync_all_attempts(self, mocker):
+    def test_sync_all_split_attempts(self, mocker):
         """Test that 3 attempts are done before failing."""
         split_synchronizers = mocker.Mock(spec=SplitSynchronizers)
         counts = {'splits': 0, 'segments': 0}
@@ -249,18 +249,20 @@ class SynchronizerTests(object):
         synchronizer.sync_all()
         assert counts['splits'] == 3
 
-    def test_sync_all_attempts(self, mocker):
-        """Test that 3 attempts are done before failing."""
+    def test_sync_all_segment_attempts(self, mocker):
+        """Test that segments don't trigger retries."""
         split_synchronizers = mocker.Mock(spec=SplitSynchronizers)
         counts = {'splits': 0, 'segments': 0}
+
         def sync_segments(*_):
             """Sync Splits."""
+
             counts['segments'] += 1
-            raise Exception('sarasa')
+            return False
 
         split_synchronizers.segment_sync.synchronize_segments.side_effect = sync_segments
         split_tasks = mocker.Mock(spec=SplitTasks)
         synchronizer = Synchronizer(split_synchronizers, split_tasks)
 
         synchronizer.sync_all()
-        assert counts['segments'] == 3
+        assert counts['segments'] == 1

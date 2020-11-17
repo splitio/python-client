@@ -268,9 +268,9 @@ class Synchronizer(BaseSynchronizer):
                     attempts -= 1
                     continue
 
+                # Only retrying splits, since segments may trigger too many calls.
                 if not self._synchronize_segments():
-                    attempts -= 1
-                    continue
+                    _LOGGER.warn('Segments failed to synchronize.')
 
                 # All is good
                 return
