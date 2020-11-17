@@ -33,8 +33,7 @@ class SynchronizerTests(object):
                                                  mocker.Mock(), mocker.Mock(), mocker.Mock())
         sychronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
 
-        with pytest.raises(APIException):
-            sychronizer.synchronize_splits(None)
+        sychronizer.synchronize_splits(None)  # APIExceptions are handled locally and should not be propagated!
 
         sychronizer.sync_all()  # sync_all should not throw!
 
@@ -209,3 +208,59 @@ class SynchronizerTests(object):
         assert len(impression_count_task.stop.mock_calls) == 1
         assert len(event_task.stop.mock_calls) == 1
         assert len(telemetry_task.stop.mock_calls) == 1
+
+    def test_sync_all_ok(self, mocker):
+        """Test that 3 attempts are done before failing."""
+        split_synchronizers = mocker.Mock(spec=SplitSynchronizers)
+        counts = {'splits': 0, 'segments': 0}
+
+        def sync_splits(*_):
+            """Sync Splits."""
+            counts['splits'] += 1
+            return True
+
+        def sync_segments(*_):
+            """Sync Segments."""
+            counts['segments'] += 1
+            return True
+
+        split_synchronizers.split_sync.synchronize_splits.side_effect = sync_splits
+        split_synchronizers.segment_sync.synchronize_segments.side_effect = sync_segments
+        split_tasks = mocker.Mock(spec=SplitTasks)
+        synchronizer = Synchronizer(split_synchronizers, split_tasks)
+
+        synchronizer.sync_all()
+        assert counts['splits'] == 1
+        assert counts['segments'] == 1
+
+    def test_sync_all_attempts(self, mocker):
+        """Test that 3 attempts are done before failing."""
+        split_synchronizers = mocker.Mock(spec=SplitSynchronizers)
+        counts = {'splits': 0, 'segments': 0}
+        def sync_splits(*_):
+            """Sync Splits."""
+            counts['splits'] += 1
+            raise Exception('sarasa')
+
+        split_synchronizers.split_sync.synchronize_splits.side_effect = sync_splits
+        split_tasks = mocker.Mock(spec=SplitTasks)
+        synchronizer = Synchronizer(split_synchronizers, split_tasks)
+
+        synchronizer.sync_all()
+        assert counts['splits'] == 3
+
+    def test_sync_all_attempts(self, mocker):
+        """Test that 3 attempts are done before failing."""
+        split_synchronizers = mocker.Mock(spec=SplitSynchronizers)
+        counts = {'splits': 0, 'segments': 0}
+        def sync_segments(*_):
+            """Sync Splits."""
+            counts['segments'] += 1
+            raise Exception('sarasa')
+
+        split_synchronizers.segment_sync.synchronize_segments.side_effect = sync_segments
+        split_tasks = mocker.Mock(spec=SplitTasks)
+        synchronizer = Synchronizer(split_synchronizers, split_tasks)
+
+        synchronizer.sync_all()
+        assert counts['segments'] == 3
