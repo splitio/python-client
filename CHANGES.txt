@@ -1,5 +1,6 @@
-8.3.1 (TBD)
+8.3.1 (Nov 20, 2020)
  - Fixed error handling when split server fails, so that it doesn't bring streaming down.
+ - Added SDK Metadata headers to split & segments API clients
 
 8.3.0 (Nov 4, 2020)
  - Added local impressions deduping. Defaulting to optimized
