@@ -5,7 +5,7 @@ import logging
 
 from future.utils import raise_from
 
-from splitio.api import APIException
+from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException
 
 
@@ -15,7 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the segments API."""
 
-    def __init__(self, http_client, apikey):
+    def __init__(self, http_client, apikey, sdk_metadata):
         """
         Class constructor.
 
@@ -23,9 +23,13 @@ class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
         :type client: client.HttpClient
         :param apikey: User apikey token.
         :type apikey: string
+        :param sdk_metadata: SDK version & machine name & IP.
+        :type sdk_metadata: splitio.client.util.SdkMetadata
+
         """
         self._client = http_client
         self._apikey = apikey
+        self._metadata = headers_from_metadata(sdk_metadata)
 
     def fetch_segment(self, segment_name, change_number):
         """
@@ -44,7 +48,8 @@ class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
                 'sdk',
                 '/segmentChanges/{segment_name}'.format(segment_name=segment_name),
                 self._apikey,
-                {'since': change_number}
+                extra_headers=self._metadata,
+                query={'since': change_number}
             )
 
             if 200 <= response.status_code < 300:
