@@ -261,8 +261,8 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     sdk_metadata = util.get_metadata(cfg)
     apis = {
         'auth': AuthAPI(http_client, api_key, sdk_metadata),
-        'splits': SplitsAPI(http_client, api_key),
-        'segments': SegmentsAPI(http_client, api_key),
+        'splits': SplitsAPI(http_client, api_key, sdk_metadata),
+        'segments': SegmentsAPI(http_client, api_key, sdk_metadata),
         'impressions': ImpressionsAPI(http_client, api_key, sdk_metadata, cfg['impressionsMode']),
         'events': EventsAPI(http_client, api_key, sdk_metadata),
         'telemetry': TelemetryAPI(http_client, api_key, sdk_metadata)
