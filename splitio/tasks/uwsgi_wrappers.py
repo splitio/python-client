@@ -45,10 +45,12 @@ def uwsgi_update_splits(user_config):
     :type user_config: dict
     """
     config = _get_config(user_config)
+    metadata = get_metadata(config)
     seconds = config['featuresRefreshRate']
     split_sync = SplitSynchronizer(
         SplitsAPI(
-            HttpClient(1500, config.get('sdk_url'), config.get('events_url')), config['apikey']
+            HttpClient(1500, config.get('sdk_url'), config.get('events_url')), config['apikey'],
+            metadata
         ),
         UWSGISplitStorage(get_uwsgi()),
     )
@@ -71,9 +73,11 @@ def uwsgi_update_segments(user_config):
     """
     config = _get_config(user_config)
     seconds = config['segmentsRefreshRate']
+    metadata = get_metadata(config)
     segment_sync = SegmentSynchronizer(
         SegmentsAPI(
-            HttpClient(1500, config.get('sdk_url'), config.get('events_url')), config['apikey']
+            HttpClient(1500, config.get('sdk_url'), config.get('events_url')), config['apikey'],
+            metadata
         ),
         UWSGISplitStorage(get_uwsgi()),
         UWSGISegmentStorage(get_uwsgi()),

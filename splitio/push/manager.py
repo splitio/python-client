@@ -66,7 +66,6 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         """
         self._processor.update_workers_status(enabled)
 
-
     def start(self):
         """Start a new connection if not already running."""
         if self._running:
