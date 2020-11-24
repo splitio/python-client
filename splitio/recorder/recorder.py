@@ -131,7 +131,6 @@ class PipelinedRecorder(StatsRecorder):
             result = pipe.execute()
             if len(result) == 2:
                 self._impression_storage.expire_key(result[0], len(impressions))
-            print('result', result)
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error recording impressions and metrics')
             _LOGGER.debug('Error: ', exc_info=True)
