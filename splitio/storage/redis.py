@@ -7,7 +7,8 @@ import logging
 
 from splitio.models.impressions import Impression
 from splitio.models import splits, segments
-from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage
+from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, \
+    ImpressionPipelinedStorage, TelemetryStorage, TelemetryPipelinedStorage
 from splitio.storage.adapters.redis import RedisAdapterException
 from splitio.storage.adapters.cache_trait import decorate as add_cache, DEFAULT_MAX_AGE
 
@@ -348,7 +349,7 @@ class RedisSegmentStorage(SegmentStorage):
             return None
 
 
-class RedisImpressionsStorage(ImpressionStorage):
+class RedisImpressionsStorage(ImpressionStorage, ImpressionPipelinedStorage):
     """Redis based event storage class."""
 
     IMPRESSIONS_QUEUE_KEY = 'SPLITIO.impressions'
@@ -366,15 +367,15 @@ class RedisImpressionsStorage(ImpressionStorage):
         self._redis = redis_client
         self._sdk_metadata = sdk_metadata
 
-    def put(self, impressions):
+    def _wrap_impressions(self, impressions):
         """
-        Add an event to the redis storage.
+        Wrap impressions to be stored in redis
 
-        :param event: Event to add to the queue.
-        :type event: splitio.models.events.Event
+        :param impressions: Impression to add to the queue.
+        :type impressions: splitio.models.impressions.Impression
 
-        :return: Whether the event has been added or not.
-        :rtype: bool
+        :return: Processed impressions.
+        :rtype: list[splitio.models.impressions.Impression]
         """
         bulk_impressions = []
         for impression in impressions:
@@ -395,12 +396,48 @@ class RedisImpressionsStorage(ImpressionStorage):
                         'm': impression.time,
                     }
                 }
-                bulk_impressions.append(json.dumps(to_store))
+            bulk_impressions.append(json.dumps(to_store))
+        return bulk_impressions
+
+    def expire_key(self, total_keys, inserted):
+        """
+        Set expire
+
+        :param total_keys: length of keys.
+        :type total_keys: int
+        :param inserted: added keys.
+        :type inserted: int
+        """
+        if total_keys == inserted:
+            _LOGGER.debug("SET EXPIRE KEY FOR QUEUE")
+            self._redis.expire(self.IMPRESSIONS_QUEUE_KEY, self.IMPRESSIONS_KEY_DEFAULT_TTL)
+
+    def add_impressions_to_pipe(self, impressions, pipe):
+        """
+        Add put operation to pipeline
+
+        :param impressions: List of one or more impressions to store.
+        :type impressions: list
+        :param pipe: Redis pipe.
+        :type pipe: redis.pipe
+        """
+        bulk_impressions = self._wrap_impressions(impressions)
+        pipe.rpush(self.IMPRESSIONS_QUEUE_KEY, *bulk_impressions)
+
+    def put(self, impressions):
+        """
+        Add an impression to the redis storage.
+
+        :param impressions: Impression to add to the queue.
+        :type impressions: splitio.models.impressions.Impression
+
+        :return: Whether the impression has been added or not.
+        :rtype: bool
+        """
+        bulk_impressions = self._wrap_impressions(impressions)
         try:
             inserted = self._redis.rpush(self.IMPRESSIONS_QUEUE_KEY, *bulk_impressions)
-            if inserted == len(bulk_impressions):
-                _LOGGER.debug("SET EXPIRE KEY FOR QUEUE")
-                self._redis.expire(self.IMPRESSIONS_QUEUE_KEY, self.IMPRESSIONS_KEY_DEFAULT_TTL)
+            self.expire_key(inserted, len(bulk_impressions))
             return True
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add impression to redis')
@@ -481,7 +518,7 @@ class RedisEventsStorage(EventStorage):
         raise NotImplementedError('Only redis-consumer mode is supported.')
 
 
-class RedisTelemetryStorage(object):
+class RedisTelemetryStorage(TelemetryStorage, TelemetryPipelinedStorage):
     """Redis-based Telemetry storage."""
 
     _LATENCY_KEY_TEMPLATE = "SPLITIO/{sdk}/{instance}/latency.{name}.bucket.{bucket}"
@@ -551,6 +588,40 @@ class RedisTelemetryStorage(object):
             name=name,
         )
 
+    def _wrap_latency(self, name, bucket):
+        """
+        Wrap latency to be stored.
+
+        :param name: Name of the latency metric.
+        :type name: str
+        :param value: Value of the latency metric.
+        :tyoe value: int
+
+        :return: Redis latency key.
+        :rtype: str
+        """
+        if not 0 <= bucket <= 21:
+            _LOGGER.error('Incorect bucket "%d" for latency "%s". Ignoring.', bucket, name)
+            return None
+
+        return self._get_latency_key(name, bucket)
+
+    def add_latency_to_pipe(self, name, bucket, pipe):
+        """
+        Add latency operation to pipeline
+
+        :param name: Name of the latency metric.
+        :type name: str
+        :param value: Value of the latency metric.
+        :tyoe value: int
+        :param pipe: Redis pipe.
+        :type pipe: redis.pipe
+        """
+        key = self._wrap_latency(name, bucket)
+        if key is None:
+            return
+        pipe.incr(key)
+
     def inc_latency(self, name, bucket):
         """
         Add a latency.
@@ -560,11 +631,9 @@ class RedisTelemetryStorage(object):
         :param value: Value of the latency metric.
         :tyoe value: int
         """
-        if not 0 <= bucket <= 21:
-            _LOGGER.error('Incorect bucket "%d" for latency "%s". Ignoring.', bucket, name)
+        key = self._wrap_latency(name, bucket)
+        if key is None:
             return
-
-        key = self._get_latency_key(name, bucket)
         try:
             self._redis.incr(key)
         except RedisAdapterException:

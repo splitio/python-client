@@ -1,5 +1,5 @@
 """Redis storage test module."""
-#pylint: disable=no-self-use
+# pylint: disable=no-self-use
 
 import json
 import time
@@ -110,6 +110,7 @@ class RedisSplitStorageTests(object):
             'SPLITIO.split.split2',
             'SPLITIO.split.split3'
         ]
+
         def _mget_mock(*_):
             return ['{"name": "split1"}', '{"name": "split2"}', '{"name": "split3"}']
         adapter.mget.side_effect = _mget_mock
@@ -220,8 +221,40 @@ class RedisSegmentStorageTests(object):
         ]
 
 
-class RedisImpressionsStorageTests(object):  #pylint: disable=too-few-public-methods
-    """Redis Events storage test cases."""
+class RedisImpressionsStorageTests(object):  # pylint: disable=too-few-public-methods
+    """Redis Impressions storage test cases."""
+
+    def test_wrap_impressions(self, mocker):
+        """Test wrap impressions."""
+        adapter = mocker.Mock(spec=RedisAdapter)
+        metadata = get_metadata({})
+        storage = RedisImpressionsStorage(adapter, metadata)
+
+        impressions = [
+            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654)
+        ]
+
+        to_validate = [json.dumps({
+            'm': {  # METADATA PORTION
+                's': metadata.sdk_version,
+                'n': metadata.instance_name,
+                'i': metadata.instance_ip,
+            },
+            'i': {  # IMPRESSION PORTION
+                'k': impression.matching_key,
+                'b': impression.bucketing_key,
+                'f': impression.feature_name,
+                't': impression.treatment,
+                'r': impression.label,
+                'c': impression.change_number,
+                'm': impression.time,
+            }
+        }) for impression in impressions]
+
+        assert storage._wrap_impressions(impressions) == to_validate
 
     def test_add_impressions(self, mocker):
         """Test that adding impressions to storage works."""
@@ -259,13 +292,47 @@ class RedisImpressionsStorageTests(object):  #pylint: disable=too-few-public-met
 
         # Assert that if an exception is thrown it's caught and False is returned
         adapter.reset_mock()
+
         def _raise_exc(*_):
             raise RedisAdapterException('something')
         adapter.rpush.side_effect = _raise_exc
         assert storage.put(impressions) is False
 
+    def test_add_impressions_to_pipe(self, mocker):
+        """Test that adding impressions to storage works."""
+        adapter = mocker.Mock(spec=RedisAdapter)
+        metadata = get_metadata({})
+        storage = RedisImpressionsStorage(adapter, metadata)
 
-class RedisEventsStorageTests(object):  #pylint: disable=too-few-public-methods
+        impressions = [
+            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654)
+        ]
+
+        to_validate = [json.dumps({
+            'm': {  # METADATA PORTION
+                's': metadata.sdk_version,
+                'n': metadata.instance_name,
+                'i': metadata.instance_ip,
+            },
+            'i': {  # IMPRESSION PORTION
+                'k': impression.matching_key,
+                'b': impression.bucketing_key,
+                'f': impression.feature_name,
+                't': impression.treatment,
+                'r': impression.label,
+                'c': impression.change_number,
+                'm': impression.time,
+            }
+        }) for impression in impressions]
+
+        storage.add_impressions_to_pipe(impressions, adapter)
+        assert adapter.rpush.mock_calls == [mocker.call('SPLITIO.impressions', *to_validate)]
+
+
+class RedisEventsStorageTests(object):  # pylint: disable=too-few-public-methods
     """Redis Impression storage test cases."""
 
     def test_add_events(self, mocker):
@@ -309,6 +376,7 @@ class RedisEventsStorageTests(object):  #pylint: disable=too-few-public-methods
 #        assert adapter.rpush.mock_calls == [mocker.call('SPLITIO.events', to_validate)]
         # Assert that if an exception is thrown it's caught and False is returned
         adapter.reset_mock()
+
         def _raise_exc(*_):
             raise RedisAdapterException('something')
         adapter.rpush.side_effect = _raise_exc
@@ -319,6 +387,24 @@ class RedisTelemetryStorageTests(object):
     """Redis-based telemetry storage test cases."""
 
     def test_inc_latency(self, mocker):
+        """Test incrementing latency."""
+        adapter = mocker.Mock(spec=RedisAdapter)
+        metadata = get_metadata({})
+
+        storage = RedisTelemetryStorage(adapter, metadata)
+        storage.inc_latency('some_latency', 0)
+        storage.inc_latency('some_latency', 1)
+        storage.inc_latency('some_latency', 5)
+        storage.inc_latency('some_latency', 5)
+        storage.inc_latency('some_latency', 22)
+        assert adapter.incr.mock_calls == [
+            mocker.call('SPLITIO/' + metadata.sdk_version + '/' + metadata.instance_name + '/latency.some_latency.bucket.0'),
+            mocker.call('SPLITIO/' + metadata.sdk_version + '/' + metadata.instance_name + '/latency.some_latency.bucket.1'),
+            mocker.call('SPLITIO/' + metadata.sdk_version + '/' + metadata.instance_name + '/latency.some_latency.bucket.5'),
+            mocker.call('SPLITIO/' + metadata.sdk_version + '/' + metadata.instance_name + '/latency.some_latency.bucket.5')
+        ]
+
+    def test_add_latency_to_pipe(self, mocker):
         """Test incrementing latency."""
         adapter = mocker.Mock(spec=RedisAdapter)
         metadata = get_metadata({})

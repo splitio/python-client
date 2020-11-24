@@ -14,6 +14,7 @@ from splitio.storage import SplitStorage, EventStorage, ImpressionStorage, Telem
     SegmentStorage
 from splitio.models.splits import Split
 from splitio.client import input_validator
+from splitio.recorder.recorder import StandardRecorder
 
 
 class ClientInputValidationTests(object):
@@ -525,9 +526,11 @@ class ClientInputValidationTests(object):
         type(factory_mock).destroyed = factory_destroyed
         factory_mock._apikey = 'some-test'
 
-        client = Client(factory_mock, mocker.Mock())
-        client._events_storage = mocker.Mock(spec=EventStorage)
-        client._events_storage.put.return_value = True
+        event_storage = mocker.Mock(spec=EventStorage)
+        event_storage.put.return_value = True
+        recorder = StandardRecorder(mocker.Mock(), mocker.Mock(), event_storage, mocker.Mock())
+        client = Client(factory_mock, recorder)
+        client._event_storage = event_storage
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 

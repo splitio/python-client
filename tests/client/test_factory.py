@@ -19,6 +19,8 @@ from splitio.sync.manager import Manager
 from splitio.sync.synchronizer import Synchronizer, SplitSynchronizers, SplitTasks
 from splitio.sync.split import SplitSynchronizer
 from splitio.sync.segment import SegmentSynchronizer
+from splitio.recorder.recorder import PipelinedRecorder, StandardRecorder
+from splitio.storage.adapters.redis import RedisAdapter
 
 
 class SplitFactoryTests(object):
@@ -47,6 +49,12 @@ class SplitFactoryTests(object):
         assert isinstance(factory._storages['telemetry'], inmemmory.InMemoryTelemetryStorage)
 
         assert isinstance(factory._sync_manager, Manager)
+
+        assert isinstance(factory._recorder, StandardRecorder)
+        assert isinstance(factory._recorder._impressions_manager, ImpressionsManager)
+        assert isinstance(factory._recorder._telemetry_storage, inmemmory.TelemetryStorage)
+        assert isinstance(factory._recorder._event_sotrage, inmemmory.EventStorage)
+        assert isinstance(factory._recorder._impression_storage, inmemmory.ImpressionStorage)
 
         assert factory._labels_enabled is True
         factory.block_until_ready()
@@ -124,7 +132,12 @@ class SplitFactoryTests(object):
             max_connections=999
         )]
         assert factory._labels_enabled is False
-        assert isinstance(factory._impressions_manager, ImpressionsManager)
+        assert isinstance(factory._recorder, PipelinedRecorder)
+        assert isinstance(factory._recorder._impressions_manager, ImpressionsManager)
+        assert isinstance(factory._recorder._redis, RedisAdapter)
+        assert isinstance(factory._recorder._telemetry_storage, redis.RedisTelemetryStorage)
+        assert isinstance(factory._recorder._event_sotrage, redis.RedisEventsStorage)
+        assert isinstance(factory._recorder._impression_storage, redis.RedisImpressionsStorage)
         factory.block_until_ready()
         assert factory.ready
         factory.destroy()
@@ -139,6 +152,11 @@ class SplitFactoryTests(object):
         assert isinstance(factory._get_storage('telemetry'), uwsgi.UWSGITelemetryStorage)
         assert factory._sync_manager is None
         assert factory._labels_enabled is True
+        assert isinstance(factory._recorder, StandardRecorder)
+        assert isinstance(factory._recorder._impressions_manager, ImpressionsManager)
+        assert isinstance(factory._recorder._telemetry_storage, inmemmory.TelemetryStorage)
+        assert isinstance(factory._recorder._event_sotrage, inmemmory.EventStorage)
+        assert isinstance(factory._recorder._impression_storage, inmemmory.ImpressionStorage)
         factory.block_until_ready()
         assert factory.ready
         factory.destroy()

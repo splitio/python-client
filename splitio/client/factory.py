@@ -35,7 +35,6 @@ from splitio.api.events import EventsAPI
 from splitio.api.telemetry import TelemetryAPI
 from splitio.api.auth import AuthAPI
 
-
 # Tasks
 from splitio.tasks.split_sync import SplitSynchronizationTask
 from splitio.tasks.segment_sync import SegmentSynchronizationTask
@@ -52,6 +51,9 @@ from splitio.sync.segment import SegmentSynchronizer
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.sync.event import EventSynchronizer
 from splitio.sync.telemetry import TelemetrySynchronizer
+
+# Recorder
+from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder
 
 # Localhost stuff
 from splitio.client.localhost import LocalhostEventsStorage, LocalhostImpressionsStorage, \
@@ -85,7 +87,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
             apikey,
             storages,
             labels_enabled,
-            impressions_manager,
+            recorder,
             sync_manager=None,
             sdk_ready_flag=None,
     ):
@@ -102,8 +104,8 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         :type sync_manager: splitio.sync.manager.Manager
         :param sdk_ready_flag: Event to set when the sdk is ready.
         :type sdk_ready_flag: threading.Event
-        :param impression_manager: Impressions manager instance
-        :type impression_listener: ImpressionsManager
+        :param recorder: StatsRecorder instance
+        :type recorder: StatsRecorder
         """
         self._apikey = apikey
         self._storages = storages
@@ -111,7 +113,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         self._sync_manager = sync_manager
         self._sdk_internal_ready_flag = sdk_ready_flag
         self._sdk_ready_flag = threading.Event()
-        self._impressions_manager = impressions_manager
+        self._recorder = recorder
 
         # If we have a ready flag, it means we have sync tasks that need to finish
         # before the SDK client becomes ready.
@@ -150,7 +152,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         This client is only a set of references to structures hold by the factory.
         Creating one a fast operation and safe to be used anywhere.
         """
-        return Client(self, self._impressions_manager, self._labels_enabled)
+        return Client(self, self._recorder, self._labels_enabled)
 
     def manager(self):
         """
@@ -280,7 +282,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     }
 
     imp_manager = ImpressionsManager(
-        storages['impressions'].put,
         cfg['impressionsMode'],
         True,
         _wrap_impression_listener(cfg['impressionListener'], sdk_metadata))
@@ -329,8 +330,14 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     storages['events'].set_queue_full_hook(tasks.events_task.flush)
     storages['impressions'].set_queue_full_hook(tasks.impressions_task.flush)
 
+    recorder = StandardRecorder(
+        imp_manager,
+        storages['telemetry'],
+        storages['events'],
+        storages['impressions'],
+    )
     return SplitFactory(api_key, storages, cfg['labelsEnabled'],
-                        imp_manager, manager, sdk_ready_flag)
+                        recorder, manager, sdk_ready_flag)
 
 
 def _build_redis_factory(api_key, cfg):
@@ -346,12 +353,19 @@ def _build_redis_factory(api_key, cfg):
         'events': RedisEventsStorage(redis_adapter, sdk_metadata),
         'telemetry': RedisTelemetryStorage(redis_adapter, sdk_metadata)
     }
+    recorder = PipelinedRecorder(
+        redis_adapter,
+        ImpressionsManager(cfg['impressionsMode'], False,
+                           _wrap_impression_listener(cfg['impressionListener'], sdk_metadata)),
+        storages['telemetry'],
+        storages['events'],
+        storages['impressions'],
+    )
     return SplitFactory(
         api_key,
         storages,
         cfg['labelsEnabled'],
-        ImpressionsManager(storages['impressions'].put, cfg['impressionsMode'], False,
-                           _wrap_impression_listener(cfg['impressionListener'], sdk_metadata))
+        recorder,
     )
 
 
@@ -366,12 +380,18 @@ def _build_uwsgi_factory(api_key, cfg):
         'events': UWSGIEventStorage(uwsgi_adapter),
         'telemetry': UWSGITelemetryStorage(uwsgi_adapter)
     }
+    recorder = StandardRecorder(
+        ImpressionsManager(cfg['impressionsMode'], True,
+                           _wrap_impression_listener(cfg['impressionListener'], sdk_metadata)),
+        storages['telemetry'],
+        storages['events'],
+        storages['impressions'],
+    )
     return SplitFactory(
         api_key,
         storages,
         cfg['labelsEnabled'],
-        ImpressionsManager(storages['impressions'].put, cfg['impressionsMode'], True,
-                           _wrap_impression_listener(cfg['impressionListener'], sdk_metadata))
+        recorder,
     )
 
 
@@ -401,12 +421,17 @@ def _build_localhost_factory(cfg):
     synchronizer = LocalhostSynchronizer(synchronizers, tasks)
     manager = Manager(ready_event, synchronizer, None, False)
     manager.start()
-
+    recorder = StandardRecorder(
+        ImpressionsManager(cfg['impressionsMode'], True, None),
+        storages['telemetry'],
+        storages['events'],
+        storages['impressions'],
+    )
     return SplitFactory(
         'localhost',
         storages,
         False,
-        ImpressionsManager(storages['impressions'].put, cfg['impressionsMode'], True, None),
+        recorder,
         manager,
         ready_event
     )

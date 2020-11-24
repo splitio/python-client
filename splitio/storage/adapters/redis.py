@@ -53,7 +53,7 @@ class SentinelConfigurationException(Exception):
     pass
 
 
-class RedisAdapter(object):  #pylint: disable=too-many-public-methods
+class RedisAdapter(object):  # pylint: disable=too-many-public-methods
     """
     Instance decorator for Redis clients such as StrictRedis.
 
@@ -295,8 +295,15 @@ class RedisAdapter(object):  #pylint: disable=too-many-public-methods
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing lpop operation'), exc)
 
+    def pipeline(self):
+        """Mimic original redis pipeline."""
+        try:
+            return self._decorated.pipeline()
+        except RedisError as exc:
+            raise_from(RedisAdapterException('Error executing ttl operation'), exc)
 
-def _build_default_client(config):  #pylint: disable=too-many-locals
+
+def _build_default_client(config):  # pylint: disable=too-many-locals
     """
     Build a redis adapter.
 
@@ -357,7 +364,7 @@ def _build_default_client(config):  #pylint: disable=too-many-locals
     return RedisAdapter(redis, prefix=prefix)
 
 
-def _build_sentinel_client(config):  #pylint: disable=too-many-locals
+def _build_sentinel_client(config):  # pylint: disable=too-many-locals
     """
     Build a redis client with sentinel replication.
 
