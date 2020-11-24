@@ -1,3 +1,7 @@
+8.3.1 (Nov 20, 2020)
+ - Fixed error handling when split server fails, so that it doesn't bring streaming down.
+ - Added SDK Metadata headers to split & segments API clients
+
 8.3.0 (Nov 4, 2020)
  - Added local impressions deduping. Defaulting to optimized
  - Added support for the new Split streaming architecture. When enabled (default), the SDK will not poll for updates but instead receive notifications every time there's a change in your environments, allowing to process those much quicker. If disabled or in the event of an issue, the SDK will fallback to the known polling mechanism to provide a seamless experience.

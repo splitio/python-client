@@ -5,7 +5,7 @@ import json
 
 from future.utils import raise_from
 
-from splitio.api import APIException
+from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException
 
 
@@ -15,7 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 class SplitsAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the splits API."""
 
-    def __init__(self, client, apikey):
+    def __init__(self, client, apikey, sdk_metadata):
         """
         Class constructor.
 
@@ -23,9 +23,12 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
         :type client: HttpClient
         :param apikey: User apikey token.
         :type apikey: string
+        :param sdk_metadata: SDK version & machine name & IP.
+        :type sdk_metadata: splitio.client.util.SdkMetadata
         """
         self._client = client
         self._apikey = apikey
+        self._metadata = headers_from_metadata(sdk_metadata)
 
     def fetch_splits(self, change_number):
         """
@@ -42,7 +45,8 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
                 'sdk',
                 '/splitChanges',
                 self._apikey,
-                {'since': change_number}
+                extra_headers=self._metadata,
+                query={'since': change_number}
             )
             if 200 <= response.status_code < 300:
                 return json.loads(response.body)

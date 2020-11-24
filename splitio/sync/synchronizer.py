@@ -235,7 +235,10 @@ class Synchronizer(BaseSynchronizer):
         :type till: int
         """
         _LOGGER.debug('Synchronizing segment %s', segment_name)
-        return self._split_synchronizers.segment_sync.synchronize_segment(segment_name, till)
+        success = self._split_synchronizers.segment_sync.synchronize_segment(segment_name, till)
+        if not success:
+            _LOGGER.error('Failed to sync some segments.')
+        return success
 
     def synchronize_splits(self, till):
         """
@@ -243,20 +246,40 @@ class Synchronizer(BaseSynchronizer):
 
         :param till: to fetch
         :type till: int
+
+        :returns: whether the synchronization was successful or not.
+        :rtype: bool
         """
         _LOGGER.debug('Starting splits synchronization')
-        return self._split_synchronizers.split_sync.synchronize_splits(till)
+        try:
+            self._split_synchronizers.split_sync.synchronize_splits(till)
+            return True
+        except APIException:
+            _LOGGER.error('Failed syncing splits')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return False
 
     def sync_all(self):
         """Synchronize all split data."""
-        try:
-            self.synchronize_splits(None)
-            if not self._synchronize_segments():
-                _LOGGER.error('Failed syncing segments')
-                raise RuntimeError('Failed syncing segments')
-        except APIException as exc:
-            _LOGGER.error('Failed syncing splits')
-            raise_from(APIException('Failed to sync splits'), exc)
+        attempts = 3
+        while attempts > 0:
+            try:
+                if not self.synchronize_splits(None):
+                    attempts -= 1
+                    continue
+
+                # Only retrying splits, since segments may trigger too many calls.
+                if not self._synchronize_segments():
+                    _LOGGER.warn('Segments failed to synchronize.')
+
+                # All is good
+                return
+            except Exception as exc:  # pylint:disable=broad-except
+                attempts -= 1
+                _LOGGER.error("Exception caught when trying to sync all data: %s", str(exc))
+                _LOGGER.debug('Error: ', exc_info=True)
+
+        _LOGGER.error("Could not correctly synchronize splits and segments after 3 attempts.")
 
     def shutdown(self, blocking):
         """
