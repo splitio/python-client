@@ -743,6 +743,7 @@ class RedisIntegrationTests(object):
         """Clear redis cache."""
         keys_to_delete = [
             "SPLITIO/python-1.2.3/some_ip/latency.sdk.getTreatment.bucket.0",
+            "SPLITIO/python-1.2.3/some_ip/latency.sdk.getTreatmentWithConfig.bucket.0",
             "SPLITIO.segment.human_beigns",
             "SPLITIO.segment.employees.till",
             "SPLITIO.split.sample_feature",
@@ -752,6 +753,7 @@ class RedisIntegrationTests(object):
             "SPLITIO.split.whitelist_feature",
             "SPLITIO.segment.employees",
             "SPLITIO/python-1.2.3/some_ip/latency.sdk.getTreatments.bucket.0",
+            "SPLITIO/python-1.2.3/some_ip/latency.sdk.getTreatmentsWithConfig.bucket.0",
             "SPLITIO.split.regex_test",
             "SPLITIO.segment.human_beigns.till",
             "SPLITIO.split.boolean_test",
@@ -805,7 +807,7 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
         self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init
 
 
-class LocalhostIntegrationTests(object):  #pylint: disable=too-few-public-methods
+class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-methods
     """Client & Manager integration tests."""
 
     def test_localhost_e2e(self):

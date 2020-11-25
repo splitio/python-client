@@ -53,25 +53,18 @@ class SentinelConfigurationException(Exception):
     pass
 
 
-class RedisAdapter(object):  # pylint: disable=too-many-public-methods
-    """
-    Instance decorator for Redis clients such as StrictRedis.
+class PrefixTrait(object):
+    """Prefix generator."""
 
-    Adds an extra layer handling addition/removal of user prefix when handling
-    keys
-    """
-
-    def __init__(self, decorated, prefix=None):
+    def __init__(self, prefix=None):
         """
-        Store the user prefix and the redis client instance.
+        Class constructor.
 
-        :param decorated: Instance of redis cache client to decorate.
         :param prefix: User prefix to add.
         """
         self._prefix = prefix
-        self._decorated = decorated
 
-    def _add_prefix(self, k):
+    def add_prefix(self, k):
         """
         Add a prefix to the contents of k.
 
@@ -105,7 +98,7 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
             "Cannot append prefix correctly. Wrong type for key(s) provided"
         )
 
-    def _remove_prefix(self, k):
+    def remove_prefix(self, k):
         """
         Remove the user prefix from a key before handling it back to the requester.
 
@@ -127,6 +120,25 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
             "Cannot remove prefix correctly. Wrong type for key(s) provided"
         )
 
+
+class RedisAdapter(object):  # pylint: disable=too-many-public-methods
+    """
+    Instance decorator for Redis clients such as StrictRedis.
+
+    Adds an extra layer handling addition/removal of user prefix when handling
+    keys
+    """
+
+    def __init__(self, decorated, prefix=None):
+        """
+        Store the user prefix and the redis client instance.
+
+        :param decorated: Instance of redis cache client to decorate.
+        :param prefix: User prefix to add.
+        """
+        self._decorated = decorated
+        self._prefix_trait = PrefixTrait(prefix)
+
     # Below starts a list of methods that implement the interface of a standard
     # redis client.
 
@@ -135,7 +147,7 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
         try:
             return [
                 _bytes_to_string(key)
-                for key in self._remove_prefix(self._decorated.keys(self._add_prefix(pattern)))
+                for key in self._prefix_trait.remove_prefix(self._decorated.keys(self._prefix_trait.add_prefix(pattern)))
             ]
         except RedisError as exc:
             raise_from(RedisAdapterException('Failed to execute keys operation'), exc)
@@ -144,7 +156,7 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
         """Mimic original redis function but using user custom prefix."""
         try:
             return self._decorated.set(
-                self._add_prefix(name), value, *args, **kwargs
+                self._prefix_trait.add_prefix(name), value, *args, **kwargs
             )
         except RedisError as exc:
             raise RedisAdapterException('Failed to execute set operation', exc)
@@ -152,35 +164,35 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
     def get(self, name):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return _bytes_to_string(self._decorated.get(self._add_prefix(name)))
+            return _bytes_to_string(self._decorated.get(self._prefix_trait.add_prefix(name)))
         except RedisError as exc:
             raise RedisAdapterException('Error executing get operation', exc)
 
     def setex(self, name, time, value):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return self._decorated.setex(self._add_prefix(name), time, value)
+            return self._decorated.setex(self._prefix_trait.add_prefix(name), time, value)
         except RedisError as exc:
             raise RedisAdapterException('Error executing setex operation', exc)
 
     def delete(self, *names):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return self._decorated.delete(*self._add_prefix(list(names)))
+            return self._decorated.delete(*self._prefix_trait.add_prefix(list(names)))
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing delete operation'), exc)
 
     def exists(self, name):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return self._decorated.exists(self._add_prefix(name))
+            return self._decorated.exists(self._prefix_trait.add_prefix(name))
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing exists operation'), exc)
 
     def lrange(self, key, start, end):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return self._decorated.lrange(self._add_prefix(key), start, end)
+            return self._decorated.lrange(self._prefix_trait.add_prefix(key), start, end)
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing exists operation'), exc)
 
@@ -189,7 +201,7 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
         try:
             return [
                 _bytes_to_string(item)
-                for item in self._decorated.mget(self._add_prefix(names))
+                for item in self._decorated.mget(self._prefix_trait.add_prefix(names))
             ]
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing mget operation'), exc)
@@ -199,7 +211,7 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
         try:
             return [
                 _bytes_to_string(item)
-                for item in self._decorated.smembers(self._add_prefix(name))
+                for item in self._decorated.smembers(self._prefix_trait.add_prefix(name))
             ]
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing smembers operation'), exc)
@@ -207,100 +219,130 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
     def sadd(self, name, *values):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return self._decorated.sadd(self._add_prefix(name), *values)
+            return self._decorated.sadd(self._prefix_trait.add_prefix(name), *values)
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing sadd operation'), exc)
 
     def srem(self, name, *values):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return self._decorated.srem(self._add_prefix(name), *values)
+            return self._decorated.srem(self._prefix_trait.add_prefix(name), *values)
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing srem operation'), exc)
 
     def sismember(self, name, value):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return self._decorated.sismember(self._add_prefix(name), value)
+            return self._decorated.sismember(self._prefix_trait.add_prefix(name), value)
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing sismember operation'), exc)
 
     def eval(self, script, number_of_keys, *keys):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return self._decorated.eval(script, number_of_keys, *self._add_prefix(list(keys)))
+            return self._decorated.eval(script, number_of_keys, *self._prefix_trait.add_prefix(list(keys)))
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing eval operation'), exc)
 
     def hset(self, name, key, value):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return self._decorated.hset(self._add_prefix(name), key, value)
+            return self._decorated.hset(self._prefix_trait.add_prefix(name), key, value)
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing hset operation'), exc)
 
     def hget(self, name, key):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return _bytes_to_string(self._decorated.hget(self._add_prefix(name), key))
+            return _bytes_to_string(self._decorated.hget(self._prefix_trait.add_prefix(name), key))
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing hget operation'), exc)
 
     def incr(self, name, amount=1):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return self._decorated.incr(self._add_prefix(name), amount)
+            return self._decorated.incr(self._prefix_trait.add_prefix(name), amount)
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing incr operation'), exc)
 
     def getset(self, name, value):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return _bytes_to_string(self._decorated.getset(self._add_prefix(name), value))
+            return _bytes_to_string(self._decorated.getset(self._prefix_trait.add_prefix(name), value))
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing getset operation'), exc)
 
     def rpush(self, key, *values):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return self._decorated.rpush(self._add_prefix(key), *values)
+            return self._decorated.rpush(self._prefix_trait.add_prefix(key), *values)
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing rpush operation'), exc)
 
     def expire(self, key, value):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return self._decorated.expire(self._add_prefix(key), value)
+            return self._decorated.expire(self._prefix_trait.add_prefix(key), value)
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing expire operation'), exc)
 
     def rpop(self, key):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return _bytes_to_string(self._decorated.rpop(self._add_prefix(key)))
+            return _bytes_to_string(self._decorated.rpop(self._prefix_trait.add_prefix(key)))
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing rpop operation'), exc)
 
     def ttl(self, key):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return self._decorated.ttl(self._add_prefix(key))
+            return self._decorated.ttl(self._prefix_trait.add_prefix(key))
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing ttl operation'), exc)
 
     def lpop(self, key):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return self._decorated.lpop(self._add_prefix(key))
+            return self._decorated.lpop(self._prefix_trait.add_prefix(key))
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing lpop operation'), exc)
 
     def pipeline(self):
         """Mimic original redis pipeline."""
         try:
-            return self._decorated.pipeline()
+            return RedisPipelineAdapter(self._decorated, self._prefix_trait)
         except RedisError as exc:
             raise_from(RedisAdapterException('Error executing ttl operation'), exc)
+
+
+class RedisPipelineAdapter(object):
+    """
+    Instance decorator for Redis Pipeline.
+
+    Adds an extra layer handling addition/removal of user prefix when handling
+    keys
+    """
+    def __init__(self, decorated, prefix_trait):
+        """
+        Store the user prefix and the redis client instance.
+
+        :param decorated: Instance of redis cache client to decorate.
+        :param prefix_trait: Prefix Trait utility
+        """
+        self._prefix_trait = prefix_trait
+        self._pipe = decorated.pipeline()
+
+    def rpush(self, key, *values):
+        """Mimic original redis function but using user custom prefix."""
+        self._pipe.rpush(self._prefix_trait.add_prefix(key), *values)
+
+    def incr(self, name, amount=1):
+        """Mimic original redis function but using user custom prefix."""
+        self._pipe.incr(self._prefix_trait.add_prefix(name), amount)
+
+    def execute(self):
+        """Mimic original redis function but using user custom prefix."""
+        return self._pipe.execute()
 
 
 def _build_default_client(config):  # pylint: disable=too-many-locals
