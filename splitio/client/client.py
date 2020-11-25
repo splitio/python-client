@@ -12,7 +12,6 @@ from splitio.models.events import Event, EventWrapper
 from splitio.models.telemetry import get_latency_bucket_index
 from splitio.client import input_validator
 from splitio.util import utctime_ms
-from splitio.recorder.recorder import StandardRecorder
 
 
 _LOGGER = logging.getLogger(__name__)
