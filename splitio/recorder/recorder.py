@@ -72,8 +72,8 @@ class StandardRecorder(StatsRecorder):
         """
         try:
             impressions = self._impressions_manager.process_impressions(impressions)
-            self._impression_storage.put(impressions)
-            self._telemetry_storage.inc_latency(operation, latency)
+            if self._impression_storage.put(impressions):
+                self._telemetry_storage.inc_latency(operation, latency)
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error recording impressions and metrics')
             _LOGGER.debug('Error: ', exc_info=True)

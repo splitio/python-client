@@ -1,3 +1,6 @@
+8.3.2 (Nov XX, 2020)
+ - Added RecordStats for supporting pipelined recording in redis when treatment call is made.
+
 8.3.1 (Nov 20, 2020)
  - Fixed error handling when split server fails, so that it doesn't bring streaming down.
  - Added SDK Metadata headers to split & segments API clients
