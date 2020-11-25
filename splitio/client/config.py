@@ -29,7 +29,7 @@ DEFAULT_CONFIG = {
     'IPAddressesEnabled': True,
     'impressionsMode': 'OPTIMIZED',
     'impressionListener': None,
-    'redisLocalCacheEnabled': False,
+    'redisLocalCacheEnabled': True,
     'redisLocalCacheTTL': 5,
     'redisHost': 'localhost',
     'redisPort': 6379,
