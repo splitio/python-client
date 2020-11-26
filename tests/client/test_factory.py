@@ -20,7 +20,7 @@ from splitio.sync.synchronizer import Synchronizer, SplitSynchronizers, SplitTas
 from splitio.sync.split import SplitSynchronizer
 from splitio.sync.segment import SegmentSynchronizer
 from splitio.recorder.recorder import PipelinedRecorder, StandardRecorder
-from splitio.storage.adapters.redis import RedisAdapter
+from splitio.storage.adapters.redis import RedisAdapter, RedisPipelineAdapter
 
 
 class SplitFactoryTests(object):
@@ -130,11 +130,11 @@ class SplitFactoryTests(object):
             ssl_cert_reqs='some_cert_req',
             ssl_ca_certs='some_ca_cert',
             max_connections=999
-        )]
+        ), mocker.call().pipeline()]
         assert factory._labels_enabled is False
         assert isinstance(factory._recorder, PipelinedRecorder)
         assert isinstance(factory._recorder._impressions_manager, ImpressionsManager)
-        assert isinstance(factory._recorder._redis, RedisAdapter)
+        assert isinstance(factory._recorder._pipe, RedisPipelineAdapter)
         assert isinstance(factory._recorder._telemetry_storage, redis.RedisTelemetryStorage)
         assert isinstance(factory._recorder._event_sotrage, redis.RedisEventsStorage)
         assert isinstance(factory._recorder._impression_storage, redis.RedisImpressionsStorage)

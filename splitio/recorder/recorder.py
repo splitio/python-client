@@ -91,12 +91,12 @@ class StandardRecorder(StatsRecorder):
 class PipelinedRecorder(StatsRecorder):
     """PipelinedRecorder class."""
 
-    def __init__(self, redis, impressions_manager, telemetry_storage, event_storage, impression_storage):
+    def __init__(self, pipe, impressions_manager, telemetry_storage, event_storage, impression_storage):
         """
         Class constructor.
 
-        :param redis: redis client instance
-        :type redis: splitio.storage.adapters.redis.RedisAdapter
+        :param pipe: redis pipeline
+        :type pipe: splitio.storage.adapters.redis.RedisPipelineAdapter
         :param impressions_manager: impression manager instance
         :type impressions_manager: splitio.engine.impressions.Manager
         :param telemetry_storage: telemetry storage instance
@@ -106,7 +106,7 @@ class PipelinedRecorder(StatsRecorder):
         :param impression_storage: impression storage instance
         :type impression_storage: splitio.storage.redis.RedisImpressionsStorage
         """
-        self._redis = redis
+        self._pipe = pipe
         self._impressions_manager = impressions_manager
         self._telemetry_storage = telemetry_storage
         self._event_sotrage = event_storage
@@ -125,10 +125,9 @@ class PipelinedRecorder(StatsRecorder):
         """
         try:
             impressions = self._impressions_manager.process_impressions(impressions)
-            pipe = self._redis.pipeline()
-            self._impression_storage.add_impressions_to_pipe(impressions, pipe)
-            self._telemetry_storage.add_latency_to_pipe(operation, latency, pipe)
-            result = pipe.execute()
+            self._impression_storage.add_impressions_to_pipe(impressions, self._pipe)
+            self._telemetry_storage.add_latency_to_pipe(operation, latency, self._pipe)
+            result = self._pipe.execute()
             if len(result) == 2:
                 self._impression_storage.expire_key(result[0], len(impressions))
         except Exception:  # pylint: disable=broad-except
