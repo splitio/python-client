@@ -354,7 +354,7 @@ def _build_redis_factory(api_key, cfg):
         'telemetry': RedisTelemetryStorage(redis_adapter, sdk_metadata)
     }
     recorder = PipelinedRecorder(
-        redis_adapter.pipeline(),
+        redis_adapter.pipeline,
         ImpressionsManager(cfg['impressionsMode'], False,
                            _wrap_impression_listener(cfg['impressionListener'], sdk_metadata)),
         storages['telemetry'],

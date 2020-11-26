@@ -519,8 +519,8 @@ class RedisIntegrationTests(object):
             'events': RedisEventsStorage(redis_client, metadata),
             'telemetry': RedisTelemetryStorage(redis_client, metadata)
         }
-        impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
-        recorder = PipelinedRecorder(redis_client, impmanager, storages['telemetry'],
+        impmanager = ImpressionsManager(ImpressionsMode.DEBUG, False)
+        recorder = PipelinedRecorder(redis_client.pipeline, impmanager, storages['telemetry'],
                                      storages['events'], storages['impressions'])
         self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init
 
@@ -802,7 +802,7 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
             'telemetry': RedisTelemetryStorage(redis_client, metadata)
         }
         impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
-        recorder = PipelinedRecorder(redis_client, impmanager, storages['telemetry'],
+        recorder = PipelinedRecorder(redis_client.pipeline, impmanager, storages['telemetry'],
                                      storages['events'], storages['impressions'])
         self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init
 
