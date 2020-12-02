@@ -71,6 +71,7 @@ class Status(Enum):
     NOT_INITIALIZED = 'NOT_INITIALIZED'
     READY = 'READY'
     DESTROYED = 'DESTROYED'
+    WAITING_FORK = 'WAITING_FORK'
 
 
 class TimeoutException(Exception):
@@ -90,6 +91,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
             recorder,
             sync_manager=None,
             sdk_ready_flag=None,
+            should_handle_post_fork=False,
     ):
         """
         Class constructor.
@@ -112,12 +114,21 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         self._labels_enabled = labels_enabled
         self._sync_manager = sync_manager
         self._sdk_internal_ready_flag = sdk_ready_flag
-        self._sdk_ready_flag = threading.Event()
         self._recorder = recorder
+        self._should_handle_post_fork = should_handle_post_fork
+        self._start_ready_updater()
 
+    def _start_ready_updater(self):
+        """
+        Perform ready updater
+        """
         # If we have a ready flag, it means we have sync tasks that need to finish
         # before the SDK client becomes ready.
+        if self._should_handle_post_fork:
+            self._status = Status.WAITING_FORK
+            return
         if self._sdk_internal_ready_flag is not None:
+            self._sdk_ready_flag = threading.Event()
             self._status = Status.NOT_INITIALIZED
             # add a listener that updates the status to READY once the flag is set.
             ready_updater = threading.Thread(target=self._update_status_when_ready,
@@ -232,13 +243,35 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         """
         return self._status == Status.DESTROYED
 
+    @property
+    def waiting_fork(self):
+        """
+        Return whether the factory is waiting for fork recreation or not.
+
+        :return: True if the factory is waiting for fork recreation. False otherwise.
+        :rtype: bool
+        """
+        return self._status == Status.WAITING_FORK
+
     def handle_post_fork(self):
         """
         Function capable to re-synchronize splits data on fork processes.
         """
-        initialization_thread = threading.Thread(target=self._sync_manager.start, name="SDKInitializer")
+        if not self.waiting_fork:
+            _LOGGER.warning('Cannot call handle_post_fork')
+            return
+        self._should_handle_post_fork = False  # Reset for updater
+        self._sync_manager.recreate()
+        sdk_ready_flag = threading.Event()
+        self._sdk_internal_ready_flag = sdk_ready_flag
+        self._sync_manager._ready_flag = sdk_ready_flag
+        initialization_thread = threading.Thread(
+            target=self._sync_manager.start,
+            name="SDKInitializer",
+        )
         initialization_thread.setDaemon(True)
         initialization_thread.start()
+        self._start_ready_updater()
 
 
 def _wrap_impression_listener(listener, metadata):
@@ -327,15 +360,11 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
 
     synchronizer = Synchronizer(synchronizers, tasks)
 
-    sdk_ready_flag = threading.Event()
+    should_handle_post_fork = cfg.get('shouldHandlePostFork', False)
+
+    sdk_ready_flag = threading.Event() if not should_handle_post_fork else None
     manager = Manager(sdk_ready_flag, synchronizer, apis['auth'], cfg['streamingEnabled'],
                       streaming_api_base_url)
-
-    '''
-    initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer")
-    initialization_thread.setDaemon(True)
-    initialization_thread.start()
-    '''
 
     storages['events'].set_queue_full_hook(tasks.events_task.flush)
     storages['impressions'].set_queue_full_hook(tasks.impressions_task.flush)
@@ -346,8 +375,18 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         storages['events'],
         storages['impressions'],
     )
+
+    if should_handle_post_fork:
+        synchronizer.sync_all()
+        return SplitFactory(api_key, storages, cfg['labelsEnabled'],
+                            recorder, manager, should_handle_post_fork=should_handle_post_fork)
+
+    initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer")
+    initialization_thread.setDaemon(True)
+    initialization_thread.start()
+
     return SplitFactory(api_key, storages, cfg['labelsEnabled'],
-                        recorder, manager, None)
+                        recorder, manager, sdk_ready_flag)
 
 
 def _build_redis_factory(api_key, cfg):
