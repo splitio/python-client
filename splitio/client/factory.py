@@ -232,6 +232,14 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         """
         return self._status == Status.DESTROYED
 
+    def handle_post_fork(self):
+        """
+        Function capable to re-synchronize splits data on fork processes.
+        """
+        initialization_thread = threading.Thread(target=self._sync_manager.start, name="SDKInitializer")
+        initialization_thread.setDaemon(True)
+        initialization_thread.start()
+
 
 def _wrap_impression_listener(listener, metadata):
     """
@@ -323,9 +331,11 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     manager = Manager(sdk_ready_flag, synchronizer, apis['auth'], cfg['streamingEnabled'],
                       streaming_api_base_url)
 
+    '''
     initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer")
     initialization_thread.setDaemon(True)
     initialization_thread.start()
+    '''
 
     storages['events'].set_queue_full_hook(tasks.events_task.flush)
     storages['impressions'].set_queue_full_hook(tasks.impressions_task.flush)
@@ -337,7 +347,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         storages['impressions'],
     )
     return SplitFactory(api_key, storages, cfg['labelsEnabled'],
-                        recorder, manager, sdk_ready_flag)
+                        recorder, manager, None)
 
 
 def _build_redis_factory(api_key, cfg):
