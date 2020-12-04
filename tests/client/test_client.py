@@ -18,6 +18,7 @@ from splitio.engine.impressions import Manager as ImpressionManager
 # Recorder
 from splitio.recorder.recorder import StandardRecorder
 
+
 class ClientTests(object):  # pylint: disable=too-few-public-methods
     """Split client test cases."""
 
@@ -43,6 +44,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
         factory = mocker.Mock(spec=SplitFactory)
         factory._get_storage.side_effect = _get_storage_mock
+        factory._waiting_fork.return_value = False
         type(factory).destroyed = destroyed_property
 
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
@@ -115,6 +117,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
         factory = mocker.Mock(spec=SplitFactory)
         factory._get_storage.side_effect = _get_storage_mock
+        factory._waiting_fork.return_value = False
         type(factory).destroyed = destroyed_property
 
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
@@ -192,6 +195,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
         factory = mocker.Mock(spec=SplitFactory)
         factory._get_storage.side_effect = _get_storage_mock
+        factory._waiting_fork.return_value = False
         type(factory).destroyed = destroyed_property
 
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
@@ -266,6 +270,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
         factory = mocker.Mock(spec=SplitFactory)
         factory._get_storage.side_effect = _get_storage_mock
+        factory._waiting_fork.return_value = False
         type(factory).destroyed = destroyed_property
 
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
@@ -373,6 +378,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         factory._get_storage = _get_storage_mock
         destroyed_mock = mocker.PropertyMock()
         destroyed_mock.return_value = False
+        factory._waiting_fork.return_value = False
         type(factory).destroyed = destroyed_mock
         factory._apikey = 'test'
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)

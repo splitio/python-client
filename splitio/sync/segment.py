@@ -35,7 +35,6 @@ class SegmentSynchronizer(object):
         Create worker_pool on forked processes.
 
         """
-        self.shutdown()
         self._worker_pool = workerpool.WorkerPool(10, self.synchronize_segment)
         self._worker_pool.start()
 

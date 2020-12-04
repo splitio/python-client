@@ -453,6 +453,12 @@ class RedisImpressionsStorage(ImpressionStorage, ImpressionPipelinedStorage):
         """
         raise NotImplementedError('Only redis-consumer mode is supported.')
 
+    def clear(self):
+        """
+        Clear data.
+        """
+        raise NotImplementedError('Not supported for redis.')
+
 
 class RedisEventsStorage(EventStorage):
     """Redis based event storage class."""
@@ -516,6 +522,12 @@ class RedisEventsStorage(EventStorage):
         :type count: int
         """
         raise NotImplementedError('Only redis-consumer mode is supported.')
+
+    def clear(self):
+        """
+        Clear data.
+        """
+        raise NotImplementedError('Not supported for redis.')
 
 
 class RedisTelemetryStorage(TelemetryStorage, TelemetryPipelinedStorage):
@@ -694,3 +706,9 @@ class RedisTelemetryStorage(TelemetryStorage, TelemetryPipelinedStorage):
         :rtype: list
         """
         raise NotImplementedError('Only redis-consumer mode is supported.')
+
+    def clear(self):
+        """
+        Clear data.
+        """
+        raise NotImplementedError('Not supported for redis.')

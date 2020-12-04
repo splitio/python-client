@@ -90,6 +90,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             if self.destroyed:
                 _LOGGER.error("Client has already been destroyed - no calls possible")
                 return CONTROL, None
+            if self._factory._waiting_fork():
+                _LOGGER.error("Client is not ready - no calls possible")
+                return CONTROL, None
 
             start = int(round(time.time() * 1000))
 
@@ -142,6 +145,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
     def _make_evaluations(self, key, features, attributes, method_name, metric_name):
         if self.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible")
+            return input_validator.generate_control_treatments(features, method_name)
+        if self._factory._waiting_fork():
+            _LOGGER.error("Client is not ready - no calls possible")
             return input_validator.generate_control_treatments(features, method_name)
 
         start = int(round(time.time() * 1000))
@@ -362,6 +368,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         """
         if self.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible")
+            return False
+        if self._factory._waiting_fork():
+            _LOGGER.error("Client is not ready - no calls possible")
             return False
 
         key = input_validator.validate_track_key(key)

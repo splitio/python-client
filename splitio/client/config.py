@@ -56,7 +56,7 @@ DEFAULT_CONFIG = {
     'machineName': None,
     'machineIp': None,
     'splitFile': os.path.join(os.path.expanduser('~'), '.split'),
-    'shouldHandlePostFork': False,
+    'preforkedInitialization': False,
 }
 
 
