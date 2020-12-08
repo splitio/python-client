@@ -2,6 +2,7 @@
 # pylint: disable=no-self-use,protected-access,line-too-long,too-many-statements
 # pylint: disable=too-many-locals, too-many-arguments
 
+import os
 import time
 import threading
 from splitio.client.factory import get_factory, SplitFactory, _INSTANTIATED_FACTORIES, Status,\
@@ -566,7 +567,8 @@ class SplitFactoryTests(object):
             mocker.call('Cannot call handle_post_fork')
         ]
 
-        factory = get_factory("localhost")
+        filename = os.path.join(os.path.dirname(__file__), '../integration/files', 'file2.yaml')
+        factory = get_factory('localhost', config={'splitFile': filename})
         factory.block_until_ready(1)
 
         _logger = mocker.Mock()
