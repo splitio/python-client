@@ -4,7 +4,7 @@
 
 import time
 import threading
-from splitio.client.factory import get_factory, SplitFactory, _INSTANTIATED_FACTORIES
+from splitio.client.factory import get_factory, SplitFactory, _INSTANTIATED_FACTORIES, Status
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.storage import redis, inmemmory, uwsgi
 from splitio.tasks import events_sync, impressions_sync, split_sync, segment_sync, telemetry_sync
@@ -159,6 +159,28 @@ class SplitFactoryTests(object):
         assert isinstance(factory._recorder._impression_storage, inmemmory.ImpressionStorage)
         factory.block_until_ready()
         assert factory.ready
+        factory.destroy()
+
+    def test_uwsgi_forked_client_creation(self):
+        """Test client with preforked initialization."""
+        factory = get_factory('some_api_key', config={'preforkedInitialization': True})
+        assert isinstance(factory._storages['splits'], inmemmory.InMemorySplitStorage)
+        assert isinstance(factory._storages['segments'], inmemmory.InMemorySegmentStorage)
+        assert isinstance(factory._storages['impressions'], inmemmory.InMemoryImpressionStorage)
+        assert factory._storages['impressions']._impressions.maxsize == 10000
+        assert isinstance(factory._storages['events'], inmemmory.InMemoryEventStorage)
+        assert factory._storages['events']._events.maxsize == 10000
+        assert isinstance(factory._storages['telemetry'], inmemmory.InMemoryTelemetryStorage)
+
+        assert isinstance(factory._sync_manager, Manager)
+
+        assert isinstance(factory._recorder, StandardRecorder)
+        assert isinstance(factory._recorder._impressions_manager, ImpressionsManager)
+        assert isinstance(factory._recorder._telemetry_storage, inmemmory.TelemetryStorage)
+        assert isinstance(factory._recorder._event_sotrage, inmemmory.EventStorage)
+        assert isinstance(factory._recorder._impression_storage, inmemmory.ImpressionStorage)
+
+        assert factory._status == Status.WAITING_FORK
         factory.destroy()
 
     def test_destroy(self, mocker):
@@ -461,3 +483,42 @@ class SplitFactoryTests(object):
         factory2.destroy()
         factory3.destroy()
         factory4.destroy()
+
+    def test_uwsgi_preforked(self, mocker):
+        """Test preforked initializations."""
+        global called_sync_all
+        called_sync_all = 0
+        global called_start
+        called_start = 0
+        global called_recreate
+        called_recreate = 0
+
+        # Mocking
+        def _sync_all(self):
+            print('here')
+            global called_sync_all
+            called_sync_all += 1
+        mocker.patch('splitio.sync.synchronizer.Synchronizer.sync_all', new=_sync_all)
+
+        def _start(self):
+            global called_start
+            called_start += 1
+        mocker.patch('splitio.sync.manager.Manager.start', new=_start)
+
+        def _recreate(self):
+            global called_recreate
+            called_recreate += 1
+        mocker.patch('splitio.sync.manager.Manager.recreate', new=_recreate)
+
+        config = {
+            'preforkedInitialization': True,
+        }
+        factory = get_factory("none", config=config)
+        factory.block_until_ready(10)
+        assert factory._status == Status.WAITING_FORK
+        assert called_sync_all == 1
+        assert called_start == 0
+
+        factory.handle_post_fork()
+        assert called_recreate == 1
+        assert called_start == 1

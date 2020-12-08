@@ -441,6 +441,10 @@ def _build_uwsgi_factory(api_key, cfg):
         storages['events'],
         storages['impressions'],
     )
+    _LOGGER.warning(
+        "Beware: uwsgi-cache based operation mode is soon to be deprecated. Please consider " +
+        "redis if you need a centralized point of syncrhonization, or in-memory (with preforking " +
+        "support enabled) if running uwsgi with a master and several http workers)")
     return SplitFactory(
         api_key,
         storages,
