@@ -486,6 +486,39 @@ class SplitFactoryTests(object):
 
     def test_uwsgi_preforked(self, mocker):
         """Test preforked initializations."""
+
+        def clear_impressions():
+            clear_impressions._called += 1
+
+        def clear_events():
+            clear_events._called += 1
+
+        def clear_telemetry():
+            clear_telemetry._called += 1
+
+        clear_impressions._called = 0
+        clear_events._called = 0
+        clear_telemetry._called = 0
+        split_storage = mocker.Mock(spec=inmemmory.SplitStorage)
+        segment_storage = mocker.Mock(spec=inmemmory.SegmentStorage)
+        impression_storage = mocker.Mock(spec=inmemmory.ImpressionStorage)
+        impression_storage.clear.side_effect = clear_impressions
+        event_storage = mocker.Mock(spec=inmemmory.EventStorage)
+        event_storage.clear.side_effect = clear_events
+        telemetry_storage = mocker.Mock(spec=inmemmory.TelemetryStorage)
+        telemetry_storage.clear.side_effect = clear_telemetry
+
+        def _get_storage_mock(self, name):
+            return {
+                'splits': split_storage,
+                'segments': segment_storage,
+                'impressions': impression_storage,
+                'events': event_storage,
+                'telemetry': telemetry_storage
+            }[name]
+
+        mocker.patch('splitio.client.factory.SplitFactory._get_storage', new=_get_storage_mock)
+
         global called_sync_all
         called_sync_all = 0
         global called_start
@@ -495,7 +528,6 @@ class SplitFactoryTests(object):
 
         # Mocking
         def _sync_all(self):
-            print('here')
             global called_sync_all
             called_sync_all += 1
         mocker.patch('splitio.sync.synchronizer.Synchronizer.sync_all', new=_sync_all)
@@ -522,3 +554,7 @@ class SplitFactoryTests(object):
         factory.handle_post_fork()
         assert called_recreate == 1
         assert called_start == 1
+
+        assert clear_impressions._called == 1
+        assert clear_events._called == 1
+        assert clear_telemetry._called == 1

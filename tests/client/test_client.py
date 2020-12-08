@@ -378,12 +378,15 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         factory._get_storage = _get_storage_mock
         destroyed_mock = mocker.PropertyMock()
         destroyed_mock.return_value = False
+        factory._waiting_fork.return_value = False
         type(factory).destroyed = destroyed_mock
         factory._apikey = 'test'
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        client = Client(factory, impmanager, True)
+        recorder = StandardRecorder(impmanager, telemetry_storage, event_storage,
+                                    impression_storage)
+        client = Client(factory, recorder, True)
         assert client.track('key', 'user', 'purchase', 12) is True
         assert mocker.call([
             EventWrapper(
