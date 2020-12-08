@@ -357,6 +357,41 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert client.destroyed is not None
         assert destroyed_mock.mock_calls == [mocker.call()]
 
+    def test_track(self, mocker):
+        """Test that destroy/destroyed calls are forwarded to the factory."""
+        split_storage = mocker.Mock(spec=SplitStorage)
+        segment_storage = mocker.Mock(spec=SegmentStorage)
+        impression_storage = mocker.Mock(spec=ImpressionStorage)
+        event_storage = mocker.Mock(spec=EventStorage)
+        event_storage.put.return_value = True
+        telemetry_storage = mocker.Mock(spec=TelemetryStorage)
+
+        def _get_storage_mock(name):
+            return {
+                'splits': split_storage,
+                'segments': segment_storage,
+                'impressions': impression_storage,
+                'events': event_storage,
+                'telemetry': telemetry_storage
+            }[name]
+        factory = mocker.Mock(spec=SplitFactory)
+        factory._get_storage = _get_storage_mock
+        destroyed_mock = mocker.PropertyMock()
+        destroyed_mock.return_value = False
+        type(factory).destroyed = destroyed_mock
+        factory._apikey = 'test'
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        client = Client(factory, impmanager, True)
+        assert client.track('key', 'user', 'purchase', 12) is True
+        assert mocker.call([
+            EventWrapper(
+                event=Event('key', 'user', 'purchase', 12, 1000, None),
+                size=1024
+            )
+        ]) in event_storage.put.mock_calls
+
     def test_evaluations_before_running_post_fork(self, mocker):
         destroyed_property = mocker.PropertyMock()
         destroyed_property.return_value = False
