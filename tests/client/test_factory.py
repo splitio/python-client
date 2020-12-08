@@ -4,7 +4,8 @@
 
 import time
 import threading
-from splitio.client.factory import get_factory, SplitFactory, _INSTANTIATED_FACTORIES, Status
+from splitio.client.factory import get_factory, SplitFactory, _INSTANTIATED_FACTORIES, Status,\
+    _LOGGER as _logger
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.storage import redis, inmemmory, uwsgi
 from splitio.tasks import events_sync, impressions_sync, split_sync, segment_sync, telemetry_sync
@@ -558,3 +559,17 @@ class SplitFactoryTests(object):
         assert clear_impressions._called == 1
         assert clear_events._called == 1
         assert clear_telemetry._called == 1
+
+    def test_error_prefork(self, mocker):
+        """Test not handling fork."""
+        expected_msg = [
+            mocker.call('Cannot call handle_post_fork')
+        ]
+
+        factory = get_factory("localhost")
+        factory.block_until_ready(1)
+
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.factory._LOGGER', new=_logger)
+        factory.handle_post_fork()
+        assert _logger.warning.mock_calls == expected_msg
