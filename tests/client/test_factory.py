@@ -521,28 +521,14 @@ class SplitFactoryTests(object):
 
         mocker.patch('splitio.client.factory.SplitFactory._get_storage', new=_get_storage_mock)
 
-        global called_sync_all
-        called_sync_all = 0
-        global called_start
-        called_start = 0
-        global called_recreate
-        called_recreate = 0
+        sync_all_mock = mocker.Mock()
+        mocker.patch('splitio.sync.synchronizer.Synchronizer.sync_all', new=sync_all_mock)
 
-        # Mocking
-        def _sync_all(self):
-            global called_sync_all
-            called_sync_all += 1
-        mocker.patch('splitio.sync.synchronizer.Synchronizer.sync_all', new=_sync_all)
+        start_mock = mocker.Mock()
+        mocker.patch('splitio.sync.manager.Manager.start', new=start_mock)
 
-        def _start(self):
-            global called_start
-            called_start += 1
-        mocker.patch('splitio.sync.manager.Manager.start', new=_start)
-
-        def _recreate(self):
-            global called_recreate
-            called_recreate += 1
-        mocker.patch('splitio.sync.manager.Manager.recreate', new=_recreate)
+        recreate_mock = mocker.Mock()
+        mocker.patch('splitio.sync.manager.Manager.recreate', new=recreate_mock)
 
         config = {
             'preforkedInitialization': True,
@@ -550,12 +536,12 @@ class SplitFactoryTests(object):
         factory = get_factory("none", config=config)
         factory.block_until_ready(10)
         assert factory._status == Status.WAITING_FORK
-        assert called_sync_all == 1
-        assert called_start == 0
+        assert len(sync_all_mock.mock_calls) == 1
+        assert len(start_mock.mock_calls) == 0
 
         factory.handle_post_fork()
-        assert called_recreate == 1
-        assert called_start == 1
+        assert len(recreate_mock.mock_calls) == 1
+        assert len(start_mock.mock_calls) == 1
 
         assert clear_impressions._called == 1
         assert clear_events._called == 1

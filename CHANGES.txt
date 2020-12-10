@@ -1,5 +1,6 @@
 8.3.2 (Dec XX, 2020)
  - Added RecordStats for supporting pipelined recording in redis when treatment call is made.
+ - Added hooks support for UWSGI.
 
 8.3.1 (Nov 20, 2020)
  - Fixed error handling when split server fails, so that it doesn't bring streaming down.
