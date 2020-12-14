@@ -55,7 +55,8 @@ DEFAULT_CONFIG = {
     'redisMaxConnections': None,
     'machineName': None,
     'machineIp': None,
-    'splitFile': os.path.join(os.path.expanduser('~'), '.split')
+    'splitFile': os.path.join(os.path.expanduser('~'), '.split'),
+    'preforkedInitialization': False,
 }
 
 

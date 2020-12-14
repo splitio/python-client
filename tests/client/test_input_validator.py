@@ -43,6 +43,7 @@ class ClientInputValidationTests(object):
         factory_mock = mocker.Mock(spec=SplitFactory)
         factory_mock._get_storage.side_effect = _get_storage_mock
         factory_destroyed = mocker.PropertyMock()
+        factory_mock._waiting_fork.return_value = False
         factory_destroyed.return_value = False
         type(factory_mock).destroyed = factory_destroyed
 
@@ -272,6 +273,7 @@ class ClientInputValidationTests(object):
         factory_mock._get_storage.side_effect = _get_storage_mock
         factory_destroyed = mocker.PropertyMock()
         factory_destroyed.return_value = False
+        factory_mock._waiting_fork.return_value = False
         type(factory_mock).destroyed = factory_destroyed
 
         client = Client(factory_mock, mocker.Mock())
@@ -523,6 +525,7 @@ class ClientInputValidationTests(object):
         factory_mock = mocker.Mock(spec=SplitFactory)
         factory_destroyed = mocker.PropertyMock()
         factory_destroyed.return_value = False
+        factory_mock._waiting_fork.return_value = False
         type(factory_mock).destroyed = factory_destroyed
         factory_mock._apikey = 'some-test'
 
@@ -796,6 +799,7 @@ class ClientInputValidationTests(object):
         factory_mock._get_storage.side_effect = _get_storage_mock
         factory_destroyed = mocker.PropertyMock()
         factory_destroyed.return_value = False
+        factory_mock._waiting_fork.return_value = False
         type(factory_mock).destroyed = factory_destroyed
 
         client = Client(factory_mock, mocker.Mock())
@@ -919,6 +923,7 @@ class ClientInputValidationTests(object):
         factory_mock._get_storage.return_value = storage_mock
         factory_destroyed = mocker.PropertyMock()
         factory_destroyed.return_value = False
+        factory_mock._waiting_fork.return_value = False
         type(factory_mock).destroyed = factory_destroyed
         def _configs(treatment):
             return '{"some": "property"}' if treatment == 'default_treatment' else None
@@ -1040,6 +1045,7 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
         factory_mock._get_storage.return_value = storage_mock
         factory_destroyed = mocker.PropertyMock()
         factory_destroyed.return_value = False
+        factory_mock._waiting_fork.return_value = False
         type(factory_mock).destroyed = factory_destroyed
 
         manager = SplitManager(factory_mock)

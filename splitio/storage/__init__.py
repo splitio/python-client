@@ -237,6 +237,13 @@ class ImpressionStorage(object):
         """
         pass
 
+    @abc.abstractmethod
+    def clear(self):
+        """
+        Clear data.
+        """
+        pass
+
 
 @add_metaclass(abc.ABCMeta)
 class ImpressionPipelinedStorage(object):
@@ -276,6 +283,13 @@ class EventStorage(object):
 
         :param count: Number of events to pop.
         :type count: int
+        """
+        pass
+
+    @abc.abstractmethod
+    def clear(self):
+        """
+        Clear data.
         """
         pass
 
@@ -343,6 +357,13 @@ class TelemetryStorage(object):
         Get all latencies.
 
         :rtype: list
+        """
+        pass
+
+    @abc.abstractmethod
+    def clear(self):
+        """
+        Clear data.
         """
         pass
 

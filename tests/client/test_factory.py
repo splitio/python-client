@@ -2,9 +2,11 @@
 # pylint: disable=no-self-use,protected-access,line-too-long,too-many-statements
 # pylint: disable=too-many-locals, too-many-arguments
 
+import os
 import time
 import threading
-from splitio.client.factory import get_factory, SplitFactory, _INSTANTIATED_FACTORIES
+from splitio.client.factory import get_factory, SplitFactory, _INSTANTIATED_FACTORIES, Status,\
+    _LOGGER as _logger
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.storage import redis, inmemmory, uwsgi
 from splitio.tasks import events_sync, impressions_sync, split_sync, segment_sync, telemetry_sync
@@ -159,6 +161,28 @@ class SplitFactoryTests(object):
         assert isinstance(factory._recorder._impression_storage, inmemmory.ImpressionStorage)
         factory.block_until_ready()
         assert factory.ready
+        factory.destroy()
+
+    def test_uwsgi_forked_client_creation(self):
+        """Test client with preforked initialization."""
+        factory = get_factory('some_api_key', config={'preforkedInitialization': True})
+        assert isinstance(factory._storages['splits'], inmemmory.InMemorySplitStorage)
+        assert isinstance(factory._storages['segments'], inmemmory.InMemorySegmentStorage)
+        assert isinstance(factory._storages['impressions'], inmemmory.InMemoryImpressionStorage)
+        assert factory._storages['impressions']._impressions.maxsize == 10000
+        assert isinstance(factory._storages['events'], inmemmory.InMemoryEventStorage)
+        assert factory._storages['events']._events.maxsize == 10000
+        assert isinstance(factory._storages['telemetry'], inmemmory.InMemoryTelemetryStorage)
+
+        assert isinstance(factory._sync_manager, Manager)
+
+        assert isinstance(factory._recorder, StandardRecorder)
+        assert isinstance(factory._recorder._impressions_manager, ImpressionsManager)
+        assert isinstance(factory._recorder._telemetry_storage, inmemmory.TelemetryStorage)
+        assert isinstance(factory._recorder._event_sotrage, inmemmory.EventStorage)
+        assert isinstance(factory._recorder._impression_storage, inmemmory.ImpressionStorage)
+
+        assert factory._status == Status.WAITING_FORK
         factory.destroy()
 
     def test_destroy(self, mocker):
@@ -461,3 +485,79 @@ class SplitFactoryTests(object):
         factory2.destroy()
         factory3.destroy()
         factory4.destroy()
+
+    def test_uwsgi_preforked(self, mocker):
+        """Test preforked initializations."""
+
+        def clear_impressions():
+            clear_impressions._called += 1
+
+        def clear_events():
+            clear_events._called += 1
+
+        def clear_telemetry():
+            clear_telemetry._called += 1
+
+        clear_impressions._called = 0
+        clear_events._called = 0
+        clear_telemetry._called = 0
+        split_storage = mocker.Mock(spec=inmemmory.SplitStorage)
+        segment_storage = mocker.Mock(spec=inmemmory.SegmentStorage)
+        impression_storage = mocker.Mock(spec=inmemmory.ImpressionStorage)
+        impression_storage.clear.side_effect = clear_impressions
+        event_storage = mocker.Mock(spec=inmemmory.EventStorage)
+        event_storage.clear.side_effect = clear_events
+        telemetry_storage = mocker.Mock(spec=inmemmory.TelemetryStorage)
+        telemetry_storage.clear.side_effect = clear_telemetry
+
+        def _get_storage_mock(self, name):
+            return {
+                'splits': split_storage,
+                'segments': segment_storage,
+                'impressions': impression_storage,
+                'events': event_storage,
+                'telemetry': telemetry_storage
+            }[name]
+
+        mocker.patch('splitio.client.factory.SplitFactory._get_storage', new=_get_storage_mock)
+
+        sync_all_mock = mocker.Mock()
+        mocker.patch('splitio.sync.synchronizer.Synchronizer.sync_all', new=sync_all_mock)
+
+        start_mock = mocker.Mock()
+        mocker.patch('splitio.sync.manager.Manager.start', new=start_mock)
+
+        recreate_mock = mocker.Mock()
+        mocker.patch('splitio.sync.manager.Manager.recreate', new=recreate_mock)
+
+        config = {
+            'preforkedInitialization': True,
+        }
+        factory = get_factory("none", config=config)
+        factory.block_until_ready(10)
+        assert factory._status == Status.WAITING_FORK
+        assert len(sync_all_mock.mock_calls) == 1
+        assert len(start_mock.mock_calls) == 0
+
+        factory.handle_post_fork()
+        assert len(recreate_mock.mock_calls) == 1
+        assert len(start_mock.mock_calls) == 1
+
+        assert clear_impressions._called == 1
+        assert clear_events._called == 1
+        assert clear_telemetry._called == 1
+
+    def test_error_prefork(self, mocker):
+        """Test not handling fork."""
+        expected_msg = [
+            mocker.call('Cannot call handle_post_fork')
+        ]
+
+        filename = os.path.join(os.path.dirname(__file__), '../integration/files', 'file2.yaml')
+        factory = get_factory('localhost', config={'splitFile': filename})
+        factory.block_until_ready(1)
+
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.factory._LOGGER', new=_logger)
+        factory.handle_post_fork()
+        assert _logger.warning.mock_calls == expected_msg

@@ -291,6 +291,7 @@ class InMemoryImpressionStorage(ImpressionStorage):
 
         :param eventsQueueSize: How many events to queue before forcing a submission
         """
+        self._queue_size = queue_size
         self._impressions = queue.Queue(maxsize=queue_size)
         self._lock = threading.Lock()
         self._queue_full_hook = None
@@ -339,6 +340,13 @@ class InMemoryImpressionStorage(ImpressionStorage):
                 count -= 1
         return impressions
 
+    def clear(self):
+        """
+        Clear data.
+        """
+        with self._lock:
+            self._impressions = queue.Queue(maxsize=self._queue_size)
+
 
 class InMemoryEventStorage(EventStorage):
     """
@@ -353,6 +361,7 @@ class InMemoryEventStorage(EventStorage):
 
         :param eventsQueueSize: How many events to queue before forcing a submission
         """
+        self._queue_size = eventsQueueSize
         self._lock = threading.Lock()
         self._events = queue.Queue(maxsize=eventsQueueSize)
         self._queue_full_hook = None
@@ -406,6 +415,13 @@ class InMemoryEventStorage(EventStorage):
                 count -= 1
         self._size = 0
         return events
+
+    def clear(self):
+        """
+        Clear data.
+        """
+        with self._lock:
+            self._events = queue.Queue(maxsize=self._queue_size)
 
 
 class InMemoryTelemetryStorage(TelemetryStorage):
@@ -498,3 +514,14 @@ class InMemoryTelemetryStorage(TelemetryStorage):
                 return self._latencies
             finally:
                 self._latencies = {}
+
+    def clear(self):
+        """
+        Clear data.
+        """
+        with self._latencies_lock:
+            self._latencies = {}
+        with self._gauges_lock:
+            self._gauges = {}
+        with self._counters_lock:
+            self._counters = {}

@@ -71,6 +71,7 @@ class Status(Enum):
     NOT_INITIALIZED = 'NOT_INITIALIZED'
     READY = 'READY'
     DESTROYED = 'DESTROYED'
+    WAITING_FORK = 'WAITING_FORK'
 
 
 class TimeoutException(Exception):
@@ -90,6 +91,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
             recorder,
             sync_manager=None,
             sdk_ready_flag=None,
+            preforked_initialization=False,
     ):
         """
         Class constructor.
@@ -106,18 +108,29 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         :type sdk_ready_flag: threading.Event
         :param recorder: StatsRecorder instance
         :type recorder: StatsRecorder
+        :param preforked_initialization: Whether should be instantiated as preforked or not.
+        :type preforked_initialization: bool
         """
         self._apikey = apikey
         self._storages = storages
         self._labels_enabled = labels_enabled
         self._sync_manager = sync_manager
         self._sdk_internal_ready_flag = sdk_ready_flag
-        self._sdk_ready_flag = threading.Event()
         self._recorder = recorder
+        self._preforked_initialization = preforked_initialization
+        self._start_status_updater()
 
+    def _start_status_updater(self):
+        """
+        Perform status updater
+        """
+        if self._preforked_initialization:
+            self._status = Status.WAITING_FORK
+            return
         # If we have a ready flag, it means we have sync tasks that need to finish
         # before the SDK client becomes ready.
         if self._sdk_internal_ready_flag is not None:
+            self._sdk_ready_flag = threading.Event()
             self._status = Status.NOT_INITIALIZED
             # add a listener that updates the status to READY once the flag is set.
             ready_updater = threading.Thread(target=self._update_status_when_ready,
@@ -232,6 +245,38 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         """
         return self._status == Status.DESTROYED
 
+    def _waiting_fork(self):
+        """
+        Return whether the factory is waiting to be recreated by forking or not.
+
+        :return: True if the factory is waiting to be recreated by forking. False otherwise.
+        :rtype: bool
+        """
+        return self._status == Status.WAITING_FORK
+
+    def handle_post_fork(self):
+        """
+        Function in charge of starting periodic/realtime synchronization after a fork.
+        """
+        if not self._waiting_fork():
+            _LOGGER.warning('Cannot call handle_post_fork')
+            return
+        self._sync_manager.recreate()
+        sdk_ready_flag = threading.Event()
+        self._sdk_internal_ready_flag = sdk_ready_flag
+        self._sync_manager._ready_flag = sdk_ready_flag
+        self._get_storage('telemetry').clear()
+        self._get_storage('impressions').clear()
+        self._get_storage('events').clear()
+        initialization_thread = threading.Thread(
+            target=self._sync_manager.start,
+            name="SDKInitializer",
+        )
+        initialization_thread.setDaemon(True)
+        initialization_thread.start()
+        self._preforked_initialization = False  # reset for status updater
+        self._start_status_updater()
+
 
 def _wrap_impression_listener(listener, metadata):
     """
@@ -319,13 +364,11 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
 
     synchronizer = Synchronizer(synchronizers, tasks)
 
-    sdk_ready_flag = threading.Event()
+    preforked_initialization = cfg.get('preforkedInitialization', False)
+
+    sdk_ready_flag = threading.Event() if not preforked_initialization else None
     manager = Manager(sdk_ready_flag, synchronizer, apis['auth'], cfg['streamingEnabled'],
                       streaming_api_base_url)
-
-    initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer")
-    initialization_thread.setDaemon(True)
-    initialization_thread.start()
 
     storages['events'].set_queue_full_hook(tasks.events_task.flush)
     storages['impressions'].set_queue_full_hook(tasks.impressions_task.flush)
@@ -336,6 +379,17 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         storages['events'],
         storages['impressions'],
     )
+
+    if preforked_initialization:
+        synchronizer.sync_all()
+        synchronizer._split_synchronizers._segment_sync.shutdown()
+        return SplitFactory(api_key, storages, cfg['labelsEnabled'],
+                            recorder, manager, preforked_initialization=preforked_initialization)
+
+    initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer")
+    initialization_thread.setDaemon(True)
+    initialization_thread.start()
+
     return SplitFactory(api_key, storages, cfg['labelsEnabled'],
                         recorder, manager, sdk_ready_flag)
 
@@ -387,6 +441,10 @@ def _build_uwsgi_factory(api_key, cfg):
         storages['events'],
         storages['impressions'],
     )
+    _LOGGER.warning(
+        "Beware: uwsgi-cache based operation mode is soon to be deprecated. Please consider " +
+        "redis if you need a centralized point of syncrhonization, or in-memory (with preforking " +
+        "support enabled) if running uwsgi with a master and several http workers)")
     return SplitFactory(
         api_key,
         storages,
