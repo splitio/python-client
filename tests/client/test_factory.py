@@ -539,7 +539,7 @@ class SplitFactoryTests(object):
         assert len(sync_all_mock.mock_calls) == 1
         assert len(start_mock.mock_calls) == 0
 
-        factory.handle_post_fork()
+        factory.resume()
         assert len(recreate_mock.mock_calls) == 1
         assert len(start_mock.mock_calls) == 1
 
@@ -550,7 +550,7 @@ class SplitFactoryTests(object):
     def test_error_prefork(self, mocker):
         """Test not handling fork."""
         expected_msg = [
-            mocker.call('Cannot call handle_post_fork')
+            mocker.call('Cannot call resume')
         ]
 
         filename = os.path.join(os.path.dirname(__file__), '../integration/files', 'file2.yaml')
@@ -559,5 +559,5 @@ class SplitFactoryTests(object):
 
         _logger = mocker.Mock()
         mocker.patch('splitio.client.factory._LOGGER', new=_logger)
-        factory.handle_post_fork()
+        factory.resume()
         assert _logger.warning.mock_calls == expected_msg

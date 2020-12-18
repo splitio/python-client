@@ -254,12 +254,12 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         """
         return self._status == Status.WAITING_FORK
 
-    def handle_post_fork(self):
+    def resume(self):
         """
         Function in charge of starting periodic/realtime synchronization after a fork.
         """
         if not self._waiting_fork():
-            _LOGGER.warning('Cannot call handle_post_fork')
+            _LOGGER.warning('Cannot call resume')
             return
         self._sync_manager.recreate()
         sdk_ready_flag = threading.Event()
