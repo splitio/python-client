@@ -1,5 +1,5 @@
 """Configuration unit tests."""
-#pylint: disable=protected-access,no-self-use,line-too-long
+# pylint: disable=protected-access,no-self-use,line-too-long
 
 from splitio.client import config
 from splitio.engine.impressions import ImpressionsMode
@@ -44,3 +44,10 @@ class ConfigSanitizationTests(object):
         mode, rate = config._sanitize_impressions_mode('DEBUG')
         assert mode == ImpressionsMode.DEBUG
         assert rate == 60
+
+    def test_sanitize(self):
+        """Test sanitization."""
+        configs = {}
+        processed = config.sanitize('some', configs)
+
+        assert processed['redisLocalCacheEnabled']  # check default is True

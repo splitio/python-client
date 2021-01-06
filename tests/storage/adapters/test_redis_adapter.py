@@ -2,8 +2,9 @@
 
 import pytest
 from splitio.storage.adapters import redis
-from redis import StrictRedis
+from redis import StrictRedis, Redis
 from redis.sentinel import Sentinel
+
 
 class RedisStorageAdapterTests(object):
     """Redis storage adapter test cases."""
@@ -178,3 +179,21 @@ class RedisStorageAdapterTests(object):
                 'redisSentinels': ['a', 'b'],
                 'redisSsl': True,
             })
+
+
+class RedisPipelineAdapterTests(object):
+    """Redis pipelined adapter test cases."""
+
+    def test_forwarding(self, mocker):
+        """Test that all redis functions forward prefix appropriately."""
+        redis_mock = mocker.Mock(StrictRedis)
+        redis_mock_2 = mocker.Mock(Redis)
+        redis_mock.pipeline.return_value = redis_mock_2
+        prefix_helper = redis.PrefixHelper('some_prefix')
+        adapter = redis.RedisPipelineAdapter(redis_mock, prefix_helper)
+
+        adapter.rpush('key1', 'value1', 'value2')
+        assert redis_mock_2.rpush.mock_calls[0] == mocker.call('some_prefix.key1', 'value1', 'value2')
+
+        adapter.incr('key1')
+        assert redis_mock_2.incr.mock_calls[0] == mocker.call('some_prefix.key1', 1)

@@ -25,7 +25,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
     _METRIC_GET_TREATMENT_WITH_CONFIG = 'sdk.getTreatmentWithConfig'
     _METRIC_GET_TREATMENTS_WITH_CONFIG = 'sdk.getTreatmentsWithConfig'
 
-    def __init__(self, factory, impressions_manager, labels_enabled=True):
+    def __init__(self, factory, recorder, labels_enabled=True):
         """
         Construct a Client instance.
 
@@ -35,21 +35,18 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :param labels_enabled: Whether to store labels on impressions
         :type labels_enabled: bool
 
-        :param impressions_manager: impression manager instance
-        :type impressions_manager: splitio.engine.impressions.Manager
+        :param recorder: recorder instance
+        :type recorder: splitio.recorder.StatsRecorder
 
         :rtype: Client
         """
         self._factory = factory
         self._labels_enabled = labels_enabled
-        self._impressions_manager = impressions_manager
-
+        self._recorder = recorder
         self._splitter = Splitter()
         self._split_storage = factory._get_storage('splits')  # pylint: disable=protected-access
         self._segment_storage = factory._get_storage('segments')  # pylint: disable=protected-access
-        self._impressions_storage = factory._get_storage('impressions')  # pylint: disable=protected-access
         self._events_storage = factory._get_storage('events')  # pylint: disable=protected-access
-        self._telemetry_storage = factory._get_storage('telemetry')  # pylint: disable=protected-access
         self._evaluator = Evaluator(self._split_storage, self._segment_storage, self._splitter)
 
     def destroy(self):
@@ -92,6 +89,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         try:
             if self.destroyed:
                 _LOGGER.error("Client has already been destroyed - no calls possible")
+                return CONTROL, None
+            if self._factory._waiting_fork():
+                _LOGGER.error("Client is not ready - no calls possible")
                 return CONTROL, None
 
             start = int(round(time.time() * 1000))
@@ -145,6 +145,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
     def _make_evaluations(self, key, features, attributes, method_name, metric_name):
         if self.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible")
+            return input_validator.generate_control_treatments(features, method_name)
+        if self._factory._waiting_fork():
+            _LOGGER.error("Client is not ready - no calls possible")
             return input_validator.generate_control_treatments(features, method_name)
 
         start = int(round(time.time() * 1000))
@@ -341,13 +344,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :param operation: operation performed.
         :type operation: str
         """
-        try:
-            end = int(round(time.time() * 1000))
-            self._impressions_manager.track(impressions)
-            self._telemetry_storage.inc_latency(operation, get_latency_bucket_index(end - start))
-        except Exception:  # pylint: disable=broad-except
-            _LOGGER.error('Error recording impressions and metrics')
-            _LOGGER.debug('Error: ', exc_info=True)
+        end = int(round(time.time() * 1000))
+        self._recorder.record_treatment_stats(impressions, get_latency_bucket_index(end - start),
+                                              operation)
 
     def track(self, key, traffic_type, event_type, value=None, properties=None):
         """
@@ -369,6 +368,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         """
         if self.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible")
+            return False
+        if self._factory._waiting_fork():
+            _LOGGER.error("Client is not ready - no calls possible")
             return False
 
         key = input_validator.validate_track_key(key)
@@ -395,7 +397,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             timestamp=utctime_ms(),
             properties=properties,
         )
-        return self._events_storage.put([EventWrapper(
+        return self._recorder.record_track_stats([EventWrapper(
             event=event,
             size=size,
         )])

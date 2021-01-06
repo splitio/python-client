@@ -30,6 +30,14 @@ class SegmentSynchronizer(object):
         self._worker_pool = workerpool.WorkerPool(10, self.synchronize_segment)
         self._worker_pool.start()
 
+    def recreate(self):
+        """
+        Create worker_pool on forked processes.
+
+        """
+        self._worker_pool = workerpool.WorkerPool(10, self.synchronize_segment)
+        self._worker_pool.start()
+
     def shutdown(self):
         """
         Shutdown worker_pool

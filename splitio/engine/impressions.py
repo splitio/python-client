@@ -157,12 +157,9 @@ class Counter(object):
 class Manager(object):  # pylint:disable=too-few-public-methods
     """Impression manager."""
 
-    def __init__(self, forwarder, mode=ImpressionsMode.OPTIMIZED, standalone=True, listener=None):
+    def __init__(self, mode=ImpressionsMode.OPTIMIZED, standalone=True, listener=None):
         """
         Construct a manger to track and forward impressions to the queue.
-
-        :param forwarder: function accepting a list of impressions to be added to the queue.
-        :type forwarder: callable[list[splitio.models.impressions.Impression]]
 
         :param mode: Impressions capturing mode.
         :type mode: ImpressionsMode
@@ -173,22 +170,21 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         :param listener: Optional impressions listener that will capture all seen impressions.
         :type listener: splitio.client.listener.ImpressionListenerWrapper
         """
-        self._forwarder = forwarder
         self._observer = Observer(_IMPRESSION_OBSERVER_CACHE_SIZE) if standalone else None
         self._counter = Counter() if standalone and mode == ImpressionsMode.OPTIMIZED else None
         self._listener = listener
 
-    def track(self, impressions):
+    def process_impressions(self, impressions):
         """
-        Track impressions.
+        Process impressions.
 
         Impressions are analyzed to see if they've been seen before and counted.
 
         :param impressions: List of impression objects with attributes
         :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
         """
-        imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions] if self._observer \
-                else impressions
+        imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions] \
+            if self._observer else impressions
 
         if self._counter:
             self._counter.track([imp for imp, _ in imps])
@@ -196,8 +192,8 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         self._send_impressions_to_listener(imps)
 
         this_hour = truncate_time(util.utctime_ms())
-        self._forwarder([imp for imp, _ in imps] if self._counter is None
-                        else [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour])
+        return [imp for imp, _ in imps] if self._counter is None \
+            else [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour]
 
     def get_counts(self):
         """

@@ -35,7 +35,6 @@ from splitio.api.events import EventsAPI
 from splitio.api.telemetry import TelemetryAPI
 from splitio.api.auth import AuthAPI
 
-
 # Tasks
 from splitio.tasks.split_sync import SplitSynchronizationTask
 from splitio.tasks.segment_sync import SegmentSynchronizationTask
@@ -53,6 +52,9 @@ from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSync
 from splitio.sync.event import EventSynchronizer
 from splitio.sync.telemetry import TelemetrySynchronizer
 
+# Recorder
+from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder
+
 # Localhost stuff
 from splitio.client.localhost import LocalhostEventsStorage, LocalhostImpressionsStorage, \
     LocalhostTelemetryStorage
@@ -69,6 +71,7 @@ class Status(Enum):
     NOT_INITIALIZED = 'NOT_INITIALIZED'
     READY = 'READY'
     DESTROYED = 'DESTROYED'
+    WAITING_FORK = 'WAITING_FORK'
 
 
 class TimeoutException(Exception):
@@ -85,9 +88,10 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
             apikey,
             storages,
             labels_enabled,
-            impressions_manager,
+            recorder,
             sync_manager=None,
             sdk_ready_flag=None,
+            preforked_initialization=False,
     ):
         """
         Class constructor.
@@ -102,20 +106,31 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         :type sync_manager: splitio.sync.manager.Manager
         :param sdk_ready_flag: Event to set when the sdk is ready.
         :type sdk_ready_flag: threading.Event
-        :param impression_manager: Impressions manager instance
-        :type impression_listener: ImpressionsManager
+        :param recorder: StatsRecorder instance
+        :type recorder: StatsRecorder
+        :param preforked_initialization: Whether should be instantiated as preforked or not.
+        :type preforked_initialization: bool
         """
         self._apikey = apikey
         self._storages = storages
         self._labels_enabled = labels_enabled
         self._sync_manager = sync_manager
         self._sdk_internal_ready_flag = sdk_ready_flag
-        self._sdk_ready_flag = threading.Event()
-        self._impressions_manager = impressions_manager
+        self._recorder = recorder
+        self._preforked_initialization = preforked_initialization
+        self._start_status_updater()
 
+    def _start_status_updater(self):
+        """
+        Perform status updater
+        """
+        if self._preforked_initialization:
+            self._status = Status.WAITING_FORK
+            return
         # If we have a ready flag, it means we have sync tasks that need to finish
         # before the SDK client becomes ready.
         if self._sdk_internal_ready_flag is not None:
+            self._sdk_ready_flag = threading.Event()
             self._status = Status.NOT_INITIALIZED
             # add a listener that updates the status to READY once the flag is set.
             ready_updater = threading.Thread(target=self._update_status_when_ready,
@@ -150,7 +165,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         This client is only a set of references to structures hold by the factory.
         Creating one a fast operation and safe to be used anywhere.
         """
-        return Client(self, self._impressions_manager, self._labels_enabled)
+        return Client(self, self._recorder, self._labels_enabled)
 
     def manager(self):
         """
@@ -230,6 +245,38 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         """
         return self._status == Status.DESTROYED
 
+    def _waiting_fork(self):
+        """
+        Return whether the factory is waiting to be recreated by forking or not.
+
+        :return: True if the factory is waiting to be recreated by forking. False otherwise.
+        :rtype: bool
+        """
+        return self._status == Status.WAITING_FORK
+
+    def resume(self):
+        """
+        Function in charge of starting periodic/realtime synchronization after a fork.
+        """
+        if not self._waiting_fork():
+            _LOGGER.warning('Cannot call resume')
+            return
+        self._sync_manager.recreate()
+        sdk_ready_flag = threading.Event()
+        self._sdk_internal_ready_flag = sdk_ready_flag
+        self._sync_manager._ready_flag = sdk_ready_flag
+        self._get_storage('telemetry').clear()
+        self._get_storage('impressions').clear()
+        self._get_storage('events').clear()
+        initialization_thread = threading.Thread(
+            target=self._sync_manager.start,
+            name="SDKInitializer",
+        )
+        initialization_thread.setDaemon(True)
+        initialization_thread.start()
+        self._preforked_initialization = False  # reset for status updater
+        self._start_status_updater()
+
 
 def _wrap_impression_listener(listener, metadata):
     """
@@ -280,7 +327,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     }
 
     imp_manager = ImpressionsManager(
-        storages['impressions'].put,
         cfg['impressionsMode'],
         True,
         _wrap_impression_listener(cfg['impressionListener'], sdk_metadata))
@@ -318,19 +364,34 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
 
     synchronizer = Synchronizer(synchronizers, tasks)
 
-    sdk_ready_flag = threading.Event()
+    preforked_initialization = cfg.get('preforkedInitialization', False)
+
+    sdk_ready_flag = threading.Event() if not preforked_initialization else None
     manager = Manager(sdk_ready_flag, synchronizer, apis['auth'], cfg['streamingEnabled'],
                       streaming_api_base_url)
+
+    storages['events'].set_queue_full_hook(tasks.events_task.flush)
+    storages['impressions'].set_queue_full_hook(tasks.impressions_task.flush)
+
+    recorder = StandardRecorder(
+        imp_manager,
+        storages['telemetry'],
+        storages['events'],
+        storages['impressions'],
+    )
+
+    if preforked_initialization:
+        synchronizer.sync_all()
+        synchronizer._split_synchronizers._segment_sync.shutdown()
+        return SplitFactory(api_key, storages, cfg['labelsEnabled'],
+                            recorder, manager, preforked_initialization=preforked_initialization)
 
     initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer")
     initialization_thread.setDaemon(True)
     initialization_thread.start()
 
-    storages['events'].set_queue_full_hook(tasks.events_task.flush)
-    storages['impressions'].set_queue_full_hook(tasks.impressions_task.flush)
-
     return SplitFactory(api_key, storages, cfg['labelsEnabled'],
-                        imp_manager, manager, sdk_ready_flag)
+                        recorder, manager, sdk_ready_flag)
 
 
 def _build_redis_factory(api_key, cfg):
@@ -346,12 +407,19 @@ def _build_redis_factory(api_key, cfg):
         'events': RedisEventsStorage(redis_adapter, sdk_metadata),
         'telemetry': RedisTelemetryStorage(redis_adapter, sdk_metadata)
     }
+    recorder = PipelinedRecorder(
+        redis_adapter.pipeline,
+        ImpressionsManager(cfg['impressionsMode'], False,
+                           _wrap_impression_listener(cfg['impressionListener'], sdk_metadata)),
+        storages['telemetry'],
+        storages['events'],
+        storages['impressions'],
+    )
     return SplitFactory(
         api_key,
         storages,
         cfg['labelsEnabled'],
-        ImpressionsManager(storages['impressions'].put, cfg['impressionsMode'], False,
-                           _wrap_impression_listener(cfg['impressionListener'], sdk_metadata))
+        recorder,
     )
 
 
@@ -366,12 +434,22 @@ def _build_uwsgi_factory(api_key, cfg):
         'events': UWSGIEventStorage(uwsgi_adapter),
         'telemetry': UWSGITelemetryStorage(uwsgi_adapter)
     }
+    recorder = StandardRecorder(
+        ImpressionsManager(cfg['impressionsMode'], True,
+                           _wrap_impression_listener(cfg['impressionListener'], sdk_metadata)),
+        storages['telemetry'],
+        storages['events'],
+        storages['impressions'],
+    )
+    _LOGGER.warning(
+        "Beware: uwsgi-cache based operation mode is soon to be deprecated. Please consider " +
+        "redis if you need a centralized point of syncrhonization, or in-memory (with preforking " +
+        "support enabled) if running uwsgi with a master and several http workers)")
     return SplitFactory(
         api_key,
         storages,
         cfg['labelsEnabled'],
-        ImpressionsManager(storages['impressions'].put, cfg['impressionsMode'], True,
-                           _wrap_impression_listener(cfg['impressionListener'], sdk_metadata))
+        recorder,
     )
 
 
@@ -401,12 +479,17 @@ def _build_localhost_factory(cfg):
     synchronizer = LocalhostSynchronizer(synchronizers, tasks)
     manager = Manager(ready_event, synchronizer, None, False)
     manager.start()
-
+    recorder = StandardRecorder(
+        ImpressionsManager(cfg['impressionsMode'], True, None),
+        storages['telemetry'],
+        storages['events'],
+        storages['impressions'],
+    )
     return SplitFactory(
         'localhost',
         storages,
         False,
-        ImpressionsManager(storages['impressions'].put, cfg['impressionsMode'], True, None),
+        recorder,
         manager,
         ready_event
     )

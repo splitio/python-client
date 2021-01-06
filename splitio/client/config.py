@@ -29,7 +29,7 @@ DEFAULT_CONFIG = {
     'IPAddressesEnabled': True,
     'impressionsMode': 'OPTIMIZED',
     'impressionListener': None,
-    'redisLocalCacheEnabled': False,
+    'redisLocalCacheEnabled': True,
     'redisLocalCacheTTL': 5,
     'redisHost': 'localhost',
     'redisPort': 6379,
@@ -55,7 +55,8 @@ DEFAULT_CONFIG = {
     'redisMaxConnections': None,
     'machineName': None,
     'machineIp': None,
-    'splitFile': os.path.join(os.path.expanduser('~'), '.split')
+    'splitFile': os.path.join(os.path.expanduser('~'), '.split'),
+    'preforkedInitialization': False,
 }
 
 

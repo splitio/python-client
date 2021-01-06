@@ -30,6 +30,10 @@ class LocalhostImpressionsStorage(ImpressionStorage):
         """Accept any arguments and do nothing."""
         pass
 
+    def clear(self, *_, **__):  # pylint: disable=arguments-differ
+        """Accept any arguments and do nothing."""
+        pass
+
 
 class LocalhostEventsStorage(EventStorage):
     """Impression storage that doesn't cache anything."""
@@ -39,6 +43,10 @@ class LocalhostEventsStorage(EventStorage):
         pass
 
     def pop_many(self, *_, **__):  # pylint: disable=arguments-differ
+        """Accept any arguments and do nothing."""
+        pass
+
+    def clear(self, *_, **__):  # pylint: disable=arguments-differ
         """Accept any arguments and do nothing."""
         pass
 
@@ -67,5 +75,9 @@ class LocalhostTelemetryStorage(TelemetryStorage):
         pass
 
     def pop_gauges(self, *_, **__):  # pylint: disable=arguments-differ
+        """Accept any arguments and do nothing."""
+        pass
+
+    def clear(self, *_, **__):  # pylint: disable=arguments-differ
         """Accept any arguments and do nothing."""
         pass

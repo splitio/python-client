@@ -237,6 +237,30 @@ class ImpressionStorage(object):
         """
         pass
 
+    @abc.abstractmethod
+    def clear(self):
+        """
+        Clear data.
+        """
+        pass
+
+
+@add_metaclass(abc.ABCMeta)
+class ImpressionPipelinedStorage(object):
+    """Impression Pipelined Storage interface."""
+
+    @abc.abstractmethod
+    def add_impressions_to_pipe(self, impressions, pipe):
+        """
+        Add put operation to pipeline
+
+        :param impressions: List of one or more impressions to store.
+        :type impressions: list
+        :param pipe: Redis pipe.
+        :type pipe: redis.pipe
+        """
+        pass
+
 
 @add_metaclass(abc.ABCMeta)
 class EventStorage(object):
@@ -259,6 +283,13 @@ class EventStorage(object):
 
         :param count: Number of events to pop.
         :type count: int
+        """
+        pass
+
+    @abc.abstractmethod
+    def clear(self):
+        """
+        Clear data.
         """
         pass
 
@@ -326,5 +357,31 @@ class TelemetryStorage(object):
         Get all latencies.
 
         :rtype: list
+        """
+        pass
+
+    @abc.abstractmethod
+    def clear(self):
+        """
+        Clear data.
+        """
+        pass
+
+
+@add_metaclass(abc.ABCMeta)
+class TelemetryPipelinedStorage(object):
+    """Telemetry Pipelined Storage interface."""
+
+    @abc.abstractmethod
+    def add_latency_to_pipe(self, latency, operation, pipe):
+        """
+        Add latency operation to pipeline
+
+        :param latency: time took for doing evaluation
+        :type latency: int
+        :param operation: operation type
+        :type operation: str
+        :param pipe: Redis pipe.
+        :type pipe: redis.pipe
         """
         pass

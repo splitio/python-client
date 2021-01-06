@@ -1,5 +1,5 @@
 """Client integration tests."""
-#pylint: disable=protected-access,line-too-long,no-self-use
+# pylint: disable=protected-access,line-too-long,no-self-use
 import json
 import os
 import threading
@@ -15,6 +15,7 @@ from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \
 from splitio.storage.adapters.redis import RedisAdapter
 from splitio.models import splits, segments
 from splitio.engine.impressions import Manager as ImpressionsManager, ImpressionsMode
+from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder
 
 
 class InMemoryIntegrationTests(object):
@@ -49,7 +50,9 @@ class InMemoryIntegrationTests(object):
             'telemetry': InMemoryTelemetryStorage()
         }
         impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
-        self.factory = SplitFactory('some_api_key', storages, True, impmanager)  #pylint:disable=attribute-defined-outside-init
+        recorder = StandardRecorder(impmanager, storages['telemetry'], storages['events'],
+                                    storages['impressions'])
+        self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init
 
     def teardown_method(self):
         """Shut down the factory."""
@@ -296,8 +299,10 @@ class InMemoryOptimizedIntegrationTests(object):
             'events': InMemoryEventStorage(5000),
             'telemetry': InMemoryTelemetryStorage()
         }
-        impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.OPTIMIZED, standalone=True)
-        self.factory = SplitFactory('some_api_key', storages, True, impmanager)  #pylint:disable=attribute-defined-outside-init
+        impmanager = ImpressionsManager(ImpressionsMode.OPTIMIZED, True)
+        recorder = StandardRecorder(impmanager, storages['telemetry'], storages['events'],
+                                    storages['impressions'])
+        self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init
 
     def _validate_last_impressions(self, client, *to_validate):
         """Validate the last N impressions are present disregarding the order."""
@@ -514,8 +519,10 @@ class RedisIntegrationTests(object):
             'events': RedisEventsStorage(redis_client, metadata),
             'telemetry': RedisTelemetryStorage(redis_client, metadata)
         }
-        impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
-        self.factory = SplitFactory('some_api_key', storages, True, impmanager)  #pylint:disable=attribute-defined-outside-init
+        impmanager = ImpressionsManager(ImpressionsMode.DEBUG, False)
+        recorder = PipelinedRecorder(redis_client.pipeline, impmanager, storages['telemetry'],
+                                     storages['events'], storages['impressions'])
+        self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init
 
     def _validate_last_impressions(self, client, *to_validate):
         """Validate the last N impressions are present disregarding the order."""
@@ -736,6 +743,7 @@ class RedisIntegrationTests(object):
         """Clear redis cache."""
         keys_to_delete = [
             "SPLITIO/python-1.2.3/some_ip/latency.sdk.getTreatment.bucket.0",
+            "SPLITIO/python-1.2.3/some_ip/latency.sdk.getTreatmentWithConfig.bucket.0",
             "SPLITIO.segment.human_beigns",
             "SPLITIO.segment.employees.till",
             "SPLITIO.split.sample_feature",
@@ -745,6 +753,7 @@ class RedisIntegrationTests(object):
             "SPLITIO.split.whitelist_feature",
             "SPLITIO.segment.employees",
             "SPLITIO/python-1.2.3/some_ip/latency.sdk.getTreatments.bucket.0",
+            "SPLITIO/python-1.2.3/some_ip/latency.sdk.getTreatmentsWithConfig.bucket.0",
             "SPLITIO.split.regex_test",
             "SPLITIO.segment.human_beigns.till",
             "SPLITIO.split.boolean_test",
@@ -793,9 +802,12 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
             'telemetry': RedisTelemetryStorage(redis_client, metadata)
         }
         impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
-        self.factory = SplitFactory('some_api_key', storages, True, impmanager)  #pylint:disable=attribute-defined-outside-init
+        recorder = PipelinedRecorder(redis_client.pipeline, impmanager, storages['telemetry'],
+                                     storages['events'], storages['impressions'])
+        self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init
 
-class LocalhostIntegrationTests(object):  #pylint: disable=too-few-public-methods
+
+class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-methods
     """Client & Manager integration tests."""
 
     def test_localhost_e2e(self):
