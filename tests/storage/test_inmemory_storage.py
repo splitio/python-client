@@ -307,6 +307,15 @@ class InMemoryImpressionsStorageTests(object):
         storage.put(impressions)
         assert queue_full_hook.mock_calls == mocker.call()
 
+    def test_clear(self):
+        """Test clear method."""
+        storage = InMemoryImpressionStorage(100)
+        storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
+
+        assert storage._impressions.qsize() == 1
+        storage.clear()
+        assert storage._impressions.qsize() == 0
+
 
 class InMemoryEventsStorageTests(object):
     """InMemory events storage test cases."""
@@ -372,6 +381,18 @@ class InMemoryEventsStorageTests(object):
         storage.put(events)
         assert queue_full_hook.mock_calls == [mocker.call()]
 
+    def test_clear(self):
+        """Test clear method."""
+        storage = InMemoryEventStorage(100)
+        storage.put([EventWrapper(
+            event=Event('key1', 'user', 'purchase', 3.5, 123456, None),
+            size=1024,
+        )])
+
+        assert storage._events.qsize() == 1
+        storage.clear()
+        assert storage._events.qsize() == 0
+
 
 class InMemoryTelemetryStorageTests(object):
     """In-Memory telemetry storage unit tests."""
@@ -413,3 +434,20 @@ class InMemoryTelemetryStorageTests(object):
         assert gauges['some_gauge_1'] == 321
         assert gauges['some_gauge_2'] == 654
         assert storage.pop_gauges() == {}
+
+    def test_clear(self):
+        """Test clear."""
+        storage = InMemoryTelemetryStorage()
+        storage.put_gauge('some_gauge_1', 321)
+        storage.inc_counter('some_counter_1')
+        storage.inc_latency('sdk.get_treatment', 5)
+
+        assert len(storage._counters) == 1
+        assert len(storage._gauges) == 1
+        assert len(storage._latencies) == 1
+
+        storage.clear()
+
+        assert len(storage._counters) == 0
+        assert len(storage._gauges) == 0
+        assert len(storage._latencies) == 0

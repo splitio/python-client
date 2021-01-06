@@ -511,6 +511,12 @@ class UWSGIImpressionStorage(ImpressionStorage):
         """Acknowledge that a flush has been requested."""
         self._uwsgi.cache_del(self._IMPRESSIONS_FLUSH, _SPLITIO_LOCK_CACHE_NAMESPACE)
 
+    def clear(self):
+        """
+        Clear data.
+        """
+        raise NotImplementedError('Not supported for uwsgi.')
+
 
 class UWSGIEventStorage(EventStorage):
     """Events storage interface."""
@@ -601,6 +607,12 @@ class UWSGIEventStorage(EventStorage):
     def acknowledge_flush(self):
         """Acknowledge that a flush has been requested."""
         self._uwsgi.cache_del(self._EVENTS_FLUSH, _SPLITIO_LOCK_CACHE_NAMESPACE)
+
+    def clear(self):
+        """
+        Clear data.
+        """
+        raise NotImplementedError('Not supported for uwsgi.')
 
 
 class UWSGITelemetryStorage(TelemetryStorage):
@@ -726,3 +738,9 @@ class UWSGITelemetryStorage(TelemetryStorage):
                 self._LATENCIES_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
             self._uwsgi.cache_del(self._LATENCIES_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
             return json.loads(latencies_raw) if latencies_raw else {}
+
+    def clear(self):
+        """
+        Clear data.
+        """
+        raise NotImplementedError('Not supported for uwsgi.')

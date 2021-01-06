@@ -10,6 +10,7 @@ def utctime_ms_reimplement():
     """Re-implementation of utctime_ms to avoid conflicts with mock/patching."""
     return int((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() * 1000)
 
+
 class ImpressionHasherTests(object):
     """Test ImpressionHasher behavior."""
 
@@ -97,49 +98,46 @@ class ImpressionManagerTests(object):
         utc_time_mock.return_value = utc_now
         mocker.patch('splitio.util.utctime_ms', new=utc_time_mock)
 
-        imps = []
-        def forwarder(incoming):
-            imps.extend(incoming)
-
-        manager = Manager(forwarder)  # no listener
+        manager = Manager()  # no listener
         assert manager._counter is not None
         assert manager._observer is not None
         assert manager._listener is None
-        assert manager._forwarder is forwarder
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
-                       (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)])
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
+            (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)
+        ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
-        # Tracking the same impression a ms later should call the forwarder function
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
+        # Tracking the same impression a ms later should be empty
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
+        ])
+        assert imps == []
 
-        # Tracking a in impression with a different key makes it to the queue
-        manager.track([(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
+        # Tracking an impression with a different key makes it to the queue
+        imps = manager.process_impressions([
+            (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)
+        ])
+        assert imps == [Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
 
         # Advance the perceived clock one hour
-        old_utc = utc_now # save it to compare captured impressions
+        old_utc = utc_now  # save it to compare captured impressions
         utc_now += 3600 * 1000
         utc_time_mock.return_value = utc_now
 
         # Track the same impressions but "one hour later"
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
-                       (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3),
-                        Impression('k2', 'f1', 'on', 'l1', 123, None, old_utc-1),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3),
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
+            (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
+        ])
+        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1)]
 
         assert len(manager._observer._cache._data) == 3  # distinct impressions seen
-        assert len(manager._counter._data) == 3 # 2 distinct features. 1 seen in 2 different timeframes
+        assert len(manager._counter._data) == 3  # 2 distinct features. 1 seen in 2 different timeframes
 
         assert set(manager._counter.pop_all()) == set([
             Counter.CountPerFeature('f1', truncate_time(old_utc), 3),
@@ -156,48 +154,42 @@ class ImpressionManagerTests(object):
         utc_time_mock.return_value = utc_now
         mocker.patch('splitio.util.utctime_ms', new=utc_time_mock)
 
-        imps = []
-        def forwarder(incoming):
-            imps.extend(incoming)
-
-        manager = Manager(forwarder, ImpressionsMode.DEBUG)  # no listener
+        manager = Manager(ImpressionsMode.DEBUG)  # no listener
         assert manager._counter is None
         assert manager._observer is not None
         assert manager._listener is None
-        assert manager._forwarder is forwarder
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
-                       (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)])
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
+            (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)
+        ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
-        # Tracking the same impression a ms later should call the forwarder function
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2, utc_now-3)]
+        # Tracking the same impression a ms later should return the impression
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
+        ])
+        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2, utc_now-3)]
 
         # Tracking a in impression with a different key makes it to the queue
-        manager.track([(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2, utc_now-3),
-                        Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
+        imps = manager.process_impressions([
+            (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)
+        ])
+        assert imps == [Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
 
         # Advance the perceived clock one hour
-        old_utc = utc_now # save it to compare captured impressions
+        old_utc = utc_now  # save it to compare captured impressions
         utc_now += 3600 * 1000
         utc_time_mock.return_value = utc_now
 
         # Track the same impressions but "one hour later"
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
-                       (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-2, old_utc-3),
-                        Impression('k2', 'f1', 'on', 'l1', 123, None, old_utc-1),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3),
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
+            (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
+        ])
+        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1)]
 
         assert len(manager._observer._cache._data) == 3  # distinct impressions seen
@@ -211,48 +203,41 @@ class ImpressionManagerTests(object):
         utc_time_mock.return_value = utc_now
         mocker.patch('splitio.util.utctime_ms', new=utc_time_mock)
 
-        imps = []
-        def forwarder(incoming):
-            imps.extend(incoming)
-
-        manager = Manager(forwarder, ImpressionsMode.OPTIMIZED, False)  # no listener
+        manager = Manager(ImpressionsMode.OPTIMIZED, False)  # no listener
         assert manager._counter is None
         assert manager._observer is None
         assert manager._listener is None
-        assert manager._forwarder is forwarder
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
-                       (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)])
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
+            (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)
+        ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
-        # Tracking the same impression a ms later should call the forwarder function
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2)]
+        # Tracking the same impression a ms later should not be empty
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
+        ])
+        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2)]
 
         # Tracking a in impression with a different key makes it to the queue
-        manager.track([(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2),
-                        Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
+        imps = manager.process_impressions([
+            (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)
+        ])
+        assert imps == [Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
 
         # Advance the perceived clock one hour
-        old_utc = utc_now # save it to compare captured impressions
         utc_now += 3600 * 1000
         utc_time_mock.return_value = utc_now
 
         # Track the same impressions but "one hour later"
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
-                       (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-2),
-                        Impression('k2', 'f1', 'on', 'l1', 123, None, old_utc-1),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1),
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
+            (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
+        ])
+        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2)]
 
     def test_non_standalone_debug(self, mocker):
@@ -264,48 +249,41 @@ class ImpressionManagerTests(object):
         utc_time_mock.return_value = utc_now
         mocker.patch('splitio.util.utctime_ms', new=utc_time_mock)
 
-        imps = []
-        def forwarder(incoming):
-            imps.extend(incoming)
-
-        manager = Manager(forwarder, ImpressionsMode.DEBUG, False)  # no listener
+        manager = Manager(ImpressionsMode.DEBUG, False)  # no listener
         assert manager._counter is None
         assert manager._observer is None
         assert manager._listener is None
-        assert manager._forwarder is forwarder
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
-                       (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)])
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
+            (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)
+        ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
-        # Tracking the same impression a ms later should call the forwarder function
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2)]
+        # Tracking the same impression a ms later should not be empty
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
+        ])
+        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2)]
 
         # Tracking a in impression with a different key makes it to the queue
-        manager.track([(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2),
-                        Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
+        imps = manager.process_impressions([
+            (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)
+        ])
+        assert imps == [Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
 
         # Advance the perceived clock one hour
-        old_utc = utc_now # save it to compare captured impressions
         utc_now += 3600 * 1000
         utc_time_mock.return_value = utc_now
 
         # Track the same impressions but "one hour later"
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
-                       (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-2),
-                        Impression('k2', 'f1', 'on', 'l1', 123, None, old_utc-1),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1),
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
+            (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
+        ])
+        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2)]
 
     def test_standalone_optimized_listener(self, mocker):
@@ -317,51 +295,48 @@ class ImpressionManagerTests(object):
         utc_time_mock.return_value = utc_now
         mocker.patch('splitio.util.utctime_ms', new=utc_time_mock)
 
-        imps = []
-        def forwarder(incoming):
-            imps.extend(incoming)
-
         listener = mocker.Mock(spec=ImpressionListenerWrapper)
 
-        manager = Manager(forwarder, listener=listener)  # no listener
+        manager = Manager(listener=listener)  # no listener
         assert manager._counter is not None
         assert manager._observer is not None
         assert manager._listener is not None
-        assert manager._forwarder is forwarder
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
-                       (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)])
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
+            (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)
+        ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
-        # Tracking the same impression a ms later should call the forwarder function
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
+        # Tracking the same impression a ms later should return empty
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
+        ])
+        assert imps == []
 
         # Tracking a in impression with a different key makes it to the queue
-        manager.track([(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
+        imps = manager.process_impressions([
+            (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)
+        ])
+        assert imps == [Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
 
         # Advance the perceived clock one hour
-        old_utc = utc_now # save it to compare captured impressions
+        old_utc = utc_now  # save it to compare captured impressions
         utc_now += 3600 * 1000
         utc_time_mock.return_value = utc_now
 
         # Track the same impressions but "one hour later"
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
-                       (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3),
-                        Impression('k2', 'f1', 'on', 'l1', 123, None, old_utc-1),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3),
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
+            (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
+        ])
+        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1)]
 
         assert len(manager._observer._cache._data) == 3  # distinct impressions seen
-        assert len(manager._counter._data) == 3 # 2 distinct features. 1 seen in 2 different timeframes
+        assert len(manager._counter._data) == 3  # 2 distinct features. 1 seen in 2 different timeframes
 
         assert set(manager._counter.pop_all()) == set([
             Counter.CountPerFeature('f1', truncate_time(old_utc), 3),
@@ -378,7 +353,6 @@ class ImpressionManagerTests(object):
             mocker.call(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1), None)
         ]
 
-
     def test_standalone_debug_listener(self, mocker):
         """Test impressions manager in optimized mode with sdk in standalone mode."""
 
@@ -389,48 +363,43 @@ class ImpressionManagerTests(object):
         mocker.patch('splitio.util.utctime_ms', new=utc_time_mock)
 
         imps = []
-        def forwarder(incoming):
-            imps.extend(incoming)
-
         listener = mocker.Mock(spec=ImpressionListenerWrapper)
-        manager = Manager(forwarder, ImpressionsMode.DEBUG, listener=listener)
+        manager = Manager(ImpressionsMode.DEBUG, listener=listener)
         assert manager._counter is None
         assert manager._observer is not None
         assert manager._listener is not None
-        assert manager._forwarder is forwarder
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
-                       (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)])
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
+            (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)
+        ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
-        # Tracking the same impression a ms later should call the forwarder function
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2, utc_now-3)]
+        # Tracking the same impression a ms later should return the imp
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
+        ])
+        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2, utc_now-3)]
 
         # Tracking a in impression with a different key makes it to the queue
-        manager.track([(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2, utc_now-3),
-                        Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
+        imps = manager.process_impressions([
+            (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)
+        ])
+        assert imps == [Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
 
         # Advance the perceived clock one hour
-        old_utc = utc_now # save it to compare captured impressions
+        old_utc = utc_now  # save it to compare captured impressions
         utc_now += 3600 * 1000
         utc_time_mock.return_value = utc_now
 
         # Track the same impressions but "one hour later"
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
-                       (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-2, old_utc-3),
-                        Impression('k2', 'f1', 'on', 'l1', 123, None, old_utc-1),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3),
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
+            (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
+        ])
+        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1)]
 
         assert len(manager._observer._cache._data) == 3  # distinct impressions seen
@@ -444,7 +413,6 @@ class ImpressionManagerTests(object):
             mocker.call(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1), None)
         ]
 
-
     def test_non_standalone_optimized_listener(self, mocker):
         """Test impressions manager in optimized mode with sdk in standalone mode."""
 
@@ -455,48 +423,43 @@ class ImpressionManagerTests(object):
         mocker.patch('splitio.util.utctime_ms', new=utc_time_mock)
 
         imps = []
-        def forwarder(incoming):
-            imps.extend(incoming)
-
         listener = mocker.Mock(spec=ImpressionListenerWrapper)
-        manager = Manager(forwarder, ImpressionsMode.OPTIMIZED, False, listener)  # no listener
+        manager = Manager(ImpressionsMode.OPTIMIZED, False, listener)  # no listener
         assert manager._counter is None
         assert manager._observer is None
         assert manager._listener is not None
-        assert manager._forwarder is forwarder
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
-                       (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)])
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
+            (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)
+        ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
-        # Tracking the same impression a ms later should call the forwarder function
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2)]
+        # Tracking the same impression a ms later should return the imp
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
+        ])
+        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2)]
 
         # Tracking a in impression with a different key makes it to the queue
-        manager.track([(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2),
-                        Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
+        imps = manager.process_impressions([
+            (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)
+        ])
+        assert imps == [Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
 
         # Advance the perceived clock one hour
-        old_utc = utc_now # save it to compare captured impressions
+        old_utc = utc_now  # save it to compare captured impressions
         utc_now += 3600 * 1000
         utc_time_mock.return_value = utc_now
 
         # Track the same impressions but "one hour later"
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
-                       (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-2),
-                        Impression('k2', 'f1', 'on', 'l1', 123, None, old_utc-1),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1),
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
+            (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
+        ])
+        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2)]
 
         assert listener.log_impression.mock_calls == [
@@ -508,7 +471,6 @@ class ImpressionManagerTests(object):
             mocker.call(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
         ]
 
-
     def test_non_standalone_debug_listener(self, mocker):
         """Test impressions manager in optimized mode with sdk in standalone mode."""
 
@@ -518,49 +480,43 @@ class ImpressionManagerTests(object):
         utc_time_mock.return_value = utc_now
         mocker.patch('splitio.util.utctime_ms', new=utc_time_mock)
 
-        imps = []
-        def forwarder(incoming):
-            imps.extend(incoming)
-
         listener = mocker.Mock(spec=ImpressionListenerWrapper)
-        manager = Manager(forwarder, ImpressionsMode.DEBUG, False, listener)  # no listener
+        manager = Manager(ImpressionsMode.DEBUG, False, listener)  # no listener
         assert manager._counter is None
         assert manager._observer is None
         assert manager._listener is not None
-        assert manager._forwarder is forwarder
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
-                       (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)])
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
+            (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)
+        ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
-        # Tracking the same impression a ms later should call the forwarder function
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2)]
+        # Tracking the same impression a ms later should return the imp
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
+        ])
+        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2)]
 
         # Tracking a in impression with a different key makes it to the queue
-        manager.track([(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2),
-                        Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
+        imps = manager.process_impressions([
+            (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)
+        ])
+        assert imps == [Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
 
         # Advance the perceived clock one hour
-        old_utc = utc_now # save it to compare captured impressions
+        old_utc = utc_now  # save it to compare captured impressions
         utc_now += 3600 * 1000
         utc_time_mock.return_value = utc_now
 
         # Track the same impressions but "one hour later"
-        manager.track([(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
-                       (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-3),
-                        Impression('k1', 'f2', 'on', 'l1', 123, None, old_utc-3),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, old_utc-2),
-                        Impression('k2', 'f1', 'on', 'l1', 123, None, old_utc-1),
-                        Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1),
+        imps = manager.process_impressions([
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
+            (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
+        ])
+        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2)]
 
         assert listener.log_impression.mock_calls == [

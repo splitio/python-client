@@ -44,6 +44,10 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
                                                name='PushStatusHandler')
             self._push_status_handler.setDaemon(True)
 
+    def recreate(self):
+        """Recreate poolers for forked processes."""
+        self._synchronizer._split_synchronizers._segment_sync.recreate()
+
     def start(self):
         """Start the SDK synchronization tasks."""
         try:

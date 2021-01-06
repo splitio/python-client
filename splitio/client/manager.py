@@ -32,6 +32,9 @@ class SplitManager(object):
         if self._factory.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible.")
             return []
+        if self._factory._waiting_fork():
+            _LOGGER.error("Client is not ready - no calls possible")
+            return []
 
         if not self._factory.ready:
             _LOGGER.warning(
@@ -50,6 +53,9 @@ class SplitManager(object):
         """
         if self._factory.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible.")
+            return []
+        if self._factory._waiting_fork():
+            _LOGGER.error("Client is not ready - no calls possible")
             return []
 
         if not self._factory.ready:
@@ -72,7 +78,10 @@ class SplitManager(object):
         """
         if self._factory.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible.")
-            return []
+            return None
+        if self._factory._waiting_fork():
+            _LOGGER.error("Client is not ready - no calls possible")
+            return None
 
         feature_name = input_validator.validate_manager_feature_name(
             feature_name,

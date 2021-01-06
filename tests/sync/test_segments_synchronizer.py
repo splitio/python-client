@@ -128,3 +128,10 @@ class SegmentsSynchronizerTests(object):
         api_calls = [call for call in api.fetch_segment.mock_calls]
         assert mocker.call('segmentA', -1) in api_calls
         assert mocker.call('segmentA', 123) in api_calls
+
+    def test_recreate(self, mocker):
+        """Test recreate logic."""
+        segments_synchronizer = SegmentSynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock())
+        current_pool = segments_synchronizer._worker_pool
+        segments_synchronizer.recreate()
+        assert segments_synchronizer._worker_pool != current_pool
