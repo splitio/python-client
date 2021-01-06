@@ -1,4 +1,4 @@
-8.3.2 (Jan 6, 2021)
+8.4.0 (Jan 6, 2021)
  - Added RecordStats for supporting pipelined recording in redis when treatment call is made.
  - Added hooks support for preforked servers.
 
