@@ -3,8 +3,6 @@
 import logging
 import json
 
-from future.utils import raise_from
-
 from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException
 
@@ -55,4 +53,4 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
         except HttpClientException as exc:
             _LOGGER.error('Error fetching splits because an exception was raised by the HTTPClient')
             _LOGGER.debug('Error: ', exc_info=True)
-            raise_from(APIException('Splits not fetched correctly.'), exc)
+            raise APIException('Splits not fetched correctly.') from exc

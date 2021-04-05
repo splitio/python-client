@@ -1,7 +1,4 @@
 """Matchers entrypoint module."""
-from __future__ import absolute_import, division, print_function, \
-    unicode_literals
-
 from splitio.models.grammar.matchers.keys import AllKeysMatcher, UserDefinedSegmentMatcher
 from splitio.models.grammar.matchers.numeric import BetweenMatcher, EqualToMatcher, \
     GreaterThanOrEqualMatcher, LessThanOrEqualMatcher

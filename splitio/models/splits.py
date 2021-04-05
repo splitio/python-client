@@ -1,9 +1,6 @@
 """Splits module."""
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 from enum import Enum
 from collections import namedtuple
-from future.utils import python_2_unicode_compatible
 
 from splitio.models.grammar import condition
 
@@ -207,17 +204,6 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
         self._default_treatment = default_treatment
         self._change_number = change_number
         self._killed = True
-
-    @python_2_unicode_compatible
-    def __str__(self):
-        """Return string representation."""
-        return 'name: {name}, seed: {seed}, killed: {killed}, ' \
-               'default treatment: {default_treatment}, ' \
-               'conditions: {conditions}'.format(
-                   name=self._name, seed=self._seed, killed=self._killed,
-                   default_treatment=self._default_treatment,
-                   conditions=','.join(map(str, self._conditions))
-               )
 
 
 def from_raw(raw_split):

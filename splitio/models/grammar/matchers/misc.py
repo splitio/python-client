@@ -1,9 +1,5 @@
 """Miscelaneous matchers that don't fall into other categories."""
-from __future__ import absolute_import, division, print_function, \
-    unicode_literals
-
 import json
-from future.utils import python_2_unicode_compatible
 
 from splitio.models.grammar.matchers.base import Matcher
 

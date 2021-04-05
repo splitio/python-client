@@ -1,13 +1,12 @@
 """UWSGI Cache Storage adapter module."""
 
-from __future__ import absolute_import, division, print_function, unicode_literals
 import time
 
 try:
-    #uwsgi is loaded at runtime by uwsgi app.
+    # uwsgi is loaded at runtime by uwsgi app.
     import uwsgi
 except ImportError:
-    def missing_uwsgi_dependencies(*args, **kwargs):  #pylint: disable=unused-argument
+    def missing_uwsgi_dependencies(*args, **kwargs):  # pylint: disable=unused-argument
         """Only complain for missing deps if they're used."""
         raise NotImplementedError('Missing uWSGI support dependencies.')
     uwsgi = missing_uwsgi_dependencies
@@ -96,14 +95,14 @@ class UWSGICacheEmulator(object):
             return self._cache[cache_namespace][key]
         return None
 
-    def cache_set(self, key, value, expires=0, cache_namespace='default'):  #pylint: disable=unused-argument
+    def cache_set(self, key, value, expires=0, cache_namespace='default'):  # pylint: disable=unused-argument
         """Set an elemen in the cache."""
         self._check_string_data_type(value)
 
         if cache_namespace in self._cache:
             self._cache[cache_namespace][key] = value
         else:
-            self._cache[cache_namespace] = {key:value}
+            self._cache[cache_namespace] = {key: value}
 
     def cache_update(self, key, value, expires=0, cache_namespace='default'):
         """Update an element."""

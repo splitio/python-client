@@ -1,16 +1,8 @@
 """Localhost client mocked components."""
-
-import itertools
 import logging
 import re
 
-from future.utils import raise_from
-import yaml
-
-from splitio.models import splits
 from splitio.storage import ImpressionStorage, EventStorage, TelemetryStorage
-from splitio.tasks import BaseSynchronizationTask
-from splitio.tasks.util import asynctask
 
 _LEGACY_COMMENT_LINE_RE = re.compile(r'^#.*$')
 _LEGACY_DEFINITION_LINE_RE = re.compile(r'^(?<![^#])(?P<feature>[\w_-]+)\s+(?P<treatment>[\w_-]+)$')

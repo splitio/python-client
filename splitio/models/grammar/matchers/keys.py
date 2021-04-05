@@ -1,7 +1,6 @@
 """Keys matchers module."""
-
-from future.utils import python_2_unicode_compatible
 from splitio.models.grammar.matchers.base import Matcher
+
 
 class AllKeysMatcher(Matcher):
     """A matcher that always returns True."""
@@ -30,11 +29,6 @@ class AllKeysMatcher(Matcher):
         :rtype: bool
         """
         return key is not None
-
-    @python_2_unicode_compatible
-    def __str__(self):
-        """Return string Representation."""
-        return 'in segment all'
 
     def _add_matcher_specific_properties_to_json(self):
         """Add matcher specific properties to base dict before returning it."""
@@ -83,10 +77,3 @@ class UserDefinedSegmentMatcher(Matcher):
                 'segmentName': self._segment_name
             }
         }
-
-    @python_2_unicode_compatible
-    def __str__(self):
-        """Return string Representation."""
-        return 'in segment {segment_name}'.format(
-            segment_name=self._segment_name
-        )

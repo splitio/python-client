@@ -1,11 +1,7 @@
 """String matchers module."""
-from __future__ import absolute_import, division, print_function, \
-    unicode_literals
-
 import logging
 import json
 import re
-from future.utils import python_2_unicode_compatible
 
 from splitio.models.grammar.matchers.base import Matcher
 
@@ -82,13 +78,6 @@ class WhitelistMatcher(Matcher):
             }
         }
 
-    @python_2_unicode_compatible
-    def __str__(self):
-        """Return string Representation."""
-        return 'in whitelist [{whitelist}]'.format(
-            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
-        )
-
 
 class StartsWithMatcher(Matcher):
     """Matcher that returns true if the key is a prefix of the stored value."""
@@ -129,13 +118,6 @@ class StartsWithMatcher(Matcher):
                 'whitelist': list(self._whitelist)
             }
         }
-
-    @python_2_unicode_compatible
-    def __str__(self):
-        """Return string Representation."""
-        return 'has one of the following prefixes [{whitelist}]'.format(
-            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
-        )
 
 
 class EndsWithMatcher(Matcher):
@@ -178,13 +160,6 @@ class EndsWithMatcher(Matcher):
             }
         }
 
-    @python_2_unicode_compatible
-    def __str__(self):
-        """Return string Representation."""
-        return 'has one of the following suffixes [{whitelist}]'.format(
-            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
-        )
-
 
 class ContainsStringMatcher(Matcher):
     """Matcher that returns true if the input key is part of the string in matcher data."""
@@ -225,13 +200,6 @@ class ContainsStringMatcher(Matcher):
                 'whitelist': list(self._whitelist)
             }
         }
-
-    @python_2_unicode_compatible
-    def __str__(self):
-        """Return string Representation."""
-        return 'contains one of the following string: [{whitelist}]'.format(
-            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
-        )
 
 
 class RegexMatcher(Matcher):

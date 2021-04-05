@@ -1,9 +1,4 @@
 """Unit tests for the input_validator module."""
-# pylint: disable=protected-access,too-many-statements,no-self-use,line-too-long
-
-from __future__ import absolute_import, division, print_function, \
-    unicode_literals
-
 import logging
 
 from splitio.client.factory import SplitFactory, get_factory

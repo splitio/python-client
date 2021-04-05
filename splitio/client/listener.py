@@ -2,8 +2,6 @@
 
 import abc
 
-from future.utils import raise_from
-
 
 class ImpressionListenerException(Exception):
     """Custom Exception for Impression Listener."""
@@ -11,7 +9,7 @@ class ImpressionListenerException(Exception):
     pass
 
 
-class ImpressionListenerWrapper(object):  #pylint: disable=too-few-public-methods
+class ImpressionListenerWrapper(object):  # pylint: disable=too-few-public-methods
     """
     Impression listener safe-execution wrapper.
 
@@ -49,11 +47,9 @@ class ImpressionListenerWrapper(object):  #pylint: disable=too-few-public-method
         data['instance-id'] = self._metadata.instance_name
         try:
             self.impression_listener.log_impression(data)
-        except Exception as exc:  #pylint: disable=broad-except
-            raise_from(
-                ImpressionListenerException('Error in log_impression user\'s method is throwing exceptions'),
-                exc
-            )
+        except Exception as exc:  # pylint: disable=broad-except
+            raise ImpressionListenerException('Error in log_impression user\'s method is throwing exceptions') from exc
+
 
 class ImpressionListener(object, metaclass=abc.ABCMeta):
     """Impression listener interface."""

@@ -1,6 +1,4 @@
 """A module for Split.io Managers."""
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import logging
 
 from . import input_validator

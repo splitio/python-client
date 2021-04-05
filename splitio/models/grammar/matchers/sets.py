@@ -1,8 +1,4 @@
 """Set based matchers module."""
-from __future__ import absolute_import, division, print_function, \
-    unicode_literals
-from future.utils import python_2_unicode_compatible
-
 from splitio.models.grammar.matchers.base import Matcher
 
 
@@ -49,13 +45,6 @@ class ContainsAllOfSetMatcher(Matcher):
             }
         }
 
-    @python_2_unicode_compatible
-    def __str__(self):
-        """Return string Representation."""
-        return 'contains all of the following set: [{whitelist}]'.format(
-            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
-        )
-
 
 class ContainsAnyOfSetMatcher(Matcher):
     """Matcher that returns true if the intersection of both sets is not empty."""
@@ -98,13 +87,6 @@ class ContainsAnyOfSetMatcher(Matcher):
                 'whitelist': list(self._whitelist)
             }
         }
-
-    @python_2_unicode_compatible
-    def __str__(self):
-        """Return string Representation."""
-        return 'contains on of the following se: [{whitelist}]'.format(
-            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
-        )
 
 
 class EqualToSetMatcher(Matcher):
@@ -149,13 +131,6 @@ class EqualToSetMatcher(Matcher):
             }
         }
 
-    @python_2_unicode_compatible
-    def __str__(self):
-        """Return string Representation."""
-        return 'equals the following set: [{whitelist}]'.format(
-            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
-        )
-
 
 class PartOfSetMatcher(Matcher):
     """a."""
@@ -199,10 +174,3 @@ class PartOfSetMatcher(Matcher):
                 'whitelist': list(self._whitelist)
             }
         }
-
-    @python_2_unicode_compatible
-    def __str__(self):
-        """Return string Representation."""
-        return 'is a subset of the following set: [{whitelist}]'.format(
-            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
-        )

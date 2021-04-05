@@ -160,11 +160,11 @@ class SSEClient(object):
     def shutdown(self):
         """Shutdown the current connection."""
         if self._conn is None or self._conn.sock is None:
-            _LOGGER.warn("no sse connection has been started on this SSEClient instance. Ignoring")
+            _LOGGER.warning("no sse connection has been started on this SSEClient instance. Ignoring")
             return
 
         if self._shutdown_requested:
-            _LOGGER.warn("shutdown already requested")
+            _LOGGER.warning("shutdown already requested")
             return
 
         self._shutdown_requested = True

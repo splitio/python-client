@@ -1,7 +1,4 @@
 """A module for implementation of the Splitter engine."""
-from __future__ import absolute_import, division, print_function, unicode_literals
-
-
 from splitio.engine.evaluator import CONTROL
 from splitio.engine.hashfns import get_hash_fn
 
