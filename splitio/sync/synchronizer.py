@@ -4,7 +4,6 @@ import abc
 import logging
 import threading
 
-from six import add_metaclass
 from future.utils import raise_from
 from splitio.api import APIException
 
@@ -130,8 +129,7 @@ class SplitTasks(object):
         return self._impressions_count_task
 
 
-@add_metaclass(abc.ABCMeta)
-class BaseSynchronizer(object):
+class BaseSynchronizer(object, metaclass=abc.ABCMeta):
     """Synchronizer interface."""
 
     @abc.abstractmethod

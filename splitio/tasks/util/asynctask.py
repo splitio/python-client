@@ -1,8 +1,7 @@
 """Asynchronous tasks that can be controlled."""
 import threading
 import logging
-
-from six.moves import queue
+import queue
 
 
 __TASK_STOP__ = 0

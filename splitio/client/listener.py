@@ -2,7 +2,6 @@
 
 import abc
 
-from six import add_metaclass
 from future.utils import raise_from
 
 
@@ -56,8 +55,7 @@ class ImpressionListenerWrapper(object):  #pylint: disable=too-few-public-method
                 exc
             )
 
-@add_metaclass(abc.ABCMeta)  #pylint: disable=too-few-public-methods
-class ImpressionListener(object):
+class ImpressionListener(object, metaclass=abc.ABCMeta):
     """Impression listener interface."""
 
     @abc.abstractmethod

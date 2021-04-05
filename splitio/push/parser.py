@@ -4,7 +4,6 @@ import json
 from enum import Enum
 
 from future.utils import raise_from
-from six import add_metaclass
 
 from splitio.util.decorators import abstract_property
 from splitio.util import utctime_ms
@@ -51,12 +50,11 @@ class EventParsingException(Exception):
     pass
 
 
-@add_metaclass(abc.ABCMeta)  #pylint:disable=too-few-public-methods
-class BaseEvent(object):
+class BaseEvent(object, metaclass=abc.ABCMeta):
     """Base event that reqiures subclasses tu have a type."""
 
     @abstract_property
-    def event_type(self):  #pylint:disable=no-self-use
+    def event_type(self):  # pylint:disable=no-self-use
         """
         Return the event type.
 
@@ -92,7 +90,7 @@ class AblyError(BaseEvent):
         self._timestamp = utctime_ms()
 
     @property
-    def event_type(self):  #pylint:disable=no-self-use
+    def event_type(self):  # pylint:disable=no-self-use
         """
         Return the event type.
 
@@ -160,7 +158,6 @@ class AblyError(BaseEvent):
         """
         return self._code < 40000 or self._code > 49999
 
-
     def is_retryable(self):
         """
         Return whether this error is retryable or not.
@@ -176,8 +173,7 @@ class AblyError(BaseEvent):
             (self.code, self.status_code, self.message, self.href)
 
 
-@add_metaclass(abc.ABCMeta)
-class BaseMessage(BaseEvent):
+class BaseMessage(BaseEvent, metaclass=abc.ABCMeta):
     """Message type event."""
 
     def __init__(self, channel, timestamp):
@@ -282,8 +278,7 @@ class OccupancyMessage(BaseMessage):
         return "Occupancy - channel=%s, publishers=%d" % (self.channel, self.publishers)
 
 
-@add_metaclass(abc.ABCMeta)
-class BaseUpdate(BaseMessage):
+class BaseUpdate(BaseMessage, metaclass=abc.ABCMeta):
     """Split data update notification."""
 
     def __init__(self, channel, timestamp, change_number):

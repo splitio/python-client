@@ -4,8 +4,6 @@ import threading
 import time
 from functools import update_wrapper
 
-import six
-
 
 DEFAULT_MAX_AGE = 5
 DEFAULT_MAX_SIZE = 100
@@ -90,7 +88,7 @@ class LocalMemoryCache(object):  #pylint: disable=too-many-instance-attributes
         """Remove expired elements."""
         with self._lock:
             self._data = {
-                key: value for (key, value) in six.iteritems(self._data)
+                key: value for (key, value) in self._data.items()
                 if not self._is_expired(value)
             }
 

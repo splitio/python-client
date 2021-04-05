@@ -2,7 +2,6 @@
 
 from enum import Enum
 from future.utils import python_2_unicode_compatible
-import six
 
 from splitio.models.grammar import matchers
 from splitio.models.grammar import partitions
@@ -103,7 +102,7 @@ class Condition(object):
             'label': self._label,
             'matcherGroup': {
                 'combiner': next(
-                    (k, v) for k, v in six.iteritems(_MATCHER_COMBINERS) if v == self._combiner
+                    (k, v) for k, v in _MATCHER_COMBINERS.items() if v == self._combiner
                 )[0],
                 'matchers': [m.to_json() for m in self.matchers]
             },

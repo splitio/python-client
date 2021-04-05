@@ -3,11 +3,8 @@ from __future__ import absolute_import
 
 import abc
 
-from six import add_metaclass
 
-
-@add_metaclass(abc.ABCMeta)
-class SplitStorage(object):
+class SplitStorage(object, metaclass=abc.ABCMeta):
     """Split storage interface implemented as an abstract class."""
 
     @abc.abstractmethod
@@ -133,8 +130,7 @@ class SplitStorage(object):
         pass
 
 
-@add_metaclass(abc.ABCMeta)
-class SegmentStorage(object):
+class SegmentStorage(object, metaclass=abc.ABCMeta):
     """Segment storage interface implemented as an abstract class."""
 
     @abc.abstractmethod
@@ -213,8 +209,7 @@ class SegmentStorage(object):
         pass
 
 
-@add_metaclass(abc.ABCMeta)
-class ImpressionStorage(object):
+class ImpressionStorage(object, metaclass=abc.ABCMeta):
     """Impressions storage interface."""
 
     @abc.abstractmethod
@@ -245,8 +240,7 @@ class ImpressionStorage(object):
         pass
 
 
-@add_metaclass(abc.ABCMeta)
-class ImpressionPipelinedStorage(object):
+class ImpressionPipelinedStorage(object, metaclass=abc.ABCMeta):
     """Impression Pipelined Storage interface."""
 
     @abc.abstractmethod
@@ -262,8 +256,7 @@ class ImpressionPipelinedStorage(object):
         pass
 
 
-@add_metaclass(abc.ABCMeta)
-class EventStorage(object):
+class EventStorage(object, metaclass=abc.ABCMeta):
     """Events storage interface."""
 
     @abc.abstractmethod
@@ -294,8 +287,7 @@ class EventStorage(object):
         pass
 
 
-@add_metaclass(abc.ABCMeta)
-class TelemetryStorage(object):
+class TelemetryStorage(object, metaclass=abc.ABCMeta):
     """Telemetry storage interface."""
 
     @abc.abstractmethod
@@ -368,8 +360,7 @@ class TelemetryStorage(object):
         pass
 
 
-@add_metaclass(abc.ABCMeta)
-class TelemetryPipelinedStorage(object):
+class TelemetryPipelinedStorage(object, metaclass=abc.ABCMeta):
     """Telemetry Pipelined Storage interface."""
 
     @abc.abstractmethod

@@ -6,7 +6,6 @@ import logging
 import json
 import re
 from future.utils import python_2_unicode_compatible
-from six import string_types
 
 from splitio.models.grammar.matchers.base import Matcher
 
@@ -31,7 +30,7 @@ class Sanitizer(object):  # pylint: disable=too-few-public-methods
         if data is None:  # Failed to fetch attribute. no need to convert.
             return None
 
-        if isinstance(data, string_types):
+        if isinstance(data, str):
             return data
 
         _LOGGER.warning(
@@ -120,7 +119,7 @@ class StartsWithMatcher(Matcher):
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
         if matching_data is None:
             return False
-        return (isinstance(key, string_types) and
+        return (isinstance(key, str) and
                 any(matching_data.startswith(s) for s in self._whitelist))
 
     def _add_matcher_specific_properties_to_json(self):
@@ -168,7 +167,7 @@ class EndsWithMatcher(Matcher):
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
         if matching_data is None:
             return False
-        return (isinstance(key, string_types) and
+        return (isinstance(key, str) and
                 any(matching_data.endswith(s) for s in self._whitelist))
 
     def _add_matcher_specific_properties_to_json(self):
@@ -216,7 +215,7 @@ class ContainsStringMatcher(Matcher):
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
         if matching_data is None:
             return False
-        return (isinstance(matching_data, string_types) and
+        return (isinstance(matching_data, str) and
                 any(s in matching_data for s in self._whitelist))
 
     def _add_matcher_specific_properties_to_json(self):
