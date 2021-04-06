@@ -2,7 +2,6 @@
 import logging
 import threading
 from enum import Enum
-import six
 from splitio.push.sse import SSEClient, SSE_EVENT_ERROR
 from splitio.util.threadutil import EventGroup
 
@@ -75,9 +74,9 @@ class SplitSSEClient(object):  # pylint: disable=too-many-instance-attributes
         :returns: channels as a list of strings.
         :rtype: list[str]
         """
-        regular = [k for (k, v) in six.iteritems(channels) if v == ['subscribe']]
+        regular = [k for (k, v) in channels.items() if v == ['subscribe']]
         occupancy = ['[?occupancy=metrics.publishers]' + k
-                     for (k, v) in six.iteritems(channels)
+                     for (k, v) in channels.items()
                      if 'channel-metadata:publishers' in v]
         return regular + occupancy
 

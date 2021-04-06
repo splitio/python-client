@@ -3,9 +3,6 @@
 from __future__ import absolute_import, division, print_function, \
     unicode_literals
 
-from six.moves import range
-
-
 def murmur32_py(key, seed=0x0):
     """
     Pure python implementation of murmur32 hash.

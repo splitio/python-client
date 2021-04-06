@@ -18,7 +18,6 @@ INSTALL_REQUIRES = [
     'pyyaml>=5.1',
     'future>=0.15.2',
     'docopt>=0.6.2',
-    'six>=1.10.0',
     'enum34;python_version<"3.4"',
     'futures>=3.0.5;python_version<"3"'
 ]

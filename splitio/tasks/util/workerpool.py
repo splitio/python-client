@@ -2,7 +2,7 @@
 
 import logging
 from threading import Thread, Event
-from six.moves import queue
+import queue
 
 
 _LOGGER = logging.getLogger(__name__)

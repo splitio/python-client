@@ -4,8 +4,6 @@ import threading
 from collections import defaultdict, namedtuple
 from enum import Enum
 
-import six
-
 from splitio.models.impressions import Impression
 from splitio.engine.hashfns import murmur_128
 from splitio.engine.cache.lru import SimpleLruCache
@@ -151,7 +149,7 @@ class Counter(object):
             self._data = defaultdict(lambda: 0)
 
         return [Counter.CountPerFeature(k.feature, k.timeframe, v)
-                for (k, v) in six.iteritems(old)]
+                for (k, v) in old.items()]
 
 
 class Manager(object):  # pylint:disable=too-few-public-methods

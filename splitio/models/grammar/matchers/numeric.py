@@ -3,7 +3,6 @@ import numbers
 
 import logging
 from future.utils import python_2_unicode_compatible
-from six import string_types
 
 from splitio.models.grammar.matchers.base import Matcher
 from splitio.models import datatypes
@@ -32,7 +31,7 @@ class Sanitizer(object):  # pylint: disable=too-few-public-methods
         if isinstance(data, numbers.Integral) and not isinstance(data, bool):
             return data
 
-        if not isinstance(data, string_types):
+        if not isinstance(data, str):
             _LOGGER.error('Cannot convert %s to int. Failing.', type(data))
             return None
 

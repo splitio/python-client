@@ -3,14 +3,10 @@ import abc
 import logging
 
 
-from six import add_metaclass
-
-
 _LOGGER = logging.getLogger(__name__)
 
 
-@add_metaclass(abc.ABCMeta)
-class StatsRecorder(object):
+class StatsRecorder(object, metaclass=abc.ABCMeta):
     """StatsRecorder interface."""
 
     @abc.abstractmethod

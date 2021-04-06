@@ -4,7 +4,6 @@ from __future__ import absolute_import, division, print_function, \
 
 import json
 from future.utils import python_2_unicode_compatible
-from six import string_types
 
 from splitio.models.grammar.matchers.base import Matcher
 
@@ -85,7 +84,7 @@ class BooleanMatcher(Matcher):
             return False
         if isinstance(matching_data, bool):
             decoded = matching_data
-        elif isinstance(matching_data, string_types):
+        elif isinstance(matching_data, str):
             try:
                 decoded = json.loads(matching_data.lower())
                 if not isinstance(decoded, bool):

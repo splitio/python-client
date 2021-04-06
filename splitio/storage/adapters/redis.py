@@ -3,7 +3,6 @@ from __future__ import absolute_import, division, print_function, \
     unicode_literals
 
 from builtins import str
-from six import string_types, binary_type
 from future.utils import raise_from
 
 try:
@@ -78,15 +77,15 @@ class PrefixHelper(object):
         :returns: Key(s) with prefix if applicable
         """
         if self._prefix:
-            if isinstance(k, string_types):
+            if isinstance(k, str):
                 return '{prefix}.{key}'.format(prefix=self._prefix, key=k)
             elif isinstance(k, list) and k:
-                if isinstance(k[0], binary_type):
+                if isinstance(k[0], bytes):
                     return [
                         '{prefix}.{key}'.format(prefix=self._prefix, key=key.decode("utf8"))
                         for key in k
                     ]
-                elif isinstance(k[0], string_types):
+                elif isinstance(k[0], str):
                     return [
                         '{prefix}.{key}'.format(prefix=self._prefix, key=key)
                         for key in k
@@ -109,7 +108,7 @@ class PrefixHelper(object):
         :returns: prefix-less key(s)
         """
         if self._prefix:
-            if isinstance(k, string_types):
+            if isinstance(k, str):
                 return k[len(self._prefix)+1:]
             elif isinstance(k, list):
                 return [key[len(self._prefix)+1:] for key in k]

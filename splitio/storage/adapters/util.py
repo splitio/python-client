@@ -1,7 +1,5 @@
 """Custom utilities."""
 
-import six
-
 
 class DynamicDecorator(object):  #pylint: disable=too-few-public-methods
     """
@@ -82,7 +80,7 @@ class DynamicDecorator(object):  #pylint: disable=too-few-public-methods
                 positional = [pos_func(*args, **kwargs) for pos_func in positional_args_lambdas]
                 keyword = {
                     key: func(*args, **kwargs)
-                    for (key, func) in six.iteritems(keyword_args_lambdas)
+                    for (key, func) in keyword_args_lambdas.items()
                 }
 
                 # call original class constructor

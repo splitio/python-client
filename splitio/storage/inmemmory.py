@@ -3,9 +3,9 @@ from __future__ import absolute_import
 
 import logging
 import threading
+import queue
 from collections import Counter
 
-from six.moves import queue
 from splitio.models.segments import Segment
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, \
     TelemetryStorage
