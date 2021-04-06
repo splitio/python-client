@@ -7,11 +7,7 @@ import json
 from queue import Queue
 from splitio.client.factory import get_factory
 from tests.helpers.mockserver import SSEMockServer, SplitMockServer
-
-try:  # try to import python3 names. fallback to python2
-    from urllib.parse import parse_qs
-except ImportError:
-    from urlparse import parse_qs
+from urllib.parse import parse_qs
 
 
 class StreamingIntegrationTests(object):
