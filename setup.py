@@ -41,7 +41,8 @@ setup(
         'test': TESTS_REQUIRES,
         'redis': ['redis>=2.10.5'],
         'uwsgi': ['uwsgi>=2.0.0'],
-        'cpphash': ['mmh3cffi==0.2.0'],
+    #    'cpphash': ['mmh3cffi==0.2.0'],
+        'cpphash': ['mmh3cffi @ git+ssh://git@github.com/splitio/mmh3cffi@5394feecfd7be25a511a1e3f8253fae45c7d6d07#egg=mmh3cffi']
     },
     setup_requires=['pytest-runner'],
     classifiers=[
