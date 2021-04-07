@@ -30,6 +30,10 @@ class AllKeysMatcher(Matcher):
         """
         return key is not None
 
+    def __str__(self):
+        """Return string Representation."""
+        return 'in segment all'
+
     def _add_matcher_specific_properties_to_json(self):
         """Add matcher specific properties to base dict before returning it."""
         return {}
@@ -77,3 +81,9 @@ class UserDefinedSegmentMatcher(Matcher):
                 'segmentName': self._segment_name
             }
         }
+
+    def __str__(self):
+        """Return string Representation."""
+        return 'in segment {segment_name}'.format(
+            segment_name=self._segment_name
+        )

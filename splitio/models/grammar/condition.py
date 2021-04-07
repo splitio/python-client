@@ -85,6 +85,14 @@ class Condition(object):
             if isinstance(matcher, matchers.UserDefinedSegmentMatcher)
         ]
 
+    def __str__(self):
+        """Return the string representation of the condition."""
+        return '{matcher} then split {parts}'.format(
+            matcher=self._matchers, parts=','.join(
+                '{size}:{treatment}'.format(size=partition.size,
+                                            treatment=partition.treatment)
+                for partition in self._partitions))
+
     def to_json(self):
         """Return the JSON representation of this condition."""
         return {

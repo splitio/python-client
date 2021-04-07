@@ -36,6 +36,11 @@ class Partition(object):
             'size': self._size
         }
 
+    def __str__(self):
+        """Return string representation of a partition."""
+        return '{size}%:{treatment}'.format(size=self._size,
+                                            treatment=self._treatment)
+
 
 def from_raw(raw_partition):
     """

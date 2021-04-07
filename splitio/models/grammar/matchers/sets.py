@@ -45,6 +45,12 @@ class ContainsAllOfSetMatcher(Matcher):
             }
         }
 
+    def __str__(self):
+        """Return string Representation."""
+        return 'contains all of the following set: [{whitelist}]'.format(
+            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
+        )
+
 
 class ContainsAnyOfSetMatcher(Matcher):
     """Matcher that returns true if the intersection of both sets is not empty."""
@@ -87,6 +93,12 @@ class ContainsAnyOfSetMatcher(Matcher):
                 'whitelist': list(self._whitelist)
             }
         }
+
+    def __str__(self):
+        """Return string Representation."""
+        return 'contains on of the following se: [{whitelist}]'.format(
+            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
+        )
 
 
 class EqualToSetMatcher(Matcher):
@@ -131,6 +143,12 @@ class EqualToSetMatcher(Matcher):
             }
         }
 
+    def __str__(self):
+        """Return string Representation."""
+        return 'equals the following set: [{whitelist}]'.format(
+            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
+        )
+
 
 class PartOfSetMatcher(Matcher):
     """a."""
@@ -174,3 +192,9 @@ class PartOfSetMatcher(Matcher):
                 'whitelist': list(self._whitelist)
             }
         }
+
+    def __str__(self):
+        """Return string Representation."""
+        return 'is a subset of the following set: [{whitelist}]'.format(
+            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
+        )
