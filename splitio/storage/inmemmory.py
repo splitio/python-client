@@ -1,6 +1,4 @@
 """In memory storage classes."""
-from __future__ import absolute_import
-
 import logging
 import threading
 import queue

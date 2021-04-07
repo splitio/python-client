@@ -4,7 +4,6 @@ import abc
 import logging
 import threading
 
-from future.utils import raise_from
 from splitio.api import APIException
 
 
@@ -268,7 +267,7 @@ class Synchronizer(BaseSynchronizer):
 
                 # Only retrying splits, since segments may trigger too many calls.
                 if not self._synchronize_segments():
-                    _LOGGER.warn('Segments failed to synchronize.')
+                    _LOGGER.warning('Segments failed to synchronize.')
 
                 # All is good
                 return
@@ -371,7 +370,7 @@ class LocalhostSynchronizer(BaseSynchronizer):
             self._split_synchronizers.split_sync.synchronize_splits(None)
         except APIException as exc:
             _LOGGER.error('Failed syncing splits')
-            raise_from(APIException('Failed to sync splits'), exc)
+            raise APIException('Failed to sync splits') from exc
 
     def start_periodic_fetching(self):
         """Start fetchers for splits and segments."""

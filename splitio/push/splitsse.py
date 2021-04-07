@@ -133,7 +133,7 @@ class SplitSSEClient(object):  # pylint: disable=too-many-instance-attributes
     def stop(self, blocking=False, timeout=None):
         """Abort the ongoing connection."""
         if self._status == SplitSSEClient._Status.IDLE:
-            _LOGGER.warn('sse already closed. ignoring')
+            _LOGGER.warning('sse already closed. ignoring')
             return
 
         self._client.shutdown()

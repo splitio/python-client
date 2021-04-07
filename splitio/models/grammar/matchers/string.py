@@ -1,11 +1,7 @@
 """String matchers module."""
-from __future__ import absolute_import, division, print_function, \
-    unicode_literals
-
 import logging
 import json
 import re
-from future.utils import python_2_unicode_compatible
 
 from splitio.models.grammar.matchers.base import Matcher
 
@@ -82,7 +78,6 @@ class WhitelistMatcher(Matcher):
             }
         }
 
-    @python_2_unicode_compatible
     def __str__(self):
         """Return string Representation."""
         return 'in whitelist [{whitelist}]'.format(
@@ -130,7 +125,6 @@ class StartsWithMatcher(Matcher):
             }
         }
 
-    @python_2_unicode_compatible
     def __str__(self):
         """Return string Representation."""
         return 'has one of the following prefixes [{whitelist}]'.format(
@@ -178,7 +172,6 @@ class EndsWithMatcher(Matcher):
             }
         }
 
-    @python_2_unicode_compatible
     def __str__(self):
         """Return string Representation."""
         return 'has one of the following suffixes [{whitelist}]'.format(
@@ -226,7 +219,6 @@ class ContainsStringMatcher(Matcher):
             }
         }
 
-    @python_2_unicode_compatible
     def __str__(self):
         """Return string Representation."""
         return 'contains one of the following string: [{whitelist}]'.format(

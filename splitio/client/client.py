@@ -1,7 +1,4 @@
 """A module for Split.io SDK API clients."""
-from __future__ import absolute_import, division, print_function, \
-    unicode_literals
-
 import logging
 import time
 from splitio.engine.evaluator import Evaluator, CONTROL
