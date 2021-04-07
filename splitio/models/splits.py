@@ -205,6 +205,16 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
         self._change_number = change_number
         self._killed = True
 
+    def __str__(self):
+        """Return string representation."""
+        return 'name: {name}, seed: {seed}, killed: {killed}, ' \
+               'default treatment: {default_treatment}, ' \
+               'conditions: {conditions}'.format(
+                   name=self._name, seed=self._seed, killed=self._killed,
+                   default_treatment=self._default_treatment,
+                   conditions=','.join(map(str, self._conditions))
+               )
+
 
 def from_raw(raw_split):
     """

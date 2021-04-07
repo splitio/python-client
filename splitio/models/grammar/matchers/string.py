@@ -78,6 +78,12 @@ class WhitelistMatcher(Matcher):
             }
         }
 
+    def __str__(self):
+        """Return string Representation."""
+        return 'in whitelist [{whitelist}]'.format(
+            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
+        )
+
 
 class StartsWithMatcher(Matcher):
     """Matcher that returns true if the key is a prefix of the stored value."""
@@ -118,6 +124,12 @@ class StartsWithMatcher(Matcher):
                 'whitelist': list(self._whitelist)
             }
         }
+
+    def __str__(self):
+        """Return string Representation."""
+        return 'has one of the following prefixes [{whitelist}]'.format(
+            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
+        )
 
 
 class EndsWithMatcher(Matcher):
@@ -160,6 +172,12 @@ class EndsWithMatcher(Matcher):
             }
         }
 
+    def __str__(self):
+        """Return string Representation."""
+        return 'has one of the following suffixes [{whitelist}]'.format(
+            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
+        )
+
 
 class ContainsStringMatcher(Matcher):
     """Matcher that returns true if the input key is part of the string in matcher data."""
@@ -200,6 +218,12 @@ class ContainsStringMatcher(Matcher):
                 'whitelist': list(self._whitelist)
             }
         }
+
+    def __str__(self):
+        """Return string Representation."""
+        return 'contains one of the following string: [{whitelist}]'.format(
+            whitelist=','.join('"{}"'.format(item) for item in self._whitelist)
+        )
 
 
 class RegexMatcher(Matcher):

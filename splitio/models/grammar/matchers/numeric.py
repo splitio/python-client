@@ -108,6 +108,10 @@ class BetweenMatcher(Matcher, ZeroSecondDataMatcher):
             return False
         return self._lower <= self.input_parsers[self._data_type](matching_data) <= self._upper
 
+    def __str__(self):
+        """Return string Representation."""
+        return 'between {start} and {end}'.format(start=self._lower, end=self._upper)
+
     def _add_matcher_specific_properties_to_json(self):
         """Return BetweenMatcher specific properties."""
         return {
