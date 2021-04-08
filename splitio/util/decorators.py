@@ -1,11 +1,10 @@
 """Misc decorators."""
-import sys
+from abc import abstractmethod
 
-from abc import abstractmethod, abstractproperty
 
 def abstract_property(func):
     """
-    Python2/3 compatible abstract property decorator.
+    Abstract property decorator.
 
     :param func: method to decorate
     :type func: callable
@@ -13,5 +12,4 @@ def abstract_property(func):
     :returns: decorated function
     :rtype: callable
     """
-    return (property(abstractmethod(func)) if sys.version_info > (3, 3)
-            else abstractproperty(func))
+    return property(abstractmethod(func))

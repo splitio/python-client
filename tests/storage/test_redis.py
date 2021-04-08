@@ -366,7 +366,6 @@ class RedisEventsStorageTests(object):  # pylint: disable=too-few-public-methods
             }
         }) for e in events]
 
-        # To deal with python2 & 3 differences in hashing/order when dumping json.
         list_of_raw_json_strings_called = adapter.rpush.mock_calls[0][1][1:]
         list_of_events_called = [json.loads(event) for event in list_of_raw_json_strings_called]
         list_of_events_sent = [json.loads(event) for event in list_of_raw_events]

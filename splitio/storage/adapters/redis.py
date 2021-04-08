@@ -63,13 +63,7 @@ class PrefixHelper(object):
         """
         Add a prefix to the contents of k.
 
-        'k' may be:
-            - a single key (of type string or unicode in python2, or type string
-            in python 3. In which case we simple add a prefix with a dot.
-            - a list, in which the prefix is applied to element.
-        If no user prefix is stored, the key/list of keys will be returned as is
-
-        :param k: single (string) or list of (list) keys.
+        :param k: single (string).
         :returns: Key(s) with prefix if applicable
         """
         if self._prefix:

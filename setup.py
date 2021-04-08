@@ -6,11 +6,10 @@ from setuptools import setup, find_packages
 
 TESTS_REQUIRES = [
     'flake8',
-    'pytest<=4.6',  # for deprecated python versions: https://docs.pytest.org/en/latest/py27-py34-deprecation.html
-    'pytest-mock==2.0.0',
+    'pytest>=6.2.3',
+    'pytest-mock>=3.5.1',
     'coverage',
     'pytest-cov',
-    'mock;python_version<"3"'
 ]
 
 INSTALL_REQUIRES = [
