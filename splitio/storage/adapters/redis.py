@@ -15,12 +15,6 @@ except ImportError:
     StrictRedis = Sentinel = missing_redis_dependencies
 
 
-def _bytes_to_string(maybe_bytes, encode='utf-8'):
-    if type(maybe_bytes).__name__ == 'bytes':
-        return str(maybe_bytes, encode)
-    return maybe_bytes
-
-
 class RedisAdapterException(Exception):
     """Exception to be thrown when a redis command fails with an exception."""
 
@@ -135,7 +129,7 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
         """Mimic original redis function but using user custom prefix."""
         try:
             return [
-                _bytes_to_string(key)
+                key
                 for key in self._prefix_helper.remove_prefix(self._decorated.keys(self._prefix_helper.add_prefix(pattern)))
             ]
         except RedisError as exc:
@@ -153,7 +147,7 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
     def get(self, name):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return _bytes_to_string(self._decorated.get(self._prefix_helper.add_prefix(name)))
+            return self._decorated.get(self._prefix_helper.add_prefix(name))
         except RedisError as exc:
             raise RedisAdapterException('Error executing get operation') from exc
 
@@ -189,7 +183,7 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
         """Mimic original redis function but using user custom prefix."""
         try:
             return [
-                _bytes_to_string(item)
+                item
                 for item in self._decorated.mget(self._prefix_helper.add_prefix(names))
             ]
         except RedisError as exc:
@@ -199,7 +193,7 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
         """Mimic original redis function but using user custom prefix."""
         try:
             return [
-                _bytes_to_string(item)
+                item
                 for item in self._decorated.smembers(self._prefix_helper.add_prefix(name))
             ]
         except RedisError as exc:
@@ -243,7 +237,7 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
     def hget(self, name, key):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return _bytes_to_string(self._decorated.hget(self._prefix_helper.add_prefix(name), key))
+            return self._decorated.hget(self._prefix_helper.add_prefix(name), key)
         except RedisError as exc:
             raise RedisAdapterException('Error executing hget operation') from exc
 
@@ -257,7 +251,7 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
     def getset(self, name, value):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return _bytes_to_string(self._decorated.getset(self._prefix_helper.add_prefix(name), value))
+            return self._decorated.getset(self._prefix_helper.add_prefix(name), value)
         except RedisError as exc:
             raise RedisAdapterException('Error executing getset operation') from exc
 
@@ -278,7 +272,7 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
     def rpop(self, key):
         """Mimic original redis function but using user custom prefix."""
         try:
-            return _bytes_to_string(self._decorated.rpop(self._prefix_helper.add_prefix(key)))
+            return self._decorated.rpop(self._prefix_helper.add_prefix(key))
         except RedisError as exc:
             raise RedisAdapterException('Error executing rpop operation') from exc
 
@@ -359,9 +353,9 @@ def _build_default_client(config):  # pylint: disable=too-many-locals
     unix_socket_path = config.get('redisUnixSocketPath', None)
     encoding = config.get('redisEncoding', 'utf-8')
     encoding_errors = config.get('redisEncodingErrors', 'strict')
-    charset = config.get('redisCharset', None)
+    charset = config.get('redisCharset', 'utf-8')
     errors = config.get('redisErrors', None)
-    decode_responses = config.get('redisDecodeResponses', False)
+    decode_responses = config.get('redisDecodeResponses', True)
     retry_on_timeout = config.get('redisRetryOnTimeout', False)
     ssl = config.get('redisSsl', False)
     ssl_keyfile = config.get('redisSslKeyfile', None)
@@ -438,7 +432,7 @@ def _build_sentinel_client(config):  # pylint: disable=too-many-locals
     connection_pool = config.get('redisConnectionPool', None)
     encoding = config.get('redisEncoding', 'utf-8')
     encoding_errors = config.get('redisEncodingErrors', 'strict')
-    decode_responses = config.get('redisDecodeResponses', False)
+    decode_responses = config.get('redisDecodeResponses', True)
     retry_on_timeout = config.get('redisRetryOnTimeout', False)
     max_connections = config.get('redisMaxConnections', None)
     prefix = config.get('redisPrefix')
