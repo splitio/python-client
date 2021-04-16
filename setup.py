@@ -41,7 +41,7 @@ setup(
         'test': TESTS_REQUIRES,
         'redis': ['redis>=2.10.5'],
         'uwsgi': ['uwsgi>=2.0.0'],
-        'cpphash': ['mmh3cffi==0.2.0'],
+        'cpphash': ['mmh3cffi==0.2.1'],
     },
     setup_requires=['pytest-runner'],
     classifiers=[
