@@ -1,5 +1,7 @@
-9.0.0 ()
+9.0.0 (Apr 21, 2021)
  - BREAKING CHANGE: Deprecated Python2.
+    - Removed six, future and futures libs for compatibility between Python2 and Python3.
+    - Updated strings encoding to utf-8 by default for Redis.
 
 8.4.0 (Jan 6, 2021)
  - Added RecordStats for supporting pipelined recording in redis when treatment call is made.
