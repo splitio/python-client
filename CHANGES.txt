@@ -3,6 +3,9 @@
     - Removed six, future and futures libs for compatibility between Python2 and Python3.
     - Updated strings encoding to utf-8 by default for Redis.
 
+8.4.1 (Apr 16, 2021)
+ - Bumped mmh3cffi dependency which now requires c99 flag to build.
+
 8.4.0 (Jan 6, 2021)
  - Added RecordStats for supporting pipelined recording in redis when treatment call is made.
  - Added hooks support for preforked servers.
