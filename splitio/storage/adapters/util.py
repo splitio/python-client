@@ -1,7 +1,7 @@
 """Custom utilities."""
 
 
-class DynamicDecorator(object):  #pylint: disable=too-few-public-methods
+class DynamicDecorator(object):  # pylint: disable=too-few-public-methods
     """
     Decorator that will inject a decorator during class construction.
 
@@ -65,7 +65,7 @@ class DynamicDecorator(object):  #pylint: disable=too-few-public-methods
         positional_args_lambdas = self._positional_args_lambdas
         keyword_args_lambdas = self._keyword_args_lambdas
 
-        class _decorated(to_decorate):  #pylint: disable=too-few-public-methods
+        class _decorated(to_decorate):  # pylint: disable=too-few-public-methods
             """
             Decorated class wrapper.
 

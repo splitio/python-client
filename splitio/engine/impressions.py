@@ -1,5 +1,4 @@
 """Split evaluator module."""
-import logging
 import threading
 from collections import defaultdict, namedtuple
 from enum import Enum

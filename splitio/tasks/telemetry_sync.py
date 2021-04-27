@@ -1,7 +1,5 @@
 """Split Synchronization task."""
 
-import logging
-from splitio.api import APIException
 from splitio.tasks import BaseSynchronizationTask
 from splitio.tasks.util.asynctask import AsyncTask
 

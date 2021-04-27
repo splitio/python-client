@@ -114,7 +114,7 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
 
         try:
             handle(parsed)
-        except Exception:  #pylint:disable=broad-except
+        except Exception:  # pylint:disable=broad-except
             _LOGGER.error('something went wrong when processing message of type %s',
                           parsed.event_type)
             _LOGGER.debug(str(parsed), exc_info=True)

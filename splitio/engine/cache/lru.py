@@ -5,7 +5,7 @@ import threading
 DEFAULT_MAX_SIZE = 5000
 
 
-class SimpleLruCache(object):  #pylint: disable=too-many-instance-attributes
+class SimpleLruCache(object):  # pylint: disable=too-many-instance-attributes
     """
     Key/Value local memory cache. with expiration & LRU eviction.
 
@@ -21,7 +21,7 @@ class SimpleLruCache(object):  #pylint: disable=too-many-instance-attributes
     None <---next--- || node ||  <---next--- || node || ... <---next--- || node ||
     """
 
-    class _Node(object):  #pylint: disable=too-few-public-methods
+    class _Node(object):  # pylint: disable=too-few-public-methods
         """Links to previous an next items in the circular list."""
 
         def __init__(self, key, value, previous_element, next_element):

@@ -74,9 +74,6 @@ def _parse_operation_mode(apikey, config):
     if 'redisHost' in config or 'redisSentinels' in config:
         return 'redis-consumer'
 
-    if 'uwsgiClient' in config:
-        return 'uwsgi-consumer'
-
     return 'inmemory-standalone'
 
 

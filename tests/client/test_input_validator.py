@@ -1112,12 +1112,6 @@ class FactoryInputValidationTests(object):  #pylint: disable=too-few-public-meth
         ]
 
         logger.reset_mock()
-        f = get_factory(True, config={'uwsgiClient': True})
-        assert f is not None
-        assert logger.error.mock_calls == []
-        f.destroy()
-
-        logger.reset_mock()
         f = get_factory(True, config={'redisHost': 'some-host'})
         assert f is not None
         assert logger.error.mock_calls == []
