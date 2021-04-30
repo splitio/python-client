@@ -1,6 +1,5 @@
 """Split evaluator module."""
 import logging
-import six
 from splitio.models.grammar.condition import ConditionType
 from splitio.models.impressions import Label
 
@@ -135,7 +134,7 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
         return {
             feature: self._evaluate_treatment(feature, matching_key,
                                               bucketing_key, attributes, split)
-            for (feature, split) in six.iteritems(self._split_storage.fetch_many(features))
+            for (feature, split) in self._split_storage.fetch_many(features).items()
         }
 
     def _get_treatment_for_split(self, split, matching_key, bucketing_key, attributes=None):

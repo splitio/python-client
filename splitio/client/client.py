@@ -1,10 +1,6 @@
 """A module for Split.io SDK API clients."""
-from __future__ import absolute_import, division, print_function, \
-    unicode_literals
-
 import logging
 import time
-import six
 from splitio.engine.evaluator import Evaluator, CONTROL
 from splitio.engine.splitters import Splitter
 from splitio.models.impressions import Impression, Label
@@ -309,7 +305,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         """
         with_config = self._make_evaluations(key, features, attributes, 'get_treatments',
                                              self._METRIC_GET_TREATMENTS)
-        return {feature: result[0] for (feature, result) in six.iteritems(with_config)}
+        return {feature: result[0] for (feature, result) in with_config.items()}
 
     def _build_impression(  # pylint: disable=too-many-arguments
             self,

@@ -1,7 +1,4 @@
 """A module for Split.io Factories."""
-from __future__ import absolute_import, division, print_function, unicode_literals
-
-
 import logging
 import threading
 from collections import Counter
@@ -22,9 +19,6 @@ from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStora
 from splitio.storage.adapters import redis
 from splitio.storage.redis import RedisSplitStorage, RedisSegmentStorage, RedisImpressionsStorage, \
     RedisEventsStorage, RedisTelemetryStorage
-from splitio.storage.adapters.uwsgi_cache import get_uwsgi
-from splitio.storage.uwsgi import UWSGIEventStorage, UWSGIImpressionStorage, UWSGISegmentStorage, \
-    UWSGISplitStorage, UWSGITelemetryStorage
 
 # APIs
 from splitio.api.client import HttpClient
@@ -423,36 +417,6 @@ def _build_redis_factory(api_key, cfg):
     )
 
 
-def _build_uwsgi_factory(api_key, cfg):
-    """Build and return a split factory with redis-based storage."""
-    sdk_metadata = util.get_metadata(cfg)
-    uwsgi_adapter = get_uwsgi()
-    storages = {
-        'splits': UWSGISplitStorage(uwsgi_adapter),
-        'segments': UWSGISegmentStorage(uwsgi_adapter),
-        'impressions': UWSGIImpressionStorage(uwsgi_adapter),
-        'events': UWSGIEventStorage(uwsgi_adapter),
-        'telemetry': UWSGITelemetryStorage(uwsgi_adapter)
-    }
-    recorder = StandardRecorder(
-        ImpressionsManager(cfg['impressionsMode'], True,
-                           _wrap_impression_listener(cfg['impressionListener'], sdk_metadata)),
-        storages['telemetry'],
-        storages['events'],
-        storages['impressions'],
-    )
-    _LOGGER.warning(
-        "Beware: uwsgi-cache based operation mode is soon to be deprecated. Please consider " +
-        "redis if you need a centralized point of syncrhonization, or in-memory (with preforking " +
-        "support enabled) if running uwsgi with a master and several http workers)")
-    return SplitFactory(
-        api_key,
-        storages,
-        cfg['labelsEnabled'],
-        recorder,
-    )
-
-
 def _build_localhost_factory(cfg):
     """Build and return a localhost factory for testing/development purposes."""
     storages = {
@@ -523,9 +487,6 @@ def get_factory(api_key, **kwargs):
 
         if config['operationMode'] == 'redis-consumer':
             return _build_redis_factory(api_key, config)
-
-        if config['operationMode'] == 'uwsgi-consumer':
-            return _build_uwsgi_factory(api_key, config)
 
         return _build_in_memory_factory(
             api_key,

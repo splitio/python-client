@@ -1,9 +1,4 @@
 """Unit tests for the input_validator module."""
-# pylint: disable=protected-access,too-many-statements,no-self-use,line-too-long
-
-from __future__ import absolute_import, division, print_function, \
-    unicode_literals
-
 import logging
 
 from splitio.client.factory import SplitFactory, get_factory
@@ -1115,12 +1110,6 @@ class FactoryInputValidationTests(object):  #pylint: disable=too-few-public-meth
         assert logger.error.mock_calls == [
             mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'factory_instantiation', 'apikey', 'apikey')
         ]
-
-        logger.reset_mock()
-        f = get_factory(True, config={'uwsgiClient': True})
-        assert f is not None
-        assert logger.error.mock_calls == []
-        f.destroy()
 
         logger.reset_mock()
         f = get_factory(True, config={'redisHost': 'some-host'})

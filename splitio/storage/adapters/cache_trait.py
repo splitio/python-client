@@ -4,14 +4,12 @@ import threading
 import time
 from functools import update_wrapper
 
-import six
-
 
 DEFAULT_MAX_AGE = 5
 DEFAULT_MAX_SIZE = 100
 
 
-class LocalMemoryCache(object):  #pylint: disable=too-many-instance-attributes
+class LocalMemoryCache(object):  # pylint: disable=too-many-instance-attributes
     """
     Key/Value local memory cache. with expiration & LRU eviction.
 
@@ -27,10 +25,10 @@ class LocalMemoryCache(object):  #pylint: disable=too-many-instance-attributes
     None <---next--- || node ||  <---next--- || node || ... <---next--- || node ||
     """
 
-    class _Node(object):  #pylint: disable=too-few-public-methods
+    class _Node(object):  # pylint: disable=too-few-public-methods
         """Links to previous an next items in the circular list."""
 
-        def __init__(self, key, value, last_update, previous_element, next_element):  #pylint: disable=too-many-arguments
+        def __init__(self, key, value, last_update, previous_element, next_element):  # pylint: disable=too-many-arguments
             """Class constructor."""
             self.key = key  # we also keep the key for O(1) access when removing the LRU.
             self.value = value
@@ -90,7 +88,7 @@ class LocalMemoryCache(object):  #pylint: disable=too-many-instance-attributes
         """Remove expired elements."""
         with self._lock:
             self._data = {
-                key: value for (key, value) in six.iteritems(self._data)
+                key: value for (key, value) in self._data.items()
                 if not self._is_expired(value)
             }
 
@@ -188,7 +186,7 @@ def decorate(key_func, max_age_seconds=DEFAULT_MAX_AGE, max_size=DEFAULT_MAX_SIZ
         _cache = LocalMemoryCache(key_func, user_function, max_age_seconds, max_size)
         # The lambda below IS necessary, otherwise update_wrapper fails since the function
         # is an instance method and has no reference to the __module__ namespace.
-        wrapper = lambda *args, **kwargs: _cache.get(*args, **kwargs)  #pylint: disable=unnecessary-lambda
+        wrapper = lambda *args, **kwargs: _cache.get(*args, **kwargs)  # pylint: disable=unnecessary-lambda
         return update_wrapper(wrapper, user_function)
 
     return _decorator

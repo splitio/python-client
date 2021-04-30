@@ -1,9 +1,6 @@
 """Telemetry API Module."""
 import logging
 
-import six
-from future.utils import raise_from
-
 from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException
 
@@ -39,7 +36,7 @@ class TelemetryAPI(object):
         """
         return [
             {'name': name, 'latencies': latencies_list}
-            for name, latencies_list in six.iteritems(latencies)
+            for name, latencies_list in latencies.items()
         ]
 
     def flush_latencies(self, latencies):
@@ -65,7 +62,7 @@ class TelemetryAPI(object):
                 'Error posting latencies because an exception was raised by the HTTPClient'
             )
             _LOGGER.debug('Error: ', exc_info=True)
-            raise_from(APIException('Latencies not flushed correctly.'), exc)
+            raise APIException('Latencies not flushed correctly.') from exc
 
     @staticmethod
     def _build_gauges(gauges):
@@ -77,7 +74,7 @@ class TelemetryAPI(object):
         """
         return [
             {'name': name, 'value': value}
-            for name, value in six.iteritems(gauges)
+            for name, value in gauges.items()
         ]
 
     def flush_gauges(self, gauges):
@@ -103,7 +100,7 @@ class TelemetryAPI(object):
                 'Error posting gauges because an exception was raised by the HTTPClient'
             )
             _LOGGER.debug('Error: ', exc_info=True)
-            raise_from(APIException('Gauges not flushed correctly.'), exc)
+            raise APIException('Gauges not flushed correctly.') from exc
 
     @staticmethod
     def _build_counters(counters):
@@ -115,7 +112,7 @@ class TelemetryAPI(object):
         """
         return [
             {'name': name, 'delta': value}
-            for name, value in six.iteritems(counters)
+            for name, value in counters.items()
         ]
 
     def flush_counters(self, counters):
@@ -141,4 +138,4 @@ class TelemetryAPI(object):
                 'Error posting counters because an exception was raised by the HTTPClient'
             )
             _LOGGER.debug('Error: ', exc_info=True)
-            raise_from(APIException('Counters not flushed correctly.'), exc)
+            raise APIException('Counters not flushed correctly.') from exc

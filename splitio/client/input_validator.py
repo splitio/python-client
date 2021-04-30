@@ -1,13 +1,8 @@
 """Input validation module."""
-from __future__ import absolute_import, division, print_function, \
-    unicode_literals
-
 from numbers import Number
 import logging
 import re
 import math
-
-import six
 
 from splitio.api import APIException
 from splitio.client.key import Key
@@ -53,7 +48,7 @@ def _check_is_string(value, name, operation):
     :return: The result of validation
     :rtype: True|False
     """
-    if isinstance(value, six.string_types) is False:
+    if isinstance(value, str) is False:
         _LOGGER.error(
             '%s: you passed an invalid %s, %s must be a non-empty string.',
             operation, name, name
@@ -121,7 +116,7 @@ def _check_can_convert(value, name, operation):
     :return: The result of validation
     :rtype: None|string
     """
-    if isinstance(value, six.string_types):
+    if isinstance(value, str):
         return value
     else:
         # check whether if isnan and isinf are really necessary
@@ -173,7 +168,7 @@ def _check_valid_object_key(key, name, operation):
             '%s: you passed a null %s, %s must be a non-empty string.',
             operation, name, name)
         return None
-    if isinstance(key, six.string_types):
+    if isinstance(key, str):
         if not _check_string_not_empty(key, name, operation):
             return None
     key_str = _check_can_convert(key, name, operation)
@@ -515,8 +510,8 @@ def valid_properties(properties):
 
     valid_properties = dict()
 
-    for property, element in six.iteritems(properties):
-        if not isinstance(property, six.string_types):  # Exclude property if is not string
+    for property, element in properties.items():
+        if not isinstance(property, str):  # Exclude property if is not string
             continue
 
         valid_properties[property] = None
@@ -525,14 +520,14 @@ def valid_properties(properties):
         if element is None:
             continue
 
-        if not isinstance(element, six.string_types) and not isinstance(element, Number) \
+        if not isinstance(element, str) and not isinstance(element, Number) \
            and not isinstance(element, bool):
             _LOGGER.warning('Property %s is of invalid type. Setting value to None', element)
             element = None
 
         valid_properties[property] = element
 
-        if isinstance(element, six.string_types):
+        if isinstance(element, str):
             size += len(element)
 
         if size > MAX_PROPERTIES_LENGTH_BYTES:

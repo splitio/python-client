@@ -2,6 +2,7 @@
 
 import abc
 
+
 class BaseSynchronizationTask(object):
     """Syncrhonization task interface."""
 

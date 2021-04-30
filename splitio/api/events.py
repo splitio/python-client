@@ -1,8 +1,6 @@
 """Events API module."""
 import logging
 
-from future.utils import raise_from
-
 from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException
 
@@ -75,4 +73,4 @@ class EventsAPI(object):  # pylint: disable=too-few-public-methods
         except HttpClientException as exc:
             _LOGGER.error('Error posting events because an exception was raised by the HTTPClient')
             _LOGGER.debug('Error: ', exc_info=True)
-            raise_from(APIException('Events not flushed properly.'), exc)
+            raise APIException('Events not flushed properly.') from exc

@@ -5,9 +5,6 @@ This module contains hash functions implemented in pure python
 as well as the optional import (if installed) of a C compiled murmur hash
 function with python bindings.
 """
-from __future__ import absolute_import, division, print_function, \
-    unicode_literals
-
 from splitio.models.splits import HashAlgorithm
 from splitio.engine.hashfns import legacy
 
@@ -23,9 +20,9 @@ try:
 
 except ImportError:
     # Fallback to interpreted python hash algoritm (slower)
-    from splitio.engine.hashfns import murmur3py  #pylint: disable=ungrouped-imports
-    _murmur_hash = murmur3py.murmur32_py  #pylint: disable=invalid-name
-    _murmur_hash128 = lambda k, s: murmur3py.hash128_x64(k, s)[0] #pylint: disable=invalid-name
+    from splitio.engine.hashfns import murmur3py  # pylint: disable=ungrouped-imports
+    _murmur_hash = murmur3py.murmur32_py  # pylint: disable=invalid-name
+    _murmur_hash128 = lambda k, s: murmur3py.hash128_x64(k, s)[0]  # pylint: disable=invalid-name
 
 
 _HASH_ALGORITHMS = {
@@ -33,7 +30,8 @@ _HASH_ALGORITHMS = {
     HashAlgorithm.MURMUR: _murmur_hash
 }
 
-murmur_128 = _murmur_hash128  #pylint: disable=invalid-name
+murmur_128 = _murmur_hash128  # pylint: disable=invalid-name
+
 
 def get_hash_fn(algo):
     """

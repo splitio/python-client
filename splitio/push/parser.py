@@ -3,9 +3,6 @@ import abc
 import json
 from enum import Enum
 
-from future.utils import raise_from
-from six import add_metaclass
-
 from splitio.util.decorators import abstract_property
 from splitio.util import utctime_ms
 from splitio.push.sse import SSE_EVENT_ERROR, SSE_EVENT_MESSAGE
@@ -51,12 +48,11 @@ class EventParsingException(Exception):
     pass
 
 
-@add_metaclass(abc.ABCMeta)  #pylint:disable=too-few-public-methods
-class BaseEvent(object):
+class BaseEvent(object, metaclass=abc.ABCMeta):
     """Base event that reqiures subclasses tu have a type."""
 
     @abstract_property
-    def event_type(self):  #pylint:disable=no-self-use
+    def event_type(self):  # pylint:disable=no-self-use
         """
         Return the event type.
 
@@ -92,7 +88,7 @@ class AblyError(BaseEvent):
         self._timestamp = utctime_ms()
 
     @property
-    def event_type(self):  #pylint:disable=no-self-use
+    def event_type(self):  # pylint:disable=no-self-use
         """
         Return the event type.
 
@@ -160,7 +156,6 @@ class AblyError(BaseEvent):
         """
         return self._code < 40000 or self._code > 49999
 
-
     def is_retryable(self):
         """
         Return whether this error is retryable or not.
@@ -176,8 +171,7 @@ class AblyError(BaseEvent):
             (self.code, self.status_code, self.message, self.href)
 
 
-@add_metaclass(abc.ABCMeta)
-class BaseMessage(BaseEvent):
+class BaseMessage(BaseEvent, metaclass=abc.ABCMeta):
     """Message type event."""
 
     def __init__(self, channel, timestamp):
@@ -211,7 +205,7 @@ class BaseMessage(BaseEvent):
         return self._timestamp
 
     @property
-    def event_type(self):  #pylint:disable=no-self-use
+    def event_type(self):  # pylint:disable=no-self-use
         """
         Return the event type.
 
@@ -221,7 +215,7 @@ class BaseMessage(BaseEvent):
         return EventType.MESSAGE
 
     @abstract_property
-    def message_type(self):  #pylint:disable=no-self-use
+    def message_type(self):  # pylint:disable=no-self-use
         """
         Return the message type.
 
@@ -248,7 +242,7 @@ class OccupancyMessage(BaseMessage):
         self._publishers = publishers
 
     @property
-    def message_type(self):  #pylint:disable=no-self-use
+    def message_type(self):  # pylint:disable=no-self-use
         """
         Return the message type.
 
@@ -282,8 +276,7 @@ class OccupancyMessage(BaseMessage):
         return "Occupancy - channel=%s, publishers=%d" % (self.channel, self.publishers)
 
 
-@add_metaclass(abc.ABCMeta)
-class BaseUpdate(BaseMessage):
+class BaseUpdate(BaseMessage, metaclass=abc.ABCMeta):
     """Split data update notification."""
 
     def __init__(self, channel, timestamp, change_number):
@@ -300,7 +293,7 @@ class BaseUpdate(BaseMessage):
         self._change_number = change_number
 
     @abstract_property
-    def update_type(self):  #pylint:disable=no-self-use
+    def update_type(self):  # pylint:disable=no-self-use
         """
         Return the message type.
 
@@ -310,7 +303,7 @@ class BaseUpdate(BaseMessage):
         pass
 
     @property
-    def message_type(self):  #pylint:disable=no-self-use
+    def message_type(self):  # pylint:disable=no-self-use
         """
         Return the message type.
 
@@ -338,7 +331,7 @@ class SplitChangeUpdate(BaseUpdate):
         BaseUpdate.__init__(self, channel, timestamp, change_number)
 
     @property
-    def update_type(self):  #pylint:disable=no-self-use
+    def update_type(self):  # pylint:disable=no-self-use
         """
         Return the message type.
 
@@ -355,14 +348,14 @@ class SplitChangeUpdate(BaseUpdate):
 class SplitKillUpdate(BaseUpdate):
     """Split Kill notification."""
 
-    def __init__(self, channel, timestamp, change_number, split_name, default_treatment):  #pylint:disable=too-many-arguments
+    def __init__(self, channel, timestamp, change_number, split_name, default_treatment):  # pylint:disable=too-many-arguments
         """Class constructor."""
         BaseUpdate.__init__(self, channel, timestamp, change_number)
         self._split_name = split_name
         self._default_treatment = default_treatment
 
     @property
-    def update_type(self):  #pylint:disable=no-self-use
+    def update_type(self):  # pylint:disable=no-self-use
         """
         Return the message type.
 
@@ -406,7 +399,7 @@ class SegmentChangeUpdate(BaseUpdate):
         self._segment_name = segment_name
 
     @property
-    def update_type(self):  #pylint:disable=no-self-use
+    def update_type(self):  # pylint:disable=no-self-use
         """
         Return the message type.
 
@@ -439,7 +432,7 @@ class ControlMessage(BaseMessage):
         self._control_type = ControlType(control_type)
 
     @property
-    def message_type(self):  #pylint:disable=no-self-use
+    def message_type(self):  # pylint:disable=no-self-use
         """
         Return the message type.
 
@@ -541,13 +534,13 @@ def parse_incoming_event(raw_event):
 
     try:
         parsed_data = json.loads(raw_event.data)
-    except Exception as exc:  #pylint:disable=broad-except
-        raise_from(EventParsingException('Error parsing json'), exc)
+    except Exception as exc:  # pylint:disable=broad-except
+        raise EventParsingException('Error parsing json') from exc
 
     try:
         event_type = EventType(raw_event.event)
     except ValueError as exc:
-        raise_from(exc, 'unknown event type %s' % raw_event.event)
+        raise Exception('unknown event type %s' % raw_event.event) from exc
 
     return {
         EventType.ERROR: _parse_error,

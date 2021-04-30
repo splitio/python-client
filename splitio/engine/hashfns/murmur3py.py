@@ -1,10 +1,5 @@
 """MurmurHash3 hash module."""
 
-from __future__ import absolute_import, division, print_function, \
-    unicode_literals
-
-from six.moves import range
-
 
 def murmur32_py(key, seed=0x0):
     """
@@ -75,6 +70,7 @@ def murmur32_py(key, seed=0x0):
     unsigned_val = fmix(hash1 ^ length)
     return unsigned_val
 
+
 def hash128_x64(key, seed):
     """
     Pure python implementation of murmurhash3-128.
@@ -85,9 +81,9 @@ def hash128_x64(key, seed):
 
     def fmix(k):
         k ^= k >> 33
-        k  = (k * 0xff51afd7ed558ccd) & 0xFFFFFFFFFFFFFFFF
+        k = (k * 0xff51afd7ed558ccd) & 0xFFFFFFFFFFFFFFFF
         k ^= k >> 33
-        k  = (k * 0xc4ceb9fe1a85ec53) & 0xFFFFFFFFFFFFFFFF
+        k = (k * 0xc4ceb9fe1a85ec53) & 0xFFFFFFFFFFFFFFFF
         k ^= k >> 33
         return k
 
@@ -100,7 +96,7 @@ def hash128_x64(key, seed):
     c1 = 0x87c37b91114253d5
     c2 = 0x4cf5ad432745937f
 
-    #body
+    # body
     for block_start in range(0, nblocks * 8, 8):
         # ??? big endian?
         k1 = key[2 * block_start + 7] << 56 | \
@@ -109,37 +105,37 @@ def hash128_x64(key, seed):
              key[2 * block_start + 4] << 32 | \
              key[2 * block_start + 3] << 24 | \
              key[2 * block_start + 2] << 16 | \
-             key[2 * block_start + 1] <<  8 | \
+             key[2 * block_start + 1] << 8 | \
              key[2 * block_start + 0]
 
         k2 = key[2 * block_start + 15] << 56 | \
-             key[2 * block_start + 14] << 48 | \
-             key[2 * block_start + 13] << 40 | \
-             key[2 * block_start + 12] << 32 | \
-             key[2 * block_start + 11] << 24 | \
-             key[2 * block_start + 10] << 16 | \
-             key[2 * block_start + 9] <<  8 | \
-             key[2 * block_start + 8]
+            key[2 * block_start + 14] << 48 | \
+            key[2 * block_start + 13] << 40 | \
+            key[2 * block_start + 12] << 32 | \
+            key[2 * block_start + 11] << 24 | \
+            key[2 * block_start + 10] << 16 | \
+            key[2 * block_start + 9] << 8 | \
+            key[2 * block_start + 8]
 
-        k1  = (c1 * k1) & 0xFFFFFFFFFFFFFFFF
-        k1  = (k1 << 31 | k1 >> 33) & 0xFFFFFFFFFFFFFFFF # inlined ROTL64
-        k1  = (c2 * k1) & 0xFFFFFFFFFFFFFFFF
+        k1 = (c1 * k1) & 0xFFFFFFFFFFFFFFFF
+        k1 = (k1 << 31 | k1 >> 33) & 0xFFFFFFFFFFFFFFFF  # inlined ROTL64
+        k1 = (c2 * k1) & 0xFFFFFFFFFFFFFFFF
         h1 ^= k1
 
-        h1 = (h1 << 27 | h1 >> 37) & 0xFFFFFFFFFFFFFFFF # inlined ROTL64
+        h1 = (h1 << 27 | h1 >> 37) & 0xFFFFFFFFFFFFFFFF  # inlined ROTL64
         h1 = (h1 + h2) & 0xFFFFFFFFFFFFFFFF
         h1 = (h1 * 5 + 0x52dce729) & 0xFFFFFFFFFFFFFFFF
 
-        k2  = (c2 * k2) & 0xFFFFFFFFFFFFFFFF
-        k2  = (k2 << 33 | k2 >> 31) & 0xFFFFFFFFFFFFFFFF # inlined ROTL64
-        k2  = (c1 * k2) & 0xFFFFFFFFFFFFFFFF
+        k2 = (c2 * k2) & 0xFFFFFFFFFFFFFFFF
+        k2 = (k2 << 33 | k2 >> 31) & 0xFFFFFFFFFFFFFFFF  # inlined ROTL64
+        k2 = (c1 * k2) & 0xFFFFFFFFFFFFFFFF
         h2 ^= k2
 
-        h2 = (h2 << 31 | h2 >> 33) & 0xFFFFFFFFFFFFFFFF # inlined ROTL64
+        h2 = (h2 << 31 | h2 >> 33) & 0xFFFFFFFFFFFFFFFF  # inlined ROTL64
         h2 = (h1 + h2) & 0xFFFFFFFFFFFFFFFF
         h2 = (h2 * 5 + 0x38495ab5) & 0xFFFFFFFFFFFFFFFF
 
-    #tail
+    # tail
     tail_index = nblocks * 16
     k1 = 0
     k2 = 0
@@ -157,13 +153,13 @@ def hash128_x64(key, seed):
         k2 ^= key[tail_index + 10] << 16
     if tail_size >= 10:
         k2 ^= key[tail_index + 9] << 8
-    if tail_size >=  9:
+    if tail_size >= 9:
         k2 ^= key[tail_index + 8]
 
     if tail_size > 8:
-        k2  = (k2 * c2) & 0xFFFFFFFFFFFFFFFF
-        k2  = (k2 << 33 | k2 >> 31) & 0xFFFFFFFFFFFFFFFF # inlined ROTL64
-        k2  = (k2 * c1) & 0xFFFFFFFFFFFFFFFF
+        k2 = (k2 * c2) & 0xFFFFFFFFFFFFFFFF
+        k2 = (k2 << 33 | k2 >> 31) & 0xFFFFFFFFFFFFFFFF  # inlined ROTL64
+        k2 = (k2 * c1) & 0xFFFFFFFFFFFFFFFF
         h2 ^= k2
 
     if tail_size >= 8:
@@ -184,22 +180,22 @@ def hash128_x64(key, seed):
         k1 ^= key[tail_index + 0]
 
     if tail_size > 0:
-        k1  = (k1 * c1) & 0xFFFFFFFFFFFFFFFF
-        k1  = (k1 << 31 | k1 >> 33) & 0xFFFFFFFFFFFFFFFF # inlined ROTL64
-        k1  = (k1 * c2) & 0xFFFFFFFFFFFFFFFF
+        k1 = (k1 * c1) & 0xFFFFFFFFFFFFFFFF
+        k1 = (k1 << 31 | k1 >> 33) & 0xFFFFFFFFFFFFFFFF  # inlined ROTL64
+        k1 = (k1 * c2) & 0xFFFFFFFFFFFFFFFF
         h1 ^= k1
 
-    #finalization
+    # finalization
     h1 ^= length
     h2 ^= length
 
-    h1  = (h1 + h2) & 0xFFFFFFFFFFFFFFFF
-    h2  = (h1 + h2) & 0xFFFFFFFFFFFFFFFF
+    h1 = (h1 + h2) & 0xFFFFFFFFFFFFFFFF
+    h2 = (h1 + h2) & 0xFFFFFFFFFFFFFFFF
 
-    h1  = fmix(h1)
-    h2  = fmix(h2)
+    h1 = fmix(h1)
+    h2 = fmix(h2)
 
-    h1  = (h1 + h2) & 0xFFFFFFFFFFFFFFFF
-    h2  = (h1 + h2) & 0xFFFFFFFFFFFFFFFF
+    h1 = (h1 + h2) & 0xFFFFFFFFFFFFFFFF
+    h2 = (h1 + h2) & 0xFFFFFFFFFFFFFFFF
 
     return [h1, h2]

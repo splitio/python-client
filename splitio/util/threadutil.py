@@ -1,16 +1,11 @@
 """Threading utilities."""
-from inspect import isclass
-import threading
-
-
-# python2 workaround
-_EventClass = threading.Event if isclass(threading.Event) else threading._Event  #pylint:disable=protected-access,invalid-name
+from threading import Event, Condition
 
 
 class EventGroup(object):
     """EventGroup that can be waited with an OR condition."""
 
-    class Event(_EventClass):  #pylint:disable=too-few-public-methods
+    class Event(Event):  # pylint:disable=too-few-public-methods
         """Threading event meant to be used in an group."""
 
         def __init__(self, shared_condition):
@@ -20,18 +15,18 @@ class EventGroup(object):
             :param shared_condition: shared condition varaible.
             :type shared_condition: threading.Condition
             """
-            _EventClass.__init__(self)
+            Event.__init__(self)
             self._shared_cond = shared_condition
 
         def set(self):
             """Set the event."""
-            _EventClass.set(self)
+            Event.set(self)
             with self._shared_cond:
                 self._shared_cond.notify()
 
     def __init__(self):
         """Construct an event group."""
-        self._cond = threading.Condition()
+        self._cond = Condition()
 
     def make_event(self):
         """

@@ -1,6 +1,4 @@
 """Legacy hash function module."""
-from __future__ import absolute_import, division, print_function, \
-    unicode_literals
 
 
 def as_int32(value):
