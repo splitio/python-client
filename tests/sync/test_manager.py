@@ -18,7 +18,10 @@ from splitio.sync.synchronizer import Synchronizer, SplitTasks, SplitSynchronize
 from splitio.sync.manager import Manager
 
 from splitio.storage import SplitStorage
+
 from splitio.api import APIException
+
+from splitio.client.util import SdkMetadata
 
 
 class ManagerTests(object):
@@ -43,14 +46,14 @@ class ManagerTests(object):
                                            mocker.Mock(), mocker.Mock(), mocker.Mock())
 
         synchronizer = Synchronizer(synchronizers, split_tasks)
-        manager = Manager(threading.Event(), synchronizer,  mocker.Mock(), False)
+        manager = Manager(threading.Event(), synchronizer,  mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'))
 
         manager.start()  # should not throw!
 
     def test_start_streaming_false(self, mocker):
         splits_ready_event = threading.Event()
         synchronizer = mocker.Mock(spec=Synchronizer)
-        manager = Manager(splits_ready_event, synchronizer, mocker.Mock(), False)
+        manager = Manager(splits_ready_event, synchronizer, mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'))
         manager.start()
 
         splits_ready_event.wait(2)

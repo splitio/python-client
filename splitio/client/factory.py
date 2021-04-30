@@ -362,7 +362,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
 
     sdk_ready_flag = threading.Event() if not preforked_initialization else None
     manager = Manager(sdk_ready_flag, synchronizer, apis['auth'], cfg['streamingEnabled'],
-                      streaming_api_base_url)
+                      sdk_metadata, streaming_api_base_url, api_key[-4:])
 
     storages['events'].set_queue_full_hook(tasks.events_task.flush)
     storages['impressions'].set_queue_full_hook(tasks.impressions_task.flush)
@@ -439,9 +439,10 @@ def _build_localhost_factory(cfg):
         ), None, None, None, None, None,
     )
 
+    sdk_metadata = util.get_metadata(cfg)
     ready_event = threading.Event()
     synchronizer = LocalhostSynchronizer(synchronizers, tasks)
-    manager = Manager(ready_event, synchronizer, None, False)
+    manager = Manager(ready_event, synchronizer, None, False, sdk_metadata)
     manager.start()
     recorder = StandardRecorder(
         ImpressionsManager(cfg['impressionsMode'], True, None),

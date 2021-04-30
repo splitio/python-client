@@ -32,7 +32,7 @@ class SplitFactoryTests(object):
         """Test that a client with in-memory storage is created correctly."""
 
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, synchronizer, auth_api, streaming_enabled, sse_url=None):
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, sse_url=None, client_key=None):
             synchronizer = mocker.Mock(spec=Synchronizer)
             synchronizer.sync_all.return_values = None
             self._ready_flag = ready_flag
@@ -120,7 +120,6 @@ class SplitFactoryTests(object):
             unix_socket_path='/some_path',
             encoding='utf-8',
             encoding_errors='non-strict',
-            charset='utf-8',
             errors=True,
             decode_responses=True,
             retry_on_timeout=True,
@@ -233,7 +232,7 @@ class SplitFactoryTests(object):
                            imp_count_async_task_mock)
 
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sse_url=None):
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, sse_url=None, client_key=None):
             synchronizer = Synchronizer(syncs, tasks)
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
@@ -327,7 +326,7 @@ class SplitFactoryTests(object):
                            imp_count_async_task_mock)
 
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sse_url=None):
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, sse_url=None, client_key=None):
             synchronizer = Synchronizer(syncs, tasks)
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
