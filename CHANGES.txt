@@ -1,8 +1,9 @@
-9.0.0 (Apr 28, 2021)
- - BREAKING CHANGE: Deprecated Python2.
+9.0.0 (Apr 30, 2021)
+ - BREAKING CHANGE: Removed splitSdkMachineIp and splitSdkMachineName configs.
+ - BREAKING CHANGE: Deprecated uWSGI local cache.
+ - BREAKING CHANGE: Deprecated Python2 support.
     - Removed six, future and futures libs for compatibility between Python2 and Python3.
     - Updated strings encoding to utf-8 by default for Redis.
-    - Deprecated uWSGI cache.
 
 8.4.1 (Apr 16, 2021)
  - Bumped mmh3cffi dependency which now requires c99 flag to build.

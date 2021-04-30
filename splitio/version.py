@@ -1,1 +1,1 @@
-__version__ = '9.0.0-uwsgi'
+__version__ = '9.0.0-all'
