@@ -1,5 +1,6 @@
 """Datatypes converters for matchers."""
 
+
 def ts_truncate_seconds(timestamp):
     """
     Set seconds to zero in a timestamp.
@@ -11,6 +12,7 @@ def ts_truncate_seconds(timestamp):
     :rtype: int
     """
     return timestamp - (timestamp % 60)
+
 
 def ts_truncate_time(timestamp):
     """
@@ -24,6 +26,7 @@ def ts_truncate_time(timestamp):
     """
     return timestamp - (timestamp % 86400)
 
+
 def java_ts_to_secs(java_ts):
     """
     Convert java timestamp into unix timestamp.
@@ -36,6 +39,7 @@ def java_ts_to_secs(java_ts):
     """
     return java_ts / 1000
 
+
 def java_ts_truncate_seconds(java_ts):
     """
     Set seconds to zero in a timestamp.
@@ -47,6 +51,7 @@ def java_ts_truncate_seconds(java_ts):
     :rtype: int
     """
     return ts_truncate_seconds(java_ts_to_secs(java_ts))
+
 
 def java_ts_truncate_time(java_ts):
     """

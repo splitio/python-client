@@ -11,8 +11,6 @@ _LOGGER = logging.getLogger(__name__)
 DEFAULT_CONFIG = {
     'operationMode': 'in-memory',
     'connectionTimeout': 1500,
-    'splitSdkMachineName': None,
-    'splitSdkMachineIp': None,
     'streamingEnabled': True,
     'featuresRefreshRate': 30,
     'segmentsRefreshRate': 30,
@@ -73,9 +71,6 @@ def _parse_operation_mode(apikey, config):
 
     if 'redisHost' in config or 'redisSentinels' in config:
         return 'redis-consumer'
-
-    if 'uwsgiClient' in config:
-        return 'uwsgi-consumer'
 
     return 'inmemory-standalone'
 
