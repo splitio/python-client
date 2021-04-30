@@ -39,7 +39,6 @@ DEFAULT_CONFIG = {
     'redisUnixSocketPath': None,
     'redisEncoding': 'utf-8',
     'redisEncodingErrors': 'strict',
-    'redisCharset': 'utf-8',
     'redisErrors': None,
     'redisDecodeResponses': True,
     'redisRetryOnTimeout': False,

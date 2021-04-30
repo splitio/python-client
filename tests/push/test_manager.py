@@ -2,9 +2,12 @@
 #pylint:disable=no-self-use,protected-access
 from threading import Thread
 from queue import Queue
+
 from splitio.api.auth import APIException
-from splitio.push.sse import SSEEvent
+
 from splitio.models.token import Token
+
+from splitio.push.sse import SSEEvent
 from splitio.push.parser import parse_incoming_event, EventType, ControlType, ControlMessage, \
     OccupancyMessage, SplitChangeUpdate, SplitKillUpdate, SegmentChangeUpdate
 from splitio.push.processor import MessageProcessor
@@ -12,6 +15,7 @@ from splitio.push.status_tracker import PushStatusTracker
 from splitio.push.manager import PushManager, _TOKEN_REFRESH_GRACE_PERIOD
 from splitio.push.splitsse import SplitSSEClient
 from splitio.push.status_tracker import Status
+
 from tests.helpers import Any
 
 
@@ -30,7 +34,7 @@ class PushManagerTests(object):
         mocker.patch('splitio.push.manager.Timer', new=timer_mock)
         mocker.patch('splitio.push.manager.SplitSSEClient', new=sse_constructor_mock)
         feedback_loop = Queue()
-        manager = PushManager(api_mock, mocker.Mock(), feedback_loop)
+        manager = PushManager(api_mock, mocker.Mock(), feedback_loop, mocker.Mock())
 
         def new_start(*args, **kwargs):  # pylint: disable=unused-argument
             """splitsse.start mock."""
@@ -63,7 +67,7 @@ class PushManagerTests(object):
         mocker.patch('splitio.push.manager.Timer', new=timer_mock)
         mocker.patch('splitio.push.manager.SplitSSEClient', new=sse_constructor_mock)
         feedback_loop = Queue()
-        manager = PushManager(api_mock, mocker.Mock(), feedback_loop)
+        manager = PushManager(api_mock, mocker.Mock(), feedback_loop, mocker.Mock())
 
         def new_start(*args, **kwargs):  # pylint: disable=unused-argument
             """splitsse.start mock."""
@@ -90,7 +94,7 @@ class PushManagerTests(object):
         mocker.patch('splitio.push.manager.Timer', new=timer_mock)
         mocker.patch('splitio.push.manager.SplitSSEClient', new=sse_constructor_mock)
         feedback_loop = Queue()
-        manager = PushManager(api_mock, mocker.Mock(), feedback_loop)
+        manager = PushManager(api_mock, mocker.Mock(), feedback_loop, mocker.Mock())
         manager.start()
         assert feedback_loop.get() == Status.PUSH_NONRETRYABLE_ERROR
         assert timer_mock.mock_calls == [mocker.call(0, Any())]
@@ -109,7 +113,7 @@ class PushManagerTests(object):
         mocker.patch('splitio.push.manager.SplitSSEClient', new=sse_constructor_mock)
 
         feedback_loop = Queue()
-        manager = PushManager(api_mock, mocker.Mock(), feedback_loop)
+        manager = PushManager(api_mock, mocker.Mock(), feedback_loop, mocker.Mock())
         manager.start()
         assert feedback_loop.get() == Status.PUSH_RETRYABLE_ERROR
         assert timer_mock.mock_calls == [mocker.call(0, Any())]
@@ -126,7 +130,7 @@ class PushManagerTests(object):
         processor_mock = mocker.Mock(spec=MessageProcessor)
         mocker.patch('splitio.push.manager.MessageProcessor', new=processor_mock)
 
-        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock())
+        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
         manager._event_handler(sse_event)
         assert parse_event_mock.mock_calls == [mocker.call(sse_event)]
         assert processor_mock.mock_calls == [
@@ -145,7 +149,7 @@ class PushManagerTests(object):
         processor_mock = mocker.Mock(spec=MessageProcessor)
         mocker.patch('splitio.push.manager.MessageProcessor', new=processor_mock)
 
-        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock())
+        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
         manager._event_handler(sse_event)
         assert parse_event_mock.mock_calls == [mocker.call(sse_event)]
         assert processor_mock.mock_calls == [
@@ -164,7 +168,7 @@ class PushManagerTests(object):
         processor_mock = mocker.Mock(spec=MessageProcessor)
         mocker.patch('splitio.push.manager.MessageProcessor', new=processor_mock)
 
-        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock())
+        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
         manager._event_handler(sse_event)
         assert parse_event_mock.mock_calls == [mocker.call(sse_event)]
         assert processor_mock.mock_calls == [
@@ -183,7 +187,7 @@ class PushManagerTests(object):
         status_tracker_mock = mocker.Mock(spec=PushStatusTracker)
         mocker.patch('splitio.push.manager.PushStatusTracker', new=status_tracker_mock)
 
-        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock())
+        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
         manager._event_handler(sse_event)
         assert parse_event_mock.mock_calls == [mocker.call(sse_event)]
         assert status_tracker_mock.mock_calls == [
@@ -202,7 +206,7 @@ class PushManagerTests(object):
         status_tracker_mock = mocker.Mock(spec=PushStatusTracker)
         mocker.patch('splitio.push.manager.PushStatusTracker', new=status_tracker_mock)
 
-        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock())
+        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
         manager._event_handler(sse_event)
         assert parse_event_mock.mock_calls == [mocker.call(sse_event)]
         assert status_tracker_mock.mock_calls == [
