@@ -1,11 +1,6 @@
 """Events syncrhonization task."""
-from __future__ import absolute_import, division, print_function, \
-    unicode_literals
-
 import logging
 
-from six.moves import queue
-from splitio.api import APIException
 from splitio.tasks import BaseSynchronizationTask
 from splitio.tasks.util.asynctask import AsyncTask
 

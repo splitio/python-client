@@ -2,8 +2,6 @@
 
 from queue import Queue
 
-from six import raise_from
-
 from splitio.push.parser import UpdateType
 from splitio.push.splitworker import SplitWorker
 from splitio.push.segmentworker import SegmentWorker
@@ -83,7 +81,7 @@ class MessageProcessor(object):
         try:
             handle = self._handlers[event.update_type]
         except KeyError as exc:
-            raise_from('no handler for notification type: %s' % event.update_type, exc)
+            raise Exception('no handler for notification type: %s' % event.update_type) from exc
 
         handle(event)
 

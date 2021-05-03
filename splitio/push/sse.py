@@ -1,15 +1,9 @@
 """Low-level SSE Client."""
 import logging
 import socket
-import sys
 from collections import namedtuple
-
-try:  # try to import python3 names. fallback to python2
-    from http.client import HTTPConnection, HTTPSConnection
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
-    from httplib import HTTPConnection, HTTPSConnection
+from http.client import HTTPConnection, HTTPSConnection
+from urllib.parse import urlparse
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -23,30 +17,6 @@ SSEEvent = namedtuple('SSEEvent', ['event_id', 'event', 'retry', 'data'])
 
 
 __ENDING_CHARS = set(['\n', ''])
-def __httpresponse_readline_py2(response):
-    """
-    Hacky `readline` implementation to be used with chunked transfers in python2.
-
-    This makes syscalls in a loop, so not particularly efficient. Migrate to py3 now!
-
-    :param response: HTTPConnection's response after a .request() call
-    :type response: httplib.HTTPResponse
-
-    :returns: a string with the read line
-    :rtype: str
-    """
-    buf = []
-    while True:
-        read = response.read(1)
-        buf.append(read)
-        if read in __ENDING_CHARS:
-            break
-
-    return ''.join(buf)
-
-
-_http_response_readline = (__httpresponse_readline_py2 if sys.version_info.major <= 2  #pylint:disable=invalid-name
-                           else lambda response: response.readline())
 
 
 class EventBuilder(object):
@@ -105,7 +75,7 @@ class SSEClient(object):
             response = self._conn.getresponse()
             event_builder = EventBuilder()
             while True:
-                line = _http_response_readline(response)
+                line = response.readline()
                 if line is None or len(line) <= 0:  # connection ended
                     break
                 elif line.startswith(b':'):  # comment. Skip
@@ -118,7 +88,7 @@ class SSEClient(object):
                     event_builder = EventBuilder()
                 else:
                     event_builder.process_line(line)
-        except Exception:  #pylint:disable=broad-except
+        except Exception:  # pylint:disable=broad-except
             _LOGGER.debug('sse connection ended.')
             _LOGGER.debug('stack trace: ', exc_info=True)
         finally:
@@ -127,7 +97,7 @@ class SSEClient(object):
 
         return self._shutdown_requested
 
-    def start(self, url, extra_headers=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT):  #pylint:disable=protected-access
+    def start(self, url, extra_headers=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT):  # pylint:disable=protected-access
         """
         Connect and start listening for events.
 
@@ -160,11 +130,11 @@ class SSEClient(object):
     def shutdown(self):
         """Shutdown the current connection."""
         if self._conn is None or self._conn.sock is None:
-            _LOGGER.warn("no sse connection has been started on this SSEClient instance. Ignoring")
+            _LOGGER.warning("no sse connection has been started on this SSEClient instance. Ignoring")
             return
 
         if self._shutdown_requested:
-            _LOGGER.warn("shutdown already requested")
+            _LOGGER.warning("shutdown already requested")
             return
 
         self._shutdown_requested = True

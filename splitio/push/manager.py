@@ -20,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 class PushManager(object):  # pylint:disable=too-many-instance-attributes
     """Push notifications susbsytem manager."""
 
-    def __init__(self, auth_api, synchronizer, feedback_loop, sse_url=None):
+    def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, sse_url=None, client_key=None):
         """
         Class constructor.
 
@@ -33,8 +33,14 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         :param feedback_loop: queue where push status updates are published.
         :type feedback_loop: queue.Queue
 
+        :param sdk_metadata: SDK version & machine name & IP.
+        :type sdk_metadata: splitio.client.util.SdkMetadata
+
         :param sse_url: streaming base url.
         :type sse_url: str
+
+        :param client_key: client key.
+        :type client_key: str
         """
         self._auth_api = auth_api
         self._feedback_loop = feedback_loop
@@ -52,8 +58,8 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         }
 
         kwargs = {} if sse_url is None else {'base_url': sse_url}
-        self._sse_client = SplitSSEClient(self._event_handler, self._handle_connection_ready,
-                                          self._handle_connection_end, **kwargs)
+        self._sse_client = SplitSSEClient(self._event_handler, sdk_metadata, self._handle_connection_ready,
+                                          self._handle_connection_end, client_key, **kwargs)
         self._running = False
         self._next_refresh = Timer(0, lambda: 0)
 
@@ -114,7 +120,7 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
 
         try:
             handle(parsed)
-        except Exception:  #pylint:disable=broad-except
+        except Exception:  # pylint:disable=broad-except
             _LOGGER.error('something went wrong when processing message of type %s',
                           parsed.event_type)
             _LOGGER.debug(str(parsed), exc_info=True)

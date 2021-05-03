@@ -3,8 +3,6 @@
 import logging
 from itertools import groupby
 
-from future.utils import raise_from
-
 from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException
 from splitio.engine.impressions import ImpressionsMode
@@ -107,7 +105,7 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
                 'Error posting impressions because an exception was raised by the HTTPClient'
             )
             _LOGGER.debug('Error: ', exc_info=True)
-            raise_from(APIException('Impressions not flushed properly.'), exc)
+            raise APIException('Impressions not flushed properly.') from exc
 
     def flush_counters(self, counters):
         """
@@ -133,4 +131,4 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
                 'HTTPClient'
             )
             _LOGGER.debug('Error: ', exc_info=True)
-            raise_from(APIException('Impressions not flushed properly.'), exc)
+            raise APIException('Impressions not flushed properly.') from exc

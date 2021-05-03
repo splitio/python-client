@@ -1,7 +1,5 @@
 """Split partition module."""
 
-from future.utils import python_2_unicode_compatible
-
 
 class Partition(object):
     """Partition object class."""
@@ -38,7 +36,6 @@ class Partition(object):
             'size': self._size
         }
 
-    @python_2_unicode_compatible
     def __str__(self):
         """Return string representation of a partition."""
         return '{size}%:{treatment}'.format(size=self._size,

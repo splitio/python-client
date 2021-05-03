@@ -1,5 +1,4 @@
 import logging
-from six.moves import queue
 
 from splitio.api import APIException
 

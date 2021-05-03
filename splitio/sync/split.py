@@ -2,8 +2,6 @@
 import logging
 import re
 import itertools
-
-from future.utils import raise_from
 import yaml
 
 from splitio.api import APIException
@@ -192,10 +190,7 @@ class LocalSplitSynchronizer(object):
             return to_return
 
         except IOError as exc:
-            raise_from(
-                ValueError("Error parsing file %s. Make sure it's readable." % filename),
-                exc
-            )
+            raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc
 
     @classmethod
     def _read_splits_from_yaml_file(cls, filename):
@@ -234,10 +229,7 @@ class LocalSplitSynchronizer(object):
             return to_return
 
         except IOError as exc:
-            raise_from(
-                ValueError("Error parsing file %s. Make sure it's readable." % filename),
-                exc
-            )
+            raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc
 
     def synchronize_splits(self, till=None):  # pylint:disable=unused-argument
         """Update splits in storage."""

@@ -1,11 +1,9 @@
 """In memory storage classes."""
-from __future__ import absolute_import
-
 import logging
 import threading
+import queue
 from collections import Counter
 
-from six.moves import queue
 from splitio.models.segments import Segment
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, \
     TelemetryStorage
@@ -321,8 +319,8 @@ class InMemoryImpressionStorage(ImpressionStorage):
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
                 self._queue_full_hook()
             _LOGGER.warning(
-                'Event queue is full, failing to add more events. \n'
-                'Consider increasing parameter `eventQueueSize` in configuration'
+                'Impression queue is full, failing to add more impressions. \n'
+                'Consider increasing parameter `impressionsQueueSize` in configuration'
             )
             return False
 

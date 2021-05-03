@@ -3,10 +3,15 @@
 import time
 from queue import Queue
 import pytest
+
 from splitio.models.token import Token
+
 from splitio.push.splitsse import SplitSSEClient
 from splitio.push.sse import SSEEvent
+
 from tests.helpers.mockserver import SSEMockServer
+
+from splitio.client.util import SdkMetadata
 
 
 class SSEClientTests(object):
@@ -36,8 +41,8 @@ class SSEClientTests(object):
         server = SSEMockServer(request_queue)
         server.start()
 
-        client = SplitSSEClient(handler, on_connect, on_disconnect,
-                                base_url='http://localhost:' + str(server.port()))
+        client = SplitSSEClient(handler, SdkMetadata('1.0', 'some', '1.2.3.4'), on_connect, on_disconnect,
+                                'abcd', base_url='http://localhost:' + str(server.port()))
 
         token = Token(True, 'some', {'chan1': ['subscribe'], 'chan2': ['subscribe', 'channel-metadata:publishers']},
                       1, 2)
@@ -55,6 +60,10 @@ class SSEClientTests(object):
         request = request_queue.get(1)
         assert request.path == '/event-stream?v=1.1&accessToken=some&channels=chan1,[?occupancy=metrics.publishers]chan2'
         assert request.headers['accept'] == 'text/event-stream'
+        assert request.headers['SplitSDKVersion'] == '1.0'
+        assert request.headers['SplitSDKMachineIP'] == '1.2.3.4'
+        assert request.headers['SplitSDKMachineName'] == 'some'
+        assert request.headers['SplitSDKClientKey'] == 'abcd'
 
         assert events == [
             SSEEvent('1', 'message', '1', 'a'),
@@ -91,8 +100,8 @@ class SSEClientTests(object):
             """On disconnect handler."""
             status['on_disconnect'] = True
 
-        client = SplitSSEClient(handler, on_connect, on_disconnect,
-                                base_url='http://localhost:' + str(server.port()))
+        client = SplitSSEClient(handler, SdkMetadata('1.0', 'some', '1.2.3.4'), on_connect, on_disconnect,
+                                "abcd", base_url='http://localhost:' + str(server.port()))
 
         token = Token(True, 'some', {'chan1': ['subscribe'], 'chan2': ['subscribe', 'channel-metadata:publishers']},
                       1, 2)
@@ -103,6 +112,10 @@ class SSEClientTests(object):
         request = request_queue.get(1)
         assert request.path == '/event-stream?v=1.1&accessToken=some&channels=chan1,[?occupancy=metrics.publishers]chan2'
         assert request.headers['accept'] == 'text/event-stream'
+        assert request.headers['SplitSDKVersion'] == '1.0'
+        assert request.headers['SplitSDKMachineIP'] == '1.2.3.4'
+        assert request.headers['SplitSDKMachineName'] == 'some'
+        assert request.headers['SplitSDKClientKey'] == 'abcd'
 
         server.publish(SSEMockServer.VIOLENT_REQUEST_END)
         server.stop()

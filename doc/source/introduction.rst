@@ -6,7 +6,7 @@ This project provides Python programs access to the `Split.io <http://split.io/>
 Installation and Requirements
 -----------------------------
 
-``splitio_client`` supports both Python 2 (2.7 or later) and Python 3 (3.3 or later). Stable versions can be installed from `PyPI <https://pypi.python.org>`_ using pip: ::
+``splitio_client`` supports Python 3 (3.3 or later). Stable versions can be installed from `PyPI <https://pypi.python.org>`_ using pip: ::
 
   pip install splitio_client
 

@@ -1,7 +1,6 @@
 """NotificationManagerKeeper implementation."""
 from enum import Enum
 import logging
-import six
 from splitio.push.parser import ControlType
 
 
@@ -195,4 +194,4 @@ class PushStatusTracker(object):
         :returns: True if publisher count is enough. False otherwise
         :rtype: bool
         """
-        return any(count > 0 for (chan, count) in six.iteritems(self._publishers))
+        return any(count > 0 for (chan, count) in self._publishers.items())

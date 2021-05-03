@@ -3,6 +3,7 @@
 import base64
 import json
 
+
 class Token(object):
     """Token object class."""
 
@@ -30,27 +31,27 @@ class Token(object):
         self._channels = channels
         self._exp = exp
         self._iat = iat
-    
+
     @property
     def push_enabled(self):
         """Return push_enabled"""
         return self._push_enabled
-    
+
     @property
     def token(self):
         """Return token"""
         return self._token
-    
+
     @property
     def channels(self):
         """Return channels"""
         return self._channels
-    
+
     @property
     def exp(self):
         """Return exp"""
         return self._exp
-    
+
     @property
     def iat(self):
         """Return iat"""
@@ -66,14 +67,15 @@ def decode_token(raw_token):
     push_enabled = raw_token['pushEnabled']
     if not push_enabled or len(token.strip()) == 0:
         return None, None, None
-    
+
     token_parts = token.split('.')
     if len(token_parts) < 2:
         return None, None, None
-    
+
     to_decode = token_parts[1]
-    decoded_payload =  base64.b64decode(to_decode + '='*(-len(to_decode) % 4))
+    decoded_payload = base64.b64decode(to_decode + '='*(-len(to_decode) % 4))
     return push_enabled, token, json.loads(decoded_payload)
+
 
 def from_raw(raw_token):
     """

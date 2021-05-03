@@ -1,6 +1,5 @@
 """General purpose SDK utilities."""
 
-import inspect
 import socket
 from collections import namedtuple
 from splitio.version import __version__

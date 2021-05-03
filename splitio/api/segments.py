@@ -3,8 +3,6 @@
 import json
 import logging
 
-from future.utils import raise_from
-
 from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException
 
@@ -62,4 +60,4 @@ class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
                 segment_name
             )
             _LOGGER.debug('Error: ', exc_info=True)
-            raise_from(APIException('Segments not fetched properly.'), exc)
+            raise APIException('Segments not fetched properly.') from exc

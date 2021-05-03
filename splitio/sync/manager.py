@@ -16,7 +16,7 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
 
     _CENTINEL_EVENT = object()
 
-    def __init__(self, ready_flag, synchronizer, auth_api, streaming_enabled, sse_url=None):  # pylint:disable=too-many-arguments
+    def __init__(self, ready_flag, synchronizer, auth_api, streaming_enabled, sdk_metadata, sse_url=None, client_key=None):  # pylint:disable=too-many-arguments
         """
         Construct Manager.
 
@@ -29,8 +29,17 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
         :param auth_api: Authentication api client
         :type auth_api: splitio.api.auth.AuthAPI
 
+        :param sdk_metadata: SDK version & machine name & IP.
+        :type sdk_metadata: splitio.client.util.SdkMetadata
+
         :param streaming_enabled: whether to use streaming or not
         :type streaming_enabled: bool
+
+        :param sse_url: streaming base url.
+        :type sse_url: str
+
+        :param client_key: client key.
+        :type client_key: str
         """
         self._streaming_enabled = streaming_enabled
         self._ready_flag = ready_flag
@@ -39,7 +48,7 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
             self._push_status_handler_active = True
             self._backoff = Backoff()
             self._queue = Queue()
-            self._push = PushManager(auth_api, synchronizer, self._queue, sse_url)
+            self._push = PushManager(auth_api, synchronizer, self._queue, sdk_metadata, sse_url, client_key)
             self._push_status_handler = Thread(target=self._streaming_feedback_handler,
                                                name='PushStatusHandler')
             self._push_status_handler.setDaemon(True)

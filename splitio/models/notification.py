@@ -40,7 +40,7 @@ class ControlNotification(object):  # pylint: disable=too-many-instance-attribut
         self._channel = channel
         self._notification_type = Type(notification_type)
         self._control_type = Control(control_type)
-        
+
     @property
     def channel(self):
         return self._channel
@@ -87,7 +87,7 @@ class SegmentChangeNotification(object):  # pylint: disable=too-many-instance-at
     @property
     def notification_type(self):
         return self._notification_type
-    
+
     @property
     def segment_name(self):
         return self._segment_name
@@ -111,7 +111,7 @@ class SplitChangeNotification(object):  # pylint: disable=too-many-instance-attr
         self._channel = channel
         self._notification_type = Type(notification_type)
         self._change_number = change_number
-    
+
     @property
     def channel(self):
         return self._channel
@@ -149,23 +149,23 @@ class SplitKillNotification(object):  # pylint: disable=too-many-instance-attrib
         self._change_number = change_number
         self._default_treatment = default_treatment
         self._split_name = split_name
-    
+
     @property
     def channel(self):
         return self._channel
-    
+
     @property
     def change_number(self):
         return self._change_number
-    
+
     @property
     def default_treatment(self):
         return self._default_treatment
-    
+
     @property
     def notification_type(self):
         return self._notification_type
-    
+
     @property
     def split_name(self):
         return self._split_name
@@ -178,25 +178,26 @@ _NOTIFICATION_MAPPERS = {
     Type.CONTROL: lambda c, d: ControlNotification(c, Type.CONTROL, d['controlType'])
 }
 
-def wrap_notification(raw_data, channel):
-        """
-        Parse notification from raw notification payload
 
-        :param raw_data: data
-        :type raw_data: str
-        :param channel: Channel of incoming notification
-        :type channel: str
-        """
-        try:
-            if channel is None:
-                raise ValueError("channel cannot be None.")
-            raw_data = json.loads(raw_data)
-            notification_type = Type(raw_data['type'])
-            mapper = _NOTIFICATION_MAPPERS[notification_type]
-            return mapper(channel, raw_data)
-        except ValueError:
-            raise ValueError("Wrong notification type received.")
-        except KeyError:
-            raise KeyError("Could not parse notification.")
-        except TypeError:
-            raise TypeError("Wrong JSON format.")
+def wrap_notification(raw_data, channel):
+    """
+    Parse notification from raw notification payload
+
+    :param raw_data: data
+    :type raw_data: str
+    :param channel: Channel of incoming notification
+    :type channel: str
+    """
+    try:
+        if channel is None:
+            raise ValueError("channel cannot be None.")
+        raw_data = json.loads(raw_data)
+        notification_type = Type(raw_data['type'])
+        mapper = _NOTIFICATION_MAPPERS[notification_type]
+        return mapper(channel, raw_data)
+    except ValueError:
+        raise ValueError("Wrong notification type received.")
+    except KeyError:
+        raise KeyError("Could not parse notification.")
+    except TypeError:
+        raise TypeError("Wrong JSON format.")

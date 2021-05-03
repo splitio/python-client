@@ -12,10 +12,11 @@ from splitio.storage.inmemmory import InMemoryEventStorage, InMemoryImpressionSt
     InMemorySegmentStorage, InMemorySplitStorage, InMemoryTelemetryStorage
 from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \
     RedisSplitStorage, RedisSegmentStorage, RedisTelemetryStorage
-from splitio.storage.adapters.redis import RedisAdapter
+from splitio.storage.adapters.redis import build, RedisAdapter
 from splitio.models import splits, segments
 from splitio.engine.impressions import Manager as ImpressionsManager, ImpressionsMode
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder
+from splitio.client.config import DEFAULT_CONFIG
 
 
 class InMemoryIntegrationTests(object):
@@ -489,7 +490,7 @@ class RedisIntegrationTests(object):
     def setup_method(self):
         """Prepare storages with test data."""
         metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
-        redis_client = RedisAdapter(StrictRedis())
+        redis_client = build(DEFAULT_CONFIG.copy())
         split_storage = RedisSplitStorage(redis_client)
         segment_storage = RedisSegmentStorage(redis_client)
 
@@ -771,7 +772,7 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
     def setup_method(self):
         """Prepare storages with test data."""
         metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
-        redis_client = RedisAdapter(StrictRedis())
+        redis_client = build(DEFAULT_CONFIG.copy())
         split_storage = RedisSplitStorage(redis_client, True)
         segment_storage = RedisSegmentStorage(redis_client)
 

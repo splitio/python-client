@@ -1,7 +1,6 @@
 import logging
 
 from splitio.api import APIException
-from splitio.models import splits
 from splitio.tasks.util import workerpool
 from splitio.models import segments
 

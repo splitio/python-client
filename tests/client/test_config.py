@@ -13,7 +13,6 @@ class ConfigSanitizationTests(object):
         assert config._parse_operation_mode('some', {}) == 'inmemory-standalone'
         assert config._parse_operation_mode('localhost', {}) == 'localhost-standalone'
         assert config._parse_operation_mode('some', {'redisHost': 'x'}) == 'redis-consumer'
-        assert config._parse_operation_mode('some', {'uwsgiClient': True}) == 'uwsgi-consumer'
 
     def test_sanitize_imp_mode(self):
         """Test sanitization of impressions mode."""

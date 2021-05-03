@@ -3,8 +3,6 @@
 import logging
 import json
 
-from future.utils import raise_from
-
 from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException
 from splitio.models.token import from_raw
@@ -53,4 +51,4 @@ class AuthAPI(object):  # pylint: disable=too-few-public-methods
         except HttpClientException as exc:
             _LOGGER.error('Exception raised while authenticating')
             _LOGGER.debug('Exception information: ', exc_info=True)
-            raise_from(APIException('Could not perform authentication.'), exc)
+            raise APIException('Could not perform authentication.') from exc

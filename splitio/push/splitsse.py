@@ -2,9 +2,9 @@
 import logging
 import threading
 from enum import Enum
-import six
 from splitio.push.sse import SSEClient, SSE_EVENT_ERROR
 from splitio.util.threadutil import EventGroup
+from splitio.api import headers_from_metadata
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -21,13 +21,17 @@ class SplitSSEClient(object):  # pylint: disable=too-many-instance-attributes
         ERRORED = 2
         CONNECTED = 3
 
-    def __init__(self, event_callback, first_event_callback=None,
-                 connection_closed_callback=None, base_url='https://streaming.split.io'):
+    def __init__(self, event_callback, sdk_metadata, first_event_callback=None,
+                 connection_closed_callback=None, client_key=None,
+                 base_url='https://streaming.split.io'):
         """
         Construct a split sse client.
 
         :param callback: fuction to call when an event is received.
         :type callback: callable
+
+        :param sdk_metadata: SDK version & machine name & IP.
+        :type sdk_metadata: splitio.client.util.SdkMetadata
 
         :param first_event_callback: function to call when the first event is received.
         :type first_event_callback: callable
@@ -37,6 +41,9 @@ class SplitSSEClient(object):  # pylint: disable=too-many-instance-attributes
 
         :param base_url: scheme + :// + host
         :type base_url: str
+
+        :param client_key: client key.
+        :type client_key: str
         """
         self._client = SSEClient(self._raw_event_handler)
         self._callback = event_callback
@@ -46,6 +53,7 @@ class SplitSSEClient(object):  # pylint: disable=too-many-instance-attributes
         self._status = SplitSSEClient._Status.IDLE
         self._sse_first_event = None
         self._sse_connection_closed = None
+        self._metadata = headers_from_metadata(sdk_metadata, client_key)
 
     def _raw_event_handler(self, event):
         """
@@ -75,9 +83,9 @@ class SplitSSEClient(object):  # pylint: disable=too-many-instance-attributes
         :returns: channels as a list of strings.
         :rtype: list[str]
         """
-        regular = [k for (k, v) in six.iteritems(channels) if v == ['subscribe']]
+        regular = [k for (k, v) in channels.items() if v == ['subscribe']]
         occupancy = ['[?occupancy=metrics.publishers]' + k
-                     for (k, v) in six.iteritems(channels)
+                     for (k, v) in channels.items()
                      if 'channel-metadata:publishers' in v]
         return regular + occupancy
 
@@ -118,7 +126,8 @@ class SplitSSEClient(object):  # pylint: disable=too-many-instance-attributes
         def connect(url):
             """Connect to sse in a blocking manner."""
             try:
-                self._client.start(url, timeout=self.KEEPALIVE_TIMEOUT)
+                self._client.start(url, timeout=self.KEEPALIVE_TIMEOUT,
+                                   extra_headers=self._metadata)
             finally:
                 self._status = SplitSSEClient._Status.IDLE
                 self._sse_connection_closed.set()
@@ -134,7 +143,7 @@ class SplitSSEClient(object):  # pylint: disable=too-many-instance-attributes
     def stop(self, blocking=False, timeout=None):
         """Abort the ongoing connection."""
         if self._status == SplitSSEClient._Status.IDLE:
-            _LOGGER.warn('sse already closed. ignoring')
+            _LOGGER.warning('sse already closed. ignoring')
             return
 
         self._client.shutdown()

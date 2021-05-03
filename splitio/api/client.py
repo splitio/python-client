@@ -1,9 +1,6 @@
 """Synchronous HTTP Client for split API."""
-from __future__ import division
-
 from collections import namedtuple
 
-from future.utils import raise_from
 import requests
 
 HttpResponse = namedtuple('HttpResponse', ['status_code', 'body'])
@@ -107,7 +104,7 @@ class HttpClient(object):
             )
             return HttpResponse(response.status_code, response.text)
         except Exception as exc:  # pylint: disable=broad-except
-            raise_from(HttpClientException('requests library is throwing exceptions'), exc)
+            raise HttpClientException('requests library is throwing exceptions') from exc
 
     def post(self, server, path, apikey, body, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
@@ -144,4 +141,4 @@ class HttpClient(object):
             )
             return HttpResponse(response.status_code, response.text)
         except Exception as exc:  # pylint: disable=broad-except
-            raise_from(HttpClientException('requests library is throwing exceptions'), exc)
+            raise HttpClientException('requests library is throwing exceptions') from exc

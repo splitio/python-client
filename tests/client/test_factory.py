@@ -8,7 +8,7 @@ import threading
 from splitio.client.factory import get_factory, SplitFactory, _INSTANTIATED_FACTORIES, Status,\
     _LOGGER as _logger
 from splitio.client.config import DEFAULT_CONFIG
-from splitio.storage import redis, inmemmory, uwsgi
+from splitio.storage import redis, inmemmory
 from splitio.tasks import events_sync, impressions_sync, split_sync, segment_sync, telemetry_sync
 from splitio.tasks.util import asynctask
 from splitio.api.splits import SplitsAPI
@@ -32,7 +32,7 @@ class SplitFactoryTests(object):
         """Test that a client with in-memory storage is created correctly."""
 
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, synchronizer, auth_api, streaming_enabled, sse_url=None):
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, sse_url=None, client_key=None):
             synchronizer = mocker.Mock(spec=Synchronizer)
             synchronizer.sync_all.return_values = None
             self._ready_flag = ready_flag
@@ -81,9 +81,7 @@ class SplitFactoryTests(object):
             'redisSocketKeepaliveOptions': False,
             'redisConnectionPool': False,
             'redisUnixSocketPath': '/some_path',
-            'redisEncoding': 'ascii',
             'redisEncodingErrors': 'non-strict',
-            'redisCharset': 'ascii',
             'redisErrors': True,
             'redisDecodeResponses': True,
             'redisRetryOnTimeout': True,
@@ -120,9 +118,8 @@ class SplitFactoryTests(object):
             socket_keepalive_options=False,
             connection_pool=False,
             unix_socket_path='/some_path',
-            encoding='ascii',
+            encoding='utf-8',
             encoding_errors='non-strict',
-            charset='ascii',
             errors=True,
             decode_responses=True,
             retry_on_timeout=True,
@@ -140,25 +137,6 @@ class SplitFactoryTests(object):
         assert isinstance(factory._recorder._telemetry_storage, redis.RedisTelemetryStorage)
         assert isinstance(factory._recorder._event_sotrage, redis.RedisEventsStorage)
         assert isinstance(factory._recorder._impression_storage, redis.RedisImpressionsStorage)
-        factory.block_until_ready()
-        assert factory.ready
-        factory.destroy()
-
-    def test_uwsgi_client_creation(self):
-        """Test that a client with redis storage is created correctly."""
-        factory = get_factory('some_api_key', config={'uwsgiClient': True})
-        assert isinstance(factory._get_storage('splits'), uwsgi.UWSGISplitStorage)
-        assert isinstance(factory._get_storage('segments'), uwsgi.UWSGISegmentStorage)
-        assert isinstance(factory._get_storage('impressions'), uwsgi.UWSGIImpressionStorage)
-        assert isinstance(factory._get_storage('events'), uwsgi.UWSGIEventStorage)
-        assert isinstance(factory._get_storage('telemetry'), uwsgi.UWSGITelemetryStorage)
-        assert factory._sync_manager is None
-        assert factory._labels_enabled is True
-        assert isinstance(factory._recorder, StandardRecorder)
-        assert isinstance(factory._recorder._impressions_manager, ImpressionsManager)
-        assert isinstance(factory._recorder._telemetry_storage, inmemmory.TelemetryStorage)
-        assert isinstance(factory._recorder._event_sotrage, inmemmory.EventStorage)
-        assert isinstance(factory._recorder._impression_storage, inmemmory.ImpressionStorage)
         factory.block_until_ready()
         assert factory.ready
         factory.destroy()
@@ -254,7 +232,7 @@ class SplitFactoryTests(object):
                            imp_count_async_task_mock)
 
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sse_url=None):
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, sse_url=None, client_key=None):
             synchronizer = Synchronizer(syncs, tasks)
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
@@ -348,7 +326,7 @@ class SplitFactoryTests(object):
                            imp_count_async_task_mock)
 
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sse_url=None):
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, sse_url=None, client_key=None):
             synchronizer = Synchronizer(syncs, tasks)
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
@@ -429,14 +407,11 @@ class SplitFactoryTests(object):
         build_in_memory.side_effect = _make_factory_with_apikey
         build_redis = mocker.Mock()
         build_redis.side_effect = _make_factory_with_apikey
-        build_uwsgi = mocker.Mock()
-        build_uwsgi.side_effect = _make_factory_with_apikey
         build_localhost = mocker.Mock()
         build_localhost.side_effect = _make_factory_with_apikey
         mocker.patch('splitio.client.factory._LOGGER', new=factory_module_logger)
         mocker.patch('splitio.client.factory._build_in_memory_factory', new=build_in_memory)
         mocker.patch('splitio.client.factory._build_redis_factory', new=build_redis)
-        mocker.patch('splitio.client.factory._build_uwsgi_factory', new=build_uwsgi)
         mocker.patch('splitio.client.factory._build_localhost_factory', new=build_localhost)
 
         _INSTANTIATED_FACTORIES.clear()  # Clear all factory counters for testing purposes

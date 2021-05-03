@@ -1,9 +1,6 @@
 """Numeric & Date based matchers."""
 import numbers
-
 import logging
-from future.utils import python_2_unicode_compatible
-from six import string_types
 
 from splitio.models.grammar.matchers.base import Matcher
 from splitio.models import datatypes
@@ -32,7 +29,7 @@ class Sanitizer(object):  # pylint: disable=too-few-public-methods
         if isinstance(data, numbers.Integral) and not isinstance(data, bool):
             return data
 
-        if not isinstance(data, string_types):
+        if not isinstance(data, str):
             _LOGGER.error('Cannot convert %s to int. Failing.', type(data))
             return None
 
@@ -111,7 +108,6 @@ class BetweenMatcher(Matcher, ZeroSecondDataMatcher):
             return False
         return self._lower <= self.input_parsers[self._data_type](matching_data) <= self._upper
 
-    @python_2_unicode_compatible
     def __str__(self):
         """Return string Representation."""
         return 'between {start} and {end}'.format(start=self._lower, end=self._upper)
