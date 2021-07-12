@@ -3,9 +3,11 @@ import logging
 import re
 import itertools
 import yaml
+import time
 
-from splitio.api import APIException
+from splitio.api import APIException, FetchOptions
 from splitio.models import splits
+from splitio.util.backoff import Backoff
 
 
 _LEGACY_COMMENT_LINE_RE = re.compile(r'^#.*$')
@@ -13,6 +15,11 @@ _LEGACY_DEFINITION_LINE_RE = re.compile(r'^(?<![^#])(?P<feature>[\w_-]+)\s+(?P<t
 
 
 _LOGGER = logging.getLogger(__name__)
+
+
+_ON_DEMAND_FETCH_BACKOFF_BASE = 10  # backoff base starting at 10 seconds
+_ON_DEMAND_FETCH_BACKOFF_MAX_WAIT = 60  # don't sleep for more than 1 minute
+_ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES = 10
 
 
 class SplitSynchronizer(object):
@@ -30,6 +37,58 @@ class SplitSynchronizer(object):
         """
         self._api = split_api
         self._split_storage = split_storage
+        self._backoff = Backoff(
+                                _ON_DEMAND_FETCH_BACKOFF_BASE,
+                                _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
+
+    def attempt_split_sync(self, fetch_options, till=None):
+        """
+        Hit endpoint, update storage and return True if sync is complete.
+
+        :param fetch_options Fetch options for getting split definitions.
+        :type fetch_options splitio.api.FetchOptions
+
+        :param till: Passed till from Streaming.
+        :type till: int
+
+        :return: Flags to check if it should perform bypass or operation ended
+        :rtype: bool, int, int
+        """
+        self._backoff.reset()
+        remaining_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES
+        while True:
+            remaining_attempts -= 1
+            while True:  # Fetch until since==till
+                change_number = self._split_storage.get_change_number()
+                if change_number is None:
+                    change_number = -1
+                if till is not None and till < change_number:
+                    # the passed till is less than change_number, no need to perform updates
+                    break
+
+                try:
+                    split_changes = self._api.fetch_splits(change_number, fetch_options)
+                except APIException as exc:
+                    _LOGGER.error('Exception raised while fetching splits')
+                    _LOGGER.debug('Exception information: ', exc_info=True)
+                    raise exc
+
+                for split in split_changes.get('splits', []):
+                    if split['status'] == splits.Status.ACTIVE.value:
+                        self._split_storage.put(splits.from_raw(split))
+                    else:
+                        self._split_storage.remove(split['name'])
+
+                self._split_storage.set_change_number(split_changes['till'])
+                if split_changes['till'] == split_changes['since']:
+                    break
+
+            if till is None or till <= change_number:
+                return True, remaining_attempts, change_number
+            elif remaining_attempts <= 0:
+                return False, remaining_attempts, change_number
+            how_long = self._backoff.get()
+            time.sleep(how_long)
 
     def synchronize_splits(self, till=None):
         """
@@ -38,31 +97,23 @@ class SplitSynchronizer(object):
         :param till: Passed till from Streaming.
         :type till: int
         """
-        while True:
-            change_number = self._split_storage.get_change_number()
-            if change_number is None:
-                change_number = -1
-            if till is not None and till < change_number:
-                # the passed till is less than change_number, no need to perform updates
-                return
-
-            try:
-                split_changes = self._api.fetch_splits(change_number)
-            except APIException as exc:
-                _LOGGER.error('Exception raised while fetching splits')
-                _LOGGER.debug('Exception information: ', exc_info=True)
-                raise exc
-
-            for split in split_changes.get('splits', []):
-                if split['status'] == splits.Status.ACTIVE.value:
-                    self._split_storage.put(splits.from_raw(split))
-                else:
-                    self._split_storage.remove(split['name'])
-
-            self._split_storage.set_change_number(split_changes['till'])
-            if split_changes['till'] == split_changes['since'] \
-               and (till is None or split_changes['till'] >= till):
-                return
+        fetch_options = FetchOptions(True)  # Set Cache-Control to no-cache
+        successful_sync, remaining_attempts, change_number = self.attempt_split_sync(fetch_options,
+                                                                                     till)
+        attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
+        if successful_sync:  # succedeed sync
+            _LOGGER.debug('Refresh completed in %s attempts.', attempts)
+            return
+        with_cdn_bypass = FetchOptions(True, change_number)  # Set flag for bypassing CDN
+        without_cdn_successful_sync, remaining_attempts, change_number = self.attempt_split_sync(with_cdn_bypass, till)
+        without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
+        if without_cdn_successful_sync:
+            _LOGGER.debug('Refresh completed bypassing the CDN in %s attempts.',
+                          without_cdn_attempts)
+            return
+        else:
+            _LOGGER.debug('No changes fetched after %s attempts with CDN bypassed.',
+                          without_cdn_attempts)
 
     def kill_split(self, split_name, default_treatment, change_number):
         """

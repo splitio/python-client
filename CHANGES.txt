@@ -1,3 +1,7 @@
+9.1.0 (Jul XX, 2021)
+- Added Cache-Control header for on-demand requests to sdk-server.
+- Updated the synchronization flow to be more reliable in the event of an edge case generating delay in cache purge propagation, keeping the SDK cache properly synced.
+
 9.0.0 (May 3, 2021)
  - BREAKING CHANGE: Removed splitSdkMachineIp and splitSdkMachineName configs.
  - BREAKING CHANGE: Deprecated `redisCharset` config.
