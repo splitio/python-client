@@ -142,8 +142,10 @@ class SplitsSynchronizerTests(object):
             change_number_mock._calls += 1
             if change_number_mock._calls == 1:
                 return -1
-            elif change_number_mock._calls < 8:
+            elif change_number_mock._calls >= 2 and change_number_mock._calls <= 3:
                 return 123
+            elif change_number_mock._calls <= 7:
+                return 1234
             return 12345 # Return proper cn for CDN Bypass
         change_number_mock._calls = 0
         storage.get_change_number.side_effect = change_number_mock
@@ -199,18 +201,29 @@ class SplitsSynchronizerTests(object):
                     'since': 123,
                     'till': 123
                 }
-            elif get_changes.called > 2 and get_changes.called < 5: # Simulating condition to equal since and till
+            elif get_changes.called == 3:
                 return {
                     'splits': [],
                     'since': 123,
-                    'till': 12345
+                    'till': 1234
                 }
-            else:
+            elif get_changes.called >= 4 and get_changes.called <= 6:
                 return {
                     'splits': [],
-                    'since': 12345,
+                    'since': 1234,
+                    'till': 1234
+                }
+            elif get_changes.called == 7:
+                return {
+                    'splits': [],
+                    'since': 1234,
                     'till': 12345
                 }
+            return {
+                'splits': [],
+                'since': 12345,
+                'till': 12345
+            }
         get_changes.called = 0
 
         api.fetch_splits.side_effect = get_changes
@@ -223,9 +236,8 @@ class SplitsSynchronizerTests(object):
 
         split_synchronizer._backoff = Backoff(1, 0.1)
         split_synchronizer.synchronize_splits(12345)
-
-        assert mocker.call(12345, FetchOptions(True, 123)) in api.fetch_splits.mock_calls
-        assert len(api.fetch_splits.mock_calls) == 8 # 2 ok + 2 since == till + 3 backoff + 1 CDN
+        assert mocker.call(12345, FetchOptions(True, 1234)) in api.fetch_splits.mock_calls
+        assert len(api.fetch_splits.mock_calls) == 8 # 2 ok + BACKOFF(2 since==till + 2 re-attempts) + CDN(2 since==till)
 
         inserted_split = storage.put.mock_calls[0][1][0]
         assert isinstance(inserted_split, Split)
