@@ -3,7 +3,7 @@
 import json
 import logging
 
-from splitio.api import APIException, headers_from_metadata
+from splitio.api import APIException, headers_from_metadata, build_fetch
 from splitio.api.client import HttpClientException
 
 
@@ -29,25 +29,30 @@ class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
         self._apikey = apikey
         self._metadata = headers_from_metadata(sdk_metadata)
 
-    def fetch_segment(self, segment_name, change_number):
+    def fetch_segment(self, segment_name, change_number, fetch_options):
         """
         Fetch splits from backend.
 
         :param segment_name: Name of the segment to fetch changes for.
         :type segment_name: str
-        :param change_number: Last known timestamp of a split modification.
+
+        :param change_number: Last known timestamp of a segment modification.
         :type change_number: int
+
+        :param fetch_options: Fetch options for getting segment definitions.
+        :type fetch_options: splitio.api.FetchOptions
 
         :return: Json representation of a segmentChange response.
         :rtype: dict
         """
         try:
+            query, extra_headers = build_fetch(change_number, fetch_options, self._metadata)
             response = self._client.get(
                 'sdk',
                 '/segmentChanges/{segment_name}'.format(segment_name=segment_name),
                 self._apikey,
-                extra_headers=self._metadata,
-                query={'since': change_number}
+                extra_headers=extra_headers,
+                query=query,
             )
 
             if 200 <= response.status_code < 300:

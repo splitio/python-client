@@ -1,12 +1,9 @@
 """Split Worker tests."""
 
-from splitio.util.backoff import Backoff
-import threading
-import time
 import pytest
 
+from splitio.util.backoff import Backoff
 from splitio.api import APIException, FetchOptions
-from splitio.tasks import split_sync
 from splitio.storage import SplitStorage
 from splitio.models.splits import Split
 
@@ -95,8 +92,8 @@ class SplitsSynchronizerTests(object):
                     'till': 123
                 }
         get_changes.called = 0
-
         api.fetch_splits.side_effect = get_changes
+
         from splitio.sync.split import SplitSynchronizer
         split_synchronizer = SplitSynchronizer(api, storage)
         split_synchronizer.synchronize_splits()
@@ -188,45 +185,20 @@ class SplitsSynchronizerTests(object):
 
         def get_changes(*args, **kwargs):
             get_changes.called += 1
-
             if get_changes.called == 1:
-                return {
-                    'splits': splits,
-                    'since': -1,
-                    'till': 123
-                }
+                return { 'splits': splits, 'since': -1, 'till': 123 }
             elif get_changes.called == 2:
-                return {
-                    'splits': [],
-                    'since': 123,
-                    'till': 123
-                }
+                return { 'splits': [], 'since': 123, 'till': 123 }
             elif get_changes.called == 3:
-                return {
-                    'splits': [],
-                    'since': 123,
-                    'till': 1234
-                }
+                return { 'splits': [], 'since': 123, 'till': 1234 }
             elif get_changes.called >= 4 and get_changes.called <= 6:
-                return {
-                    'splits': [],
-                    'since': 1234,
-                    'till': 1234
-                }
+                return { 'splits': [], 'since': 1234, 'till': 1234 }
             elif get_changes.called == 7:
-                return {
-                    'splits': [],
-                    'since': 1234,
-                    'till': 12345
-                }
-            return {
-                'splits': [],
-                'since': 12345,
-                'till': 12345
-            }
+                return { 'splits': [], 'since': 1234, 'till': 12345 }
+            return { 'splits': [], 'since': 12345, 'till': 12345 }
         get_changes.called = 0
-
         api.fetch_splits.side_effect = get_changes
+
         split_synchronizer = SplitSynchronizer(api, storage)
         split_synchronizer._backoff = Backoff(1, 1)
         split_synchronizer.synchronize_splits()

@@ -4,7 +4,7 @@ import logging
 import re
 import math
 
-from splitio.api import APIException
+from splitio.api import APIException, FetchOptions
 from splitio.client.key import Key
 from splitio.engine.evaluator import CONTROL
 
@@ -458,7 +458,7 @@ def validate_apikey_type(segment_api):
     _logger = logging.getLogger('splitio.api.segments')
     try:
         _logger.addFilter(api_messages_filter)  # pylint: disable=protected-access
-        segment_api.fetch_segment('__SOME_INVALID_SEGMENT__', -1)
+        segment_api.fetch_segment('__SOME_INVALID_SEGMENT__', -1, FetchOptions())
     except APIException as exc:
         if exc.status_code == 403:
             _LOGGER.error('factory instantiation: you passed a browser type '

@@ -1,6 +1,10 @@
 """Split API module."""
 
 
+_CACHE_CONTROL = 'Cache-Control'
+_CACHE_CONTROL_NO_CACHE = 'no-cache'
+
+
 class APIException(Exception):
     """Exception to raise when an API call fails."""
 
@@ -76,3 +80,30 @@ class FetchOptions(object):
         if self._change_number != other._change_number:
             return False
         return True
+
+
+def build_fetch(change_number, fetch_options, metadata):
+    """
+    Build fetch with new flags if that is the case.
+
+    :param change_number: Last known timestamp of definition.
+    :type change_number: int
+
+    :param fetch_options: Fetch options for getting definitions.
+    :type fetch_options: splitio.api.FetchOptions
+
+    :param metadata: Metadata Headers.
+    :type metadata: dict
+
+    :return: Objects for fetch
+    :rtype: dict, dict
+    """
+    query = {'since': change_number}
+    extra_headers = metadata
+    if fetch_options is None:
+        return query, extra_headers
+    if fetch_options.cache_control_headers:
+        extra_headers[_CACHE_CONTROL] = _CACHE_CONTROL_NO_CACHE
+    if fetch_options.change_number is not None:
+        query['till'] = fetch_options.change_number
+    return query, extra_headers

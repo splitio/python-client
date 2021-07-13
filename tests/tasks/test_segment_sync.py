@@ -2,7 +2,7 @@
 
 import threading
 import time
-from splitio.api import APIException
+from splitio.api import APIException, FetchOptions
 from splitio.tasks import segment_sync
 from splitio.storage import SegmentStorage, SplitStorage
 from splitio.models.splits import Split
@@ -41,7 +41,7 @@ class SegmentSynchronizationTests(object):
         storage.get_change_number.side_effect = change_number_mock
 
         # Setup a mocked segment api to return segments mentioned before.
-        def fetch_segment_mock(segment_name, change_number):
+        def fetch_segment_mock(segment_name, change_number, fetch_options):
             if segment_name == 'segmentA' and fetch_segment_mock._count_a == 0:
                 fetch_segment_mock._count_a = 1
                 return {'name': 'segmentA', 'added': ['key1', 'key2', 'key3'], 'removed': [],
@@ -60,6 +60,7 @@ class SegmentSynchronizationTests(object):
         fetch_segment_mock._count_c = 0
 
         api = mocker.Mock()
+        fetch_options = FetchOptions(True)
         api.fetch_segment.side_effect = fetch_segment_mock
 
         segments_synchronizer = SegmentSynchronizer(api, split_storage, storage)
@@ -76,12 +77,12 @@ class SegmentSynchronizationTests(object):
         assert not task.is_running()
 
         api_calls = [call for call in api.fetch_segment.mock_calls]
-        assert mocker.call('segmentA', -1) in api_calls
-        assert mocker.call('segmentB', -1) in api_calls
-        assert mocker.call('segmentC', -1) in api_calls
-        assert mocker.call('segmentA', 123) in api_calls
-        assert mocker.call('segmentB', 123) in api_calls
-        assert mocker.call('segmentC', 123) in api_calls
+        assert mocker.call('segmentA', -1, fetch_options) in api_calls
+        assert mocker.call('segmentB', -1, fetch_options) in api_calls
+        assert mocker.call('segmentC', -1, fetch_options) in api_calls
+        assert mocker.call('segmentA', 123, fetch_options) in api_calls
+        assert mocker.call('segmentB', 123, fetch_options) in api_calls
+        assert mocker.call('segmentC', 123, fetch_options) in api_calls
 
         segment_put_calls = storage.put.mock_calls
         segments_to_validate = set(['segmentA', 'segmentB', 'segmentC'])
