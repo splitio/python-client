@@ -1,7 +1,8 @@
 """Split Worker tests."""
 
 from splitio.util.backoff import Backoff
-from splitio.api import APIException, FetchOptions
+from splitio.api import APIException
+from splitio.api.commons import FetchOptions
 from splitio.storage import SplitStorage, SegmentStorage
 from splitio.models.segments import Segment
 

@@ -2,7 +2,7 @@
 
 import threading
 import time
-from splitio.api import APIException, FetchOptions
+from splitio.api.commons import FetchOptions
 from splitio.tasks import segment_sync
 from splitio.storage import SegmentStorage, SplitStorage
 from splitio.models.splits import Split

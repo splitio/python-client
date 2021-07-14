@@ -4,7 +4,8 @@ import logging
 import re
 import math
 
-from splitio.api import APIException, FetchOptions
+from splitio.api import APIException
+from splitio.api.commons import FetchOptions
 from splitio.client.key import Key
 from splitio.engine.evaluator import CONTROL
 

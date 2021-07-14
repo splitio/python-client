@@ -4,7 +4,7 @@ import threading
 from enum import Enum
 from splitio.push.sse import SSEClient, SSE_EVENT_ERROR
 from splitio.util.threadutil import EventGroup
-from splitio.api import headers_from_metadata
+from splitio.api.commons import headers_from_metadata
 
 
 _LOGGER = logging.getLogger(__name__)

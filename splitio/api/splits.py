@@ -3,7 +3,8 @@
 import logging
 import json
 
-from splitio.api import APIException, headers_from_metadata, build_fetch
+from splitio.api import APIException
+from splitio.api.commons import headers_from_metadata, build_fetch
 from splitio.api.client import HttpClientException
 
 
@@ -36,7 +37,7 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
         :type change_number: int
 
         :param fetch_options: Fetch options for getting split definitions.
-        :type fetch_options: splitio.api.FetchOptions
+        :type fetch_options: splitio.api.commons.FetchOptions
 
         :return: Json representation of a splitChanges response.
         :rtype: dict
