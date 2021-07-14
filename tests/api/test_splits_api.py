@@ -1,7 +1,9 @@
 """Split API tests module."""
 
 import pytest
-from splitio.api import splits, client, APIException, FetchOptions
+
+from splitio.api import splits, client, APIException
+from splitio.api.commons import FetchOptions
 from splitio.client.util import SdkMetadata
 
 

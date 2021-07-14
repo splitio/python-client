@@ -1,7 +1,8 @@
 """Telemetry API Module."""
 import logging
 
-from splitio.api import APIException, headers_from_metadata
+from splitio.api import APIException
+from splitio.api.commons import headers_from_metadata
 from splitio.api.client import HttpClientException
 
 

@@ -5,7 +5,8 @@ import itertools
 import yaml
 import time
 
-from splitio.api import APIException, FetchOptions
+from splitio.api import APIException
+from splitio.api.commons import FetchOptions
 from splitio.models import splits
 from splitio.util.backoff import Backoff
 
@@ -116,17 +117,17 @@ class SplitSynchronizer(object):
                                                                                       till)
         attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if successful_sync:  # succedeed sync
-            _LOGGER.debug('Refresh completed in %s attempts.', attempts)
+            _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return
         with_cdn_bypass = FetchOptions(True, change_number)  # Set flag for bypassing CDN
         without_cdn_successful_sync, remaining_attempts, change_number = self._attempt_split_sync(with_cdn_bypass, till)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if without_cdn_successful_sync:
-            _LOGGER.debug('Refresh completed bypassing the CDN in %s attempts.',
+            _LOGGER.debug('Refresh completed bypassing the CDN in %d attempts.',
                           without_cdn_attempts)
             return
         else:
-            _LOGGER.debug('No changes fetched after %s attempts with CDN bypassed.',
+            _LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
                           without_cdn_attempts)
 
     def kill_split(self, split_name, default_treatment, change_number):

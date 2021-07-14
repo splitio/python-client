@@ -1,6 +1,7 @@
 """Split API tests module."""
 
 import pytest
+
 from splitio.api import auth, client, APIException
 from splitio.client.util import get_metadata
 from splitio.client.config import DEFAULT_CONFIG

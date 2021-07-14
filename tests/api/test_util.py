@@ -2,8 +2,7 @@
 
 import pytest
 
-from splitio.api import headers_from_metadata
-
+from splitio.api.commons import headers_from_metadata
 from splitio.client.util import SdkMetadata
 
 
