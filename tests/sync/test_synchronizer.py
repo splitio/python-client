@@ -24,7 +24,7 @@ class SynchronizerTests(object):
         api = mocker.Mock()
         storage = mocker.Mock()
 
-        def run(x):
+        def run(x, c):
             raise APIException("something broke")
         api.fetch_splits.side_effect = run
 

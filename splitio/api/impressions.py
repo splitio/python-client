@@ -3,8 +3,9 @@
 import logging
 from itertools import groupby
 
-from splitio.api import APIException, headers_from_metadata
+from splitio.api import APIException
 from splitio.api.client import HttpClientException
+from splitio.api.commons import headers_from_metadata
 from splitio.engine.impressions import ImpressionsMode
 
 
