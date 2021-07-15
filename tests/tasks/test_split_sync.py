@@ -3,6 +3,7 @@
 import threading
 import time
 from splitio.api import APIException
+from splitio.api.commons import FetchOptions
 from splitio.tasks import split_sync
 from splitio.storage import SplitStorage
 from splitio.models.splits import Split
@@ -77,6 +78,7 @@ class SplitSynchronizationTests(object):
                 }
         get_changes.called = 0
 
+        fetch_options = FetchOptions(True)
         api.fetch_splits.side_effect = get_changes
         split_synchronizer = SplitSynchronizer(api, storage)
         task = split_sync.SplitSynchronizationTask(split_synchronizer.synchronize_splits, 0.5)
@@ -87,8 +89,8 @@ class SplitSynchronizationTests(object):
         task.stop(stop_event)
         stop_event.wait()
         assert not task.is_running()
-        assert mocker.call(-1) in api.fetch_splits.mock_calls
-        assert mocker.call(123) in api.fetch_splits.mock_calls
+        assert mocker.call(-1, fetch_options) in api.fetch_splits.mock_calls
+        assert mocker.call(123, fetch_options) in api.fetch_splits.mock_calls
 
         inserted_split = storage.put.mock_calls[0][1][0]
         assert isinstance(inserted_split, Split)
