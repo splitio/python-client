@@ -9,13 +9,12 @@ from splitio.client.factory import get_factory, SplitFactory, _INSTANTIATED_FACT
     _LOGGER as _logger
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.storage import redis, inmemmory
-from splitio.tasks import events_sync, impressions_sync, split_sync, segment_sync, telemetry_sync
+from splitio.tasks import events_sync, impressions_sync, split_sync, segment_sync
 from splitio.tasks.util import asynctask
 from splitio.api.splits import SplitsAPI
 from splitio.api.segments import SegmentsAPI
 from splitio.api.impressions import ImpressionsAPI
 from splitio.api.events import EventsAPI
-from splitio.api.telemetry import TelemetryAPI
 from splitio.engine.impressions import Manager as ImpressionsManager
 from splitio.sync.manager import Manager
 from splitio.sync.synchronizer import Synchronizer, SplitSynchronizers, SplitTasks
@@ -48,13 +47,11 @@ class SplitFactoryTests(object):
         assert factory._storages['impressions']._impressions.maxsize == 10000
         assert isinstance(factory._storages['events'], inmemmory.InMemoryEventStorage)
         assert factory._storages['events']._events.maxsize == 10000
-        assert isinstance(factory._storages['telemetry'], inmemmory.InMemoryTelemetryStorage)
 
         assert isinstance(factory._sync_manager, Manager)
 
         assert isinstance(factory._recorder, StandardRecorder)
         assert isinstance(factory._recorder._impressions_manager, ImpressionsManager)
-        assert isinstance(factory._recorder._telemetry_storage, inmemmory.TelemetryStorage)
         assert isinstance(factory._recorder._event_sotrage, inmemmory.EventStorage)
         assert isinstance(factory._recorder._impression_storage, inmemmory.ImpressionStorage)
 
@@ -97,7 +94,6 @@ class SplitFactoryTests(object):
         assert isinstance(factory._get_storage('segments'), redis.RedisSegmentStorage)
         assert isinstance(factory._get_storage('impressions'), redis.RedisImpressionsStorage)
         assert isinstance(factory._get_storage('events'), redis.RedisEventsStorage)
-        assert isinstance(factory._get_storage('telemetry'), redis.RedisTelemetryStorage)
 
         assert factory._sync_manager is None
 
@@ -105,7 +101,6 @@ class SplitFactoryTests(object):
         assert adapter == factory._get_storage('segments')._redis
         assert adapter == factory._get_storage('impressions')._redis
         assert adapter == factory._get_storage('events')._redis
-        assert adapter == factory._get_storage('telemetry')._redis
 
         assert strict_redis_mock.mock_calls == [mocker.call(
             host='some_host',
@@ -134,7 +129,6 @@ class SplitFactoryTests(object):
         assert isinstance(factory._recorder, PipelinedRecorder)
         assert isinstance(factory._recorder._impressions_manager, ImpressionsManager)
         assert isinstance(factory._recorder._make_pipe(), RedisPipelineAdapter)
-        assert isinstance(factory._recorder._telemetry_storage, redis.RedisTelemetryStorage)
         assert isinstance(factory._recorder._event_sotrage, redis.RedisEventsStorage)
         assert isinstance(factory._recorder._impression_storage, redis.RedisImpressionsStorage)
         factory.block_until_ready()
@@ -150,13 +144,11 @@ class SplitFactoryTests(object):
         assert factory._storages['impressions']._impressions.maxsize == 10000
         assert isinstance(factory._storages['events'], inmemmory.InMemoryEventStorage)
         assert factory._storages['events']._events.maxsize == 10000
-        assert isinstance(factory._storages['telemetry'], inmemmory.InMemoryTelemetryStorage)
 
         assert isinstance(factory._sync_manager, Manager)
 
         assert isinstance(factory._recorder, StandardRecorder)
         assert isinstance(factory._recorder._impressions_manager, ImpressionsManager)
-        assert isinstance(factory._recorder._telemetry_storage, inmemmory.TelemetryStorage)
         assert isinstance(factory._recorder._event_sotrage, inmemmory.EventStorage)
         assert isinstance(factory._recorder._impression_storage, inmemmory.ImpressionStorage)
 
@@ -204,15 +196,6 @@ class SplitFactoryTests(object):
             self._task = evt_async_task_mock
         mocker.patch('splitio.client.factory.EventsSyncTask.__init__', new=_event_task_init_mock)
 
-        telemetry_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
-        telemetry_async_task_mock.stop.side_effect = stop_mock
-
-        def _telemetry_task_init_mock(self, synchronize_counters, period):
-            self._period = period
-            self._task = telemetry_async_task_mock
-        mocker.patch('splitio.client.factory.ImpressionsCountSyncTask.__init__',
-                     new=_telemetry_task_init_mock)
-
         imp_count_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
         imp_count_async_task_mock.stop.side_effect = stop_mock
 
@@ -226,10 +209,9 @@ class SplitFactoryTests(object):
         segment_sync = mocker.Mock(spec=SegmentSynchronizer)
         segment_sync.synchronize_segments.return_values = None
         syncs = SplitSynchronizers(split_sync, segment_sync, mocker.Mock(),
-                                   mocker.Mock(), mocker.Mock(), mocker.Mock())
+                                   mocker.Mock(), mocker.Mock())
         tasks = SplitTasks(split_async_task_mock, segment_async_task_mock, imp_async_task_mock,
-                           evt_async_task_mock, telemetry_async_task_mock,
-                           imp_count_async_task_mock)
+                           evt_async_task_mock, imp_count_async_task_mock)
 
         # Setup synchronizer
         def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, sse_url=None, client_key=None):
@@ -248,7 +230,6 @@ class SplitFactoryTests(object):
         factory.destroy()
         assert len(imp_async_task_mock.stop.mock_calls) == 1
         assert len(evt_async_task_mock.stop.mock_calls) == 1
-        assert len(telemetry_async_task_mock.stop.mock_calls) == 1
         assert len(imp_count_async_task_mock.stop.mock_calls) == 1
         assert factory.destroyed is True
 
@@ -298,15 +279,6 @@ class SplitFactoryTests(object):
             self._task = evt_async_task_mock
         mocker.patch('splitio.client.factory.EventsSyncTask.__init__', new=_event_task_init_mock)
 
-        telemetry_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
-        telemetry_async_task_mock.stop.side_effect = stop_mock_2
-
-        def _telemetry_task_init_mock(self, synchronize_counters, period):
-            self._period = period
-            self._task = telemetry_async_task_mock
-        mocker.patch('splitio.client.factory.ImpressionsCountSyncTask.__init__',
-                     new=_telemetry_task_init_mock)
-
         imp_count_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
         imp_count_async_task_mock.stop.side_effect = stop_mock
 
@@ -320,10 +292,9 @@ class SplitFactoryTests(object):
         segment_sync = mocker.Mock(spec=SegmentSynchronizer)
         segment_sync.synchronize_segments.return_values = None
         syncs = SplitSynchronizers(split_sync, segment_sync, mocker.Mock(),
-                                   mocker.Mock(), mocker.Mock(), mocker.Mock())
+                                   mocker.Mock(), mocker.Mock())
         tasks = SplitTasks(split_async_task_mock, segment_async_task_mock, imp_async_task_mock,
-                           evt_async_task_mock, telemetry_async_task_mock,
-                           imp_count_async_task_mock)
+                           evt_async_task_mock, imp_count_async_task_mock)
 
         # Setup synchronizer
         def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, sse_url=None, client_key=None):
@@ -346,7 +317,6 @@ class SplitFactoryTests(object):
         assert event.is_set()
         assert len(imp_async_task_mock.stop.mock_calls) == 1
         assert len(evt_async_task_mock.stop.mock_calls) == 1
-        assert len(telemetry_async_task_mock.stop.mock_calls) == 1
         assert len(imp_count_async_task_mock.stop.mock_calls) == 1
         assert factory.destroyed is True
 
@@ -470,20 +440,14 @@ class SplitFactoryTests(object):
         def clear_events():
             clear_events._called += 1
 
-        def clear_telemetry():
-            clear_telemetry._called += 1
-
         clear_impressions._called = 0
         clear_events._called = 0
-        clear_telemetry._called = 0
         split_storage = mocker.Mock(spec=inmemmory.SplitStorage)
         segment_storage = mocker.Mock(spec=inmemmory.SegmentStorage)
         impression_storage = mocker.Mock(spec=inmemmory.ImpressionStorage)
         impression_storage.clear.side_effect = clear_impressions
         event_storage = mocker.Mock(spec=inmemmory.EventStorage)
         event_storage.clear.side_effect = clear_events
-        telemetry_storage = mocker.Mock(spec=inmemmory.TelemetryStorage)
-        telemetry_storage.clear.side_effect = clear_telemetry
 
         def _get_storage_mock(self, name):
             return {
@@ -491,7 +455,6 @@ class SplitFactoryTests(object):
                 'segments': segment_storage,
                 'impressions': impression_storage,
                 'events': event_storage,
-                'telemetry': telemetry_storage
             }[name]
 
         mocker.patch('splitio.client.factory.SplitFactory._get_storage', new=_get_storage_mock)
@@ -520,7 +483,6 @@ class SplitFactoryTests(object):
 
         assert clear_impressions._called == 1
         assert clear_events._called == 1
-        assert clear_telemetry._called == 1
 
     def test_error_prefork(self, mocker):
         """Test not handling fork."""

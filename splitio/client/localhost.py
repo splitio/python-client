@@ -2,7 +2,7 @@
 import logging
 import re
 
-from splitio.storage import ImpressionStorage, EventStorage, TelemetryStorage
+from splitio.storage import ImpressionStorage, EventStorage
 
 _LEGACY_COMMENT_LINE_RE = re.compile(r'^#.*$')
 _LEGACY_DEFINITION_LINE_RE = re.compile(r'^(?<![^#])(?P<feature>[\w_-]+)\s+(?P<treatment>[\w_-]+)$')
@@ -35,38 +35,6 @@ class LocalhostEventsStorage(EventStorage):
         pass
 
     def pop_many(self, *_, **__):  # pylint: disable=arguments-differ
-        """Accept any arguments and do nothing."""
-        pass
-
-    def clear(self, *_, **__):  # pylint: disable=arguments-differ
-        """Accept any arguments and do nothing."""
-        pass
-
-
-class LocalhostTelemetryStorage(TelemetryStorage):
-    """Impression storage that doesn't cache anything."""
-
-    def inc_latency(self, *_, **__):  # pylint: disable=arguments-differ
-        """Accept any arguments and do nothing."""
-        pass
-
-    def inc_counter(self, *_, **__):  # pylint: disable=arguments-differ
-        """Accept any arguments and do nothing."""
-        pass
-
-    def put_gauge(self, *_, **__):  # pylint: disable=arguments-differ
-        """Accept any arguments and do nothing."""
-        pass
-
-    def pop_latencies(self, *_, **__):  # pylint: disable=arguments-differ
-        """Accept any arguments and do nothing."""
-        pass
-
-    def pop_counters(self, *_, **__):  # pylint: disable=arguments-differ
-        """Accept any arguments and do nothing."""
-        pass
-
-    def pop_gauges(self, *_, **__):  # pylint: disable=arguments-differ
         """Accept any arguments and do nothing."""
         pass
 

@@ -9,9 +9,9 @@ from redis import StrictRedis
 from splitio.client.factory import get_factory, SplitFactory
 from splitio.client.util import SdkMetadata
 from splitio.storage.inmemmory import InMemoryEventStorage, InMemoryImpressionStorage, \
-    InMemorySegmentStorage, InMemorySplitStorage, InMemoryTelemetryStorage
+    InMemorySegmentStorage, InMemorySplitStorage
 from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \
-    RedisSplitStorage, RedisSegmentStorage, RedisTelemetryStorage
+    RedisSplitStorage, RedisSegmentStorage
 from splitio.storage.adapters.redis import build, RedisAdapter
 from splitio.models import splits, segments
 from splitio.engine.impressions import Manager as ImpressionsManager, ImpressionsMode
@@ -48,11 +48,9 @@ class InMemoryIntegrationTests(object):
             'segments': segment_storage,
             'impressions': InMemoryImpressionStorage(5000),
             'events': InMemoryEventStorage(5000),
-            'telemetry': InMemoryTelemetryStorage()
         }
         impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
-        recorder = StandardRecorder(impmanager, storages['telemetry'], storages['events'],
-                                    storages['impressions'])
+        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'])
         self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init
 
     def teardown_method(self):
@@ -298,11 +296,9 @@ class InMemoryOptimizedIntegrationTests(object):
             'segments': segment_storage,
             'impressions': InMemoryImpressionStorage(5000),
             'events': InMemoryEventStorage(5000),
-            'telemetry': InMemoryTelemetryStorage()
         }
         impmanager = ImpressionsManager(ImpressionsMode.OPTIMIZED, True)
-        recorder = StandardRecorder(impmanager, storages['telemetry'], storages['events'],
-                                    storages['impressions'])
+        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'])
         self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init
 
     def _validate_last_impressions(self, client, *to_validate):
@@ -518,10 +514,9 @@ class RedisIntegrationTests(object):
             'segments': segment_storage,
             'impressions': RedisImpressionsStorage(redis_client, metadata),
             'events': RedisEventsStorage(redis_client, metadata),
-            'telemetry': RedisTelemetryStorage(redis_client, metadata)
         }
         impmanager = ImpressionsManager(ImpressionsMode.DEBUG, False)
-        recorder = PipelinedRecorder(redis_client.pipeline, impmanager, storages['telemetry'],
+        recorder = PipelinedRecorder(redis_client.pipeline, impmanager,
                                      storages['events'], storages['impressions'])
         self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init
 
@@ -743,8 +738,6 @@ class RedisIntegrationTests(object):
     def teardown_method(self):
         """Clear redis cache."""
         keys_to_delete = [
-            "SPLITIO/python-1.2.3/some_ip/latency.sdk.getTreatment.bucket.0",
-            "SPLITIO/python-1.2.3/some_ip/latency.sdk.getTreatmentWithConfig.bucket.0",
             "SPLITIO.segment.human_beigns",
             "SPLITIO.segment.employees.till",
             "SPLITIO.split.sample_feature",
@@ -753,8 +746,6 @@ class RedisIntegrationTests(object):
             "SPLITIO.split.all_feature",
             "SPLITIO.split.whitelist_feature",
             "SPLITIO.segment.employees",
-            "SPLITIO/python-1.2.3/some_ip/latency.sdk.getTreatments.bucket.0",
-            "SPLITIO/python-1.2.3/some_ip/latency.sdk.getTreatmentsWithConfig.bucket.0",
             "SPLITIO.split.regex_test",
             "SPLITIO.segment.human_beigns.till",
             "SPLITIO.split.boolean_test",
@@ -800,10 +791,9 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
             'segments': segment_storage,
             'impressions': RedisImpressionsStorage(redis_client, metadata),
             'events': RedisEventsStorage(redis_client, metadata),
-            'telemetry': RedisTelemetryStorage(redis_client, metadata)
         }
         impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
-        recorder = PipelinedRecorder(redis_client.pipeline, impmanager, storages['telemetry'],
+        recorder = PipelinedRecorder(redis_client.pipeline, impmanager,
                                      storages['events'], storages['impressions'])
         self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init
 

@@ -7,7 +7,7 @@ import os
 from splitio.client.util import get_metadata
 from splitio.models import splits, impressions, events
 from splitio.storage.redis import RedisSplitStorage, RedisSegmentStorage, RedisImpressionsStorage, \
-    RedisEventsStorage, RedisTelemetryStorage
+    RedisEventsStorage
 from splitio.storage.adapters.redis import _build_default_client
 from splitio.client.config import DEFAULT_CONFIG
 
@@ -242,79 +242,3 @@ class EventsStorageTests(object):
                 assert event['m']['n'] == 'NA'
         finally:
             adapter.delete('SPLITIO.events')
-
-
-class TelemetryStorageTests(object):
-    """Redis Telemetry storage e2e tests."""
-
-    def test_put_fetch_contains(self):
-        """Test storing and retrieving splits in redis."""
-        adapter = _build_default_client({})
-        cfg = DEFAULT_CONFIG.copy()
-        cfg.update({'IPAddressesEnabled': False})
-        metadata = get_metadata(cfg)
-        storage = RedisTelemetryStorage(adapter, metadata)
-        try:
-
-            storage.inc_counter('counter1')
-            storage.inc_counter('counter1')
-            storage.inc_counter('counter2')
-            assert adapter.get(storage._get_counter_key('counter1')) == '2'
-            assert adapter.get(storage._get_counter_key('counter2')) == '1'
-
-            storage.inc_latency('latency1', 3)
-            storage.inc_latency('latency1', 3)
-            storage.inc_latency('latency2', 6)
-            assert adapter.get(storage._get_latency_key('latency1', 3)) == '2'
-            assert adapter.get(storage._get_latency_key('latency2', 6)) == '1'
-
-            storage.put_gauge('gauge1', 3)
-            storage.put_gauge('gauge2', 1)
-            assert adapter.get(storage._get_gauge_key('gauge1')) == '3'
-            assert adapter.get(storage._get_gauge_key('gauge2')) == '1'
-
-        finally:
-            adapter.delete(
-                storage._get_counter_key('counter1'),
-                storage._get_counter_key('counter2'),
-                storage._get_latency_key('latency1', 3),
-                storage._get_latency_key('latency2', 6),
-                storage._get_gauge_key('gauge1'),
-                storage._get_gauge_key('gauge2')
-            )
-
-    def test_put_fetch_contains_ip_address_disabled(self):
-        """Test storing and retrieving splits in redis."""
-        adapter = _build_default_client({})
-        cfg = DEFAULT_CONFIG.copy()
-        cfg.update({'IPAddressesEnabled': False})
-        metadata = get_metadata(cfg)
-        storage = RedisTelemetryStorage(adapter, metadata)
-        try:
-
-            storage.inc_counter('counter1')
-            storage.inc_counter('counter1')
-            storage.inc_counter('counter2')
-            assert adapter.get(storage._get_counter_key('counter1')) == '2'
-            assert adapter.get(storage._get_counter_key('counter2')) == '1'
-
-            storage.inc_latency('latency1', 3)
-            storage.inc_latency('latency1', 3)
-            storage.inc_latency('latency2', 6)
-            assert adapter.get(storage._get_latency_key('latency1', 3)) == '2'
-            assert adapter.get(storage._get_latency_key('latency2', 6)) == '1'
-
-            storage.put_gauge('gauge1', 3)
-            storage.put_gauge('gauge2', 1)
-            assert adapter.get(storage._get_gauge_key('gauge1')) == '3'
-            assert adapter.get(storage._get_gauge_key('gauge2')) == '1'
-
-        finally:
-            adapter.delete(
-                storage._get_counter_key('counter1'),
-                storage._get_counter_key('counter2'),
-                storage._get_latency_key('latency1', 3),
-                storage._get_latency_key('latency2', 6),
-                storage._get_gauge_key('gauge1'),
-                storage._get_gauge_key('gauge2')
-            )
