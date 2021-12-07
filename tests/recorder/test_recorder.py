@@ -39,10 +39,12 @@ class StandardRecorderTests(object):
         impmanager.process_impressions.return_value = impressions
         telemetry = mocker.Mock(spec=TelemetryPipelinedStorage)
         event = mocker.Mock(spec=EventStorage)
-        impression = mocker.Mock(spec=ImpressionPipelinedStorage)
+        impression = mocker.Mock(spec=ImpressionStorage)
         recorder = PipelinedRecorder(redis, impmanager, telemetry, event, impression)
         recorder.record_treatment_stats(impressions, 1, 'some')
 
-        assert recorder._impression_storage.add_impressions_to_pipe.mock_calls[0][1][0] == impressions
-        assert recorder._telemetry_storage.add_latency_to_pipe.mock_calls[0][1][0] == 'some'
-        assert recorder._telemetry_storage.add_latency_to_pipe.mock_calls[0][1][1] == 1
+        # TODO @matias.melograno Commented until we implement TelemetryV2
+        # assert recorder._impression_storage.add_impressions_to_pipe.mock_calls[0][1][0] == impressions
+        # assert recorder._telemetry_storage.add_latency_to_pipe.mock_calls[0][1][0] == 'some'
+        # assert recorder._telemetry_storage.add_latency_to_pipe.mock_calls[0][1][1] == 1
+        assert recorder._impression_storage.put.mock_calls[0][1][0] == impressions

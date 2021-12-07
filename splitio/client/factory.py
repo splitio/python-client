@@ -8,7 +8,7 @@ from enum import Enum
 from splitio.client.client import Client
 from splitio.client import input_validator
 from splitio.client.manager import SplitManager
-from splitio.client.config import sanitize as sanitize_config
+from splitio.client.config import sanitize as sanitize_config, DEFAULT_DATA_THROTTLING
 from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper
 from splitio.engine.impressions import Manager as ImpressionsManager
@@ -57,6 +57,7 @@ from splitio.client.localhost import LocalhostEventsStorage, LocalhostImpression
 _LOGGER = logging.getLogger(__name__)
 _INSTANTIATED_FACTORIES = Counter()
 _INSTANTIATED_FACTORIES_LOCK = threading.RLock()
+_MIN_DEFAULT_DATA_THROTTLING_ALLOWED = 0.1  # 10%
 
 
 class Status(Enum):
@@ -401,6 +402,11 @@ def _build_redis_factory(api_key, cfg):
         'events': RedisEventsStorage(redis_adapter, sdk_metadata),
         'telemetry': RedisTelemetryStorage(redis_adapter, sdk_metadata)
     }
+    data_throttling = cfg.get('dataThrottling', DEFAULT_DATA_THROTTLING)
+    if data_throttling < _MIN_DEFAULT_DATA_THROTTLING_ALLOWED:
+        _LOGGER.warning("dataThrottling cannot be less than %f, defaulting to minimum",
+                        _MIN_DEFAULT_DATA_THROTTLING_ALLOWED)
+        data_throttling = _MIN_DEFAULT_DATA_THROTTLING_ALLOWED
     recorder = PipelinedRecorder(
         redis_adapter.pipeline,
         ImpressionsManager(cfg['impressionsMode'], False,
@@ -408,6 +414,7 @@ def _build_redis_factory(api_key, cfg):
         storages['telemetry'],
         storages['events'],
         storages['impressions'],
+        data_throttling,
     )
     return SplitFactory(
         api_key,

@@ -6,6 +6,7 @@ from splitio.engine.impressions import ImpressionsMode
 
 
 _LOGGER = logging.getLogger(__name__)
+DEFAULT_DATA_THROTTLING = 1
 
 
 DEFAULT_CONFIG = {
@@ -52,7 +53,7 @@ DEFAULT_CONFIG = {
     'machineIp': None,
     'splitFile': os.path.join(os.path.expanduser('~'), '.split'),
     'preforkedInitialization': False,
-    'dataThrotling': 1,
+    'dataThrottling': DEFAULT_DATA_THROTTLING,
 }
 
 

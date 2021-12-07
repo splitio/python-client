@@ -4,8 +4,10 @@ import logging
 import random
 
 
+from splitio.client.config import DEFAULT_DATA_THROTTLING
+
+
 _LOGGER = logging.getLogger(__name__)
-_MIN_THROTLING = 1
 
 
 class StatsRecorder(object, metaclass=abc.ABCMeta):
@@ -89,7 +91,8 @@ class StandardRecorder(StatsRecorder):
 class PipelinedRecorder(StatsRecorder):
     """PipelinedRecorder class."""
 
-    def __init__(self, pipe, impressions_manager, telemetry_storage, event_storage, impression_storage, data_throtling):
+    def __init__(self, pipe, impressions_manager, telemetry_storage, event_storage,
+                 impression_storage, data_throttling=DEFAULT_DATA_THROTTLING):
         """
         Class constructor.
 
@@ -103,13 +106,15 @@ class PipelinedRecorder(StatsRecorder):
         :type event_storage: splitio.storage.EventStorage
         :param impression_storage: impression storage instance
         :type impression_storage: splitio.storage.redis.RedisImpressionsStorage
+        :param data_throttling: data throttling factor
+        :type data_throttling: number
         """
         self._make_pipe = pipe
         self._impressions_manager = impressions_manager
         self._telemetry_storage = telemetry_storage
         self._event_sotrage = event_storage
         self._impression_storage = impression_storage
-        self._data_trothling = data_throtling
+        self._data_throttling = data_throttling
 
     def record_treatment_stats(self, impressions, latency, operation):
         """
@@ -123,11 +128,12 @@ class PipelinedRecorder(StatsRecorder):
         :type operation: str
         """
         try:
+            # TODO @matias.melograno
             # Changing logic until TelemetryV2 released to avoid using pipelined operations
             # Deprecated Old Telemetry
-            if self._data_trothling < _MIN_THROTLING:
+            if self._data_throttling < DEFAULT_DATA_THROTTLING:
                 rnumber = random.uniform(0, 1)
-                if self._data_trothling > rnumber:
+                if self._data_throttling > rnumber:
                     return
             impressions = self._impressions_manager.process_impressions(impressions)
             self._impression_storage.put(impressions)
