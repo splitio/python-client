@@ -10,7 +10,7 @@ TESTS_REQUIRES = [
     'pytest-mock>=3.5.1',
     'coverage',
     'pytest-cov',
-    'importlib-metadata==4.3'
+    'importlib-metadata==4.2'
 ]
 
 INSTALL_REQUIRES = [
