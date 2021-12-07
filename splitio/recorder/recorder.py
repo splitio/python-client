@@ -1,9 +1,11 @@
 """Stats Recorder."""
 import abc
 import logging
+import random
 
 
 _LOGGER = logging.getLogger(__name__)
+_MIN_THROTLING = 1
 
 
 class StatsRecorder(object, metaclass=abc.ABCMeta):
@@ -87,7 +89,7 @@ class StandardRecorder(StatsRecorder):
 class PipelinedRecorder(StatsRecorder):
     """PipelinedRecorder class."""
 
-    def __init__(self, pipe, impressions_manager, telemetry_storage, event_storage, impression_storage):
+    def __init__(self, pipe, impressions_manager, telemetry_storage, event_storage, impression_storage, data_throtling):
         """
         Class constructor.
 
@@ -107,6 +109,7 @@ class PipelinedRecorder(StatsRecorder):
         self._telemetry_storage = telemetry_storage
         self._event_sotrage = event_storage
         self._impression_storage = impression_storage
+        self._data_trothling = data_throtling
 
     def record_treatment_stats(self, impressions, latency, operation):
         """
@@ -120,15 +123,22 @@ class PipelinedRecorder(StatsRecorder):
         :type operation: str
         """
         try:
+            # Changing logic until TelemetryV2 released to avoid using pipelined operations
+            # Deprecated Old Telemetry
+            if self._data_trothling < _MIN_THROTLING:
+                rnumber = random.uniform(0, 1)
+                if self._data_trothling > rnumber:
+                    return
             impressions = self._impressions_manager.process_impressions(impressions)
-            pipe = self._make_pipe()
-            self._impression_storage.add_impressions_to_pipe(impressions, pipe)
-            self._telemetry_storage.add_latency_to_pipe(operation, latency, pipe)
-            result = pipe.execute()
-            if len(result) == 2:
-                self._impression_storage.expire_key(result[0], len(impressions))
+            self._impression_storage.put(impressions)
+            # pipe = self._make_pipe()
+            # self._impression_storage.add_impressions_to_pipe(impressions, pipe)
+            # self._telemetry_storage.add_latency_to_pipe(operation, latency, pipe)
+            # result = pipe.execute()
+            # if len(result) == 2:
+            #   self._impression_storage.expire_key(result[0], len(impressions))
         except Exception:  # pylint: disable=broad-except
-            _LOGGER.error('Error recording impressions and metrics')
+            _LOGGER.error('Error recording impressions')
             _LOGGER.debug('Error: ', exc_info=True)
 
     def record_track_stats(self, event):

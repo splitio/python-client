@@ -52,6 +52,7 @@ DEFAULT_CONFIG = {
     'machineIp': None,
     'splitFile': os.path.join(os.path.expanduser('~'), '.split'),
     'preforkedInitialization': False,
+    'dataThrotling': 1,
 }
 
 
