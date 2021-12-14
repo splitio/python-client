@@ -40,40 +40,6 @@ class LocalHostStoragesTests(object):
         assert evt_storage.pop_many([2]) is None
         assert evt_storage.pop_many(object) is None
 
-    def test_dummy_telemetry_storage(self):
-        """Test that dummy telemetry storage never complains."""
-        telemetry_storage = localhost.LocalhostTelemetryStorage()
-        assert telemetry_storage.inc_latency() is None
-        assert telemetry_storage.inc_latency('ads') is None
-        assert telemetry_storage.inc_latency(3) is None
-        assert telemetry_storage.inc_latency([2]) is None
-        assert telemetry_storage.inc_latency(object) is None
-        assert telemetry_storage.pop_latencies() is None
-        assert telemetry_storage.pop_latencies('ads') is None
-        assert telemetry_storage.pop_latencies(3) is None
-        assert telemetry_storage.pop_latencies([2]) is None
-        assert telemetry_storage.pop_latencies(object) is None
-        assert telemetry_storage.inc_counter() is None
-        assert telemetry_storage.inc_counter('ads') is None
-        assert telemetry_storage.inc_counter(3) is None
-        assert telemetry_storage.inc_counter([2]) is None
-        assert telemetry_storage.inc_counter(object) is None
-        assert telemetry_storage.pop_counters() is None
-        assert telemetry_storage.pop_counters('ads') is None
-        assert telemetry_storage.pop_counters(3) is None
-        assert telemetry_storage.pop_counters([2]) is None
-        assert telemetry_storage.pop_counters(object) is None
-        assert telemetry_storage.put_gauge() is None
-        assert telemetry_storage.put_gauge('ads') is None
-        assert telemetry_storage.put_gauge(3) is None
-        assert telemetry_storage.put_gauge([2]) is None
-        assert telemetry_storage.put_gauge(object) is None
-        assert telemetry_storage.pop_gauges() is None
-        assert telemetry_storage.pop_gauges('ads') is None
-        assert telemetry_storage.pop_gauges(3) is None
-        assert telemetry_storage.pop_gauges([2]) is None
-        assert telemetry_storage.pop_gauges(object) is None
-
 
 class SplitFetchingTaskTests(object):
     """Localhost split fetching task test cases."""

@@ -236,8 +236,7 @@ class SDKHandler(BaseHTTPRequestHandler):
             self._req_queue.put(Request('POST', self.path, headers, body))
 
         if self.path in set(['/api/testImpressions/bulk', '/testImpressions/count',
-                             '/api/events/bulk', '/metrics/times', '/metrics/count',
-                             '/metrics/gauge']):
+                             '/api/events/bulk']):
 
             self.send_response(200)
             self.send_header("Content-type", "application/json")
