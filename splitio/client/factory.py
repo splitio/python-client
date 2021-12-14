@@ -8,7 +8,7 @@ from enum import Enum
 from splitio.client.client import Client
 from splitio.client import input_validator
 from splitio.client.manager import SplitManager
-from splitio.client.config import sanitize as sanitize_config
+from splitio.client.config import sanitize as sanitize_config, DEFAULT_DATA_SAMPLING
 from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper
 from splitio.engine.impressions import Manager as ImpressionsManager
@@ -53,6 +53,7 @@ from splitio.client.localhost import LocalhostEventsStorage, LocalhostImpression
 _LOGGER = logging.getLogger(__name__)
 _INSTANTIATED_FACTORIES = Counter()
 _INSTANTIATED_FACTORIES_LOCK = threading.RLock()
+_MIN_DEFAULT_DATA_SAMPLING_ALLOWED = 0.1  # 10%
 
 
 class Status(Enum):
@@ -387,12 +388,18 @@ def _build_redis_factory(api_key, cfg):
         'impressions': RedisImpressionsStorage(redis_adapter, sdk_metadata),
         'events': RedisEventsStorage(redis_adapter, sdk_metadata),
     }
+    data_sampling = cfg.get('dataSampling', DEFAULT_DATA_SAMPLING)
+    if data_sampling < _MIN_DEFAULT_DATA_SAMPLING_ALLOWED:
+        _LOGGER.warning("dataSampling cannot be less than %f, defaulting to minimum",
+                        _MIN_DEFAULT_DATA_SAMPLING_ALLOWED)
+        data_sampling = _MIN_DEFAULT_DATA_SAMPLING_ALLOWED
     recorder = PipelinedRecorder(
         redis_adapter.pipeline,
         ImpressionsManager(cfg['impressionsMode'], False,
                            _wrap_impression_listener(cfg['impressionListener'], sdk_metadata)),
         storages['events'],
         storages['impressions'],
+        data_sampling,
     )
     return SplitFactory(
         api_key,
