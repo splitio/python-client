@@ -1,5 +1,5 @@
-9.2.0 (Dec XX, 2021)
-- 
+9.1.1 (Dec 16, 2021)
+- Deprecated old telemetry.
 
 9.1.0 (Jul 15, 2021)
 - Added Cache-Control header for on-demand requests to sdk-server.
