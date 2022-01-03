@@ -2,14 +2,13 @@
 import logging
 import json
 
-from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, \
-    TelemetryStorage
+from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage
 from splitio.models import splits, segments
 from splitio.models.impressions import Impression
 from splitio.models.events import Event
 from splitio.storage.adapters.uwsgi_cache import _SPLITIO_CHANGE_NUMBERS, \
     _SPLITIO_EVENTS_CACHE_NAMESPACE, _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE, \
-    _SPLITIO_METRICS_CACHE_NAMESPACE, _SPLITIO_MISC_NAMESPACE, UWSGILock, \
+    _SPLITIO_MISC_NAMESPACE, UWSGILock, \
     _SPLITIO_SEGMENTS_CACHE_NAMESPACE, _SPLITIO_SPLITS_CACHE_NAMESPACE, \
     _SPLITIO_LOCK_CACHE_NAMESPACE
 
@@ -607,137 +606,6 @@ class UWSGIEventStorage(EventStorage):
     def acknowledge_flush(self):
         """Acknowledge that a flush has been requested."""
         self._uwsgi.cache_del(self._EVENTS_FLUSH, _SPLITIO_LOCK_CACHE_NAMESPACE)
-
-    def clear(self):
-        """
-        Clear data.
-        """
-        raise NotImplementedError('Not supported for uwsgi.')
-
-
-class UWSGITelemetryStorage(TelemetryStorage):
-    """Telemetry storage interface."""
-
-    _LATENCIES_KEY = 'SPLITIO.latencies'
-    _GAUGES_KEY = 'SPLITIO.gauges'
-    _COUNTERS_KEY = 'SPLITIO.counters'
-
-    _LATENCIES_LOCK_KEY = 'SPLITIO.latencies.lock'
-    _GAUGES_LOCK_KEY = 'SPLITIO.gauges.lock'
-    _COUNTERS_LOCK_KEY = 'SPLITIO.counters.lock'
-
-    def __init__(self, uwsgi_entrypoint):
-        """
-        Class constructor.
-
-        :param uwsgi_entrypoint: uwsgi module/emulator
-        :type uwsgi_entrypoint: object
-        """
-        self._uwsgi = uwsgi_entrypoint
-
-    def inc_latency(self, name, bucket):
-        """
-        Add a latency.
-
-        :param name: Name of the latency metric.
-        :type name: str
-        :param value: Value of the latency metric.
-        :tyoe value: int
-        """
-        if not 0 <= bucket <= 21:
-            _LOGGER.error('Incorect bucket "%d" for latency "%s". Ignoring.', bucket, name)
-            return
-
-        with UWSGILock(self._uwsgi, self._LATENCIES_LOCK_KEY):
-            latencies_raw = self._uwsgi.cache_get(
-                self._LATENCIES_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
-            latencies = json.loads(latencies_raw) if latencies_raw else {}
-            to_update = latencies.get(name, [0] * 22)
-            to_update[bucket] += 1
-            latencies[name] = to_update
-            self._uwsgi.cache_set(
-                self._LATENCIES_KEY,
-                json.dumps(latencies),
-                0,
-                _SPLITIO_METRICS_CACHE_NAMESPACE
-            )
-
-    def inc_counter(self, name):
-        """
-        Increment a counter.
-
-        :param name: Name of the counter metric.
-        :type name: str
-        """
-        with UWSGILock(self._uwsgi, self._COUNTERS_LOCK_KEY):
-            counters_raw = self._uwsgi.cache_get(
-                self._COUNTERS_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
-            counters = json.loads(counters_raw) if counters_raw else {}
-            value = counters.get(name, 0)
-            value += 1
-            counters[name] = value
-            self._uwsgi.cache_set(
-                self._COUNTERS_KEY,
-                json.dumps(counters),
-                0,
-                _SPLITIO_METRICS_CACHE_NAMESPACE
-            )
-
-    def put_gauge(self, name, value):
-        """
-        Add a gauge metric.
-
-        :param name: Name of the gauge metric.
-        :type name: str
-        :param value: Value of the gauge metric.
-        :type value: int
-        """
-        with UWSGILock(self._uwsgi, self._GAUGES_LOCK_KEY):
-            gauges_raw = self._uwsgi.cache_get(self._GAUGES_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
-            gauges = json.loads(gauges_raw) if gauges_raw else {}
-            gauges[name] = value
-            self._uwsgi.cache_set(
-                self._GAUGES_KEY,
-                json.dumps(gauges),
-                0,
-                _SPLITIO_METRICS_CACHE_NAMESPACE
-            )
-
-    def pop_counters(self):
-        """
-        Get all the counters.
-
-        :rtype: list
-        """
-        with UWSGILock(self._uwsgi, self._COUNTERS_LOCK_KEY):
-            counters_raw = self._uwsgi.cache_get(
-                self._COUNTERS_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
-            self._uwsgi.cache_del(self._COUNTERS_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
-            return json.loads(counters_raw) if counters_raw else {}
-
-    def pop_gauges(self):
-        """
-        Get all the gauges.
-
-        :rtype: list
-
-        """
-        with UWSGILock(self._uwsgi, self._GAUGES_LOCK_KEY):
-            gauges_raw = self._uwsgi.cache_get(self._GAUGES_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
-            self._uwsgi.cache_del(self._GAUGES_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
-            return json.loads(gauges_raw) if gauges_raw else {}
-
-    def pop_latencies(self):
-        """
-        Get all latencies.
-
-        :rtype: list
-        """
-        with UWSGILock(self._uwsgi, self._LATENCIES_LOCK_KEY):
-            latencies_raw = self._uwsgi.cache_get(
-                self._LATENCIES_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
-            self._uwsgi.cache_del(self._LATENCIES_KEY, _SPLITIO_METRICS_CACHE_NAMESPACE)
-            return json.loads(latencies_raw) if latencies_raw else {}
 
     def clear(self):
         """

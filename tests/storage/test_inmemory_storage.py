@@ -6,7 +6,7 @@ from splitio.models.impressions import Impression
 from splitio.models.events import Event, EventWrapper
 
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
-    InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage
+    InMemoryImpressionStorage, InMemoryEventStorage
 
 
 class InMemorySplitStorageTests(object):
@@ -392,62 +392,3 @@ class InMemoryEventsStorageTests(object):
         assert storage._events.qsize() == 1
         storage.clear()
         assert storage._events.qsize() == 0
-
-
-class InMemoryTelemetryStorageTests(object):
-    """In-Memory telemetry storage unit tests."""
-
-    def test_latencies(self):
-        """Test storing and retrieving latencies."""
-        storage = InMemoryTelemetryStorage()
-        storage.inc_latency('sdk.get_treatment', -1)
-        storage.inc_latency('sdk.get_treatment', 0)
-        storage.inc_latency('sdk.get_treatment', 1)
-        storage.inc_latency('sdk.get_treatment', 5)
-        storage.inc_latency('sdk.get_treatment', 5)
-        storage.inc_latency('sdk.get_treatment', 22)
-        latencies = storage.pop_latencies()
-        assert latencies['sdk.get_treatment'][0] == 1
-        assert latencies['sdk.get_treatment'][1] == 1
-        assert latencies['sdk.get_treatment'][5] == 2
-        assert len(latencies['sdk.get_treatment']) == 22
-        assert storage.pop_latencies() == {}
-
-    def test_counters(self):
-        """Test storing and retrieving counters."""
-        storage = InMemoryTelemetryStorage()
-        storage.inc_counter('some_counter_1')
-        storage.inc_counter('some_counter_1')
-        storage.inc_counter('some_counter_1')
-        storage.inc_counter('some_counter_2')
-        counters = storage.pop_counters()
-        assert counters['some_counter_1'] == 3
-        assert counters['some_counter_2'] == 1
-        assert storage.pop_counters() == {}
-
-    def test_gauges(self):
-        """Test storing and retrieving gauges."""
-        storage = InMemoryTelemetryStorage()
-        storage.put_gauge('some_gauge_1', 321)
-        storage.put_gauge('some_gauge_2', 654)
-        gauges = storage.pop_gauges()
-        assert gauges['some_gauge_1'] == 321
-        assert gauges['some_gauge_2'] == 654
-        assert storage.pop_gauges() == {}
-
-    def test_clear(self):
-        """Test clear."""
-        storage = InMemoryTelemetryStorage()
-        storage.put_gauge('some_gauge_1', 321)
-        storage.inc_counter('some_counter_1')
-        storage.inc_latency('sdk.get_treatment', 5)
-
-        assert len(storage._counters) == 1
-        assert len(storage._gauges) == 1
-        assert len(storage._latencies) == 1
-
-        storage.clear()
-
-        assert len(storage._counters) == 0
-        assert len(storage._gauges) == 0
-        assert len(storage._latencies) == 0

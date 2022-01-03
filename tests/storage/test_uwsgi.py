@@ -3,7 +3,7 @@
 import json
 
 from splitio.storage.uwsgi import UWSGIEventStorage, UWSGIImpressionStorage,  \
-    UWSGISegmentStorage, UWSGISplitStorage,  UWSGITelemetryStorage
+    UWSGISegmentStorage, UWSGISplitStorage
 
 from splitio.models.splits import Split
 from splitio.models.segments import Segment
@@ -286,35 +286,3 @@ class UWSGIEventsStorageTests(object):
             Event('key3', 'user', 'purchase', 10, 123456, None),
             Event('key4', 'user', 'purchase', 10, 123456, None)
         ]
-
-
-class UWSGITelemetryStorageTests(object):
-    """UWSGI-based telemetry storage test cases."""
-
-    def test_latencies(self):
-        """Test storing and popping latencies."""
-        storage = UWSGITelemetryStorage(get_uwsgi(True))
-        storage.inc_latency('some_latency', 2)
-        storage.inc_latency('some_latency', 2)
-        storage.inc_latency('some_latency', 2)
-        assert storage.pop_latencies() == {
-            'some_latency': [0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        }
-        assert storage.pop_latencies() == {}
-
-    def test_counters(self):
-        """Test storing and popping counters."""
-        storage = UWSGITelemetryStorage(get_uwsgi(True))
-        storage.inc_counter('some_counter')
-        storage.inc_counter('some_counter')
-        storage.inc_counter('some_counter')
-        assert storage.pop_counters() == {'some_counter': 3}
-        assert storage.pop_counters() == {}
-
-    def test_gauges(self):
-        """Test storing and popping gauges."""
-        storage = UWSGITelemetryStorage(get_uwsgi(True))
-        storage.put_gauge('some_gauge1', 123)
-        storage.put_gauge('some_gauge2', 456)
-        assert storage.pop_gauges() == {'some_gauge1': 123, 'some_gauge2': 456}
-        assert storage.pop_gauges() == {}
