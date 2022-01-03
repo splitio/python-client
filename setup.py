@@ -15,7 +15,8 @@ TESTS_REQUIRES = [
 
 INSTALL_REQUIRES = [
     'requests>=2.9.1',
-    'pyyaml>=5.1',
+    'pyyaml==5.1;python_version<"3"',
+    'pyyaml>=5.1;python_version>"3"',
     'future>=0.15.2',
     'docopt>=0.6.2',
     'six>=1.10.0',
