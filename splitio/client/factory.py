@@ -14,6 +14,7 @@ from splitio.client.manager import SplitManager
 from splitio.client.config import sanitize as sanitize_config
 from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper
+from splitio.client.wrapper import SplitFactoryWrapped
 from splitio.engine.impressions import Manager as ImpressionsManager
 
 # Storage
@@ -515,6 +516,10 @@ def get_factory(api_key, **kwargs):
                     "We recommend keeping only one instance of the factory at all times "
                     "(Singleton pattern) and reusing it throughout your application."
                 )
+
+        config = kwargs.get('config', {})
+        if not config.get('evaluationsEnabled', True):
+            return SplitFactoryWrapped()
 
         config = sanitize_config(api_key, kwargs.get('config', {}))
 
