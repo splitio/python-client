@@ -10,8 +10,7 @@ from splitio.client.factory import SplitFactory, get_factory
 from splitio.client.client import CONTROL, Client, _LOGGER as _logger
 from splitio.client.manager import SplitManager
 from splitio.client.key import Key
-from splitio.storage import SplitStorage, EventStorage, ImpressionStorage, TelemetryStorage, \
-    SegmentStorage
+from splitio.storage import SplitStorage, EventStorage, ImpressionStorage, SegmentStorage
 from splitio.models.splits import Split
 from splitio.client import input_validator
 from splitio.recorder.recorder import StandardRecorder
@@ -38,7 +37,6 @@ class ClientInputValidationTests(object):
                 'segments': mocker.Mock(spec=SegmentStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
-                'telemetry': mocker.Mock(spec=TelemetryStorage)
             }[storage]
         factory_mock = mocker.Mock(spec=SplitFactory)
         factory_mock._get_storage.side_effect = _get_storage_mock
@@ -267,7 +265,6 @@ class ClientInputValidationTests(object):
                 'segments': mocker.Mock(spec=SegmentStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
-                'telemetry': mocker.Mock(spec=TelemetryStorage)
             }[storage]
         factory_mock = mocker.Mock(spec=SplitFactory)
         factory_mock._get_storage.side_effect = _get_storage_mock
@@ -531,7 +528,7 @@ class ClientInputValidationTests(object):
 
         event_storage = mocker.Mock(spec=EventStorage)
         event_storage.put.return_value = True
-        recorder = StandardRecorder(mocker.Mock(), mocker.Mock(), event_storage, mocker.Mock())
+        recorder = StandardRecorder(mocker.Mock(), event_storage, mocker.Mock())
         client = Client(factory_mock, recorder)
         client._event_storage = event_storage
         _logger = mocker.Mock()
@@ -793,7 +790,6 @@ class ClientInputValidationTests(object):
                 'segments': mocker.Mock(spec=SegmentStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
-                'telemetry': mocker.Mock(spec=TelemetryStorage)
             }[storage]
         factory_mock = mocker.Mock(spec=SplitFactory)
         factory_mock._get_storage.side_effect = _get_storage_mock

@@ -7,8 +7,7 @@ from collections import Counter
 
 from six.moves import queue
 from splitio.models.segments import Segment
-from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, \
-    TelemetryStorage
+from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage
 
 MAX_SIZE_BYTES = 5 * 1024 * 1024
 
@@ -422,106 +421,3 @@ class InMemoryEventStorage(EventStorage):
         """
         with self._lock:
             self._events = queue.Queue(maxsize=self._queue_size)
-
-
-class InMemoryTelemetryStorage(TelemetryStorage):
-    """In-Memory implementation of telemetry storage interface."""
-
-    def __init__(self):
-        """Constructor."""
-        self._latencies = {}
-        self._gauges = {}
-        self._counters = {}
-        self._latencies_lock = threading.Lock()
-        self._gauges_lock = threading.Lock()
-        self._counters_lock = threading.Lock()
-
-    def inc_latency(self, name, bucket):
-        """
-        Add a latency.
-
-        :param name: Name of the latency metric.
-        :type name: str
-        :param value: Value of the latency metric.
-        :tyoe value: int
-        """
-        if not 0 <= bucket <= 21:
-            _LOGGER.warning('Incorect bucket "%d" for latency "%s". Ignoring.', bucket, name)
-            return
-
-        with self._latencies_lock:
-            latencies = self._latencies.get(name, [0] * 22)
-            latencies[bucket] += 1
-            self._latencies[name] = latencies
-
-    def inc_counter(self, name):
-        """
-        Increment a counter.
-
-        :param name: Name of the counter metric.
-        :type name: str
-        """
-        with self._counters_lock:
-            counter = self._counters.get(name, 0)
-            counter += 1
-            self._counters[name] = counter
-
-    def put_gauge(self, name, value):
-        """
-        Add a gauge metric.
-
-        :param name: Name of the gauge metric.
-        :type name: str
-        :param value: Value of the gauge metric.
-        :type value: int
-        """
-        with self._gauges_lock:
-            self._gauges[name] = value
-
-    def pop_counters(self):
-        """
-        Get all the counters.
-
-        :rtype: list
-        """
-        with self._counters_lock:
-            try:
-                return self._counters
-            finally:
-                self._counters = {}
-
-    def pop_gauges(self):
-        """
-        Get all the gauges.
-
-        :rtype: list
-
-        """
-        with self._gauges_lock:
-            try:
-                return self._gauges
-            finally:
-                self._gauges = {}
-
-    def pop_latencies(self):
-        """
-        Get all latencies.
-
-        :rtype: list
-        """
-        with self._latencies_lock:
-            try:
-                return self._latencies
-            finally:
-                self._latencies = {}
-
-    def clear(self):
-        """
-        Clear data.
-        """
-        with self._latencies_lock:
-            self._latencies = {}
-        with self._gauges_lock:
-            self._gauges = {}
-        with self._counters_lock:
-            self._counters = {}

@@ -15,7 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 class SplitSynchronizers(object):
     """SplitSynchronizers."""
 
-    def __init__(self, split_sync, segment_sync, impressions_sync, events_sync, telemetry_sync,  # pylint:disable=too-many-arguments
+    def __init__(self, split_sync, segment_sync, impressions_sync, events_sync,  # pylint:disable=too-many-arguments
                  impressions_count_sync):
         """
         Class constructor.
@@ -28,8 +28,6 @@ class SplitSynchronizers(object):
         :type impressions_sync: splitio.sync.impression.ImpressionSynchronizer
         :param events_sync: sync for events
         :type events_sync: splitio.sync.event.EventSynchronizer
-        :param telemetry_sync: sync for telemetry
-        :type telemetry_sync: splitio.sync.telemetry.TelemetrySynchronizer
         :param impressions_count_sync: sync for impression_counts
         :type impressions_count_sync: splitio.sync.impression.ImpressionsCountSynchronizer
         """
@@ -37,7 +35,6 @@ class SplitSynchronizers(object):
         self._segment_sync = segment_sync
         self._impressions_sync = impressions_sync
         self._events_sync = events_sync
-        self._telemetry_sync = telemetry_sync
         self._impressions_count_sync = impressions_count_sync
 
     @property
@@ -61,11 +58,6 @@ class SplitSynchronizers(object):
         return self._events_sync
 
     @property
-    def telemetry_sync(self):
-        """Return telemetry synchonizer."""
-        return self._telemetry_sync
-
-    @property
     def impressions_count_sync(self):
         """Return impressions count synchonizer."""
         return self._impressions_count_sync
@@ -74,7 +66,7 @@ class SplitSynchronizers(object):
 class SplitTasks(object):
     """SplitTasks."""
 
-    def __init__(self, split_task, segment_task, impressions_task, events_task, telemetry_task,  # pylint:disable=too-many-arguments
+    def __init__(self, split_task, segment_task, impressions_task, events_task,  # pylint:disable=too-many-arguments
                  impressions_count_task):
         """
         Class constructor.
@@ -87,8 +79,6 @@ class SplitTasks(object):
         :type impressions_task: splitio.tasks.impressions_sync.ImpressionsSyncTask
         :param events_task: sync for events
         :type events_task: splitio.tasks.events_sync.EventsSyncTask
-        :param telemetry_task: sync for telemetry
-        :type telemetry_task: splitio.tasks.telemetry_sync.TelemetrySynchronizationTask
         :param impressions_count_task: sync for impression_counts
         :type impressions_count_task: splitio.tasks.impressions_sync.ImpressionsCountSyncTask
         """
@@ -96,7 +86,6 @@ class SplitTasks(object):
         self._segment_task = segment_task
         self._impressions_task = impressions_task
         self._events_task = events_task
-        self._telemetry_task = telemetry_task
         self._impressions_count_task = impressions_count_task
 
     @property
@@ -118,11 +107,6 @@ class SplitTasks(object):
     def events_task(self):
         """Return events sync task."""
         return self._events_task
-
-    @property
-    def telemetry_task(self):
-        """Return telemetry sync task."""
-        return self._telemetry_task
 
     @property
     def impressions_count_task(self):
@@ -310,7 +294,6 @@ class Synchronizer(BaseSynchronizer):
         _LOGGER.debug('Starting periodic data recording')
         self._split_tasks.impressions_task.start()
         self._split_tasks.events_task.start()
-        self._split_tasks.telemetry_task.start()
         self._split_tasks.impressions_count_task.start()
 
     def stop_periodic_data_recording(self, blocking):
@@ -335,7 +318,6 @@ class Synchronizer(BaseSynchronizer):
             self._split_tasks.impressions_task.stop()
             self._split_tasks.events_task.stop()
             self._split_tasks.impressions_count_task.stop()
-        self._split_tasks.telemetry_task.stop()
 
     def kill_split(self, split_name, default_treatment, change_number):
         """

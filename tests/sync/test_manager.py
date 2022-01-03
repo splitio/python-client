@@ -7,13 +7,11 @@ from splitio.tasks.split_sync import SplitSynchronizationTask
 from splitio.tasks.segment_sync import SegmentSynchronizationTask
 from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask
 from splitio.tasks.events_sync import EventsSyncTask
-from splitio.tasks.telemetry_sync import TelemetrySynchronizationTask
 
 from splitio.sync.split import SplitSynchronizer
 from splitio.sync.segment import SegmentSynchronizer
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.sync.event import EventSynchronizer
-from splitio.sync.telemetry import TelemetrySynchronizer
 from splitio.sync.synchronizer import Synchronizer, SplitTasks, SplitSynchronizers
 from splitio.sync.manager import Manager
 
@@ -27,7 +25,7 @@ class ManagerTests(object):
     def test_error(self, mocker):
         split_task = mocker.Mock(spec=SplitSynchronizationTask)
         split_tasks = SplitTasks(split_task, mocker.Mock(), mocker.Mock(), mocker.Mock(),
-                                 mocker.Mock(), mocker.Mock())
+                                 mocker.Mock())
 
         storage = mocker.Mock(spec=SplitStorage)
         api = mocker.Mock()
@@ -40,7 +38,7 @@ class ManagerTests(object):
 
         split_sync = SplitSynchronizer(api, storage)
         synchronizers = SplitSynchronizers(split_sync, mocker.Mock(), mocker.Mock(),
-                                           mocker.Mock(), mocker.Mock(), mocker.Mock())
+                                           mocker.Mock(), mocker.Mock())
 
         synchronizer = Synchronizer(synchronizers, split_tasks)
         manager = Manager(threading.Event(), synchronizer,  mocker.Mock(), False)

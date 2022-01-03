@@ -7,12 +7,10 @@ from splitio.tasks.split_sync import SplitSynchronizationTask
 from splitio.tasks.segment_sync import SegmentSynchronizationTask
 from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask
 from splitio.tasks.events_sync import EventsSyncTask
-from splitio.tasks.telemetry_sync import TelemetrySynchronizationTask
 from splitio.sync.split import SplitSynchronizer
 from splitio.sync.segment import SegmentSynchronizer
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.sync.event import EventSynchronizer
-from splitio.sync.telemetry import TelemetrySynchronizer
 from splitio.storage import SegmentStorage, SplitStorage
 from splitio.api import APIException
 from splitio.models.splits import Split
@@ -30,7 +28,7 @@ class SynchronizerTests(object):
 
         split_sync = SplitSynchronizer(api, storage)
         split_synchronizers = SplitSynchronizers(split_sync, mocker.Mock(), mocker.Mock(),
-                                                 mocker.Mock(), mocker.Mock(), mocker.Mock())
+                                                 mocker.Mock(), mocker.Mock())
         sychronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
 
         sychronizer.synchronize_splits(None)  # APIExceptions are handled locally and should not be propagated!
@@ -51,7 +49,7 @@ class SynchronizerTests(object):
 
         segment_sync = SegmentSynchronizer(api, split_storage, storage)
         split_synchronizers = SplitSynchronizers(split_sync, segment_sync, mocker.Mock(),
-                                                 mocker.Mock(), mocker.Mock(), mocker.Mock())
+                                                 mocker.Mock(), mocker.Mock())
         sychronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
 
         sychronizer.sync_all()  # SyncAll should not throw!
@@ -88,7 +86,7 @@ class SynchronizerTests(object):
         segment_sync = SegmentSynchronizer(segment_api, split_storage, segment_storage)
 
         split_synchronizers = SplitSynchronizers(split_sync, segment_sync, mocker.Mock(),
-                                                 mocker.Mock(), mocker.Mock(), mocker.Mock())
+                                                 mocker.Mock(), mocker.Mock())
 
         synchronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
         synchronizer.sync_all()
@@ -106,7 +104,7 @@ class SynchronizerTests(object):
         split_task = mocker.Mock(spec=SplitSynchronizationTask)
         segment_task = mocker.Mock(spec=SegmentSynchronizationTask)
         split_tasks = SplitTasks(split_task, segment_task, mocker.Mock(), mocker.Mock(),
-                                 mocker.Mock(), mocker.Mock())
+                                 mocker.Mock())
         synchronizer = Synchronizer(mocker.Mock(spec=SplitSynchronizers), split_tasks)
         synchronizer.start_periodic_fetching()
 
@@ -118,9 +116,9 @@ class SynchronizerTests(object):
         segment_task = mocker.Mock(spec=SegmentSynchronizationTask)
         segment_sync = mocker.Mock(spec=SegmentSynchronizer)
         split_synchronizers = SplitSynchronizers(mocker.Mock(), segment_sync, mocker.Mock(),
-                                                 mocker.Mock(), mocker.Mock(), mocker.Mock())
+                                                 mocker.Mock(), mocker.Mock())
         split_tasks = SplitTasks(split_task, segment_task, mocker.Mock(), mocker.Mock(),
-                                 mocker.Mock(), mocker.Mock())
+                                 mocker.Mock())
         synchronizer = Synchronizer(split_synchronizers, split_tasks)
         synchronizer.stop_periodic_fetching()
 
@@ -132,24 +130,19 @@ class SynchronizerTests(object):
         impression_task = mocker.Mock(spec=ImpressionsSyncTask)
         impression_count_task = mocker.Mock(spec=ImpressionsCountSyncTask)
         event_task = mocker.Mock(spec=EventsSyncTask)
-        telemetry_task = mocker.Mock(spec=TelemetrySynchronizationTask)
         split_tasks = SplitTasks(mocker.Mock(), mocker.Mock(), impression_task, event_task,
-                                 telemetry_task, impression_count_task)
+                                 impression_count_task)
         synchronizer = Synchronizer(mocker.Mock(spec=SplitSynchronizers), split_tasks)
         synchronizer.start_periodic_data_recording()
 
         assert len(impression_task.start.mock_calls) == 1
         assert len(impression_count_task.start.mock_calls) == 1
         assert len(event_task.start.mock_calls) == 1
-        assert len(telemetry_task.start.mock_calls) == 1
 
     def test_stop_periodic_data_recording(self, mocker):
 
         def stop_mock(event):
             event.set()
-            return
-
-        def stop_mock_2():
             return
 
         impression_task = mocker.Mock(spec=ImpressionsSyncTask)
@@ -158,17 +151,14 @@ class SynchronizerTests(object):
         impression_count_task.stop.side_effect = stop_mock
         event_task = mocker.Mock(spec=EventsSyncTask)
         event_task.stop.side_effect = stop_mock
-        telemetry_task = mocker.Mock(spec=TelemetrySynchronizationTask)
-        telemetry_task.stop.side_effect = stop_mock_2
         split_tasks = SplitTasks(mocker.Mock(), mocker.Mock(), impression_task, event_task,
-                                 telemetry_task, impression_count_task)
+                                 impression_count_task)
         synchronizer = Synchronizer(mocker.Mock(spec=SplitSynchronizers), split_tasks)
         synchronizer.stop_periodic_data_recording(True)
 
         assert len(impression_task.stop.mock_calls) == 1
         assert len(impression_count_task.stop.mock_calls) == 1
         assert len(event_task.stop.mock_calls) == 1
-        assert len(telemetry_task.stop.mock_calls) == 1
 
     def test_shutdown(self, mocker):
 
@@ -189,15 +179,13 @@ class SynchronizerTests(object):
         impression_count_task.stop.side_effect = stop_mock
         event_task = mocker.Mock(spec=EventsSyncTask)
         event_task.stop.side_effect = stop_mock
-        telemetry_task = mocker.Mock(spec=TelemetrySynchronizationTask)
-        telemetry_task.stop.side_effect = stop_mock_2
 
         segment_sync = mocker.Mock(spec=SegmentSynchronizer)
 
         split_synchronizers = SplitSynchronizers(mocker.Mock(), segment_sync, mocker.Mock(),
-                                                 mocker.Mock(), mocker.Mock(), mocker.Mock())
+                                                 mocker.Mock(), mocker.Mock())
         split_tasks = SplitTasks(split_task, segment_task, impression_task, event_task,
-                                 telemetry_task, impression_count_task)
+                                 impression_count_task)
         synchronizer = Synchronizer(split_synchronizers, split_tasks)
         synchronizer.shutdown(True)
 
@@ -207,7 +195,6 @@ class SynchronizerTests(object):
         assert len(impression_task.stop.mock_calls) == 1
         assert len(impression_count_task.stop.mock_calls) == 1
         assert len(event_task.stop.mock_calls) == 1
-        assert len(telemetry_task.stop.mock_calls) == 1
 
     def test_sync_all_ok(self, mocker):
         """Test that 3 attempts are done before failing."""

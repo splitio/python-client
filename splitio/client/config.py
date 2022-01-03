@@ -8,7 +8,7 @@ from splitio.engine.impressions import ImpressionsMode
 
 
 _LOGGER = logging.getLogger(__name__)
-
+DEFAULT_DATA_SAMPLING = 1
 
 DEFAULT_CONFIG = {
     'operationMode': 'in-memory',
@@ -57,6 +57,7 @@ DEFAULT_CONFIG = {
     'machineIp': None,
     'splitFile': os.path.join(os.path.expanduser('~'), '.split'),
     'preforkedInitialization': False,
+    'dataSampling': DEFAULT_DATA_SAMPLING,
 }
 
 

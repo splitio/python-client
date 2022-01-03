@@ -24,9 +24,6 @@ _SPLITIO_SEGMENTS_CACHE_NAMESPACE = 'splitio_segments'
 # Cache where impressions are stored
 _SPLITIO_IMPRESSIONS_CACHE_NAMESPACE = 'splitio_impressions'
 
-# Cache where metrics are stored
-_SPLITIO_METRICS_CACHE_NAMESPACE = 'splitio_metrics'
-
 # Cache where events are stored (1 key with lots of blocks)
 _SPLITIO_EVENTS_CACHE_NAMESPACE = 'splitio_events'
 

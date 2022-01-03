@@ -4,12 +4,11 @@ from splitio.storage import SplitStorage
 from splitio.tasks.util.workerpool import WorkerPool
 from splitio.storage.uwsgi import UWSGISplitStorage
 from splitio.tasks.uwsgi_wrappers import uwsgi_update_splits, uwsgi_update_segments, \
-    uwsgi_report_events, uwsgi_report_impressions, uwsgi_report_telemetry
+    uwsgi_report_events, uwsgi_report_impressions
 from splitio.sync.split import SplitSynchronizer
 from splitio.sync.segment import SegmentSynchronizer
 from splitio.sync.impression import ImpressionSynchronizer
 from splitio.sync.event import EventSynchronizer
-from splitio.sync.telemetry import TelemetrySynchronizer
 
 
 class NonCatchableException(BaseException):
@@ -115,23 +114,3 @@ class TaskWrappersTests(object):
             # Make sure that the task was called before being forced to stop.
             assert data['executions'] > 1
         # TODO: Test impressions flushing.
-
-    def test_post_telemetry(self, mocker):
-        """Test split sync task wrapper."""
-        data = {'executions': 0}
-
-        def _flush_telemetry_side_effect(*_, **__):
-            data['executions'] += 1
-            if data['executions'] > 1:
-                raise NonCatchableException('asd')
-
-        stmock = mocker.Mock(spec=TelemetrySynchronizer)
-        stmock.synchronize_telemetry.side_effect = _flush_telemetry_side_effect
-        stmock_class = mocker.Mock(spec=TelemetrySynchronizer)
-        stmock_class.return_value = stmock
-        mocker.patch('splitio.tasks.uwsgi_wrappers.TelemetrySynchronizer', new=stmock_class)
-        try:
-            uwsgi_report_telemetry({'apikey': 'asd', 'metricsRefreshRate': 1})
-        except NonCatchableException:
-            # Make sure that the task was called before being forced to stop.
-            assert data['executions'] > 1

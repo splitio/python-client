@@ -7,19 +7,17 @@ from splitio.client.config import sanitize as sanitize_config
 from splitio.client.util import get_metadata
 from splitio.storage.adapters.uwsgi_cache import get_uwsgi
 from splitio.storage.uwsgi import UWSGIEventStorage, UWSGIImpressionStorage, \
-    UWSGISegmentStorage, UWSGISplitStorage, UWSGITelemetryStorage
+    UWSGISegmentStorage, UWSGISplitStorage
 from splitio.api.client import HttpClient
 from splitio.api.splits import SplitsAPI
 from splitio.api.segments import SegmentsAPI
 from splitio.api.impressions import ImpressionsAPI
-from splitio.api.telemetry import TelemetryAPI
 from splitio.api.events import EventsAPI
 from splitio.tasks.util import workerpool
 from splitio.sync.split import SplitSynchronizer
 from splitio.sync.segment import SegmentSynchronizer
 from splitio.sync.impression import ImpressionSynchronizer
 from splitio.sync.event import EventSynchronizer
-from splitio.sync.telemetry import TelemetrySynchronizer
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -160,33 +158,5 @@ def uwsgi_report_events(user_config):
                     break
                 time.sleep(1)
         except Exception:  # pylint: disable=broad-except
-            _LOGGER.error('Error posting metrics')
-            _LOGGER.debug('Error: ', exc_info=True)
-
-
-def uwsgi_report_telemetry(user_config):
-    """
-    Flush events task.
-
-    :param user_config: User-provided configuration.
-    :type user_config: dict
-    """
-    config = _get_config(user_config)
-    metadata = get_metadata(config)
-    seconds = config.get('metricsRefreshRate', 30)
-    storage = UWSGITelemetryStorage(get_uwsgi())
-    telemetry_sync = TelemetrySynchronizer(
-        TelemetryAPI(
-            HttpClient(1500, config.get('sdk_url'), config.get('events_url')),
-            config['apikey'],
-            metadata
-        ),
-        storage,
-    )
-    while True:
-        try:
-            telemetry_sync.synchronize_telemetry()  # pylint: disable=protected-access
-            time.sleep(seconds)
-        except Exception:  # pylint: disable=broad-except
-            _LOGGER.error('Error posting metrics')
+            _LOGGER.error('Error posting events')
             _LOGGER.debug('Error: ', exc_info=True)

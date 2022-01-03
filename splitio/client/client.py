@@ -333,7 +333,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
     def _record_stats(self, impressions, start, operation):
         """
-        Record impressions and metrics.
+        Record impressions.
 
         :param impressions: Generated impressions
         :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
