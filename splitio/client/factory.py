@@ -518,11 +518,8 @@ def get_factory(api_key, **kwargs):
                 )
 
         config = kwargs.get('config', {})
-        evaluations_enabled = config.get('evaluationsEnabled', None)
-        if evaluations_enabled is not None:
-            del config['evaluationsEnabled']
-            if evaluations_enabled is False:
-                return SplitFactoryWrapped()
+        if not config.get('evaluationsEnabled', True):
+            return SplitFactoryWrapped()
 
         config = sanitize_config(api_key, kwargs.get('config', {}))
 
