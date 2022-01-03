@@ -8,10 +8,9 @@ from splitio.client.factory import SplitFactory
 from splitio.engine.evaluator import Evaluator
 from splitio.models.impressions import Impression, Label
 from splitio.models.events import Event, EventWrapper
-from splitio.storage import EventStorage, ImpressionStorage, SegmentStorage, SplitStorage, \
-    TelemetryStorage
+from splitio.storage import EventStorage, ImpressionStorage, SegmentStorage, SplitStorage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
-    InMemoryImpressionStorage, InMemoryTelemetryStorage, InMemoryEventStorage
+    InMemoryImpressionStorage, InMemoryEventStorage
 from splitio.models import splits, segments
 from splitio.engine.impressions import Manager as ImpressionManager
 
@@ -28,7 +27,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         segment_storage = mocker.Mock(spec=SegmentStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
-        telemetry_storage = mocker.Mock(spec=TelemetryStorage)
 
         def _get_storage_mock(name):
             return {
@@ -36,7 +34,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 'segments': segment_storage,
                 'impressions': impression_storage,
                 'events': event_storage,
-                'telemetry': telemetry_storage
             }[name]
 
         destroyed_property = mocker.PropertyMock()
@@ -51,8 +48,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, telemetry_storage, event_storage,
-                                    impression_storage)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage)
         client = Client(factory, recorder, True)
         client._evaluator = mocker.Mock(spec=Evaluator)
         client._evaluator.evaluate_feature.return_value = {
@@ -69,7 +65,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert mocker.call(
             [(Impression('some_key', 'some_feature', 'on', 'some_label', 123, None, 1000), None)]
         ) in impmanager.process_impressions.mock_calls
-        assert mocker.call('sdk.getTreatment', 5) in telemetry_storage.inc_latency.mock_calls
         assert _logger.mock_calls == []
 
         # Test with client not ready
@@ -93,7 +88,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert mocker.call(
             [(Impression('some_key', 'some_feature', 'control', 'exception', -1, None, 1000), None)]
         ) in impmanager.process_impressions.mock_calls
-        assert len(telemetry_storage.inc_latency.mock_calls) == 3
 
     def test_get_treatment_with_config(self, mocker):
         """Test get_treatment execution paths."""
@@ -101,7 +95,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         segment_storage = mocker.Mock(spec=SegmentStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
-        telemetry_storage = mocker.Mock(spec=TelemetryStorage)
 
         def _get_storage_mock(name):
             return {
@@ -109,7 +102,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 'segments': segment_storage,
                 'impressions': impression_storage,
                 'events': event_storage,
-                'telemetry': telemetry_storage
             }[name]
 
         destroyed_property = mocker.PropertyMock()
@@ -124,8 +116,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, telemetry_storage, event_storage,
-                                    impression_storage)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage)
         client = Client(factory, recorder, True)
         client._evaluator = mocker.Mock(spec=Evaluator)
         client._evaluator.evaluate_feature.return_value = {
@@ -146,7 +137,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert mocker.call(
             [(Impression('some_key', 'some_feature', 'on', 'some_label', 123, None, 1000), None)]
         ) in impmanager.process_impressions.mock_calls
-        assert mocker.call('sdk.getTreatmentWithConfig', 5) in telemetry_storage.inc_latency.mock_calls
         assert _logger.mock_calls == []
 
         # Test with client not ready
@@ -171,7 +161,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert mocker.call(
             [(Impression('some_key', 'some_feature', 'control', 'exception', -1, None, 1000), None)]
         ) in impmanager.process_impressions.mock_calls
-        assert len(telemetry_storage.inc_latency.mock_calls) == 3
 
     def test_get_treatments(self, mocker):
         """Test get_treatment execution paths."""
@@ -179,7 +168,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         segment_storage = mocker.Mock(spec=SegmentStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
-        telemetry_storage = mocker.Mock(spec=TelemetryStorage)
 
         def _get_storage_mock(name):
             return {
@@ -187,7 +175,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 'segments': segment_storage,
                 'impressions': impression_storage,
                 'events': event_storage,
-                'telemetry': telemetry_storage
             }[name]
 
         destroyed_property = mocker.PropertyMock()
@@ -202,8 +189,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, telemetry_storage, event_storage,
-                                    impression_storage)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage)
         client = Client(factory, recorder, True)
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
@@ -225,7 +211,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         impressions_called = impmanager.process_impressions.mock_calls[0][1][0]
         assert (Impression('key', 'f1', 'on', 'some_label', 123, None, 1000), None) in impressions_called
         assert (Impression('key', 'f2', 'on', 'some_label', 123, None, 1000), None) in impressions_called
-        assert mocker.call('sdk.getTreatments', 5) in telemetry_storage.inc_latency.mock_calls
         assert _logger.mock_calls == []
 
         # Test with client not ready
@@ -246,7 +231,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             raise Exception('something')
         client._evaluator.evaluate_features.side_effect = _raise
         assert client.get_treatments('key', ['f1', 'f2']) == {'f1': 'control', 'f2': 'control'}
-        assert len(telemetry_storage.inc_latency.mock_calls) == 2
 
     def test_get_treatments_with_config(self, mocker):
         """Test get_treatment execution paths."""
@@ -254,7 +238,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         segment_storage = mocker.Mock(spec=SegmentStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
-        telemetry_storage = mocker.Mock(spec=TelemetryStorage)
 
         def _get_storage_mock(name):
             return {
@@ -262,7 +245,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 'segments': segment_storage,
                 'impressions': impression_storage,
                 'events': event_storage,
-                'telemetry': telemetry_storage
             }[name]
 
         destroyed_property = mocker.PropertyMock()
@@ -277,8 +259,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, telemetry_storage, event_storage,
-                                    impression_storage)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage)
         client = Client(factory, recorder, True)
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
@@ -302,7 +283,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         impressions_called = impmanager.process_impressions.mock_calls[0][1][0]
         assert (Impression('key', 'f1', 'on', 'some_label', 123, None, 1000), None) in impressions_called
         assert (Impression('key', 'f2', 'on', 'some_label', 123, None, 1000), None) in impressions_called
-        assert mocker.call('sdk.getTreatmentsWithConfig', 5) in telemetry_storage.inc_latency.mock_calls
         assert _logger.mock_calls == []
 
         # Test with client not ready
@@ -326,7 +306,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'f1': ('control', None),
             'f2': ('control', None)
         }
-        assert len(telemetry_storage.inc_latency.mock_calls) == 2
 
     def test_destroy(self, mocker):
         """Test that destroy/destroyed calls are forwarded to the factory."""
@@ -334,7 +313,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         segment_storage = mocker.Mock(spec=SegmentStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
-        telemetry_storage = mocker.Mock(spec=TelemetryStorage)
 
         def _get_storage_mock(name):
             return {
@@ -342,15 +320,13 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 'segments': segment_storage,
                 'impressions': impression_storage,
                 'events': event_storage,
-                'telemetry': telemetry_storage
             }[name]
         factory = mocker.Mock(spec=SplitFactory)
         destroyed_mock = mocker.PropertyMock()
         type(factory).destroyed = destroyed_mock
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, telemetry_storage, event_storage,
-                                    impression_storage)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage)
         client = Client(factory, recorder, True)
         client.destroy()
         assert factory.destroy.mock_calls == [mocker.call()]
@@ -364,7 +340,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
         event_storage.put.return_value = True
-        telemetry_storage = mocker.Mock(spec=TelemetryStorage)
 
         def _get_storage_mock(name):
             return {
@@ -372,7 +347,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 'segments': segment_storage,
                 'impressions': impression_storage,
                 'events': event_storage,
-                'telemetry': telemetry_storage
             }[name]
         factory = mocker.Mock(spec=SplitFactory)
         factory._get_storage = _get_storage_mock
@@ -384,8 +358,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, telemetry_storage, event_storage,
-                                    impression_storage)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage)
         client = Client(factory, recorder, True)
         assert client.track('key', 'user', 'purchase', 12) is True
         assert mocker.call([
