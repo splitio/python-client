@@ -1,3 +1,6 @@
+8.5.0 (Jan 04, 2022)
+ - Old major maintenance release.
+
 8.4.1 (Apr 16, 2021)
  - Bumped mmh3cffi dependency which now requires c99 flag to build.
 
