@@ -28,7 +28,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-            pip install -U setuptool pip
+            pip install -U setuptools pip
             pip install -e .[cpphash,redis,uwsgi]
 
       - name: Run tests
