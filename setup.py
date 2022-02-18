@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 TESTS_REQUIRES = [
     'flake8',
-    'pytest>=6.2.3',
+    'pytest~=6.2.3',
     'pytest-mock>=3.5.1',
     'coverage',
     'pytest-cov',
@@ -39,7 +39,7 @@ setup(
         'uwsgi': ['uwsgi>=2.0.0'],
         'cpphash': ['mmh3cffi==0.2.1'],
     },
-    setup_requires=['pytest-runner==5.2'],
+    setup_requires=['pytest-runner'],
     classifiers=[
         'Environment :: Console',
         'Intended Audience :: Developers',
