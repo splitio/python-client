@@ -31,9 +31,6 @@ jobs:
             pip install -U setuptools pip
             pip install -e .[cpphash,redis,uwsgi]
 
-      - name: pip freeze
-        run: pip freeze
-
       - name: Run tests
         run: python setup.py test
 
