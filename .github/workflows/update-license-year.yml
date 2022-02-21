@@ -32,7 +32,7 @@ jobs:
         with:
           find: ${{ env.PREVIOUS }}
           replace: ${{ env.CURRENT }}
-          include: "LICENSE"
+          include: "LICENSE.txt"
           regex: false
 
       - name: Commit files
