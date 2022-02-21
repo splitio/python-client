@@ -10,6 +10,7 @@ TESTS_REQUIRES = [
     'pytest-mock>=3.5.1',
     'coverage',
     'pytest-cov',
+    'tomli==1.2.3',
 ]
 
 INSTALL_REQUIRES = [
