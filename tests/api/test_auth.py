@@ -29,7 +29,7 @@ class AuthAPITests(object):
         call_made = httpclient.get.mock_calls[0]
 
         # validate positional arguments
-        assert call_made[1] == ('auth', '/auth', 'some_api_key')
+        assert call_made[1] == ('auth', '/v2/auth', 'some_api_key')
 
         # validate key-value args (headers)
         assert call_made[2]['extra_headers'] == {

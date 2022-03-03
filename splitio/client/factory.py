@@ -390,7 +390,7 @@ def _build_redis_factory(api_key, cfg):
     }
     data_sampling = cfg.get('dataSampling', DEFAULT_DATA_SAMPLING)
     if data_sampling < _MIN_DEFAULT_DATA_SAMPLING_ALLOWED:
-        _LOGGER.warning("dataSampling cannot be less than %f, defaulting to minimum",
+        _LOGGER.warning("dataSampling cannot be less than %.2f, defaulting to minimum",
                         _MIN_DEFAULT_DATA_SAMPLING_ALLOWED)
         data_sampling = _MIN_DEFAULT_DATA_SAMPLING_ALLOWED
     recorder = PipelinedRecorder(
