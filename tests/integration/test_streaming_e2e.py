@@ -148,7 +148,7 @@ class StreamingIntegrationTests(object):
         # Auth
         req = split_backend_requests.get()
         assert req.method == 'GET'
-        assert req.path == '/api/auth'
+        assert req.path == '/api/v2/auth'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # SyncAll after streaming connected
@@ -355,7 +355,7 @@ class StreamingIntegrationTests(object):
         # Auth
         req = split_backend_requests.get()
         assert req.method == 'GET'
-        assert req.path == '/api/auth'
+        assert req.path == '/api/v2/auth'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # SyncAll after streaming connected
@@ -535,7 +535,7 @@ class StreamingIntegrationTests(object):
         # Auth
         req = split_backend_requests.get()
         assert req.method == 'GET'
-        assert req.path == '/api/auth'
+        assert req.path == '/api/v2/auth'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # SyncAll after streaming connected
@@ -725,7 +725,7 @@ class StreamingIntegrationTests(object):
         # Auth
         req = split_backend_requests.get()
         assert req.method == 'GET'
-        assert req.path == '/api/auth'
+        assert req.path == '/api/v2/auth'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # SyncAll after streaming connected
@@ -952,7 +952,7 @@ class StreamingIntegrationTests(object):
         # Auth
         req = split_backend_requests.get()
         assert req.method == 'GET'
-        assert req.path == '/api/auth'
+        assert req.path == '/api/v2/auth'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # SyncAll after streaming connected
@@ -982,7 +982,7 @@ class StreamingIntegrationTests(object):
         # Auth after connection breaks
         req = split_backend_requests.get()
         assert req.method == 'GET'
-        assert req.path == '/api/auth'
+        assert req.path == '/api/v2/auth'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # SyncAll after streaming connected again
@@ -1189,7 +1189,7 @@ class StreamingIntegrationTests(object):
         # Auth
         req = split_backend_requests.get()
         assert req.method == 'GET'
-        assert req.path == '/api/auth'
+        assert req.path == '/api/v2/auth'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # SyncAll after streaming connected
@@ -1213,7 +1213,7 @@ class StreamingIntegrationTests(object):
         # Auth again
         req = split_backend_requests.get()
         assert req.method == 'GET'
-        assert req.path == '/api/auth'
+        assert req.path == '/api/v2/auth'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # SyncAll after push is up

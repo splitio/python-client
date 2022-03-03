@@ -220,7 +220,7 @@ class SDKHandler(BaseHTTPRequestHandler):
             self._handle_split_changes()
         elif self.path.startswith('/api/segmentChanges'):
             self._handle_segment_changes()
-        elif self.path.startswith('/api/auth'):
+        elif self.path.startswith('/api/v2/auth'):
             self._handle_auth()
         else:
             self.send_response(404)
