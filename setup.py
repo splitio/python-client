@@ -11,6 +11,7 @@ TESTS_REQUIRES = [
     'coverage',
     'pytest-cov',
     'importlib-metadata==4.2'
+    'tomli==1.2.3',
 ]
 
 INSTALL_REQUIRES = [

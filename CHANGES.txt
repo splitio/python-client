@@ -1,4 +1,4 @@
-9.1.1 (Dec 16, 2021)
+9.1.1 (March 4, 2022)
 - Deprecated old telemetry.
 
 9.1.0 (Jul 15, 2021)
