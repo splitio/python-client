@@ -40,7 +40,7 @@ class AuthAPI(object):  # pylint: disable=too-few-public-methods
         try:
             response = self._client.get(
                 'auth',
-                '/auth',
+                '/v2/auth',
                 self._apikey,
                 extra_headers=self._metadata
             )

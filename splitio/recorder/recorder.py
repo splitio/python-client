@@ -1,6 +1,10 @@
 """Stats Recorder."""
 import abc
 import logging
+import random
+
+
+from splitio.client.config import DEFAULT_DATA_SAMPLING
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,21 +41,18 @@ class StatsRecorder(object, metaclass=abc.ABCMeta):
 class StandardRecorder(StatsRecorder):
     """StandardRecorder class."""
 
-    def __init__(self, impressions_manager, telemetry_storage, event_storage, impression_storage):
+    def __init__(self, impressions_manager, event_storage, impression_storage):
         """
         Class constructor.
 
         :param impressions_manager: impression manager instance
         :type impressions_manager: splitio.engine.impressions.Manager
-        :param telemetry_storage: telemetry storage instance
-        :type telemetry_storage: splitio.storage.TelemetryStorage
         :param event_storage: event storage instance
         :type event_storage: splitio.storage.EventStorage
         :param impression_storage: impression storage instance
         :type impression_storage: splitio.storage.ImpressionStorage
         """
         self._impressions_manager = impressions_manager
-        self._telemetry_storage = telemetry_storage
         self._event_sotrage = event_storage
         self._impression_storage = impression_storage
 
@@ -68,10 +69,9 @@ class StandardRecorder(StatsRecorder):
         """
         try:
             impressions = self._impressions_manager.process_impressions(impressions)
-            if self._impression_storage.put(impressions):
-                self._telemetry_storage.inc_latency(operation, latency)
+            self._impression_storage.put(impressions)
         except Exception:  # pylint: disable=broad-except
-            _LOGGER.error('Error recording impressions and metrics')
+            _LOGGER.error('Error recording impressions')
             _LOGGER.debug('Error: ', exc_info=True)
 
     def record_track_stats(self, event):
@@ -87,7 +87,8 @@ class StandardRecorder(StatsRecorder):
 class PipelinedRecorder(StatsRecorder):
     """PipelinedRecorder class."""
 
-    def __init__(self, pipe, impressions_manager, telemetry_storage, event_storage, impression_storage):
+    def __init__(self, pipe, impressions_manager, event_storage,
+                 impression_storage, data_sampling=DEFAULT_DATA_SAMPLING):
         """
         Class constructor.
 
@@ -95,18 +96,18 @@ class PipelinedRecorder(StatsRecorder):
         :type pipe: callable
         :param impressions_manager: impression manager instance
         :type impressions_manager: splitio.engine.impressions.Manager
-        :param telemetry_storage: telemetry storage instance
-        :type telemetry_storage: splitio.storage.redis.RedisTelemetryStorage
         :param event_storage: event storage instance
         :type event_storage: splitio.storage.EventStorage
         :param impression_storage: impression storage instance
         :type impression_storage: splitio.storage.redis.RedisImpressionsStorage
+        :param data_sampling: data sampling factor
+        :type data_sampling: number
         """
         self._make_pipe = pipe
         self._impressions_manager = impressions_manager
-        self._telemetry_storage = telemetry_storage
         self._event_sotrage = event_storage
         self._impression_storage = impression_storage
+        self._data_sampling = data_sampling
 
     def record_treatment_stats(self, impressions, latency, operation):
         """
@@ -120,15 +121,23 @@ class PipelinedRecorder(StatsRecorder):
         :type operation: str
         """
         try:
+            # TODO @matias.melograno
+            # Changing logic until TelemetryV2 released to avoid using pipelined operations
+            # Deprecated Old Telemetry
+            if self._data_sampling < DEFAULT_DATA_SAMPLING:
+                rnumber = random.uniform(0, 1)
+                if self._data_sampling < rnumber:
+                    return
             impressions = self._impressions_manager.process_impressions(impressions)
-            pipe = self._make_pipe()
-            self._impression_storage.add_impressions_to_pipe(impressions, pipe)
-            self._telemetry_storage.add_latency_to_pipe(operation, latency, pipe)
-            result = pipe.execute()
-            if len(result) == 2:
-                self._impression_storage.expire_key(result[0], len(impressions))
+            # pipe = self._make_pipe()
+            # self._impression_storage.add_impressions_to_pipe(impressions, pipe)
+            # self._telemetry_storage.add_latency_to_pipe(operation, latency, pipe)
+            # result = pipe.execute()
+            # if len(result) == 2:
+            #   self._impression_storage.expire_key(result[0], len(impressions))
+            self._impression_storage.put(impressions)
         except Exception:  # pylint: disable=broad-except
-            _LOGGER.error('Error recording impressions and metrics')
+            _LOGGER.error('Error recording impressions')
             _LOGGER.debug('Error: ', exc_info=True)
 
     def record_track_stats(self, event):

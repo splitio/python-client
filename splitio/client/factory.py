@@ -8,17 +8,17 @@ from enum import Enum
 from splitio.client.client import Client
 from splitio.client import input_validator
 from splitio.client.manager import SplitManager
-from splitio.client.config import sanitize as sanitize_config
+from splitio.client.config import sanitize as sanitize_config, DEFAULT_DATA_SAMPLING
 from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper
 from splitio.engine.impressions import Manager as ImpressionsManager
 
 # Storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
-    InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage
+    InMemoryImpressionStorage, InMemoryEventStorage
 from splitio.storage.adapters import redis
 from splitio.storage.redis import RedisSplitStorage, RedisSegmentStorage, RedisImpressionsStorage, \
-    RedisEventsStorage, RedisTelemetryStorage
+    RedisEventsStorage
 
 # APIs
 from splitio.api.client import HttpClient
@@ -26,7 +26,6 @@ from splitio.api.splits import SplitsAPI
 from splitio.api.segments import SegmentsAPI
 from splitio.api.impressions import ImpressionsAPI
 from splitio.api.events import EventsAPI
-from splitio.api.telemetry import TelemetryAPI
 from splitio.api.auth import AuthAPI
 
 # Tasks
@@ -34,7 +33,6 @@ from splitio.tasks.split_sync import SplitSynchronizationTask
 from splitio.tasks.segment_sync import SegmentSynchronizationTask
 from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask
 from splitio.tasks.events_sync import EventsSyncTask
-from splitio.tasks.telemetry_sync import TelemetrySynchronizationTask
 
 # Synchronizer
 from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, \
@@ -44,19 +42,18 @@ from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer
 from splitio.sync.segment import SegmentSynchronizer
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.sync.event import EventSynchronizer
-from splitio.sync.telemetry import TelemetrySynchronizer
 
 # Recorder
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder
 
 # Localhost stuff
-from splitio.client.localhost import LocalhostEventsStorage, LocalhostImpressionsStorage, \
-    LocalhostTelemetryStorage
+from splitio.client.localhost import LocalhostEventsStorage, LocalhostImpressionsStorage
 
 
 _LOGGER = logging.getLogger(__name__)
 _INSTANTIATED_FACTORIES = Counter()
 _INSTANTIATED_FACTORIES_LOCK = threading.RLock()
+_MIN_DEFAULT_DATA_SAMPLING_ALLOWED = 0.1  # 10%
 
 
 class Status(Enum):
@@ -259,7 +256,6 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         sdk_ready_flag = threading.Event()
         self._sdk_internal_ready_flag = sdk_ready_flag
         self._sync_manager._ready_flag = sdk_ready_flag
-        self._get_storage('telemetry').clear()
         self._get_storage('impressions').clear()
         self._get_storage('events').clear()
         initialization_thread = threading.Thread(
@@ -306,7 +302,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'segments': SegmentsAPI(http_client, api_key, sdk_metadata),
         'impressions': ImpressionsAPI(http_client, api_key, sdk_metadata, cfg['impressionsMode']),
         'events': EventsAPI(http_client, api_key, sdk_metadata),
-        'telemetry': TelemetryAPI(http_client, api_key, sdk_metadata)
     }
 
     if not input_validator.validate_apikey_type(apis['segments']):
@@ -317,7 +312,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'segments': InMemorySegmentStorage(),
         'impressions': InMemoryImpressionStorage(cfg['impressionsQueueSize']),
         'events': InMemoryEventStorage(cfg['eventsQueueSize']),
-        'telemetry': InMemoryTelemetryStorage()
     }
 
     imp_manager = ImpressionsManager(
@@ -331,7 +325,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         ImpressionSynchronizer(apis['impressions'], storages['impressions'],
                                cfg['impressionsBulkSize']),
         EventSynchronizer(apis['events'], storages['events'], cfg['eventsBulkSize']),
-        TelemetrySynchronizer(apis['telemetry'], storages['telemetry']),
         ImpressionsCountSynchronizer(apis['impressions'], imp_manager),
     )
 
@@ -349,10 +342,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
             cfg['impressionsRefreshRate'],
         ),
         EventsSyncTask(synchronizers.events_sync.synchronize_events, cfg['eventsPushRate']),
-        TelemetrySynchronizationTask(
-            synchronizers.telemetry_sync.synchronize_telemetry,
-            cfg['metricsRefreshRate'],
-        ),
         ImpressionsCountSyncTask(synchronizers.impressions_count_sync.synchronize_counters)
     )
 
@@ -369,7 +358,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
 
     recorder = StandardRecorder(
         imp_manager,
-        storages['telemetry'],
         storages['events'],
         storages['impressions'],
     )
@@ -399,15 +387,19 @@ def _build_redis_factory(api_key, cfg):
         'segments': RedisSegmentStorage(redis_adapter),
         'impressions': RedisImpressionsStorage(redis_adapter, sdk_metadata),
         'events': RedisEventsStorage(redis_adapter, sdk_metadata),
-        'telemetry': RedisTelemetryStorage(redis_adapter, sdk_metadata)
     }
+    data_sampling = cfg.get('dataSampling', DEFAULT_DATA_SAMPLING)
+    if data_sampling < _MIN_DEFAULT_DATA_SAMPLING_ALLOWED:
+        _LOGGER.warning("dataSampling cannot be less than %.2f, defaulting to minimum",
+                        _MIN_DEFAULT_DATA_SAMPLING_ALLOWED)
+        data_sampling = _MIN_DEFAULT_DATA_SAMPLING_ALLOWED
     recorder = PipelinedRecorder(
         redis_adapter.pipeline,
         ImpressionsManager(cfg['impressionsMode'], False,
                            _wrap_impression_listener(cfg['impressionListener'], sdk_metadata)),
-        storages['telemetry'],
         storages['events'],
         storages['impressions'],
+        data_sampling,
     )
     return SplitFactory(
         api_key,
@@ -424,19 +416,18 @@ def _build_localhost_factory(cfg):
         'segments': InMemorySegmentStorage(),  # not used, just to avoid possible future errors.
         'impressions': LocalhostImpressionsStorage(),
         'events': LocalhostEventsStorage(),
-        'telemetry': LocalhostTelemetryStorage()
     }
 
     synchronizers = SplitSynchronizers(
         LocalSplitSynchronizer(cfg['splitFile'], storages['splits']),
-        None, None, None, None, None,
+        None, None, None, None,
     )
 
     tasks = SplitTasks(
         SplitSynchronizationTask(
             synchronizers.split_sync.synchronize_splits,
             cfg['featuresRefreshRate'],
-        ), None, None, None, None, None,
+        ), None, None, None, None,
     )
 
     sdk_metadata = util.get_metadata(cfg)
@@ -446,7 +437,6 @@ def _build_localhost_factory(cfg):
     manager.start()
     recorder = StandardRecorder(
         ImpressionsManager(cfg['impressionsMode'], True, None),
-        storages['telemetry'],
         storages['events'],
         storages['impressions'],
     )
