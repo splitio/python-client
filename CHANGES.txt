@@ -1,3 +1,6 @@
+9.1.2 (April 6, 2022)
+- Updated pyyaml dependency for vulnerability CVE-2020-14343.
+
 9.1.1 (March 9, 2022)
 - Updated default auth service url to https://auth.split.io/api/v2/auth.
 - Deprecated old telemetry.
