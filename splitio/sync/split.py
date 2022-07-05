@@ -1,4 +1,5 @@
 """Splits synchronization logic."""
+from ast import Not
 import logging
 import re
 import itertools
@@ -41,6 +42,7 @@ class SplitSynchronizer(object):
         self._backoff = Backoff(
                                 _ON_DEMAND_FETCH_BACKOFF_BASE,
                                 _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
+        self.segment_list = []
 
     def _fetch_until(self, fetch_options, till=None):
         """
@@ -69,13 +71,15 @@ class SplitSynchronizer(object):
                 _LOGGER.error('Exception raised while fetching splits')
                 _LOGGER.debug('Exception information: ', exc_info=True)
                 raise exc
-
+            
             for split in split_changes.get('splits', []):
                 if split['status'] == splits.Status.ACTIVE.value:
+#                    _LOGGER.debug('split details: '+str(split))                        
                     self._split_storage.put(splits.from_raw(split))
                 else:
                     self._split_storage.remove(split['name'])
-
+            self.segment_list = self._split_storage.get_segment_names()
+                
             self._split_storage.set_change_number(split_changes['till'])
             if split_changes['till'] == split_changes['since']:
                 return split_changes['till']
@@ -118,14 +122,14 @@ class SplitSynchronizer(object):
         attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if successful_sync:  # succedeed sync
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
-            return
+            return self.segment_list
         with_cdn_bypass = FetchOptions(True, change_number)  # Set flag for bypassing CDN
         without_cdn_successful_sync, remaining_attempts, change_number = self._attempt_split_sync(with_cdn_bypass, till)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if without_cdn_successful_sync:
             _LOGGER.debug('Refresh completed bypassing the CDN in %d attempts.',
                           without_cdn_attempts)
-            return
+            return self.segment_list
         else:
             _LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
                           without_cdn_attempts)

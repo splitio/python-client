@@ -145,17 +145,18 @@ class SegmentSynchronizer(object):
         attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if successful_sync:  # succedeed sync
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
-            return
+            return True
         with_cdn_bypass = FetchOptions(True, change_number)  # Set flag for bypassing CDN
         without_cdn_successful_sync, remaining_attempts, change_number = self._attempt_segment_sync(segment_name, with_cdn_bypass, till)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if without_cdn_successful_sync:
             _LOGGER.debug('Refresh completed bypassing the CDN in %d attempts.',
                           without_cdn_attempts)
-            return
+            return True
         else:
             _LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
                           without_cdn_attempts)
+            return False
 
     def synchronize_segments(self):
         """
@@ -168,3 +169,18 @@ class SegmentSynchronizer(object):
         for segment_name in segment_names:
             self._worker_pool.submit_work(segment_name)
         return not self._worker_pool.wait_for_completion()
+    
+    def segment_exist_in_storage(self, segment_name):
+        """
+        Check if a segment exists in the storage
+
+        :param segment_name: Name of the segment
+        :type segment_name: str
+
+        :return: True if segment exist. False otherwise.
+        :rtype: bool
+        """
+        if self._segment_storage.get(segment_name) != None: 
+            return True
+        else:
+            return False
