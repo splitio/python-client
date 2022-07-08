@@ -11,7 +11,6 @@ TESTS_REQUIRES = [
     'coverage==6.2',
     'pytest-cov',
     'importlib-metadata==4.2',
-    'typing-extensions==4.1.1',
     'tomli==1.2.3',
 ]
 
