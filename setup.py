@@ -12,7 +12,6 @@ TESTS_REQUIRES = [
     'pytest-cov',
     'importlib-metadata==4.2',
     'typing-extensions==4.1.1',
-    'redis>=2.10.5',
     'tomli==1.2.3',
 ]
 
