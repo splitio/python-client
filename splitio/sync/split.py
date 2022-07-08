@@ -3,6 +3,8 @@ from ast import Not
 import logging
 import re
 import itertools
+from numpy import append
+from pyparsing import Each
 import yaml
 import time
 
@@ -42,9 +44,8 @@ class SplitSynchronizer(object):
         self._backoff = Backoff(
                                 _ON_DEMAND_FETCH_BACKOFF_BASE,
                                 _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
-        self.segment_list = []
 
-    def _fetch_until(self, fetch_options, till=None):
+    def _fetch_until(self, fetch_options, till=None, segment_sync=None):
         """
         Hit endpoint, update storage and return when since==till.
 
@@ -57,13 +58,14 @@ class SplitSynchronizer(object):
         :return: last change number
         :rtype: int
         """
+        segment_list = []
         while True:  # Fetch until since==till
             change_number = self._split_storage.get_change_number()
             if change_number is None:
                 change_number = -1
             if till is not None and till < change_number:
                 # the passed till is less than change_number, no need to perform updates
-                return change_number
+                return change_number, segment_list
 
             try:
                 split_changes = self._api.fetch_splits(change_number, fetch_options)
@@ -74,17 +76,21 @@ class SplitSynchronizer(object):
             
             for split in split_changes.get('splits', []):
                 if split['status'] == splits.Status.ACTIVE.value:
-#                    _LOGGER.debug('split details: '+str(split))                        
+                    _LOGGER.debug('split details: '+str(split))                        
                     self._split_storage.put(splits.from_raw(split))
                 else:
                     self._split_storage.remove(split['name'])
-            self.segment_list = self._split_storage.get_segment_names()
+                for segment in self._split_storage.get_segment_names():
+                    _LOGGER.debug('Found segment: %s', segment)
+                    if not segment_sync.segment_exist_in_storage(segment):
+                        _LOGGER.debug('Segment %s does not exist, syncing.', segment)
+                        segment_list.append(segment)
                 
             self._split_storage.set_change_number(split_changes['till'])
             if split_changes['till'] == split_changes['since']:
-                return split_changes['till']
+                return split_changes['till'], segment_list
 
-    def _attempt_split_sync(self, fetch_options, till=None):
+    def _attempt_split_sync(self, fetch_options, till=None, segment_sync=None):
         """
         Hit endpoint, update storage and return True if sync is complete.
 
@@ -101,15 +107,15 @@ class SplitSynchronizer(object):
         remaining_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES
         while True:
             remaining_attempts -= 1
-            change_number = self._fetch_until(fetch_options, till)
+            change_number, segment_list = self._fetch_until(fetch_options, till, segment_sync)
             if till is None or till <= change_number:
-                return True, remaining_attempts, change_number
+                return True, remaining_attempts, change_number, segment_list
             elif remaining_attempts <= 0:
-                return False, remaining_attempts, change_number
+                return False, remaining_attempts, change_number, segment_list
             how_long = self._backoff.get()
             time.sleep(how_long)
 
-    def synchronize_splits(self, till=None):
+    def synchronize_splits(self, till=None, segment_sync=None):
         """
         Hit endpoint, update storage and return True if sync is complete.
 
@@ -117,19 +123,19 @@ class SplitSynchronizer(object):
         :type till: int
         """
         fetch_options = FetchOptions(True)  # Set Cache-Control to no-cache
-        successful_sync, remaining_attempts, change_number = self._attempt_split_sync(fetch_options,
-                                                                                      till)
+        successful_sync, remaining_attempts, change_number, segment_list = self._attempt_split_sync(fetch_options,
+                                                                                      till, segment_sync)
         attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if successful_sync:  # succedeed sync
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
-            return self.segment_list
+            return segment_list
         with_cdn_bypass = FetchOptions(True, change_number)  # Set flag for bypassing CDN
-        without_cdn_successful_sync, remaining_attempts, change_number = self._attempt_split_sync(with_cdn_bypass, till)
+        without_cdn_successful_sync, remaining_attempts, change_number, segment_list = self._attempt_split_sync(with_cdn_bypass, till, segment_sync)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if without_cdn_successful_sync:
             _LOGGER.debug('Refresh completed bypassing the CDN in %d attempts.',
                           without_cdn_attempts)
-            return self.segment_list
+            return segment_list
         else:
             _LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
                           without_cdn_attempts)

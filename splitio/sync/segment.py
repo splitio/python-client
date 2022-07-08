@@ -158,14 +158,19 @@ class SegmentSynchronizer(object):
                           without_cdn_attempts)
             return False
 
-    def synchronize_segments(self):
+    def synchronize_segments(self, segment_names = None):
         """
         Submit all current segments and wait for them to finish, then set the ready flag.
+
+        :param segment_names: Optional, array of segment names to update.
+        :type segment_name: [str]
 
         :return: True if no error occurs. False otherwise.
         :rtype: bool
         """
-        segment_names = self._split_storage.get_segment_names()
+        if segment_names is None:
+            segment_names = self._split_storage.get_segment_names()
+            
         for segment_name in segment_names:
             self._worker_pool.submit_work(segment_name)
         return not self._worker_pool.wait_for_completion()

@@ -205,7 +205,6 @@ class Synchronizer(BaseSynchronizer):
     def _synchronize_segments(self):
         _LOGGER.debug('Starting segments synchronization')
         return self._split_synchronizers.segment_sync.synchronize_segments()
-        return
 
     def synchronize_segment(self, segment_name, till):
         """
@@ -233,19 +232,14 @@ class Synchronizer(BaseSynchronizer):
         :rtype: bool
         """
         _LOGGER.debug('Starting splits synchronization')
-        self._split_synchronizers.split_sync.segment_list = []
         try:
-            self._split_synchronizers.split_sync.synchronize_splits(till)
-            for segment in self._split_synchronizers.split_sync.segment_list:
-                _LOGGER.debug('Found segment: %s', segment)
-                if not self._split_synchronizers.segment_sync.segment_exist_in_storage(segment):
-                    _LOGGER.debug('Segment does not exist, syncing now.')
-                    success = self.synchronize_segment(segment, -1)    
-                    if not success:
-                        _LOGGER.error('Failed to sync segment.')
-                    else:
-                        _LOGGER.debug('Segment synced.')
-            
+            segment_list = self._split_synchronizers.split_sync.synchronize_splits(till, self._split_synchronizers.segment_sync)
+            if segment_list != []:
+                success = self._split_synchronizers.segment_sync.synchronize_segments(segment_list)
+                if not success:
+                    _LOGGER.error('Failed to sync segment.')
+                else:
+                    _LOGGER.debug('Segment synced.')            
             return True
         except APIException:
             _LOGGER.error('Failed syncing splits')
@@ -260,6 +254,11 @@ class Synchronizer(BaseSynchronizer):
                 if not self.synchronize_splits(None):
                     attempts -= 1
                     continue
+                
+                # Only retrying splits, since segments may trigger too many calls.
+                if not self._synchronize_segments():
+                    _LOGGER.warning('Segments failed to synchronize.')
+                    
                 # All is good
                 return
             except Exception as exc:  # pylint:disable=broad-except

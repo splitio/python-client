@@ -17,7 +17,6 @@ from splitio.models.splits import Split
 from splitio.models.segments import Segment
 from splitio.storage.inmemmory import InMemorySegmentStorage, InMemorySplitStorage
 
-
 class SynchronizerTests(object):
     def test_sync_all_failed_splits(self, mocker):
         api = mocker.Mock()
@@ -95,13 +94,14 @@ class SynchronizerTests(object):
         segment_storage = InMemorySegmentStorage()
         segment_api = mocker.Mock()
         segment_api.fetch_segment.return_value = {'name': 'segmentA', 'added': ['key1', 'key2',
-                                                  'key3'], 'removed': [], 'since': -1, 'till': 123}
+                                                  'key3'], 'removed': [], 'since': 123, 'till': 123}
         segment_sync = SegmentSynchronizer(segment_api, split_storage, segment_storage)
         split_synchronizers = SplitSynchronizers(split_sync, segment_sync, mocker.Mock(),
                                                  mocker.Mock(), mocker.Mock())
         synchronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
-        synchronizer.synchronize_splits(123)
 
+        synchronizer.synchronize_splits(123)
+        
         inserted_split = split_storage.get('some_name')
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
@@ -118,17 +118,29 @@ class SynchronizerTests(object):
         split_api.fetch_splits.return_value = {'splits': self.splits, 'since': 123,
                                                'till': 123}
         split_sync = SplitSynchronizer(split_api, split_storage)
-        
-        split_synchronizers = SplitSynchronizers(split_sync, mocker.Mock(), mocker.Mock(),
-                                                 mocker.Mock(), mocker.Mock())
-        synchronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
 
+        segment_storage = mocker.Mock(spec=SegmentStorage)
+        segment_storage.get_change_number.return_value = 123
+        segment_api = mocker.Mock()
+        segment_api.fetch_segment.return_value = {'name': 'segmentA', 'added': ['key1', 'key2',
+                                                  'key3'], 'removed': [], 'since': 123, 'till': 123}
+        segment_sync = SegmentSynchronizer(segment_api, split_storage, segment_storage)
+
+        split_synchronizers = SplitSynchronizers(split_sync, segment_sync, mocker.Mock(),
+                                                 mocker.Mock(), mocker.Mock())
+
+        synchronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
         synchronizer.sync_all()
 
         inserted_split = split_storage.put.mock_calls[0][1][0]
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
-        
+
+        inserted_segment = segment_storage.update.mock_calls[0][1]
+        assert inserted_segment[0] == 'segmentA'
+        assert inserted_segment[1] == ['key1', 'key2', 'key3']
+        assert inserted_segment[2] == []
+                
     def test_start_periodic_fetching(self, mocker):
         split_task = mocker.Mock(spec=SplitSynchronizationTask)
         segment_task = mocker.Mock(spec=SegmentSynchronizationTask)
@@ -250,7 +262,7 @@ class SynchronizerTests(object):
 
         synchronizer.sync_all()
         assert counts['splits'] == 1
-#        assert counts['segments'] == 1
+        assert counts['segments'] == 2
 
     def test_sync_all_split_attempts(self, mocker):
         """Test that 3 attempts are done before failing."""
