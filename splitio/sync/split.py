@@ -2,8 +2,6 @@
 import logging
 import re
 import itertools
-from numpy import append
-from pyparsing import Each
 import yaml
 import time
 

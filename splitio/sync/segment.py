@@ -153,10 +153,9 @@ class SegmentSynchronizer(object):
             _LOGGER.debug('Refresh completed bypassing the CDN in %d attempts.',
                           without_cdn_attempts)
             return True
-        else:
-            _LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
-                          without_cdn_attempts)
-            return False
+        _LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
+                        without_cdn_attempts)
+        return False
 
     def synchronize_segments(self, segment_names = None):
         """
@@ -187,5 +186,4 @@ class SegmentSynchronizer(object):
         """
         if self._segment_storage.get(segment_name) != None: 
             return True
-        else:
-            return False
+        return False
