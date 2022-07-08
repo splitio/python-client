@@ -234,7 +234,7 @@ class Synchronizer(BaseSynchronizer):
         _LOGGER.debug('Starting splits synchronization')
         try:
             segment_list = self._split_synchronizers.split_sync.synchronize_splits(till, self._split_synchronizers.segment_sync)
-            if segment_list != []:
+            if len(segment_list) != 0:
                 success = self._split_synchronizers.segment_sync.synchronize_segments(segment_list)
                 if not success:
                     _LOGGER.error('Failed to sync segment.')

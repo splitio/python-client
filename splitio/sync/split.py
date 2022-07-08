@@ -1,5 +1,4 @@
 """Splits synchronization logic."""
-from ast import Not
 import logging
 import re
 import itertools
@@ -76,7 +75,6 @@ class SplitSynchronizer(object):
             
             for split in split_changes.get('splits', []):
                 if split['status'] == splits.Status.ACTIVE.value:
-                    _LOGGER.debug('split details: '+str(split))                        
                     self._split_storage.put(splits.from_raw(split))
                 else:
                     self._split_storage.remove(split['name'])

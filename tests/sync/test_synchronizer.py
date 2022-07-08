@@ -248,7 +248,7 @@ class SynchronizerTests(object):
         def sync_splits(*_):
             """Sync Splits."""
             counts['splits'] += 1
-            return True
+            return []
 
         def sync_segments(*_):
             """Sync Segments."""
@@ -262,7 +262,7 @@ class SynchronizerTests(object):
 
         synchronizer.sync_all()
         assert counts['splits'] == 1
-        assert counts['segments'] == 2
+        assert counts['segments'] == 1
 
     def test_sync_all_split_attempts(self, mocker):
         """Test that 3 attempts are done before failing."""
