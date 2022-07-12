@@ -139,6 +139,8 @@ class SegmentSynchronizer(object):
         :param till: ChangeNumber received.
         :type till: int
 
+        :return: True if no error occurs. False otherwise.
+        :rtype: bool
         """
         fetch_options = FetchOptions(True)  # Set Cache-Control to no-cache
         successful_sync, remaining_attempts, change_number = self._attempt_segment_sync(segment_name, fetch_options, till)
@@ -157,14 +159,17 @@ class SegmentSynchronizer(object):
                         without_cdn_attempts)
         return False
 
-    def synchronize_segments(self, segment_names = None):
+    def synchronize_segments(self, segment_names = None, dont_wait = False):
         """
-        Submit all current segments and wait for them to finish, then set the ready flag.
+        Submit all current segments and wait for them to finish depend on dont_wait flag, then set the ready flag.
 
         :param segment_names: Optional, array of segment names to update.
-        :type segment_name: [str]
+        :type segment_name: {str}
 
-        :return: True if no error occurs. False otherwise.
+        :param dont_wait: Optional, instruct the function to not wait for task completion
+        :type segment_name: boolean
+
+        :return: True if no error occurs or dont_wait flag is True. False otherwise.
         :rtype: bool
         """
         if segment_names is None:
@@ -172,6 +177,8 @@ class SegmentSynchronizer(object):
             
         for segment_name in segment_names:
             self._worker_pool.submit_work(segment_name)
+        if (dont_wait):
+            return True
         return not self._worker_pool.wait_for_completion()
     
     def segment_exist_in_storage(self, segment_name):
@@ -184,6 +191,4 @@ class SegmentSynchronizer(object):
         :return: True if segment exist. False otherwise.
         :rtype: bool
         """
-        if self._segment_storage.get(segment_name) != None: 
-            return True
-        return False
+        return self._segment_storage.get(segment_name) != None

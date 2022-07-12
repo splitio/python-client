@@ -90,7 +90,7 @@ class SynchronizerTests(object):
         split_api = mocker.Mock()
         split_api.fetch_splits.return_value = {'splits': self.splits, 'since': 123,
                                                'till': 123}
-        split_sync = SplitSynchronizer(split_api, split_storage) 
+        split_sync = SplitSynchronizer(split_api, split_storage)
         segment_storage = InMemorySegmentStorage()
         segment_api = mocker.Mock()
         segment_api.fetch_segment.return_value = {'name': 'segmentA', 'added': ['key1', 'key2',
@@ -101,14 +101,38 @@ class SynchronizerTests(object):
         synchronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
 
         synchronizer.synchronize_splits(123)
-        
+
         inserted_split = split_storage.get('some_name')
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
-        
-        inserted_segment = segment_storage.get('segmentA')
-        assert inserted_segment.name == 'segmentA'
-        assert inserted_segment.keys == {'key1', 'key2', 'key3'}
+
+        if not segment_sync._worker_pool.wait_for_completion():
+            inserted_segment = segment_storage.get('segmentA')
+            assert inserted_segment.name == 'segmentA'
+            assert inserted_segment.keys == {'key1', 'key2', 'key3'}
+
+    def test_synchronize_splits_calling_segment_sync_once(self, mocker):
+        split_storage = InMemorySplitStorage()
+        split_api = mocker.Mock()
+        split_api.fetch_splits.return_value = {'splits': self.splits, 'since': 123,
+                                               'till': 123}
+        split_sync = SplitSynchronizer(split_api, split_storage)
+        counts = {'segments': 0}
+
+        def sync_segments(*_):
+            """Sync Segments."""
+            counts['segments'] += 1
+            return True
+
+        segment_sync = mocker.Mock()
+        segment_sync.synchronize_segments.side_effect = sync_segments
+        segment_sync.segment_exist_in_storage.return_value = False
+        split_synchronizers = SplitSynchronizers(split_sync, segment_sync, mocker.Mock(),
+                                                 mocker.Mock(), mocker.Mock())
+        synchronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
+        synchronizer.synchronize_splits(123, True)
+
+        assert counts['segments'] == 1
 
     def test_sync_all(self, mocker):
         split_storage = mocker.Mock(spec=SplitStorage)
@@ -140,7 +164,7 @@ class SynchronizerTests(object):
         assert inserted_segment[0] == 'segmentA'
         assert inserted_segment[1] == ['key1', 'key2', 'key3']
         assert inserted_segment[2] == []
-                
+
     def test_start_periodic_fetching(self, mocker):
         split_task = mocker.Mock(spec=SplitSynchronizationTask)
         segment_task = mocker.Mock(spec=SegmentSynchronizationTask)

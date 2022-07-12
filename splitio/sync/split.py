@@ -42,7 +42,7 @@ class SplitSynchronizer(object):
                                 _ON_DEMAND_FETCH_BACKOFF_BASE,
                                 _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
 
-    def _fetch_until(self, fetch_options, till=None, segment_sync=None):
+    def _fetch_until(self, fetch_options, till=None):
         """
         Hit endpoint, update storage and return when since==till.
 
@@ -55,7 +55,7 @@ class SplitSynchronizer(object):
         :return: last change number
         :rtype: int
         """
-        segment_list = []
+        segment_list = set()
         while True:  # Fetch until since==till
             change_number = self._split_storage.get_change_number()
             if change_number is None:
@@ -70,23 +70,19 @@ class SplitSynchronizer(object):
                 _LOGGER.error('Exception raised while fetching splits')
                 _LOGGER.debug('Exception information: ', exc_info=True)
                 raise exc
-            
+
             for split in split_changes.get('splits', []):
                 if split['status'] == splits.Status.ACTIVE.value:
-                    self._split_storage.put(splits.from_raw(split))
+                    parsed = splits.from_raw(split)
+                    self._split_storage.put(parsed)
+                    segment_list.update(set(parsed.get_segment_names()))
                 else:
                     self._split_storage.remove(split['name'])
-                for segment in self._split_storage.get_segment_names():
-                    _LOGGER.debug('Found segment: %s', segment)
-                    if not segment_sync.segment_exist_in_storage(segment):
-                        _LOGGER.debug('Segment %s does not exist, syncing.', segment)
-                        segment_list.append(segment)
-                
             self._split_storage.set_change_number(split_changes['till'])
             if split_changes['till'] == split_changes['since']:
                 return split_changes['till'], segment_list
 
-    def _attempt_split_sync(self, fetch_options, till=None, segment_sync=None):
+    def _attempt_split_sync(self, fetch_options, till=None):
         """
         Hit endpoint, update storage and return True if sync is complete.
 
@@ -103,7 +99,7 @@ class SplitSynchronizer(object):
         remaining_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES
         while True:
             remaining_attempts -= 1
-            change_number, segment_list = self._fetch_until(fetch_options, till, segment_sync)
+            change_number, segment_list = self._fetch_until(fetch_options, till)
             if till is None or till <= change_number:
                 return True, remaining_attempts, change_number, segment_list
             elif remaining_attempts <= 0:
@@ -111,7 +107,7 @@ class SplitSynchronizer(object):
             how_long = self._backoff.get()
             time.sleep(how_long)
 
-    def synchronize_splits(self, till=None, segment_sync=None):
+    def synchronize_splits(self, till=None):
         """
         Hit endpoint, update storage and return True if sync is complete.
 
@@ -120,13 +116,13 @@ class SplitSynchronizer(object):
         """
         fetch_options = FetchOptions(True)  # Set Cache-Control to no-cache
         successful_sync, remaining_attempts, change_number, segment_list = self._attempt_split_sync(fetch_options,
-                                                                                      till, segment_sync)
+                                                                                      till)
         attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if successful_sync:  # succedeed sync
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return segment_list
         with_cdn_bypass = FetchOptions(True, change_number)  # Set flag for bypassing CDN
-        without_cdn_successful_sync, remaining_attempts, change_number, segment_list = self._attempt_split_sync(with_cdn_bypass, till, segment_sync)
+        without_cdn_successful_sync, remaining_attempts, change_number, segment_list = self._attempt_split_sync(with_cdn_bypass, till)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if without_cdn_successful_sync:
             _LOGGER.debug('Refresh completed bypassing the CDN in %d attempts.',
