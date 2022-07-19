@@ -24,6 +24,7 @@ class SplitSynchronizationTests(object):
             return 123
         change_number_mock._calls = 0
         storage.get_change_number.side_effect = change_number_mock
+        storage.get_segment_names.return_value = []
 
         api = mocker.Mock()
         splits = [{

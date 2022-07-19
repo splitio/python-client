@@ -55,13 +55,14 @@ class SplitSynchronizer(object):
         :return: last change number
         :rtype: int
         """
+        segment_list = set()
         while True:  # Fetch until since==till
             change_number = self._split_storage.get_change_number()
             if change_number is None:
                 change_number = -1
             if till is not None and till < change_number:
                 # the passed till is less than change_number, no need to perform updates
-                return change_number
+                return change_number, segment_list
 
             try:
                 split_changes = self._api.fetch_splits(change_number, fetch_options)
@@ -72,13 +73,14 @@ class SplitSynchronizer(object):
 
             for split in split_changes.get('splits', []):
                 if split['status'] == splits.Status.ACTIVE.value:
-                    self._split_storage.put(splits.from_raw(split))
+                    parsed = splits.from_raw(split)
+                    self._split_storage.put(parsed)
+                    segment_list.update(set(parsed.get_segment_names()))
                 else:
                     self._split_storage.remove(split['name'])
-
             self._split_storage.set_change_number(split_changes['till'])
             if split_changes['till'] == split_changes['since']:
-                return split_changes['till']
+                return split_changes['till'], segment_list
 
     def _attempt_split_sync(self, fetch_options, till=None):
         """
@@ -94,14 +96,16 @@ class SplitSynchronizer(object):
         :rtype: bool, int, int
         """
         self._backoff.reset()
+        final_segment_list = set()
         remaining_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES
         while True:
             remaining_attempts -= 1
-            change_number = self._fetch_until(fetch_options, till)
+            change_number, segment_list = self._fetch_until(fetch_options, till)
+            final_segment_list.update(segment_list)
             if till is None or till <= change_number:
-                return True, remaining_attempts, change_number
+                return True, remaining_attempts, change_number, final_segment_list
             elif remaining_attempts <= 0:
-                return False, remaining_attempts, change_number
+                return False, remaining_attempts, change_number, final_segment_list
             how_long = self._backoff.get()
             time.sleep(how_long)
 
@@ -112,20 +116,23 @@ class SplitSynchronizer(object):
         :param till: Passed till from Streaming.
         :type till: int
         """
+        final_segment_list = set()
         fetch_options = FetchOptions(True)  # Set Cache-Control to no-cache
-        successful_sync, remaining_attempts, change_number = self._attempt_split_sync(fetch_options,
+        successful_sync, remaining_attempts, change_number, segment_list = self._attempt_split_sync(fetch_options,
                                                                                       till)
+        final_segment_list.update(segment_list)
         attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if successful_sync:  # succedeed sync
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
-            return
+            return final_segment_list
         with_cdn_bypass = FetchOptions(True, change_number)  # Set flag for bypassing CDN
-        without_cdn_successful_sync, remaining_attempts, change_number = self._attempt_split_sync(with_cdn_bypass, till)
+        without_cdn_successful_sync, remaining_attempts, change_number, segment_list = self._attempt_split_sync(with_cdn_bypass, till)
+        final_segment_list.update(segment_list)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if without_cdn_successful_sync:
             _LOGGER.debug('Refresh completed bypassing the CDN in %d attempts.',
                           without_cdn_attempts)
-            return
+            return final_segment_list
         else:
             _LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
                           without_cdn_attempts)
