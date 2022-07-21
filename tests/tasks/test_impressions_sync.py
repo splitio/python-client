@@ -9,7 +9,7 @@ from splitio.models.impressions import Impression
 from splitio.api.impressions import ImpressionsAPI
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.engine.impressions import Manager as ImpressionsManager
-from splitio.engine.impressions import Counter
+from splitio.engine.strategies import Counter
 
 
 class ImpressionsSyncTests(object):

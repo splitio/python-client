@@ -18,7 +18,6 @@ from splitio.engine.impressions import Manager as ImpressionsManager, Impression
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder
 from splitio.client.config import DEFAULT_CONFIG
 
-
 class InMemoryIntegrationTests(object):
     """Inmemory storage-based integration tests."""
 

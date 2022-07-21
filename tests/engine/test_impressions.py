@@ -1,7 +1,9 @@
 """Impression manager, observer & hasher tests."""
 from datetime import datetime
-from splitio.engine.impressions import Hasher, Observer, Counter, Manager, \
-    ImpressionsMode, truncate_time, StrategyDebugMode, StrategyOptimizedMode
+from splitio.engine.impressions import Manager, ImpressionsMode
+from splitio.engine.strategies import Hasher, Observer, Counter, truncate_time
+from splitio.engine.strategies.strategy_debug_mode import StrategyDebugMode
+from splitio.engine.strategies.strategy_optimized_mode import StrategyOptimizedMode
 from splitio.models.impressions import Impression
 from splitio.client.listener import ImpressionListenerWrapper
 

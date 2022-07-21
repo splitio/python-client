@@ -7,7 +7,7 @@ import pytest
 from splitio.api.client import HttpResponse
 from splitio.api import APIException
 from splitio.engine.impressions import Manager as ImpressionsManager
-from splitio.engine.impressions import Counter
+from splitio.engine.strategies import Counter
 from splitio.sync.impression import ImpressionsCountSynchronizer
 from splitio.api.impressions import ImpressionsAPI
 
