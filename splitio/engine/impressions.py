@@ -1,4 +1,5 @@
 """Split evaluator module."""
+import abc
 import threading
 from collections import defaultdict, namedtuple
 from enum import Enum
@@ -9,6 +10,8 @@ from splitio.engine.cache.lru import SimpleLruCache
 from splitio.client.listener import ImpressionListenerException
 from splitio import util
 
+import logging
+_LOGGER = logging.getLogger(__name__)
 
 _TIME_INTERVAL_MS = 3600 * 1000  # one hour
 _IMPRESSION_OBSERVER_CACHE_SIZE = 500000
@@ -150,6 +153,130 @@ class Counter(object):
         return [Counter.CountPerFeature(k.feature, k.timeframe, v)
                 for (k, v) in old.items()]
 
+class BaseStrategy(object, metaclass=abc.ABCMeta):
+    """Strategy interface."""
+
+    @abc.abstractmethod
+    def process_impressions(self):
+        """
+        Return a list(impressions) object
+
+        """
+        pass
+
+    @abc.abstractmethod
+    def truncate_impressions_time(self):
+        """
+        Return list(impressions) object
+
+        """
+        pass
+
+    def get_counts(self):
+        """
+        Return A list of counter objects.
+
+        """
+        pass
+
+class StrategyOptimizedMode(BaseStrategy):
+    """Optimized mode strategy."""
+
+    def __init__(self, standalone=True):
+        """
+        Construct a strategy instance for optimized mode.
+
+        """
+        self._standalone = standalone
+        self._counter = Counter() if self._standalone else None
+        self._observer =  Observer(_IMPRESSION_OBSERVER_CACHE_SIZE) if self._standalone else None
+
+    def process_impressions(self, impressions):
+        """
+        Process impressions.
+
+        Impressions are analyzed to see if they've been seen before and counted.
+
+        :param impressions: List of impression objects with attributes
+        :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
+
+        :returns: Observed list of impressions
+        :rtype: list[tuple[splitio.models.impression.Impression, dict]]
+        """
+        imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions] \
+        if self._observer else impressions
+        if self._counter is not None:
+            self._counter.track([imp for imp, _ in imps])
+        return imps
+
+    def truncate_impressions_time(self, imps):
+        """
+        Process impressions.
+
+        Impressions are truncated based on time
+
+        :param impressions: List of impression objects with attributes
+        :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
+
+        :returns: truncated list of impressions
+        :rtype: list[splitio.models.impression.Impression]
+        """
+        this_hour = truncate_time(util.utctime_ms())
+        return [imp for imp, _ in imps] if self._counter is None \
+            else [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour]
+
+    def get_counts(self):
+        """
+        Return counts of impressions per features.
+
+        :returns: A list of counter objects.
+        :rtype: list[Counter.CountPerFeature]
+        """
+        return self._counter.pop_all() if self._counter is not None else []
+
+class StrategyDebugMode(BaseStrategy):
+    """Debug mode strategy."""
+
+    def __init__(self, standalone=True):
+        """
+        Construct a strategy instance for debug mode.
+
+        """
+        self._standalone = standalone
+        self._observer =  Observer(_IMPRESSION_OBSERVER_CACHE_SIZE) if self._standalone else None
+
+    def process_impressions(self, impressions):
+        """
+        Process impressions.
+
+        Impressions are analyzed to see if they've been seen before.
+
+        :param impressions: List of impression objects with attributes
+        :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
+
+        :returns: Observed list of impressions
+        :rtype: list[tuple[splitio.models.impression.Impression, dict]]
+        """
+        imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions] if self._observer is not None else impressions
+        return imps
+
+    def truncate_impressions_time(self, imps):
+        """
+        No counter implemented, return same impresisons passed.
+
+        :returns: list of impressions
+        :rtype: list[splitio.models.impression.Impression]
+        """
+        return [imp for imp, _ in imps]
+
+    def get_counts(self):
+        """
+        No counter implemented, return empty array
+
+        :returns: empty list
+        :rtype: list[]
+        """
+        return []
 
 class Manager(object):  # pylint:disable=too-few-public-methods
     """Impression manager."""
@@ -167,9 +294,17 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         :param listener: Optional impressions listener that will capture all seen impressions.
         :type listener: splitio.client.listener.ImpressionListenerWrapper
         """
-        self._observer = Observer(_IMPRESSION_OBSERVER_CACHE_SIZE) if standalone else None
-        self._counter = Counter() if standalone and mode == ImpressionsMode.OPTIMIZED else None
+        self._strategy = self.get_strategy(mode, standalone)
         self._listener = listener
+
+    def get_strategy(self, mode, standalone):
+        """
+        Return a strategy object based on mode value.
+
+        :returns: A strategy object
+        :rtype: (BaseStrategy)
+        """
+        return StrategyOptimizedMode(standalone) if mode == ImpressionsMode.OPTIMIZED else StrategyDebugMode(standalone)
 
     def process_impressions(self, impressions):
         """
@@ -180,17 +315,9 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         :param impressions: List of impression objects with attributes
         :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
         """
-        imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions] \
-            if self._observer else impressions
-
-        if self._counter:
-            self._counter.track([imp for imp, _ in imps])
-
+        imps = self._strategy.process_impressions(impressions)
         self._send_impressions_to_listener(imps)
-
-        this_hour = truncate_time(util.utctime_ms())
-        return [imp for imp, _ in imps] if self._counter is None \
-            else [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour]
+        return self._strategy.truncate_impressions_time(imps)
 
     def get_counts(self):
         """
@@ -199,7 +326,7 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         :returns: A list of counter objects.
         :rtype: list[Counter.CountPerFeature]
         """
-        return self._counter.pop_all() if self._counter is not None else []
+        return self._strategy.get_counts()
 
     def _send_impressions_to_listener(self, impressions):
         """
