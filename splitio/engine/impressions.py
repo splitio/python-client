@@ -2,6 +2,7 @@
 from enum import Enum
 
 from splitio.client.listener import ImpressionListenerException
+from splitio.engine.strategies import Observer
 from splitio.engine.strategies.strategy_debug_mode import StrategyDebugMode
 from splitio.engine.strategies.strategy_optimized_mode import StrategyOptimizedMode
 
@@ -40,7 +41,15 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         :returns: A strategy object
         :rtype: (BaseStrategy)
         """
-        return StrategyOptimizedMode(standalone) if mode == ImpressionsMode.OPTIMIZED else StrategyDebugMode(standalone)
+
+        observer = Observer(_IMPRESSION_OBSERVER_CACHE_SIZE) if self._standalone else None
+
+        if mode == ImpressionsMode.OPTIMIZED:
+            self._counter = Counter() if self._standalone else None
+            return StrategyOptimizedMode(self._counter, observer, standalone)
+        
+
+        return StrategyDebugMode(observer, standalone)
 
     def process_impressions(self, impressions):
         """
@@ -51,10 +60,11 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         :param impressions: List of impression objects with attributes
         :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
         """
-        imps = self._strategy.process_impressions(impressions)
-        self._send_impressions_to_listener(imps)
-        return self._strategy.truncate_impressions_time(imps)
 
+        forLog, forListener = self._strategy.process_impressions(impressions)
+        self._send_impressions_to_listener(forListener)
+
+        return forLog
     def get_counts(self):
         """
         Return counts of impressions per features.
@@ -62,7 +72,7 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         :returns: A list of counter objects.
         :rtype: list[Counter.CountPerFeature]
         """
-        return self._strategy.get_counts()
+        return self._counter.pop_all() if self._counter is not None else []
 
     def _send_impressions_to_listener(self, impressions):
         """
