@@ -19,6 +19,22 @@ def truncate_time(timestamp_ms):
     """
     return timestamp_ms - (timestamp_ms % _TIME_INTERVAL_MS)
 
+def truncate_impressions_time(imps, counter = None):
+    """
+    Process impressions.
+
+    Impressions are truncated based on time
+
+    :param impressions: List of impression objects with attributes
+    :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
+
+    :returns: truncated list of impressions
+    :rtype: list[splitio.models.impression.Impression]
+    """
+    this_hour = truncate_time(util.utctime_ms())
+    return [imp for imp, _ in imps] if counter is None \
+        else [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour]
+
 
 class Hasher(object):  # pylint:disable=too-few-public-methods
     """Impression hasher."""

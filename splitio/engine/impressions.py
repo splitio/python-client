@@ -4,9 +4,12 @@ from enum import Enum
 from splitio.client.listener import ImpressionListenerException
 from splitio.engine.strategies.strategy_debug_mode import StrategyDebugMode
 from splitio.engine.strategies.strategy_optimized_mode import StrategyOptimizedMode
+from splitio.engine.strategies import Observer, Counter
 
 import logging
 _LOGGER = logging.getLogger(__name__)
+
+_IMPRESSION_OBSERVER_CACHE_SIZE = 500000
 
 class ImpressionsMode(Enum):
     """Impressions tracking mode."""
@@ -30,6 +33,8 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         :param listener: Optional impressions listener that will capture all seen impressions.
         :type listener: splitio.client.listener.ImpressionListenerWrapper
         """
+        self._observer = Observer(_IMPRESSION_OBSERVER_CACHE_SIZE) if standalone else None
+        self._counter = Counter() if standalone else None
         self._strategy = self.get_strategy(mode, standalone)
         self._listener = listener
 
@@ -40,7 +45,7 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         :returns: A strategy object
         :rtype: (BaseStrategy)
         """
-        return StrategyOptimizedMode(standalone) if mode == ImpressionsMode.OPTIMIZED else StrategyDebugMode(standalone)
+        return StrategyOptimizedMode(self._counter, self._observer, standalone) if mode == ImpressionsMode.OPTIMIZED else StrategyDebugMode(self._observer, standalone)
 
     def process_impressions(self, impressions):
         """
@@ -51,9 +56,9 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         :param impressions: List of impression objects with attributes
         :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
         """
-        imps = self._strategy.process_impressions(impressions)
-        self._send_impressions_to_listener(imps)
-        return self._strategy.truncate_impressions_time(imps)
+        for_log, for_listener = self._strategy.process_impressions(impressions)
+        self._send_impressions_to_listener(for_listener)
+        return for_log
 
     def get_counts(self):
         """
@@ -62,7 +67,7 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         :returns: A list of counter objects.
         :rtype: list[Counter.CountPerFeature]
         """
-        return self._strategy.get_counts()
+        return self._counter.pop_all() if self._counter is not None else []
 
     def _send_impressions_to_listener(self, impressions):
         """
