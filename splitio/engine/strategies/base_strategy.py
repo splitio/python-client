@@ -10,18 +10,3 @@ class BaseStrategy(object, metaclass=abc.ABCMeta):
 
         """
         pass
-
-    @abc.abstractmethod
-    def truncate_impressions_time(self):
-        """
-        Return list(impressions) object
-
-        """
-        pass
-
-    def get_counts(self):
-        """
-        Return A list of counter objects.
-
-        """
-        pass
