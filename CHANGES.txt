@@ -1,5 +1,5 @@
-9.1.3 (July 19, 2022)
-- Added ability to sync new segments in Splits after Factory initialization
+9.1.3 (July 25, 2022)
+- Fixed synching missed segment(s) after receiving split update
 
 9.1.2 (April 6, 2022)
 - Updated pyyaml dependency for vulnerability CVE-2020-14343.
