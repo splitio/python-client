@@ -6,11 +6,6 @@ from splitio.engine.strategies.strategy_debug_mode import StrategyDebugMode
 from splitio.engine.strategies.strategy_optimized_mode import StrategyOptimizedMode
 from splitio.engine.strategies import Observer, Counter
 
-import logging
-_LOGGER = logging.getLogger(__name__)
-
-_IMPRESSION_OBSERVER_CACHE_SIZE = 500000
-
 class ImpressionsMode(Enum):
     """Impressions tracking mode."""
 
@@ -20,7 +15,7 @@ class ImpressionsMode(Enum):
 class Manager(object):  # pylint:disable=too-few-public-methods
     """Impression manager."""
 
-    def __init__(self, mode=ImpressionsMode.OPTIMIZED, standalone=True, listener=None):
+    def __init__(self, mode=ImpressionsMode.OPTIMIZED, standalone=True, listener=None, strategy=None):
         """
         Construct a manger to track and forward impressions to the queue.
 
@@ -33,19 +28,10 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         :param listener: Optional impressions listener that will capture all seen impressions.
         :type listener: splitio.client.listener.ImpressionListenerWrapper
         """
-        self._observer = Observer(_IMPRESSION_OBSERVER_CACHE_SIZE) if standalone else None
+
         self._counter = Counter() if standalone else None
-        self._strategy = self.get_strategy(mode, standalone)
+        self._strategy = strategy
         self._listener = listener
-
-    def get_strategy(self, mode, standalone):
-        """
-        Return a strategy object based on mode value.
-
-        :returns: A strategy object
-        :rtype: (BaseStrategy)
-        """
-        return StrategyOptimizedMode(self._counter, self._observer, standalone) if mode == ImpressionsMode.OPTIMIZED else StrategyDebugMode(self._observer, standalone)
 
     def process_impressions(self, impressions):
         """
@@ -56,7 +42,7 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         :param impressions: List of impression objects with attributes
         :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
         """
-        for_log, for_listener = self._strategy.process_impressions(impressions)
+        for_log, for_listener = self._strategy.process_impressions(impressions, self._counter)
         self._send_impressions_to_listener(for_listener)
         return for_log
 

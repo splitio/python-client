@@ -12,6 +12,9 @@ from splitio.client.config import sanitize as sanitize_config, DEFAULT_DATA_SAMP
 from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper
 from splitio.engine.impressions import Manager as ImpressionsManager
+from splitio.engine.strategies.strategy_debug_mode import StrategyDebugMode
+from splitio.engine.strategies.strategy_optimized_mode import StrategyOptimizedMode
+
 
 # Storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
@@ -314,10 +317,13 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'events': InMemoryEventStorage(cfg['eventsQueueSize']),
     }
 
+    imp_strategy = StrategyOptimizedMode(True) if cfg['ImpressionsMode'] == 'OPTIMIZED' else StrategyDebugMode(True)
+
     imp_manager = ImpressionsManager(
         cfg['impressionsMode'],
         True,
-        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata))
+        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
+        imp_strategy)
 
     synchronizers = SplitSynchronizers(
         SplitSynchronizer(apis['splits'], storages['splits']),

@@ -6,15 +6,14 @@ _IMPRESSION_OBSERVER_CACHE_SIZE = 500000
 class StrategyDebugMode(BaseStrategy):
     """Debug mode strategy."""
 
-    def __init__(self, observer=None, standalone=True):
+    def __init__(self, standalone=True):
         """
         Construct a strategy instance for debug mode.
 
         """
-        self._standalone = standalone
-        self._observer =  observer
+        self._observer = Observer(_IMPRESSION_OBSERVER_CACHE_SIZE) if standalone else None
 
-    def process_impressions(self, impressions):
+    def process_impressions(self, impressions, counter=None):
         """
         Process impressions.
 
@@ -26,5 +25,5 @@ class StrategyDebugMode(BaseStrategy):
         :returns: Observed list of impressions
         :rtype: list[tuple[splitio.models.impression.Impression, dict]]
         """
-        for_listener = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions] if self._observer is not None else impressions
-        return truncate_impressions_time(for_listener, None), for_listener
+        imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions] if self._observer is not None else impressions
+        return [i for i, _ in imps], imps

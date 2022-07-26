@@ -1,20 +1,20 @@
 from splitio.engine.strategies.base_strategy import BaseStrategy
-from splitio.engine.strategies import Observer, Counter, truncate_impressions_time
+from splitio.engine.strategies import Observer, Counter, truncate_time
 from splitio import util
+
+_IMPRESSION_OBSERVER_CACHE_SIZE = 500000
 
 class StrategyOptimizedMode(BaseStrategy):
     """Optimized mode strategy."""
 
-    def __init__(self, counter=None, observer=None, standalone=True):
+    def __init__(self, standalone=True):
         """
         Construct a strategy instance for optimized mode.
 
         """
-        self._standalone = standalone
-        self._counter = counter
-        self._observer =  observer
+        self._observer = Observer(_IMPRESSION_OBSERVER_CACHE_SIZE) if standalone else None
 
-    def process_impressions(self, impressions):
+    def process_impressions(self, impressions, counter):
         """
         Process impressions.
 
@@ -26,7 +26,7 @@ class StrategyOptimizedMode(BaseStrategy):
         :returns: Observed list of impressions
         :rtype: list[tuple[splitio.models.impression.Impression, dict]]
         """
-        forListener = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions] if self._observer else impressions
-        if self._counter is not None:
-            self._counter.track([imp for imp, _ in forListener])
-        return truncate_impressions_time(forListener, self._counter), forListener
+        imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions] if self._observer else impressions
+        counter.track([imp for imp, _ in imps])
+        this_hour = truncate_time(util.utctime_ms())
+        return [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour], imps
