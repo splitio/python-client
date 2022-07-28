@@ -15,7 +15,6 @@ from splitio.engine.impressions import Manager as ImpressionsManager
 from splitio.engine.strategies.strategy_debug_mode import StrategyDebugMode
 from splitio.engine.strategies.strategy_optimized_mode import StrategyOptimizedMode
 
-
 # Storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
     InMemoryImpressionStorage, InMemoryEventStorage
@@ -317,11 +316,10 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'events': InMemoryEventStorage(cfg['eventsQueueSize']),
     }
 
-    imp_strategy = StrategyOptimizedMode(True) if cfg['ImpressionsMode'] == 'OPTIMIZED' else StrategyDebugMode(True)
+    imp_counter = Counter() if cfg['impressionsMode'] == 'OPTIMIZED' else None
+    imp_strategy = StrategyOptimizedMode(imp_counter) if cfg['impressionsMode'] == 'OPTIMIZED' else StrategyDebugMode()
 
     imp_manager = ImpressionsManager(
-        cfg['impressionsMode'],
-        True,
         _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
         imp_strategy)
 
@@ -331,8 +329,9 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         ImpressionSynchronizer(apis['impressions'], storages['impressions'],
                                cfg['impressionsBulkSize']),
         EventSynchronizer(apis['events'], storages['events'], cfg['eventsBulkSize']),
-        ImpressionsCountSynchronizer(apis['impressions'], imp_manager),
+        ImpressionsCountSynchronizer(apis['impressions'], imp_counter),
     )
+    imp_count_sync_task = ImpressionsCountSyncTask(synchronizers.impressions_count_sync.synchronize_counters) if cfg['impressionsMode'] == 'OPTIMIZED' else None
 
     tasks = SplitTasks(
         SplitSynchronizationTask(
@@ -348,7 +347,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
             cfg['impressionsRefreshRate'],
         ),
         EventsSyncTask(synchronizers.events_sync.synchronize_events, cfg['eventsPushRate']),
-        ImpressionsCountSyncTask(synchronizers.impressions_count_sync.synchronize_counters)
+        imp_count_sync_task
     )
 
     synchronizer = Synchronizer(synchronizers, tasks)
@@ -399,10 +398,15 @@ def _build_redis_factory(api_key, cfg):
         _LOGGER.warning("dataSampling cannot be less than %.2f, defaulting to minimum",
                         _MIN_DEFAULT_DATA_SAMPLING_ALLOWED)
         data_sampling = _MIN_DEFAULT_DATA_SAMPLING_ALLOWED
+
+    imp_strategy = StrategyOptimizedMode(Counter()) if cfg['impressionsMode'] == 'OPTIMIZED' else StrategyDebugMode()
+    imp_manager = ImpressionsManager(
+        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
+        imp_strategy)
+
     recorder = PipelinedRecorder(
         redis_adapter.pipeline,
-        ImpressionsManager(cfg['impressionsMode'], False,
-                           _wrap_impression_listener(cfg['impressionListener'], sdk_metadata)),
+        imp_manager,
         storages['events'],
         storages['impressions'],
         data_sampling,
@@ -413,7 +417,6 @@ def _build_redis_factory(api_key, cfg):
         cfg['labelsEnabled'],
         recorder,
     )
-
 
 def _build_localhost_factory(cfg):
     """Build and return a localhost factory for testing/development purposes."""
@@ -441,8 +444,9 @@ def _build_localhost_factory(cfg):
     synchronizer = LocalhostSynchronizer(synchronizers, tasks)
     manager = Manager(ready_event, synchronizer, None, False, sdk_metadata)
     manager.start()
+
     recorder = StandardRecorder(
-        ImpressionsManager(cfg['impressionsMode'], True, None),
+        ImpressionsManager(cfg['impressionsMode'], StrategyDebugMode()),
         storages['events'],
         storages['impressions'],
     )

@@ -6,14 +6,14 @@ _IMPRESSION_OBSERVER_CACHE_SIZE = 500000
 class StrategyDebugMode(BaseStrategy):
     """Debug mode strategy."""
 
-    def __init__(self, standalone=True):
+    def __init__(self):
         """
         Construct a strategy instance for debug mode.
 
         """
-        self._observer = Observer(_IMPRESSION_OBSERVER_CACHE_SIZE) if standalone else None
+        self._observer = Observer(_IMPRESSION_OBSERVER_CACHE_SIZE)
 
-    def process_impressions(self, impressions, counter=None):
+    def process_impressions(self, impressions):
         """
         Process impressions.
 

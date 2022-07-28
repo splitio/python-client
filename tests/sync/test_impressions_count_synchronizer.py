@@ -16,7 +16,7 @@ class ImpressionsCountSynchronizerTests(object):
     """ImpressionsCount synchronizer test cases."""
 
     def test_synchronize_impressions_counts(self, mocker):
-        manager = mocker.Mock(spec=ImpressionsManager)
+        counter = mocker.Mock(spec=Counter)
 
         counters = [
             Counter.CountPerFeature('f1', 123, 2),
@@ -25,13 +25,13 @@ class ImpressionsCountSynchronizerTests(object):
             Counter.CountPerFeature('f2', 456, 222)
         ]
 
-        manager.get_counts.return_value = counters
+        counter.pop_all.return_value = counters
         api = mocker.Mock(spec=ImpressionsAPI)
         api.flush_counters.return_value = HttpResponse(200, '')
-        impression_count_synchronizer = ImpressionsCountSynchronizer(api, manager)
+        impression_count_synchronizer = ImpressionsCountSynchronizer(api, counter)
         impression_count_synchronizer.synchronize_counters()
 
-        assert manager.get_counts.mock_calls[0] == mocker.call()
+        assert counter.pop_all.mock_calls[0] == mocker.call()
         assert api.flush_counters.mock_calls[0] == mocker.call(counters)
 
         assert len(api.flush_counters.mock_calls) == 1
