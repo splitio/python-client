@@ -8,7 +8,7 @@ TESTS_REQUIRES = [
     'flake8',
     'pytest==7.0.1',
     'pytest-mock>=3.5.1',
-    'coverage==6.2',
+    'coverage',
     'pytest-cov',
     'importlib-metadata==4.2',
     'tomli==1.2.3',
@@ -19,6 +19,7 @@ INSTALL_REQUIRES = [
     'pyyaml>=5.4',
     'docopt>=0.6.2',
     'enum34;python_version<"3.4"',
+    'bloom-filter2>=2.0.0',
 ]
 
 with open(path.join(path.abspath(path.dirname(__file__)), 'splitio', 'version.py')) as f:
