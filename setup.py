@@ -8,7 +8,7 @@ TESTS_REQUIRES = [
     'flake8',
     'pytest==7.0.1',
     'pytest-mock>=3.5.1',
-    'coverage',
+    'coverage==6.1',
     'pytest-cov',
     'importlib-metadata==4.2',
     'tomli==1.2.3',
