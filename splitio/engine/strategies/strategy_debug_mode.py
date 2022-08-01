@@ -25,5 +25,5 @@ class StrategyDebugMode(BaseStrategy):
         :returns: Observed list of impressions
         :rtype: list[tuple[splitio.models.impression.Impression, dict]]
         """
-        imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions] if self._observer is not None else impressions
+        imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions]
         return [i for i, _ in imps], imps

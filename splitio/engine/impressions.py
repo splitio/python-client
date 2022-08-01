@@ -2,9 +2,6 @@
 from enum import Enum
 
 from splitio.client.listener import ImpressionListenerException
-from splitio.engine.strategies.strategy_debug_mode import StrategyDebugMode
-from splitio.engine.strategies.strategy_optimized_mode import StrategyOptimizedMode
-#from splitio.engine.strategies import Observer, Counter
 
 class ImpressionsMode(Enum):
     """Impressions tracking mode."""

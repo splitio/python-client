@@ -399,10 +399,9 @@ def _build_redis_factory(api_key, cfg):
                         _MIN_DEFAULT_DATA_SAMPLING_ALLOWED)
         data_sampling = _MIN_DEFAULT_DATA_SAMPLING_ALLOWED
 
-    imp_strategy = StrategyOptimizedMode(Counter()) if cfg['impressionsMode'] == 'OPTIMIZED' else StrategyDebugMode()
     imp_manager = ImpressionsManager(
         _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
-        imp_strategy)
+        StrategyDebugMode())
 
     recorder = PipelinedRecorder(
         redis_adapter.pipeline,

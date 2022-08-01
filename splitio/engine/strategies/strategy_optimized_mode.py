@@ -27,7 +27,7 @@ class StrategyOptimizedMode(BaseStrategy):
         :returns: Observed list of impressions
         :rtype: list[tuple[splitio.models.impression.Impression, dict]]
         """
-        imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions] if self._observer else impressions
+        imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions]
         self._counter.track([imp for imp, _ in imps])
         this_hour = truncate_time(util.utctime_ms())
         return [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour], imps
