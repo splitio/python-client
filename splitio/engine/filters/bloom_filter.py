@@ -1,8 +1,7 @@
-from splitio.engine.filters.base_filter import BaseFilter
-from splitio import util
-from bloom_filter2 import BloomFilter
+from splitio.engine.filters import BaseFilter
+from bloom_filter2 import BloomFilter as BloomFilter2
 
-class ImpressionsBloomFilter(BaseFilter):
+class BloomFilter(BaseFilter):
     """Optimized mode strategy."""
 
     def __init__(self, max_elements=5000, error_rate=0.01):
@@ -17,7 +16,7 @@ class ImpressionsBloomFilter(BaseFilter):
         """
         self._max_elements = max_elements
         self._error_rate = error_rate
-        self._imps_bloom_filter = BloomFilter(max_elements=self._max_elements, error_rate=self._error_rate)
+        self._imps_bloom_filter = BloomFilter2(max_elements=self._max_elements, error_rate=self._error_rate)
 
     def add(self, data):
         """
@@ -50,4 +49,4 @@ class ImpressionsBloomFilter(BaseFilter):
 
         """
         self._imps_bloom_filter.close()
-        self._imps_bloom_filter = BloomFilter(max_elements=self._max_elements, error_rate=self._error_rate)
+        self._imps_bloom_filter = BloomFilter2(max_elements=self._max_elements, error_rate=self._error_rate)

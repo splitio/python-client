@@ -2,14 +2,13 @@
 
 from random import random
 import uuid
-import time
-from splitio.engine.filters.bloom_filter import ImpressionsBloomFilter
+from splitio.engine.filters.bloom_filter import BloomFilter
 
 class BloomFilterTests(object):
     """StandardRecorderTests test cases."""
 
     def test_bloom_filter_methods(self, mocker):
-        bloom_filter = ImpressionsBloomFilter()
+        bloom_filter = BloomFilter()
         key1 = str(uuid.uuid4())
         key2 = str(uuid.uuid4())
         bloom_filter.add(key1)
@@ -29,7 +28,7 @@ class BloomFilterTests(object):
         arr_storage = []
         total_sample = 20000
         error_rate = 0.01
-        bloom_filter = ImpressionsBloomFilter(total_sample, error_rate)
+        bloom_filter = BloomFilter(total_sample, error_rate)
 
         for x in range(1, total_sample):
             myuuid = str(uuid.uuid4())
