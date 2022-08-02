@@ -3,7 +3,6 @@
 import threading
 from splitio.engine.unique_keys_tracker import UniqueKeysTracker
 from splitio.engine.filters.bloom_filter import BloomFilter
-import pytest
 
 class UniqueKeysTrackerTests(object):
     """StandardRecorderTests test cases."""
@@ -47,7 +46,6 @@ class UniqueKeysTrackerTests(object):
         for x in range(1, int(cache_size / 2) + 1):
             tracker.track('key' + str(x), split2)
 
-        pytest.set_trace()
         assert(tracker._get_dict_size() == (cache_size + (cache_size / 2)))
         assert(len(tracker._cache[split1]) == cache_size)
         assert(len(tracker._cache[split2]) == cache_size / 2)
