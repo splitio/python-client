@@ -2,6 +2,7 @@ import abc
 import threading
 import logging
 from splitio.engine.filters.bloom_filter import BloomFilter
+from splitio.engine.sender_adapters.in_memory_sender_adapter import InMemorySenderAdapter
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -16,38 +17,33 @@ class BaseUniqueKeysTracker(object, metaclass=abc.ABCMeta):
         """
         pass
 
-    @abc.abstractmethod
-    def start(self):
-        """
-        No return value
-
-        """
-        pass
-
-    @abc.abstractmethod
-    def stop(self):
-        """
-        No return value
-
-        """
-        pass
-
 class UniqueKeysTracker(BaseUniqueKeysTracker):
     """Unique Keys Tracker class."""
 
-    def __init__(self, cache_size=30000, max_bulk_size=5000, task_refresh_rate = 24):
+    def __init__(self, cache_size=30000):
+        """
+        Initialize unique keys tracker instance
+
+        :param cache_size: The size of the unique keys dictionary
+        :type key: int
+        """
         self._cache_size = cache_size
-        self._max_bulk_size = max_bulk_size
-        self._task_refresh_rate = task_refresh_rate
         self._filter = BloomFilter(cache_size)
         self._lock = threading.RLock()
         self._cache = {}
-        # TODO: initialize impressions sender adapter and task referesh rate in next PR
+        self._queue_full_hook = None
 
     def track(self, key, feature_name):
         """
         Return a boolean flag
 
+        :param key: key to be added to MTK list
+        :type key: int
+        :param feature_name: split name associated with the key
+        :type feature_name: str
+
+        :return: True if successful
+        :rtype: boolean
         """
         if self._filter.contains(feature_name+key):
             return False
@@ -56,34 +52,44 @@ class UniqueKeysTracker(BaseUniqueKeysTracker):
             self._add_or_update(feature_name, key)
             self._filter.add(feature_name+key)
 
-        if len(self._cache[feature_name]) == self._cache_size:
-            _LOGGER.warn("MTK Cache size for Split [%s] has reach maximum unique keys [%d], flushing data now.", feature_name, self._cache_size)
-#            TODO: Flush the data and reset split cache in next PR
-        if self._get_dict_size() >= self._max_bulk_size:
-            _LOGGER.info("Bulk MTK cache size has reach maximum, flushing data now.")
-#            TODO: Flush the data and reset split cache in next PR
-
+        if self._get_dict_size() > self._cache_size:
+            if self._queue_full_hook is not None and callable(self._queue_full_hook):
+                self._queue_full_hook()
+            _LOGGER.info(
+                'Unique Keys queue is full, flushing the current queue now.'
+            )
         return True
 
     def _get_dict_size(self):
+        """
+        Return the size of unique keys dictionary (number of keys in all features)
+
+        :return: dictionary set() items count
+        :rtype: int
+        """
         total_size = 0
-        for key in self._cache:
-            total_size = total_size + len(self._cache[key])
+        for key in self._uniqe_keys_tracker._cache:
+            total_size = total_size + len(self._uniqe_keys_tracker._cache[key])
         return total_size
 
     def _add_or_update(self, feature_name, key):
+        """
+        Add the feature_name+key to both bloom filter and dictionary.
+
+        :param feature_name: split name associated with the key
+        :type feature_name: str
+        :param key: key to be added to MTK list
+        :type key: int
+        """
         if feature_name not in self._cache:
             self._cache[feature_name] = set()
         self._cache[feature_name].add(key)
 
-    def start(self):
+    def set_queue_full_hook(self, hook):
         """
-        TODO: Add start posting impressions job in next PR
+        Set a hook to be called when the queue is full.
 
+        :param h: Hook to be called when the queue is full
         """
-
-    def stop(self):
-        """
-        TODO: Add stop posting impressions job in next PR
-
-        """
+        if callable(hook):
+            self._queue_full_hook = hook

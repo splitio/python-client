@@ -27,12 +27,14 @@ from splitio.api.segments import SegmentsAPI
 from splitio.api.impressions import ImpressionsAPI
 from splitio.api.events import EventsAPI
 from splitio.api.auth import AuthAPI
+from splitio.api.telemetry import TelemetryAPI
 
 # Tasks
 from splitio.tasks.split_sync import SplitSynchronizationTask
 from splitio.tasks.segment_sync import SegmentSynchronizationTask
 from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask
 from splitio.tasks.events_sync import EventsSyncTask
+from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTask
 
 # Synchronizer
 from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, \
@@ -42,6 +44,8 @@ from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer
 from splitio.sync.segment import SegmentSynchronizer
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.sync.event import EventSynchronizer
+from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer
+
 
 # Recorder
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder
@@ -283,7 +287,7 @@ def _wrap_impression_listener(listener, metadata):
 
 
 def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pylint:disable=too-many-arguments,too-many-locals
-                             auth_api_base_url=None, streaming_api_base_url=None):
+                             auth_api_base_url=None, streaming_api_base_url=None, telemetry_api_base_url=None):
     """Build and return a split factory tailored to the supplied config."""
     if not input_validator.validate_factory_instantiation(api_key):
         return None
@@ -292,6 +296,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         sdk_url=sdk_url,
         events_url=events_url,
         auth_url=auth_api_base_url,
+        telemetry_url=telemetry_api_base_url,
         timeout=cfg.get('connectionTimeout')
     )
 
@@ -302,6 +307,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'segments': SegmentsAPI(http_client, api_key, sdk_metadata),
         'impressions': ImpressionsAPI(http_client, api_key, sdk_metadata, cfg['impressionsMode']),
         'events': EventsAPI(http_client, api_key, sdk_metadata),
+        'telemtery': TelemetryAPI(http_client, api_key, sdk_metadata),
     }
 
     if not input_validator.validate_apikey_type(apis['segments']):
@@ -326,6 +332,8 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
                                cfg['impressionsBulkSize']),
         EventSynchronizer(apis['events'], storages['events'], cfg['eventsBulkSize']),
         ImpressionsCountSynchronizer(apis['impressions'], imp_manager),
+        UniqueKeysSynchronizer(), # TODO: Pass the UniqueKeysTracker instance fetched from Strategy instance created above.
+        ClearFilterSynchronizer(), # TODO: Pass the UniqueKeysTracker instance fetched from Strategy instance created above.
     )
 
     tasks = SplitTasks(
@@ -342,7 +350,9 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
             cfg['impressionsRefreshRate'],
         ),
         EventsSyncTask(synchronizers.events_sync.synchronize_events, cfg['eventsPushRate']),
-        ImpressionsCountSyncTask(synchronizers.impressions_count_sync.synchronize_counters)
+        ImpressionsCountSyncTask(synchronizers.impressions_count_sync.synchronize_counters),
+        UniqueKeysSyncTask(synchronizers.unique_keys_sync.SendAll),
+        ClearFilterSyncTask(synchronizers.clear_filter_sync.clearAll)
     )
 
     synchronizer = Synchronizer(synchronizers, tasks)
@@ -355,6 +365,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
 
     storages['events'].set_queue_full_hook(tasks.events_task.flush)
     storages['impressions'].set_queue_full_hook(tasks.impressions_task.flush)
+    # TODO: Add unique_keys_tracker.set_queue_full_hook(tasks.unique_keys.flush)
 
     recorder = StandardRecorder(
         imp_manager,
