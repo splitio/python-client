@@ -14,7 +14,7 @@ class SplitSynchronizers(object):
     """SplitSynchronizers."""
 
     def __init__(self, split_sync, segment_sync, impressions_sync, events_sync,  # pylint:disable=too-many-arguments
-                 impressions_count_sync, unique_keys_sync, clear_filter_sync):
+                 impressions_count_sync):
         """
         Class constructor.
 
@@ -28,16 +28,22 @@ class SplitSynchronizers(object):
         :type events_sync: splitio.sync.event.EventSynchronizer
         :param impressions_count_sync: sync for impression_counts
         :type impressions_count_sync: splitio.sync.impression.ImpressionsCountSynchronizer
-        :param unique_keys_sync: sync for unique_keys
-        :type unique_keys_sync: splitio.sync.unique_keys.UniqueKeysSynchronizer
-        :param clear_filter_sync: sync for clear_filter
-        :type clear_filter_sync: splitio.sync.unique_keys.ClearFilterSynchronizer
         """
         self._split_sync = split_sync
         self._segment_sync = segment_sync
         self._impressions_sync = impressions_sync
         self._events_sync = events_sync
         self._impressions_count_sync = impressions_count_sync
+
+    def set_none_syncs(self, unique_keys_sync, clear_filter_sync):
+        """
+        Set the NONE mode synchonizer objects.
+
+        :param unique_keys_sync: sync for unique_keys
+        :type unique_keys_sync: splitio.sync.unique_keys.UniqueKeysSynchronizer
+        :param clear_filter_sync: sync for clear_filter
+        :type clear_filter_sync: splitio.sync.unique_keys.ClearFilterSynchronizer
+        """
         self._unique_keys_sync = unique_keys_sync
         self._clear_filter_sync = clear_filter_sync
 
@@ -80,7 +86,7 @@ class SplitTasks(object):
     """SplitTasks."""
 
     def __init__(self, split_task, segment_task, impressions_task, events_task,  # pylint:disable=too-many-arguments
-                 impressions_count_task, unique_keys_task, clear_filter_task):
+                 impressions_count_task):
         """
         Class constructor.
 
@@ -94,16 +100,22 @@ class SplitTasks(object):
         :type events_task: splitio.tasks.events_sync.EventsSyncTask
         :param impressions_count_task: sync for impression_counts
         :type impressions_count_task: splitio.tasks.impressions_sync.ImpressionsCountSyncTask
-        :param unique_keys_task: sync for unique_keys
-        :type unique_keys_task: splitio.tasks.unique_keys_sync.UniqueKeysSyncTask
-        :param clear_filter_task: sync for clear_filter
-        :type clear_filter_task: splitio.tasks.unique_keys_sync.ClearFilterSyncTask
         """
         self._split_task = split_task
         self._segment_task = segment_task
         self._impressions_task = impressions_task
         self._events_task = events_task
         self._impressions_count_task = impressions_count_task
+
+    def set_none_tasks(self, unique_keys_task, clear_filter_task):
+        """
+        Set the NONE mode synchonizer objects.
+
+        :param unique_keys_task: sync for unique_keys
+        :type unique_keys_task: splitio.tasks.unique_keys_sync.UniqueKeysSyncTask
+        :param clear_filter_task: sync for clear_filter
+        :type clear_filter_task: splitio.tasks.unique_keys_sync.ClearFilterSyncTask
+        """
         self._unique_keys_task = unique_keys_task
         self._clear_filter_task = clear_filter_task
 
@@ -333,8 +345,9 @@ class Synchronizer(BaseSynchronizer):
         self._split_tasks.impressions_task.start()
         self._split_tasks.events_task.start()
         self._split_tasks.impressions_count_task.start()
-        self._split_tasks.unique_keys_task.start()
-        self._split_tasks.clear_filter_task.start()
+        if self._split_tasks.unique_keys_task is not None:
+            self._split_tasks.unique_keys_task.start()
+            self._split_tasks.clear_filter_task.start()
 
     def stop_periodic_data_recording(self, blocking):
         """
@@ -346,11 +359,13 @@ class Synchronizer(BaseSynchronizer):
         _LOGGER.debug('Stopping periodic data recording')
         if blocking:
             events = []
-            for task in [self._split_tasks.impressions_task,
-                         self._split_tasks.events_task,
-                         self._split_tasks.impressions_count_task,
-                         self._split_tasks.unique_keys_task,
-                         self._split_tasks.clear_filter_task]:
+            tasks = [self._split_tasks.impressions_task,
+                    self._split_tasks.events_task,
+                    self._split_tasks.impressions_count_task]
+            if self._split_tasks.unique_keys_task is not None:
+                tasks.append(self._split_tasks.unique_keys_task)
+                tasks.append(self._split_tasks.clear_filter_task)
+            for task in tasks:
                 stop_event = threading.Event()
                 task.stop(stop_event)
                 events.append(stop_event)
@@ -360,8 +375,9 @@ class Synchronizer(BaseSynchronizer):
             self._split_tasks.impressions_task.stop()
             self._split_tasks.events_task.stop()
             self._split_tasks.impressions_count_task.stop()
-            self._split_tasks.unique_keys_task.stop()
-            self._split_tasks.clear_filter_task.stop()
+            if self._split_tasks.unique_keys_task is not None:
+                self._split_tasks.unique_keys_task.stop()
+                self._split_tasks.clear_filter_task.stop()
 
     def kill_split(self, split_name, default_treatment, change_number):
         """

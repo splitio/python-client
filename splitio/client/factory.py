@@ -12,6 +12,9 @@ from splitio.client.config import sanitize as sanitize_config, DEFAULT_DATA_SAMP
 from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper
 from splitio.engine.impressions import Manager as ImpressionsManager
+from splitio.engine.strategies.strategy_debug_mode import StrategyDebugMode
+from splitio.engine.strategies.strategy_optimized_mode import StrategyOptimizedMode
+from splitio.engine.strategies.strategy_none_mode import StrategyNoneMode
 
 # Storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
@@ -320,10 +323,18 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'events': InMemoryEventStorage(cfg['eventsQueueSize']),
     }
 
+    imp_counter = Counter() if cfg['impressionsMode'] == 'OPTIMIZED' else None
+
+    strategies = {
+        'OPTIMIZED': StrategyOptimizedMode(imp_counter),
+        'DEBUG' : StrategyDebugMode(),
+        'NONE' : StrategyNoneMode(imp_counter),
+    }
+    imp_strategy = strategies[cfg['impressionsMode']]
+
     imp_manager = ImpressionsManager(
-        cfg['impressionsMode'],
-        True,
-        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata))
+        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
+        imp_strategy)
 
     synchronizers = SplitSynchronizers(
         SplitSynchronizer(apis['splits'], storages['splits']),
@@ -332,8 +343,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
                                cfg['impressionsBulkSize']),
         EventSynchronizer(apis['events'], storages['events'], cfg['eventsBulkSize']),
         ImpressionsCountSynchronizer(apis['impressions'], imp_manager),
-        UniqueKeysSynchronizer(), # TODO: Pass the UniqueKeysTracker instance fetched from Strategy instance created above.
-        ClearFilterSynchronizer(), # TODO: Pass the UniqueKeysTracker instance fetched from Strategy instance created above.
     )
 
     tasks = SplitTasks(
@@ -351,9 +360,17 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         ),
         EventsSyncTask(synchronizers.events_sync.synchronize_events, cfg['eventsPushRate']),
         ImpressionsCountSyncTask(synchronizers.impressions_count_sync.synchronize_counters),
-        UniqueKeysSyncTask(synchronizers.unique_keys_sync.SendAll),
-        ClearFilterSyncTask(synchronizers.clear_filter_sync.clearAll)
     )
+
+    if cfg['impressionsMode'] == 'NONE':
+        synchronizers.set_none_syncs(
+            UniqueKeysSynchronizer(imp_strategy._unique_keys_tracker),
+            ClearFilterSynchronizer(imp_strategy._unique_keys_tracker),
+        )
+        tasks.set_none_tasks(
+            UniqueKeysSyncTask(synchronizers.unique_keys_sync.SendAll),
+            ClearFilterSyncTask(synchronizers.clear_filter_sync.clearAll)
+        )
 
     synchronizer = Synchronizer(synchronizers, tasks)
 
