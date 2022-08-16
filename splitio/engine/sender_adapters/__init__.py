@@ -10,11 +10,3 @@ class ImpressionsSenderAdapter(object, metaclass=abc.ABCMeta):
 
         """
         pass
-
-    @abc.abstractmethod
-    def record_impressions_count(self, data):
-        """
-        No Return value
-
-        """
-        pass

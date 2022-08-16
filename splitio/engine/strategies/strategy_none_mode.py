@@ -34,6 +34,6 @@ class StrategyNoneMode(BaseStrategy):
         imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions]
         self._counter.track([imp for imp, _ in imps])
         this_hour = truncate_time(util.utctime_ms())
-        [self._unique_keys_tracker(i.matching_key, i.feature_name) for i, _ in imps if i.previous_time is None or i.previous_time < this_hour], imps
+        [self._unique_keys_tracker.track(i.matching_key, i.feature_name) for i, _ in imps if i.previous_time is None or i.previous_time < this_hour]
 
-        return []
+        return [], imps

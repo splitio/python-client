@@ -7,13 +7,14 @@ _IMPRESSION_OBSERVER_CACHE_SIZE = 500000
 class StrategyOptimizedMode(BaseStrategy):
     """Optimized mode strategy."""
 
-    def __init__(self, counter=None):
+    def __init__(self, counter):
         """
         Construct a strategy instance for optimized mode.
 
         """
         self._observer = Observer(_IMPRESSION_OBSERVER_CACHE_SIZE)
         self._counter = counter
+
 
     def process_impressions(self, impressions):
         """

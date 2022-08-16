@@ -8,6 +8,7 @@ from splitio.api.client import HttpResponse
 from splitio.api import APIException
 from splitio.engine.impressions import Manager as ImpressionsManager
 from splitio.engine.strategies import Counter
+from splitio.engine.strategies.strategy_optimized_mode import StrategyOptimizedMode
 from splitio.sync.impression import ImpressionsCountSynchronizer
 from splitio.api.impressions import ImpressionsAPI
 
@@ -28,7 +29,7 @@ class ImpressionsCountSynchronizerTests(object):
         counter.pop_all.return_value = counters
         api = mocker.Mock(spec=ImpressionsAPI)
         api.flush_counters.return_value = HttpResponse(200, '')
-        impression_count_synchronizer = ImpressionsCountSynchronizer(api, counter)
+        impression_count_synchronizer = ImpressionsCountSynchronizer(api, ImpressionsManager(mocker.Mock(), StrategyOptimizedMode(counter)))
         impression_count_synchronizer.synchronize_counters()
 
         assert counter.pop_all.mock_calls[0] == mocker.call()

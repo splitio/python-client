@@ -8,7 +8,6 @@ from splitio.api.commons import headers_from_metadata
 
 _LOGGER = logging.getLogger(__name__)
 
-
 class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the Telemetry API."""
 
@@ -34,8 +33,8 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
         """
         try:
             response = self._client.post(
-                'keys',
-                '/ss',
+                'telemetry',
+                '/keys/ss',
                 self._apikey,
                 body=uniques,
                 extra_headers=self._metadata

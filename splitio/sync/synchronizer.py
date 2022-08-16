@@ -106,6 +106,8 @@ class SplitTasks(object):
         self._impressions_task = impressions_task
         self._events_task = events_task
         self._impressions_count_task = impressions_count_task
+        self._unique_keys_task = None
+        self._clear_filter_task = None
 
     def set_none_tasks(self, unique_keys_task, clear_filter_task):
         """

@@ -67,13 +67,13 @@ class ClearFilterSyncTask(BaseSynchronizationTask):
     def start(self):
         """Start executing the unique keys synchronization task."""
 
-        _LOGGER.debug('Starting periodic Unique Keys posting')
+        _LOGGER.debug('Starting periodic clear filter')
         self._task.start()
 
     def stop(self, event=None):
         """Stop executing the unique keys synchronization task."""
 
-        _LOGGER.debug('Stopping periodic Unique Keys posting')
+        _LOGGER.debug('Stopping periodic clear filter')
         self._task.stop(event)
 
     def is_running(self):

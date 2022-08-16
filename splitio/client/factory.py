@@ -12,9 +12,12 @@ from splitio.client.config import sanitize as sanitize_config, DEFAULT_DATA_SAMP
 from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper
 from splitio.engine.impressions import Manager as ImpressionsManager
+from splitio.engine.impressions import ImpressionsMode
+from splitio.engine.strategies import Counter as ImpressionsCounter
 from splitio.engine.strategies.strategy_debug_mode import StrategyDebugMode
 from splitio.engine.strategies.strategy_optimized_mode import StrategyOptimizedMode
 from splitio.engine.strategies.strategy_none_mode import StrategyNoneMode
+from splitio.engine.sender_adapters.in_memory_sender_adapter import InMemorySenderAdapter
 
 # Storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
@@ -310,7 +313,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'segments': SegmentsAPI(http_client, api_key, sdk_metadata),
         'impressions': ImpressionsAPI(http_client, api_key, sdk_metadata, cfg['impressionsMode']),
         'events': EventsAPI(http_client, api_key, sdk_metadata),
-        'telemtery': TelemetryAPI(http_client, api_key, sdk_metadata),
+        'telemetry': TelemetryAPI(http_client, api_key, sdk_metadata),
     }
 
     if not input_validator.validate_apikey_type(apis['segments']):
@@ -322,13 +325,12 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'impressions': InMemoryImpressionStorage(cfg['impressionsQueueSize']),
         'events': InMemoryEventStorage(cfg['eventsQueueSize']),
     }
-
-    imp_counter = Counter() if cfg['impressionsMode'] == 'OPTIMIZED' else None
+    imp_counter = ImpressionsCounter() if cfg['impressionsMode'] != ImpressionsMode.DEBUG else None
 
     strategies = {
-        'OPTIMIZED': StrategyOptimizedMode(imp_counter),
-        'DEBUG' : StrategyDebugMode(),
-        'NONE' : StrategyNoneMode(imp_counter),
+        ImpressionsMode.OPTIMIZED : StrategyOptimizedMode(imp_counter),
+        ImpressionsMode.DEBUG : StrategyDebugMode(),
+        ImpressionsMode.NONE : StrategyNoneMode(imp_counter),
     }
     imp_strategy = strategies[cfg['impressionsMode']]
 
@@ -362,9 +364,9 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         ImpressionsCountSyncTask(synchronizers.impressions_count_sync.synchronize_counters),
     )
 
-    if cfg['impressionsMode'] == 'NONE':
+    if cfg['impressionsMode'] == ImpressionsMode.NONE:
         synchronizers.set_none_syncs(
-            UniqueKeysSynchronizer(imp_strategy._unique_keys_tracker),
+            UniqueKeysSynchronizer(InMemorySenderAdapter(apis['telemetry']), imp_strategy._unique_keys_tracker),
             ClearFilterSynchronizer(imp_strategy._unique_keys_tracker),
         )
         tasks.set_none_tasks(
@@ -382,7 +384,8 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
 
     storages['events'].set_queue_full_hook(tasks.events_task.flush)
     storages['impressions'].set_queue_full_hook(tasks.impressions_task.flush)
-    # TODO: Add unique_keys_tracker.set_queue_full_hook(tasks.unique_keys.flush)
+    if cfg['impressionsMode'] == ImpressionsMode.NONE:
+        imp_strategy._unique_keys_tracker.set_queue_full_hook(tasks._unique_keys_task.flush)
 
     recorder = StandardRecorder(
         imp_manager,
@@ -421,10 +424,14 @@ def _build_redis_factory(api_key, cfg):
         _LOGGER.warning("dataSampling cannot be less than %.2f, defaulting to minimum",
                         _MIN_DEFAULT_DATA_SAMPLING_ALLOWED)
         data_sampling = _MIN_DEFAULT_DATA_SAMPLING_ALLOWED
+
+    imp_manager = ImpressionsManager(
+        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
+        StrategyDebugMode())
+
     recorder = PipelinedRecorder(
         redis_adapter.pipeline,
-        ImpressionsManager(cfg['impressionsMode'], False,
-                           _wrap_impression_listener(cfg['impressionListener'], sdk_metadata)),
+        imp_manager,
         storages['events'],
         storages['impressions'],
         data_sampling,
@@ -464,7 +471,7 @@ def _build_localhost_factory(cfg):
     manager = Manager(ready_event, synchronizer, None, False, sdk_metadata)
     manager.start()
     recorder = StandardRecorder(
-        ImpressionsManager(cfg['impressionsMode'], True, None),
+        ImpressionsManager(None, StrategyDebugMode()),
         storages['events'],
         storages['impressions'],
     )
@@ -513,7 +520,8 @@ def get_factory(api_key, **kwargs):
             kwargs.get('sdk_api_base_url'),
             kwargs.get('events_api_base_url'),
             kwargs.get('auth_api_base_url'),
-            kwargs.get('streaming_api_base_url')
+            kwargs.get('streaming_api_base_url'),
+            kwargs.get('telemetry_api_base_url')
         )
     finally:
         _INSTANTIATED_FACTORIES.update([api_key])
