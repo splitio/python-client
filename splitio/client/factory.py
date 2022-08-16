@@ -12,6 +12,8 @@ from splitio.client.config import sanitize as sanitize_config, DEFAULT_DATA_SAMP
 from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper
 from splitio.engine.impressions import Manager as ImpressionsManager
+from splitio.engine.impressions import ImpressionsMode
+from splitio.engine.strategies import Counter as ImpressionsCounter
 from splitio.engine.strategies.strategy_debug_mode import StrategyDebugMode
 from splitio.engine.strategies.strategy_optimized_mode import StrategyOptimizedMode
 
@@ -316,8 +318,13 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'events': InMemoryEventStorage(cfg['eventsQueueSize']),
     }
 
-    imp_counter = Counter() if cfg['impressionsMode'] == 'OPTIMIZED' else None
-    imp_strategy = StrategyOptimizedMode(imp_counter) if cfg['impressionsMode'] == 'OPTIMIZED' else StrategyDebugMode()
+    imp_counter = ImpressionsCounter() if cfg['impressionsMode'] != ImpressionsMode.DEBUG else None
+
+    strategies = {
+        ImpressionsMode.OPTIMIZED : StrategyOptimizedMode(imp_counter),
+        ImpressionsMode.DEBUG : StrategyDebugMode(),
+    }
+    imp_strategy = strategies[cfg['impressionsMode']]
 
     imp_manager = ImpressionsManager(
         _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
@@ -329,7 +336,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         ImpressionSynchronizer(apis['impressions'], storages['impressions'],
                                cfg['impressionsBulkSize']),
         EventSynchronizer(apis['events'], storages['events'], cfg['eventsBulkSize']),
-        ImpressionsCountSynchronizer(apis['impressions'], imp_counter),
+        ImpressionsCountSynchronizer(apis['impressions'], imp_manager),
     )
     imp_count_sync_task = ImpressionsCountSyncTask(synchronizers.impressions_count_sync.synchronize_counters) if cfg['impressionsMode'] == 'OPTIMIZED' else None
 
