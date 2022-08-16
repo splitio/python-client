@@ -15,9 +15,11 @@ from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \
 from splitio.storage.adapters.redis import build, RedisAdapter
 from splitio.models import splits, segments
 from splitio.engine.impressions import Manager as ImpressionsManager, ImpressionsMode
+from splitio.engine.strategies.strategy_debug_mode import StrategyDebugMode
+from splitio.engine.strategies.strategy_optimized_mode import StrategyOptimizedMode
+from splitio.engine.strategies import Counter
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder
 from splitio.client.config import DEFAULT_CONFIG
-
 
 class InMemoryIntegrationTests(object):
     """Inmemory storage-based integration tests."""
@@ -49,7 +51,8 @@ class InMemoryIntegrationTests(object):
             'impressions': InMemoryImpressionStorage(5000),
             'events': InMemoryEventStorage(5000),
         }
-        impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
+#        impmanager = ImpressionsManager(storages['impressions'].put, StrategyDebugMode())
+        impmanager = ImpressionsManager(None, StrategyDebugMode()) # no listener
         recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'])
         self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init
 
@@ -297,7 +300,8 @@ class InMemoryOptimizedIntegrationTests(object):
             'impressions': InMemoryImpressionStorage(5000),
             'events': InMemoryEventStorage(5000),
         }
-        impmanager = ImpressionsManager(ImpressionsMode.OPTIMIZED, True)
+#        impmanager = ImpressionsManager(ImpressionsMode.OPTIMIZED, True)
+        impmanager = ImpressionsManager(None, StrategyOptimizedMode(Counter()))
         recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'])
         self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init
 
@@ -515,7 +519,7 @@ class RedisIntegrationTests(object):
             'impressions': RedisImpressionsStorage(redis_client, metadata),
             'events': RedisEventsStorage(redis_client, metadata),
         }
-        impmanager = ImpressionsManager(ImpressionsMode.DEBUG, False)
+        impmanager = ImpressionsManager(None, StrategyDebugMode())
         recorder = PipelinedRecorder(redis_client.pipeline, impmanager,
                                      storages['events'], storages['impressions'])
         self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init
@@ -792,7 +796,8 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
             'impressions': RedisImpressionsStorage(redis_client, metadata),
             'events': RedisEventsStorage(redis_client, metadata),
         }
-        impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
+#        impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
+        impmanager = ImpressionsManager(None, StrategyDebugMode())
         recorder = PipelinedRecorder(redis_client.pipeline, impmanager,
                                      storages['events'], storages['impressions'])
         self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init

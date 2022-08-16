@@ -302,7 +302,8 @@ class Synchronizer(BaseSynchronizer):
         _LOGGER.debug('Starting periodic data recording')
         self._split_tasks.impressions_task.start()
         self._split_tasks.events_task.start()
-        self._split_tasks.impressions_count_task.start()
+        if self._split_tasks.impressions_count_task is not None:
+            self._split_tasks.impressions_count_task.start()
 
     def stop_periodic_data_recording(self, blocking):
         """
@@ -314,9 +315,11 @@ class Synchronizer(BaseSynchronizer):
         _LOGGER.debug('Stopping periodic data recording')
         if blocking:
             events = []
-            for task in [self._split_tasks.impressions_task,
-                         self._split_tasks.events_task,
-                         self._split_tasks.impressions_count_task]:
+            tasks = [self._split_tasks.impressions_task,
+                        self._split_tasks.events_task]
+            if self._split_tasks.impressions_count_task is not None:
+                tasks.append(self._split_tasks.impressions_count_task)
+            for task in tasks:
                 stop_event = threading.Event()
                 task.stop(stop_event)
                 events.append(stop_event)
@@ -325,7 +328,8 @@ class Synchronizer(BaseSynchronizer):
         else:
             self._split_tasks.impressions_task.stop()
             self._split_tasks.events_task.stop()
-            self._split_tasks.impressions_count_task.stop()
+            if self._split_tasks.impressions_count_task is not None:
+                self._split_tasks.impressions_count_task.stop()
 
     def kill_split(self, split_name, default_treatment, change_number):
         """
