@@ -60,7 +60,6 @@ class SplitSynchronizers(object):
         """Return impressions count synchonizer."""
         return self._impressions_count_sync
 
-
 class SplitTasks(object):
     """SplitTasks."""
 
@@ -110,7 +109,6 @@ class SplitTasks(object):
     def impressions_count_task(self):
         """Return impressions count sync task."""
         return self._impressions_count_task
-
 
 class BaseSynchronizer(object, metaclass=abc.ABCMeta):
     """Synchronizer interface."""
@@ -316,9 +314,8 @@ class Synchronizer(BaseSynchronizer):
         if blocking:
             events = []
             tasks = [self._split_tasks.impressions_task,
-                        self._split_tasks.events_task]
-            if self._split_tasks.impressions_count_task is not None:
-                tasks.append(self._split_tasks.impressions_count_task)
+                    self._split_tasks.events_task,
+                    self._split_tasks.impressions_count_task]
             for task in tasks:
                 stop_event = threading.Event()
                 task.stop(stop_event)
@@ -344,6 +341,7 @@ class Synchronizer(BaseSynchronizer):
         """
         self._split_synchronizers.split_sync.kill_split(split_name, default_treatment,
                                                         change_number)
+
 
 
 class LocalhostSynchronizer(BaseSynchronizer):

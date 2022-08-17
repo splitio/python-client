@@ -84,7 +84,7 @@ class ImpressionsCountSynchronizer(object):
 
     def synchronize_counters(self):
         """Send impressions from both the failed and new queues."""
-        to_send = self._impressions_counter.pop_all()
+        to_send = self._impressions_manager._strategy._counter.pop_all()
         if not to_send:
             return
 

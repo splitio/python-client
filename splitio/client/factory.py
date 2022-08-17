@@ -16,6 +16,7 @@ from splitio.engine.impressions import ImpressionsMode
 from splitio.engine.strategies import Counter as ImpressionsCounter
 from splitio.engine.strategies.strategy_debug_mode import StrategyDebugMode
 from splitio.engine.strategies.strategy_optimized_mode import StrategyOptimizedMode
+from splitio.engine.sender_adapters.in_memory_sender_adapter import InMemorySenderAdapter
 
 # Storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
@@ -31,12 +32,14 @@ from splitio.api.segments import SegmentsAPI
 from splitio.api.impressions import ImpressionsAPI
 from splitio.api.events import EventsAPI
 from splitio.api.auth import AuthAPI
+from splitio.api.telemetry import TelemetryAPI
 
 # Tasks
 from splitio.tasks.split_sync import SplitSynchronizationTask
 from splitio.tasks.segment_sync import SegmentSynchronizationTask
 from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask
 from splitio.tasks.events_sync import EventsSyncTask
+from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTask
 
 # Synchronizer
 from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, \
@@ -46,6 +49,8 @@ from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer
 from splitio.sync.segment import SegmentSynchronizer
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.sync.event import EventSynchronizer
+from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer
+
 
 # Recorder
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder
@@ -287,7 +292,7 @@ def _wrap_impression_listener(listener, metadata):
 
 
 def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pylint:disable=too-many-arguments,too-many-locals
-                             auth_api_base_url=None, streaming_api_base_url=None):
+                             auth_api_base_url=None, streaming_api_base_url=None, telemetry_api_base_url=None):
     """Build and return a split factory tailored to the supplied config."""
     if not input_validator.validate_factory_instantiation(api_key):
         return None
@@ -296,6 +301,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         sdk_url=sdk_url,
         events_url=events_url,
         auth_url=auth_api_base_url,
+        telemetry_url=telemetry_api_base_url,
         timeout=cfg.get('connectionTimeout')
     )
 
@@ -306,6 +312,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'segments': SegmentsAPI(http_client, api_key, sdk_metadata),
         'impressions': ImpressionsAPI(http_client, api_key, sdk_metadata, cfg['impressionsMode']),
         'events': EventsAPI(http_client, api_key, sdk_metadata),
+        'telemetry': TelemetryAPI(http_client, api_key, sdk_metadata),
     }
 
     if not input_validator.validate_apikey_type(apis['segments']):
@@ -317,6 +324,13 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'impressions': InMemoryImpressionStorage(cfg['impressionsQueueSize']),
         'events': InMemoryEventStorage(cfg['eventsQueueSize']),
     }
+    imp_counter = ImpressionsCounter() if cfg['impressionsMode'] != ImpressionsMode.DEBUG else None
+
+    strategies = {
+        ImpressionsMode.OPTIMIZED : StrategyOptimizedMode(imp_counter),
+        ImpressionsMode.DEBUG : StrategyDebugMode(),
+    }
+    imp_strategy = strategies[cfg['impressionsMode']]
 
     imp_counter = ImpressionsCounter() if cfg['impressionsMode'] != ImpressionsMode.DEBUG else None
 
@@ -354,7 +368,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
             cfg['impressionsRefreshRate'],
         ),
         EventsSyncTask(synchronizers.events_sync.synchronize_events, cfg['eventsPushRate']),
-        imp_count_sync_task
+        ImpressionsCountSyncTask(synchronizers.impressions_count_sync.synchronize_counters),
     )
 
     synchronizer = Synchronizer(synchronizers, tasks)
@@ -452,7 +466,7 @@ def _build_localhost_factory(cfg):
     manager.start()
 
     recorder = StandardRecorder(
-        ImpressionsManager(cfg['impressionsMode'], StrategyDebugMode()),
+        ImpressionsManager(None, StrategyDebugMode()),
         storages['events'],
         storages['impressions'],
     )
@@ -501,7 +515,8 @@ def get_factory(api_key, **kwargs):
             kwargs.get('sdk_api_base_url'),
             kwargs.get('events_api_base_url'),
             kwargs.get('auth_api_base_url'),
-            kwargs.get('streaming_api_base_url')
+            kwargs.get('streaming_api_base_url'),
+            kwargs.get('telemetry_api_base_url')
         )
     finally:
         _INSTANTIATED_FACTORIES.update([api_key])

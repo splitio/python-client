@@ -51,7 +51,6 @@ class InMemoryIntegrationTests(object):
             'impressions': InMemoryImpressionStorage(5000),
             'events': InMemoryEventStorage(5000),
         }
-#        impmanager = ImpressionsManager(storages['impressions'].put, StrategyDebugMode())
         impmanager = ImpressionsManager(None, StrategyDebugMode()) # no listener
         recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'])
         self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init
@@ -300,7 +299,6 @@ class InMemoryOptimizedIntegrationTests(object):
             'impressions': InMemoryImpressionStorage(5000),
             'events': InMemoryEventStorage(5000),
         }
-#        impmanager = ImpressionsManager(ImpressionsMode.OPTIMIZED, True)
         impmanager = ImpressionsManager(None, StrategyOptimizedMode(Counter()))
         recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'])
         self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init
@@ -796,7 +794,6 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
             'impressions': RedisImpressionsStorage(redis_client, metadata),
             'events': RedisEventsStorage(redis_client, metadata),
         }
-#        impmanager = ImpressionsManager(storages['impressions'].put, ImpressionsMode.DEBUG)
         impmanager = ImpressionsManager(None, StrategyDebugMode())
         recorder = PipelinedRecorder(redis_client.pipeline, impmanager,
                                      storages['events'], storages['impressions'])

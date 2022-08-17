@@ -10,6 +10,7 @@ from splitio.api.impressions import ImpressionsAPI
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.engine.impressions import Manager as ImpressionsManager
 from splitio.engine.strategies import Counter
+from splitio.engine.strategies.strategy_optimized_mode import StrategyOptimizedMode
 
 
 class ImpressionsSyncTests(object):
@@ -64,7 +65,7 @@ class ImpressionsCountSyncTests(object):
         api = mocker.Mock(spec=ImpressionsAPI)
         api.flush_counters.return_value = HttpResponse(200, '')
         impressions_sync.ImpressionsCountSyncTask._PERIOD = 1
-        impression_synchronizer = ImpressionsCountSynchronizer(api, counter)
+        impression_synchronizer = ImpressionsCountSynchronizer(api, ImpressionsManager(mocker.Mock(), StrategyOptimizedMode(counter)))
         task = impressions_sync.ImpressionsCountSyncTask(
             impression_synchronizer.synchronize_counters
         )

@@ -8,6 +8,7 @@ class ImpressionsMode(Enum):
 
     OPTIMIZED = "OPTIMIZED"
     DEBUG = "DEBUG"
+    NONE = "NONE"
 
 class Manager(object):  # pylint:disable=too-few-public-methods
     """Impression manager."""
