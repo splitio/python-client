@@ -2,7 +2,6 @@ import abc
 import threading
 import logging
 from splitio.engine.filters.bloom_filter import BloomFilter
-from splitio.engine.sender_adapters.in_memory_sender_adapter import InMemorySenderAdapter
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,6 +31,7 @@ class UniqueKeysTracker(BaseUniqueKeysTracker):
         self._lock = threading.RLock()
         self._cache = {}
         self._queue_full_hook = None
+        self._current_cache_size = 0
 
     def track(self, key, feature_name):
         """
@@ -45,32 +45,22 @@ class UniqueKeysTracker(BaseUniqueKeysTracker):
         :return: True if successful
         :rtype: boolean
         """
-        if self._filter.contains(feature_name+key):
-            return False
+        with self._lock:
+            if self._filter.contains(feature_name+key):
+                return False
 
         with self._lock:
             self._add_or_update(feature_name, key)
             self._filter.add(feature_name+key)
+            self._current_cache_size = self._current_cache_size + 1
 
-        if self._get_dict_size() > self._cache_size:
-            if self._queue_full_hook is not None and callable(self._queue_full_hook):
-                self._queue_full_hook()
+        if self._current_cache_size > self._cache_size:
             _LOGGER.info(
                 'Unique Keys queue is full, flushing the current queue now.'
             )
+            if self._queue_full_hook is not None and callable(self._queue_full_hook):
+                self._queue_full_hook()
         return True
-
-    def _get_dict_size(self):
-        """
-        Return the size of unique keys dictionary (number of keys in all features)
-
-        :return: dictionary set() items count
-        :rtype: int
-        """
-        total_size = 0
-        for key in self._uniqe_keys_tracker._cache:
-            total_size = total_size + len(self._uniqe_keys_tracker._cache[key])
-        return total_size
 
     def _add_or_update(self, feature_name, key):
         """
@@ -93,3 +83,20 @@ class UniqueKeysTracker(BaseUniqueKeysTracker):
         """
         if callable(hook):
             self._queue_full_hook = hook
+
+    def filter_pop_all(self):
+        """
+        Delete the filter items
+
+        """
+        with self._lock:
+            self._filter.clear()
+
+    def get_cache_info_and_pop_all(self):
+        with self._lock:
+            temp_cach = self._cache.copy()
+            temp_cache_size = self._current_cache_size
+            self._cache = {}
+            self._current_cache_size = 0
+
+            return temp_cach, temp_cache_size
