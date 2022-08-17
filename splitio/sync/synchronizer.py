@@ -300,7 +300,8 @@ class Synchronizer(BaseSynchronizer):
         _LOGGER.debug('Starting periodic data recording')
         self._split_tasks.impressions_task.start()
         self._split_tasks.events_task.start()
-        self._split_tasks.impressions_count_task.start()
+        if self._split_tasks.impressions_count_task is not None:
+            self._split_tasks.impressions_count_task.start()
 
     def stop_periodic_data_recording(self, blocking):
         """
@@ -324,7 +325,8 @@ class Synchronizer(BaseSynchronizer):
         else:
             self._split_tasks.impressions_task.stop()
             self._split_tasks.events_task.stop()
-            self._split_tasks.impressions_count_task.stop()
+            if self._split_tasks.impressions_count_task is not None:
+                self._split_tasks.impressions_count_task.stop()
 
     def kill_split(self, split_name, default_treatment, change_number):
         """

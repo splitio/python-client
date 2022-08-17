@@ -21,7 +21,6 @@ from splitio.engine.strategies import Counter
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder
 from splitio.client.config import DEFAULT_CONFIG
 
-
 class InMemoryIntegrationTests(object):
     """Inmemory storage-based integration tests."""
 
