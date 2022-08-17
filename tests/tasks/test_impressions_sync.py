@@ -12,7 +12,6 @@ from splitio.engine.impressions import Manager as ImpressionsManager
 from splitio.engine.strategies import Counter
 from splitio.engine.strategies.strategy_optimized_mode import StrategyOptimizedMode
 
-
 class ImpressionsSyncTests(object):
     """Impressions Syncrhonization task test cases."""
 

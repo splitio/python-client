@@ -15,7 +15,6 @@ class StrategyOptimizedMode(BaseStrategy):
         self._observer = Observer(_IMPRESSION_OBSERVER_CACHE_SIZE)
         self._counter = counter
 
-
     def process_impressions(self, impressions):
         """
         Process impressions.

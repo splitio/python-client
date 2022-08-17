@@ -334,6 +334,14 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     }
     imp_strategy = strategies[cfg['impressionsMode']]
 
+    imp_counter = ImpressionsCounter() if cfg['impressionsMode'] != ImpressionsMode.DEBUG else None
+
+    strategies = {
+        ImpressionsMode.OPTIMIZED : StrategyOptimizedMode(imp_counter),
+        ImpressionsMode.DEBUG : StrategyDebugMode(),
+    }
+    imp_strategy = strategies[cfg['impressionsMode']]
+
     imp_manager = ImpressionsManager(
         _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
         imp_strategy)
@@ -346,6 +354,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         EventSynchronizer(apis['events'], storages['events'], cfg['eventsBulkSize']),
         ImpressionsCountSynchronizer(apis['impressions'], imp_manager),
     )
+    imp_count_sync_task = ImpressionsCountSyncTask(synchronizers.impressions_count_sync.synchronize_counters) if cfg['impressionsMode'] == 'OPTIMIZED' else None
 
     tasks = SplitTasks(
         SplitSynchronizationTask(
@@ -443,7 +452,6 @@ def _build_redis_factory(api_key, cfg):
         recorder,
     )
 
-
 def _build_localhost_factory(cfg):
     """Build and return a localhost factory for testing/development purposes."""
     storages = {
@@ -470,6 +478,7 @@ def _build_localhost_factory(cfg):
     synchronizer = LocalhostSynchronizer(synchronizers, tasks)
     manager = Manager(ready_event, synchronizer, None, False, sdk_metadata)
     manager.start()
+
     recorder = StandardRecorder(
         ImpressionsManager(None, StrategyDebugMode()),
         storages['events'],

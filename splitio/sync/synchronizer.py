@@ -367,6 +367,7 @@ class Synchronizer(BaseSynchronizer):
             if self._split_tasks.unique_keys_task is not None:
                 tasks.append(self._split_tasks.unique_keys_task)
                 tasks.append(self._split_tasks.clear_filter_task)
+
             for task in tasks:
                 stop_event = threading.Event()
                 task.stop(stop_event)
