@@ -2,6 +2,12 @@ from splitio.engine.filters.bloom_filter import BloomFilter
 from splitio.engine.sender_adapters.in_memory_sender_adapter import InMemorySenderAdapter
 
 _UNIQUE_KEYS_MAX_BULK_SIZE = 5000
+import threading
+import logging
+from splitio.engine.filters.bloom_filter import BloomFilter
+from splitio.engine.sender_adapters.in_memory_sender_adapter import InMemorySenderAdapter
+
+_LOGGER = logging.getLogger(__name__)
 
 class UniqueKeysSynchronizer(object):
     """Unique Keys Synchronizer class."""
@@ -31,6 +37,17 @@ class UniqueKeysSynchronizer(object):
                 self._impressions_sender_adapter.record_unique_keys(bulk)
 
     def _split_cache_to_bulks(self, cache):
+        cache_size = self._uniqe_keys_tracker._get_dict_size()
+        if cache_size <= self._max_bulk_size:
+            self._uniqe_keys_tracker._impressions_sender_adapter.record_unique_keys(self._uniqe_keys_tracker._cache)
+        else:
+            for bulk in self._split_cache_to_bulks():
+                self._uniqe_keys_tracker._impressions_sender_adapter.record_unique_keys(bulk)
+
+        with self._lock:
+            self._uniqe_keys_tracker._cache = {}
+
+    def _split_cache_to_bulks(self):
         """
         Split the current unique keys dictionary into seperate dictionaries,
         each with the size of max_bulk_size. Overflow the last feature set() to new unique keys dictionary.
