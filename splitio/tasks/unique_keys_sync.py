@@ -6,7 +6,7 @@ from splitio.tasks.util.asynctask import AsyncTask
 
 
 _LOGGER = logging.getLogger(__name__)
-
+_PERIOD = 15 * 60  # 15 minutes
 
 class UniqueKeysSyncTask(BaseSynchronizationTask):
     """Unique Keys synchronization task uses an asynctask.AsyncTask to send MTKs."""
@@ -20,8 +20,8 @@ class UniqueKeysSyncTask(BaseSynchronizationTask):
         :param period: How many seconds to wait between subsequent unique keys pushes to the BE.
         :type period: int
         """
-        _period = 15 * 60  # 15 minutes
-        self._task = AsyncTask(synchronize_unique_keys, _period,
+
+        self._task = AsyncTask(synchronize_unique_keys, _PERIOD,
                                on_stop=synchronize_unique_keys)
 
     def start(self):

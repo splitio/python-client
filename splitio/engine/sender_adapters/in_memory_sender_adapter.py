@@ -33,14 +33,9 @@ class InMemorySenderAdapter(ImpressionsSenderAdapter):
         :return: unique keys JSON
         :rtype: json
         """
-        formatted_uniques = json.loads('{"keys": []}')
         if len(uniques) == 0:
             return json.loads('{"keys": []}')
 
         return {
             'keys':  [{'f': feature, 'ks': list(keys)} for feature, keys in uniques.items()]
         }
-#        for key in uniques:
-#            formatted_uniques["keys"].append(json.loads('{"f":"' + key +'", "ks":' + json.dumps(list(uniques[key])) + '}'))
-
-#        return formatted_uniques
