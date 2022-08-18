@@ -40,7 +40,3 @@ class InMemorySenderAdapter(ImpressionsSenderAdapter):
         return {
             'keys':  [{'f': feature, 'ks': list(keys)} for feature, keys in uniques.items()]
         }
-#        for key in uniques:
-#            formatted_uniques["keys"].append(json.loads('{"f":"' + key +'", "ks":' + json.dumps(list(uniques[key])) + '}'))
-
-#        return formatted_uniques
