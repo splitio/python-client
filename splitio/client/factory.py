@@ -16,6 +16,7 @@ from splitio.engine.impressions import ImpressionsMode
 from splitio.engine.strategies import Counter as ImpressionsCounter
 from splitio.engine.strategies.strategy_debug_mode import StrategyDebugMode
 from splitio.engine.strategies.strategy_optimized_mode import StrategyOptimizedMode
+from splitio.engine.strategies.strategy_none_mode import StrategyNoneMode
 from splitio.engine.sender_adapters.in_memory_sender_adapter import InMemorySenderAdapter
 
 # Storage
@@ -326,19 +327,21 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     }
     imp_counter = ImpressionsCounter() if cfg['impressionsMode'] != ImpressionsMode.DEBUG else None
 
-    strategies = {
-        ImpressionsMode.OPTIMIZED : StrategyOptimizedMode(imp_counter),
-        ImpressionsMode.DEBUG : StrategyDebugMode(),
-    }
-    imp_strategy = strategies[cfg['impressionsMode']]
-
-    imp_counter = ImpressionsCounter() if cfg['impressionsMode'] != ImpressionsMode.DEBUG else None
-
-    strategies = {
-        ImpressionsMode.OPTIMIZED : StrategyOptimizedMode(imp_counter),
-        ImpressionsMode.DEBUG : StrategyDebugMode(),
-    }
-    imp_strategy = strategies[cfg['impressionsMode']]
+    unique_keys_synchronizer = None
+    clear_filter_sync = None
+    unique_keys_task = None
+    clear_filter_task = None
+    if cfg['impressionsMode'] == ImpressionsMode.NONE:
+        imp_strategy = StrategyNoneMode(imp_counter)
+        clear_filter_sync = ClearFilterSynchronizer(imp_strategy._unique_keys_tracker)
+        unique_keys_synchronizer = UniqueKeysSynchronizer(InMemorySenderAdapter(apis['telemetry']), imp_strategy._unique_keys_tracker)
+        unique_keys_task = UniqueKeysSyncTask(unique_keys_synchronizer.send_all)
+        clear_filter_task = ClearFilterSyncTask(clear_filter_sync.clear_all)
+        imp_strategy._unique_keys_tracker.set_queue_full_hook(unique_keys_task.flush)
+    elif cfg['impressionsMode'] == ImpressionsMode.DEBUG:
+        imp_strategy = StrategyDebugMode()
+    else:
+        imp_strategy = StrategyOptimizedMode(imp_counter)
 
     imp_manager = ImpressionsManager(
         _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
@@ -350,9 +353,10 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         ImpressionSynchronizer(apis['impressions'], storages['impressions'],
                                cfg['impressionsBulkSize']),
         EventSynchronizer(apis['events'], storages['events'], cfg['eventsBulkSize']),
-        ImpressionsCountSynchronizer(apis['impressions'], imp_manager),
+        ImpressionsCountSynchronizer(apis['impressions'], imp_counter),
+        unique_keys_synchronizer,
+        clear_filter_sync
     )
-    imp_count_sync_task = ImpressionsCountSyncTask(synchronizers.impressions_count_sync.synchronize_counters) if cfg['impressionsMode'] == 'OPTIMIZED' else None
 
     tasks = SplitTasks(
         SplitSynchronizationTask(
@@ -369,6 +373,8 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         ),
         EventsSyncTask(synchronizers.events_sync.synchronize_events, cfg['eventsPushRate']),
         ImpressionsCountSyncTask(synchronizers.impressions_count_sync.synchronize_counters),
+        unique_keys_task,
+        clear_filter_task
     )
 
     synchronizer = Synchronizer(synchronizers, tasks)
@@ -438,6 +444,7 @@ def _build_redis_factory(api_key, cfg):
         recorder,
     )
 
+
 def _build_localhost_factory(cfg):
     """Build and return a localhost factory for testing/development purposes."""
     storages = {
@@ -464,7 +471,6 @@ def _build_localhost_factory(cfg):
     synchronizer = LocalhostSynchronizer(synchronizers, tasks)
     manager = Manager(ready_event, synchronizer, None, False, sdk_metadata)
     manager.start()
-
     recorder = StandardRecorder(
         ImpressionsManager(None, StrategyDebugMode()),
         storages['events'],

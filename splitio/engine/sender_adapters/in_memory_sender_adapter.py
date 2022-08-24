@@ -33,7 +33,6 @@ class InMemorySenderAdapter(ImpressionsSenderAdapter):
         :return: unique keys JSON
         :rtype: json
         """
-        formatted_uniques = json.loads('{"keys": []}')
         if len(uniques) == 0:
             return json.loads('{"keys": []}')
 

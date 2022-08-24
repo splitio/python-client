@@ -4,7 +4,6 @@ import queue
 from splitio.api import APIException
 from splitio.engine.strategies import Counter
 
-
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -69,22 +68,26 @@ class ImpressionSynchronizer(object):
 
 
 class ImpressionsCountSynchronizer(object):
-    def __init__(self, impressions_api, impressions_counter):
+    def __init__(self, impressions_api, imp_counter):
         """
         Class constructor.
 
         :param impressions_api: Impressions Api object to send data to the backend
         :type impressions_api: splitio.api.impressions.ImpressionsAPI
         :param impressions_manager: Impressions manager instance
-        :type impressions_counter: splitio.engine.strategies
+        :type impressions_manager: splitio.engine.impressions.Manager
 
         """
         self._impressions_api = impressions_api
-        self._impressions_counter = impressions_counter
+        self._impressions_counter = imp_counter
 
     def synchronize_counters(self):
         """Send impressions from both the failed and new queues."""
-        to_send = self._impressions_manager._strategy._counter.pop_all()
+
+        if not isinstance(self._impressions_counter, Counter):
+            return
+
+        to_send = self._impressions_counter.pop_all()
         if not to_send:
             return
 
