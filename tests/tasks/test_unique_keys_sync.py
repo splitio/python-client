@@ -23,7 +23,7 @@ class UniqueKeysSyncTests(object):
         unique_keys_tracker.track("key2", "split1")
 
         unique_keys_sync = UniqueKeysSynchronizer(mocker.Mock(), unique_keys_tracker)
-        task = UniqueKeysSyncTask(unique_keys_sync.SendAll, 1)
+        task = UniqueKeysSyncTask(unique_keys_sync.send_all, 1)
         task.start()
         time.sleep(2)
         assert task.is_running()
@@ -44,7 +44,7 @@ class ClearFilterSyncTests(object):
         unique_keys_tracker.track("key2", "split1")
 
         clear_filter_sync = ClearFilterSynchronizer(unique_keys_tracker)
-        task = ClearFilterSyncTask(clear_filter_sync.clearAll, 1)
+        task = ClearFilterSyncTask(clear_filter_sync.clear_all, 1)
         task.start()
         time.sleep(2)
         assert task.is_running()

@@ -37,7 +37,7 @@ class UniqueKeysSynchronizerTests(object):
             unique_keys_tracker.track('key'+str(i)+'', 'feature1')
         sender_adapter = InMemorySenderAdapter(mock.Mock())
         unique_keys_synchronizer = UniqueKeysSynchronizer(sender_adapter, unique_keys_tracker)
-        unique_keys_synchronizer.SendAll()
+        unique_keys_synchronizer.send_all()
         assert(mtk_mocker.call_count == int(total_mtks / unique_keys_synchronizer._max_bulk_size) + 1)
 
     def mocked_record_unique_keys(self, cache):
@@ -50,6 +50,6 @@ class UniqueKeysSynchronizerTests(object):
             unique_keys_tracker.track('key'+str(i)+'', 'feature1')
 
         clear_filter_sync = ClearFilterSynchronizer(unique_keys_tracker)
-        clear_filter_sync.clearAll()
+        clear_filter_sync.clear_all()
         for i in range(0 , total_mtks):
             assert(not unique_keys_tracker._filter.contains('feature1key'+str(i)))

@@ -335,8 +335,8 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         imp_strategy = StrategyNoneMode(imp_counter)
         clear_filter_sync = ClearFilterSynchronizer(imp_strategy._unique_keys_tracker)
         unique_keys_synchronizer = UniqueKeysSynchronizer(InMemorySenderAdapter(apis['telemetry']), imp_strategy._unique_keys_tracker)
-        unique_keys_task = UniqueKeysSyncTask(unique_keys_synchronizer.SendAll)
-        clear_filter_task = ClearFilterSyncTask(clear_filter_sync.clearAll)
+        unique_keys_task = UniqueKeysSyncTask(unique_keys_synchronizer.send_all)
+        clear_filter_task = ClearFilterSyncTask(clear_filter_sync.clear_all)
         imp_strategy._unique_keys_tracker.set_queue_full_hook(unique_keys_task.flush)
     elif cfg['impressionsMode'] == ImpressionsMode.DEBUG:
         imp_strategy = StrategyDebugMode()

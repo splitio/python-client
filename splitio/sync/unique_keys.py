@@ -20,7 +20,7 @@ class UniqueKeysSynchronizer(object):
         self._max_bulk_size = _UNIQUE_KEYS_MAX_BULK_SIZE
         self._impressions_sender_adapter = impressions_sender_adapter
 
-    def SendAll(self):
+    def send_all(self):
         """
         Flush the unique keys dictionary to split back end.
         Limit each post to the max_bulk_size value.
@@ -81,7 +81,7 @@ class ClearFilterSynchronizer(object):
         """
         self._unique_keys_tracker = unique_keys_tracker
 
-    def clearAll(self):
+    def clear_all(self):
         """
         Clear the bloom filter cache
 
