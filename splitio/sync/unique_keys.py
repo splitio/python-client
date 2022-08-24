@@ -1,11 +1,8 @@
 from splitio.engine.filters.bloom_filter import BloomFilter
 from splitio.engine.sender_adapters.in_memory_sender_adapter import InMemorySenderAdapter
+import logging
 
 _UNIQUE_KEYS_MAX_BULK_SIZE = 5000
-import threading
-import logging
-from splitio.engine.filters.bloom_filter import BloomFilter
-from splitio.engine.sender_adapters.in_memory_sender_adapter import InMemorySenderAdapter
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,6 +16,7 @@ class UniqueKeysSynchronizer(object):
         :param uniqe_keys_tracker: instance of uniqe keys tracker
         :type uniqe_keys_tracker: splitio.engine.uniqur_key_tracker.UniqueKeysTracker
         """
+        _LOGGER.debug("UniqueKeysSynchronizer")
         self._uniqe_keys_tracker = uniqe_keys_tracker
         self._max_bulk_size = _UNIQUE_KEYS_MAX_BULK_SIZE
         self._impressions_sender_adapter = impressions_sender_adapter
@@ -37,17 +35,6 @@ class UniqueKeysSynchronizer(object):
                 self._impressions_sender_adapter.record_unique_keys(bulk)
 
     def _split_cache_to_bulks(self, cache):
-        cache_size = self._uniqe_keys_tracker._get_dict_size()
-        if cache_size <= self._max_bulk_size:
-            self._uniqe_keys_tracker._impressions_sender_adapter.record_unique_keys(self._uniqe_keys_tracker._cache)
-        else:
-            for bulk in self._split_cache_to_bulks():
-                self._uniqe_keys_tracker._impressions_sender_adapter.record_unique_keys(bulk)
-
-        with self._lock:
-            self._uniqe_keys_tracker._cache = {}
-
-    def _split_cache_to_bulks(self):
         """
         Split the current unique keys dictionary into seperate dictionaries,
         each with the size of max_bulk_size. Overflow the last feature set() to new unique keys dictionary.
@@ -80,24 +67,24 @@ class UniqueKeysSynchronizer(object):
         """
         Split array into chunks
         """
-        for i in range(0, len(keys_list), 5):
-            yield keys_list[i:i + 5]
+        for i in range(0, len(keys_list), self._max_bulk_size):
+            yield keys_list[i:i + self._max_bulk_size]
 
 class ClearFilterSynchronizer(object):
     """Clear filter class."""
 
-    def __init__(self, uniqe_keys_tracker = None):
+    def __init__(self, unique_keys_tracker = None):
         """
         Initialize Unique keys synchronizer instance
 
         :param uniqe_keys_tracker: instance of uniqe keys tracker
         :type uniqe_keys_tracker: splitio.engine.uniqur_key_tracker.UniqueKeysTracker
         """
-        self._uniqe_keys_tracker = uniqe_keys_tracker
+        self._unique_keys_tracker = unique_keys_tracker
 
     def clearAll(self):
         """
         Clear the bloom filter cache
 
         """
-        self._uniqe_keys_tracker.filter_pop_all()
+        self._unique_keys_tracker.filter_pop_all()

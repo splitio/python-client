@@ -31,6 +31,7 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
         :param uniques: Unique Keys
         :type json
         """
+        _LOGGER.debug(uniques)
         try:
             response = self._client.post(
                 'telemetry',

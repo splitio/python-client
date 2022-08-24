@@ -35,15 +35,7 @@ class SplitSynchronizers(object):
         self._events_sync = events_sync
         self._impressions_count_sync = impressions_count_sync
 
-    def set_none_syncs(self, unique_keys_sync, clear_filter_sync):
-        """
-        Set the NONE mode synchonizer objects.
-
-        :param unique_keys_sync: sync for unique_keys
-        :type unique_keys_sync: splitio.sync.unique_keys.UniqueKeysSynchronizer
-        :param clear_filter_sync: sync for clear_filter
-        :type clear_filter_sync: splitio.sync.unique_keys.ClearFilterSynchronizer
-        """
+    def set_none_sync(self, unique_keys_sync, clear_filter_sync):
         self._unique_keys_sync = unique_keys_sync
         self._clear_filter_sync = clear_filter_sync
 
@@ -86,7 +78,7 @@ class SplitTasks(object):
     """SplitTasks."""
 
     def __init__(self, split_task, segment_task, impressions_task, events_task,  # pylint:disable=too-many-arguments
-                 impressions_count_task):
+                 impressions_count_task, unique_keys_task = None, clear_filter_task = None):
         """
         Class constructor.
 
@@ -106,18 +98,6 @@ class SplitTasks(object):
         self._impressions_task = impressions_task
         self._events_task = events_task
         self._impressions_count_task = impressions_count_task
-        self._unique_keys_task = None
-        self._clear_filter_task = None
-
-    def set_none_tasks(self, unique_keys_task, clear_filter_task):
-        """
-        Set the NONE mode synchonizer objects.
-
-        :param unique_keys_task: sync for unique_keys
-        :type unique_keys_task: splitio.tasks.unique_keys_sync.UniqueKeysSyncTask
-        :param clear_filter_task: sync for clear_filter
-        :type clear_filter_task: splitio.tasks.unique_keys_sync.ClearFilterSyncTask
-        """
         self._unique_keys_task = unique_keys_task
         self._clear_filter_task = clear_filter_task
 
