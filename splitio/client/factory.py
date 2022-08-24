@@ -327,8 +327,17 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     }
     imp_counter = ImpressionsCounter() if cfg['impressionsMode'] != ImpressionsMode.DEBUG else None
 
+    unique_keys_synchronizer = None
+    clear_filter_sync = None
+    unique_keys_task = None
+    clear_filter_task = None
     if cfg['impressionsMode'] == ImpressionsMode.NONE:
         imp_strategy = StrategyNoneMode(imp_counter)
+        clear_filter_sync = ClearFilterSynchronizer(imp_strategy._unique_keys_tracker)
+        unique_keys_synchronizer = UniqueKeysSynchronizer(InMemorySenderAdapter(apis['telemetry']), imp_strategy._unique_keys_tracker)
+        unique_keys_task = UniqueKeysSyncTask(unique_keys_synchronizer.SendAll)
+        clear_filter_task = ClearFilterSyncTask(clear_filter_sync.clearAll)
+        imp_strategy._unique_keys_tracker.set_queue_full_hook(unique_keys_task.flush)
     elif cfg['impressionsMode'] == ImpressionsMode.DEBUG:
         imp_strategy = StrategyDebugMode()
     else:
@@ -344,49 +353,29 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         ImpressionSynchronizer(apis['impressions'], storages['impressions'],
                                cfg['impressionsBulkSize']),
         EventSynchronizer(apis['events'], storages['events'], cfg['eventsBulkSize']),
-        ImpressionsCountSynchronizer(apis['impressions'], imp_manager),
+        ImpressionsCountSynchronizer(apis['impressions'], imp_counter),
+        unique_keys_synchronizer,
+        clear_filter_sync
     )
 
-    if cfg['impressionsMode'] == ImpressionsMode.NONE:
-        synchronizers.set_none_sync(
-            UniqueKeysSynchronizer(InMemorySenderAdapter(apis['telemetry']), imp_strategy._unique_keys_tracker),
-            ClearFilterSynchronizer(imp_strategy._unique_keys_tracker)
-        )
-        tasks = SplitTasks(
-            SplitSynchronizationTask(
-                synchronizers.split_sync.synchronize_splits,
-                cfg['featuresRefreshRate'],
-            ),
-            SegmentSynchronizationTask(
-                synchronizers.segment_sync.synchronize_segments,
-                cfg['segmentsRefreshRate'],
-            ),
-            ImpressionsSyncTask(
-                synchronizers.impressions_sync.synchronize_impressions,
-                cfg['impressionsRefreshRate'],
-            ),
-            EventsSyncTask(synchronizers.events_sync.synchronize_events, cfg['eventsPushRate']),
-            ImpressionsCountSyncTask(synchronizers.impressions_count_sync.synchronize_counters),
-            UniqueKeysSyncTask(synchronizers.unique_keys_sync.SendAll),
-            ClearFilterSyncTask(synchronizers.clear_filter_sync.clearAll)
-        )
-    else:
-        tasks = SplitTasks(
-            SplitSynchronizationTask(
-                synchronizers.split_sync.synchronize_splits,
-                cfg['featuresRefreshRate'],
-            ),
-            SegmentSynchronizationTask(
-                synchronizers.segment_sync.synchronize_segments,
-                cfg['segmentsRefreshRate'],
-            ),
-            ImpressionsSyncTask(
-                synchronizers.impressions_sync.synchronize_impressions,
-                cfg['impressionsRefreshRate'],
-            ),
-            EventsSyncTask(synchronizers.events_sync.synchronize_events, cfg['eventsPushRate']),
-            ImpressionsCountSyncTask(synchronizers.impressions_count_sync.synchronize_counters),
-        )
+    tasks = SplitTasks(
+        SplitSynchronizationTask(
+            synchronizers.split_sync.synchronize_splits,
+            cfg['featuresRefreshRate'],
+        ),
+        SegmentSynchronizationTask(
+            synchronizers.segment_sync.synchronize_segments,
+            cfg['segmentsRefreshRate'],
+        ),
+        ImpressionsSyncTask(
+            synchronizers.impressions_sync.synchronize_impressions,
+            cfg['impressionsRefreshRate'],
+        ),
+        EventsSyncTask(synchronizers.events_sync.synchronize_events, cfg['eventsPushRate']),
+        ImpressionsCountSyncTask(synchronizers.impressions_count_sync.synchronize_counters),
+        unique_keys_task,
+        clear_filter_task
+    )
 
     synchronizer = Synchronizer(synchronizers, tasks)
 
@@ -398,8 +387,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
 
     storages['events'].set_queue_full_hook(tasks.events_task.flush)
     storages['impressions'].set_queue_full_hook(tasks.impressions_task.flush)
-    if cfg['impressionsMode'] == ImpressionsMode.NONE:
-        imp_strategy._unique_keys_tracker.set_queue_full_hook(tasks._unique_keys_task.flush)
 
     recorder = StandardRecorder(
         imp_manager,

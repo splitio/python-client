@@ -9,7 +9,7 @@ _UNIQUE_KEYS_CACHE_SIZE = 30000
 class StrategyNoneMode(BaseStrategy):
     """Debug mode strategy."""
 
-    def __init__(self, counter=None):
+    def __init__(self, counter):
         """
         Construct a strategy instance for none mode.
 

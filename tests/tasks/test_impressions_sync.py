@@ -64,7 +64,7 @@ class ImpressionsCountSyncTests(object):
         api = mocker.Mock(spec=ImpressionsAPI)
         api.flush_counters.return_value = HttpResponse(200, '')
         impressions_sync.ImpressionsCountSyncTask._PERIOD = 1
-        impression_synchronizer = ImpressionsCountSynchronizer(api, ImpressionsManager(mocker.Mock(), StrategyOptimizedMode(counter)))
+        impression_synchronizer = ImpressionsCountSynchronizer(api, counter)
         task = impressions_sync.ImpressionsCountSyncTask(
             impression_synchronizer.synchronize_counters
         )

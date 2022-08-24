@@ -14,7 +14,7 @@ class SplitSynchronizers(object):
     """SplitSynchronizers."""
 
     def __init__(self, split_sync, segment_sync, impressions_sync, events_sync,  # pylint:disable=too-many-arguments
-                 impressions_count_sync):
+                 impressions_count_sync, unique_keys_sync = None, clear_filter_sync = None):
         """
         Class constructor.
 
@@ -34,8 +34,6 @@ class SplitSynchronizers(object):
         self._impressions_sync = impressions_sync
         self._events_sync = events_sync
         self._impressions_count_sync = impressions_count_sync
-
-    def set_none_sync(self, unique_keys_sync, clear_filter_sync):
         self._unique_keys_sync = unique_keys_sync
         self._clear_filter_sync = clear_filter_sync
 
@@ -329,6 +327,7 @@ class Synchronizer(BaseSynchronizer):
         self._split_tasks.impressions_count_task.start()
         if self._split_tasks.unique_keys_task is not None:
             self._split_tasks.unique_keys_task.start()
+        if self._split_tasks.clear_filter_task is not None:
             self._split_tasks.clear_filter_task.start()
 
     def stop_periodic_data_recording(self, blocking):
@@ -346,6 +345,7 @@ class Synchronizer(BaseSynchronizer):
                     self._split_tasks.impressions_count_task]
             if self._split_tasks.unique_keys_task is not None:
                 tasks.append(self._split_tasks.unique_keys_task)
+            if self._split_tasks.clear_filter_task is not None:
                 tasks.append(self._split_tasks.clear_filter_task)
 
             for task in tasks:
@@ -360,6 +360,7 @@ class Synchronizer(BaseSynchronizer):
             self._split_tasks.impressions_count_task.stop()
             if self._split_tasks.unique_keys_task is not None:
                 self._split_tasks.unique_keys_task.stop()
+            if self._split_tasks.clear_filter_task is not None:
                 self._split_tasks.clear_filter_task.stop()
 
     def kill_split(self, split_name, default_treatment, change_number):
@@ -375,8 +376,6 @@ class Synchronizer(BaseSynchronizer):
         """
         self._split_synchronizers.split_sync.kill_split(split_name, default_treatment,
                                                         change_number)
-
-
 
 class LocalhostSynchronizer(BaseSynchronizer):
     """LocalhostSynchronizer."""

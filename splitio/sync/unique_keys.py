@@ -9,14 +9,13 @@ _LOGGER = logging.getLogger(__name__)
 class UniqueKeysSynchronizer(object):
     """Unique Keys Synchronizer class."""
 
-    def __init__(self, impressions_sender_adapter = None, uniqe_keys_tracker = None):
+    def __init__(self, impressions_sender_adapter, uniqe_keys_tracker):
         """
         Initialize Unique keys synchronizer instance
 
         :param uniqe_keys_tracker: instance of uniqe keys tracker
         :type uniqe_keys_tracker: splitio.engine.uniqur_key_tracker.UniqueKeysTracker
         """
-        _LOGGER.debug("UniqueKeysSynchronizer")
         self._uniqe_keys_tracker = uniqe_keys_tracker
         self._max_bulk_size = _UNIQUE_KEYS_MAX_BULK_SIZE
         self._impressions_sender_adapter = impressions_sender_adapter
@@ -73,7 +72,7 @@ class UniqueKeysSynchronizer(object):
 class ClearFilterSynchronizer(object):
     """Clear filter class."""
 
-    def __init__(self, unique_keys_tracker = None):
+    def __init__(self, unique_keys_tracker):
         """
         Initialize Unique keys synchronizer instance
 

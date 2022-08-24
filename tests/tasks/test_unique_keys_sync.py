@@ -22,7 +22,7 @@ class UniqueKeysSyncTests(object):
         unique_keys_tracker.track("key1", "split1")
         unique_keys_tracker.track("key2", "split1")
 
-        unique_keys_sync = UniqueKeysSynchronizer(unique_keys_tracker)
+        unique_keys_sync = UniqueKeysSynchronizer(mocker.Mock(), unique_keys_tracker)
         task = UniqueKeysSyncTask(unique_keys_sync.SendAll, 1)
         task.start()
         time.sleep(2)
