@@ -1,7 +1,7 @@
 """Split Worker tests."""
 
 from splitio.api.client import HttpResponse
-from splitio.engine.sender_adapters.in_memory_sender_adapter import InMemorySenderAdapter
+from splitio.engine.adapters import InMemorySenderAdapter
 from splitio.engine.unique_keys_tracker import UniqueKeysTracker
 from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer
 import unittest.mock as mock
@@ -27,7 +27,7 @@ class UniqueKeysSynchronizerTests(object):
             else:
                 assert(len(bulks[i]['feature1']) == unique_keys_synchronizer._max_bulk_size)
 
-    @mock.patch('splitio.engine.sender_adapters.in_memory_sender_adapter.InMemorySenderAdapter.record_unique_keys')
+    @mock.patch('splitio.engine.adapters.InMemorySenderAdapter.record_unique_keys')
     def test_sync_unique_keys_send_all(self, mtk_mocker):
         mtk_mocker.side_effect = self.mocked_record_unique_keys
 

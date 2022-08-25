@@ -1,7 +1,7 @@
 import abc
 import threading
 import logging
-from splitio.engine.filters.bloom_filter import BloomFilter
+from splitio.engine.filters import BloomFilter
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -94,7 +94,7 @@ class UniqueKeysTracker(BaseUniqueKeysTracker):
 
     def get_cache_info_and_pop_all(self):
         with self._lock:
-            temp_cach = self._cache.copy()
+            temp_cach = self._cache
             temp_cache_size = self._current_cache_size
             self._cache = {}
             self._current_cache_size = 0

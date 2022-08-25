@@ -1,7 +1,6 @@
 """Synchronizer tests."""
 
 from turtle import clear
-import pytest
 
 from splitio.sync.synchronizer import Synchronizer, SplitTasks, SplitSynchronizers
 from splitio.tasks.split_sync import SplitSynchronizationTask

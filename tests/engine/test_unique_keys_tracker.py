@@ -2,7 +2,7 @@
 
 import threading
 from splitio.engine.unique_keys_tracker import UniqueKeysTracker
-from splitio.engine.filters.bloom_filter import BloomFilter
+from splitio.engine.filters import BloomFilter
 
 class UniqueKeysTrackerTests(object):
     """StandardRecorderTests test cases."""

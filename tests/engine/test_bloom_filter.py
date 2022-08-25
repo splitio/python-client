@@ -2,7 +2,7 @@
 
 from random import random
 import uuid
-from splitio.engine.filters.bloom_filter import BloomFilter
+from splitio.engine.filters import BloomFilter
 
 class BloomFilterTests(object):
     """StandardRecorderTests test cases."""

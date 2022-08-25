@@ -1,10 +1,8 @@
 """Impression manager, observer & hasher tests."""
 from datetime import datetime
 from splitio.engine.impressions import Manager, ImpressionsMode
-from splitio.engine.strategies import Hasher, Observer, Counter, truncate_time
-from splitio.engine.strategies.strategy_debug_mode import StrategyDebugMode
-from splitio.engine.strategies.strategy_optimized_mode import StrategyOptimizedMode
-from splitio.engine.strategies.strategy_none_mode import StrategyNoneMode
+from splitio.engine.manager import Hasher, Observer, Counter, truncate_time
+from splitio.engine.strategies import StrategyDebugMode, StrategyOptimizedMode, StrategyNoneMode
 from splitio.models.impressions import Impression
 from splitio.client.listener import ImpressionListenerWrapper
 
@@ -229,7 +227,7 @@ class ImpressionManagerTests(object):
                 for (k, v) in manager._strategy._counter._data.items()] == [
             Counter.CountPerFeature('f1', truncate_time(utc_now-3), 1),
             Counter.CountPerFeature('f2', truncate_time(utc_now-3), 1)]
-        assert manager._strategy._unique_keys_tracker._cache == {
+        assert manager._strategy.get_unique_keys_tracker()._cache == {
             'f1': set({'k1'}),
             'f2': set({'k1'})}
 
@@ -238,14 +236,14 @@ class ImpressionManagerTests(object):
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
         ])
         assert imps == []
-        assert manager._strategy._unique_keys_tracker._cache == {'f1': set({'k1'}), 'f2': set({'k1'})}
+        assert manager._strategy.get_unique_keys_tracker()._cache == {'f1': set({'k1'}), 'f2': set({'k1'})}
 
         # Tracking an impression with a different key, will only increase mtk
         imps = manager.process_impressions([
             (Impression('k3', 'f1', 'on', 'l1', 123, None, utc_now-1), None)
         ])
         assert imps == []
-        assert manager._strategy._unique_keys_tracker._cache == {
+        assert manager._strategy.get_unique_keys_tracker()._cache == {
             'f1': set({'k1', 'k3'}),
             'f2': set({'k1'})}
 
@@ -260,7 +258,7 @@ class ImpressionManagerTests(object):
             (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
         ])
         assert imps == []
-        assert manager._strategy._unique_keys_tracker._cache == {
+        assert manager._strategy.get_unique_keys_tracker()._cache == {
             'f1': set({'k1', 'k3', 'k2'}),
             'f2': set({'k1'})}
 
@@ -532,7 +530,7 @@ class ImpressionManagerTests(object):
                 for (k, v) in manager._strategy._counter._data.items()] == [
             Counter.CountPerFeature('f1', truncate_time(utc_now-3), 1),
             Counter.CountPerFeature('f2', truncate_time(utc_now-3), 1)]
-        assert manager._strategy._unique_keys_tracker._cache == {
+        assert manager._strategy.get_unique_keys_tracker()._cache == {
             'f1': set({'k1'}),
             'f2': set({'k1'})}
 
@@ -541,7 +539,7 @@ class ImpressionManagerTests(object):
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
         ])
         assert imps == []
-        assert manager._strategy._unique_keys_tracker._cache == {
+        assert manager._strategy.get_unique_keys_tracker()._cache == {
             'f1': set({'k1'}),
             'f2': set({'k1'})}
 
@@ -550,7 +548,7 @@ class ImpressionManagerTests(object):
             (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)
         ])
         assert imps == []
-        assert manager._strategy._unique_keys_tracker._cache == {
+        assert manager._strategy.get_unique_keys_tracker()._cache == {
             'f1': set({'k1', 'k2'}),
             'f2': set({'k1'})}
 
@@ -565,7 +563,7 @@ class ImpressionManagerTests(object):
             (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
         ])
         assert imps == []
-        assert manager._strategy._unique_keys_tracker._cache == {
+        assert manager._strategy.get_unique_keys_tracker()._cache == {
             'f1': set({'k1', 'k2'}),
             'f2': set({'k1'})}
 

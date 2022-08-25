@@ -2,7 +2,6 @@ import logging
 import queue
 
 from splitio.api import APIException
-from splitio.engine.strategies import Counter
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -84,7 +83,7 @@ class ImpressionsCountSynchronizer(object):
     def synchronize_counters(self):
         """Send impressions from both the failed and new queues."""
 
-        if not isinstance(self._impressions_counter, Counter):
+        if self._impressions_counter == None:
             return
 
         to_send = self._impressions_counter.pop_all()

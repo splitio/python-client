@@ -15,9 +15,8 @@ from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \
 from splitio.storage.adapters.redis import build, RedisAdapter
 from splitio.models import splits, segments
 from splitio.engine.impressions import Manager as ImpressionsManager, ImpressionsMode
-from splitio.engine.strategies.strategy_debug_mode import StrategyDebugMode
-from splitio.engine.strategies.strategy_optimized_mode import StrategyOptimizedMode
-from splitio.engine.strategies import Counter
+from splitio.engine.strategies import StrategyDebugMode, StrategyOptimizedMode
+from splitio.engine.manager import Counter
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder
 from splitio.client.config import DEFAULT_CONFIG
 

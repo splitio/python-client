@@ -13,11 +13,9 @@ from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper
 from splitio.engine.impressions import Manager as ImpressionsManager
 from splitio.engine.impressions import ImpressionsMode
-from splitio.engine.strategies import Counter as ImpressionsCounter
-from splitio.engine.strategies.strategy_debug_mode import StrategyDebugMode
-from splitio.engine.strategies.strategy_optimized_mode import StrategyOptimizedMode
-from splitio.engine.strategies.strategy_none_mode import StrategyNoneMode
-from splitio.engine.sender_adapters.in_memory_sender_adapter import InMemorySenderAdapter
+from splitio.engine.manager import Counter as ImpressionsCounter
+from splitio.engine.strategies import StrategyNoneMode, StrategyDebugMode, StrategyOptimizedMode
+from splitio.engine.adapters import InMemorySenderAdapter
 
 # Storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
@@ -333,11 +331,11 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     clear_filter_task = None
     if cfg['impressionsMode'] == ImpressionsMode.NONE:
         imp_strategy = StrategyNoneMode(imp_counter)
-        clear_filter_sync = ClearFilterSynchronizer(imp_strategy._unique_keys_tracker)
-        unique_keys_synchronizer = UniqueKeysSynchronizer(InMemorySenderAdapter(apis['telemetry']), imp_strategy._unique_keys_tracker)
+        clear_filter_sync = ClearFilterSynchronizer(imp_strategy.get_unique_keys_tracker())
+        unique_keys_synchronizer = UniqueKeysSynchronizer(InMemorySenderAdapter(apis['telemetry']), imp_strategy.get_unique_keys_tracker())
         unique_keys_task = UniqueKeysSyncTask(unique_keys_synchronizer.send_all)
         clear_filter_task = ClearFilterSyncTask(clear_filter_sync.clear_all)
-        imp_strategy._unique_keys_tracker.set_queue_full_hook(unique_keys_task.flush)
+        imp_strategy.get_unique_keys_tracker().set_queue_full_hook(unique_keys_task.flush)
     elif cfg['impressionsMode'] == ImpressionsMode.DEBUG:
         imp_strategy = StrategyDebugMode()
     else:

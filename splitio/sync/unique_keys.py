@@ -1,10 +1,7 @@
-from splitio.engine.filters.bloom_filter import BloomFilter
-from splitio.engine.sender_adapters.in_memory_sender_adapter import InMemorySenderAdapter
-import logging
+from splitio.engine.filters import BloomFilter
+from splitio.engine.adapters import InMemorySenderAdapter
 
 _UNIQUE_KEYS_MAX_BULK_SIZE = 5000
-
-_LOGGER = logging.getLogger(__name__)
 
 class UniqueKeysSynchronizer(object):
     """Unique Keys Synchronizer class."""

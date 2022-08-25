@@ -1,6 +1,17 @@
+import abc
 import json
 
-from splitio.engine.sender_adapters import ImpressionsSenderAdapter
+
+class ImpressionsSenderAdapter(object, metaclass=abc.ABCMeta):
+    """Impressions Sender Adapter interface."""
+
+    @abc.abstractmethod
+    def record_unique_keys(self, data):
+        """
+        No Return value
+
+        """
+        pass
 
 class InMemorySenderAdapter(ImpressionsSenderAdapter):
     """In Memory Impressions Sender Adapter class."""
@@ -33,9 +44,6 @@ class InMemorySenderAdapter(ImpressionsSenderAdapter):
         :return: unique keys JSON
         :rtype: json
         """
-        if len(uniques) == 0:
-            return json.loads('{"keys": []}')
-
         return {
             'keys':  [{'f': feature, 'ks': list(keys)} for feature, keys in uniques.items()]
         }

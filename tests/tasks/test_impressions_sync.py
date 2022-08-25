@@ -8,9 +8,7 @@ from splitio.storage import ImpressionStorage
 from splitio.models.impressions import Impression
 from splitio.api.impressions import ImpressionsAPI
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
-from splitio.engine.impressions import Manager as ImpressionsManager
-from splitio.engine.strategies import Counter
-from splitio.engine.strategies.strategy_optimized_mode import StrategyOptimizedMode
+from splitio.engine.manager import Counter
 
 class ImpressionsSyncTests(object):
     """Impressions Syncrhonization task test cases."""
