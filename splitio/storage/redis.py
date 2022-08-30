@@ -431,8 +431,6 @@ class RedisImpressionsStorage(ImpressionStorage, ImpressionPipelinedStorage):
         :return: Whether the impression has been added or not.
         :rtype: bool
         """
-        if impressions == []:
-            return False
         bulk_impressions = self._wrap_impressions(impressions)
         try:
             inserted = self._redis.rpush(self.IMPRESSIONS_QUEUE_KEY, *bulk_impressions)
