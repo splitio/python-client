@@ -1,6 +1,7 @@
 """Synchronization manager module."""
 import logging
 import time
+import threading
 from threading import Thread
 from queue import Queue
 from splitio.push.manager import PushManager, Status
@@ -127,3 +128,60 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
                 self._synchronizer.start_periodic_fetching()
                 _LOGGER.info('non-recoverable error in streaming. switching to polling.')
                 return
+
+class RedisManager(object):  # pylint:disable=too-many-instance-attributes
+    """Manager Class."""
+
+    _CENTINEL_EVENT = object()
+
+    def __init__(self, unique_keys_task, clear_filter_task):  # pylint:disable=too-many-arguments
+        """
+        Construct Manager.
+
+        :param unique_keys_task: unique keys task instance
+        :type unique_keys_task: splitio.tasks.unique_keys_sync.UniqueKeysSyncTask
+
+        :param clear_filter_task: clear filter task instance
+        :type clear_filter_task: splitio.tasks.clear_filter_task.ClearFilterSynchronizer
+
+        """
+        self._unique_keys_task = unique_keys_task
+        self._clear_filter_task = clear_filter_task
+        self._ready_flag = True
+
+    def recreate(self):
+        """Not implemented"""
+        return
+
+    def start(self):
+        """Start the SDK synchronization tasks."""
+        try:
+            self._unique_keys_task.start()
+            self._clear_filter_task.start()
+
+        except (APIException, RuntimeError):
+            _LOGGER.error('Exception raised starting Split Manager')
+            _LOGGER.debug('Exception information: ', exc_info=True)
+            raise
+
+    def stop(self, blocking):
+        """
+        Stop manager logic.
+
+        :param blocking: flag to wait until tasks are stopped
+        :type blocking: bool
+        """
+        _LOGGER.info('Stopping manager tasks')
+        if blocking:
+            events = []
+            tasks = [self._unique_keys_task,
+                self._clear_filter_task]
+            for task in tasks:
+                stop_event = threading.Event()
+                task.stop(stop_event)
+                events.append(stop_event)
+            if all(event.wait() for event in events):
+                _LOGGER.debug('all tasks finished successfully.')
+        else:
+            self._unique_keys_task.stop()
+            self._clear_filter_task.stop()
