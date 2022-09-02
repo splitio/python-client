@@ -42,7 +42,7 @@ from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTa
 
 # Synchronizer
 from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, \
-    LocalhostSynchronizer
+    LocalhostSynchronizer, RedisSynchronizer
 from splitio.sync.manager import Manager, RedisManager
 from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer
 from splitio.sync.segment import SegmentSynchronizer
@@ -430,10 +430,11 @@ def _build_redis_factory(api_key, cfg):
     clear_filter_sync = None
     unique_keys_task = None
     clear_filter_task = None
+    redis_sender_adapter = RedisSenderAdapter(redis_adapter)
     if cfg['impressionsMode'] == ImpressionsMode.NONE:
         imp_strategy = StrategyNoneMode(imp_counter)
         clear_filter_sync = ClearFilterSynchronizer(imp_strategy.get_unique_keys_tracker())
-        unique_keys_synchronizer = UniqueKeysSynchronizer(RedisSenderAdapter(redis_adapter), imp_strategy.get_unique_keys_tracker())
+        unique_keys_synchronizer = UniqueKeysSynchronizer(redis_sender_adapter, imp_strategy.get_unique_keys_tracker())
         unique_keys_task = UniqueKeysSyncTask(unique_keys_synchronizer.send_all)
         clear_filter_task = ClearFilterSyncTask(clear_filter_sync.clear_all)
         imp_strategy.get_unique_keys_tracker().set_queue_full_hook(unique_keys_task.flush)
@@ -446,6 +447,19 @@ def _build_redis_factory(api_key, cfg):
         _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
         imp_strategy)
 
+    synchronizers = SplitSynchronizers(None, None, None, None,
+        ImpressionsCountSynchronizer(redis_sender_adapter, imp_counter),
+        unique_keys_synchronizer,
+        clear_filter_sync
+    )
+
+    tasks = SplitTasks(None, None, None, None,
+        ImpressionsCountSyncTask(synchronizers.impressions_count_sync.synchronize_counters),
+        unique_keys_task,
+        clear_filter_task
+    )
+
+    synchronizer = RedisSynchronizer(synchronizers, tasks)
     recorder = PipelinedRecorder(
         redis_adapter.pipeline,
         imp_manager,
@@ -453,7 +467,8 @@ def _build_redis_factory(api_key, cfg):
         storages['impressions'],
         data_sampling,
     )
-    manager = RedisManager(unique_keys_task, clear_filter_task)
+
+    manager = RedisManager(synchronizer)
     initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer")
     initialization_thread.setDaemon(True)
     initialization_thread.start()

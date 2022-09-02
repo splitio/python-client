@@ -134,7 +134,7 @@ class RedisManager(object):  # pylint:disable=too-many-instance-attributes
 
     _CENTINEL_EVENT = object()
 
-    def __init__(self, unique_keys_task, clear_filter_task):  # pylint:disable=too-many-arguments
+    def __init__(self, synchronizer):  # pylint:disable=too-many-arguments
         """
         Construct Manager.
 
@@ -145,9 +145,8 @@ class RedisManager(object):  # pylint:disable=too-many-instance-attributes
         :type clear_filter_task: splitio.tasks.clear_filter_task.ClearFilterSynchronizer
 
         """
-        self._unique_keys_task = unique_keys_task
-        self._clear_filter_task = clear_filter_task
         self._ready_flag = True
+        self._synchronizer = synchronizer
 
     def recreate(self):
         """Not implemented"""
@@ -156,8 +155,7 @@ class RedisManager(object):  # pylint:disable=too-many-instance-attributes
     def start(self):
         """Start the SDK synchronization tasks."""
         try:
-            self._unique_keys_task.start()
-            self._clear_filter_task.start()
+            self._synchronizer.start_periodic_data_recording()
 
         except (APIException, RuntimeError):
             _LOGGER.error('Exception raised starting Split Manager')
@@ -172,16 +170,4 @@ class RedisManager(object):  # pylint:disable=too-many-instance-attributes
         :type blocking: bool
         """
         _LOGGER.info('Stopping manager tasks')
-        if blocking:
-            events = []
-            tasks = [self._unique_keys_task,
-                self._clear_filter_task]
-            for task in tasks:
-                stop_event = threading.Event()
-                task.stop(stop_event)
-                events.append(stop_event)
-            if all(event.wait() for event in events):
-                _LOGGER.debug('all tasks finished successfully.')
-        else:
-            self._unique_keys_task.stop()
-            self._clear_filter_task.stop()
+        self._synchronizer.shutdown(blocking)
