@@ -132,8 +132,6 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
 class RedisManager(object):  # pylint:disable=too-many-instance-attributes
     """Manager Class."""
 
-    _CENTINEL_EVENT = object()
-
     def __init__(self, synchronizer):  # pylint:disable=too-many-arguments
         """
         Construct Manager.

@@ -223,6 +223,17 @@ class Synchronizer(BaseSynchronizer):
         """
         self._split_synchronizers = split_synchronizers
         self._split_tasks = split_tasks
+        self._periodic_data_recording_tasks = [
+            self._split_tasks.impressions_task,
+            self._split_tasks.events_task
+        ]
+        if self._split_tasks.impressions_count_task:
+            self._periodic_data_recording_tasks.append(self._split_tasks.impressions_count_task)
+        if self._split_tasks.unique_keys_task is not None:
+            self._periodic_data_recording_tasks.append(self._split_tasks.unique_keys_task)
+        if self._split_tasks.clear_filter_task is not None:
+            self._periodic_data_recording_tasks.append(self._split_tasks.clear_filter_task)
+
 
     def _synchronize_segments(self):
         _LOGGER.debug('Starting segments synchronization')
@@ -322,13 +333,8 @@ class Synchronizer(BaseSynchronizer):
     def start_periodic_data_recording(self):
         """Start recorders."""
         _LOGGER.debug('Starting periodic data recording')
-        self._split_tasks.impressions_task.start()
-        self._split_tasks.events_task.start()
-        self._split_tasks.impressions_count_task.start()
-        if self._split_tasks.unique_keys_task is not None:
-            self._split_tasks.unique_keys_task.start()
-        if self._split_tasks.clear_filter_task is not None:
-            self._split_tasks.clear_filter_task.start()
+        for task in self._periodic_data_recording_tasks:
+            task.start()
 
     def stop_periodic_data_recording(self, blocking):
         """
@@ -340,28 +346,15 @@ class Synchronizer(BaseSynchronizer):
         _LOGGER.debug('Stopping periodic data recording')
         if blocking:
             events = []
-            tasks = [self._split_tasks.impressions_task,
-                    self._split_tasks.events_task,
-                    self._split_tasks.impressions_count_task]
-            if self._split_tasks.unique_keys_task is not None:
-                tasks.append(self._split_tasks.unique_keys_task)
-            if self._split_tasks.clear_filter_task is not None:
-                tasks.append(self._split_tasks.clear_filter_task)
-
-            for task in tasks:
+            for task in self._periodic_data_recording_tasks:
                 stop_event = threading.Event()
                 task.stop(stop_event)
                 events.append(stop_event)
             if all(event.wait() for event in events):
                 _LOGGER.debug('all tasks finished successfully.')
         else:
-            self._split_tasks.impressions_task.stop()
-            self._split_tasks.events_task.stop()
-            self._split_tasks.impressions_count_task.stop()
-            if self._split_tasks.unique_keys_task is not None:
-                self._split_tasks.unique_keys_task.stop()
-            if self._split_tasks.clear_filter_task is not None:
-                self._split_tasks.clear_filter_task.stop()
+            for task in self._periodic_data_recording_tasks:
+                task.stop()
 
     def kill_split(self, split_name, default_treatment, change_number):
         """
@@ -390,7 +383,13 @@ class RedisSynchronizer(BaseSynchronizer):
         :type split_tasks: splitio.sync.synchronizer.SplitTasks
         """
         self._split_synchronizers = split_synchronizers
-        self._split_tasks = split_tasks
+        self._tasks = []
+        if split_tasks.impressions_count_task is not None:
+            self._tasks.append(split_tasks.impressions_count_task)
+        if split_tasks.unique_keys_task is not None:
+            self._tasks.append(split_tasks.unique_keys_task)
+        if split_tasks.clear_filter_task is not None:
+            self._tasks.append(split_tasks.clear_filter_task)
 
     def sync_all(self):
         """
@@ -411,11 +410,8 @@ class RedisSynchronizer(BaseSynchronizer):
     def start_periodic_data_recording(self):
         """Start recorders."""
         _LOGGER.debug('Starting periodic data recording')
-        self._split_tasks.impressions_count_task.start()
-        if self._split_tasks.unique_keys_task is not None:
-            self._split_tasks.unique_keys_task.start()
-        if self._split_tasks.clear_filter_task is not None:
-            self._split_tasks.clear_filter_task.start()
+        for task in self._tasks:
+            task.start()
 
     def stop_periodic_data_recording(self, blocking):
         """
@@ -427,23 +423,15 @@ class RedisSynchronizer(BaseSynchronizer):
         _LOGGER.debug('Stopping periodic data recording')
         if blocking:
             events = []
-            tasks = [self._split_tasks.impressions_count_task]
-            if self._split_tasks.unique_keys_task is not None:
-                tasks.append(self._split_tasks.unique_keys_task)
-            if self._split_tasks.clear_filter_task is not None:
-                tasks.append(self._split_tasks.clear_filter_task)
-            for task in tasks:
+            for task in self._tasks:
                 stop_event = threading.Event()
                 task.stop(stop_event)
                 events.append(stop_event)
             if all(event.wait() for event in events):
                 _LOGGER.debug('all tasks finished successfully.')
         else:
-            self._split_tasks.impressions_count_task.stop()
-            if self._split_tasks.unique_keys_task is not None:
-                self._split_tasks.unique_keys_task.stop()
-            if self._split_tasks.clear_filter_task is not None:
-                self._split_tasks.clear_filter_task.stop()
+            for task in self._tasks:
+                task.stop()
 
     def kill_split(self, split_name, default_treatment, change_number):
         """Kill a split locally."""
