@@ -1,6 +1,3 @@
-from splitio.engine.filters import BloomFilter
-from splitio.engine.adapters import InMemorySenderAdapter
-
 _UNIQUE_KEYS_MAX_BULK_SIZE = 5000
 
 class UniqueKeysSynchronizer(object):

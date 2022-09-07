@@ -59,6 +59,7 @@ class UniqueKeysTracker(BaseUniqueKeysTracker):
                 'Unique Keys queue is full, flushing the current queue now.'
             )
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
+                _LOGGER.info('Calling hook.')
                 self._queue_full_hook()
         return True
 

@@ -15,7 +15,7 @@ from splitio.engine.impressions import Manager as ImpressionsManager
 from splitio.engine.impressions import ImpressionsMode
 from splitio.engine.manager import Counter as ImpressionsCounter
 from splitio.engine.strategies import StrategyNoneMode, StrategyDebugMode, StrategyOptimizedMode
-from splitio.engine.adapters import InMemorySenderAdapter
+from splitio.engine.adapters import InMemorySenderAdapter, RedisSenderAdapter
 
 # Storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
@@ -42,8 +42,8 @@ from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTa
 
 # Synchronizer
 from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, \
-    LocalhostSynchronizer
-from splitio.sync.manager import Manager
+    LocalhostSynchronizer, RedisSynchronizer
+from splitio.sync.manager import Manager, RedisManager
 from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer
 from splitio.sync.segment import SegmentSynchronizer
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
@@ -215,6 +215,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
             return
 
         try:
+            _LOGGER.info('Factory destroy called, stopping tasks.')
             if self._sync_manager is not None:
                 if destroyed_event is not None:
 
@@ -329,6 +330,9 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     clear_filter_sync = None
     unique_keys_task = None
     clear_filter_task = None
+    impressions_count_sync = None
+    impressions_count_task = None
+
     if cfg['impressionsMode'] == ImpressionsMode.NONE:
         imp_strategy = StrategyNoneMode(imp_counter)
         clear_filter_sync = ClearFilterSynchronizer(imp_strategy.get_unique_keys_tracker())
@@ -336,10 +340,14 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         unique_keys_task = UniqueKeysSyncTask(unique_keys_synchronizer.send_all)
         clear_filter_task = ClearFilterSyncTask(clear_filter_sync.clear_all)
         imp_strategy.get_unique_keys_tracker().set_queue_full_hook(unique_keys_task.flush)
+        impressions_count_sync = ImpressionsCountSynchronizer(apis['impressions'], imp_counter)
+        impressions_count_task = ImpressionsCountSyncTask(impressions_count_sync.synchronize_counters)
     elif cfg['impressionsMode'] == ImpressionsMode.DEBUG:
         imp_strategy = StrategyDebugMode()
     else:
         imp_strategy = StrategyOptimizedMode(imp_counter)
+        impressions_count_sync = ImpressionsCountSynchronizer(apis['impressions'], imp_counter)
+        impressions_count_task = ImpressionsCountSyncTask(impressions_count_sync.synchronize_counters)
 
     imp_manager = ImpressionsManager(
         _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
@@ -351,7 +359,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         ImpressionSynchronizer(apis['impressions'], storages['impressions'],
                                cfg['impressionsBulkSize']),
         EventSynchronizer(apis['events'], storages['events'], cfg['eventsBulkSize']),
-        ImpressionsCountSynchronizer(apis['impressions'], imp_counter),
+        impressions_count_sync,
         unique_keys_synchronizer,
         clear_filter_sync
     )
@@ -370,7 +378,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
             cfg['impressionsRefreshRate'],
         ),
         EventsSyncTask(synchronizers.events_sync.synchronize_events, cfg['eventsPushRate']),
-        ImpressionsCountSyncTask(synchronizers.impressions_count_sync.synchronize_counters),
+        impressions_count_task,
         unique_keys_task,
         clear_filter_task
     )
@@ -424,11 +432,49 @@ def _build_redis_factory(api_key, cfg):
                         _MIN_DEFAULT_DATA_SAMPLING_ALLOWED)
         data_sampling = _MIN_DEFAULT_DATA_SAMPLING_ALLOWED
 
-    imp_strategy = StrategyDebugMode() if cfg['impressionsMode'] == ImpressionsMode.DEBUG else StrategyOptimizedMode(ImpressionsCounter())
+    unique_keys_synchronizer = None
+    clear_filter_sync = None
+    unique_keys_task = None
+    clear_filter_task = None
+    impressions_count_sync = None
+    impressions_count_task = None
+    redis_sender_adapter = RedisSenderAdapter(redis_adapter)
+
+    if cfg['impressionsMode'] == ImpressionsMode.NONE:
+        imp_counter = ImpressionsCounter()
+        imp_strategy = StrategyNoneMode(imp_counter)
+        clear_filter_sync = ClearFilterSynchronizer(imp_strategy.get_unique_keys_tracker())
+        unique_keys_synchronizer = UniqueKeysSynchronizer(redis_sender_adapter, imp_strategy.get_unique_keys_tracker())
+        unique_keys_task = UniqueKeysSyncTask(unique_keys_synchronizer.send_all)
+        clear_filter_task = ClearFilterSyncTask(clear_filter_sync.clear_all)
+        imp_strategy.get_unique_keys_tracker().set_queue_full_hook(unique_keys_task.flush)
+        impressions_count_sync = ImpressionsCountSynchronizer(redis_sender_adapter, imp_counter)
+        impressions_count_task = ImpressionsCountSyncTask(impressions_count_sync.synchronize_counters)
+    elif cfg['impressionsMode'] == ImpressionsMode.DEBUG:
+        imp_strategy = StrategyDebugMode()
+    else:
+        imp_counter = ImpressionsCounter()
+        imp_strategy = StrategyOptimizedMode(imp_counter)
+        impressions_count_sync = ImpressionsCountSynchronizer(redis_sender_adapter, imp_counter)
+        impressions_count_task = ImpressionsCountSyncTask(impressions_count_sync.synchronize_counters)
+
     imp_manager = ImpressionsManager(
         _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
         imp_strategy)
 
+    synchronizers = SplitSynchronizers(None, None, None, None,
+        impressions_count_sync,
+        unique_keys_synchronizer,
+        clear_filter_sync
+    )
+
+    tasks = SplitTasks(None, None, None, None,
+        impressions_count_task,
+        unique_keys_task,
+        clear_filter_task
+    )
+
+    synchronizer = RedisSynchronizer(synchronizers, tasks)
     recorder = PipelinedRecorder(
         redis_adapter.pipeline,
         imp_manager,
@@ -436,11 +482,18 @@ def _build_redis_factory(api_key, cfg):
         storages['impressions'],
         data_sampling,
     )
+
+    manager = RedisManager(synchronizer)
+    initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer")
+    initialization_thread.setDaemon(True)
+    initialization_thread.start()
+
     return SplitFactory(
         api_key,
         storages,
         cfg['labelsEnabled'],
         recorder,
+        manager,
     )
 
 
