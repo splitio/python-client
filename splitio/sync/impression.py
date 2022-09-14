@@ -64,34 +64,3 @@ class ImpressionSynchronizer(object):
             _LOGGER.error('Exception raised while reporting impressions')
             _LOGGER.debug('Exception information: ', exc_info=True)
             self._add_to_failed_queue(to_send)
-
-
-class ImpressionsCountSynchronizer(object):
-    def __init__(self, impressions_api, imp_counter):
-        """
-        Class constructor.
-
-        :param impressions_api: Impressions Api object to send data to the backend
-        :type impressions_api: splitio.api.impressions.ImpressionsAPI
-        :param impressions_manager: Impressions manager instance
-        :type impressions_manager: splitio.engine.impressions.Manager
-
-        """
-        self._impressions_api = impressions_api
-        self._impressions_counter = imp_counter
-
-    def synchronize_counters(self):
-        """Send impressions from both the failed and new queues."""
-
-        if self._impressions_counter == None:
-            return
-
-        to_send = self._impressions_counter.pop_all()
-        if not to_send:
-            return
-
-        try:
-            self._impressions_api.flush_counters(to_send)
-        except APIException:
-            _LOGGER.error('Exception raised while reporting impression counts')
-            _LOGGER.debug('Exception information: ', exc_info=True)

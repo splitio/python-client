@@ -19,7 +19,7 @@ def truncate_time(timestamp_ms):
     """
     return timestamp_ms - (timestamp_ms % _TIME_INTERVAL_MS)
 
-def truncate_impressions_time(imps, counter = None):
+def truncate_impressions_time(imps):
     """
     Process impressions.
 
@@ -32,8 +32,7 @@ def truncate_impressions_time(imps, counter = None):
     :rtype: list[splitio.models.impression.Impression]
     """
     this_hour = truncate_time(util.utctime_ms())
-    return [imp for imp, _ in imps] if counter is None \
-        else [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour]
+    return [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour]
 
 
 class Hasher(object):  # pylint:disable=too-few-public-methods
@@ -110,44 +109,3 @@ class Observer(object):  # pylint:disable=too-few-public-methods
                           impression.bucketing_key,
                           impression.time,
                           previous_time)
-
-
-class Counter(object):
-    """Class that counts impressions per timeframe."""
-
-    CounterKey = namedtuple('Count', ['feature', 'timeframe'])
-    CountPerFeature = namedtuple('CountPerFeature', ['feature', 'timeframe', 'count'])
-
-    def __init__(self):
-        """Class constructor."""
-        self._data = defaultdict(lambda: 0)
-        self._lock = threading.Lock()
-
-    def track(self, impressions, inc=1):
-        """
-        Register N new impressions for a feature in a specific timeframe.
-
-        :param impressions: generated impressions
-        :type impressions: list[splitio.models.impressions.Impression]
-
-        :param inc: amount to increment (defaults to 1)
-        :type inc: int
-        """
-        keys = [Counter.CounterKey(i.feature_name, truncate_time(i.time)) for i in impressions]
-        with self._lock:
-            for key in keys:
-                self._data[key] += inc
-
-    def pop_all(self):
-        """
-        Clear and return all the counters currently stored.
-
-        :returns: List of count per feature/timeframe objects
-        :rtype: list[ImpressionCounter.CountPerFeature]
-        """
-        with self._lock:
-            old = self._data
-            self._data = defaultdict(lambda: 0)
-
-        return [Counter.CountPerFeature(k.feature, k.timeframe, v)
-                for (k, v) in old.items()]

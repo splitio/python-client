@@ -14,7 +14,7 @@ class SplitSynchronizers(object):
     """SplitSynchronizers."""
 
     def __init__(self, split_sync, segment_sync, impressions_sync, events_sync,  # pylint:disable=too-many-arguments
-                 impressions_count_sync, unique_keys_sync = None, clear_filter_sync = None):
+                 unique_keys_sync = None, clear_filter_sync = None):
         """
         Class constructor.
 
@@ -26,14 +26,11 @@ class SplitSynchronizers(object):
         :type impressions_sync: splitio.sync.impression.ImpressionSynchronizer
         :param events_sync: sync for events
         :type events_sync: splitio.sync.event.EventSynchronizer
-        :param impressions_count_sync: sync for impression_counts
-        :type impressions_count_sync: splitio.sync.impression.ImpressionsCountSynchronizer
         """
         self._split_sync = split_sync
         self._segment_sync = segment_sync
         self._impressions_sync = impressions_sync
         self._events_sync = events_sync
-        self._impressions_count_sync = impressions_count_sync
         self._unique_keys_sync = unique_keys_sync
         self._clear_filter_sync = clear_filter_sync
 
@@ -58,11 +55,6 @@ class SplitSynchronizers(object):
         return self._events_sync
 
     @property
-    def impressions_count_sync(self):
-        """Return impressions count synchonizer."""
-        return self._impressions_count_sync
-
-    @property
     def unique_keys_sync(self):
         """Return unique keys synchonizer."""
         return self._unique_keys_sync
@@ -76,7 +68,7 @@ class SplitTasks(object):
     """SplitTasks."""
 
     def __init__(self, split_task, segment_task, impressions_task, events_task,  # pylint:disable=too-many-arguments
-                 impressions_count_task, unique_keys_task = None, clear_filter_task = None):
+                 unique_keys_task = None, clear_filter_task = None):
         """
         Class constructor.
 
@@ -88,14 +80,11 @@ class SplitTasks(object):
         :type impressions_task: splitio.tasks.impressions_sync.ImpressionsSyncTask
         :param events_task: sync for events
         :type events_task: splitio.tasks.events_sync.EventsSyncTask
-        :param impressions_count_task: sync for impression_counts
-        :type impressions_count_task: splitio.tasks.impressions_sync.ImpressionsCountSyncTask
         """
         self._split_task = split_task
         self._segment_task = segment_task
         self._impressions_task = impressions_task
         self._events_task = events_task
-        self._impressions_count_task = impressions_count_task
         self._unique_keys_task = unique_keys_task
         self._clear_filter_task = clear_filter_task
 
@@ -118,11 +107,6 @@ class SplitTasks(object):
     def events_task(self):
         """Return events sync task."""
         return self._events_task
-
-    @property
-    def impressions_count_task(self):
-        """Return impressions count sync task."""
-        return self._impressions_count_task
 
     @property
     def unique_keys_task(self):
@@ -227,8 +211,6 @@ class Synchronizer(BaseSynchronizer):
             self._split_tasks.impressions_task,
             self._split_tasks.events_task
         ]
-        if self._split_tasks.impressions_count_task:
-            self._periodic_data_recording_tasks.append(self._split_tasks.impressions_count_task)
         if self._split_tasks.unique_keys_task is not None:
             self._periodic_data_recording_tasks.append(self._split_tasks.unique_keys_task)
         if self._split_tasks.clear_filter_task is not None:
@@ -384,8 +366,6 @@ class RedisSynchronizer(BaseSynchronizer):
         """
         self._split_synchronizers = split_synchronizers
         self._tasks = []
-        if split_tasks.impressions_count_task is not None:
-            self._tasks.append(split_tasks.impressions_count_task)
         if split_tasks.unique_keys_task is not None:
             self._tasks.append(split_tasks.unique_keys_task)
         if split_tasks.clear_filter_task is not None:

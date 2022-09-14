@@ -62,27 +62,6 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
             )
         ]
 
-    @staticmethod
-    def _build_counters(counters):
-        """
-        Build an impression bulk formatted as the API expects it.
-
-        :param counters: List of impression counters per feature.
-        :type counters: list[splitio.engine.impressions.Counter.CountPerFeature]
-
-        :return: dict with list of impression count dtos
-        :rtype: dict
-        """
-        return {
-            'pf': [
-                {
-                    'f': pf_count.feature,
-                    'm': pf_count.timeframe,
-                    'rc': pf_count.count
-                } for pf_count in counters
-            ]
-        }
-
     def flush_impressions(self, impressions):
         """
         Send impressions to the backend.
@@ -104,32 +83,6 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
         except HttpClientException as exc:
             _LOGGER.error(
                 'Error posting impressions because an exception was raised by the HTTPClient'
-            )
-            _LOGGER.debug('Error: ', exc_info=True)
-            raise APIException('Impressions not flushed properly.') from exc
-
-    def flush_counters(self, counters):
-        """
-        Send impressions to the backend.
-
-        :param impressions: Impressions bulk
-        :type impressions: list
-        """
-        bulk = self._build_counters(counters)
-        try:
-            response = self._client.post(
-                'events',
-                '/testImpressions/count',
-                self._apikey,
-                body=bulk,
-                extra_headers=self._metadata
-            )
-            if not 200 <= response.status_code < 300:
-                raise APIException(response.body, response.status_code)
-        except HttpClientException as exc:
-            _LOGGER.error(
-                'Error posting impressions counters because an exception was raised by the '
-                'HTTPClient'
             )
             _LOGGER.debug('Error: ', exc_info=True)
             raise APIException('Impressions not flushed properly.') from exc

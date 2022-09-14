@@ -13,7 +13,6 @@ from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper
 from splitio.engine.impressions import Manager as ImpressionsManager
 from splitio.engine.impressions import ImpressionsMode
-from splitio.engine.manager import Counter as ImpressionsCounter
 from splitio.engine.strategies import StrategyNoneMode, StrategyDebugMode, StrategyOptimizedMode
 from splitio.engine.adapters import InMemorySenderAdapter, RedisSenderAdapter
 
@@ -36,7 +35,7 @@ from splitio.api.telemetry import TelemetryAPI
 # Tasks
 from splitio.tasks.split_sync import SplitSynchronizationTask
 from splitio.tasks.segment_sync import SegmentSynchronizationTask
-from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask
+from splitio.tasks.impressions_sync import ImpressionsSyncTask
 from splitio.tasks.events_sync import EventsSyncTask
 from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTask
 
@@ -46,7 +45,7 @@ from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchroniz
 from splitio.sync.manager import Manager, RedisManager
 from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer
 from splitio.sync.segment import SegmentSynchronizer
-from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
+from splitio.sync.impression import ImpressionSynchronizer
 from splitio.sync.event import EventSynchronizer
 from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer
 
@@ -324,30 +323,22 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'impressions': InMemoryImpressionStorage(cfg['impressionsQueueSize']),
         'events': InMemoryEventStorage(cfg['eventsQueueSize']),
     }
-    imp_counter = ImpressionsCounter() if cfg['impressionsMode'] != ImpressionsMode.DEBUG else None
-
     unique_keys_synchronizer = None
     clear_filter_sync = None
     unique_keys_task = None
     clear_filter_task = None
-    impressions_count_sync = None
-    impressions_count_task = None
 
     if cfg['impressionsMode'] == ImpressionsMode.NONE:
-        imp_strategy = StrategyNoneMode(imp_counter)
+        imp_strategy = StrategyNoneMode()
         clear_filter_sync = ClearFilterSynchronizer(imp_strategy.get_unique_keys_tracker())
         unique_keys_synchronizer = UniqueKeysSynchronizer(InMemorySenderAdapter(apis['telemetry']), imp_strategy.get_unique_keys_tracker())
         unique_keys_task = UniqueKeysSyncTask(unique_keys_synchronizer.send_all)
         clear_filter_task = ClearFilterSyncTask(clear_filter_sync.clear_all)
         imp_strategy.get_unique_keys_tracker().set_queue_full_hook(unique_keys_task.flush)
-        impressions_count_sync = ImpressionsCountSynchronizer(apis['impressions'], imp_counter)
-        impressions_count_task = ImpressionsCountSyncTask(impressions_count_sync.synchronize_counters)
     elif cfg['impressionsMode'] == ImpressionsMode.DEBUG:
         imp_strategy = StrategyDebugMode()
     else:
-        imp_strategy = StrategyOptimizedMode(imp_counter)
-        impressions_count_sync = ImpressionsCountSynchronizer(apis['impressions'], imp_counter)
-        impressions_count_task = ImpressionsCountSyncTask(impressions_count_sync.synchronize_counters)
+        imp_strategy = StrategyOptimizedMode()
 
     imp_manager = ImpressionsManager(
         _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
@@ -359,7 +350,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         ImpressionSynchronizer(apis['impressions'], storages['impressions'],
                                cfg['impressionsBulkSize']),
         EventSynchronizer(apis['events'], storages['events'], cfg['eventsBulkSize']),
-        impressions_count_sync,
         unique_keys_synchronizer,
         clear_filter_sync
     )
@@ -378,7 +368,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
             cfg['impressionsRefreshRate'],
         ),
         EventsSyncTask(synchronizers.events_sync.synchronize_events, cfg['eventsPushRate']),
-        impressions_count_task,
         unique_keys_task,
         clear_filter_task
     )
@@ -436,40 +425,30 @@ def _build_redis_factory(api_key, cfg):
     clear_filter_sync = None
     unique_keys_task = None
     clear_filter_task = None
-    impressions_count_sync = None
-    impressions_count_task = None
     redis_sender_adapter = RedisSenderAdapter(redis_adapter)
 
     if cfg['impressionsMode'] == ImpressionsMode.NONE:
-        imp_counter = ImpressionsCounter()
-        imp_strategy = StrategyNoneMode(imp_counter)
+        imp_strategy = StrategyNoneMode()
         clear_filter_sync = ClearFilterSynchronizer(imp_strategy.get_unique_keys_tracker())
         unique_keys_synchronizer = UniqueKeysSynchronizer(redis_sender_adapter, imp_strategy.get_unique_keys_tracker())
         unique_keys_task = UniqueKeysSyncTask(unique_keys_synchronizer.send_all)
         clear_filter_task = ClearFilterSyncTask(clear_filter_sync.clear_all)
         imp_strategy.get_unique_keys_tracker().set_queue_full_hook(unique_keys_task.flush)
-        impressions_count_sync = ImpressionsCountSynchronizer(redis_sender_adapter, imp_counter)
-        impressions_count_task = ImpressionsCountSyncTask(impressions_count_sync.synchronize_counters)
     elif cfg['impressionsMode'] == ImpressionsMode.DEBUG:
         imp_strategy = StrategyDebugMode()
     else:
-        imp_counter = ImpressionsCounter()
-        imp_strategy = StrategyOptimizedMode(imp_counter)
-        impressions_count_sync = ImpressionsCountSynchronizer(redis_sender_adapter, imp_counter)
-        impressions_count_task = ImpressionsCountSyncTask(impressions_count_sync.synchronize_counters)
+        imp_strategy = StrategyOptimizedMode()
 
     imp_manager = ImpressionsManager(
         _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
         imp_strategy)
 
     synchronizers = SplitSynchronizers(None, None, None, None,
-        impressions_count_sync,
         unique_keys_synchronizer,
         clear_filter_sync
     )
 
     tasks = SplitTasks(None, None, None, None,
-        impressions_count_task,
         unique_keys_task,
         clear_filter_task
     )
