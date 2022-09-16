@@ -1,10 +1,11 @@
 """Impressions API module."""
-
 import logging
 
 from splitio.api import APIException
 from splitio.api.client import HttpClientException
 from splitio.api.commons import headers_from_metadata
+
+_LOGGER = logging.getLogger(__name__)
 
 class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the Telemetry API."""
