@@ -283,3 +283,54 @@ class EventStorage(object, metaclass=abc.ABCMeta):
         Clear data.
         """
         pass
+
+class TelemetryStorage(object, metaclass=abc.ABCMeta):
+    """Telemetry storage interface."""
+
+    @abc.abstractmethod
+    def record_init(self, config):
+        """
+        initilize telemetry objects
+
+        :param congif: factory configuration parameters
+        :type config: splitio.client.config
+        """
+        pass
+
+    @abc.abstractmethod
+    def record_latency(self, method, latency):
+        """
+        record latency data
+
+        :param method: method name
+        :type method: string
+        :param latency: latency
+        :type latency: int64
+        """
+        pass
+
+    @abc.abstractmethod
+    def record_exception(self, method):
+        """
+        record an exception
+
+        :param method: method name
+        :type method: string
+        """
+        pass
+
+    @abc.abstractmethod
+    def record_not_ready_usage(self):
+        """
+        record not ready time
+
+        """
+        pass
+
+    @abc.abstractmethod
+    def record_bur_time_out(self):
+        """
+        record BUR timeouts
+
+        """
+        pass

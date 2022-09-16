@@ -297,6 +297,12 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     if not input_validator.validate_factory_instantiation(api_key):
         return None
 
+    cfg['sdk_url'] = sdk_url if sdk_url is not None else None
+    cfg['events_url'] = events_url if events_url is not None else None
+    cfg['auth_url'] = auth_api_base_url if auth_api_base_url is not None else None
+    cfg['streaming_url'] = streaming_api_base_url if streaming_api_base_url is not None else None
+    cfg['telemetry_api_url'] = telemetry_api_base_url if telemetry_api_base_url is not None else None
+
     http_client = HttpClient(
         sdk_url=sdk_url,
         events_url=events_url,
@@ -541,9 +547,13 @@ def _build_localhost_factory(cfg):
 def get_factory(api_key, **kwargs):
     """Build and return the appropriate factory."""
     try:
+        active_factory_count = 0
+        redundant_factory_count = 0
         _INSTANTIATED_FACTORIES_LOCK.acquire()
         if _INSTANTIATED_FACTORIES:
             if api_key in _INSTANTIATED_FACTORIES:
+                redundant_factory_count = redundant_factory_count + 1
+                active_factory_count = active_factory_count + 1
                 _LOGGER.warning(
                     "factory instantiation: You already have %d %s with this API Key. "
                     "We recommend keeping only one instance of the factory at all times "
@@ -552,6 +562,7 @@ def get_factory(api_key, **kwargs):
                     'factory' if _INSTANTIATED_FACTORIES[api_key] == 1 else 'factories'
                 )
             else:
+                active_factory_count = active_factory_count + 1
                 _LOGGER.warning(
                     "factory instantiation: You already have an instance of the Split factory. "
                     "Make sure you definitely want this additional instance. "
@@ -560,6 +571,8 @@ def get_factory(api_key, **kwargs):
                 )
 
         config = sanitize_config(api_key, kwargs.get('config', {}))
+        config['redundantFactoryCount'] = redundant_factory_count
+        config['activeFactoryCount'] = active_factory_count + 1
 
         if config['operationMode'] == 'localhost-standalone':
             return _build_localhost_factory(config)

@@ -3,12 +3,15 @@ import logging
 import threading
 import queue
 from collections import Counter
+import os
 
 from splitio.models.segments import Segment
-from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage
+from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
 
 MAX_SIZE_BYTES = 5 * 1024 * 1024
-
+MAX_LATENCY_BUCKET_COUNT = 23
+MAX_STREAMING_EVENTS = 20
+MAX_TAGS = 10
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -118,6 +121,15 @@ class InMemorySplitStorage(SplitStorage):
         """
         with self._lock:
             return list(self._splits.values())
+
+    def get_splits_count(self):
+        """
+        Return splits count.
+
+        :rtype: int
+        """
+        with self._lock:
+            return len(self._splits)
 
     def is_valid_traffic_type(self, traffic_type_name):
         """
@@ -278,6 +290,27 @@ class InMemorySegmentStorage(SegmentStorage):
                 return False
             return self._segments[segment_name].contains(key)
 
+    def get_segments_count(self):
+        """
+        Retrieve segments count.
+
+        :rtype: int
+        """
+        with self._lock:
+            return len(self._segments)
+
+    def get_segments_keys_count(self):
+        """
+        Retrieve segments keys count.
+
+        :rtype: int
+        """
+        total_count = 0
+        with self._lock:
+            for segment in self._segments:
+                total_count = total_count + len(segment)
+        return total_count
+
 
 class InMemoryImpressionStorage(ImpressionStorage):
     """In memory implementation of an impressions storage."""
@@ -419,3 +452,225 @@ class InMemoryEventStorage(EventStorage):
         """
         with self._lock:
             self._events = queue.Queue(maxsize=self._queue_size)
+
+class InMemoryTelemetryStorage(TelemetryStorage):
+    """In-memory telemetry storage."""
+
+    def __init__(self):
+        """Constructor"""
+        self._counters = {'iQ': 0, 'iDe': 0, 'iDr': 0, 'eQ': 0, 'eD': 0, 'sL': 0,
+                        'aR': 0, 'tR': 0}
+        self._latencies = {'mL': {'t': [], 'ts': [], 'tc': [], 'tcs': [], 'tr': []},
+                           'hL': {'sp': [], 'se': [], 'ms': [], 'im': [], 'ic': [], 'ev': [], 'te': [], 'to': []}}
+        self._exceptions = {'mE': {'t': 0, 'ts': 0, 'tc': 0, 'tcs': 0, 'tr': 0}}
+        self._records = {'IS': {'sp': 0, 'se': 0, 'ms': 0, 'im': 0, 'ic': 0, 'ev': 0, 'te': 0, 'to': 0},
+                         'sL': 0}
+        self._http_errors = {'sp': {}, 'se': {}, 'ms': {}, 'im': {}, 'ic': {}, 'ev': {}, 'te': {}, 'to': {}}
+        self._streaming_events = []
+        self._tags = []
+        self._integrations = {}
+        self._config = {'bT':0, 'nR':0, 'uC': 0}
+        self._map_latencies = {'Treatment': 't', 'Treatments': 'ts', 'TreatmentWithConfig': 'tc', 'TreatmentsWithConfig': 'tcs', 'Track': 'tr'}
+
+    def record_config(self, config):
+        """Record configurations."""
+        self._config['oM'] = self._get_operation_mode(config['operationMode'])
+        self._config['st'] = self._get_storage_type(config['operationMode'])
+        self._config['sE'] = config['streamingEnabled']
+        self._config['rR'] = self._get_refresh_rates(config)
+        self._config['uO'] = self._get_url_overrides(config)
+        self._config['iQ'] = config['impressionsQueueSize']
+        self._config['eQ'] = config['eventsQueueSize']
+        self._config['iM'] = self._get_impressions_mode(config['impressionsMode'])
+        self._config['iL'] = True if config['impressionListener'] is not None else False
+        self._config['hp'] = self._check_if_proxy_detected()
+        self._config['aF'] = config['activeFactoryCount']
+        self._config['rF'] = config['redundantFactoryCount']
+
+    def record_ready_time(self, ready_time):
+        """Record ready time."""
+        self._config['tR'] = ready_time
+
+    def add_tag(self, tag):
+        """Record tag string."""
+        if len(self._tags) <= MAX_TAGS:
+            self._tags.append(tag)
+
+    def record_bur_timeout(self):
+        """Record block until ready timeout."""
+        self._config['bT'] = self._config['bT'] + 1
+
+    def record_non_ready_usage(self):
+        """record non-ready usage."""
+        self._config['nR'] = self._config['nR'] + 1
+
+    def record_latency(self, method, latency):
+        """Record method latency time."""
+        if self._latencies['mL'][self._map_latencies[method]] < MAX_LATENCY_BUCKET_COUNT:
+            self._latencies['mL'][self._map_latencies[method]].append(latency)
+
+    def record_exceptions(self, method):
+        """Record method exception."""
+        self._exceptions['mE'][self._map_latencies[method]] = self._exceptions['mE'][self._map_latencies[method]] + 1
+
+    def record_impression_stats(self, data_type, count):
+        """Record impressions stats."""
+        self._counters[data_type] = self._counters[data_type] + count
+
+    def record_event_stats(self, data_type, count):
+        """Record events stats."""
+        self._counters[data_type] = self._counters[data_type] + count
+
+    def record_suceessful_sync(self, resource, time):
+        """Record successful sync."""
+        self._records['IS'][resource] = time
+
+    def record_sync_error(self, resource, status):
+        """Record sync http error."""
+        self._http_errors[resource][status] = self._http_errors[resource][status] + 1
+
+    def record_sync_latency(self, resource, latency):
+        """Record latency time."""
+        if self._latencies['hL'][self._map_latencies[resource]] < MAX_LATENCY_BUCKET_COUNT:
+            self._latencies['hL'][self._map_latencies[resource]].append(latency)
+
+    def record_auth_rejections(self):
+        """Record auth rejection."""
+        self._counters['aR'] = self._counters['aR'] + 1
+
+    def record_token_refreshes(self):
+        """Record sse token refresh."""
+        self._counters['tR'] = self._counters['tR'] + 1
+
+    def record_streaming_event(self, streaming_event):
+        """Record incoming streaming event."""
+        if len(self._streaming_events) < MAX_STREAMING_EVENTS:
+            self._streaming_events.append({'e': streaming_event.type, 'd': streaming_event.data, 't': streaming_event.time})
+
+    def record_session_length(self, session):
+        """Record session length."""
+        self._records['sL'] = session
+
+    def get_bur_timeouts(self):
+        """Get block until ready timeout."""
+        return self._config['bT']
+
+    def get_non_ready_usage(self):
+        """Get non-ready usage."""
+        return self._config['nR']
+
+    def get_config_stats(self):
+        """Get all config info."""
+        return self._config
+
+    def pop_exceptions(self):
+        """Get and reset method exceptions."""
+        exceptions = self._exceptions['mE']
+        self._exceptions = {'mE': {'t': 0, 'ts': 0, 'tc': 0, 'tcs': 0, 'tr': 0}}
+        return exceptions
+
+    def pop_tags(self):
+        """Get and reset tags."""
+        tags = self._tags
+        self._tags = []
+        return tags
+
+    def pop_latencies(self):
+        """Get and reset eval latencies."""
+        latencies = self._latencies['mL']
+        self._latencies['mL'] =  {'t': [], 'ts': [], 'tc': [], 'tcs': [], 'tr': []}
+        return latencies
+
+    def get_impressions_stats(self, type):
+        """Get impressions stats"""
+        return self._counters[type]
+
+    def get_events_stats(self, type):
+        """Get events stats"""
+        return self._counters[type]
+
+    def get_last_synchronization(self):
+        """Get last sync"""
+        return self._records['IS']
+
+    def pop_http_errors(self):
+        """Get and reset http errors."""
+        https_errors = self._http_errors
+        self._http_errors = {'sp': {}, 'se': {}, 'ms': {}, 'im': {}, 'ic': {}, 'ev': {}, 'te': {}, 'to': {}}
+        return https_errors
+
+    def pop_http_latencies(self):
+        """Get and reset http latencies."""
+        latencies = self._latencies['hL']
+        self._latencies['hL'] = {'sp': [], 'se': [], 'ms': [], 'im': [], 'ic': [], 'ev': [], 'te': [], 'to': []}
+        return latencies
+
+    def pop_auth_rejections(self):
+        """Get and reset auth rejections."""
+        auth_rejections = self._counters['aR']
+        self._counters['aR'] = 0
+        return auth_rejections
+
+    def pop_token_refreshes(self):
+        """Get and reset token refreshes."""
+        token_refreshes = self._counters['tR']
+        self._counters['tR'] = 0
+        return token_refreshes
+
+    def pop_streaming_events(self):
+        """Get and reset streaming events."""
+        streaming_events = self._streaming_events
+        self._streaming_events = []
+        return streaming_events
+
+    def get_session_length(self):
+        """Get session length"""
+        return self._records['sL']
+
+    def _get_operation_mode(self, op_mode):
+        if 'in-memory' in op_mode:
+           return 0
+        elif op_mode == 'redis-consumer':
+           return 1
+        else:
+           return 2
+
+    def _get_storage_type(self, op_mode):
+        if 'in-memory' in op_mode:
+           return 'memory'
+        elif 'redis' in op_mode:
+           return 'redis'
+        else:
+           return 'localstorage'
+
+    def _get_refresh_rates(self, config):
+        rr = {}
+        rr['sp'] == config['featuresRefreshRate']
+        rr['se'] == config['segmentsRefreshRate']
+        rr['im'] == config['impressionsRefreshRate']
+        rr['ev'] == config['eventsPushRate']
+        rr['te'] == config['metrcsRefreshRate']
+        return rr
+
+    def _get_url_overrides(self, config):
+        rr = {}
+        rr['s'] == True if config['sdk_url'] is not None else False
+        rr['e'] == True if config['events_url'] is not None else False
+        rr['a'] == True if config['auth_url'] is not None else False
+        rr['st'] == True if config['streaming_url'] is not None else False
+        rr['t'] == True if config['telemetry_url'] is not None else False
+        return rr
+
+    def _get_impressions_mode(self, imp_mode):
+        if imp_mode == 'DEBUG':
+           return 1
+        elif imp_mode == 'OPTIMIZED':
+           return 0
+        else:
+            return 3
+
+    def _check_if_proxy_detected(self):
+        for x in os.environ:
+            if 'https_proxy' in os.getenv(x):
+                return True
+        return False
