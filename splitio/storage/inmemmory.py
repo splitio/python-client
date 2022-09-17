@@ -309,7 +309,7 @@ class InMemorySegmentStorage(SegmentStorage):
         with self._lock:
             for segment in self._segments:
                 total_count = total_count + len(segment)
-        return total_count
+            return total_count
 
 
 class InMemoryImpressionStorage(ImpressionStorage):
@@ -471,206 +471,244 @@ class InMemoryTelemetryStorage(TelemetryStorage):
         self._integrations = {}
         self._config = {'bT':0, 'nR':0, 'uC': 0}
         self._map_latencies = {'Treatment': 't', 'Treatments': 'ts', 'TreatmentWithConfig': 'tc', 'TreatmentsWithConfig': 'tcs', 'Track': 'tr'}
+        self._lock = threading.RLock()
 
     def record_config(self, config):
         """Record configurations."""
-        self._config['oM'] = self._get_operation_mode(config['operationMode'])
-        self._config['st'] = self._get_storage_type(config['operationMode'])
-        self._config['sE'] = config['streamingEnabled']
-        self._config['rR'] = self._get_refresh_rates(config)
-        self._config['uO'] = self._get_url_overrides(config)
-        self._config['iQ'] = config['impressionsQueueSize']
-        self._config['eQ'] = config['eventsQueueSize']
-        self._config['iM'] = self._get_impressions_mode(config['impressionsMode'])
-        self._config['iL'] = True if config['impressionListener'] is not None else False
-        self._config['hp'] = self._check_if_proxy_detected()
-        self._config['aF'] = config['activeFactoryCount']
-        self._config['rF'] = config['redundantFactoryCount']
+        with self._lock:
+            self._config['oM'] = self._get_operation_mode(config['operationMode'])
+            self._config['st'] = self._get_storage_type(config['operationMode'])
+            self._config['sE'] = config['streamingEnabled']
+            self._config['rR'] = self._get_refresh_rates(config)
+            self._config['uO'] = self._get_url_overrides(config)
+            self._config['iQ'] = config['impressionsQueueSize']
+            self._config['eQ'] = config['eventsQueueSize']
+            self._config['iM'] = self._get_impressions_mode(config['impressionsMode'])
+            self._config['iL'] = True if config['impressionListener'] is not None else False
+            self._config['hp'] = self._check_if_proxy_detected()
+            self._config['aF'] = config['activeFactoryCount']
+            self._config['rF'] = config['redundantFactoryCount']
 
     def record_ready_time(self, ready_time):
         """Record ready time."""
-        self._config['tR'] = ready_time
+        with self._lock:
+            self._config['tR'] = ready_time
 
     def add_tag(self, tag):
         """Record tag string."""
-        if len(self._tags) <= MAX_TAGS:
-            self._tags.append(tag)
+        with self._lock:
+            if len(self._tags) <= MAX_TAGS:
+                self._tags.append(tag)
 
     def record_bur_timeout(self):
         """Record block until ready timeout."""
-        self._config['bT'] = self._config['bT'] + 1
+        with self._lock:
+            self._config['bT'] = self._config['bT'] + 1
 
     def record_non_ready_usage(self):
         """record non-ready usage."""
-        self._config['nR'] = self._config['nR'] + 1
+        with self._lock:
+            self._config['nR'] = self._config['nR'] + 1
 
     def record_latency(self, method, latency):
         """Record method latency time."""
-        if self._latencies['mL'][self._map_latencies[method]] < MAX_LATENCY_BUCKET_COUNT:
-            self._latencies['mL'][self._map_latencies[method]].append(latency)
+        with self._lock:
+            if self._latencies['mL'][self._map_latencies[method]] < MAX_LATENCY_BUCKET_COUNT:
+                self._latencies['mL'][self._map_latencies[method]].append(latency)
 
     def record_exceptions(self, method):
         """Record method exception."""
-        self._exceptions['mE'][self._map_latencies[method]] = self._exceptions['mE'][self._map_latencies[method]] + 1
+        with self._lock:
+            self._exceptions['mE'][self._map_latencies[method]] = self._exceptions['mE'][self._map_latencies[method]] + 1
 
     def record_impression_stats(self, data_type, count):
         """Record impressions stats."""
-        self._counters[data_type] = self._counters[data_type] + count
+        with self._lock:
+            self._counters[data_type] = self._counters[data_type] + count
 
     def record_event_stats(self, data_type, count):
         """Record events stats."""
-        self._counters[data_type] = self._counters[data_type] + count
+        with self._lock:
+            self._counters[data_type] = self._counters[data_type] + count
 
     def record_suceessful_sync(self, resource, time):
         """Record successful sync."""
-        self._records['IS'][resource] = time
+        with self._lock:
+            self._records['IS'][resource] = time
 
     def record_sync_error(self, resource, status):
         """Record sync http error."""
-        self._http_errors[resource][status] = self._http_errors[resource][status] + 1
+        with self._lock:
+            self._http_errors[resource][status] = self._http_errors[resource][status] + 1
 
     def record_sync_latency(self, resource, latency):
         """Record latency time."""
-        if self._latencies['hL'][self._map_latencies[resource]] < MAX_LATENCY_BUCKET_COUNT:
-            self._latencies['hL'][self._map_latencies[resource]].append(latency)
+        with self._lock:
+            if self._latencies['hL'][self._map_latencies[resource]] < MAX_LATENCY_BUCKET_COUNT:
+                self._latencies['hL'][self._map_latencies[resource]].append(latency)
 
     def record_auth_rejections(self):
         """Record auth rejection."""
-        self._counters['aR'] = self._counters['aR'] + 1
+        with self._lock:
+            self._counters['aR'] = self._counters['aR'] + 1
 
     def record_token_refreshes(self):
         """Record sse token refresh."""
-        self._counters['tR'] = self._counters['tR'] + 1
+        with self._lock:
+            self._counters['tR'] = self._counters['tR'] + 1
 
     def record_streaming_event(self, streaming_event):
         """Record incoming streaming event."""
-        if len(self._streaming_events) < MAX_STREAMING_EVENTS:
-            self._streaming_events.append({'e': streaming_event.type, 'd': streaming_event.data, 't': streaming_event.time})
+        with self._lock:
+            if len(self._streaming_events) < MAX_STREAMING_EVENTS:
+                self._streaming_events.append({'e': streaming_event.type, 'd': streaming_event.data, 't': streaming_event.time})
 
     def record_session_length(self, session):
         """Record session length."""
-        self._records['sL'] = session
+        with self._lock:
+            self._records['sL'] = session
 
     def get_bur_timeouts(self):
         """Get block until ready timeout."""
-        return self._config['bT']
+        with self._lock:
+            return self._config['bT']
 
     def get_non_ready_usage(self):
         """Get non-ready usage."""
-        return self._config['nR']
+        with self._lock:
+            return self._config['nR']
 
     def get_config_stats(self):
         """Get all config info."""
-        return self._config
+        with self._lock:
+            return self._config
 
     def pop_exceptions(self):
         """Get and reset method exceptions."""
-        exceptions = self._exceptions['mE']
-        self._exceptions = {'mE': {'t': 0, 'ts': 0, 'tc': 0, 'tcs': 0, 'tr': 0}}
-        return exceptions
+        with self._lock:
+            exceptions = self._exceptions['mE']
+            self._exceptions = {'mE': {'t': 0, 'ts': 0, 'tc': 0, 'tcs': 0, 'tr': 0}}
+            return exceptions
 
     def pop_tags(self):
         """Get and reset tags."""
-        tags = self._tags
-        self._tags = []
-        return tags
+        with self._lock:
+            tags = self._tags
+            self._tags = []
+            return tags
 
     def pop_latencies(self):
         """Get and reset eval latencies."""
-        latencies = self._latencies['mL']
-        self._latencies['mL'] =  {'t': [], 'ts': [], 'tc': [], 'tcs': [], 'tr': []}
-        return latencies
+        with self._lock:
+            latencies = self._latencies['mL']
+            self._latencies['mL'] =  {'t': [], 'ts': [], 'tc': [], 'tcs': [], 'tr': []}
+            return latencies
 
     def get_impressions_stats(self, type):
         """Get impressions stats"""
-        return self._counters[type]
+        with self._lock:
+            return self._counters[type]
 
     def get_events_stats(self, type):
         """Get events stats"""
-        return self._counters[type]
+        with self._lock:
+            return self._counters[type]
 
     def get_last_synchronization(self):
         """Get last sync"""
-        return self._records['IS']
+        with self._lock:
+            return self._records['IS']
 
     def pop_http_errors(self):
         """Get and reset http errors."""
-        https_errors = self._http_errors
-        self._http_errors = {'sp': {}, 'se': {}, 'ms': {}, 'im': {}, 'ic': {}, 'ev': {}, 'te': {}, 'to': {}}
-        return https_errors
+        with self._lock:
+            https_errors = self._http_errors
+            self._http_errors = {'sp': {}, 'se': {}, 'ms': {}, 'im': {}, 'ic': {}, 'ev': {}, 'te': {}, 'to': {}}
+            return https_errors
 
     def pop_http_latencies(self):
         """Get and reset http latencies."""
-        latencies = self._latencies['hL']
-        self._latencies['hL'] = {'sp': [], 'se': [], 'ms': [], 'im': [], 'ic': [], 'ev': [], 'te': [], 'to': []}
-        return latencies
+        with self._lock:
+            latencies = self._latencies['hL']
+            self._latencies['hL'] = {'sp': [], 'se': [], 'ms': [], 'im': [], 'ic': [], 'ev': [], 'te': [], 'to': []}
+            return latencies
 
     def pop_auth_rejections(self):
         """Get and reset auth rejections."""
-        auth_rejections = self._counters['aR']
-        self._counters['aR'] = 0
-        return auth_rejections
+        with self._lock:
+            auth_rejections = self._counters['aR']
+            self._counters['aR'] = 0
+            return auth_rejections
 
     def pop_token_refreshes(self):
         """Get and reset token refreshes."""
-        token_refreshes = self._counters['tR']
-        self._counters['tR'] = 0
-        return token_refreshes
+        with self._lock:
+            token_refreshes = self._counters['tR']
+            self._counters['tR'] = 0
+            return token_refreshes
 
     def pop_streaming_events(self):
         """Get and reset streaming events."""
-        streaming_events = self._streaming_events
-        self._streaming_events = []
-        return streaming_events
+        with self._lock:
+            streaming_events = self._streaming_events
+            self._streaming_events = []
+            return streaming_events
 
     def get_session_length(self):
         """Get session length"""
-        return self._records['sL']
+        with self._lock:
+            return self._records['sL']
 
     def _get_operation_mode(self, op_mode):
-        if 'in-memory' in op_mode:
-           return 0
-        elif op_mode == 'redis-consumer':
-           return 1
-        else:
-           return 2
+        with self._lock:
+            if 'in-memory' in op_mode:
+                return 0
+            elif op_mode == 'redis-consumer':
+                return 1
+            else:
+                return 2
 
     def _get_storage_type(self, op_mode):
-        if 'in-memory' in op_mode:
-           return 'memory'
-        elif 'redis' in op_mode:
-           return 'redis'
-        else:
-           return 'localstorage'
+        with self._lock:
+            if 'in-memory' in op_mode:
+                return 'memory'
+            elif 'redis' in op_mode:
+                return 'redis'
+            else:
+                return 'localstorage'
 
     def _get_refresh_rates(self, config):
-        rr = {}
-        rr['sp'] == config['featuresRefreshRate']
-        rr['se'] == config['segmentsRefreshRate']
-        rr['im'] == config['impressionsRefreshRate']
-        rr['ev'] == config['eventsPushRate']
-        rr['te'] == config['metrcsRefreshRate']
-        return rr
+        with self._lock:
+            rr = {}
+            rr['sp'] == config['featuresRefreshRate']
+            rr['se'] == config['segmentsRefreshRate']
+            rr['im'] == config['impressionsRefreshRate']
+            rr['ev'] == config['eventsPushRate']
+            rr['te'] == config['metrcsRefreshRate']
+            return rr
 
     def _get_url_overrides(self, config):
-        rr = {}
-        rr['s'] == True if config['sdk_url'] is not None else False
-        rr['e'] == True if config['events_url'] is not None else False
-        rr['a'] == True if config['auth_url'] is not None else False
-        rr['st'] == True if config['streaming_url'] is not None else False
-        rr['t'] == True if config['telemetry_url'] is not None else False
-        return rr
+        with self._lock:
+            rr = {}
+            rr['s'] == True if config['sdk_url'] is not None else False
+            rr['e'] == True if config['events_url'] is not None else False
+            rr['a'] == True if config['auth_url'] is not None else False
+            rr['st'] == True if config['streaming_url'] is not None else False
+            rr['t'] == True if config['telemetry_url'] is not None else False
+            return rr
 
     def _get_impressions_mode(self, imp_mode):
-        if imp_mode == 'DEBUG':
-           return 1
-        elif imp_mode == 'OPTIMIZED':
-           return 0
-        else:
-            return 3
+        with self._lock:
+            if imp_mode == 'DEBUG':
+                return 1
+            elif imp_mode == 'OPTIMIZED':
+                return 0
+            else:
+                return 3
 
     def _check_if_proxy_detected(self):
-        for x in os.environ:
-            if 'https_proxy' in os.getenv(x):
-                return True
-        return False
+        with self._lock:
+            for x in os.environ:
+                if 'https_proxy' in os.getenv(x):
+                    return True
+            return False
