@@ -15,7 +15,7 @@ from splitio.api.splits import SplitsAPI
 from splitio.api.segments import SegmentsAPI
 from splitio.api.impressions import ImpressionsAPI
 from splitio.api.events import EventsAPI
-from splitio.engine.impressions import Manager as ImpressionsManager
+from splitio.engine.impressions.impressions import Manager as ImpressionsManager
 from splitio.sync.manager import Manager
 from splitio.sync.synchronizer import Synchronizer, SplitSynchronizers, SplitTasks
 from splitio.sync.split import SplitSynchronizer

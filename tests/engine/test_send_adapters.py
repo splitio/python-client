@@ -1,6 +1,6 @@
 import unittest.mock as mock
 
-from splitio.engine.adapters import InMemorySenderAdapter
+from splitio.engine.impressions.adapters import InMemorySenderAdapter
 from splitio.api.telemetry import TelemetryAPI
 
 class InMemorySenderAdapterTests(object):

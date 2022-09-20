@@ -11,11 +11,12 @@ from splitio.client.manager import SplitManager
 from splitio.client.config import sanitize as sanitize_config, DEFAULT_DATA_SAMPLING
 from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper
-from splitio.engine.impressions import Manager as ImpressionsManager
-from splitio.engine.impressions import ImpressionsMode
-from splitio.engine.manager import Counter as ImpressionsCounter
-from splitio.engine.strategies import StrategyNoneMode, StrategyDebugMode, StrategyOptimizedMode
-from splitio.engine.adapters import InMemorySenderAdapter, RedisSenderAdapter
+from splitio.engine.impressions.impressions import Manager as ImpressionsManager
+from splitio.engine.impressions.impressions import ImpressionsMode
+from splitio.engine.impressions.manager import Counter as ImpressionsCounter
+from splitio.engine.impressions.strategies import StrategyNoneMode, StrategyDebugMode, StrategyOptimizedMode
+from splitio.engine.impressions.adapters import InMemorySenderAdapter, RedisSenderAdapter
+from splitio.engine.impressions import set_classes
 
 # Storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
@@ -324,30 +325,10 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'impressions': InMemoryImpressionStorage(cfg['impressionsQueueSize']),
         'events': InMemoryEventStorage(cfg['eventsQueueSize']),
     }
-    imp_counter = ImpressionsCounter() if cfg['impressionsMode'] != ImpressionsMode.DEBUG else None
 
-    unique_keys_synchronizer = None
-    clear_filter_sync = None
-    unique_keys_task = None
-    clear_filter_task = None
-    impressions_count_sync = None
-    impressions_count_task = None
-
-    if cfg['impressionsMode'] == ImpressionsMode.NONE:
-        imp_strategy = StrategyNoneMode(imp_counter)
-        clear_filter_sync = ClearFilterSynchronizer(imp_strategy.get_unique_keys_tracker())
-        unique_keys_synchronizer = UniqueKeysSynchronizer(InMemorySenderAdapter(apis['telemetry']), imp_strategy.get_unique_keys_tracker())
-        unique_keys_task = UniqueKeysSyncTask(unique_keys_synchronizer.send_all)
-        clear_filter_task = ClearFilterSyncTask(clear_filter_sync.clear_all)
-        imp_strategy.get_unique_keys_tracker().set_queue_full_hook(unique_keys_task.flush)
-        impressions_count_sync = ImpressionsCountSynchronizer(apis['impressions'], imp_counter)
-        impressions_count_task = ImpressionsCountSyncTask(impressions_count_sync.synchronize_counters)
-    elif cfg['impressionsMode'] == ImpressionsMode.DEBUG:
-        imp_strategy = StrategyDebugMode()
-    else:
-        imp_strategy = StrategyOptimizedMode(imp_counter)
-        impressions_count_sync = ImpressionsCountSynchronizer(apis['impressions'], imp_counter)
-        impressions_count_task = ImpressionsCountSyncTask(impressions_count_sync.synchronize_counters)
+    unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
+    clear_filter_task, impressions_count_sync, impressions_count_task, \
+    imp_strategy = set_classes('MEMORY', cfg['impressionsMode'], apis)
 
     imp_manager = ImpressionsManager(
         _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
@@ -432,31 +413,9 @@ def _build_redis_factory(api_key, cfg):
                         _MIN_DEFAULT_DATA_SAMPLING_ALLOWED)
         data_sampling = _MIN_DEFAULT_DATA_SAMPLING_ALLOWED
 
-    unique_keys_synchronizer = None
-    clear_filter_sync = None
-    unique_keys_task = None
-    clear_filter_task = None
-    impressions_count_sync = None
-    impressions_count_task = None
-    redis_sender_adapter = RedisSenderAdapter(redis_adapter)
-
-    if cfg['impressionsMode'] == ImpressionsMode.NONE:
-        imp_counter = ImpressionsCounter()
-        imp_strategy = StrategyNoneMode(imp_counter)
-        clear_filter_sync = ClearFilterSynchronizer(imp_strategy.get_unique_keys_tracker())
-        unique_keys_synchronizer = UniqueKeysSynchronizer(redis_sender_adapter, imp_strategy.get_unique_keys_tracker())
-        unique_keys_task = UniqueKeysSyncTask(unique_keys_synchronizer.send_all)
-        clear_filter_task = ClearFilterSyncTask(clear_filter_sync.clear_all)
-        imp_strategy.get_unique_keys_tracker().set_queue_full_hook(unique_keys_task.flush)
-        impressions_count_sync = ImpressionsCountSynchronizer(redis_sender_adapter, imp_counter)
-        impressions_count_task = ImpressionsCountSyncTask(impressions_count_sync.synchronize_counters)
-    elif cfg['impressionsMode'] == ImpressionsMode.DEBUG:
-        imp_strategy = StrategyDebugMode()
-    else:
-        imp_counter = ImpressionsCounter()
-        imp_strategy = StrategyOptimizedMode(imp_counter)
-        impressions_count_sync = ImpressionsCountSynchronizer(redis_sender_adapter, imp_counter)
-        impressions_count_task = ImpressionsCountSyncTask(impressions_count_sync.synchronize_counters)
+    unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
+    clear_filter_task, impressions_count_sync, impressions_count_task, \
+    imp_strategy = set_classes('REDIS', cfg['impressionsMode'], redis_adapter)
 
     imp_manager = ImpressionsManager(
         _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),

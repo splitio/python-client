@@ -129,7 +129,7 @@ class PipelinedRecorder(StatsRecorder):
                 if self._data_sampling < rnumber:
                     return
             impressions = self._impressions_manager.process_impressions(impressions)
-            if impressions == []:
+            if not impressions:
                 return
             # pipe = self._make_pipe()
             # self._impression_storage.add_impressions_to_pipe(impressions, pipe)

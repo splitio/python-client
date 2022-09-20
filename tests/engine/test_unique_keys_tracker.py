@@ -1,7 +1,7 @@
 """BloomFilter unit tests."""
 
 import threading
-from splitio.engine.unique_keys_tracker import UniqueKeysTracker
+from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker
 from splitio.engine.filters import BloomFilter
 
 class UniqueKeysTrackerTests(object):
@@ -35,7 +35,7 @@ class UniqueKeysTrackerTests(object):
         assert(key2 in tracker._cache[split2])
         assert(not key3 in tracker._cache[split2])
 
-        tracker.filter_pop_all()
+        tracker.clear_filter()
         assert(not tracker._filter.contains(split1+key1))
         assert(not tracker._filter.contains(split2+key2))
 

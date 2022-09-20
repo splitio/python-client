@@ -1,4 +1,5 @@
 import abc
+import threading
 
 from bloom_filter2 import BloomFilter as BloomFilter2
 
@@ -45,6 +46,7 @@ class BloomFilter(BaseFilter):
         self._max_elements = max_elements
         self._error_rate = error_rate
         self._imps_bloom_filter = BloomFilter2(max_elements=self._max_elements, error_rate=self._error_rate)
+        self._lock = threading.RLock()
 
     def add(self, data):
         """
@@ -56,8 +58,9 @@ class BloomFilter(BaseFilter):
         :return: True if successful
         :rtype: boolean
         """
-        self._imps_bloom_filter.add(data)
-        return data in self._imps_bloom_filter
+        with self._lock:
+            self._imps_bloom_filter.add(data)
+            return data in self._imps_bloom_filter
 
     def contains(self, data):
         """
@@ -69,12 +72,14 @@ class BloomFilter(BaseFilter):
         :return: True if exist
         :rtype: boolean
         """
-        return data in self._imps_bloom_filter
+        with self._lock:
+            return data in self._imps_bloom_filter
 
     def clear(self):
         """
         Destroy the current filter instance and create new one.
 
         """
-        self._imps_bloom_filter.close()
-        self._imps_bloom_filter = BloomFilter2(max_elements=self._max_elements, error_rate=self._error_rate)
+        with self._lock:
+            self._imps_bloom_filter.close()
+            self._imps_bloom_filter = BloomFilter2(max_elements=self._max_elements, error_rate=self._error_rate)

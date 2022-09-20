@@ -6,9 +6,9 @@ import pytest
 
 from splitio.api.client import HttpResponse
 from splitio.api import APIException
-from splitio.engine.impressions import Manager as ImpressionsManager
-from splitio.engine.manager import Counter
-from splitio.engine.strategies import StrategyOptimizedMode
+from splitio.engine.impressions.impressions import Manager as ImpressionsManager
+from splitio.engine.impressions.manager import Counter
+from splitio.engine.impressions.strategies import StrategyOptimizedMode
 from splitio.sync.impression import ImpressionsCountSynchronizer
 from splitio.api.impressions import ImpressionsAPI
 

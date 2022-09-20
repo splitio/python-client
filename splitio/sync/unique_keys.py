@@ -80,4 +80,4 @@ class ClearFilterSynchronizer(object):
         Clear the bloom filter cache
 
         """
-        self._unique_keys_tracker.filter_pop_all()
+        self._unique_keys_tracker.clear_filter()

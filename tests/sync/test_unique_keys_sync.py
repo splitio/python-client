@@ -1,8 +1,8 @@
 """Split Worker tests."""
 
 from splitio.api.client import HttpResponse
-from splitio.engine.adapters import InMemorySenderAdapter
-from splitio.engine.unique_keys_tracker import UniqueKeysTracker
+from splitio.engine.impressions.adapters import InMemorySenderAdapter
+from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker
 from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer
 import unittest.mock as mock
 
