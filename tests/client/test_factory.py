@@ -95,8 +95,6 @@ class SplitFactoryTests(object):
         assert isinstance(factory._get_storage('impressions'), redis.RedisImpressionsStorage)
         assert isinstance(factory._get_storage('events'), redis.RedisEventsStorage)
 
-        assert factory._sync_manager is None
-
         adapter = factory._get_storage('splits')._redis
         assert adapter == factory._get_storage('segments')._redis
         assert adapter == factory._get_storage('impressions')._redis

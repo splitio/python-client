@@ -1,13 +1,11 @@
-import imp
-from splitio.engine.impressions.impressions import Manager as ImpressionsManager
 from splitio.engine.impressions.impressions import ImpressionsMode
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.engine.impressions.strategies import StrategyNoneMode, StrategyDebugMode, StrategyOptimizedMode
 from splitio.engine.impressions.adapters import InMemorySenderAdapter, RedisSenderAdapter
 from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTask
 from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer
-from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
-from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask
+from splitio.sync.impression import ImpressionsCountSynchronizer
+from splitio.tasks.impressions_sync import ImpressionsCountSyncTask
 
 
 def set_classes(storage_mode, impressions_mode, api_adapter):

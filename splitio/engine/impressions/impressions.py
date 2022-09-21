@@ -17,14 +17,11 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         """
         Construct a manger to track and forward impressions to the queue.
 
-        :param mode: Impressions capturing mode.
-        :type mode: ImpressionsMode
-
-        :param standalone: whether the SDK is running in standalone sending impressions by itself
-        :type standalone: bool
-
         :param listener: Optional impressions listener that will capture all seen impressions.
         :type listener: splitio.client.listener.ImpressionListenerWrapper
+
+        :param strategy: Impressions stragetgy instance
+        :type strategy: (BaseStrategy)
         """
 
         self._strategy = strategy

@@ -1,7 +1,7 @@
 """Manager tests."""
 
-import pytest
 import threading
+import unittest.mock as mock
 
 from splitio.tasks.split_sync import SplitSynchronizationTask
 from splitio.tasks.segment_sync import SegmentSynchronizationTask
@@ -12,8 +12,8 @@ from splitio.sync.split import SplitSynchronizer
 from splitio.sync.segment import SegmentSynchronizer
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.sync.event import EventSynchronizer
-from splitio.sync.synchronizer import Synchronizer, SplitTasks, SplitSynchronizers
-from splitio.sync.manager import Manager
+from splitio.sync.synchronizer import Synchronizer, SplitTasks, SplitSynchronizers, RedisSynchronizer
+from splitio.sync.manager import Manager, RedisManager
 
 from splitio.storage import SplitStorage
 
@@ -59,3 +59,31 @@ class ManagerTests(object):
         assert len(synchronizer.sync_all.mock_calls) == 1
         assert len(synchronizer.start_periodic_fetching.mock_calls) == 1
         assert len(synchronizer.start_periodic_data_recording.mock_calls) == 1
+
+class RedisManagerTests(object):
+    """Synchronizer Redis Manager tests."""
+
+    synchronizers = SplitSynchronizers(None, None, None, None, None, None, None)
+    tasks = SplitTasks(None, None, None, None, None, None, None)
+    synchronizer = RedisSynchronizer(synchronizers, tasks)
+    manager = RedisManager(synchronizer)
+
+    @mock.patch('splitio.sync.synchronizer.RedisSynchronizer.start_periodic_data_recording')
+    def test_recreate_and_start(self, mocker):
+
+        assert(isinstance(self.manager._synchronizer, RedisSynchronizer))
+
+        self.manager.recreate()
+        assert(not mocker.called)
+
+        self.manager.start()
+        assert(mocker.called)
+
+    @mock.patch('splitio.sync.synchronizer.RedisSynchronizer.shutdown')
+    def test_recreate_and_stop(self, mocker):
+
+        self.manager.recreate()
+        assert(not mocker.called)
+
+        self.manager.stop(True)
+        assert(mocker.called)
