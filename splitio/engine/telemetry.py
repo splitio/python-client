@@ -37,13 +37,13 @@ class TelemetryInitProducer(object):
         """Record ready time."""
         self._telemetry_storage.record_ready_time(ready_time)
 
-    def record_bur_timeout(self):
+    def record_bur_time_out(self):
         """Record block until ready timeout."""
-        self._telemetry_storage.record_bur_timeout()
+        self._telemetry_storage.record_bur_time_out()
 
-    def record_non_ready_usage(self):
+    def record_not_ready_usage(self):
         """record non-ready usage."""
-        self._telemetry_storage.record_non_ready_usage()
+        self._telemetry_storage.record_not_ready_usage()
 
 class TelemetryEvaluationProducer(object):
     """Telemetry evaluation producer class."""
@@ -135,13 +135,13 @@ class TelemetryInitConsumer(object):
         """Constructor."""
         self._telemetry_storage = telemetry_storage
 
-    def get_bur_timeouts(self):
+    def get_bur_time_outs(self):
         """Get block until ready timeout."""
-        return self._telemetry_storage.get_bur_timeouts()
+        return self._telemetry_storage.get_bur_time_outs()
 
-    def get_non_ready_usage(self):
+    def get_not_ready_usage(self):
         """Get none-ready usage."""
-        return self._telemetry_storage.get_non_ready_usage()
+        return self._telemetry_storage.get_not_ready_usage()
 
     def get_config_stats(self):
         """Get none-ready usage."""

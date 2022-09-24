@@ -288,7 +288,7 @@ class TelemetryStorage(object, metaclass=abc.ABCMeta):
     """Telemetry storage interface."""
 
     @abc.abstractmethod
-    def record_init(self, config):
+    def record_config(self, config):
         """
         initilize telemetry objects
 

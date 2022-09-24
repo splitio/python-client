@@ -6,17 +6,17 @@ from splitio.engine.telemetry import TelemetryStorageConsumer
 class TelemetrySynchronizer(object):
     """Telemetry synchronizer class."""
 
-    def __init__(self, telemetry_consumer, telemetry_api):
+    def __init__(self, telemetry_consumer, split_storage, segment_storage, telemetry_api):
         """Initialize Telemetry sync class."""
-        self._telemetry_submitter = TelemetrySubmitter(telemetry_consumer, telemetry_api)
+        self._telemetry_submitter = TelemetrySubmitter(telemetry_consumer, split_storage, segment_storage, telemetry_api)
 
     def synchronize_config(self):
         """synchronize initial config data class."""
-        self._telemetry_submitter.Synchronize_config()
+        self._telemetry_submitter.synchronize_config()
 
     def synchronize_stats(self):
         """synchronize runtime stats class."""
-        self._telemetry_submitter.Synchronize_stats()
+        self._telemetry_submitter.synchronize_stats()
 
 class TelemetrySubmitter(object):
     """Telemetry sumbitter class."""
@@ -30,13 +30,13 @@ class TelemetrySubmitter(object):
         self._split_storage = split_storage
         self._segment_storage = segment_storage
 
-    def Synchronize_config(self):
+    def synchronize_config(self):
         """synchronize initial config data classe."""
         self._telemetry_api.record_init(json.dumps(self._telemetry_init_consumer.get_config_stats()))
 
     def synchronize_stats(self):
         """synchronize runtime stats class."""
-        self._telemetry_api.record_stats(json.dumps(
+        self._telemetry_api.record_stats(json.dumps({
             **{'iQ': self._telemetry_runtime_consumer.get_impressions_stats('iQ')},
             **{'iDe': self._telemetry_runtime_consumer.get_impressions_stats('iDe')},
             **{'iDr': self._telemetry_runtime_consumer.get_impressions_stats('iDr')},
@@ -55,4 +55,4 @@ class TelemetrySubmitter(object):
             **{'spC': self._split_storage.get_splits_count()},
             **{'seC': self._segment_storage.get_segments_count()},
             **{'skC': self._segment_storage.get_segments_keys_count()},
-        ))
+        }))

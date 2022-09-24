@@ -458,20 +458,27 @@ class InMemoryTelemetryStorage(TelemetryStorage):
 
     def __init__(self):
         """Constructor"""
+        self._reset_counters()
+        self._reset_latencies()
+        self._lock = threading.RLock()
+
+    def _reset_counters(self):
         self._counters = {'iQ': 0, 'iDe': 0, 'iDr': 0, 'eQ': 0, 'eD': 0, 'sL': 0,
                         'aR': 0, 'tR': 0}
-        self._latencies = {'mL': {'t': [], 'ts': [], 'tc': [], 'tcs': [], 'tr': []},
-                           'hL': {'sp': [], 'se': [], 'ms': [], 'im': [], 'ic': [], 'ev': [], 'te': [], 'to': []}}
         self._exceptions = {'mE': {'t': 0, 'ts': 0, 'tc': 0, 'tcs': 0, 'tr': 0}}
         self._records = {'IS': {'sp': 0, 'se': 0, 'ms': 0, 'im': 0, 'ic': 0, 'ev': 0, 'te': 0, 'to': 0},
                          'sL': 0}
         self._http_errors = {'sp': {}, 'se': {}, 'ms': {}, 'im': {}, 'ic': {}, 'ev': {}, 'te': {}, 'to': {}}
+        self._config = {'bT':0, 'nR':0, 'uC': 0}
         self._streaming_events = []
         self._tags = []
         self._integrations = {}
-        self._config = {'bT':0, 'nR':0, 'uC': 0}
+
+    def _reset_latencies(self):
+        self._latencies = {'mL': {'t': [], 'ts': [], 'tc': [], 'tcs': [], 'tr': []},
+                           'hL': {'sp': [], 'se': [], 'ms': [], 'im': [], 'ic': [], 'ev': [], 'te': [], 'to': []}}
         self._map_latencies = {'Treatment': 't', 'Treatments': 'ts', 'TreatmentWithConfig': 'tc', 'TreatmentsWithConfig': 'tcs', 'Track': 'tr'}
-        self._lock = threading.RLock()
+
 
     def record_config(self, config):
         """Record configurations."""
@@ -497,15 +504,15 @@ class InMemoryTelemetryStorage(TelemetryStorage):
     def add_tag(self, tag):
         """Record tag string."""
         with self._lock:
-            if len(self._tags) <= MAX_TAGS:
+            if len(self._tags) < MAX_TAGS:
                 self._tags.append(tag)
 
-    def record_bur_timeout(self):
+    def record_bur_time_out(self):
         """Record block until ready timeout."""
         with self._lock:
             self._config['bT'] = self._config['bT'] + 1
 
-    def record_non_ready_usage(self):
+    def record_not_ready_usage(self):
         """record non-ready usage."""
         with self._lock:
             self._config['nR'] = self._config['nR'] + 1
@@ -513,10 +520,10 @@ class InMemoryTelemetryStorage(TelemetryStorage):
     def record_latency(self, method, latency):
         """Record method latency time."""
         with self._lock:
-            if self._latencies['mL'][self._map_latencies[method]] < MAX_LATENCY_BUCKET_COUNT:
+            if len(self._latencies['mL'][self._map_latencies[method]]) < MAX_LATENCY_BUCKET_COUNT:
                 self._latencies['mL'][self._map_latencies[method]].append(latency)
 
-    def record_exceptions(self, method):
+    def record_exception(self, method):
         """Record method exception."""
         with self._lock:
             self._exceptions['mE'][self._map_latencies[method]] = self._exceptions['mE'][self._map_latencies[method]] + 1
@@ -539,13 +546,15 @@ class InMemoryTelemetryStorage(TelemetryStorage):
     def record_sync_error(self, resource, status):
         """Record sync http error."""
         with self._lock:
+            if status not in self._http_errors[resource]:
+                self._http_errors[resource][status] = 0
             self._http_errors[resource][status] = self._http_errors[resource][status] + 1
 
     def record_sync_latency(self, resource, latency):
         """Record latency time."""
         with self._lock:
-            if self._latencies['hL'][self._map_latencies[resource]] < MAX_LATENCY_BUCKET_COUNT:
-                self._latencies['hL'][self._map_latencies[resource]].append(latency)
+            if len(self._latencies['hL'][resource]) < MAX_LATENCY_BUCKET_COUNT:
+                self._latencies['hL'][resource].append(latency)
 
     def record_auth_rejections(self):
         """Record auth rejection."""
@@ -561,14 +570,14 @@ class InMemoryTelemetryStorage(TelemetryStorage):
         """Record incoming streaming event."""
         with self._lock:
             if len(self._streaming_events) < MAX_STREAMING_EVENTS:
-                self._streaming_events.append({'e': streaming_event.type, 'd': streaming_event.data, 't': streaming_event.time})
+                self._streaming_events.append({'e': streaming_event['type'], 'd': streaming_event['data'], 't': streaming_event['time']})
 
     def record_session_length(self, session):
         """Record session length."""
         with self._lock:
             self._records['sL'] = session
 
-    def get_bur_timeouts(self):
+    def get_bur_time_outs(self):
         """Get block until ready timeout."""
         with self._lock:
             return self._config['bT']
@@ -680,21 +689,21 @@ class InMemoryTelemetryStorage(TelemetryStorage):
     def _get_refresh_rates(self, config):
         with self._lock:
             rr = {}
-            rr['sp'] == config['featuresRefreshRate']
-            rr['se'] == config['segmentsRefreshRate']
-            rr['im'] == config['impressionsRefreshRate']
-            rr['ev'] == config['eventsPushRate']
-            rr['te'] == config['metrcsRefreshRate']
+            rr['sp'] = config['featuresRefreshRate']
+            rr['se'] = config['segmentsRefreshRate']
+            rr['im'] = config['impressionsRefreshRate']
+            rr['ev'] = config['eventsPushRate']
+            rr['te'] = config['metrcsRefreshRate']
             return rr
 
     def _get_url_overrides(self, config):
         with self._lock:
             rr = {}
-            rr['s'] == True if config['sdk_url'] is not None else False
-            rr['e'] == True if config['events_url'] is not None else False
-            rr['a'] == True if config['auth_url'] is not None else False
-            rr['st'] == True if config['streaming_url'] is not None else False
-            rr['t'] == True if config['telemetry_url'] is not None else False
+            rr['s'] == True if 'sdk_url' in config else False
+            rr['e'] == True if 'events_url' in config else False
+            rr['a'] == True if 'auth_url' in config else False
+            rr['st'] == True if 'streaming_url' in config else False
+            rr['t'] == True if 'telemetry_url' in config else False
             return rr
 
     def _get_impressions_mode(self, imp_mode):
