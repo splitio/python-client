@@ -462,7 +462,7 @@ class InMemoryTelemetryStorageTests(object):
         storage.record_bur_time_out()
         storage.record_bur_time_out()
         assert(storage._config['bT'] == 2)
-        assert(storage.get_bur_timeouts() == 2)
+        assert(storage.get_bur_time_outs() == 2)
 
         storage.record_not_ready_usage()
         storage.record_not_ready_usage()

@@ -48,8 +48,6 @@ class UniqueKeysTracker(BaseUniqueKeysTracker):
         with self._lock:
             if self._filter.contains(feature_name+key):
                 return False
-
-        with self._lock:
             self._add_or_update(feature_name, key)
             self._filter.add(feature_name+key)
             self._current_cache_size = self._current_cache_size + 1
@@ -72,9 +70,11 @@ class UniqueKeysTracker(BaseUniqueKeysTracker):
         :param key: key to be added to MTK list
         :type key: int
         """
-        if feature_name not in self._cache:
-            self._cache[feature_name] = set()
-        self._cache[feature_name].add(key)
+
+        with self._lock:
+            if feature_name not in self._cache:
+                self._cache[feature_name] = set()
+            self._cache[feature_name].add(key)
 
     def set_queue_full_hook(self, hook):
         """
@@ -85,7 +85,7 @@ class UniqueKeysTracker(BaseUniqueKeysTracker):
         if callable(hook):
             self._queue_full_hook = hook
 
-    def filter_pop_all(self):
+    def clear_filter(self):
         """
         Delete the filter items
 

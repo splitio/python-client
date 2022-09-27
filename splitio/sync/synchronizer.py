@@ -229,9 +229,9 @@ class Synchronizer(BaseSynchronizer):
         ]
         if self._split_tasks.impressions_count_task:
             self._periodic_data_recording_tasks.append(self._split_tasks.impressions_count_task)
-        if self._split_tasks.unique_keys_task is not None:
+        if self._split_tasks.unique_keys_task:
             self._periodic_data_recording_tasks.append(self._split_tasks.unique_keys_task)
-        if self._split_tasks.clear_filter_task is not None:
+        if self._split_tasks.clear_filter_task:
             self._periodic_data_recording_tasks.append(self._split_tasks.clear_filter_task)
 
 

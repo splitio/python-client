@@ -135,7 +135,7 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         :return: dict with list of impression count dtos
         :rtype: dict
         """
-        return [json.dumps({
+        return json.dumps({
             'pf': [
                 {
                     'f': pf_count.feature,
@@ -143,4 +143,4 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
                     'rc': pf_count.count
                 } for pf_count in counters
             ]
-        })]
+        })

@@ -1,7 +1,7 @@
 import abc
 
-from splitio.engine.manager import Observer, truncate_impressions_time, Counter, truncate_time
-from splitio.engine.unique_keys_tracker import UniqueKeysTracker
+from splitio.engine.impressions.manager import Observer, truncate_impressions_time, Counter, truncate_time
+from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker
 from splitio import util
 
 _IMPRESSION_OBSERVER_CACHE_SIZE = 500000

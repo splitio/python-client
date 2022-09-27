@@ -7,7 +7,7 @@ from splitio.api.client import HttpResponse
 from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTask
 from splitio.api.telemetry import TelemetryAPI
 from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer
-from splitio.engine.unique_keys_tracker import UniqueKeysTracker
+from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker
 
 
 class UniqueKeysSyncTests(object):

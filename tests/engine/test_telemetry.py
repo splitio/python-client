@@ -194,3 +194,135 @@ class TelemetryRuntimeProducerTest(object):
         telemetry_storage.record_session_length.side_effect = record_session_length
         telemetry_runtime_producer.record_session_length(30)
         assert(self.passed_session == 30)
+
+class TelemetryStorageConsumerTests(object):
+    """TelemetryStorageConsumer test."""
+
+    def test_instances(self):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+
+        assert(isinstance(telemetry_consumer._telemetry_evaluation_consumer, TelemetryEvaluationConsumer))
+        assert(isinstance(telemetry_consumer._telemetry_init_consumer, TelemetryInitConsumer))
+        assert(isinstance(telemetry_consumer._telemetry_runtime_consumer, TelemetryRuntimeConsumer))
+
+        assert(telemetry_consumer._telemetry_evaluation_consumer == telemetry_consumer.get_telemetry_evaluation_consumer())
+        assert(telemetry_consumer._telemetry_init_consumer == telemetry_consumer.get_telemetry_init_consumer())
+        assert(telemetry_consumer._telemetry_runtime_consumer == telemetry_consumer.get_telemetry_runtime_consumer())
+
+class TelemetryInitConsumerTest(object):
+    """TelemetryInitConsumer test."""
+
+    @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.get_bur_time_outs')
+    def test_get_bur_time_outs(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_init_consumer = TelemetryInitConsumer(telemetry_storage)
+        telemetry_init_consumer.get_bur_time_outs()
+        assert(mocker.called)
+
+    @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.get_not_ready_usage')
+    def get_not_ready_usage(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_init_consumer = TelemetryInitConsumer(telemetry_storage)
+        telemetry_init_consumer.get_not_ready_usage()
+        assert(mocker.called)
+
+    @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.get_config_stats')
+    def get_not_ready_usage(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_init_consumer = TelemetryInitConsumer(telemetry_storage)
+        telemetry_init_consumer.get_config_stats()
+        assert(mocker.called)
+
+class TelemetryEvaluationConsumerTest(object):
+    """TelemetryEvaluationConsumer test."""
+
+    @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.pop_exceptions')
+    def pop_exceptions(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_evaluation_consumer = TelemetryEvaluationConsumer(telemetry_storage)
+        telemetry_evaluation_consumer.pop_exceptions()
+        assert(mocker.called)
+
+    @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.pop_latencies')
+    def pop_latencies(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_evaluation_consumer = TelemetryEvaluationConsumer(telemetry_storage)
+        telemetry_evaluation_consumer.pop_latencies()
+        assert(mocker.called)
+
+class TelemetryRuntimeConsumerTest(object):
+    """TelemetryRuntimeConsumer test."""
+
+    def test_get_impressions_stats(self, mocker):
+        telemetry_storage = mocker.Mock()
+        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+
+        def get_impressions_stats(*args, **kwargs):
+            self.passed_type = args[0]
+
+        telemetry_storage.get_impressions_stats.side_effect = get_impressions_stats
+        telemetry_runtime_consumer.get_impressions_stats('iQ')
+        assert(self.passed_type == 'iQ')
+
+    def test_get_events_stats(self, mocker):
+        telemetry_storage = mocker.Mock()
+        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+
+        def get_events_stats(*args, **kwargs):
+            self.event_type = args[0]
+
+        telemetry_storage.get_events_stats.side_effect = get_events_stats
+        telemetry_runtime_consumer.get_events_stats('eQ')
+        assert(self.event_type == 'eQ')
+
+    @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.get_last_synchronization')
+    def test_get_last_synchronization(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+        telemetry_runtime_consumer.get_last_synchronization()
+        assert(mocker.called)
+
+    @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.pop_tags')
+    def test_pop_tags(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+        telemetry_runtime_consumer.pop_tags()
+        assert(mocker.called)
+
+    @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.pop_http_errors')
+    def test_pop_http_errors(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+        telemetry_runtime_consumer.pop_http_errors()
+        assert(mocker.called)
+
+    @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.pop_http_latencies')
+    def test_pop_http_latencies(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+        telemetry_runtime_consumer.pop_http_latencies()
+
+    @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.pop_auth_rejections')
+    def test_pop_auth_rejections(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+        telemetry_runtime_consumer.pop_auth_rejections()
+
+    @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.pop_token_refreshes')
+    def test_pop_token_refreshes(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+        telemetry_runtime_consumer.pop_token_refreshes()
+
+    @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.pop_streaming_events')
+    def test_pop_streaming_events(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+        telemetry_runtime_consumer.pop_streaming_events()
+
+    @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.get_session_length')
+    def test_get_session_length(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+        telemetry_runtime_consumer.get_session_length()
