@@ -57,8 +57,8 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
         """
         try:
             response = self._client.post(
-                'metrics',
-                '/config',
+                'telemetry',
+                '/metrics/config',
                 self._apikey,
                 body=configs,
                 extra_headers=self._metadata
