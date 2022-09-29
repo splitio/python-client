@@ -3,7 +3,7 @@
 import pytest
 from splitio.api import impressions, client, APIException
 from splitio.models.impressions import Impression
-from splitio.engine.impressions import ImpressionsMode
+from splitio.engine.impressions.impressions import ImpressionsMode
 from splitio.engine.impressions.manager import Counter
 from splitio.client.util import get_metadata
 from splitio.client.config import DEFAULT_CONFIG

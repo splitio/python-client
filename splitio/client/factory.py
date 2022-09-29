@@ -12,7 +12,7 @@ from splitio.client.config import sanitize as sanitize_config, DEFAULT_DATA_SAMP
 from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager
-from splitio.engine.impressions import ImpressionsMode
+from splitio.engine.impressions.impressions import ImpressionsMode
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.engine.impressions.strategies import StrategyNoneMode, StrategyDebugMode, StrategyOptimizedMode
 from splitio.engine.impressions.adapters import InMemorySenderAdapter, RedisSenderAdapter
