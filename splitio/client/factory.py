@@ -292,12 +292,13 @@ def _wrap_impression_listener(listener, metadata):
     return None
 
 
-def _build_in_memory_factory(api_key, cfg, extra_cfg, sdk_url=None, events_url=None,  # pylint:disable=too-many-arguments,too-many-locals
+def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pylint:disable=too-many-arguments,too-many-locals
                              auth_api_base_url=None, streaming_api_base_url=None, telemetry_api_base_url=None):
     """Build and return a split factory tailored to the supplied config."""
     if not input_validator.validate_factory_instantiation(api_key):
         return None
 
+    extra_cfg = {}
     extra_cfg['sdk_url'] = sdk_url
     extra_cfg['events_url'] = events_url
     extra_cfg['auth_url'] = auth_api_base_url
@@ -524,7 +525,6 @@ def get_factory(api_key, **kwargs):
                 )
 
         config = sanitize_config(api_key, kwargs.get('config', {}))
-        extra_config = {}
 
         if config['operationMode'] == 'localhost-standalone':
             return _build_localhost_factory(config)
@@ -535,7 +535,6 @@ def get_factory(api_key, **kwargs):
         return _build_in_memory_factory(
             api_key,
             config,
-            extra_config,
             kwargs.get('sdk_api_base_url'),
             kwargs.get('events_api_base_url'),
             kwargs.get('auth_api_base_url'),
@@ -543,12 +542,15 @@ def get_factory(api_key, **kwargs):
             kwargs.get('telemetry_api_base_url')
         )
     finally:
-        redundant_factory_count = 0
-        active_factory_count = 0
         _INSTANTIATED_FACTORIES.update([api_key])
-        for item in _INSTANTIATED_FACTORIES:
-            redundant_factory_count = redundant_factory_count + _INSTANTIATED_FACTORIES[item] - 1
-            active_factory_count = active_factory_count + _INSTANTIATED_FACTORIES[item]
-        extra_config['redundant_factory_count'] = redundant_factory_count
-        extra_config['active_factory_count'] = active_factory_count
         _INSTANTIATED_FACTORIES_LOCK.release()
+
+def _get_active_and_derundant_count():
+    redundant_factory_count = 0
+    active_factory_count = 0
+    _INSTANTIATED_FACTORIES_LOCK.acquire()
+    for item in _INSTANTIATED_FACTORIES:
+        redundant_factory_count = redundant_factory_count + _INSTANTIATED_FACTORIES[item] - 1
+        active_factory_count = active_factory_count + _INSTANTIATED_FACTORIES[item]
+    _INSTANTIATED_FACTORIES_LOCK.release()
+    return redundant_factory_count, active_factory_count

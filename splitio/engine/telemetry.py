@@ -1,4 +1,6 @@
 """Telemetry engine classes."""
+import json
+
 from  splitio.storage.inmemmory import InMemoryTelemetryStorage
 
 class TelemetryStorageProducer(object):
@@ -147,6 +149,9 @@ class TelemetryInitConsumer(object):
         """Get none-ready usage."""
         return self._telemetry_storage.get_config_stats()
 
+    def get_config_stats_to_json(self):
+        return json.dumps(self._telemetry_storage.get_config_stats())
+
 class TelemetryEvaluationConsumer(object):
     """Telemetry evaluation consumer class."""
 
@@ -161,6 +166,14 @@ class TelemetryEvaluationConsumer(object):
     def pop_latencies(self):
         """Get and reset eval latencies."""
         return self._telemetry_storage.pop_latencies()
+
+    def pop_formatted_stats(self):
+        """Get formatted and reset stats."""
+        return {
+            **{'mE': self.pop_exceptions()},
+            **{'mL': self.pop_latencies()},
+        }
+
 
 class TelemetryRuntimeConsumer(object):
     """Telemetry runtime consumer class."""
@@ -208,3 +221,21 @@ class TelemetryRuntimeConsumer(object):
     def get_session_length(self):
         """Get session length"""
         return self._telemetry_storage.get_session_length()
+
+    def pop_formatted_stats(self):
+        """Get formatted and reset stats."""
+        return {
+            **{'iQ': self.get_impressions_stats('iQ')},
+            **{'iDe': self.get_impressions_stats('iDe')},
+            **{'iDr': self.get_impressions_stats('iDr')},
+            **{'eQ': self.get_events_stats('eQ')},
+            **{'eD': self.get_events_stats('eD')},
+            **{'IS': self.get_last_synchronization()},
+            **{'t': self.pop_tags()},
+            **{'hE': self.pop_http_errors()},
+            **{'hL': self.pop_http_latencies()},
+            **{'aR': self.pop_auth_rejections()},
+            **{'tR': self.pop_token_refreshes()},
+            **{'sE': self.pop_streaming_events()},
+            **{'sL': self.get_session_length()}
+        }
