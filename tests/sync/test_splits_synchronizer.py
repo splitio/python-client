@@ -40,7 +40,6 @@ class SplitsSynchronizerTests(object):
             return 123
         change_number_mock._calls = 0
         storage.get_change_number.side_effect = change_number_mock
-        storage.get_segment_names.return_value = []
 
         api = mocker.Mock()
         splits = [{
@@ -114,7 +113,6 @@ class SplitsSynchronizerTests(object):
         def change_number_mock():
             return 2
         storage.get_change_number.side_effect = change_number_mock
-        storage.get_segment_names.return_value = []
 
         def get_changes(*args, **kwargs):
             get_changes.called += 1
@@ -149,7 +147,6 @@ class SplitsSynchronizerTests(object):
             return 12345 # Return proper cn for CDN Bypass
         change_number_mock._calls = 0
         storage.get_change_number.side_effect = change_number_mock
-        storage.get_segment_names.return_value = []
 
         api = mocker.Mock()
         splits = [{
