@@ -466,17 +466,16 @@ class InMemoryTelemetryStorage(TelemetryStorage):
         self._counters = {'impressionsQueued': 0, 'impressionsDeduped': 0, 'impressionsDropped': 0, 'eventsQueued': 0, 'eventsDropped': 0,
                         'authRejections': 0, 'tokenRefreshes': 0}
         self._exceptions = {'methodExceptions': {'treatment': 0, 'treatments': 0, 'treatmentWithConfig': 0, 'treatmentsWithConfig': 0, 'track': 0}}
-        self._records = {'lastSynchronizations': {'split': 0, 'segment': 0, 'mySegment': 0, 'impression': 0, 'impressionCount': 0, 'event': 0, 'telemetry': 0, 'token': 0},
+        self._records = {'lastSynchronizations': {'split': 0, 'segment': 0, 'impression': 0, 'impressionCount': 0, 'event': 0, 'telemetry': 0, 'token': 0},
                          'sessionLength': 0}
-        self._http_errors = {'split': {}, 'segment': {}, 'mySegment': {}, 'impression': {}, 'impressionCount': {}, 'event': {}, 'telemetry': {}, 'token': {}}
-        self._config = {'blockUntilReadyTimeout':0, 'notReady':0, 'userConsent': 0, 'timeUntilReady': 0}
+        self._http_errors = {'split': {}, 'segment': {}, 'impression': {}, 'impressionCount': {}, 'event': {}, 'telemetry': {}, 'token': {}}
+        self._config = {'blockUntilReadyTimeout':0, 'notReady':0, 'timeUntilReady': 0}
         self._streaming_events = []
         self._tags = []
-        self._integrations = {}
 
     def _reset_latencies(self):
         self._latencies = {'methodLatencies': {'treatment': [], 'treatments': [], 'treatmentWithConfig': [], 'treatmentsWithConfig': [], 'track': []},
-                           'httpLatencies': {'split': [], 'segment': [], 'mySegment': [], 'impression': [], 'impressionCount': [], 'event': [], 'telemetry': [], 'token': []}}
+                           'httpLatencies': {'split': [], 'segment': [], 'impression': [], 'impressionCount': [], 'event': [], 'telemetry': [], 'token': []}}
 
     def record_config(self, config):
         """Record configurations."""
@@ -630,14 +629,14 @@ class InMemoryTelemetryStorage(TelemetryStorage):
         """Get and reset http errors."""
         with self._lock:
             https_errors = self._http_errors
-            self._http_errors = {'split': {}, 'segment': {}, 'mySegment': {}, 'impression': {}, 'impressionCount': {}, 'event': {}, 'telemetry': {}, 'token': {}}
+            self._http_errors = {'split': {}, 'segment': {}, 'impression': {}, 'impressionCount': {}, 'event': {}, 'telemetry': {}, 'token': {}}
             return https_errors
 
     def pop_http_latencies(self):
         """Get and reset http latencies."""
         with self._lock:
             latencies = self._latencies['httpLatencies']
-            self._latencies['httpLatencies'] = {'split': [], 'segment': [], 'mySegment': [], 'impression': [], 'impressionCount': [], 'event': [], 'telemetry': [], 'token': []}
+            self._latencies['httpLatencies'] = {'split': [], 'segment': [], 'impression': [], 'impressionCount': [], 'event': [], 'telemetry': [], 'token': []}
             return latencies
 
     def pop_auth_rejections(self):

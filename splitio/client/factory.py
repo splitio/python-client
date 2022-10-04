@@ -545,7 +545,7 @@ def get_factory(api_key, **kwargs):
         _INSTANTIATED_FACTORIES.update([api_key])
         _INSTANTIATED_FACTORIES_LOCK.release()
 
-def _get_active_and_derundant_count():
+def _get_active_and_redundant_count():
     redundant_factory_count = 0
     active_factory_count = 0
     _INSTANTIATED_FACTORIES_LOCK.acquire()

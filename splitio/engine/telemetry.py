@@ -166,7 +166,6 @@ class TelemetryInitConsumer(object):
             'rF': config_stats['redundantFactoryCount'],
             'bT': config_stats['blockUntilReadyTimeout'],
             'nR': config_stats['notReady'],
-            'uC': config_stats['userConsent'],
             'tR': config_stats['timeUntilReady']}
         )
 
@@ -264,7 +263,6 @@ class TelemetryRuntimeConsumer(object):
             **{'eD': self.get_events_stats('eventsDropped')},
             **{'lS': {'sp': last_synchronization['split'],
                       'se': last_synchronization['segment'],
-                      'ms': last_synchronization['mySegment'],
                       'im': last_synchronization['impression'],
                       'ic': last_synchronization['impressionCount'],
                       'ev': last_synchronization['event'],
@@ -274,7 +272,6 @@ class TelemetryRuntimeConsumer(object):
             **{'t': self.pop_tags()},
             **{'hE': {'sp': http_errors['split'],
                       'se': http_errors['segment'],
-                      'ms': http_errors['mySegment'],
                       'im': http_errors['impression'],
                       'ic': http_errors['impressionCount'],
                       'ev': http_errors['event'],
@@ -283,7 +280,6 @@ class TelemetryRuntimeConsumer(object):
                 },
             **{'hL': {'sp': http_latencies['split'],
                       'se': http_latencies['segment'],
-                      'ms': http_latencies['mySegment'],
                       'im': http_latencies['impression'],
                       'ic': http_latencies['impressionCount'],
                       'ev': http_latencies['event'],

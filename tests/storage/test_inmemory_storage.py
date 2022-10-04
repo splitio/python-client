@@ -403,16 +403,15 @@ class InMemoryTelemetryStorageTests(object):
         assert(storage._counters == {'impressionsQueued': 0, 'impressionsDeduped': 0, 'impressionsDropped': 0, 'eventsQueued': 0, 'eventsDropped': 0,
                         'authRejections': 0, 'tokenRefreshes': 0})
         assert(storage._exceptions == {'methodExceptions': {'treatment': 0, 'treatments': 0, 'treatmentWithConfig': 0, 'treatmentsWithConfig': 0, 'track': 0}})
-        assert(storage._records == {'lastSynchronizations': {'split': 0, 'segment': 0, 'mySegment': 0, 'impression': 0, 'impressionCount': 0, 'event': 0, 'telemetry': 0, 'token': 0},
+        assert(storage._records == {'lastSynchronizations': {'split': 0, 'segment': 0, 'impression': 0, 'impressionCount': 0, 'event': 0, 'telemetry': 0, 'token': 0},
                          'sessionLength': 0})
-        assert(storage._http_errors == {'split': {}, 'segment': {}, 'mySegment': {}, 'impression': {}, 'impressionCount': {}, 'event': {}, 'telemetry': {}, 'token': {}})
-        assert(storage._config == {'blockUntilReadyTimeout':0, 'notReady':0, 'userConsent': 0, 'timeUntilReady': 0})
+        assert(storage._http_errors == {'split': {}, 'segment': {}, 'impression': {}, 'impressionCount': {}, 'event': {}, 'telemetry': {}, 'token': {}})
+        assert(storage._config == {'blockUntilReadyTimeout':0, 'notReady':0, 'timeUntilReady': 0})
         assert(storage._streaming_events == [])
         assert(storage._tags == [])
-        assert(storage._integrations == {})
 
         assert(storage._latencies == {'methodLatencies': {'treatment': [], 'treatments': [], 'treatmentWithConfig': [], 'treatmentsWithConfig': [], 'track': []},
-                           'httpLatencies': {'split': [], 'segment': [], 'mySegment': [], 'impression': [], 'impressionCount': [], 'event': [], 'telemetry': [], 'token': []}})
+                           'httpLatencies': {'split': [], 'segment': [], 'impression': [], 'impressionCount': [], 'event': [], 'telemetry': [], 'token': []}})
 
     def test_record_config(self):
         storage = InMemoryTelemetryStorage()
@@ -445,8 +444,7 @@ class InMemoryTelemetryStorageTests(object):
             'blockUntilReadyTimeout': 0,
             'timeUntilReady': 0,
             'notReady': 0,
-            'redundantFactoryCount': 0,
-            'userConsent': 0}
+            'redundantFactoryCount': 0}
             )
 
     def test_record_counters(self):
@@ -541,9 +539,9 @@ class InMemoryTelemetryStorageTests(object):
         [storage.record_sync_error('token', '502') for i in range(5)]
         http_errors = storage.pop_http_errors()
         assert(http_errors == {'split': {'400': 1, '401': 1, '402': 1}, 'segment': {'500': 1, '501': 1, '502': 1},
-                                        'mySegment': {}, 'impression': {'502': 1}, 'impressionCount': {'501': 1, '502': 1},
+                                        'impression': {'502': 1}, 'impressionCount': {'501': 1, '502': 1},
                                         'event': {'501': 1}, 'telemetry': {'505': 1}, 'token': {'502': 5}})
-        assert(storage._http_errors == {'split': {}, 'segment': {}, 'mySegment': {}, 'impression': {},
+        assert(storage._http_errors == {'split': {}, 'segment': {}, 'impression': {},
                                'impressionCount': {}, 'event': {}, 'telemetry': {}, 'token': {}})
 
         storage.record_auth_rejections()
@@ -587,7 +585,7 @@ class InMemoryTelemetryStorageTests(object):
         [storage.record_sync_latency('telemetry', i) for i in [100, 50, 160]]
         [storage.record_sync_latency('token', i) for i in [10, 15, 100]]
         sync_latency = storage.pop_http_latencies()
-        assert(storage._latencies['httpLatencies'] == {'split': [], 'segment': [], 'mySegment': [], 'impression': [], 'impressionCount': [], 'event': [], 'telemetry': [], 'token': []})
-        assert(sync_latency == {'split': [50, 10, 20, 40], 'segment': [70, 100, 40, 30], 'mySegment': [],
+        assert(storage._latencies['httpLatencies'] == {'split': [], 'segment': [], 'impression': [], 'impressionCount': [], 'event': [], 'telemetry': [], 'token': []})
+        assert(sync_latency == {'split': [50, 10, 20, 40], 'segment': [70, 100, 40, 30],
                                 'impression': [10, 20], 'impressionCount': [5, 10], 'event': [50, 40],
                                 'telemetry': [100, 50, 160], 'token': [10, 15, 100]})

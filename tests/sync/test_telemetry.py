@@ -41,16 +41,16 @@ class TelemetrySubmitterTests(object):
                                         'authRejections': 1, 'tokenRefreshes': 3}
         telemetry_storage._exceptions = {'methodExceptions': {'treatment': 1, 'treatments': 0,
                                         'treatmentWithConfig': 5, 'treatmentsWithConfig': 0, 'track': 3}}
-        telemetry_storage._records = {'lastSynchronizations': {'split': 5, 'segment': 3, 'mySegment': 0,
+        telemetry_storage._records = {'lastSynchronizations': {'split': 5, 'segment': 3,
                                         'impression': 10, 'impressionCount': 0, 'event': 4,
                                         'telemetry': 0, 'token': 3},'sessionLength': 3}
-        telemetry_storage._http_errors = {'split': {'500': 3}, 'segment': {}, 'mySegment': {}, 'impression': {}, 'impressionCount': {}, 'event': {}, 'telemetry': {}, 'token': {}}
-        telemetry_storage._config = {'blockUntilReadyTimeout': 10, 'notReady': 0, 'userConsent': 0, 'timeUntilReady': 1}
+        telemetry_storage._http_errors = {'split': {'500': 3}, 'segment': {}, 'impression': {}, 'impressionCount': {}, 'event': {}, 'telemetry': {}, 'token': {}}
+        telemetry_storage._config = {'blockUntilReadyTimeout': 10, 'notReady': 0, 'timeUntilReady': 1}
         telemetry_storage._streaming_events = []
         telemetry_storage._tags = ['tag1']
         telemetry_storage._integrations = {}
         telemetry_storage._latencies = {'methodLatencies': {'treatment': [10, 20], 'treatments': [50], 'treatmentWithConfig': [], 'treatmentsWithConfig': [], 'track': []},
-                           'httpLatencies': {'split': [200, 300], 'segment': [400], 'mySegment': [], 'impression': [], 'impressionCount': [200], 'event': [], 'telemetry': [], 'token': []}}
+                           'httpLatencies': {'split': [200, 300], 'segment': [400], 'impression': [], 'impressionCount': [200], 'event': [], 'telemetry': [], 'token': []}}
 
         telemetry_storage.record_config({'operationMode': 'inmemory',
                                         'streamingEnabled': True,
@@ -85,10 +85,10 @@ class TelemetrySubmitterTests(object):
             "iDr": 3,
             "eQ": 0,
             "eD": 10,
-            "lS": {"sp": 5, "se": 3, "ms": 0, "im": 10, "ic": 0, "ev": 4, "te": 0, "to": 3},
+            "lS": {"sp": 5, "se": 3, "im": 10, "ic": 0, "ev": 4, "te": 0, "to": 3},
             "t": ['tag1'],
-            "hE": {"sp": {'500': 3}, "se": {}, "ms": {}, "im": {}, "ic": {}, "ev": {}, "te": {}, "to": {}},
-            "hL": {"sp": [200, 300], "se": [400], "ms": [], "im": [], "ic": [200], "ev": [], "te": [], "to": []},
+            "hE": {"sp": {'500': 3}, "se": {}, "im": {}, "ic": {}, "ev": {}, "te": {}, "to": {}},
+            "hL": {"sp": [200, 300], "se": [400], "im": [], "ic": [200], "ev": [], "te": [], "to": []},
             "aR": 1,
             "tR": 3,
             "sE": [],
