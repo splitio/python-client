@@ -186,8 +186,8 @@ class TelemetryEvaluationConsumer(object):
 
     def pop_formatted_stats(self):
         """Get formatted and reset stats."""
-        exceptions = self.pop_exceptions()
-        latencies = self.pop_latencies()
+        exceptions = self.pop_exceptions()['methodExceptions']
+        latencies = self.pop_latencies()['methodLatencies']
         return {
             **{'mE': {'t': exceptions['treatment'],
                       'ts': exceptions['treatments'],
@@ -220,7 +220,7 @@ class TelemetryRuntimeConsumer(object):
 
     def get_last_synchronization(self):
         """Get last sync"""
-        return self._telemetry_storage.get_last_synchronization()
+        return self._telemetry_storage.get_last_synchronization()['lastSynchronizations']
 
     def pop_tags(self):
         """Get and reset http errors."""
@@ -253,8 +253,8 @@ class TelemetryRuntimeConsumer(object):
     def pop_formatted_stats(self):
         """Get formatted and reset stats."""
         last_synchronization = self.get_last_synchronization()
-        http_errors = self.pop_http_errors()
-        http_latencies = self.pop_http_latencies()
+        http_errors = self.pop_http_errors()['httpErrors']
+        http_latencies = self.pop_http_latencies()['httpLatencies']
         return {
             **{'iQ': self.get_impressions_stats('impressionsQueued')},
             **{'iDe': self.get_impressions_stats('impressionsDeduped')},
@@ -291,7 +291,7 @@ class TelemetryRuntimeConsumer(object):
             **{'sE': [{'e': event['type'],
                        'd': event['data'],
                        't': event['time']
-                      } for event in self.pop_streaming_events()]
+                      } for event in self.pop_streaming_events()['streamingEvents']]
                 },
             **{'sL': self.get_session_length()}
         }

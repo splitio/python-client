@@ -45,5 +45,5 @@ class TelemetrySubmitter(object):
             **self._telemetry_evaluation_consumer.pop_formatted_stats(),
             **{'spC': self._split_storage.get_splits_count()},
             **{'seC': self._segment_storage.get_segments_count()},
-            **{'skC': self._segment_storage.get_segments_keys_count()},
+            **{'skC': self._segment_storage.get_segments_keys_count()}
         })
