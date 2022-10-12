@@ -113,11 +113,11 @@ class MethodLatencies(object):
     def _reset_all(self):
         """Reset variables"""
         with self._lock:
-            self._treatment = []
-            self._treatments = []
-            self._treatment_with_config = []
-            self._treatments_with_config = []
-            self._track = []
+            self._treatment = [0] * 23
+            self._treatments = [0] * 23
+            self._treatment_with_config = [0] * 23
+            self._treatments_with_config = [0] * 23
+            self._track = [0] * 23
 
     def add_latency(self, method, latency):
         """
@@ -125,25 +125,21 @@ class MethodLatencies(object):
 
         :param method: passed method name
         :type method: str
-        :param latency: amount of latency
+        :param latency: amount of latency in microseconds
         :type latency: int
         """
+        latency_bucket = get_latency_bucket_index(latency)
         with self._lock:
             if method == TREATMENT:
-                if len(self._treatment) < MAX_LATENCY_BUCKET_COUNT:
-                    self._treatment.append(latency)
+                self._treatment[latency_bucket] = self._treatment[latency_bucket] + 1
             elif method == TREATMENTS:
-                if len(self._treatments) < MAX_LATENCY_BUCKET_COUNT:
-                    self._treatments.append(latency)
+                self._treatments[latency_bucket] = self._treatments[latency_bucket] + 1
             elif method == TREATMENT_WITH_CONFIG:
-                if len(self._treatment_with_config) < MAX_LATENCY_BUCKET_COUNT:
-                    self._treatment_with_config.append(latency)
+                self._treatment_with_config[latency_bucket] = self._treatment_with_config[latency_bucket] + 1
             elif method == TREATMENTS_WITH_CONFIG:
-                if len(self._treatments_with_config) < MAX_LATENCY_BUCKET_COUNT:
-                    self._treatments_with_config.append(latency)
+                self._treatments_with_config[latency_bucket] = self._treatments_with_config[latency_bucket] + 1
             elif method == TRACK:
-                if len(self._track) < MAX_LATENCY_BUCKET_COUNT:
-                    self._track.append(latency)
+                self._track[latency_bucket] = self._track[latency_bucket] + 1
             else:
                 return
 
@@ -175,13 +171,13 @@ class HTTPLatencies(object):
     def _reset_all(self):
         """Reset variables"""
         with self._lock:
-            self._split = []
-            self._segment = []
-            self._impression = []
-            self._impression_count = []
-            self._event =[]
-            self._telemetry = []
-            self._token = []
+            self._split = [0] * 23
+            self._segment = [0] * 23
+            self._impression = [0] * 23
+            self._impression_count = [0] * 23
+            self._event = [0] * 23
+            self._telemetry = [0] * 23
+            self._token = [0] * 23
 
     def add_latency(self, resource, latency):
         """
@@ -189,31 +185,25 @@ class HTTPLatencies(object):
 
         :param resource: passed resource name
         :type resource: str
-        :param latency: amount of latency
+        :param latency: amount of latency in microseconds
         :type latency: int
         """
+        latency_bucket = get_latency_bucket_index(latency)
         with self._lock:
             if resource == SPLIT:
-                if len(self._split) < MAX_LATENCY_BUCKET_COUNT:
-                    self._split.append(latency)
+                self._split[latency_bucket] = self._split[latency_bucket] + 1
             elif resource == SEGMENT:
-                if len(self._segment) < MAX_LATENCY_BUCKET_COUNT:
-                    self._segment.append(latency)
+                self._segment[latency_bucket] = self._segment[latency_bucket] + 1
             elif resource == IMPRESSION:
-                if len(self._impression) < MAX_LATENCY_BUCKET_COUNT:
-                    self._impression.append(latency)
+                self._impression[latency_bucket] = self._impression[latency_bucket] + 1
             elif resource == IMPRESSION_COUNT:
-                if len(self._impression_count) < MAX_LATENCY_BUCKET_COUNT:
-                    self._impression_count.append(latency)
+                self._impression_count[latency_bucket] = self._impression_count[latency_bucket] + 1
             elif resource == EVENT:
-                if len(self._event) < MAX_LATENCY_BUCKET_COUNT:
-                    self._event.append(latency)
+                self._event[latency_bucket] = self._event[latency_bucket] + 1
             elif resource == TELEMETRY:
-                if len(self._telemetry) < MAX_LATENCY_BUCKET_COUNT:
-                    self._telemetry.append(latency)
+                self._telemetry[latency_bucket] = self._telemetry[latency_bucket] + 1
             elif resource == TOKEN:
-                if len(self._token) < MAX_LATENCY_BUCKET_COUNT:
-                    self._token.append(latency)
+                self._token[latency_bucket] = self._token[latency_bucket] + 1
             else:
                 return
 

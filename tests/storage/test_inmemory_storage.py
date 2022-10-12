@@ -1,12 +1,17 @@
 """In-Memory storage test module."""
 # pylint: disable=no-self-use
+import random
+import pytest
+
 from splitio.models.splits import Split
 from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
 from splitio.models.events import Event, EventWrapper
+import splitio.models.telemetry as ModelTelemetry
 
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
     InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage
+
 
 class InMemorySplitStorageTests(object):
     """In memory split storage test cases."""
@@ -429,8 +434,8 @@ class InMemoryTelemetryStorageTests(object):
         assert(storage._streaming_events.pop_streaming_events() == {'streamingEvents': []})
         assert(storage._tags == [])
 
-        assert(storage._method_latencies.pop_all() == {'methodLatencies': {'treatment': [], 'treatments': [], 'treatmentWithConfig': [], 'treatmentsWithConfig': [], 'track': []}})
-        assert(storage._http_latencies.pop_all() == {'httpLatencies': {'split': [], 'segment': [], 'impression': [], 'impressionCount': [], 'event': [], 'telemetry': [], 'token': []}})
+        assert(storage._method_latencies.pop_all() == {'methodLatencies': {'treatment': [0] * 23, 'treatments': [0] * 23, 'treatmentWithConfig': [0] * 23, 'treatmentsWithConfig': [0] * 23, 'track': [0] * 23}})
+        assert(storage._http_latencies.pop_all() == {'httpLatencies': {'split': [0] * 23, 'segment': [0] * 23, 'impression': [0] * 23, 'impressionCount': [0] * 23, 'event': [0] * 23, 'telemetry': [0] * 23, 'token': [0] * 23}})
 
     def test_record_config(self):
         storage = InMemoryTelemetryStorage()
@@ -519,15 +524,59 @@ class InMemoryTelemetryStorageTests(object):
     def test_record_latencies(self):
         storage = InMemoryTelemetryStorage()
 
-        storage.record_latency('treatment', 10)
-        assert(storage._method_latencies._treatment == [10])
-        [storage.record_latency('treatment', 10) for i in range(1, 25)]
-        assert(len(storage._method_latencies._treatment) == 23)
+        for method in ['treatment', 'treatments', 'treatmentWithConfig', 'treatmentsWithConfig', 'track']:
+            storage.record_latency(method, 50)
+            assert(self._get_method_latency(method, storage)[ModelTelemetry.get_latency_bucket_index(50)] == 1)
+            storage.record_latency(method, 50000000)
+            assert(self._get_method_latency(method, storage)[ModelTelemetry.get_latency_bucket_index(50000000)] == 1)
+            for j in range(10):
+                latency = random.randint(1001, 4987885)
+                current_count = self._get_method_latency(method, storage)[ModelTelemetry.get_latency_bucket_index(latency)]
+                [storage.record_latency(method, latency) for i in range(2)]
+                assert(self._get_method_latency(method, storage)[ModelTelemetry.get_latency_bucket_index(latency)] == 2 + current_count)
 
-        storage.record_sync_latency('split', 20)
-        assert(storage._http_latencies._split == [20])
-        [storage.record_sync_latency('split', 20) for i in range(1, 25)]
-        assert(len(storage._http_latencies._split) == 23)
+        for resource in ['split', 'segment', 'impression', 'impressionCount', 'event', 'telemetry', 'token']:
+            storage.record_sync_latency(resource, 50)
+            assert(self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(50)] == 1)
+            storage.record_sync_latency(resource, 50000000)
+            assert(self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(50000000)] == 1)
+            for j in range(10):
+                latency = random.randint(1001, 4987885)
+                current_count = self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(latency)]
+                [storage.record_sync_latency(resource, latency) for i in range(2)]
+                assert(self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(latency)] == 2 + current_count)
+
+    def _get_method_latency(self, resource, storage):
+        if resource == ModelTelemetry.TREATMENT:
+            return storage._method_latencies._treatment
+        elif resource == ModelTelemetry.TREATMENTS:
+            return storage._method_latencies._treatments
+        elif resource == ModelTelemetry.TREATMENT_WITH_CONFIG:
+            return storage._method_latencies._treatment_with_config
+        elif resource == ModelTelemetry.TREATMENTS_WITH_CONFIG:
+            return storage._method_latencies._treatments_with_config
+        elif resource == ModelTelemetry.TRACK:
+            return storage._method_latencies._track
+        else:
+            return
+
+    def _get_http_latency(self, resource, storage):
+        if resource == ModelTelemetry.SPLIT:
+            return storage._http_latencies._split
+        elif resource == ModelTelemetry.SEGMENT:
+            return storage._http_latencies._segment
+        elif resource == ModelTelemetry.IMPRESSION:
+            return storage._http_latencies._impression
+        elif resource == ModelTelemetry.IMPRESSION_COUNT:
+            return storage._http_latencies._impression_count
+        elif resource == ModelTelemetry.EVENT:
+            return storage._http_latencies._event
+        elif resource == ModelTelemetry.TELEMETRY:
+            return storage._http_latencies._telemetry
+        elif resource == ModelTelemetry.TOKEN:
+            return storage._http_latencies._token
+        else:
+            return
 
     def test_pop_counters(self):
         storage = InMemoryTelemetryStorage()
@@ -591,20 +640,20 @@ class InMemoryTelemetryStorageTests(object):
     def test_pop_latencies(self):
         storage = InMemoryTelemetryStorage()
 
-        [storage.record_latency('treatment', i) for i in [5, 1, 0, 0]]
-        [storage.record_latency('treatments', i) for i in [7, 10, 4, 3]]
-        [storage.record_latency('treatmentWithConfig', i) for i in [2]]
-        [storage.record_latency('treatmentsWithConfig', i) for i in [5, 4]]
-        [storage.record_latency('track', i) for i in [1, 0, 1]]
+        [storage.record_latency('treatment', i) for i in [5, 10, 10, 10]]
+        [storage.record_latency('treatments', i) for i in [7, 10, 14, 13]]
+        [storage.record_latency('treatmentWithConfig', i) for i in [200]]
+        [storage.record_latency('treatmentsWithConfig', i) for i in [50, 40]]
+        [storage.record_latency('track', i) for i in [1, 10, 100]]
         latencies = storage.pop_latencies()
 
-        assert(storage._method_latencies._treatment == [])
-        assert(storage._method_latencies._treatments == [])
-        assert(storage._method_latencies._treatment_with_config == [])
-        assert(storage._method_latencies._treatments_with_config == [])
-        assert(storage._method_latencies._track == [])
-        assert(latencies ==  {'methodLatencies': {'treatment': [5, 1, 0, 0], 'treatments': [7, 10, 4, 3],
-                              'treatmentWithConfig': [2], 'treatmentsWithConfig': [5, 4], 'track': [1, 0, 1]}})
+        assert(storage._method_latencies._treatment == [0] * 23)
+        assert(storage._method_latencies._treatments == [0] * 23)
+        assert(storage._method_latencies._treatment_with_config == [0] * 23)
+        assert(storage._method_latencies._treatments_with_config == [0] * 23)
+        assert(storage._method_latencies._track == [0] * 23)
+        assert(latencies ==  {'methodLatencies': {'treatment': [4] + [0] * 22, 'treatments': [4] + [0] * 22,
+                              'treatmentWithConfig': [1] + [0] * 22, 'treatmentsWithConfig': [2] + [0] * 22, 'track': [3] + [0] * 22}})
 
         [storage.record_sync_latency('split', i) for i in [50, 10, 20, 40]]
         [storage.record_sync_latency('segment', i) for i in [70, 100, 40, 30]]
@@ -615,12 +664,12 @@ class InMemoryTelemetryStorageTests(object):
         [storage.record_sync_latency('token', i) for i in [10, 15, 100]]
         sync_latency = storage.pop_http_latencies()
 
-        assert(storage._http_latencies._split == [])
-        assert(storage._http_latencies._segment == [])
-        assert(storage._http_latencies._impression == [])
-        assert(storage._http_latencies._impression_count == [])
-        assert(storage._http_latencies._telemetry == [])
-        assert(storage._http_latencies._token == [])
-        assert(sync_latency == {'httpLatencies': {'split': [50, 10, 20, 40], 'segment': [70, 100, 40, 30],
-                                'impression': [10, 20], 'impressionCount': [5, 10], 'event': [50, 40],
-                                'telemetry': [100, 50, 160], 'token': [10, 15, 100]}})
+        assert(storage._http_latencies._split == [0] * 23)
+        assert(storage._http_latencies._segment == [0] * 23)
+        assert(storage._http_latencies._impression == [0] * 23)
+        assert(storage._http_latencies._impression_count == [0] * 23)
+        assert(storage._http_latencies._telemetry == [0] * 23)
+        assert(storage._http_latencies._token == [0] * 23)
+        assert(sync_latency == {'httpLatencies': {'split': [4] + [0] * 22, 'segment': [4] + [0] * 22,
+                                'impression': [2] + [0] * 22, 'impressionCount': [2] + [0] * 22, 'event': [2] + [0] * 22,
+                                'telemetry': [3] + [0] * 22, 'token': [3] + [0] * 22}})

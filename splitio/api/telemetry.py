@@ -41,7 +41,7 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error(
+            _LOGGER.info(
                 'Error posting unique keys because an exception was raised by the HTTPClient'
             )
             _LOGGER.debug('Error: ', exc_info=True)
@@ -65,7 +65,7 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error(
+            _LOGGER.info(
                 'Error posting init config because an exception was raised by the HTTPClient'
             )
             _LOGGER.debug('Error: ', exc_info=True)
@@ -89,7 +89,7 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error(
+            _LOGGER.info(
                 'Error posting runtime stats because an exception was raised by the HTTPClient'
             )
             _LOGGER.debug('Error: ', exc_info=True)

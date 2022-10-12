@@ -1,9 +1,12 @@
 """Telemetry model test module."""
 import os
+import random
 
 from splitio.models.telemetry import StorageType, OperationMode, MethodLatencies, MethodExceptions, \
     HTTPLatencies, HTTPErrors, LastSynchronization, TelemetryCounters, TelemetryConfig, \
     StreamingEvent, StreamingEvents, RefreshRates, URLOverrides
+
+import splitio.models.telemetry as ModelTelemetry
 
 class TelemetryModelTests(object):
     """Telemetry model test cases."""
@@ -15,92 +18,71 @@ class TelemetryModelTests(object):
         assert(OperationMode.MEMEORY == 'in-memory')
         assert(OperationMode.REDIS == 'redis-consumer')
 
-    def test_nethod_latencies(self, mocker):
+    def test_method_latencies(self, mocker):
         method_latencies = MethodLatencies()
-        method_latencies.add_latency('treatment', 10)
-        assert(method_latencies._treatment == [10])
-        [method_latencies.add_latency('treatment', 10) for i in range(25)]
-        assert(len(method_latencies._treatment) == 23)
 
-        [method_latencies.add_latency('treatments', i) for i in [20, 30]]
-        assert(method_latencies._treatments == [20, 30])
-        [method_latencies.add_latency('treatments', 10) for i in range(25)]
-        assert(len(method_latencies._treatments) == 23)
-
-        method_latencies.add_latency('treatmentWithConfig', 50)
-        assert(method_latencies._treatment_with_config == [50])
-        [method_latencies.add_latency('treatmentWithConfig', 10) for i in range(25)]
-        assert(len(method_latencies._treatment_with_config) == 23)
-
-        method_latencies.add_latency('treatmentsWithConfig', 20)
-        assert(method_latencies._treatments_with_config == [20])
-        [method_latencies.add_latency('treatmentsWithConfig', 10) for i in range(25)]
-        assert(len(method_latencies._treatments_with_config) == 23)
-
-        method_latencies.add_latency('track', 20)
-        assert(method_latencies._track == [20])
-        [method_latencies.add_latency('track', 10) for i in range(25)]
-        assert(len(method_latencies._track) == 23)
+        for method in ['treatment', 'treatments', 'treatmentWithConfig', 'treatmentsWithConfig', 'track']:
+            method_latencies.add_latency(method, 50)
+            assert(self._get_method_latency(method, method_latencies)[ModelTelemetry.get_latency_bucket_index(50)] == 1)
+            method_latencies.add_latency(method, 50000000)
+            assert(self._get_method_latency(method, method_latencies)[ModelTelemetry.get_latency_bucket_index(50000000)] == 1)
+            for j in range(10):
+                latency = random.randint(1001, 4987885)
+                current_count = self._get_method_latency(method, method_latencies)[ModelTelemetry.get_latency_bucket_index(latency)]
+                [method_latencies.add_latency(method, latency) for i in range(2)]
+                assert(self._get_method_latency(method, method_latencies)[ModelTelemetry.get_latency_bucket_index(latency)] == 2 + current_count)
 
         method_latencies.pop_all()
-        assert(method_latencies._track == [])
-        assert(method_latencies._treatment == [])
-        assert(method_latencies._treatments == [])
-        assert(method_latencies._treatment_with_config == [])
-        assert(method_latencies._treatments_with_config == [])
+        assert(method_latencies._track == [0] * 23)
+        assert(method_latencies._treatment == [0] * 23)
+        assert(method_latencies._treatments == [0] * 23)
+        assert(method_latencies._treatment_with_config == [0] * 23)
+        assert(method_latencies._treatments_with_config == [0] * 23)
 
         method_latencies.add_latency('treatment', 10)
-        method_latencies.add_latency('treatments', 20)
-        method_latencies.add_latency('treatments', 30)
+        [method_latencies.add_latency('treatments', 20) for i in range(2)]
         method_latencies.add_latency('treatmentWithConfig', 50)
         method_latencies.add_latency('treatmentsWithConfig', 20)
         method_latencies.add_latency('track', 20)
-        method_latencies.add_latency('track', 60)
         latencies = method_latencies.pop_all()
-        assert(latencies == {'methodLatencies': {'treatment': [10], 'treatments': [20, 30], 'treatmentWithConfig': [50], 'treatmentsWithConfig': [20], 'track': [20, 60]}})
+        assert(latencies == {'methodLatencies': {'treatment': [1] + [0] * 22, 'treatments': [2] + [0] * 22, 'treatmentWithConfig': [1] + [0] * 22, 'treatmentsWithConfig': [1] + [0] * 22, 'track': [1] + [0] * 22}})
+
+    def _get_method_latency(self, resource, storage):
+        if resource == ModelTelemetry.TREATMENT:
+            return storage._treatment
+        elif resource == ModelTelemetry.TREATMENTS:
+            return storage._treatments
+        elif resource == ModelTelemetry.TREATMENT_WITH_CONFIG:
+            return storage._treatment_with_config
+        elif resource == ModelTelemetry.TREATMENTS_WITH_CONFIG:
+            return storage._treatments_with_config
+        elif resource == ModelTelemetry.TRACK:
+            return storage._track
+        else:
+            return
 
     def test_http_latencies(self, mocker):
         http_latencies = HTTPLatencies()
 
-        http_latencies.add_latency('split', 10)
-        assert(http_latencies._split == [10])
-        [http_latencies.add_latency('split', 10) for i in range(25)]
-        assert(len(http_latencies._split) == 23)
-
-        http_latencies.add_latency('segment', 10)
-        assert(http_latencies._segment == [10])
-        [http_latencies.add_latency('segment', 10) for i in range(25)]
-        assert(len(http_latencies._segment) == 23)
-
-        http_latencies.add_latency('impression', 10)
-        assert(http_latencies._impression == [10])
-        [http_latencies.add_latency('impression', 10) for i in range(25)]
-        assert(len(http_latencies._impression) == 23)
-
-        http_latencies.add_latency('impressionCount', 10)
-        assert(http_latencies._impression_count == [10])
-        [http_latencies.add_latency('impressionCount', 10) for i in range(25)]
-        assert(len(http_latencies._impression_count) == 23)
-
-        http_latencies.add_latency('telemetry', 10)
-        assert(http_latencies._telemetry == [10])
-        [http_latencies.add_latency('telemetry', 10) for i in range(25)]
-        assert(len(http_latencies._telemetry) == 23)
-
-        http_latencies.add_latency('token', 10)
-        assert(http_latencies._token == [10])
-        [http_latencies.add_latency('token', 10) for i in range(25)]
-        assert(len(http_latencies._token) == 23)
+        for resource in ['split', 'segment', 'impression', 'impressionCount', 'event', 'telemetry', 'token']:
+            http_latencies.add_latency(resource, 50)
+            assert(self._get_http_latency(resource, http_latencies)[ModelTelemetry.get_latency_bucket_index(50)] == 1)
+            http_latencies.add_latency(resource, 50000000)
+            assert(self._get_http_latency(resource, http_latencies)[ModelTelemetry.get_latency_bucket_index(50000000)] == 1)
+            for j in range(10):
+                latency = random.randint(1001, 4987885)
+                current_count = self._get_http_latency(resource, http_latencies)[ModelTelemetry.get_latency_bucket_index(latency)]
+                [http_latencies.add_latency(resource, latency) for i in range(2)]
+                assert(self._get_http_latency(resource, http_latencies)[ModelTelemetry.get_latency_bucket_index(latency)] == 2 + current_count)
 
         http_latencies.pop_all()
-        assert(http_latencies._event == [])
-        assert(http_latencies._impression == [])
-        assert(http_latencies._impression_count == [])
-        assert(http_latencies._segment == [])
-        assert(http_latencies._split == [])
-        assert(http_latencies._telemetry == [])
-        assert(http_latencies._token == [])
-
+        assert(http_latencies._event == [0] * 23)
+        assert(http_latencies._impression == [0] * 23)
+        assert(http_latencies._impression_count == [0] * 23)
+        assert(http_latencies._segment == [0] * 23)
+        assert(http_latencies._split == [0] * 23)
+        assert(http_latencies._telemetry == [0] * 23)
+        assert(http_latencies._token == [0] * 23)
 
         http_latencies.add_latency('split', 10)
         [http_latencies.add_latency('impression', i) for i in [10, 20]]
@@ -110,7 +92,25 @@ class TelemetryModelTests(object):
         http_latencies.add_latency('telemetry', 70)
         [http_latencies.add_latency('token', i) for i in [10, 15]]
         latencies = http_latencies.pop_all()
-        assert(latencies == {'httpLatencies': {'split': [10], 'segment': [40], 'impression': [10, 20], 'impressionCount': [60], 'event': [90], 'telemetry': [70], 'token': [10, 15]}})
+        assert(latencies == {'httpLatencies': {'split': [1] + [0] * 22, 'segment': [1] + [0] * 22, 'impression': [2] + [0] * 22, 'impressionCount': [1] + [0] * 22, 'event': [1] + [0] * 22, 'telemetry': [1] + [0] * 22, 'token': [2] + [0] * 22}})
+
+    def _get_http_latency(self, resource, storage):
+        if resource == ModelTelemetry.SPLIT:
+            return storage._split
+        elif resource == ModelTelemetry.SEGMENT:
+            return storage._segment
+        elif resource == ModelTelemetry.IMPRESSION:
+            return storage._impression
+        elif resource == ModelTelemetry.IMPRESSION_COUNT:
+            return storage._impression_count
+        elif resource == ModelTelemetry.EVENT:
+            return storage._event
+        elif resource == ModelTelemetry.TELEMETRY:
+            return storage._telemetry
+        elif resource == ModelTelemetry.TOKEN:
+            return storage._token
+        else:
+            return
 
     def test_method_exceptions(self, mocker):
         method_exception = MethodExceptions()
