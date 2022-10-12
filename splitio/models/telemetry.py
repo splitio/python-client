@@ -113,11 +113,11 @@ class MethodLatencies(object):
     def _reset_all(self):
         """Reset variables"""
         with self._lock:
-            self._treatment = [0] * 23
-            self._treatments = [0] * 23
-            self._treatment_with_config = [0] * 23
-            self._treatments_with_config = [0] * 23
-            self._track = [0] * 23
+            self._treatment = [0] * MAX_LATENCY_BUCKET_COUNT
+            self._treatments = [0] * MAX_LATENCY_BUCKET_COUNT
+            self._treatment_with_config = [0] * MAX_LATENCY_BUCKET_COUNT
+            self._treatments_with_config = [0] * MAX_LATENCY_BUCKET_COUNT
+            self._track = [0] * MAX_LATENCY_BUCKET_COUNT
 
     def add_latency(self, method, latency):
         """
@@ -171,13 +171,13 @@ class HTTPLatencies(object):
     def _reset_all(self):
         """Reset variables"""
         with self._lock:
-            self._split = [0] * 23
-            self._segment = [0] * 23
-            self._impression = [0] * 23
-            self._impression_count = [0] * 23
-            self._event = [0] * 23
-            self._telemetry = [0] * 23
-            self._token = [0] * 23
+            self._split = [0] * MAX_LATENCY_BUCKET_COUNT
+            self._segment = [0] * MAX_LATENCY_BUCKET_COUNT
+            self._impression = [0] * MAX_LATENCY_BUCKET_COUNT
+            self._impression_count = [0] * MAX_LATENCY_BUCKET_COUNT
+            self._event = [0] * MAX_LATENCY_BUCKET_COUNT
+            self._telemetry = [0] * MAX_LATENCY_BUCKET_COUNT
+            self._token = [0] * MAX_LATENCY_BUCKET_COUNT
 
     def add_latency(self, resource, latency):
         """

@@ -4,12 +4,36 @@ import random
 
 from splitio.models.telemetry import StorageType, OperationMode, MethodLatencies, MethodExceptions, \
     HTTPLatencies, HTTPErrors, LastSynchronization, TelemetryCounters, TelemetryConfig, \
-    StreamingEvent, StreamingEvents
+    StreamingEvent, StreamingEvents, get_latency_bucket_index
 
 import splitio.models.telemetry as ModelTelemetry
 
 class TelemetryModelTests(object):
     """Telemetry model test cases."""
+
+    def test_latency_bucket_index(self):
+        for i in range(50000):
+            latency = random.randint(10, 9987885)
+            old_bucket = 0
+            result_bucket = 0
+            counter = -1
+            for j in ModelTelemetry.BUCKETS:
+                counter = counter + 1
+                if old_bucket == 0:
+                    if latency < j:
+                        old_bucket = 0
+                        break
+                    old_bucket = j
+                    continue
+                if counter == ModelTelemetry.MAX_LATENCY_BUCKET_COUNT - 1:
+                    result_bucket = 22
+                    break
+                if latency > old_bucket and latency <= j:
+                    result_bucket = counter
+                    break
+                old_bucket = j
+            print(latency, old_bucket, j)
+            assert(result_bucket == ModelTelemetry.get_latency_bucket_index(latency))
 
     def test_storage_type_and_operation_mode(self, mocker):
         assert(StorageType.LOCALHOST == 'localhost')
