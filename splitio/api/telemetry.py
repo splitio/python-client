@@ -41,8 +41,56 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error(
+            _LOGGER.info(
                 'Error posting unique keys because an exception was raised by the HTTPClient'
             )
             _LOGGER.debug('Error: ', exc_info=True)
             raise APIException('Unique keys not flushed properly.') from exc
+
+    def record_init(self, configs):
+        """
+        Send init config data to the backend.
+
+        :param configs: configs
+        :type json
+        """
+        try:
+            response = self._client.post(
+                'telemetry',
+                '/metrics/config',
+                self._apikey,
+                body=configs,
+                extra_headers=self._metadata
+            )
+            if not 200 <= response.status_code < 300:
+                raise APIException(response.body, response.status_code)
+        except HttpClientException as exc:
+            _LOGGER.info(
+                'Error posting init config because an exception was raised by the HTTPClient'
+            )
+            _LOGGER.debug('Error: ', exc_info=True)
+            raise APIException('Init config data not flushed properly.') from exc
+
+    def record_stats(self, stats):
+        """
+        Send runtime stats to the backend.
+
+        :param configs: configs
+        :type json
+        """
+        try:
+            response = self._client.post(
+                'metrics',
+                '/usage',
+                self._apikey,
+                body=stats,
+                extra_headers=self._metadata
+            )
+            if not 200 <= response.status_code < 300:
+                raise APIException(response.body, response.status_code)
+        except HttpClientException as exc:
+            _LOGGER.info(
+                'Error posting runtime stats because an exception was raised by the HTTPClient'
+            )
+            _LOGGER.debug('Error: ', exc_info=True)
+            raise APIException('Runtime stats not flushed properly.') from exc

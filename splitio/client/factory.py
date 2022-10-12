@@ -298,6 +298,13 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     if not input_validator.validate_factory_instantiation(api_key):
         return None
 
+    extra_cfg = {}
+    extra_cfg['sdk_url'] = sdk_url
+    extra_cfg['events_url'] = events_url
+    extra_cfg['auth_url'] = auth_api_base_url
+    extra_cfg['streaming_url'] = streaming_api_base_url
+    extra_cfg['telemetry_api_url'] = telemetry_api_base_url
+
     http_client = HttpClient(
         sdk_url=sdk_url,
         events_url=events_url,
@@ -496,7 +503,6 @@ def _build_localhost_factory(cfg):
         ready_event
     )
 
-
 def get_factory(api_key, **kwargs):
     """Build and return the appropriate factory."""
     try:
@@ -538,3 +544,13 @@ def get_factory(api_key, **kwargs):
     finally:
         _INSTANTIATED_FACTORIES.update([api_key])
         _INSTANTIATED_FACTORIES_LOCK.release()
+
+def _get_active_and_redundant_count():
+    redundant_factory_count = 0
+    active_factory_count = 0
+    _INSTANTIATED_FACTORIES_LOCK.acquire()
+    for item in _INSTANTIATED_FACTORIES:
+        redundant_factory_count = redundant_factory_count + _INSTANTIATED_FACTORIES[item] - 1
+        active_factory_count = active_factory_count + _INSTANTIATED_FACTORIES[item]
+    _INSTANTIATED_FACTORIES_LOCK.release()
+    return redundant_factory_count, active_factory_count
