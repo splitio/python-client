@@ -4,7 +4,7 @@ import random
 
 from splitio.models.telemetry import StorageType, OperationMode, MethodLatencies, MethodExceptions, \
     HTTPLatencies, HTTPErrors, LastSynchronization, TelemetryCounters, TelemetryConfig, \
-    StreamingEvent, StreamingEvents, RefreshRates, URLOverrides
+    StreamingEvent, StreamingEvents
 
 import splitio.models.telemetry as ModelTelemetry
 
@@ -170,60 +170,44 @@ class TelemetryModelTests(object):
         assert(telemetry_counter._auth_rejections == 0)
         assert(telemetry_counter._token_refreshes == 0)
 
-        telemetry_counter.set_session_length(20)
+        telemetry_counter.record_session_length(20)
         assert(telemetry_counter.get_session_length() == 20)
 
-        [telemetry_counter.append_auth_rejections() for i in range(5)]
+        [telemetry_counter.record_auth_rejections() for i in range(5)]
         auth_rejections = telemetry_counter.pop_auth_rejections()
         assert(telemetry_counter._auth_rejections == 0)
         assert(auth_rejections == 5)
 
-        [telemetry_counter.append_token_refreshes() for i in range(3)]
+        [telemetry_counter.record_token_refreshes() for i in range(3)]
         token_refreshes = telemetry_counter.pop_token_refreshes()
         assert(telemetry_counter._token_refreshes == 0)
         assert(token_refreshes == 3)
 
-        telemetry_counter.set_value('impressionsQueued', 10)
+        telemetry_counter.record_impressions_value('impressionsQueued', 10)
         assert(telemetry_counter._impressions_queued == 10)
-        telemetry_counter.set_value('impressionsDeduped', 14)
+        telemetry_counter.record_impressions_value('impressionsDeduped', 14)
         assert(telemetry_counter._impressions_deduped == 14)
-        telemetry_counter.set_value('impressionsDropped', 2)
+        telemetry_counter.record_impressions_value('impressionsDropped', 2)
         assert(telemetry_counter._impressions_dropped == 2)
-        telemetry_counter.set_value('eventsQueued', 30)
+        telemetry_counter.record_events_value('eventsQueued', 30)
         assert(telemetry_counter._events_queued == 30)
-        telemetry_counter.set_value('eventsDropped', 1)
+        telemetry_counter.record_events_value('eventsDropped', 1)
         assert(telemetry_counter._events_dropped == 1)
 
     def test_streaming_event(self, mocker):
-        streaming_event = StreamingEvent({'type': 'update', 'data': 'split', 'time': 1234})
+        streaming_event = StreamingEvent(('update', 'split', 1234))
         assert(streaming_event.type == 'update')
         assert(streaming_event.data == 'split')
         assert(streaming_event.time == 1234)
 
     def test_streaming_events(self, mocker):
         streaming_events = StreamingEvents()
-        streaming_events.record_streaming_event({'type': 'update', 'data': 'split', 'time': 1234})
-        streaming_events.record_streaming_event({'type': 'delete', 'data': 'split', 'time': 1234})
+        streaming_events.record_streaming_event(('update', 'split', 1234))
+        streaming_events.record_streaming_event(('delete', 'split', 1234))
         events = streaming_events.pop_streaming_events()
         assert(streaming_events._streaming_events == [])
         assert(events == {'streamingEvents': [{'e': 'update', 'd': 'split', 't': 1234},
                                     {'e': 'delete', 'd': 'split', 't': 1234}]})
-
-    def test_refresh_rates(self):
-        refresh_rates = RefreshRates(30, 60, 40, 100, 120)
-        assert(refresh_rates.splits == 30)
-        assert(refresh_rates.segments == 60)
-        assert(refresh_rates.impressions == 40)
-        assert(refresh_rates.events == 100)
-        assert(refresh_rates.telemetry == 120)
-
-    def test_url_overrides(self):
-        url_overrides = URLOverrides(True, True, False, False, True)
-        assert(url_overrides.sdk == True)
-        assert(url_overrides.events == True)
-        assert(url_overrides.auth == False)
-        assert(url_overrides.streaming == False)
-        assert(url_overrides.telemetry == True)
 
     def test_telemetry_config(self):
         telemetry_config = TelemetryConfig()

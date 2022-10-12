@@ -298,30 +298,30 @@ class LastSynchronization(object):
             self._telemetry = 0
             self._token = 0
 
-    def add_latency(self, resource, latency):
+    def add_latency(self, resource, sync_time):
         """
         Add Latency method
 
         :param resource: passed resource name
         :type resource: str
-        :param latency: amount of latency
-        :type latency: int
+        :param sync_time: amount of last sync time
+        :type sync_time: int
         """
         with self._lock:
             if resource == SPLIT:
-                self._split = latency
+                self._split = sync_time
             elif resource == SEGMENT:
-                self._segment = latency
+                self._segment = sync_time
             elif resource == IMPRESSION:
-                self._impression = latency
+                self._impression = sync_time
             elif resource == IMPRESSION_COUNT:
-                self._impression_count = latency
+                self._impression_count = sync_time
             elif resource == EVENT:
-                self._event = latency
+                self._event = sync_time
             elif resource == TELEMETRY:
-                self._telemetry = latency
+                self._telemetry = sync_time
             elif resource == TOKEN:
-                self._token = latency
+                self._token = sync_time
             else:
                 return
 
@@ -437,7 +437,7 @@ class TelemetryCounters(object):
             self._token_refreshes = 0
             self._session_length = 0
 
-    def append_value(self, resource, value):
+    def record_impressions_value(self, resource, value):
         """
         Append to the resource value
 
@@ -453,14 +453,27 @@ class TelemetryCounters(object):
                 self._impressions_deduped = self._impressions_deduped + value
             elif resource == IMPRESSIONS_DROPPED:
                 self._impressions_dropped = self._impressions_dropped + value
-            elif resource == EVENTS_QUEUED:
+            else:
+                return
+
+    def record_events_value(self, resource, value):
+        """
+        Append to the resource value
+
+        :param resource: passed resource name
+        :type resource: str
+        :param value: value to be appended
+        :type value: int
+        """
+        with self._lock:
+            if resource == EVENTS_QUEUED:
                 self._events_queued = self._events_queued + value
             elif resource == EVENTS_DROPPED:
                 self._events_dropped = self._events_dropped + value
             else:
                 return
 
-    def append_auth_rejections(self):
+    def record_auth_rejections(self):
         """
         Increament the auth rejection resource by one.
 
@@ -468,7 +481,7 @@ class TelemetryCounters(object):
         with self._lock:
             self._auth_rejections = self._auth_rejections + 1
 
-    def append_token_refreshes(self):
+    def record_token_refreshes(self):
         """
         Increament the token refreshes resource by one.
 
@@ -476,30 +489,7 @@ class TelemetryCounters(object):
         with self._lock:
             self._token_refreshes = self._token_refreshes + 1
 
-    def set_value(self, resource, value):
-        """
-        Set the resource value
-
-        :param resource: passed resource name
-        :type resource: str
-        :param value: value to be set
-        :type value: int
-        """
-        with self._lock:
-            if resource == IMPRESSIONS_QUEUED:
-                self._impressions_queued = value
-            elif resource == IMPRESSIONS_DEDUPED:
-                self._impressions_deduped = value
-            elif resource == IMPRESSIONS_DROPPED:
-                self._impressions_dropped = value
-            elif resource == EVENTS_QUEUED:
-                self._events_queued = value
-            elif resource == EVENTS_DROPPED:
-                self._events_dropped = value
-            else:
-                return
-
-    def set_session_length(self, session):
+    def record_session_length(self, session):
         """
         Set the session length value
 
@@ -577,14 +567,10 @@ class StreamingEvent(object):
         """
         Constructor
 
-        :param streaming_event: Streaming event dict:
-                {'type': string, 'data': string, 'time': string}
+        :param streaming_event: Streaming event tuple: ('type', 'data', 'time')
         :type streaming_event: dict
         """
-        self._lock = threading.RLock()
-        self._type = streaming_event['type']
-        self._data = streaming_event['data']
-        self._time = streaming_event['time']
+        self._type, self._data, self._time = streaming_event
 
     @property
     def type(self):
@@ -594,8 +580,7 @@ class StreamingEvent(object):
         :return: streaming event type
         :rtype: str
         """
-        with self._lock:
-            return self._type
+        return self._type
 
     @property
     def data(self):
@@ -605,8 +590,7 @@ class StreamingEvent(object):
         :return: streaming event data
         :rtype: str
         """
-        with self._lock:
-            return self._data
+        return self._data
 
     @property
     def time(self):
@@ -616,8 +600,7 @@ class StreamingEvent(object):
         :return: streaming event time
         :rtype: int
         """
-        with self._lock:
-            return self._time
+        return self._time
 
 class StreamingEvents(object):
     """
@@ -656,169 +639,6 @@ class StreamingEvents(object):
             self._streaming_events = []
             return {STREAMING_EVENTS: [{'e': streaming_event.type, 'd': streaming_event.data,
                                          't': streaming_event.time} for streaming_event in streaming_events]}
-class RefreshRates(object):
-    """
-    Refresh rates class
-
-    """
-    def __init__(self, splits=0, segments=0, impressions=0, events=0, telemetry=0):
-        """
-        Constructor
-
-        :param splits: splits refresh rate
-        :type splits: int
-        :param segments: segments refresh rate
-        :type segments: int
-        :param impressions: impressions refresh rate
-        :type impressions: int
-        :param events: events refresh rate
-        :type events: int
-        :param telemetry: telemetry refresh rate
-        :type telemetry: int
-        """
-        self._lock = threading.RLock()
-        self._splits = splits
-        self._segments = segments
-        self._impressions = impressions
-        self._events = events
-        self._telemetry = telemetry
-
-    @property
-    def splits(self):
-        """
-        Get splits refresh rate
-
-        :return: splits refresh rate
-        :rtype: int
-        """
-        with self._lock:
-            return self._splits
-
-    @property
-    def segments(self):
-        """
-        Get segments refresh rate
-
-        :return: segments refresh rate
-        :rtype: int
-        """
-        with self._lock:
-            return self._segments
-
-    @property
-    def impressions(self):
-        """
-        Get impressions refresh rate
-
-        :return: impressions refresh rate
-        :rtype: int
-        """
-        with self._lock:
-            return self._impressions
-
-    @property
-    def events(self):
-        """
-        Get events refresh rate
-
-        :return: events refresh rate
-        :rtype: int
-        """
-        with self._lock:
-            return self._events
-
-    @property
-    def telemetry(self):
-        """
-        Get telemetry refresh rate
-
-        :return: telemetry refresh rate
-        :rtype: int
-        """
-        with self._lock:
-            return self._telemetry
-
-class URLOverrides(object):
-    """
-    URL overrides class
-
-    """
-    def __init__(self, sdk=False, events=False, auth=False, streaming=False, telemetry=False):
-        """
-        Constructor
-
-        :param sdk: sdk URL flag
-        :type splits: boolean
-        :param events: events URL flag
-        :type events: boolean
-        :param auth: auth URL flag
-        :type auth: boolean
-        :param streaming: streaming URL flag
-        :type streaming: boolean
-        :param telemetry: telemetry URL flag
-        :type telemetry: boolean
-        """
-        self._lock = threading.RLock()
-        self._sdk =  sdk
-        self._events = events
-        self._auth = auth
-        self._streaming = streaming
-        self._telemetry = telemetry
-
-    @property
-    def sdk(self):
-        """
-        Get sdk url flag
-
-        :return: sdk url flag
-        :rtype: boolean
-        """
-        with self._lock:
-            return self._sdk
-
-    @property
-    def events(self):
-        """
-        Get events url flag
-
-        :return: events url flag
-        :rtype: boolean
-        """
-        with self._lock:
-            return self._events
-
-    @property
-    def auth(self):
-        """
-        Get auth url flag
-
-        :return: auth url flag
-        :rtype: boolean
-        """
-        with self._lock:
-            return self._auth
-
-    @property
-    def streaming(self):
-        """
-        Get streaming url flag
-
-        :return: streaming url flag
-        :rtype: boolean
-        """
-        with self._lock:
-            return self._streaming
-
-    @property
-    def telemetry(self):
-        """
-        Get telemetry url flag
-
-        :return: telemetry url flag
-        :rtype: boolean
-        """
-        with self._lock:
-            return self._telemetry
 
 class TelemetryConfig(object):
     """
@@ -839,8 +659,10 @@ class TelemetryConfig(object):
             self._operation_mode = None
             self._storage_type = None
             self._streaming_enabled = None
-            self._refresh_rate = RefreshRates()
-            self._url_override = URLOverrides()
+            self._refresh_rate = {SPLITS_REFRESH_RATE: 0, SEGMENTS_REFRESH_RATE: 0,
+                IMPRESSIONS_REFRESH_RATE: 0, EVENTS_REFRESH_RATE: 0, TELEMETRY_REFRESH_RATE: 0}
+            self._url_override = {SDK_URL: False, EVENTS_URL: False, AUTH_URL: False,
+                                  STREAMING_URL: False, TELEMETRY_URL: False}
             self._impressions_queue_size = 0
             self._events_queue_size = 0
             self._impressions_mode = None
@@ -947,16 +769,16 @@ class TelemetryConfig(object):
                 OPERATION_MODE: self._operation_mode,
                 STORAGE_TYPE: self._storage_type,
                 STREAMING_ENABLED: self._streaming_enabled,
-                REFRESH_RATE: {'sp': self._refresh_rate.splits,
-                                'se': self._refresh_rate.segments,
-                                'im': self._refresh_rate.impressions,
-                                'ev': self._refresh_rate.events,
-                                'te': self._refresh_rate.telemetry},
-                URL_OVERRIDE: {'s': self._url_override.sdk,
-                                'e': self._url_override.events,
-                                'a': self._url_override.auth,
-                                'st': self._url_override.streaming,
-                                't': self._url_override.telemetry},
+                REFRESH_RATE: {'sp': self._refresh_rate[SPLITS_REFRESH_RATE],
+                                'se': self._refresh_rate[SEGMENTS_REFRESH_RATE],
+                                'im': self._refresh_rate[IMPRESSIONS_REFRESH_RATE],
+                                'ev': self._refresh_rate[EVENTS_REFRESH_RATE],
+                                'te': self._refresh_rate[TELEMETRY_REFRESH_RATE]},
+                URL_OVERRIDE: {'s': self._url_override[SDK_URL],
+                                'e': self._url_override[EVENTS_URL],
+                                'a': self._url_override[AUTH_URL],
+                                'st': self._url_override[STREAMING_URL],
+                                't': self._url_override[TELEMETRY_URL]},
                 IMPRESSIONS_QUEUE_SIZE: self._impressions_queue_size,
                 EVENTS_QUEUE_SIZE: self._events_queue_size,
                 IMPRESSIONS_MODE: self._impressions_mode,
@@ -1013,8 +835,13 @@ class TelemetryConfig(object):
         :rtype: RefreshRates object
         """
         with self._lock:
-            return RefreshRates(config[SPLITS_REFRESH_RATE], config[SEGMENTS_REFRESH_RATE],
-                config[IMPRESSIONS_REFRESH_RATE], config[EVENTS_REFRESH_RATE], config[TELEMETRY_REFRESH_RATE])
+            return {
+                SPLITS_REFRESH_RATE: config[SPLITS_REFRESH_RATE],
+                SEGMENTS_REFRESH_RATE: config[SEGMENTS_REFRESH_RATE],
+                IMPRESSIONS_REFRESH_RATE: config[IMPRESSIONS_REFRESH_RATE],
+                EVENTS_REFRESH_RATE: config[EVENTS_REFRESH_RATE],
+                TELEMETRY_REFRESH_RATE: config[TELEMETRY_REFRESH_RATE]
+            }
 
     def _get_url_overrides(self, config):
         """
@@ -1027,13 +854,13 @@ class TelemetryConfig(object):
         :rtype: URLOverrides object
         """
         with self._lock:
-            return URLOverrides (
-                True if SDK_URL in config else False,
-                True if EVENTS_URL in config else False,
-                True if AUTH_URL in config else False,
-                True if STREAMING_URL in config else False,
-                True if TELEMETRY_URL in config else False
-            )
+            return  {
+                SDK_URL: True if SDK_URL in config else False,
+                EVENTS_URL: True if EVENTS_URL in config else False,
+                AUTH_URL: True if AUTH_URL in config else False,
+                STREAMING_URL: True if STREAMING_URL in config else False,
+                TELEMETRY_URL: True if TELEMETRY_URL in config else False
+            }
 
     def _get_impressions_mode(self, imp_mode):
         """

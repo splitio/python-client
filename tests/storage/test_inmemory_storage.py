@@ -513,9 +513,9 @@ class InMemoryTelemetryStorageTests(object):
         storage.record_token_refreshes()
         assert(storage._counters.pop_token_refreshes() == 2)
 
-        storage.record_streaming_event({'type': 'update', 'data': 'split', 'time': 1234})
+        storage.record_streaming_event(('update', 'split', 1234))
         assert(storage._streaming_events.pop_streaming_events() == {'streamingEvents': [{'e': 'update', 'd': 'split', 't': 1234}]})
-        [storage.record_streaming_event({'type': 'update', 'data': 'split', 'time': 1234}) for i in range(1, 25)]
+        [storage.record_streaming_event(('update', 'split', 1234)) for i in range(1, 25)]
         assert(len(storage._streaming_events._streaming_events) == 20)
 
         storage.record_session_length(20)
@@ -630,8 +630,8 @@ class InMemoryTelemetryStorageTests(object):
         assert(storage._counters._token_refreshes == 0)
         assert(token_refreshes == 2)
 
-        storage.record_streaming_event({'type': 'update', 'data': 'split', 'time': 1234})
-        storage.record_streaming_event({'type': 'delete', 'data': 'split', 'time': 1234})
+        storage.record_streaming_event(('update', 'split', 1234))
+        storage.record_streaming_event(('delete', 'split', 1234))
         streaming_events = storage.pop_streaming_events()
         assert(storage._streaming_events._streaming_events == [])
         assert(streaming_events == {'streamingEvents': [{'e': 'update', 'd': 'split', 't': 1234},

@@ -505,11 +505,11 @@ class InMemoryTelemetryStorage(TelemetryStorage):
 
     def record_impression_stats(self, data_type, count):
         """Record impressions stats."""
-        self._counters.append_value(data_type, count)
+        self._counters.record_impressions_value(data_type, count)
 
     def record_event_stats(self, data_type, count):
         """Record events stats."""
-        self._counters.append_value(data_type, count)
+        self._counters.record_events_value(data_type, count)
 
     def record_suceessful_sync(self, resource, time):
         """Record successful sync."""
@@ -525,11 +525,11 @@ class InMemoryTelemetryStorage(TelemetryStorage):
 
     def record_auth_rejections(self):
         """Record auth rejection."""
-        self._counters.append_auth_rejections()
+        self._counters.record_auth_rejections()
 
     def record_token_refreshes(self):
         """Record sse token refresh."""
-        self._counters.append_token_refreshes()
+        self._counters.record_token_refreshes()
 
     def record_streaming_event(self, streaming_event):
         """Record incoming streaming event."""
@@ -537,7 +537,7 @@ class InMemoryTelemetryStorage(TelemetryStorage):
 
     def record_session_length(self, session):
         """Record session length."""
-        self._counters.set_session_length(session)
+        self._counters.record_session_length(session)
 
     def get_bur_time_outs(self):
         """Get block until ready timeout."""
