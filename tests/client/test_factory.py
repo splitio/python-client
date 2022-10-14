@@ -15,7 +15,7 @@ from splitio.api.splits import SplitsAPI
 from splitio.api.segments import SegmentsAPI
 from splitio.api.impressions import ImpressionsAPI
 from splitio.api.events import EventsAPI
-from splitio.engine.impressions import Manager as ImpressionsManager
+from splitio.engine.impressions.impressions import Manager as ImpressionsManager
 from splitio.sync.manager import Manager
 from splitio.sync.synchronizer import Synchronizer, SplitSynchronizers, SplitTasks
 from splitio.sync.split import SplitSynchronizer
@@ -94,8 +94,6 @@ class SplitFactoryTests(object):
         assert isinstance(factory._get_storage('segments'), redis.RedisSegmentStorage)
         assert isinstance(factory._get_storage('impressions'), redis.RedisImpressionsStorage)
         assert isinstance(factory._get_storage('events'), redis.RedisEventsStorage)
-
-        assert factory._sync_manager is None
 
         adapter = factory._get_storage('splits')._redis
         assert adapter == factory._get_storage('segments')._redis

@@ -2,7 +2,7 @@
 import os.path
 import logging
 
-from splitio.engine.impressions import ImpressionsMode
+from splitio.engine.impressions.impressions import ImpressionsMode
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -91,7 +91,7 @@ def _sanitize_impressions_mode(mode, refresh_rate=None):
             mode = ImpressionsMode(mode.upper())
         except (ValueError, AttributeError):
             _LOGGER.warning('You passed an invalid impressionsMode, impressionsMode should be '
-                            'one of the following values: `debug` or `optimized`. '
+                            'one of the following values: `debug`, `none` or `optimized`. '
                             'Defaulting to `optimized` mode.')
             mode = ImpressionsMode.OPTIMIZED
 

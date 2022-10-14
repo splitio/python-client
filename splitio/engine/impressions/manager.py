@@ -1,25 +1,11 @@
-"""Split evaluator module."""
 import threading
-from collections import defaultdict, namedtuple
-from enum import Enum
-
+from splitio import util
 from splitio.models.impressions import Impression
 from splitio.engine.hashfns import murmur_128
 from splitio.engine.cache.lru import SimpleLruCache
-from splitio.client.listener import ImpressionListenerException
-from splitio import util
-
+from collections import defaultdict, namedtuple
 
 _TIME_INTERVAL_MS = 3600 * 1000  # one hour
-_IMPRESSION_OBSERVER_CACHE_SIZE = 500000
-
-
-class ImpressionsMode(Enum):
-    """Impressions tracking mode."""
-
-    OPTIMIZED = "OPTIMIZED"
-    DEBUG = "DEBUG"
-
 
 def truncate_time(timestamp_ms):
     """
@@ -32,6 +18,22 @@ def truncate_time(timestamp_ms):
     :rtype: int
     """
     return timestamp_ms - (timestamp_ms % _TIME_INTERVAL_MS)
+
+def truncate_impressions_time(imps, counter = None):
+    """
+    Process impressions.
+
+    Impressions are truncated based on time
+
+    :param impressions: List of impression objects with attributes
+    :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
+
+    :returns: truncated list of impressions
+    :rtype: list[splitio.models.impression.Impression]
+    """
+    this_hour = truncate_time(util.utctime_ms())
+    return [imp for imp, _ in imps] if counter is None \
+        else [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour]
 
 
 class Hasher(object):  # pylint:disable=too-few-public-methods
@@ -149,70 +151,3 @@ class Counter(object):
 
         return [Counter.CountPerFeature(k.feature, k.timeframe, v)
                 for (k, v) in old.items()]
-
-
-class Manager(object):  # pylint:disable=too-few-public-methods
-    """Impression manager."""
-
-    def __init__(self, mode=ImpressionsMode.OPTIMIZED, standalone=True, listener=None):
-        """
-        Construct a manger to track and forward impressions to the queue.
-
-        :param mode: Impressions capturing mode.
-        :type mode: ImpressionsMode
-
-        :param standalone: whether the SDK is running in standalone sending impressions by itself
-        :type standalone: bool
-
-        :param listener: Optional impressions listener that will capture all seen impressions.
-        :type listener: splitio.client.listener.ImpressionListenerWrapper
-        """
-        self._observer = Observer(_IMPRESSION_OBSERVER_CACHE_SIZE) if standalone else None
-        self._counter = Counter() if standalone and mode == ImpressionsMode.OPTIMIZED else None
-        self._listener = listener
-
-    def process_impressions(self, impressions):
-        """
-        Process impressions.
-
-        Impressions are analyzed to see if they've been seen before and counted.
-
-        :param impressions: List of impression objects with attributes
-        :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
-        """
-        imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions] \
-            if self._observer else impressions
-
-        if self._counter:
-            self._counter.track([imp for imp, _ in imps])
-
-        self._send_impressions_to_listener(imps)
-
-        this_hour = truncate_time(util.utctime_ms())
-        return [imp for imp, _ in imps] if self._counter is None \
-            else [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour]
-
-    def get_counts(self):
-        """
-        Return counts of impressions per features.
-
-        :returns: A list of counter objects.
-        :rtype: list[Counter.CountPerFeature]
-        """
-        return self._counter.pop_all() if self._counter is not None else []
-
-    def _send_impressions_to_listener(self, impressions):
-        """
-        Send impression result to custom listener.
-
-        :param impressions: List of impression objects with attributes
-        :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
-        """
-        if self._listener is not None:
-            try:
-                for impression, attributes in impressions:
-                    self._listener.log_impression(impression, attributes)
-            except ImpressionListenerException:
-                pass
-#                self._logger.error('An exception was raised while calling user-custom impression listener')
-#                self._logger.debug('Error', exc_info=True)

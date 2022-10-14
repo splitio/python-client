@@ -3,7 +3,7 @@
 import pytest
 
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder
-from splitio.engine.impressions import Manager as ImpressionsManager
+from splitio.engine.impressions.impressions import Manager as ImpressionsManager
 from splitio.storage.inmemmory import EventStorage, ImpressionStorage
 from splitio.storage.redis import ImpressionPipelinedStorage, EventStorage
 from splitio.storage.adapters.redis import RedisAdapter
