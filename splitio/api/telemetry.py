@@ -33,7 +33,7 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
         try:
             response = self._client.post(
                 'telemetry',
-                '/keys/ss',
+                '/v1/keys/ss',
                 self._apikey,
                 body=uniques,
                 extra_headers=self._metadata
