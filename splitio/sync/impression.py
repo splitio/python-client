@@ -3,7 +3,6 @@ import queue
 
 from splitio.api import APIException
 
-
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -68,7 +67,7 @@ class ImpressionSynchronizer(object):
 
 
 class ImpressionsCountSynchronizer(object):
-    def __init__(self, impressions_api, impressions_manager):
+    def __init__(self, impressions_api, imp_counter):
         """
         Class constructor.
 
@@ -79,11 +78,15 @@ class ImpressionsCountSynchronizer(object):
 
         """
         self._impressions_api = impressions_api
-        self._impressions_manager = impressions_manager
+        self._impressions_counter = imp_counter
 
     def synchronize_counters(self):
         """Send impressions from both the failed and new queues."""
-        to_send = self._impressions_manager.get_counts()
+
+        if self._impressions_counter == None:
+            return
+
+        to_send = self._impressions_counter.pop_all()
         if not to_send:
             return
 

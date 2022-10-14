@@ -6,7 +6,7 @@ from itertools import groupby
 from splitio.api import APIException
 from splitio.api.client import HttpClientException
 from splitio.api.commons import headers_from_metadata
-from splitio.engine.impressions import ImpressionsMode
+from splitio.engine.impressions.impressions import ImpressionsMode
 
 
 _LOGGER = logging.getLogger(__name__)
