@@ -42,7 +42,8 @@ class AuthAPI(object):  # pylint: disable=too-few-public-methods
                 'auth',
                 '/v2/auth',
                 self._apikey,
-                extra_headers=self._metadata
+                extra_headers=self._metadata,
+                metric_name='token'
             )
             if 200 <= response.status_code < 300:
                 payload = json.loads(response.body)

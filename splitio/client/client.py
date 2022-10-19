@@ -21,7 +21,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
     _METRIC_GET_TREATMENT_WITH_CONFIG = 'sdk.getTreatmentWithConfig'
     _METRIC_GET_TREATMENTS_WITH_CONFIG = 'sdk.getTreatmentsWithConfig'
 
-    def __init__(self, factory, recorder, labels_enabled=True):
+    def __init__(self, factory, recorder, labels_enabled=True, telemetry_evaluation_producer=None):
         """
         Construct a Client instance.
 
@@ -44,6 +44,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         self._segment_storage = factory._get_storage('segments')  # pylint: disable=protected-access
         self._events_storage = factory._get_storage('events')  # pylint: disable=protected-access
         self._evaluator = Evaluator(self._split_storage, self._segment_storage, self._splitter)
+        self._telemetry_evaluation_producer = telemetry_evaluation_producer
 
     def destroy(self):
         """
@@ -116,12 +117,13 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                 bucketing_key,
                 utctime_ms(),
             )
-
             self._record_stats([(impression, attributes)], start, metric_name)
+            self._telemetry_evaluation_producer.record_latency(method_name[4:], 1000 * (int(round(time.time() * 1000)) - start))
             return result['treatment'], result['configurations']
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error getting treatment for feature')
             _LOGGER.debug('Error: ', exc_info=True)
+            self._telemetry_evaluation_producer.record_exception(method_name[4:])
             try:
                 impression = self._build_impression(
                     matching_key,
@@ -204,9 +206,12 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                 _LOGGER.error('%s: An exception when trying to store '
                               'impressions.' % method_name)
                 _LOGGER.debug('Error: ', exc_info=True)
+                self._telemetry_evaluation_producer.record_exception(method_name[4:])
 
+            self._telemetry_evaluation_producer.record_latency(method_name[4:], 1000 * (int(round(time.time() * 1000)) - start))
             return treatments
         except Exception:  # pylint: disable=broad-except
+            self._telemetry_evaluation_producer.record_exception(method_name)
             _LOGGER.error('Error getting treatment for features')
             _LOGGER.debug('Error: ', exc_info=True)
         return input_validator.generate_control_treatments(list(features), method_name)
@@ -369,6 +374,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             _LOGGER.error("Client is not ready - no calls possible")
             return False
 
+        start = int(round(time.time() * 1000))
         key = input_validator.validate_track_key(key)
         event_type = input_validator.validate_event_type(event_type)
         should_validate_existance = self.ready and self._factory._apikey != 'localhost'  # pylint: disable=protected-access
@@ -393,7 +399,13 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             timestamp=utctime_ms(),
             properties=properties,
         )
-        return self._recorder.record_track_stats([EventWrapper(
+
+        return_flag = self._recorder.record_track_stats([EventWrapper(
             event=event,
             size=size,
         )])
+        self._telemetry_evaluation_producer.record_latency('track', 1000 * (int(round(time.time() * 1000)) - start))
+        if not return_flag:
+            self._telemetry_evaluation_producer.record_exception('track')
+
+        return return_flag

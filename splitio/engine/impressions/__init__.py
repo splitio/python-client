@@ -7,7 +7,6 @@ from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchron
 from splitio.sync.impression import ImpressionsCountSynchronizer
 from splitio.tasks.impressions_sync import ImpressionsCountSyncTask
 
-
 def set_classes(storage_mode, impressions_mode, api_adapter):
     unique_keys_synchronizer = None
     clear_filter_sync = None

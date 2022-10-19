@@ -50,6 +50,7 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
                 self._apikey,
                 extra_headers=extra_headers,
                 query=query,
+                metric_name='split'
             )
             if 200 <= response.status_code < 300:
                 return json.loads(response.body)

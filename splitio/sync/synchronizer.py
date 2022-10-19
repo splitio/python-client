@@ -14,7 +14,7 @@ class SplitSynchronizers(object):
     """SplitSynchronizers."""
 
     def __init__(self, split_sync, segment_sync, impressions_sync, events_sync,  # pylint:disable=too-many-arguments
-                 impressions_count_sync, unique_keys_sync = None, clear_filter_sync = None):
+                 impressions_count_sync, unique_keys_sync = None, clear_filter_sync = None, telemetry_sync = None):
         """
         Class constructor.
 
@@ -36,6 +36,7 @@ class SplitSynchronizers(object):
         self._impressions_count_sync = impressions_count_sync
         self._unique_keys_sync = unique_keys_sync
         self._clear_filter_sync = clear_filter_sync
+        self._telemetry_sync = telemetry_sync
 
     @property
     def split_sync(self):
@@ -72,11 +73,16 @@ class SplitSynchronizers(object):
         """Return clear filter synchonizer."""
         return self._clear_filter_sync
 
+    @property
+    def telemetry_sync(self):
+        """Return clear filter synchonizer."""
+        return self._telemetry_sync
+
 class SplitTasks(object):
     """SplitTasks."""
 
     def __init__(self, split_task, segment_task, impressions_task, events_task,  # pylint:disable=too-many-arguments
-                 impressions_count_task, unique_keys_task = None, clear_filter_task = None):
+                 impressions_count_task, unique_keys_task = None, clear_filter_task = None, telemetry_task = None):
         """
         Class constructor.
 
@@ -98,6 +104,7 @@ class SplitTasks(object):
         self._impressions_count_task = impressions_count_task
         self._unique_keys_task = unique_keys_task
         self._clear_filter_task = clear_filter_task
+        self._telemetry_task = telemetry_task
 
     @property
     def split_task(self):
@@ -133,6 +140,11 @@ class SplitTasks(object):
     def clear_filter_task(self):
         """Return clear filter sync task."""
         return self._clear_filter_task
+
+    @property
+    def telemetry_task(self):
+        """Return clear filter sync task."""
+        return self._telemetry_task
 
 class BaseSynchronizer(object, metaclass=abc.ABCMeta):
     """Synchronizer interface."""
@@ -225,7 +237,8 @@ class Synchronizer(BaseSynchronizer):
         self._split_tasks = split_tasks
         self._periodic_data_recording_tasks = [
             self._split_tasks.impressions_task,
-            self._split_tasks.events_task
+            self._split_tasks.events_task,
+            self._split_tasks.telemetry_task
         ]
         if self._split_tasks.impressions_count_task:
             self._periodic_data_recording_tasks.append(self._split_tasks.impressions_count_task)
@@ -233,7 +246,6 @@ class Synchronizer(BaseSynchronizer):
             self._periodic_data_recording_tasks.append(self._split_tasks.unique_keys_task)
         if self._split_tasks.clear_filter_task:
             self._periodic_data_recording_tasks.append(self._split_tasks.clear_filter_task)
-
 
     def _synchronize_segments(self):
         _LOGGER.debug('Starting segments synchronization')
@@ -294,6 +306,7 @@ class Synchronizer(BaseSynchronizer):
                     continue
 
                 # Only retrying splits, since segments may trigger too many calls.
+
                 if not self._synchronize_segments():
                     _LOGGER.warning('Segments failed to synchronize.')
 

@@ -2,6 +2,7 @@
 
 import logging
 from threading import Timer
+import time
 
 from splitio.api import APIException
 from splitio.push.splitsse import SplitSSEClient
@@ -20,7 +21,7 @@ _LOGGER = logging.getLogger(__name__)
 class PushManager(object):  # pylint:disable=too-many-instance-attributes
     """Push notifications susbsytem manager."""
 
-    def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, sse_url=None, client_key=None):
+    def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None):
         """
         Class constructor.
 
@@ -45,7 +46,7 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         self._auth_api = auth_api
         self._feedback_loop = feedback_loop
         self._processor = MessageProcessor(synchronizer)
-        self._status_tracker = PushStatusTracker()
+        self._status_tracker = PushStatusTracker(telemetry_runtime_producer)
         self._event_handlers = {
             EventType.MESSAGE: self._handle_message,
             EventType.ERROR: self._handle_error
@@ -62,6 +63,8 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
                                           self._handle_connection_end, client_key, **kwargs)
         self._running = False
         self._next_refresh = Timer(0, lambda: 0)
+        self._telemetry_runtime_producer = telemetry_runtime_producer
+
 
     def update_workers_status(self, enabled):
         """
@@ -146,11 +149,13 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
             return
 
         _LOGGER.debug("auth token fetched. connecting to streaming.")
+
         self._status_tracker.reset()
         if self._sse_client.start(token):
             _LOGGER.debug("connected to streaming, scheduling next refresh")
             self._setup_next_token_refresh(token)
             self._running = True
+            self._telemetry_runtime_producer.record_streaming_event(('CONNECTION_ESTABLISHED', '',  1000 * int(time.time())))
 
     def _setup_next_token_refresh(self, token):
         """
@@ -165,6 +170,7 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
                                    self._token_refresh)
         self._next_refresh.setName('TokenRefresh')
         self._next_refresh.start()
+        self._telemetry_runtime_producer.record_streaming_event(('TOKEN_REFRESH', self._next_refresh,  1000 * int(time.time())))
 
     def _handle_message(self, event):
         """

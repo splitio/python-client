@@ -27,7 +27,7 @@ class HttpClient(object):
     AUTH_URL = 'https://auth.split.io/api'
     TELEMETRY_URL = 'https://telemetry.split.io/api'
 
-    def __init__(self, timeout=None, sdk_url=None, events_url=None, auth_url=None, telemetry_url=None):
+    def __init__(self, timeout=None, sdk_url=None, events_url=None, auth_url=None, telemetry_url=None, telemetry_runtime_producer=None):
         """
         Class constructor.
 
@@ -49,6 +49,7 @@ class HttpClient(object):
             'auth': auth_url if auth_url is not None else self.AUTH_URL,
             'telemetry': telemetry_url if telemetry_url is not None else self.TELEMETRY_URL,
         }
+        self._telemetry_runtime_producer = telemetry_runtime_producer
 
     def _build_url(self, server, path):
         """
@@ -77,7 +78,7 @@ class HttpClient(object):
             'Authorization': "Bearer %s" % apikey
         }
 
-    def get(self, server, path, apikey, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
+    def get(self, server, path, apikey, query=None, extra_headers=None, metric_name=None):  # pylint: disable=too-many-arguments
         """
         Issue a get request.
 
@@ -106,11 +107,22 @@ class HttpClient(object):
                 headers=headers,
                 timeout=self._timeout
             )
-            return HttpResponse(response.status_code, response.text)
+            elapsed = response.elapsed.total_seconds()
+            response = HttpResponse(response.status_code, response.text)
+            self._telemetry_runtime_producer.record_sync_latency(metric_name, elapsed)
+            if not 200 <= response.status_code < 300:
+                self._telemetry_runtime_producer.record_sync_error(metric_name, response.status_code)
+                if metric_name == 'token':
+                    self._telemetry_runtime_producer.record_auth_rejections()
+            else:
+                self._telemetry_runtime_producer.record_suceessful_sync(metric_name, round(1000 * elapsed))
+                if metric_name == 'token':
+                    self._telemetry_runtime_producer.record_token_refreshes()
+            return response
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('requests library is throwing exceptions') from exc
 
-    def post(self, server, path, apikey, body, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
+    def post(self, server, path, apikey, body, query=None, extra_headers=None, metric_name=None):  # pylint: disable=too-many-arguments
         """
         Issue a POST request.
 
@@ -143,6 +155,13 @@ class HttpClient(object):
                 headers=headers,
                 timeout=self._timeout
             )
-            return HttpResponse(response.status_code, response.text)
+            elapsed = response.elapsed.total_seconds()
+            response = HttpResponse(response.status_code, response.text)
+            self._telemetry_runtime_producer.record_sync_latency(metric_name, elapsed)
+            if not 200 <= response.status_code < 300:
+                self._telemetry_runtime_producer.record_sync_error(metric_name, response.status_code)
+            else:
+                self._telemetry_runtime_producer.record_suceessful_sync(metric_name, round(1000 * elapsed))
+            return response
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('requests library is throwing exceptions') from exc

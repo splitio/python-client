@@ -7,6 +7,7 @@ from splitio.engine.telemetry import TelemetryEvaluationConsumer, TelemetryInitC
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemorySegmentStorage, InMemorySplitStorage
 from splitio.models.splits import Split, Status
 from splitio.models.segments import Segment
+from splitio.models.telemetry import StreamingEvents
 
 class TelemetrySynchronizerTests(object):
     """Telemetry synchronizer test cases."""
@@ -35,25 +36,79 @@ class TelemetrySubmitterTests(object):
         segment_storage = InMemorySegmentStorage()
         segment_storage.put(Segment('segment1', [], 123))
         telemetry_submitter = TelemetrySubmitter(telemetry_consumer, split_storage, segment_storage, api)
-        telemetry_storage._counters = {'iQ': 1, 'iDe': 0, 'iDr': 3, 'eQ': 0, 'eD': 10, 'sL': 0,
-                        'aR': 0, 'tR': 3}
-        telemetry_storage._exceptions = {'mE': {'t': 1, 'ts': 0, 'tc': 5, 'tcs': 0, 'tr': 3}}
-        telemetry_storage._records = {'IS': {'sp': 5, 'se': 3, 'ms': 0, 'im': 10, 'ic': 0, 'ev': 4, 'te': 0, 'to': 0},
-                         'sL': 3}
-        telemetry_storage._http_errors = {'sp': {'500': 3}, 'se': {}, 'ms': {}, 'im': {}, 'ic': {}, 'ev': {}, 'te': {}, 'to': {}}
-        telemetry_storage._config = {'bT':0, 'nR':0, 'uC': 0}
-        telemetry_storage._streaming_events = []
-        telemetry_storage._tags = ['tag1']
-        telemetry_storage._integrations = {}
-        telemetry_storage._latencies = {'mL': {'t': [10, 20], 'ts': [50], 'tc': [], 'tcs': [], 'tr': []},
-                           'hL': {'sp': [200, 300], 'se': [], 'ms': [400], 'im': [], 'ic': [200], 'ev': [], 'te': [], 'to': []}}
 
+        telemetry_storage._counters._impressions_queued = 100
+        telemetry_storage._counters._impressions_deduped = 30
+        telemetry_storage._counters._impressions_dropped = 0
+        telemetry_storage._counters._events_queued = 20
+        telemetry_storage._counters._events_dropped = 10
+        telemetry_storage._counters._auth_rejections = 1
+        telemetry_storage._counters._token_refreshes = 3
+        telemetry_storage._counters._session_length = 3
+
+        telemetry_storage._method_exceptions._treatment =  10
+        telemetry_storage._method_exceptions._treatments = 1
+        telemetry_storage._method_exceptions._treatment_with_config = 5
+        telemetry_storage._method_exceptions._treatments_with_config = 1
+        telemetry_storage._method_exceptions._track = 3
+
+        telemetry_storage._last_synchronization._split = 5
+        telemetry_storage._last_synchronization._segment = 3
+        telemetry_storage._last_synchronization._impression = 10
+        telemetry_storage._last_synchronization._impression_count = 0
+        telemetry_storage._last_synchronization._event = 4
+        telemetry_storage._last_synchronization._telemetry = 0
+        telemetry_storage._last_synchronization._token = 3
+
+        telemetry_storage._http_sync_errors._split = {'500': 3, '501': 2}
+        telemetry_storage._http_sync_errors._segment = {'401': 1}
+        telemetry_storage._http_sync_errors._impression = {'500': 1}
+        telemetry_storage._http_sync_errors._impression_count = {'401': 5}
+        telemetry_storage._http_sync_errors._event = {'404': 10}
+        telemetry_storage._http_sync_errors._telemetry = {'501': 3}
+        telemetry_storage._http_sync_errors._token = {'505': 11}
+
+        telemetry_storage._streaming_events = StreamingEvents()
+        telemetry_storage._tags = ['tag1']
+
+        telemetry_storage._method_latencies._treatment = [10, 20]
+        telemetry_storage._method_latencies._treatments = [50]
+        telemetry_storage._method_latencies._treatment_with_config = [20]
+        telemetry_storage._method_latencies._treatments_with_config = [20, 30, 10]
+        telemetry_storage._method_latencies._track =[100]
+
+        telemetry_storage._http_latencies._split = [200, 300]
+        telemetry_storage._http_latencies._segment = [400]
+        telemetry_storage._http_latencies._impression = [500, 400, 600]
+        telemetry_storage._http_latencies._impression_count = [200]
+        telemetry_storage._http_latencies._event = [200]
+        telemetry_storage._http_latencies._telemetry = [300]
+        telemetry_storage._http_latencies._token =  [100, 100]
+
+        telemetry_storage.record_config({'operationMode': 'inmemory',
+                                        'streamingEnabled': True,
+                                        'impressionsQueueSize': 100,
+                                        'eventsQueueSize': 200,
+                                        'impressionsMode': 'DEBUG',
+                                        'impressionListener': None,
+                                        'featuresRefreshRate': 30,
+                                        'segmentsRefreshRate': 30,
+                                        'impressionsRefreshRate': 60,
+                                        'eventsPushRate': 60,
+                                        'metrcsRefreshRate': 10,
+                                        'activeFactoryCount': 1,
+                                        'redundantFactoryCount': 0,
+                                        'blockUntilReadyTimeout': 10,
+                                        'notReady': 0,
+                                        'timeUntilReady': 1
+                                       }
+        )
         def record_init(*args, **kwargs):
             self.formatted_config = args[0]
 
         api.record_init.side_effect = record_init
         telemetry_submitter.synchronize_config()
-        assert(self.formatted_config == json.dumps(telemetry_submitter._telemetry_init_consumer.get_config_stats()))
+        assert(self.formatted_config == telemetry_submitter._telemetry_init_consumer.get_config_stats_to_json())
 
         def record_stats(*args, **kwargs):
             self.formatted_stats = args[0]
@@ -61,22 +116,22 @@ class TelemetrySubmitterTests(object):
         api.record_stats.side_effect = record_stats
         telemetry_submitter.synchronize_stats()
         assert(self.formatted_stats == json.dumps({
-            **{'iQ': telemetry_submitter._telemetry_runtime_consumer.get_impressions_stats('iQ')},
-            **{'iDe': telemetry_submitter._telemetry_runtime_consumer.get_impressions_stats('iDe')},
-            **{'iDr': telemetry_submitter._telemetry_runtime_consumer.get_impressions_stats('iDr')},
-            **{'eQ': telemetry_submitter._telemetry_runtime_consumer.get_events_stats('eQ')},
-            **{'eD': telemetry_submitter._telemetry_runtime_consumer.get_events_stats('eD')},
-            **{'IS': telemetry_submitter._telemetry_runtime_consumer.get_last_synchronization()},
-            **{'t': ['tag1']},
-            **{'hE': {'sp': {'500': 3}, 'se': {}, 'ms': {}, 'im': {}, 'ic': {}, 'ev': {}, 'te': {}, 'to': {}}},
-            **{'hL': {'sp': [200, 300], 'se': [], 'ms': [400], 'im': [], 'ic': [200], 'ev': [], 'te': [], 'to': []}},
-            **{'aR': 0},
-            **{'tR': 3},
-            **{'sE': []},
-            **{'sL': 3},
-            **{'mE': {'t': 1, 'ts': 0, 'tc': 5, 'tcs': 0, 'tr': 3}},
-            **{'mL': {'t': [10, 20], 'ts': [50], 'tc': [], 'tcs': [], 'tr': []}},
-            **{'spC': telemetry_submitter._split_storage.get_splits_count()},
-            **{'seC': telemetry_submitter._segment_storage.get_segments_count()},
-            **{'skC': telemetry_submitter._segment_storage.get_segments_keys_count()}
+            "iQ": 100,
+            "iDe": 30,
+            "iDr": 0,
+            "eQ": 20,
+            "eD": 10,
+            "lS": {"sp": 5, "se": 3, "im": 10, "ic": 0, "ev": 4, "te": 0, "to": 3},
+            "t": ["tag1"],
+            "hE": {"sp": {"500": 3, "501": 2}, "se": {"401": 1}, "im": {"500": 1}, "ic": {"401": 5}, "ev": {"404": 10}, "te": {"501": 3}, "to": {"505": 11}},
+            "hL": {"sp": [200, 300], "se": [400], "im": [500, 400, 600], "ic": [200], "ev": [200], "te": [300], "to": [100, 100]},
+            "aR": 1,
+            "tR": 3,
+            "sE": [],
+            "sL": 3,
+            "mE": {"t": 10, "ts": 1, "tc": 5, "tcs": 1, "tr": 3},
+            "mL": {"t": [10, 20], "ts": [50], "tc": [20], "tcs": [20, 30, 10], "tr": [100]},
+            "spC": 1,
+            "seC": 1,
+            "skC": 0
         }))

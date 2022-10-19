@@ -67,7 +67,8 @@ class EventsAPI(object):  # pylint: disable=too-few-public-methods
                 '/events/bulk',
                 self._apikey,
                 body=bulk,
-                extra_headers=self._metadata
+                extra_headers=self._metadata,
+                metric_name='event'
             )
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)

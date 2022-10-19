@@ -97,7 +97,8 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
                 '/testImpressions/bulk',
                 self._apikey,
                 body=bulk,
-                extra_headers=self._metadata
+                extra_headers=self._metadata,
+                metric_name='impression'
             )
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
@@ -122,7 +123,8 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
                 '/testImpressions/count',
                 self._apikey,
                 body=bulk,
-                extra_headers=self._metadata
+                extra_headers=self._metadata,
+                metric_name='im'
             )
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)

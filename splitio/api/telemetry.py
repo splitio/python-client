@@ -1,5 +1,4 @@
 """Impressions API module."""
-
 import logging
 
 from splitio.api import APIException
@@ -34,18 +33,19 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
         try:
             response = self._client.post(
                 'telemetry',
-                '/keys/ss',
+                '/v1/keys/ss',
                 self._apikey,
                 body=uniques,
-                extra_headers=self._metadata
+                extra_headers=self._metadata,
+                metric_name='telemetry'
             )
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error(
+            _LOGGER.info(
                 'Error posting unique keys because an exception was raised by the HTTPClient'
             )
-            _LOGGER.debug('Error: ', exc_info=True)
+            _LOGGER.info('Error: ', exc_info=True)
             raise APIException('Unique keys not flushed properly.') from exc
 
     def record_init(self, configs):
@@ -57,41 +57,43 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
         """
         try:
             response = self._client.post(
-                'metrics',
-                '/config',
+                'telemetry',
+                '/v1/metrics/config',
                 self._apikey,
                 body=configs,
-                extra_headers=self._metadata
+                extra_headers=self._metadata,
+                metric_name='telemetry'
             )
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error(
+            _LOGGER.info(
                 'Error posting init config because an exception was raised by the HTTPClient'
             )
-            _LOGGER.debug('Error: ', exc_info=True)
+            _LOGGER.info('Error: ', exc_info=True)
             raise APIException('Init config data not flushed properly.') from exc
 
     def record_stats(self, stats):
         """
         Send runtime stats to the backend.
 
-        :param configs: configs
+        :param stats: stats
         :type json
         """
         try:
             response = self._client.post(
-                'metrics',
-                '/usage',
+                'telemetry',
+                '/v1/metrics/usage',
                 self._apikey,
                 body=stats,
-                extra_headers=self._metadata
+                extra_headers=self._metadata,
+                metric_name='telemetry'
             )
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error(
+            _LOGGER.info(
                 'Error posting runtime stats because an exception was raised by the HTTPClient'
             )
-            _LOGGER.debug('Error: ', exc_info=True)
+            _LOGGER.info('Error: ', exc_info=True)
             raise APIException('Runtime stats not flushed properly.') from exc
