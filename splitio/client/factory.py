@@ -204,7 +204,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
                 self._telemetry_init_producer.record_bur_time_out()
                 raise TimeoutException('SDK Initialization: time of %d exceeded' % timeout)
             else:
-                redundant_factory_count, active_factory_count = _get_active_and_derundant_count()
+                redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
                 self._telemetry_init_producer.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
 
                 config_post_thread = threading.Thread(target=self._telemetry_api.record_init(self._telemetry_init_consumer.get_config_stats()), name="PostConfigData")
@@ -576,7 +576,7 @@ def get_factory(api_key, **kwargs):
         _INSTANTIATED_FACTORIES.update([api_key])
         _INSTANTIATED_FACTORIES_LOCK.release()
 
-def _get_active_and_derundant_count():
+def _get_active_and_redundant_count():
     redundant_factory_count = 0
     active_factory_count = 0
     _INSTANTIATED_FACTORIES_LOCK.acquire()

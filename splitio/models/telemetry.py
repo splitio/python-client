@@ -2,12 +2,8 @@
 from bisect import bisect_left
 import threading
 import os
-import logging
 
 from splitio.engine.impressions import ImpressionsMode
-
-_LOGGER = logging.getLogger(__name__)
-
 
 BUCKETS = (
     1000, 1500, 2250, 3375, 5063,
@@ -270,7 +266,6 @@ class MethodExceptions(object):
                 self._track = self._track + 1
             else:
                 return
-        _LOGGER.debug(self._treatment)
 
     def pop_all(self):
         """
@@ -744,7 +739,6 @@ class TelemetryConfig(object):
         with self._lock:
             self._active_factory_count = active_factory_count
             self._redundant_factory_count = redundant_factory_count
-
 
     def record_ready_time(self, ready_time):
         """
