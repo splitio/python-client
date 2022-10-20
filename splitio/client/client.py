@@ -5,7 +5,7 @@ from splitio.engine.evaluator import Evaluator, CONTROL
 from splitio.engine.splitters import Splitter
 from splitio.models.impressions import Impression, Label
 from splitio.models.events import Event, EventWrapper
-from splitio.models.telemetry import get_latency_bucket_index
+from splitio.models.telemetry import get_latency_bucket_index, TRACK
 from splitio.client import input_validator
 from splitio.util import utctime_ms
 
@@ -21,7 +21,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
     _METRIC_GET_TREATMENT_WITH_CONFIG = 'sdk.getTreatmentWithConfig'
     _METRIC_GET_TREATMENTS_WITH_CONFIG = 'sdk.getTreatmentsWithConfig'
 
-    def __init__(self, factory, recorder, labels_enabled=True, telemetry_evaluation_producer=None):
+    def __init__(self, factory, recorder, labels_enabled=True):
         """
         Construct a Client instance.
 
@@ -44,7 +44,8 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         self._segment_storage = factory._get_storage('segments')  # pylint: disable=protected-access
         self._events_storage = factory._get_storage('events')  # pylint: disable=protected-access
         self._evaluator = Evaluator(self._split_storage, self._segment_storage, self._splitter)
-        self._telemetry_evaluation_producer = telemetry_evaluation_producer
+        self._telemetry_evaluation_producer = self._factory._telemetry_evaluation_producer
+        self._telemetry_init_producer = self._factory._telemetry_init_producer
 
     def destroy(self):
         """
@@ -66,6 +67,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
     def _evaluate_if_ready(self, matching_key, bucketing_key, feature, attributes=None):
         if not self.ready:
+            self._telemetry_init_producer.record_not_ready_usage()
             return {
                 'treatment': CONTROL,
                 'configurations': None,
@@ -117,8 +119,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                 bucketing_key,
                 utctime_ms(),
             )
-            self._record_stats([(impression, attributes)], start, metric_name)
-            self._telemetry_evaluation_producer.record_latency(method_name[4:], 1000 * (int(round(time.time() * 1000)) - start))
+            self._record_stats([(impression, attributes)], start, metric_name, method_name)
             return result['treatment'], result['configurations']
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error getting treatment for feature')
@@ -208,7 +209,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                 _LOGGER.debug('Error: ', exc_info=True)
                 self._telemetry_evaluation_producer.record_exception(method_name[4:])
 
-            self._telemetry_evaluation_producer.record_latency(method_name[4:], 1000 * (int(round(time.time() * 1000)) - start))
+            self._telemetry_evaluation_producer.record_latency(method_name[4:], int(round(time.time() * 1000)) - start)
             return treatments
         except Exception:  # pylint: disable=broad-except
             self._telemetry_evaluation_producer.record_exception(method_name)
@@ -218,6 +219,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
     def _evaluate_features_if_ready(self, matching_key, bucketing_key, features, attributes=None):
         if not self.ready:
+            self._telemetry_init_producer.record_not_ready_usage()
             return {
                 feature: {
                     'treatment': CONTROL,
@@ -332,7 +334,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             bucketing_key=bucketing_key, time=imp_time
         )
 
-    def _record_stats(self, impressions, start, operation):
+    def _record_stats(self, impressions, start, operation, method_name=None):
         """
         Record impressions.
 
@@ -348,6 +350,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         end = int(round(time.time() * 1000))
         self._recorder.record_treatment_stats(impressions, get_latency_bucket_index(end - start),
                                               operation)
+        if not method_name == None:
+            self._telemetry_evaluation_producer.record_latency(method_name[4:], end - start)
+
 
     def track(self, key, traffic_type, event_type, value=None, properties=None):
         """
@@ -373,6 +378,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         if self._factory._waiting_fork():
             _LOGGER.error("Client is not ready - no calls possible")
             return False
+        if not self.ready:
+            _LOGGER.warn("track: the SDK is not ready, results may be incorrect. Make sure to wait for SDK readiness before using this method")
+            self._telemetry_init_producer.record_not_ready_usage()
 
         start = int(round(time.time() * 1000))
         key = input_validator.validate_track_key(key)
@@ -404,8 +412,8 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             event=event,
             size=size,
         )])
-        self._telemetry_evaluation_producer.record_latency('track', 1000 * (int(round(time.time() * 1000)) - start))
+        self._telemetry_evaluation_producer.record_latency(TRACK, int(round(time.time() * 1000)) - start)
         if not return_flag:
-            self._telemetry_evaluation_producer.record_exception('track')
+            self._telemetry_evaluation_producer.record_exception(TRACK)
 
         return return_flag

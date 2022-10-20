@@ -740,6 +740,7 @@ class TelemetryConfig(object):
             self._active_factory_count = active_factory_count
             self._redundant_factory_count = redundant_factory_count
 
+
     def record_ready_time(self, ready_time):
         """
         Record ready time.

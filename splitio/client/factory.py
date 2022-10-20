@@ -157,6 +157,13 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         self._status = Status.READY
         self._sdk_ready_flag.set()
         self._telemetry_init_producer.record_ready_time(int(round(time.time() * 1000)) - self._ready_time)
+        redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
+        self._telemetry_init_producer.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+
+        config_post_thread = threading.Thread(target=self._telemetry_api.record_init(self._telemetry_init_consumer.get_config_stats()), name="PostConfigData")
+        config_post_thread.setDaemon(True)
+        config_post_thread.start()
+
 
     def _get_storage(self, name):
         """
@@ -177,7 +184,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         This client is only a set of references to structures hold by the factory.
         Creating one a fast operation and safe to be used anywhere.
         """
-        return Client(self, self._recorder, self._labels_enabled, self._telemetry_evaluation_producer)
+        return Client(self, self._recorder, self._labels_enabled)
 
     def manager(self):
         """
@@ -203,13 +210,6 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
             if not ready:
                 self._telemetry_init_producer.record_bur_time_out()
                 raise TimeoutException('SDK Initialization: time of %d exceeded' % timeout)
-            else:
-                redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
-                self._telemetry_init_producer.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
-
-                config_post_thread = threading.Thread(target=self._telemetry_api.record_init(self._telemetry_init_consumer.get_config_stats()), name="PostConfigData")
-                config_post_thread.setDaemon(True)
-                config_post_thread.start()
 
     @property
     def ready(self):
@@ -337,18 +337,17 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         events_url=events_url,
         auth_url=auth_api_base_url,
         telemetry_url=telemetry_api_base_url,
-        timeout=cfg.get('connectionTimeout'),
-        telemetry_runtime_producer=telemetry_runtime_producer
+        timeout=cfg.get('connectionTimeout')
     )
 
     sdk_metadata = util.get_metadata(cfg)
     apis = {
-        'auth': AuthAPI(http_client, api_key, sdk_metadata),
-        'splits': SplitsAPI(http_client, api_key, sdk_metadata),
-        'segments': SegmentsAPI(http_client, api_key, sdk_metadata),
-        'impressions': ImpressionsAPI(http_client, api_key, sdk_metadata, cfg['impressionsMode']),
-        'events': EventsAPI(http_client, api_key, sdk_metadata),
-        'telemetry': TelemetryAPI(http_client, api_key, sdk_metadata),
+        'auth': AuthAPI(http_client, api_key, sdk_metadata, telemetry_runtime_producer),
+        'splits': SplitsAPI(http_client, api_key, sdk_metadata, telemetry_runtime_producer),
+        'segments': SegmentsAPI(http_client, api_key, sdk_metadata, telemetry_runtime_producer),
+        'impressions': ImpressionsAPI(http_client, api_key, sdk_metadata, telemetry_runtime_producer, cfg['impressionsMode']),
+        'events': EventsAPI(http_client, api_key, sdk_metadata, telemetry_runtime_producer),
+        'telemetry': TelemetryAPI(http_client, api_key, sdk_metadata, telemetry_runtime_producer),
     }
 
     if not input_validator.validate_apikey_type(apis['segments']):

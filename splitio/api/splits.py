@@ -2,11 +2,12 @@
 
 import logging
 import json
+import time
 
 from splitio.api import APIException
-from splitio.api.commons import headers_from_metadata, build_fetch
+from splitio.api.commons import headers_from_metadata, build_fetch, record_telemetry
 from splitio.api.client import HttpClientException
-
+from splitio.models.telemetry import SPLIT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -14,7 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 class SplitsAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the splits API."""
 
-    def __init__(self, client, apikey, sdk_metadata):
+    def __init__(self, client, apikey, sdk_metadata, telemetry_runtime_producer):
         """
         Class constructor.
 
@@ -28,6 +29,7 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
         self._client = client
         self._apikey = apikey
         self._metadata = headers_from_metadata(sdk_metadata)
+        self._telemetry_runtime_producer = telemetry_runtime_producer
 
     def fetch_splits(self, change_number, fetch_options):
         """
@@ -42,6 +44,7 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
         :return: Json representation of a splitChanges response.
         :rtype: dict
         """
+        start = int(round(time.time() * 1000))
         try:
             query, extra_headers = build_fetch(change_number, fetch_options, self._metadata)
             response = self._client.get(
@@ -50,8 +53,8 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
                 self._apikey,
                 extra_headers=extra_headers,
                 query=query,
-                metric_name='split'
             )
+            record_telemetry(response.status_code, int(round(time.time() * 1000)) - start, SPLIT, self._telemetry_runtime_producer)
             if 200 <= response.status_code < 300:
                 return json.loads(response.body)
             else:
