@@ -88,7 +88,7 @@ class OperationMode(object):
     Storage modes constants
 
     """
-    MEMEORY = 'in-memory'
+    MEMEORY = 'inmemory'
     REDIS = 'redis-consumer'
 
 def get_latency_bucket_index(micros):
