@@ -1,5 +1,5 @@
 """Commons module."""
-
+import time
 
 _CACHE_CONTROL = 'Cache-Control'
 _CACHE_CONTROL_NO_CACHE = 'no-cache'
@@ -50,7 +50,7 @@ def record_telemetry(status_code, elapsed, metric_name, telemetry_runtime_produc
     """
     telemetry_runtime_producer.record_sync_latency(metric_name, elapsed)
     if 200 <= status_code < 300:
-        telemetry_runtime_producer.record_suceessful_sync(metric_name, elapsed)
+        telemetry_runtime_producer.record_suceessful_sync(metric_name, int(round(time.time() * 1000)))
     else:
         telemetry_runtime_producer.record_sync_error(metric_name, status_code)
 
