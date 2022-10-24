@@ -51,8 +51,8 @@ def record_telemetry(status_code, elapsed, metric_name, telemetry_runtime_produc
     telemetry_runtime_producer.record_sync_latency(metric_name, elapsed)
     if 200 <= status_code < 300:
         telemetry_runtime_producer.record_successful_sync(metric_name, get_current_epoch_time())
-    else:
-        telemetry_runtime_producer.record_sync_error(metric_name, status_code)
+        return
+    telemetry_runtime_producer.record_sync_error(metric_name, status_code)
 
 class FetchOptions(object):
     """Fetch Options object."""

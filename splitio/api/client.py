@@ -108,8 +108,7 @@ class HttpClient(object):
                 headers=headers,
                 timeout=self._timeout
             )
-            response = HttpResponse(response.status_code, response.text)
-            return response
+            return HttpResponse(response.status_code, response.text)
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('requests library is throwing exceptions') from exc
 
@@ -146,7 +145,6 @@ class HttpClient(object):
                 headers=headers,
                 timeout=self._timeout
             )
-            response = HttpResponse(response.status_code, response.text)
-            return response
+            return HttpResponse(response.status_code, response.text)
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('requests library is throwing exceptions') from exc

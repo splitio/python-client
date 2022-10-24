@@ -408,12 +408,15 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             properties=properties,
         )
 
-        return_flag = self._recorder.record_track_stats([EventWrapper(
-            event=event,
-            size=size,
-        )])
-        self._telemetry_evaluation_producer.record_latency(TRACK, get_current_epoch_time() - start)
-        if not return_flag:
+        try:
+            return_flag = self._recorder.record_track_stats([EventWrapper(
+                event=event,
+                size=size,
+            )])
+            self._telemetry_evaluation_producer.record_latency(TRACK, get_current_epoch_time() - start)
+        except Exception:  # pylint: disable=broad-except
             self._telemetry_evaluation_producer.record_exception(TRACK)
+            _LOGGER.error('Error processing track event')
+            _LOGGER.debug('Error: ', exc_info=True)
 
         return return_flag

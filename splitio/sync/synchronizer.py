@@ -361,11 +361,14 @@ class Synchronizer(BaseSynchronizer):
         if blocking:
             events = []
             for task in self._periodic_data_recording_tasks:
-                stop_event = threading.Event()
-                task.stop(stop_event)
-                events.append(stop_event)
-                time.sleep(0.4)
-            if all(event.wait() for event in events):
+                if task != self._split_tasks.telemetry_task:
+                    stop_event = threading.Event()
+                    task.stop(stop_event)
+                    events.append(stop_event)
+            all(event.wait() for event in events)
+            telemetry_event = threading.Event()
+            self._split_tasks.telemetry_task.stop(telemetry_event)
+            if telemetry_event.wait():
                 _LOGGER.debug('all tasks finished successfully.')
         else:
             for task in self._periodic_data_recording_tasks:
