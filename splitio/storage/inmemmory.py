@@ -526,7 +526,7 @@ class InMemoryTelemetryStorage(TelemetryStorage):
         """Record events stats."""
         self._counters.record_events_value(data_type, count)
 
-    def record_suceessful_sync(self, resource, time):
+    def record_successful_sync(self, resource, time):
         """Record successful sync."""
         self._last_synchronization.add_latency(resource, time)
 

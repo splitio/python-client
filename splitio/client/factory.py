@@ -2,7 +2,6 @@
 import logging
 import threading
 from collections import Counter
-import time
 
 from enum import Enum
 
@@ -34,6 +33,7 @@ from splitio.api.impressions import ImpressionsAPI
 from splitio.api.events import EventsAPI
 from splitio.api.auth import AuthAPI
 from splitio.api.telemetry import TelemetryAPI
+from splitio.api.commons import get_current_epoch_time
 
 # Tasks
 from splitio.tasks.split_sync import SplitSynchronizationTask
@@ -128,7 +128,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         self._telemetry_init_producer = telemetry_producer.get_telemetry_init_producer()
         self._telemetry_init_consumer = telemetry_init_consumer
         self._telemetry_api = telemetry_api
-        self._ready_time = int(round(time.time() * 1000))
+        self._ready_time = get_current_epoch_time()
         self._start_status_updater()
 
     def _start_status_updater(self):
@@ -156,7 +156,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         self._sdk_internal_ready_flag.wait()
         self._status = Status.READY
         self._sdk_ready_flag.set()
-        self._telemetry_init_producer.record_ready_time(int(round(time.time() * 1000)) - self._ready_time)
+        self._telemetry_init_producer.record_ready_time(get_current_epoch_time() - self._ready_time)
         redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
         self._telemetry_init_producer.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
 

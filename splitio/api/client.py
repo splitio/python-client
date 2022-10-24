@@ -2,6 +2,8 @@
 from collections import namedtuple
 
 import requests
+import logging
+_LOGGER = logging.getLogger(__name__)
 
 HttpResponse = namedtuple('HttpResponse', ['status_code', 'body'])
 

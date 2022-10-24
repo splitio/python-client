@@ -84,9 +84,9 @@ class TelemetryRuntimeProducer(object):
         """Record events stats."""
         self._telemetry_storage.record_event_stats(data_type, count)
 
-    def record_suceessful_sync(self, resource, time):
+    def record_successful_sync(self, resource, time):
         """Record successful sync."""
-        self._telemetry_storage.record_suceessful_sync(resource, time)
+        self._telemetry_storage.record_successful_sync(resource, time)
 
     def record_sync_error(self, resource, status):
         """Record sync error."""

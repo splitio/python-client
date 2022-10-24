@@ -499,7 +499,7 @@ class InMemoryTelemetryStorageTests(object):
         storage.record_event_stats('eventsDropped', 6)
         assert(storage._counters.get_counter_stats('eventsDropped') == 6)
 
-        storage.record_suceessful_sync('segment', 10)
+        storage.record_successful_sync('segment', 10)
         assert(storage._last_synchronization._segment == 10)
 
         storage.record_sync_error('segment', '500')

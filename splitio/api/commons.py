@@ -50,7 +50,7 @@ def record_telemetry(status_code, elapsed, metric_name, telemetry_runtime_produc
     """
     telemetry_runtime_producer.record_sync_latency(metric_name, elapsed)
     if 200 <= status_code < 300:
-        telemetry_runtime_producer.record_suceessful_sync(metric_name, int(round(time.time() * 1000)))
+        telemetry_runtime_producer.record_successful_sync(metric_name, get_current_epoch_time())
     else:
         telemetry_runtime_producer.record_sync_error(metric_name, status_code)
 
@@ -114,3 +114,12 @@ def build_fetch(change_number, fetch_options, metadata):
     if fetch_options.change_number is not None:
         query['till'] = fetch_options.change_number
     return query, extra_headers
+
+def get_current_epoch_time():
+    """
+    Get current epoch time in milliseconds
+
+    :return: epoch time
+    :rtype: int
+    """
+    return int(round(time.time() * 1000))

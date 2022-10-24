@@ -123,15 +123,15 @@ class TelemetryRuntimeProducerTest(object):
         assert(self.passed_args[0] == 'ev')
         assert(self.passed_args[1] == 20)
 
-    def test_record_suceessful_sync(self, mocker):
+    def test_record_successful_sync(self, mocker):
         telemetry_storage = mocker.Mock()
         telemetry_runtime_producer = TelemetryRuntimeProducer(telemetry_storage)
 
-        def record_suceessful_sync(*args, **kwargs):
+        def record_successful_sync(*args, **kwargs):
             self.passed_args = args
 
-        telemetry_storage.record_suceessful_sync.side_effect = record_suceessful_sync
-        telemetry_runtime_producer.record_suceessful_sync('split', 50)
+        telemetry_storage.record_successful_sync.side_effect = record_successful_sync
+        telemetry_runtime_producer.record_successful_sync('split', 50)
         assert(self.passed_args[0] == 'split')
         assert(self.passed_args[1] == 50)
 

@@ -3,6 +3,7 @@
 import abc
 import logging
 import threading
+import time
 
 from splitio.api import APIException
 
@@ -363,6 +364,7 @@ class Synchronizer(BaseSynchronizer):
                 stop_event = threading.Event()
                 task.stop(stop_event)
                 events.append(stop_event)
+                time.sleep(0.4)
             if all(event.wait() for event in events):
                 _LOGGER.debug('all tasks finished successfully.')
         else:

@@ -67,12 +67,25 @@ TREATMENTS = 'treatments'
 TREATMENT_WITH_CONFIG = 'treatmentWithConfig'
 TREATMENTS_WITH_CONFIG = 'treatmentsWithConfig'
 TRACK = 'track'
-STREAMING_EVENT_TYPES={'CONNECTION_ESTABLISHED': 0, 'OCCUPANCY_PRI': 10, 'OCCUPANCY_SEC': 20,
-             'STREAMING_STATUS': 30, 'SSE_CONNECTION_ERROR': 40, 'TOKEN_REFRESH': 50,
-             'ABLY_ERROR': 60, 'SYNC_MODE_UPDATE': 70}
-SSE_STREAMING_STATUS = {'ENABLED': 0, 'DISABLED': 1, 'PAUSED': 2}
-SSE_CONNECTION_ERROR = {'REQUESTED': 0, 'NON_REQUESTED': 1}
-SSE_SYNC_MODE = {'STREAMING': 0, 'POLLING': 1}
+CONNECTION_ESTABLISHED = 'CONNECTION_ESTABLISHED'
+STREAMING_STATUS = 'STREAMING_STATUS'
+SSE_CONNECTION_ERROR = 'SSE_CONNECTION_ERROR'
+TOKEN_REFRESH = 'TOKEN_REFRESH'
+ABLY_ERROR = 'ABLY_ERROR'
+SYNC_MODE_UPDATE = 'SYNC_MODE_UPDATE'
+STREAMING_EVENT_TYPES={CONNECTION_ESTABLISHED: 0, 'OCCUPANCY_PRI': 10, 'OCCUPANCY_SEC': 20,
+             STREAMING_STATUS: 30, SSE_CONNECTION_ERROR: 40, TOKEN_REFRESH: 50,
+             ABLY_ERROR: 60, SYNC_MODE_UPDATE: 70}
+ENABLED = 'ENABLED'
+DISABLED = 'DISABLED'
+PAUSED = 'PAUSED'
+SSE_STREAMING_STATUS = {ENABLED: 0, DISABLED: 1, PAUSED: 2}
+REQUESTED = 'REQUESTED'
+NON_REQUESTED = 'NON_REQUESTED'
+SSE_CONNECTION_ERROR_DICT = {REQUESTED: 0, NON_REQUESTED: 1}
+STREAMING = 'STREAMING'
+POLLING = 'POLLING'
+SSE_SYNC_MODE = {STREAMING: 0, POLLING: 1}
 
 class StorageType(object):
     """
@@ -582,21 +595,23 @@ class StreamingEvent(object):
 
     def _verify_event(self, streaming_event):
         if streaming_event[0] in STREAMING_EVENT_TYPES:
-            if streaming_event[0] == 'STREAMING_STATUS':
+            if streaming_event[0] == STREAMING_STATUS:
                 if streaming_event[1] not in SSE_STREAMING_STATUS:
                     return False
                 else:
                     self._data = SSE_STREAMING_STATUS[streaming_event[1]]
-            elif streaming_event[0] == 'SSE_CONNECTION_ERROR':
-                if streaming_event[1] not in SSE_CONNECTION_ERROR:
+            elif streaming_event[0] == SSE_CONNECTION_ERROR:
+                if streaming_event[1] not in SSE_CONNECTION_ERROR_DICT:
                     return False
                 else:
-                    self._data = SSE_CONNECTION_ERROR[streaming_event[1]]
-            elif streaming_event[0] == 'SYNC_MODE_UPDATE':
+                    self._data = SSE_CONNECTION_ERROR_DICT[streaming_event[1]]
+            elif streaming_event[0] == SYNC_MODE_UPDATE:
                 if streaming_event[1] not in SSE_SYNC_MODE:
                     return False
                 else:
                     self._data = SSE_SYNC_MODE[streaming_event[1]]
+            else:
+                self._data = streaming_event[1]
             return True
         return False
 
