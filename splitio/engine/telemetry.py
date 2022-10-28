@@ -155,21 +155,21 @@ class TelemetryInitConsumer(object):
     def get_config_stats_to_json(self):
         config_stats = self._telemetry_storage.get_config_stats()
         return json.dumps({
-            'oM': config_stats['operationMode'],
-            'sT': config_stats['storageType'],
-            'sE': config_stats['streamingEnabled'],
-            'rR': config_stats['refreshRate'],
-            'uO': config_stats['urlOverride'],
-            'iQ': config_stats['impressionsQueueSize'],
-            'eQ': config_stats['eventsQueueSize'],
-            'iM': config_stats['impressionsMode'],
-            'iL': config_stats['impressionListener'],
-            'hP': config_stats['httpProxy'],
-            'aF': config_stats['activeFactoryCount'],
-            'rF': config_stats['redundantFactoryCount'],
-            'bT': config_stats['blockUntilReadyTimeout'],
-            'nR': config_stats['notReady'],
-            'tR': config_stats['timeUntilReady']}
+            'oM': config_stats['oM'],
+            'sT': config_stats['sT'],
+            'sE': config_stats['sE'],
+            'rR': config_stats['rR'],
+            'uO': config_stats['uO'],
+            'iQ': config_stats['iQ'],
+            'eQ': config_stats['eQ'],
+            'iM': config_stats['iM'],
+            'iL': config_stats['iL'],
+            'hp': config_stats['hp'],
+            'aF': config_stats['aF'],
+            'rF': config_stats['rF'],
+            'bT': config_stats['bT'],
+            'nR': config_stats['nR'],
+            'tR': config_stats['tR']}
         )
 
 class TelemetryEvaluationConsumer(object):
@@ -194,14 +194,14 @@ class TelemetryEvaluationConsumer(object):
         return {
             'mE': {'t': exceptions['treatment'],
                       'ts': exceptions['treatments'],
-                      'tc': exceptions['treatmentWithConfig'],
-                      'tcs': exceptions['treatmentsWithConfig'],
+                      'tc': exceptions['treatment_with_config'],
+                      'tcs': exceptions['treatments_with_config'],
                       'tr': exceptions['track']
                },
             'mL':  {'t': latencies['treatment'],
                       'ts': latencies['treatments'],
-                      'tc': latencies['treatmentWithConfig'],
-                      'tcs': latencies['treatmentsWithConfig'],
+                      'tc': latencies['treatment_with_config'],
+                      'tcs': latencies['treatments_with_config'],
                       'tr': latencies['track']
                },
         }

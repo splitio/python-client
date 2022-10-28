@@ -10,7 +10,7 @@ from splitio.push.parser import parse_incoming_event, EventParsingException, Eve
     MessageType
 from splitio.push.processor import MessageProcessor
 from splitio.push.status_tracker import PushStatusTracker, Status
-from splitio.models.telemetry import CONNECTION_ESTABLISHED, TOKEN_REFRESH
+from splitio.models.telemetry import StreamingEventTypes
 _TOKEN_REFRESH_GRACE_PERIOD = 10 * 60  # 10 minutes
 
 
@@ -154,7 +154,7 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
             _LOGGER.debug("connected to streaming, scheduling next refresh")
             self._setup_next_token_refresh(token)
             self._running = True
-            self._telemetry_runtime_producer.record_streaming_event((CONNECTION_ESTABLISHED, 0,  get_current_epoch_time()))
+            self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.CONNECTION_ESTABLISHED, 0,  get_current_epoch_time()))
 
     def _setup_next_token_refresh(self, token):
         """
@@ -169,7 +169,7 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
                                    self._token_refresh)
         self._next_refresh.setName('TokenRefresh')
         self._next_refresh.start()
-        self._telemetry_runtime_producer.record_streaming_event((TOKEN_REFRESH, 1000 * token.exp,  get_current_epoch_time()))
+        self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.TOKEN_REFRESH, 1000 * token.exp,  get_current_epoch_time()))
 
     def _handle_message(self, event):
         """

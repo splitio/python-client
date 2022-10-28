@@ -532,7 +532,7 @@ class InMemoryTelemetryStorage(TelemetryStorage):
 
     def record_sync_error(self, resource, status):
         """Record sync http error."""
-        self._http_sync_errors.add_error(resource, status)
+        self._http_sync_errors.add_error(resource, str(status))
 
     def record_sync_latency(self, resource, latency):
         """Record latency time."""

@@ -5,6 +5,9 @@ from splitio.engine.impressions.manager import Hasher, Observer, Counter, trunca
 from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyOptimizedMode, StrategyNoneMode
 from splitio.models.impressions import Impression
 from splitio.client.listener import ImpressionListenerWrapper
+import splitio.models.telemetry as ModelTelemetry
+from splitio.engine.telemetry import TelemetryStorageProducer
+from splitio.storage.inmemmory import InMemoryTelemetryStorage
 
 def utctime_ms_reimplement():
     """Re-implementation of utctime_ms to avoid conflicts with mock/patching."""
@@ -97,8 +100,11 @@ class ImpressionManagerTests(object):
         utc_time_mock = mocker.Mock()
         utc_time_mock.return_value = utc_now
         mocker.patch('splitio.util.utctime_ms', new=utc_time_mock)
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
 
-        manager = Manager(None, StrategyOptimizedMode(Counter()))  # no listener
+        manager = Manager(StrategyOptimizedMode(Counter()), telemetry_runtime_producer)  # no listener
         assert manager._strategy._counter is not None
         assert manager._strategy._observer is not None
         assert manager._listener is None
@@ -123,6 +129,7 @@ class ImpressionManagerTests(object):
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
         ])
         assert imps == []
+        assert(telemetry_storage._counters._impressions_deduped == 1)
 
         # Tracking an impression with a different key makes it to the queue
         imps = manager.process_impressions([
@@ -161,7 +168,7 @@ class ImpressionManagerTests(object):
         utc_time_mock.return_value = utc_now
         mocker.patch('splitio.util.utctime_ms', new=utc_time_mock)
 
-        manager = Manager(None, StrategyDebugMode())  # no listener
+        manager = Manager(StrategyDebugMode())  # no listener
         assert manager._strategy._observer is not None
         assert manager._listener is None
         assert isinstance(manager._strategy, StrategyDebugMode)
@@ -210,7 +217,7 @@ class ImpressionManagerTests(object):
         utc_time_mock.return_value = utc_now
         mocker.patch('splitio.util.utctime_ms', new=utc_time_mock)
 
-        manager = Manager(None, StrategyNoneMode(Counter()))  # no listener
+        manager = Manager(StrategyNoneMode(Counter()))  # no listener
         assert manager._strategy._counter is not None
         assert manager._listener is None
         assert isinstance(manager._strategy, StrategyNoneMode)
@@ -278,7 +285,7 @@ class ImpressionManagerTests(object):
         mocker.patch('splitio.util.utctime_ms', new=utc_time_mock)
 
         listener = mocker.Mock(spec=ImpressionListenerWrapper)
-        manager = Manager(listener, StrategyOptimizedMode(Counter()))
+        manager = Manager(StrategyOptimizedMode(Counter()), listener=listener)
         assert manager._strategy._counter is not None
         assert manager._strategy._observer is not None
         assert manager._listener is not None
@@ -350,7 +357,7 @@ class ImpressionManagerTests(object):
 
         imps = []
         listener = mocker.Mock(spec=ImpressionListenerWrapper)
-        manager = Manager(listener, StrategyDebugMode())
+        manager = Manager(StrategyDebugMode(), listener=listener)
         assert manager._listener is not None
         assert isinstance(manager._strategy, StrategyDebugMode)
 
@@ -408,7 +415,7 @@ class ImpressionManagerTests(object):
         mocker.patch('splitio.util.utctime_ms', new=utc_time_mock)
 
         listener = mocker.Mock(spec=ImpressionListenerWrapper)
-        manager = Manager(listener, StrategyNoneMode(Counter()))
+        manager = Manager(StrategyNoneMode(Counter()), listener=listener)
         assert manager._strategy._counter is not None
         assert manager._listener is not None
         assert isinstance(manager._strategy, StrategyNoneMode)

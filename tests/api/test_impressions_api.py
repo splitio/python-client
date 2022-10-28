@@ -1,6 +1,8 @@
 """Impressions API tests module."""
 
 import pytest
+import unittest.mock as mock
+
 from splitio.api import impressions, client, APIException
 from splitio.models.impressions import Impression
 from splitio.engine.impressions.impressions import ImpressionsMode
@@ -8,7 +10,8 @@ from splitio.engine.impressions.manager import Counter
 from splitio.client.util import get_metadata
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.version import __version__
-
+from splitio.engine.telemetry import TelemetryStorageProducer
+from splitio.storage.inmemmory import InMemoryTelemetryStorage
 
 class ImpressionsAPITests(object):
     """Impressions API test cases."""
@@ -46,6 +49,7 @@ class ImpressionsAPITests(object):
         ]
     }
 
+    @mock.patch('splitio.engine.telemetry.TelemetryRuntimeProducer.record_sync_latency')
     def test_post_impressions(self, mocker):
         """Test impressions posting API call."""
         httpclient = mocker.Mock(spec=client.HttpClient)
@@ -53,9 +57,13 @@ class ImpressionsAPITests(object):
         cfg = DEFAULT_CONFIG.copy()
         cfg.update({'IPAddressesEnabled': True, 'machineName': 'some_machine_name', 'machineIp': '123.123.123.123'})
         sdk_metadata = get_metadata(cfg)
-        impressions_api = impressions.ImpressionsAPI(httpclient, 'some_api_key', sdk_metadata)
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        impressions_api = impressions.ImpressionsAPI(httpclient, 'some_api_key', sdk_metadata, telemetry_runtime_producer)
         response = impressions_api.flush_impressions(self.impressions)
 
+        assert(mocker.called)
         call_made = httpclient.post.mock_calls[0]
 
         # validate positional arguments
@@ -88,7 +96,7 @@ class ImpressionsAPITests(object):
         cfg = DEFAULT_CONFIG.copy()
         cfg.update({'IPAddressesEnabled': False})
         sdk_metadata = get_metadata(cfg)
-        impressions_api = impressions.ImpressionsAPI(httpclient, 'some_api_key', sdk_metadata, ImpressionsMode.DEBUG)
+        impressions_api = impressions.ImpressionsAPI(httpclient, 'some_api_key', sdk_metadata, mocker.Mock(), ImpressionsMode.DEBUG)
         response = impressions_api.flush_impressions(self.impressions)
 
         call_made = httpclient.post.mock_calls[0]
@@ -112,7 +120,7 @@ class ImpressionsAPITests(object):
         cfg = DEFAULT_CONFIG.copy()
         cfg.update({'IPAddressesEnabled': True, 'machineName': 'some_machine_name', 'machineIp': '123.123.123.123'})
         sdk_metadata = get_metadata(cfg)
-        impressions_api = impressions.ImpressionsAPI(httpclient, 'some_api_key', sdk_metadata)
+        impressions_api = impressions.ImpressionsAPI(httpclient, 'some_api_key', sdk_metadata, mocker.Mock())
         response = impressions_api.flush_counters(self.counters)
 
         call_made = httpclient.post.mock_calls[0]

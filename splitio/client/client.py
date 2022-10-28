@@ -5,7 +5,7 @@ from splitio.engine.evaluator import Evaluator, CONTROL
 from splitio.engine.splitters import Splitter
 from splitio.models.impressions import Impression, Label
 from splitio.models.events import Event, EventWrapper
-from splitio.models.telemetry import get_latency_bucket_index, TRACK
+from splitio.models.telemetry import get_latency_bucket_index, MethodExceptionsAndLatencies
 from splitio.client import input_validator
 from splitio.util import utctime_ms
 from splitio.api.commons import get_current_epoch_time
@@ -124,7 +124,8 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error getting treatment for feature')
             _LOGGER.debug('Error: ', exc_info=True)
-            self._telemetry_evaluation_producer.record_exception(method_name[4:])
+            if not self._telemetry_evaluation_producer == None:
+                self._telemetry_evaluation_producer.record_exception(method_name[4:])
             try:
                 impression = self._build_impression(
                     matching_key,
@@ -207,12 +208,15 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                 _LOGGER.error('%s: An exception when trying to store '
                               'impressions.' % method_name)
                 _LOGGER.debug('Error: ', exc_info=True)
-                self._telemetry_evaluation_producer.record_exception(method_name[4:])
+                if not self._telemetry_evaluation_producer == None:
+                    self._telemetry_evaluation_producer.record_exception(method_name[4:])
 
-            self._telemetry_evaluation_producer.record_latency(method_name[4:], get_current_epoch_time() - start)
+            if not self._telemetry_evaluation_producer == None:
+                self._telemetry_evaluation_producer.record_latency(method_name[4:], get_current_epoch_time() - start)
             return treatments
         except Exception:  # pylint: disable=broad-except
-            self._telemetry_evaluation_producer.record_exception(method_name)
+            if not self._telemetry_evaluation_producer == None:
+                self._telemetry_evaluation_producer.record_exception(method_name[4:])
             _LOGGER.error('Error getting treatment for features')
             _LOGGER.debug('Error: ', exc_info=True)
         return input_validator.generate_control_treatments(list(features), method_name)
@@ -350,7 +354,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         end = get_current_epoch_time()
         self._recorder.record_treatment_stats(impressions, get_latency_bucket_index(end - start),
                                               operation)
-        if not method_name == None:
+        if not method_name == None and not self._telemetry_evaluation_producer == None:
             self._telemetry_evaluation_producer.record_latency(method_name[4:], end - start)
 
 
@@ -413,9 +417,11 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                 event=event,
                 size=size,
             )])
-            self._telemetry_evaluation_producer.record_latency(TRACK, get_current_epoch_time() - start)
+            if not self._telemetry_evaluation_producer == None:
+                self._telemetry_evaluation_producer.record_latency(MethodExceptionsAndLatencies.TRACK, get_current_epoch_time() - start)
         except Exception:  # pylint: disable=broad-except
-            self._telemetry_evaluation_producer.record_exception(TRACK)
+            if not self._telemetry_evaluation_producer == None:
+                self._telemetry_evaluation_producer.record_exception(MethodExceptionsAndLatencies.TRACK)
             _LOGGER.error('Error processing track event')
             _LOGGER.debug('Error: ', exc_info=True)
 

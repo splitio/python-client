@@ -3,7 +3,6 @@
 import abc
 import logging
 import threading
-import time
 
 from splitio.api import APIException
 
@@ -15,7 +14,7 @@ class SplitSynchronizers(object):
     """SplitSynchronizers."""
 
     def __init__(self, split_sync, segment_sync, impressions_sync, events_sync,  # pylint:disable=too-many-arguments
-                 impressions_count_sync, unique_keys_sync = None, clear_filter_sync = None, telemetry_sync = None):
+                 impressions_count_sync, telemetry_sync=None, unique_keys_sync = None, clear_filter_sync = None):
         """
         Class constructor.
 
@@ -83,7 +82,7 @@ class SplitTasks(object):
     """SplitTasks."""
 
     def __init__(self, split_task, segment_task, impressions_task, events_task,  # pylint:disable=too-many-arguments
-                 impressions_count_task, unique_keys_task = None, clear_filter_task = None, telemetry_task = None):
+                 impressions_count_task, telemetry_task=None, unique_keys_task = None, clear_filter_task = None):
         """
         Class constructor.
 
