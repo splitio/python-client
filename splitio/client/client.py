@@ -124,8 +124,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error getting treatment for feature')
             _LOGGER.debug('Error: ', exc_info=True)
-            if not self._telemetry_evaluation_producer == None:
-                self._telemetry_evaluation_producer.record_exception(method_name[4:])
+            self._telemetry_evaluation_producer.record_exception(method_name[4:])
             try:
                 impression = self._build_impression(
                     matching_key,
@@ -208,15 +207,12 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                 _LOGGER.error('%s: An exception when trying to store '
                               'impressions.' % method_name)
                 _LOGGER.debug('Error: ', exc_info=True)
-                if not self._telemetry_evaluation_producer == None:
-                    self._telemetry_evaluation_producer.record_exception(method_name[4:])
+                self._telemetry_evaluation_producer.record_exception(method_name[4:])
 
-            if not self._telemetry_evaluation_producer == None:
-                self._telemetry_evaluation_producer.record_latency(method_name[4:], get_current_epoch_time() - start)
+            self._telemetry_evaluation_producer.record_latency(method_name[4:], get_current_epoch_time() - start)
             return treatments
         except Exception:  # pylint: disable=broad-except
-            if not self._telemetry_evaluation_producer == None:
-                self._telemetry_evaluation_producer.record_exception(method_name[4:])
+            self._telemetry_evaluation_producer.record_exception(method_name[4:])
             _LOGGER.error('Error getting treatment for features')
             _LOGGER.debug('Error: ', exc_info=True)
         return input_validator.generate_control_treatments(list(features), method_name)
@@ -354,7 +350,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         end = get_current_epoch_time()
         self._recorder.record_treatment_stats(impressions, get_latency_bucket_index(end - start),
                                               operation)
-        if not method_name == None and not self._telemetry_evaluation_producer == None:
+        if not method_name == None:
             self._telemetry_evaluation_producer.record_latency(method_name[4:], end - start)
 
 
@@ -417,11 +413,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                 event=event,
                 size=size,
             )])
-            if not self._telemetry_evaluation_producer == None:
-                self._telemetry_evaluation_producer.record_latency(MethodExceptionsAndLatencies.TRACK, get_current_epoch_time() - start)
+            self._telemetry_evaluation_producer.record_latency(MethodExceptionsAndLatencies.TRACK.value, get_current_epoch_time() - start)
         except Exception:  # pylint: disable=broad-except
-            if not self._telemetry_evaluation_producer == None:
-                self._telemetry_evaluation_producer.record_exception(MethodExceptionsAndLatencies.TRACK)
+            self._telemetry_evaluation_producer.record_exception(MethodExceptionsAndLatencies.TRACK.value)
             _LOGGER.error('Error processing track event')
             _LOGGER.debug('Error: ', exc_info=True)
 

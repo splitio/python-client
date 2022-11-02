@@ -42,7 +42,7 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
                 body=uniques,
                 extra_headers=self._metadata
             )
-            record_telemetry(response.status_code,  get_current_epoch_time() - start, HTTPExceptionsAndLatencies.TELEMETRY, self._telemetry_runtime_producer)
+            record_telemetry(response.status_code,  get_current_epoch_time() - start, HTTPExceptionsAndLatencies.TELEMETRY.value, self._telemetry_runtime_producer)
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
@@ -68,7 +68,7 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
                 body=configs,
                 extra_headers=self._metadata,
             )
-            record_telemetry(response.status_code, get_current_epoch_time() - start, HTTPExceptionsAndLatencies.TELEMETRY, self._telemetry_runtime_producer)
+            record_telemetry(response.status_code, get_current_epoch_time() - start, HTTPExceptionsAndLatencies.TELEMETRY.value, self._telemetry_runtime_producer)
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
@@ -94,7 +94,7 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
                 body=stats,
                 extra_headers=self._metadata,
             )
-            record_telemetry(response.status_code, get_current_epoch_time() - start, HTTPExceptionsAndLatencies.TELEMETRY, self._telemetry_runtime_producer)
+            record_telemetry(response.status_code, get_current_epoch_time() - start, HTTPExceptionsAndLatencies.TELEMETRY.value, self._telemetry_runtime_producer)
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
@@ -103,3 +103,11 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
             )
             _LOGGER.debug('Error: ', exc_info=True)
             raise APIException('Runtime stats not flushed properly.') from exc
+
+class LocalhostTelemetryAPI(object):  # pylint: disable=too-few-public-methods
+    """Mock class for Localhost."""
+    def do_nothing(*_, **__):
+        pass
+
+    def __getattr__(self, _):
+        return self.do_nothing

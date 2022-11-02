@@ -541,6 +541,7 @@ class RedisIntegrationTests(object):
 
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
 
         storages = {
@@ -556,6 +557,8 @@ class RedisIntegrationTests(object):
                                     storages,
                                     True,
                                     recorder,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_consumer=telemetry_consumer.get_telemetry_init_consumer(),
                                     )  # pylint:disable=attribute-defined-outside-init
 
     def _validate_last_impressions(self, client, *to_validate):
@@ -827,6 +830,8 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
 
         storages = {
             'splits': split_storage,
@@ -841,6 +846,8 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
                                     storages,
                                     True,
                                     recorder,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_consumer=telemetry_consumer.get_telemetry_init_consumer(),
                                     )  # pylint:disable=attribute-defined-outside-init
 
 class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-methods

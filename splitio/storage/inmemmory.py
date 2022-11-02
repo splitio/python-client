@@ -7,7 +7,7 @@ import os
 from urllib.error import HTTPError
 
 from splitio.models.segments import Segment
-from splitio.models.telemetry import HTTPErrors, HTTPLatencies, MethodExceptions, MethodLatencies, LastSynchronization, StreamingEvents, TelemetryConfig, TelemetryCounters
+from splitio.models.telemetry import HTTPErrors, HTTPLatencies, MethodExceptions, MethodLatencies, LastSynchronization, StreamingEvents, TelemetryConfig, TelemetryCounters, CounterConstants
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
 
 MAX_SIZE_BYTES = 5 * 1024 * 1024
@@ -349,11 +349,11 @@ class InMemoryImpressionStorage(ImpressionStorage):
                 for impression in impressions:
                     self._impressions.put(impression, False)
                     impressions_stored = impressions_stored + 1
-            self._telemetry_runtime_producer.record_impression_stats('impressionsQueued', len(impressions))
+            self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_QUEUED.value, len(impressions))
             return True
         except queue.Full:
-            self._telemetry_runtime_producer.record_impression_stats('impressionsDropped', len(impressions) - impressions_stored)
-            self._telemetry_runtime_producer.record_impression_stats('impressionsQueued', impressions_stored)
+            self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_DROPPED.value, len(impressions) - impressions_stored)
+            self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_QUEUED.value, impressions_stored)
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
                 self._queue_full_hook()
             _LOGGER.warning(
@@ -430,11 +430,11 @@ class InMemoryEventStorage(EventStorage):
                         return False
                     self._events.put(event.event, False)
                     events_stored = events_stored + 1
-            self._telemetry_runtime_producer.record_event_stats('eventsQueued', len(events))
+            self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_QUEUED.value, len(events))
             return True
         except queue.Full:
-            self._telemetry_runtime_producer.record_event_stats('eventsDropped', len(events) - events_stored)
-            self._telemetry_runtime_producer.record_event_stats('eventsQueued', events_stored)
+            self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_DROPPED.value, len(events) - events_stored)
+            self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_QUEUED.value, events_stored)
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
                 self._queue_full_hook()
             _LOGGER.warning(
@@ -615,3 +615,11 @@ class InMemoryTelemetryStorage(TelemetryStorage):
     def get_session_length(self):
         """Get session length"""
         return self._counters.get_session_length()
+
+class LocalhostTelemetryStorage():
+    """Localhost telemetry storage."""
+    def do_nothing(*_, **__):
+        return {}
+
+    def __getattr__(self, _):
+        return self.do_nothing

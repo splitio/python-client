@@ -38,7 +38,7 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
         """
         for_log, for_listener = self._strategy.process_impressions(impressions)
-        if len(impressions) > len(for_log) and not self._telemetry_runtime_producer == None:
+        if len(impressions) > len(for_log):
             self._telemetry_runtime_producer.record_impression_stats('impressionsDeduped', len(impressions) - len(for_log))
         self._send_impressions_to_listener(for_listener)
         return for_log

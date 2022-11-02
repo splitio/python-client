@@ -41,7 +41,7 @@ class StatusTrackerTests(object):
 
         message = OccupancyMessage('[?occupancy=metrics.publishers]control_sec', 123, 0)
         assert tracker.handle_occupancy(message) is None
-        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.OCCUPANCY_SEC)
+        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.OCCUPANCY_SEC.value)
         assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._data == len(tracker._publishers))
 
         # old message
@@ -50,14 +50,14 @@ class StatusTrackerTests(object):
 
         message = OccupancyMessage('[?occupancy=metrics.publishers]control_pri', 124, 0)
         assert tracker.handle_occupancy(message) is Status.PUSH_SUBSYSTEM_DOWN
-        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.STREAMING_STATUS)
+        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.STREAMING_STATUS.value)
         assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._data == SSEStreamingStatus.PAUSED.value)
 
         message = OccupancyMessage('[?occupancy=metrics.publishers]control_pri', 125, 1)
         assert tracker.handle_occupancy(message) is Status.PUSH_SUBSYSTEM_UP
-        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.STREAMING_STATUS)
+        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.STREAMING_STATUS.value)
         assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._data == SSEStreamingStatus.ENABLED.value)
-        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-2]._type == StreamingEventTypes.OCCUPANCY_PRI)
+        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-2]._type == StreamingEventTypes.OCCUPANCY_PRI.value)
         assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-2]._data == len(tracker._publishers))
 
         message = OccupancyMessage('[?occupancy=metrics.publishers]control_sec', 125, 2)
@@ -98,7 +98,7 @@ class StatusTrackerTests(object):
 
         message = ControlMessage('control_pri', 126, ControlType.STREAMING_DISABLED)
         assert tracker.handle_control_message(message) is Status.PUSH_NONRETRYABLE_ERROR
-        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.STREAMING_STATUS)
+        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.STREAMING_STATUS.value)
         assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._data == SSEStreamingStatus.DISABLED.value)
 
 
@@ -153,7 +153,7 @@ class StatusTrackerTests(object):
         tracker.reset()
         message = AblyError(40139, 100, 'some message', 'http://somewhere')
         assert tracker.handle_ably_error(message) is Status.PUSH_NONRETRYABLE_ERROR
-        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.ABLY_ERROR)
+        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.ABLY_ERROR.value)
         assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._data == 40139)
 
 
@@ -186,10 +186,10 @@ class StatusTrackerTests(object):
         tracker = PushStatusTracker(telemetry_runtime_producer)
         tracker._shutdown_expected = False
         tracker.handle_disconnect()
-        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.SSE_CONNECTION_ERROR)
+        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.SSE_CONNECTION_ERROR.value)
         assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._data == SSEConnectionError.NON_REQUESTED.value)
 
         tracker._shutdown_expected = True
         tracker.handle_disconnect()
-        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.SSE_CONNECTION_ERROR)
+        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.SSE_CONNECTION_ERROR.value)
         assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._data == SSEConnectionError.REQUESTED.value)

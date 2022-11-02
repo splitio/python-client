@@ -36,11 +36,11 @@ class TelemetryModelTests(object):
             assert(result_bucket == ModelTelemetry.get_latency_bucket_index(latency))
 
     def test_storage_type_and_operation_mode(self, mocker):
-        assert(StorageType.LOCALHOST == 'localhost')
-        assert(StorageType.MEMEORY == 'memory')
-        assert(StorageType.REDIS == 'redis')
-        assert(OperationMode.MEMEORY == 'inmemory')
-        assert(OperationMode.REDIS == 'redis-consumer')
+        assert(StorageType.LOCALHOST.value == 'localhost')
+        assert(StorageType.MEMEORY.value == 'memory')
+        assert(StorageType.REDIS.value == 'redis')
+        assert(OperationMode.MEMEORY.value == 'inmemory')
+        assert(OperationMode.REDIS.value == 'redis-consumer')
 
     def test_method_latencies(self, mocker):
         method_latencies = MethodLatencies()
@@ -85,15 +85,15 @@ class TelemetryModelTests(object):
         assert(latencies == {'methodLatencies': {'treatment': [1] + [0] * 22, 'treatments': [2] + [0] * 22, 'treatment_with_config': [1] + [0] * 22, 'treatments_with_config': [1] + [0] * 22, 'track': [1] + [0] * 22}})
 
     def _get_method_latency(self, resource, storage):
-        if resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT:
+        if resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT.value:
             return storage._treatment
-        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS:
+        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS.value:
             return storage._treatments
-        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG:
+        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG.value:
             return storage._treatment_with_config
-        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG:
+        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG.value:
             return storage._treatments_with_config
-        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TRACK:
+        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TRACK.value:
             return storage._track
         else:
             return
@@ -132,19 +132,19 @@ class TelemetryModelTests(object):
         assert(latencies == {'httpLatencies': {'split': [1] + [0] * 22, 'segment': [1] + [0] * 22, 'impression': [2] + [0] * 22, 'impressionCount': [1] + [0] * 22, 'event': [1] + [0] * 22, 'telemetry': [1] + [0] * 22, 'token': [2] + [0] * 22}})
 
     def _get_http_latency(self, resource, storage):
-        if resource == ModelTelemetry.HTTPExceptionsAndLatencies.SPLIT:
+        if resource == ModelTelemetry.HTTPExceptionsAndLatencies.SPLIT.value:
             return storage._split
-        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.SEGMENT:
+        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.SEGMENT.value:
             return storage._segment
-        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.IMPRESSION:
+        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.IMPRESSION.value:
             return storage._impression
-        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.IMPRESSION_COUNT:
+        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value:
             return storage._impression_count
-        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.EVENT:
+        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.EVENT.value:
             return storage._event
-        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.TELEMETRY:
+        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.TELEMETRY.value:
             return storage._telemetry
-        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.TOKEN:
+        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.TOKEN.value:
             return storage._token
         else:
             return

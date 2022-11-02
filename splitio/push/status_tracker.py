@@ -82,9 +82,9 @@ class PushStatusTracker(object):
 
         self._publishers[event.channel] = event.publishers
         if event.channel[-3:] == 'pri':
-            event_type = StreamingEventTypes.OCCUPANCY_PRI
+            event_type = StreamingEventTypes.OCCUPANCY_PRI.value
         else:
-            event_type = StreamingEventTypes.OCCUPANCY_SEC
+            event_type = StreamingEventTypes.OCCUPANCY_SEC.value
         self._telemetry_runtime_producer.record_streaming_event((event_type, len(self._publishers), event.timestamp))
         return self._update_status()
 
@@ -130,7 +130,7 @@ class PushStatusTracker(object):
         # 2. RETRYABLE_ERROR is propagated and the connection is closed on the clint side.
         # By doing this we guarantee that only one error will be propagated
         self.notify_sse_shutdown_expected()
-        self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.ABLY_ERROR, event.code, event.timestamp))
+        self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.ABLY_ERROR.value, event.code, event.timestamp))
 
         if event.is_retryable():
             _LOGGER.info('received retryable error message. '
@@ -154,20 +154,20 @@ class PushStatusTracker(object):
         if self._last_status_propagated == Status.PUSH_SUBSYSTEM_UP:
             if not self._occupancy_ok() \
                     or self._last_control_message == ControlType.STREAMING_PAUSED:
-                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.STREAMING_STATUS, SSEStreamingStatus.PAUSED.value, self._timestamps))
+                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.STREAMING_STATUS.value, SSEStreamingStatus.PAUSED.value, get_current_epoch_time()))
                 return self._propagate_status(Status.PUSH_SUBSYSTEM_DOWN)
 
             if self._last_control_message == ControlType.STREAMING_DISABLED:
-                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.STREAMING_STATUS, SSEStreamingStatus.DISABLED.value, self._timestamps))
+                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.STREAMING_STATUS.value, SSEStreamingStatus.DISABLED.value, get_current_epoch_time()))
                 return self._propagate_status(Status.PUSH_NONRETRYABLE_ERROR)
 
         if self._last_status_propagated == Status.PUSH_SUBSYSTEM_DOWN:
             if self._occupancy_ok() and self._last_control_message == ControlType.STREAMING_ENABLED:
-                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.STREAMING_STATUS, SSEStreamingStatus.ENABLED.value, self._timestamps))
+                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.STREAMING_STATUS.value, SSEStreamingStatus.ENABLED.value, get_current_epoch_time()))
                 return self._propagate_status(Status.PUSH_SUBSYSTEM_UP)
 
             if self._last_control_message == ControlType.STREAMING_DISABLED:
-                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.STREAMING_STATUS, SSEStreamingStatus.DISABLED.value, self._timestamps))
+                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.STREAMING_STATUS.value, SSEStreamingStatus.DISABLED.value, get_current_epoch_time()))
                 return self._propagate_status(Status.PUSH_NONRETRYABLE_ERROR)
 
         return None
@@ -184,10 +184,10 @@ class PushStatusTracker(object):
         :rtype: Optional[Status]
         """
         if not self._shutdown_expected:
-            self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SSE_CONNECTION_ERROR, SSEConnectionError.NON_REQUESTED.value, get_current_epoch_time()))
+            self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SSE_CONNECTION_ERROR.value, SSEConnectionError.NON_REQUESTED.value, get_current_epoch_time()))
             return self._propagate_status(Status.PUSH_RETRYABLE_ERROR)
 
-        self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SSE_CONNECTION_ERROR, SSEConnectionError.REQUESTED.value,  get_current_epoch_time()))
+        self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SSE_CONNECTION_ERROR.value, SSEConnectionError.REQUESTED.value,  get_current_epoch_time()))
         return None
 
     def _propagate_status(self, status):

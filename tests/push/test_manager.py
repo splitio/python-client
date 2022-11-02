@@ -59,8 +59,8 @@ class PushManagerTests(object):
             mocker.call().setName('TokenRefresh'),
             mocker.call().start()
         ]
-        assert(telemetry_storage._streaming_events._streaming_events[0]._type == StreamingEventTypes.TOKEN_REFRESH)
-        assert(telemetry_storage._streaming_events._streaming_events[1]._type == StreamingEventTypes.CONNECTION_ESTABLISHED)
+        assert(telemetry_storage._streaming_events._streaming_events[0]._type == StreamingEventTypes.TOKEN_REFRESH.value)
+        assert(telemetry_storage._streaming_events._streaming_events[1]._type == StreamingEventTypes.CONNECTION_ESTABLISHED.value)
 
     def test_connection_failure(self, mocker):
         """Test the connection fails to be established."""

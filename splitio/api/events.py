@@ -73,7 +73,7 @@ class EventsAPI(object):  # pylint: disable=too-few-public-methods
                 body=bulk,
                 extra_headers=self._metadata,
             )
-            record_telemetry(response.status_code, get_current_epoch_time() - start, HTTPExceptionsAndLatencies.EVENT, self._telemetry_runtime_producer)
+            record_telemetry(response.status_code, get_current_epoch_time() - start, HTTPExceptionsAndLatencies.EVENT.value, self._telemetry_runtime_producer)
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:

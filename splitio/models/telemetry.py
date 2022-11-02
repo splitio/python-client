@@ -18,7 +18,7 @@ MAX_LATENCY = 7481828
 MAX_LATENCY_BUCKET_COUNT = 23
 MAX_STREAMING_EVENTS = 20
 
-class CounterConstants(object):
+class CounterConstants(Enum):
     """Impressions and events counters constants"""
     IMPRESSIONS_QUEUED = 'impressionsQueued'
     IMPRESSIONS_DEDUPED = 'impressionsDeduped'
@@ -26,8 +26,7 @@ class CounterConstants(object):
     EVENTS_QUEUED = 'eventsQueued'
     EVENTS_DROPPED = 'eventsDropped'
 
-
-class ConfigParams(object):
+class ConfigParams(Enum):
     """Config parameters constants"""
     SPLITS_REFRESH_RATE = 'featuresRefreshRate'
     SEGMENTS_REFRESH_RATE = 'segmentsRefreshRate'
@@ -42,7 +41,7 @@ class ConfigParams(object):
     IMPRESSIONS_MODE = 'impressionsMode'
     IMPRESSIONS_LISTENER = 'impressionListener'
 
-class ExtraConfig(object):
+class ExtraConfig(Enum):
     """Extra config constants"""
     ACTIVE_FACTORY_COUNT = 'activeFactoryCount'
     REDUNDANT_FACTORY_COUNT = 'redundantFactoryCount'
@@ -53,7 +52,7 @@ class ExtraConfig(object):
     HTTP_PROXY = 'httpProxy'
     HTTPS_PROXY_ENV = 'HTTPS_PROXY'
 
-class ApiURLs(object):
+class ApiURLs(Enum):
     """Api URL constants"""
     SDK_URL = 'sdk_url'
     EVENTS_URL = 'events_url'
@@ -62,7 +61,7 @@ class ApiURLs(object):
     TELEMETRY_URL = 'telemetry_url'
     URL_OVERRIDE = 'urlOverride'
 
-class HTTPExceptionsAndLatencies(object):
+class HTTPExceptionsAndLatencies(Enum):
     """Sync exceptions and latencies constants"""
     HTTP_ERRORS = 'httpErrors'
     HTTP_LATENCIES = 'httpLatencies'
@@ -74,7 +73,7 @@ class HTTPExceptionsAndLatencies(object):
     TELEMETRY = 'telemetry'
     TOKEN = 'token'
 
-class MethodExceptionsAndLatencies(object):
+class MethodExceptionsAndLatencies(Enum):
     """Method exceptions and latencies constants"""
     METHOD_LATENCIES = 'methodLatencies'
     METHOD_EXCEPTIONS = 'methodExceptions'
@@ -84,7 +83,7 @@ class MethodExceptionsAndLatencies(object):
     TREATMENTS_WITH_CONFIG = 'treatments_with_config'
     TRACK = 'track'
 
-class LastSynchronizationConstants(object):
+class LastSynchronizationConstants(Enum):
     """Last sync constants"""
     LAST_SYNCHRONIZATIONS = 'lastSynchronizations'
     SPLIT = 'split'
@@ -111,11 +110,11 @@ class SSESyncMode(Enum):
     STREAMING = 0
     POLLING = 1
 
-class StreamingEventsConstant(object):
+class StreamingEventsConstant(Enum):
     """Storage types constant"""
     STREAMING_EVENTS = 'streamingEvents'
 
-class StreamingEventTypes(object):
+class StreamingEventTypes(Enum):
     """Streaming event types constants"""
     CONNECTION_ESTABLISHED = 0
     OCCUPANCY_PRI = 10
@@ -126,13 +125,13 @@ class StreamingEventTypes(object):
     ABLY_ERROR = 60
     SYNC_MODE_UPDATE = 70
 
-class StorageType(object):
+class StorageType(Enum):
     """Storage types constants"""
     MEMEORY = 'memory'
     REDIS = 'redis'
     LOCALHOST = 'localhost'
 
-class OperationMode(object):
+class OperationMode(Enum):
     """Storage modes constants"""
     MEMEORY = 'inmemory'
     REDIS = 'redis-consumer'
@@ -181,15 +180,15 @@ class MethodLatencies(object):
         """
         latency_bucket = get_latency_bucket_index(latency)
         with self._lock:
-            if method == MethodExceptionsAndLatencies.TREATMENT:
+            if method == MethodExceptionsAndLatencies.TREATMENT.value:
                 self._treatment[latency_bucket] = self._treatment[latency_bucket] + 1
-            elif method == MethodExceptionsAndLatencies.TREATMENTS:
+            elif method == MethodExceptionsAndLatencies.TREATMENTS.value:
                 self._treatments[latency_bucket] = self._treatments[latency_bucket] + 1
-            elif method == MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG:
+            elif method == MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG.value:
                 self._treatment_with_config[latency_bucket] = self._treatment_with_config[latency_bucket] + 1
-            elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG:
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG.value:
                 self._treatments_with_config[latency_bucket] = self._treatments_with_config[latency_bucket] + 1
-            elif method == MethodExceptionsAndLatencies.TRACK:
+            elif method == MethodExceptionsAndLatencies.TRACK.value:
                 self._track[latency_bucket] = self._track[latency_bucket] + 1
             else:
                 return
@@ -202,9 +201,9 @@ class MethodLatencies(object):
         :rtype: dict
         """
         with self._lock:
-            latencies = {MethodExceptionsAndLatencies.METHOD_LATENCIES: {MethodExceptionsAndLatencies.TREATMENT: self._treatment, MethodExceptionsAndLatencies.TREATMENTS: self._treatments,
-                            MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG: self._treatment_with_config, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG: self._treatments_with_config,
-                            MethodExceptionsAndLatencies.TRACK: self._track}
+            latencies = {MethodExceptionsAndLatencies.METHOD_LATENCIES.value: {MethodExceptionsAndLatencies.TREATMENT.value: self._treatment, MethodExceptionsAndLatencies.TREATMENTS.value: self._treatments,
+                            MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG.value: self._treatment_with_config, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG.value: self._treatments_with_config,
+                            MethodExceptionsAndLatencies.TRACK.value: self._track}
                 }
             self._reset_all()
             return latencies
@@ -241,19 +240,19 @@ class HTTPLatencies(object):
         """
         latency_bucket = get_latency_bucket_index(latency)
         with self._lock:
-            if resource == HTTPExceptionsAndLatencies.SPLIT:
+            if resource == HTTPExceptionsAndLatencies.SPLIT.value:
                 self._split[latency_bucket] = self._split[latency_bucket] + 1
-            elif resource == HTTPExceptionsAndLatencies.SEGMENT:
+            elif resource == HTTPExceptionsAndLatencies.SEGMENT.value:
                 self._segment[latency_bucket] = self._segment[latency_bucket] + 1
-            elif resource == HTTPExceptionsAndLatencies.IMPRESSION:
+            elif resource == HTTPExceptionsAndLatencies.IMPRESSION.value:
                 self._impression[latency_bucket] = self._impression[latency_bucket] + 1
-            elif resource == HTTPExceptionsAndLatencies.IMPRESSION_COUNT:
+            elif resource == HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value:
                 self._impression_count[latency_bucket] = self._impression_count[latency_bucket] + 1
-            elif resource == HTTPExceptionsAndLatencies.EVENT:
+            elif resource == HTTPExceptionsAndLatencies.EVENT.value:
                 self._event[latency_bucket] = self._event[latency_bucket] + 1
-            elif resource == HTTPExceptionsAndLatencies.TELEMETRY:
+            elif resource == HTTPExceptionsAndLatencies.TELEMETRY.value:
                 self._telemetry[latency_bucket] = self._telemetry[latency_bucket] + 1
-            elif resource == HTTPExceptionsAndLatencies.TOKEN:
+            elif resource == HTTPExceptionsAndLatencies.TOKEN.value:
                 self._token[latency_bucket] = self._token[latency_bucket] + 1
             else:
                 return
@@ -266,9 +265,9 @@ class HTTPLatencies(object):
         :rtype: dict
         """
         with self._lock:
-            latencies = {HTTPExceptionsAndLatencies.HTTP_LATENCIES: {HTTPExceptionsAndLatencies.SPLIT: self._split, HTTPExceptionsAndLatencies.SEGMENT: self._segment, HTTPExceptionsAndLatencies.IMPRESSION: self._impression,
-                                        HTTPExceptionsAndLatencies.IMPRESSION_COUNT: self._impression_count, HTTPExceptionsAndLatencies.EVENT: self._event,
-                                        HTTPExceptionsAndLatencies.TELEMETRY: self._telemetry, HTTPExceptionsAndLatencies.TOKEN: self._token}
+            latencies = {HTTPExceptionsAndLatencies.HTTP_LATENCIES.value: {HTTPExceptionsAndLatencies.SPLIT.value: self._split, HTTPExceptionsAndLatencies.SEGMENT.value: self._segment, HTTPExceptionsAndLatencies.IMPRESSION.value: self._impression,
+                                        HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value: self._impression_count, HTTPExceptionsAndLatencies.EVENT.value: self._event,
+                                        HTTPExceptionsAndLatencies.TELEMETRY.value: self._telemetry, HTTPExceptionsAndLatencies.TOKEN.value: self._token}
                     }
             self._reset_all()
             return latencies
@@ -300,15 +299,15 @@ class MethodExceptions(object):
         :type method: str
         """
         with self._lock:
-            if method == MethodExceptionsAndLatencies.TREATMENT:
+            if method == MethodExceptionsAndLatencies.TREATMENT.value:
                 self._treatment = self._treatment + 1
-            elif method == MethodExceptionsAndLatencies.TREATMENTS:
+            elif method == MethodExceptionsAndLatencies.TREATMENTS.value:
                 self._treatments = self._treatments + 1
-            elif method == MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG:
+            elif method == MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG.value:
                 self._treatment_with_config = self._treatment_with_config + 1
-            elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG:
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG.value:
                 self._treatments_with_config = self._treatments_with_config + 1
-            elif method == MethodExceptionsAndLatencies.TRACK:
+            elif method == MethodExceptionsAndLatencies.TRACK.value:
                 self._track = self._track + 1
             else:
                 return
@@ -321,9 +320,9 @@ class MethodExceptions(object):
         :rtype: dict
         """
         with self._lock:
-            exceptions = {MethodExceptionsAndLatencies.METHOD_EXCEPTIONS: {MethodExceptionsAndLatencies.TREATMENT: self._treatment, MethodExceptionsAndLatencies.TREATMENTS: self._treatments,
-                                MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG: self._treatment_with_config, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG: self._treatments_with_config,
-                                MethodExceptionsAndLatencies.TRACK: self._track}
+            exceptions = {MethodExceptionsAndLatencies.METHOD_EXCEPTIONS.value: {MethodExceptionsAndLatencies.TREATMENT.value: self._treatment, MethodExceptionsAndLatencies.TREATMENTS.value: self._treatments,
+                                MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG.value: self._treatment_with_config, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG.value: self._treatments_with_config,
+                                MethodExceptionsAndLatencies.TRACK.value: self._track}
                 }
             self._reset_all()
             return exceptions
@@ -359,19 +358,19 @@ class LastSynchronization(object):
         :type sync_time: int
         """
         with self._lock:
-            if resource == LastSynchronizationConstants.SPLIT:
+            if resource == LastSynchronizationConstants.SPLIT.value:
                 self._split = sync_time
-            elif resource == LastSynchronizationConstants.SEGMENT:
+            elif resource == LastSynchronizationConstants.SEGMENT.value:
                 self._segment = sync_time
-            elif resource == LastSynchronizationConstants.IMPRESSION:
+            elif resource == LastSynchronizationConstants.IMPRESSION.value:
                 self._impression = sync_time
-            elif resource == LastSynchronizationConstants.IMPRESSION_COUNT:
+            elif resource == LastSynchronizationConstants.IMPRESSION_COUNT.value:
                 self._impression_count = sync_time
-            elif resource == LastSynchronizationConstants.EVENT:
+            elif resource == LastSynchronizationConstants.EVENT.value:
                 self._event = sync_time
-            elif resource == LastSynchronizationConstants.TELEMETRY:
+            elif resource == LastSynchronizationConstants.TELEMETRY.value:
                 self._telemetry = sync_time
-            elif resource == LastSynchronizationConstants.TOKEN:
+            elif resource == LastSynchronizationConstants.TOKEN.value:
                 self._token = sync_time
             else:
                 return
@@ -384,9 +383,9 @@ class LastSynchronization(object):
         :rtype: dict
         """
         with self._lock:
-            return {LastSynchronizationConstants.LAST_SYNCHRONIZATIONS: {LastSynchronizationConstants.SPLIT: self._split, LastSynchronizationConstants.SEGMENT: self._segment, LastSynchronizationConstants.IMPRESSION: self._impression,
-                                        LastSynchronizationConstants.IMPRESSION_COUNT: self._impression_count, LastSynchronizationConstants.EVENT: self._event,
-                                        LastSynchronizationConstants.TELEMETRY: self._telemetry, LastSynchronizationConstants.TOKEN: self._token}
+            return {LastSynchronizationConstants.LAST_SYNCHRONIZATIONS.value: {LastSynchronizationConstants.SPLIT.value: self._split, LastSynchronizationConstants.SEGMENT.value: self._segment, LastSynchronizationConstants.IMPRESSION.value: self._impression,
+                                        LastSynchronizationConstants.IMPRESSION_COUNT.value: self._impression_count, LastSynchronizationConstants.EVENT.value: self._event,
+                                        LastSynchronizationConstants.TELEMETRY.value: self._telemetry, LastSynchronizationConstants.TOKEN.value: self._token}
                     }
 
 class HTTPErrors(object):
@@ -420,31 +419,31 @@ class HTTPErrors(object):
         :type status: str
         """
         with self._lock:
-            if resource == HTTPExceptionsAndLatencies.SPLIT:
+            if resource == HTTPExceptionsAndLatencies.SPLIT.value:
                 if status not in self._split:
                     self._split[status] = 0
                 self._split[status] = self._split[status] + 1
-            elif resource == HTTPExceptionsAndLatencies.SEGMENT:
+            elif resource == HTTPExceptionsAndLatencies.SEGMENT.value:
                 if status not in self._segment:
                     self._segment[status] = 0
                 self._segment[status] = self._segment[status] + 1
-            elif resource == HTTPExceptionsAndLatencies.IMPRESSION:
+            elif resource == HTTPExceptionsAndLatencies.IMPRESSION.value:
                 if status not in self._impression:
                     self._impression[status] = 0
                 self._impression[status] = self._impression[status] + 1
-            elif resource == HTTPExceptionsAndLatencies.IMPRESSION_COUNT:
+            elif resource == HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value:
                 if status not in self._impression_count:
                     self._impression_count[status] = 0
                 self._impression_count[status] = self._impression_count[status] + 1
-            elif resource == HTTPExceptionsAndLatencies.EVENT:
+            elif resource == HTTPExceptionsAndLatencies.EVENT.value:
                 if status not in self._event:
                     self._event[status] = 0
                 self._event[status] = self._event[status] + 1
-            elif resource == HTTPExceptionsAndLatencies.TELEMETRY:
+            elif resource == HTTPExceptionsAndLatencies.TELEMETRY.value:
                 if status not in self._telemetry:
                     self._telemetry[status] = 0
                 self._telemetry[status] = self._telemetry[status] + 1
-            elif resource == HTTPExceptionsAndLatencies.TOKEN:
+            elif resource == HTTPExceptionsAndLatencies.TOKEN.value:
                 if status not in self._token:
                     self._token[status] = 0
                 self._token[status] = self._token[status] + 1
@@ -459,9 +458,9 @@ class HTTPErrors(object):
         :rtype: dict
         """
         with self._lock:
-            http_errors = {HTTPExceptionsAndLatencies.HTTP_ERRORS: {HTTPExceptionsAndLatencies.SPLIT: self._split, HTTPExceptionsAndLatencies.SEGMENT: self._segment, HTTPExceptionsAndLatencies.IMPRESSION: self._impression,
-                                        HTTPExceptionsAndLatencies.IMPRESSION_COUNT: self._impression_count, HTTPExceptionsAndLatencies.EVENT: self._event,
-                                        HTTPExceptionsAndLatencies.TELEMETRY: self._telemetry, HTTPExceptionsAndLatencies.TOKEN: self._token}
+            http_errors = {HTTPExceptionsAndLatencies.HTTP_ERRORS.value: {HTTPExceptionsAndLatencies.SPLIT.value: self._split, HTTPExceptionsAndLatencies.SEGMENT.value: self._segment, HTTPExceptionsAndLatencies.IMPRESSION.value: self._impression,
+                                        HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value: self._impression_count, HTTPExceptionsAndLatencies.EVENT.value: self._event,
+                                        HTTPExceptionsAndLatencies.TELEMETRY.value: self._telemetry, HTTPExceptionsAndLatencies.TOKEN.value: self._token}
                     }
             self._reset_all()
             return http_errors
@@ -498,11 +497,11 @@ class TelemetryCounters(object):
         :type value: int
         """
         with self._lock:
-            if resource == CounterConstants.IMPRESSIONS_QUEUED:
+            if resource == CounterConstants.IMPRESSIONS_QUEUED.value:
                 self._impressions_queued = self._impressions_queued + value
-            elif resource == CounterConstants.IMPRESSIONS_DEDUPED:
+            elif resource == CounterConstants.IMPRESSIONS_DEDUPED.value:
                 self._impressions_deduped = self._impressions_deduped + value
-            elif resource == CounterConstants.IMPRESSIONS_DROPPED:
+            elif resource == CounterConstants.IMPRESSIONS_DROPPED.value:
                 self._impressions_dropped = self._impressions_dropped + value
             else:
                 return
@@ -517,9 +516,9 @@ class TelemetryCounters(object):
         :type value: int
         """
         with self._lock:
-            if resource == CounterConstants.EVENTS_QUEUED:
+            if resource == CounterConstants.EVENTS_QUEUED.value:
                 self._events_queued = self._events_queued + value
-            elif resource == CounterConstants.EVENTS_DROPPED:
+            elif resource == CounterConstants.EVENTS_DROPPED.value:
                 self._events_dropped = self._events_dropped + value
             else:
                 return
@@ -562,15 +561,15 @@ class TelemetryCounters(object):
         """
 
         with self._lock:
-            if resource == CounterConstants.IMPRESSIONS_QUEUED:
+            if resource == CounterConstants.IMPRESSIONS_QUEUED.value:
                 return self._impressions_queued
-            elif resource == CounterConstants.IMPRESSIONS_DEDUPED:
+            elif resource == CounterConstants.IMPRESSIONS_DEDUPED.value:
                 return self._impressions_deduped
-            elif resource == CounterConstants.IMPRESSIONS_DROPPED:
+            elif resource == CounterConstants.IMPRESSIONS_DROPPED.value:
                 return self._impressions_dropped
-            elif resource == CounterConstants.EVENTS_QUEUED:
+            elif resource == CounterConstants.EVENTS_QUEUED.value:
                 return self._events_queued
-            elif resource == CounterConstants.EVENTS_DROPPED:
+            elif resource == CounterConstants.EVENTS_DROPPED.value:
                 return self._events_dropped
             else:
                 return 0
@@ -692,7 +691,7 @@ class StreamingEvents(object):
         with self._lock:
             streaming_events = self._streaming_events
             self._streaming_events = []
-            return {StreamingEventsConstant.STREAMING_EVENTS: [{'e': streaming_event.type, 'd': streaming_event.data,
+            return {StreamingEventsConstant.STREAMING_EVENTS.value: [{'e': streaming_event.type, 'd': streaming_event.data,
                                          't': streaming_event.time} for streaming_event in streaming_events]}
 
 class TelemetryConfig(object):
@@ -714,10 +713,10 @@ class TelemetryConfig(object):
             self._operation_mode = None
             self._storage_type = None
             self._streaming_enabled = None
-            self._refresh_rate = {ConfigParams.SPLITS_REFRESH_RATE: 0, ConfigParams.SEGMENTS_REFRESH_RATE: 0,
-                ConfigParams.IMPRESSIONS_REFRESH_RATE: 0, ConfigParams.EVENTS_REFRESH_RATE: 0, ConfigParams.TELEMETRY_REFRESH_RATE: 0}
-            self._url_override = {ApiURLs.SDK_URL: False, ApiURLs.EVENTS_URL: False, ApiURLs.AUTH_URL: False,
-                                  ApiURLs.STREAMING_URL: False, ApiURLs.TELEMETRY_URL: False}
+            self._refresh_rate = {ConfigParams.SPLITS_REFRESH_RATE.value: 0, ConfigParams.SEGMENTS_REFRESH_RATE.value: 0,
+                ConfigParams.IMPRESSIONS_REFRESH_RATE.value: 0, ConfigParams.EVENTS_REFRESH_RATE.value: 0, ConfigParams.TELEMETRY_REFRESH_RATE.value: 0}
+            self._url_override = {ApiURLs.SDK_URL.value: False, ApiURLs.EVENTS_URL.value: False, ApiURLs.AUTH_URL.value: False,
+                                  ApiURLs.STREAMING_URL.value: False, ApiURLs.TELEMETRY_URL.value: False}
             self._impressions_queue_size = 0
             self._events_queue_size = 0
             self._impressions_mode = None
@@ -749,15 +748,15 @@ class TelemetryConfig(object):
         :type config: dict
         """
         with self._lock:
-            self._operation_mode = self._get_operation_mode(config[ConfigParams.OPERATION_MODE])
-            self._storage_type = self._get_storage_type(config[ConfigParams.OPERATION_MODE])
-            self._streaming_enabled = config[ConfigParams.STREAMING_ENABLED]
+            self._operation_mode = self._get_operation_mode(config[ConfigParams.OPERATION_MODE.value])
+            self._storage_type = self._get_storage_type(config[ConfigParams.OPERATION_MODE.value])
+            self._streaming_enabled = config[ConfigParams.STREAMING_ENABLED.value]
             self._refresh_rate = self._get_refresh_rates(config)
             self._url_override = self._get_url_overrides(extra_config)
-            self._impressions_queue_size = config[ConfigParams.IMPRESSIONS_QUEUE_SIZE]
-            self._events_queue_size = config[ConfigParams.EVENTS_QUEUE_SIZE]
-            self._impressions_mode = self._get_impressions_mode(config[ConfigParams.IMPRESSIONS_MODE])
-            self._impression_listener = True if config[ConfigParams.IMPRESSIONS_LISTENER] is not None else False
+            self._impressions_queue_size = config[ConfigParams.IMPRESSIONS_QUEUE_SIZE.value]
+            self._events_queue_size = config[ConfigParams.EVENTS_QUEUE_SIZE.value]
+            self._impressions_mode = self._get_impressions_mode(config[ConfigParams.IMPRESSIONS_MODE.value])
+            self._impression_listener = True if config[ConfigParams.IMPRESSIONS_LISTENER.value] is not None else False
             self._http_proxy = self._check_if_proxy_detected()
 
     def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
@@ -827,16 +826,16 @@ class TelemetryConfig(object):
                 'oM': self._operation_mode,
                 'sT': self._storage_type,
                 'sE': self._streaming_enabled,
-                'rR': {'sp': self._refresh_rate[ConfigParams.SPLITS_REFRESH_RATE],
-                                'se': self._refresh_rate[ConfigParams.SEGMENTS_REFRESH_RATE],
-                                'im': self._refresh_rate[ConfigParams.IMPRESSIONS_REFRESH_RATE],
-                                'ev': self._refresh_rate[ConfigParams.EVENTS_REFRESH_RATE],
-                                'te': self._refresh_rate[ConfigParams.TELEMETRY_REFRESH_RATE]},
-                'uO': {'s': self._url_override[ApiURLs.SDK_URL],
-                                'e': self._url_override[ApiURLs.EVENTS_URL],
-                                'a': self._url_override[ApiURLs.AUTH_URL],
-                                'st': self._url_override[ApiURLs.STREAMING_URL],
-                                't': self._url_override[ApiURLs.TELEMETRY_URL]},
+                'rR': {'sp': self._refresh_rate[ConfigParams.SPLITS_REFRESH_RATE.value],
+                                'se': self._refresh_rate[ConfigParams.SEGMENTS_REFRESH_RATE.value],
+                                'im': self._refresh_rate[ConfigParams.IMPRESSIONS_REFRESH_RATE.value],
+                                'ev': self._refresh_rate[ConfigParams.EVENTS_REFRESH_RATE.value],
+                                'te': self._refresh_rate[ConfigParams.TELEMETRY_REFRESH_RATE.value]},
+                'uO': {'s': self._url_override[ApiURLs.SDK_URL.value],
+                                'e': self._url_override[ApiURLs.EVENTS_URL.value],
+                                'a': self._url_override[ApiURLs.AUTH_URL.value],
+                                'st': self._url_override[ApiURLs.STREAMING_URL.value],
+                                't': self._url_override[ApiURLs.TELEMETRY_URL.value]},
                 'iQ': self._impressions_queue_size,
                 'eQ': self._events_queue_size,
                 'iM': self._impressions_mode,
@@ -857,9 +856,9 @@ class TelemetryConfig(object):
         :rtype: int
         """
         with self._lock:
-            if OperationMode.MEMEORY in op_mode:
+            if OperationMode.MEMEORY.value in op_mode:
                 return 0
-            elif op_mode == OperationMode.REDIS:
+            elif op_mode == OperationMode.REDIS.value:
                 return 1
             else:
                 return 2
@@ -875,12 +874,12 @@ class TelemetryConfig(object):
         :rtype: str
         """
         with self._lock:
-            if OperationMode.MEMEORY in op_mode:
-                return StorageType.MEMEORY
-            elif StorageType.REDIS in op_mode:
-                return StorageType.REDIS
+            if OperationMode.MEMEORY.value in op_mode:
+                return StorageType.MEMEORY.value
+            elif StorageType.REDIS.value in op_mode:
+                return StorageType.REDIS.value
             else:
-                return StorageType.LOCALHOST
+                return StorageType.LOCALHOST.value
 
     def _get_refresh_rates(self, config):
         """
@@ -894,11 +893,11 @@ class TelemetryConfig(object):
         """
         with self._lock:
             return {
-                ConfigParams.SPLITS_REFRESH_RATE: config[ConfigParams.SPLITS_REFRESH_RATE],
-                ConfigParams.SEGMENTS_REFRESH_RATE: config[ConfigParams.SEGMENTS_REFRESH_RATE],
-                ConfigParams.IMPRESSIONS_REFRESH_RATE: config[ConfigParams.IMPRESSIONS_REFRESH_RATE],
-                ConfigParams.EVENTS_REFRESH_RATE: config[ConfigParams.EVENTS_REFRESH_RATE],
-                ConfigParams.TELEMETRY_REFRESH_RATE: config[ConfigParams.TELEMETRY_REFRESH_RATE]
+                ConfigParams.SPLITS_REFRESH_RATE.value: config[ConfigParams.SPLITS_REFRESH_RATE.value],
+                ConfigParams.SEGMENTS_REFRESH_RATE.value: config[ConfigParams.SEGMENTS_REFRESH_RATE.value],
+                ConfigParams.IMPRESSIONS_REFRESH_RATE.value: config[ConfigParams.IMPRESSIONS_REFRESH_RATE.value],
+                ConfigParams.EVENTS_REFRESH_RATE.value: config[ConfigParams.EVENTS_REFRESH_RATE.value],
+                ConfigParams.TELEMETRY_REFRESH_RATE.value: config[ConfigParams.TELEMETRY_REFRESH_RATE.value]
             }
 
     def _get_url_overrides(self, config):
@@ -913,11 +912,11 @@ class TelemetryConfig(object):
         """
         with self._lock:
             return  {
-                ApiURLs.SDK_URL: True if ApiURLs.SDK_URL in config else False,
-                ApiURLs.EVENTS_URL: True if ApiURLs.EVENTS_URL in config else False,
-                ApiURLs.AUTH_URL: True if ApiURLs.AUTH_URL in config else False,
-                ApiURLs.STREAMING_URL: True if ApiURLs.STREAMING_URL in config else False,
-                ApiURLs.TELEMETRY_URL: True if ApiURLs.TELEMETRY_URL in config else False
+                ApiURLs.SDK_URL.value: True if ApiURLs.SDK_URL.value in config else False,
+                ApiURLs.EVENTS_URL.value: True if ApiURLs.EVENTS_URL.value in config else False,
+                ApiURLs.AUTH_URL.value: True if ApiURLs.AUTH_URL.value in config else False,
+                ApiURLs.STREAMING_URL.value: True if ApiURLs.STREAMING_URL.value in config else False,
+                ApiURLs.TELEMETRY_URL.value: True if ApiURLs.TELEMETRY_URL.value in config else False
             }
 
     def _get_impressions_mode(self, imp_mode):
@@ -931,9 +930,9 @@ class TelemetryConfig(object):
         :rtype: int
         """
         with self._lock:
-            if imp_mode == ImpressionsMode.DEBUG:
+            if imp_mode == ImpressionsMode.DEBUG.value:
                 return 1
-            elif imp_mode == ImpressionsMode.OPTIMIZED:
+            elif imp_mode == ImpressionsMode.OPTIMIZED.value:
                 return 0
             else:
                 return 2
@@ -947,6 +946,6 @@ class TelemetryConfig(object):
         """
         with self._lock:
             for x in os.environ:
-                if x.upper() == ExtraConfig.HTTPS_PROXY_ENV:
+                if x.upper() == ExtraConfig.HTTPS_PROXY_ENV.value:
                     return True
             return False

@@ -584,33 +584,33 @@ class InMemoryTelemetryStorageTests(object):
                 assert(self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(latency)] == 2 + current_count)
 
     def _get_method_latency(self, resource, storage):
-        if resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT:
+        if resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT.value:
             return storage._method_latencies._treatment
-        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS:
+        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS.value:
             return storage._method_latencies._treatments
-        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG:
+        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG.value:
             return storage._method_latencies._treatment_with_config
-        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG:
+        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG.value:
             return storage._method_latencies._treatments_with_config
-        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TRACK:
+        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TRACK.value:
             return storage._method_latencies._track
         else:
             return
 
     def _get_http_latency(self, resource, storage):
-        if resource == ModelTelemetry.HTTPExceptionsAndLatencies.SPLIT:
+        if resource == ModelTelemetry.HTTPExceptionsAndLatencies.SPLIT.value:
             return storage._http_latencies._split
-        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.SEGMENT:
+        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.SEGMENT.value:
             return storage._http_latencies._segment
-        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.IMPRESSION:
+        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.IMPRESSION.value:
             return storage._http_latencies._impression
-        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.IMPRESSION_COUNT:
+        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value:
             return storage._http_latencies._impression_count
-        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.EVENT:
+        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.EVENT.value:
             return storage._http_latencies._event
-        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.TELEMETRY:
+        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.TELEMETRY.value:
             return storage._http_latencies._telemetry
-        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.TOKEN:
+        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.TOKEN.value:
             return storage._http_latencies._token
         else:
             return

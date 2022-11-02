@@ -20,7 +20,7 @@ from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageC
 
 # Storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
-    InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage
+    InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, LocalhostTelemetryStorage
 from splitio.storage.adapters import redis
 from splitio.storage.redis import RedisSplitStorage, RedisSegmentStorage, RedisImpressionsStorage, \
     RedisEventsStorage
@@ -32,7 +32,7 @@ from splitio.api.segments import SegmentsAPI
 from splitio.api.impressions import ImpressionsAPI
 from splitio.api.events import EventsAPI
 from splitio.api.auth import AuthAPI
-from splitio.api.telemetry import TelemetryAPI
+from splitio.api.telemetry import TelemetryAPI, LocalhostTelemetryAPI
 from splitio.api.commons import get_current_epoch_time
 
 # Tasks
@@ -126,9 +126,8 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         self._preforked_initialization = preforked_initialization
         self._telemetry_evaluation_producer = None
         self._telemetry_init_producer = None
-        if not telemetry_producer == None:
-            self._telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
-            self._telemetry_init_producer = telemetry_producer.get_telemetry_init_producer()
+        self._telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
+        self._telemetry_init_producer = telemetry_producer.get_telemetry_init_producer()
         self._telemetry_init_consumer = telemetry_init_consumer
         self._telemetry_api = telemetry_api
         self._ready_time = get_current_epoch_time()
@@ -159,14 +158,13 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         self._sdk_internal_ready_flag.wait()
         self._status = Status.READY
         self._sdk_ready_flag.set()
-        if not self._telemetry_init_producer == None:
-            self._telemetry_init_producer.record_ready_time(get_current_epoch_time() - self._ready_time)
-            redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
-            self._telemetry_init_producer.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+        self._telemetry_init_producer.record_ready_time(get_current_epoch_time() - self._ready_time)
+        redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
+        self._telemetry_init_producer.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
 
-            config_post_thread = threading.Thread(target=self._telemetry_api.record_init(self._telemetry_init_consumer.get_config_stats()), name="PostConfigData")
-            config_post_thread.setDaemon(True)
-            config_post_thread.start()
+        config_post_thread = threading.Thread(target=self._telemetry_api.record_init(self._telemetry_init_consumer.get_config_stats()), name="PostConfigData")
+        config_post_thread.setDaemon(True)
+        config_post_thread.start()
 
 
     def _get_storage(self, name):
@@ -510,6 +508,11 @@ def _build_redis_factory(api_key, cfg):
 
 def _build_localhost_factory(cfg):
     """Build and return a localhost factory for testing/development purposes."""
+    telemetry_storage = LocalhostTelemetryStorage()
+    telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+    telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+    telemetry_runtime_producer=telemetry_producer.get_telemetry_runtime_producer()
+
     storages = {
         'splits': InMemorySplitStorage(),
         'segments': InMemorySegmentStorage(),  # not used, just to avoid possible future errors.
@@ -535,7 +538,7 @@ def _build_localhost_factory(cfg):
     manager = Manager(ready_event, synchronizer, None, False, sdk_metadata)
     manager.start()
     recorder = StandardRecorder(
-        ImpressionsManager(StrategyDebugMode()),
+        ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer),
         storages['events'],
         storages['impressions'],
     )
@@ -546,6 +549,9 @@ def _build_localhost_factory(cfg):
         recorder,
         manager,
         ready_event,
+        telemetry_producer=telemetry_producer,
+        telemetry_init_consumer=telemetry_consumer.get_telemetry_init_consumer(),
+        telemetry_api=LocalhostTelemetryAPI()
     )
 
 def get_factory(api_key, **kwargs):

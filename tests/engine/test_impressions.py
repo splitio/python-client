@@ -217,7 +217,7 @@ class ImpressionManagerTests(object):
         utc_time_mock.return_value = utc_now
         mocker.patch('splitio.util.utctime_ms', new=utc_time_mock)
 
-        manager = Manager(StrategyNoneMode(Counter()))  # no listener
+        manager = Manager(StrategyNoneMode(Counter()), mocker.Mock())  # no listener
         assert manager._strategy._counter is not None
         assert manager._listener is None
         assert isinstance(manager._strategy, StrategyNoneMode)
@@ -285,7 +285,7 @@ class ImpressionManagerTests(object):
         mocker.patch('splitio.util.utctime_ms', new=utc_time_mock)
 
         listener = mocker.Mock(spec=ImpressionListenerWrapper)
-        manager = Manager(StrategyOptimizedMode(Counter()), listener=listener)
+        manager = Manager(StrategyOptimizedMode(Counter()), mocker.Mock(), listener=listener)
         assert manager._strategy._counter is not None
         assert manager._strategy._observer is not None
         assert manager._listener is not None
@@ -415,7 +415,7 @@ class ImpressionManagerTests(object):
         mocker.patch('splitio.util.utctime_ms', new=utc_time_mock)
 
         listener = mocker.Mock(spec=ImpressionListenerWrapper)
-        manager = Manager(StrategyNoneMode(Counter()), listener=listener)
+        manager = Manager(StrategyNoneMode(Counter()), mocker.Mock(), listener=listener)
         assert manager._strategy._counter is not None
         assert manager._listener is not None
         assert isinstance(manager._strategy, StrategyNoneMode)
