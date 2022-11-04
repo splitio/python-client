@@ -2,6 +2,7 @@
 from enum import Enum
 
 from splitio.client.listener import ImpressionListenerException
+from splitio.models import telemetry
 
 class ImpressionsMode(Enum):
     """Impressions tracking mode."""
@@ -39,7 +40,7 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         """
         for_log, for_listener = self._strategy.process_impressions(impressions)
         if len(impressions) > len(for_log):
-            self._telemetry_runtime_producer.record_impression_stats('impressionsDeduped', len(impressions) - len(for_log))
+            self._telemetry_runtime_producer.record_impression_stats(telemetry.CounterConstants.IMPRESSIONS_DEDUPED, len(impressions) - len(for_log))
         self._send_impressions_to_listener(for_listener)
         return for_log
 

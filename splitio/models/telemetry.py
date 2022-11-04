@@ -86,13 +86,6 @@ class MethodExceptionsAndLatencies(Enum):
 class LastSynchronizationConstants(Enum):
     """Last sync constants"""
     LAST_SYNCHRONIZATIONS = 'lastSynchronizations'
-    SPLIT = 'split'
-    SEGMENT = 'segment'
-    IMPRESSION = 'impression'
-    IMPRESSION_COUNT = 'impressionCount'
-    EVENT = 'event'
-    TELEMETRY = 'telemetry'
-    TOKEN = 'token'
 
 class SSEStreamingStatus(Enum):
     """SSE streaming status enums"""
@@ -127,13 +120,13 @@ class StreamingEventTypes(Enum):
 
 class StorageType(Enum):
     """Storage types constants"""
-    MEMEORY = 'memory'
+    MEMORY = 'memory'
     REDIS = 'redis'
     LOCALHOST = 'localhost'
 
 class OperationMode(Enum):
     """Storage modes constants"""
-    MEMEORY = 'inmemory'
+    MEMORY = 'inmemory'
     REDIS = 'redis-consumer'
 
 def get_latency_bucket_index(micros):
@@ -180,16 +173,16 @@ class MethodLatencies(object):
         """
         latency_bucket = get_latency_bucket_index(latency)
         with self._lock:
-            if method == MethodExceptionsAndLatencies.TREATMENT.value:
-                self._treatment[latency_bucket] = self._treatment[latency_bucket] + 1
-            elif method == MethodExceptionsAndLatencies.TREATMENTS.value:
-                self._treatments[latency_bucket] = self._treatments[latency_bucket] + 1
-            elif method == MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG.value:
-                self._treatment_with_config[latency_bucket] = self._treatment_with_config[latency_bucket] + 1
-            elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG.value:
-                self._treatments_with_config[latency_bucket] = self._treatments_with_config[latency_bucket] + 1
-            elif method == MethodExceptionsAndLatencies.TRACK.value:
-                self._track[latency_bucket] = self._track[latency_bucket] + 1
+            if method == MethodExceptionsAndLatencies.TREATMENT:
+                self._treatment[latency_bucket] += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS:
+                self._treatments[latency_bucket] += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG:
+                self._treatment_with_config[latency_bucket] += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG:
+                self._treatments_with_config[latency_bucket] += 1
+            elif method == MethodExceptionsAndLatencies.TRACK:
+                self._track[latency_bucket] += 1
             else:
                 return
 
@@ -240,20 +233,20 @@ class HTTPLatencies(object):
         """
         latency_bucket = get_latency_bucket_index(latency)
         with self._lock:
-            if resource == HTTPExceptionsAndLatencies.SPLIT.value:
-                self._split[latency_bucket] = self._split[latency_bucket] + 1
-            elif resource == HTTPExceptionsAndLatencies.SEGMENT.value:
-                self._segment[latency_bucket] = self._segment[latency_bucket] + 1
-            elif resource == HTTPExceptionsAndLatencies.IMPRESSION.value:
-                self._impression[latency_bucket] = self._impression[latency_bucket] + 1
-            elif resource == HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value:
-                self._impression_count[latency_bucket] = self._impression_count[latency_bucket] + 1
-            elif resource == HTTPExceptionsAndLatencies.EVENT.value:
-                self._event[latency_bucket] = self._event[latency_bucket] + 1
-            elif resource == HTTPExceptionsAndLatencies.TELEMETRY.value:
-                self._telemetry[latency_bucket] = self._telemetry[latency_bucket] + 1
-            elif resource == HTTPExceptionsAndLatencies.TOKEN.value:
-                self._token[latency_bucket] = self._token[latency_bucket] + 1
+            if resource == HTTPExceptionsAndLatencies.SPLIT:
+                self._split[latency_bucket] += 1
+            elif resource == HTTPExceptionsAndLatencies.SEGMENT:
+                self._segment[latency_bucket] += 1
+            elif resource == HTTPExceptionsAndLatencies.IMPRESSION:
+                self._impression[latency_bucket] += 1
+            elif resource == HTTPExceptionsAndLatencies.IMPRESSION_COUNT:
+                self._impression_count[latency_bucket] += 1
+            elif resource == HTTPExceptionsAndLatencies.EVENT:
+                self._event[latency_bucket] += 1
+            elif resource == HTTPExceptionsAndLatencies.TELEMETRY:
+                self._telemetry[latency_bucket] += 1
+            elif resource == HTTPExceptionsAndLatencies.TOKEN:
+                self._token[latency_bucket] += 1
             else:
                 return
 
@@ -299,16 +292,16 @@ class MethodExceptions(object):
         :type method: str
         """
         with self._lock:
-            if method == MethodExceptionsAndLatencies.TREATMENT.value:
-                self._treatment = self._treatment + 1
-            elif method == MethodExceptionsAndLatencies.TREATMENTS.value:
-                self._treatments = self._treatments + 1
-            elif method == MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG.value:
-                self._treatment_with_config = self._treatment_with_config + 1
-            elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG.value:
-                self._treatments_with_config = self._treatments_with_config + 1
-            elif method == MethodExceptionsAndLatencies.TRACK.value:
-                self._track = self._track + 1
+            if method == MethodExceptionsAndLatencies.TREATMENT:
+                self._treatment += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS:
+                self._treatments += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG:
+                self._treatment_with_config += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG:
+                self._treatments_with_config += 1
+            elif method == MethodExceptionsAndLatencies.TRACK:
+                self._track += 1
             else:
                 return
 
@@ -358,19 +351,19 @@ class LastSynchronization(object):
         :type sync_time: int
         """
         with self._lock:
-            if resource == LastSynchronizationConstants.SPLIT.value:
+            if resource == HTTPExceptionsAndLatencies.SPLIT:
                 self._split = sync_time
-            elif resource == LastSynchronizationConstants.SEGMENT.value:
+            elif resource == HTTPExceptionsAndLatencies.SEGMENT:
                 self._segment = sync_time
-            elif resource == LastSynchronizationConstants.IMPRESSION.value:
+            elif resource == HTTPExceptionsAndLatencies.IMPRESSION:
                 self._impression = sync_time
-            elif resource == LastSynchronizationConstants.IMPRESSION_COUNT.value:
+            elif resource == HTTPExceptionsAndLatencies.IMPRESSION_COUNT:
                 self._impression_count = sync_time
-            elif resource == LastSynchronizationConstants.EVENT.value:
+            elif resource == HTTPExceptionsAndLatencies.EVENT:
                 self._event = sync_time
-            elif resource == LastSynchronizationConstants.TELEMETRY.value:
+            elif resource == HTTPExceptionsAndLatencies.TELEMETRY:
                 self._telemetry = sync_time
-            elif resource == LastSynchronizationConstants.TOKEN.value:
+            elif resource == HTTPExceptionsAndLatencies.TOKEN:
                 self._token = sync_time
             else:
                 return
@@ -383,9 +376,9 @@ class LastSynchronization(object):
         :rtype: dict
         """
         with self._lock:
-            return {LastSynchronizationConstants.LAST_SYNCHRONIZATIONS.value: {LastSynchronizationConstants.SPLIT.value: self._split, LastSynchronizationConstants.SEGMENT.value: self._segment, LastSynchronizationConstants.IMPRESSION.value: self._impression,
-                                        LastSynchronizationConstants.IMPRESSION_COUNT.value: self._impression_count, LastSynchronizationConstants.EVENT.value: self._event,
-                                        LastSynchronizationConstants.TELEMETRY.value: self._telemetry, LastSynchronizationConstants.TOKEN.value: self._token}
+            return {LastSynchronizationConstants.LAST_SYNCHRONIZATIONS.value: {HTTPExceptionsAndLatencies.SPLIT.value: self._split, HTTPExceptionsAndLatencies.SEGMENT.value: self._segment, HTTPExceptionsAndLatencies.IMPRESSION.value: self._impression,
+                                        HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value: self._impression_count, HTTPExceptionsAndLatencies.EVENT.value: self._event,
+                                        HTTPExceptionsAndLatencies.TELEMETRY.value: self._telemetry, HTTPExceptionsAndLatencies.TOKEN.value: self._token}
                     }
 
 class HTTPErrors(object):
@@ -419,34 +412,34 @@ class HTTPErrors(object):
         :type status: str
         """
         with self._lock:
-            if resource == HTTPExceptionsAndLatencies.SPLIT.value:
+            if resource == HTTPExceptionsAndLatencies.SPLIT:
                 if status not in self._split:
                     self._split[status] = 0
-                self._split[status] = self._split[status] + 1
-            elif resource == HTTPExceptionsAndLatencies.SEGMENT.value:
+                self._split[status] += 1
+            elif resource == HTTPExceptionsAndLatencies.SEGMENT:
                 if status not in self._segment:
                     self._segment[status] = 0
-                self._segment[status] = self._segment[status] + 1
-            elif resource == HTTPExceptionsAndLatencies.IMPRESSION.value:
+                self._segment[status] += 1
+            elif resource == HTTPExceptionsAndLatencies.IMPRESSION:
                 if status not in self._impression:
                     self._impression[status] = 0
-                self._impression[status] = self._impression[status] + 1
-            elif resource == HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value:
+                self._impression[status] += 1
+            elif resource == HTTPExceptionsAndLatencies.IMPRESSION_COUNT:
                 if status not in self._impression_count:
                     self._impression_count[status] = 0
-                self._impression_count[status] = self._impression_count[status] + 1
-            elif resource == HTTPExceptionsAndLatencies.EVENT.value:
+                self._impression_count[status] += 1
+            elif resource == HTTPExceptionsAndLatencies.EVENT:
                 if status not in self._event:
                     self._event[status] = 0
-                self._event[status] = self._event[status] + 1
-            elif resource == HTTPExceptionsAndLatencies.TELEMETRY.value:
+                self._event[status] += 1
+            elif resource == HTTPExceptionsAndLatencies.TELEMETRY:
                 if status not in self._telemetry:
                     self._telemetry[status] = 0
-                self._telemetry[status] = self._telemetry[status] + 1
-            elif resource == HTTPExceptionsAndLatencies.TOKEN.value:
+                self._telemetry[status] += 1
+            elif resource == HTTPExceptionsAndLatencies.TOKEN:
                 if status not in self._token:
                     self._token[status] = 0
-                self._token[status] = self._token[status] + 1
+                self._token[status] += 1
             else:
                 return
 
@@ -497,12 +490,12 @@ class TelemetryCounters(object):
         :type value: int
         """
         with self._lock:
-            if resource == CounterConstants.IMPRESSIONS_QUEUED.value:
-                self._impressions_queued = self._impressions_queued + value
-            elif resource == CounterConstants.IMPRESSIONS_DEDUPED.value:
-                self._impressions_deduped = self._impressions_deduped + value
-            elif resource == CounterConstants.IMPRESSIONS_DROPPED.value:
-                self._impressions_dropped = self._impressions_dropped + value
+            if resource == CounterConstants.IMPRESSIONS_QUEUED:
+                self._impressions_queued += value
+            elif resource == CounterConstants.IMPRESSIONS_DEDUPED:
+                self._impressions_deduped += value
+            elif resource == CounterConstants.IMPRESSIONS_DROPPED:
+                self._impressions_dropped += value
             else:
                 return
 
@@ -516,10 +509,10 @@ class TelemetryCounters(object):
         :type value: int
         """
         with self._lock:
-            if resource == CounterConstants.EVENTS_QUEUED.value:
-                self._events_queued = self._events_queued + value
-            elif resource == CounterConstants.EVENTS_DROPPED.value:
-                self._events_dropped = self._events_dropped + value
+            if resource == CounterConstants.EVENTS_QUEUED:
+                self._events_queued += value
+            elif resource == CounterConstants.EVENTS_DROPPED:
+                self._events_dropped += value
             else:
                 return
 
@@ -529,7 +522,7 @@ class TelemetryCounters(object):
 
         """
         with self._lock:
-            self._auth_rejections = self._auth_rejections + 1
+            self._auth_rejections += 1
 
     def record_token_refreshes(self):
         """
@@ -537,7 +530,7 @@ class TelemetryCounters(object):
 
         """
         with self._lock:
-            self._token_refreshes = self._token_refreshes + 1
+            self._token_refreshes += 1
 
     def record_session_length(self, session):
         """
@@ -561,15 +554,15 @@ class TelemetryCounters(object):
         """
 
         with self._lock:
-            if resource == CounterConstants.IMPRESSIONS_QUEUED.value:
+            if resource == CounterConstants.IMPRESSIONS_QUEUED:
                 return self._impressions_queued
-            elif resource == CounterConstants.IMPRESSIONS_DEDUPED.value:
+            elif resource == CounterConstants.IMPRESSIONS_DEDUPED:
                 return self._impressions_deduped
-            elif resource == CounterConstants.IMPRESSIONS_DROPPED.value:
+            elif resource == CounterConstants.IMPRESSIONS_DROPPED:
                 return self._impressions_dropped
-            elif resource == CounterConstants.EVENTS_QUEUED.value:
+            elif resource == CounterConstants.EVENTS_QUEUED:
                 return self._events_queued
-            elif resource == CounterConstants.EVENTS_DROPPED.value:
+            elif resource == CounterConstants.EVENTS_DROPPED:
                 return self._events_dropped
             else:
                 return 0
@@ -620,7 +613,7 @@ class StreamingEvent(object):
         :param streaming_event: Streaming event tuple: ('type', 'data', 'time')
         :type streaming_event: dict
         """
-        self._type = streaming_event[0]
+        self._type = streaming_event[0].value
         self._data = streaming_event[1]
         self._time = streaming_event[2]
 
@@ -781,7 +774,7 @@ class TelemetryConfig(object):
 
         """
         with self._lock:
-            self._block_until_ready_timeout = self._block_until_ready_timeout + 1
+            self._block_until_ready_timeout += 1
 
     def record_not_ready_usage(self):
         """
@@ -789,7 +782,7 @@ class TelemetryConfig(object):
 
         """
         with self._lock:
-            self._not_ready = self._not_ready + 1
+            self._not_ready += 1
 
     def get_bur_time_outs(self):
         """
@@ -856,7 +849,7 @@ class TelemetryConfig(object):
         :rtype: int
         """
         with self._lock:
-            if OperationMode.MEMEORY.value in op_mode:
+            if OperationMode.MEMORY.value in op_mode:
                 return 0
             elif op_mode == OperationMode.REDIS.value:
                 return 1
@@ -874,8 +867,8 @@ class TelemetryConfig(object):
         :rtype: str
         """
         with self._lock:
-            if OperationMode.MEMEORY.value in op_mode:
-                return StorageType.MEMEORY.value
+            if OperationMode.MEMORY.value in op_mode:
+                return StorageType.MEMORY.value
             elif StorageType.REDIS.value in op_mode:
                 return StorageType.REDIS.value
             else:

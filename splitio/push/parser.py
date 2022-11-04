@@ -4,7 +4,7 @@ import json
 from enum import Enum
 
 from splitio.util.decorators import abstract_property
-from splitio.util import utctime_ms
+from splitio.util.time import utctime_ms
 from splitio.push.sse import SSE_EVENT_ERROR, SSE_EVENT_MESSAGE
 
 

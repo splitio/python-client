@@ -2,7 +2,7 @@ import abc
 
 from splitio.engine.impressions.manager import Observer, truncate_impressions_time, Counter, truncate_time
 from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker
-from splitio import util
+from splitio.util.time import utctime_ms
 
 _IMPRESSION_OBSERVER_CACHE_SIZE = 500000
 _UNIQUE_KEYS_CACHE_SIZE = 30000
@@ -100,5 +100,5 @@ class StrategyOptimizedMode(BaseStrategy):
         """
         imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions]
         self._counter.track([imp for imp, _ in imps])
-        this_hour = truncate_time(util.utctime_ms())
+        this_hour = truncate_time(utctime_ms())
         return [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour], imps

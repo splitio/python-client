@@ -1,5 +1,5 @@
 """Commons module."""
-import time
+from splitio.util.time import get_current_epoch_time
 
 _CACHE_CONTROL = 'Cache-Control'
 _CACHE_CONTROL_NO_CACHE = 'no-cache'
@@ -114,12 +114,3 @@ def build_fetch(change_number, fetch_options, metadata):
     if fetch_options.change_number is not None:
         query['till'] = fetch_options.change_number
     return query, extra_headers
-
-def get_current_epoch_time():
-    """
-    Get current epoch time in milliseconds
-
-    :return: epoch time
-    :rtype: int
-    """
-    return int(round(time.time() * 1000))

@@ -349,11 +349,11 @@ class InMemoryImpressionStorage(ImpressionStorage):
                 for impression in impressions:
                     self._impressions.put(impression, False)
                     impressions_stored = impressions_stored + 1
-            self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_QUEUED.value, len(impressions))
+            self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_QUEUED, len(impressions))
             return True
         except queue.Full:
-            self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_DROPPED.value, len(impressions) - impressions_stored)
-            self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_QUEUED.value, impressions_stored)
+            self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_DROPPED, len(impressions) - impressions_stored)
+            self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_QUEUED, impressions_stored)
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
                 self._queue_full_hook()
             _LOGGER.warning(
@@ -430,11 +430,11 @@ class InMemoryEventStorage(EventStorage):
                         return False
                     self._events.put(event.event, False)
                     events_stored = events_stored + 1
-            self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_QUEUED.value, len(events))
+            self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_QUEUED, len(events))
             return True
         except queue.Full:
-            self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_DROPPED.value, len(events) - events_stored)
-            self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_QUEUED.value, events_stored)
+            self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_DROPPED, len(events) - events_stored)
+            self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_QUEUED, events_stored)
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
                 self._queue_full_hook()
             _LOGGER.warning(

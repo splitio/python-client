@@ -2,6 +2,7 @@
 import json
 
 from  splitio.storage.inmemmory import InMemoryTelemetryStorage
+from splitio.models.telemetry import CounterConstants
 
 class TelemetryStorageProducer(object):
     """Telemetry storage producer class."""
@@ -260,11 +261,11 @@ class TelemetryRuntimeConsumer(object):
         http_latencies = self.pop_http_latencies()['httpLatencies']
 
         return {
-            'iQ': self.get_impressions_stats('impressionsQueued'),
-            'iDe': self.get_impressions_stats('impressionsDeduped'),
-            'iDr': self.get_impressions_stats('impressionsDropped'),
-            'eQ': self.get_events_stats('eventsQueued'),
-            'eD': self.get_events_stats('eventsDropped'),
+            'iQ': self.get_impressions_stats(CounterConstants.IMPRESSIONS_QUEUED),
+            'iDe': self.get_impressions_stats(CounterConstants.IMPRESSIONS_DEDUPED),
+            'iDr': self.get_impressions_stats(CounterConstants.IMPRESSIONS_DROPPED),
+            'eQ': self.get_events_stats(CounterConstants.EVENTS_QUEUED),
+            'eD': self.get_events_stats(CounterConstants.EVENTS_DROPPED),
             'lS': {'sp': last_synchronization['split'],
                       'se': last_synchronization['segment'],
                       'im': last_synchronization['impression'],

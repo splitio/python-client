@@ -5,7 +5,8 @@ import json
 import time
 
 from splitio.api import APIException
-from splitio.api.commons import headers_from_metadata, build_fetch, record_telemetry, get_current_epoch_time
+from splitio.api.commons import headers_from_metadata, build_fetch, record_telemetry
+from splitio.util.time import get_current_epoch_time
 from splitio.api.client import HttpClientException
 from splitio.models.telemetry import HTTPExceptionsAndLatencies
 
@@ -54,7 +55,7 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
                 extra_headers=extra_headers,
                 query=query,
             )
-            record_telemetry(response.status_code, get_current_epoch_time() - start, HTTPExceptionsAndLatencies.SPLIT.value, self._telemetry_runtime_producer)
+            record_telemetry(response.status_code, get_current_epoch_time() - start, HTTPExceptionsAndLatencies.SPLIT, self._telemetry_runtime_producer)
             if 200 <= response.status_code < 300:
                 return json.loads(response.body)
             else:

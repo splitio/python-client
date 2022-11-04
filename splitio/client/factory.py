@@ -33,7 +33,7 @@ from splitio.api.impressions import ImpressionsAPI
 from splitio.api.events import EventsAPI
 from splitio.api.auth import AuthAPI
 from splitio.api.telemetry import TelemetryAPI, LocalhostTelemetryAPI
-from splitio.api.commons import get_current_epoch_time
+from splitio.util.time import get_current_epoch_time
 
 # Tasks
 from splitio.tasks.split_sync import SplitSynchronizationTask
@@ -511,7 +511,7 @@ def _build_localhost_factory(cfg):
     telemetry_storage = LocalhostTelemetryStorage()
     telemetry_producer = TelemetryStorageProducer(telemetry_storage)
     telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
-    telemetry_runtime_producer=telemetry_producer.get_telemetry_runtime_producer()
+    telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
 
     storages = {
         'splits': InMemorySplitStorage(),
@@ -535,7 +535,7 @@ def _build_localhost_factory(cfg):
     sdk_metadata = util.get_metadata(cfg)
     ready_event = threading.Event()
     synchronizer = LocalhostSynchronizer(synchronizers, tasks)
-    manager = Manager(ready_event, synchronizer, None, False, sdk_metadata)
+    manager = Manager(ready_event, synchronizer, None, False, sdk_metadata, telemetry_runtime_producer)
     manager.start()
     recorder = StandardRecorder(
         ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer),
