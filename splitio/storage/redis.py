@@ -180,6 +180,23 @@ class RedisSplitStorage(SplitStorage):
             _LOGGER.debug('Error: ', exc_info=True)
             return []
 
+    def get_splits_count(self):
+        """
+        Return splits count.
+
+        :rtype: int
+        """
+        return 0
+
+    def get_all_splits(self):
+        """
+        Return all the splits in cache.
+
+        :return: 0
+        :rtype: int
+        """
+        return 0
+
     def get_all_splits(self):
         """
         Return all the splits in cache.
@@ -345,6 +362,22 @@ class RedisSegmentStorage(SegmentStorage):
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
+    def get_segments_count(self):
+        """
+        Return segment count.
+
+        :return: 0
+        :rtype: int
+        """
+        return 0
+
+    def get_segments_keys_count(self):
+        """
+        Return segment count.
+
+        :rtype: int
+        """
+        return 0
 
 class RedisImpressionsStorage(ImpressionStorage, ImpressionPipelinedStorage):
     """Redis based event storage class."""

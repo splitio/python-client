@@ -1,5 +1,8 @@
 """Redis client wrapper with prefix support."""
 from builtins import str
+import socket
+import logging
+from splitio.version import __version__
 
 try:
     from redis import StrictRedis
@@ -14,6 +17,10 @@ except ImportError:
         )
     StrictRedis = Sentinel = missing_redis_dependencies
 
+_LOGGER = logging.getLogger(__name__)
+TELEMETRY_CONFIG_KEY = 'SPLITIO.telemetry.init'
+TELEMETRY_EXCEPTIONS_KEY = 'SPLITIO.telemetry.exceptions'
+TELEMETRY_LATENCIES_KEY = 'SPLITIO.telemetry.latencies'
 
 class RedisAdapterException(Exception):
     """Exception to be thrown when a redis command fails with an exception."""
@@ -241,6 +248,13 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
         except RedisError as exc:
             raise RedisAdapterException('Error executing hget operation') from exc
 
+    def hincrby(self, name, key, amount=1):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return self._decorated.hincrby(self._prefix_helper.add_prefix(name), key, amount)
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing hincrby operation') from exc
+
     def incr(self, name, amount=1):
         """Mimic original redis function but using user custom prefix."""
         try:
@@ -297,6 +311,54 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
         except RedisError as exc:
             raise RedisAdapterException('Error executing ttl operation') from exc
 
+    def record_init(self, *values):
+        try:
+            host_name, host_ip = self._get_host_info()
+            return self.hset(TELEMETRY_CONFIG_KEY, 'python-' + __version__ + '/' + host_name+ '/' + host_ip, str(*values))
+        except RedisError as exc:
+            raise RedisAdapterException('Error pushing telemetry config operation') from exc
+
+    def _get_host_info(self):
+        host_name = 'Unknown'
+        host_ip = 'Unknown'
+        try:
+            host_name = socket.gethostname()
+            host_ip = socket.gethostbyname(socket.gethostname())
+        except:
+            _LOGGER.debug("Could not get hostname or ip")
+            pass
+        return host_name, host_ip
+
+    def record_stats(self, values):
+        try:
+            host_name, host_ip = self._get_host_info()
+            for item in values['mL']:
+                bucket_number = 0
+                for bucket in values['mL'][item]:
+                    if bucket > 0:
+                        self.hincrby(TELEMETRY_LATENCIES_KEY, 'python-' + __version__ + '/' + host_name+ '/' + host_ip + '/' +
+                             self._get_method_name(item) + '/' + str(bucket_number), bucket)
+                    bucket_number = bucket_number + 0
+            for item in values['mE']:
+                if values['mE'][item] > 0:
+                    self.hincrby(TELEMETRY_EXCEPTIONS_KEY, 'python-' + __version__ + '/' + host_name+ '/' + host_ip + '/' +
+                            self._get_method_name(item), values['mE'][item])
+        except RedisError as exc:
+            raise RedisAdapterException('Error pushing telemetry evaluation operation') from exc
+
+    def _get_method_name(self, item):
+        if item == 't':
+            return 'treatment'
+        elif item == 'ts':
+            return 'treatments'
+        elif item == 'tc':
+            return 'treatment_with_config'
+        elif item == 'tcs':
+            return 'treatments_with_config'
+        elif item == 'tr':
+            return 'track'
+        else:
+            return ''
 
 class RedisPipelineAdapter(object):
     """

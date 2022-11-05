@@ -152,6 +152,20 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
             ready_updater.start()
         else:
             self._status = Status.READY
+            ready_updater = threading.Thread(target=self._update_redis_telemetry_config,
+                                             name='SDKRedisTelemetryConfig')
+            ready_updater.setDaemon(True)
+            ready_updater.start()
+
+
+    def _update_redis_telemetry_config(self):
+        """Push Config Telemetry into storage."""
+        self._telemetry_init_producer.record_ready_time(get_current_epoch_time() - self._ready_time)
+        redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
+        self._telemetry_init_producer.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+        config_post_thread = threading.Thread(target=self._telemetry_api.record_init(self._telemetry_init_consumer.get_config_stats()), name="PostConfigData")
+        config_post_thread.setDaemon(True)
+        config_post_thread.start()
 
     def _update_status_when_ready(self):
         """Wait until the sdk is ready and update the status."""
@@ -469,14 +483,14 @@ def _build_redis_factory(api_key, cfg):
 
     synchronizers = SplitSynchronizers(None, None, None, None,
         impressions_count_sync,
-        None,
+        TelemetrySynchronizer(telemetry_consumer, storages['splits'], storages['segments'], redis_adapter),
         unique_keys_synchronizer,
         clear_filter_sync
     )
 
     tasks = SplitTasks(None, None, None, None,
         impressions_count_task,
-        None,
+        TelemetrySyncTask(synchronizers.telemetry_sync.synchronize_stats, cfg['metricsRefreshRate']),
         unique_keys_task,
         clear_filter_task
     )
@@ -494,6 +508,8 @@ def _build_redis_factory(api_key, cfg):
     initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer")
     initialization_thread.setDaemon(True)
     initialization_thread.start()
+    
+    telemetry_producer.get_telemetry_init_producer().record_config(cfg, {})
 
     return SplitFactory(
         api_key,
@@ -502,6 +518,7 @@ def _build_redis_factory(api_key, cfg):
         recorder,
         manager,
         sdk_ready_flag=None,
+        telemetry_api=redis_adapter,
         telemetry_producer=telemetry_producer,
         telemetry_init_consumer=telemetry_consumer.get_telemetry_init_consumer()
     )

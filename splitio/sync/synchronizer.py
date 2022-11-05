@@ -400,13 +400,16 @@ class RedisSynchronizer(BaseSynchronizer):
         :type split_tasks: splitio.sync.synchronizer.SplitTasks
         """
         self._split_synchronizers = split_synchronizers
-        self._tasks = []
+        self._tasks = [split_tasks.telemetry_task]
         if split_tasks.impressions_count_task is not None:
             self._tasks.append(split_tasks.impressions_count_task)
         if split_tasks.unique_keys_task is not None:
             self._tasks.append(split_tasks.unique_keys_task)
         if split_tasks.clear_filter_task is not None:
             self._tasks.append(split_tasks.clear_filter_task)
+        self._periodic_data_recording_tasks = [
+            split_tasks.telemetry_task
+        ]
 
     def sync_all(self):
         """
