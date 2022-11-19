@@ -2,6 +2,11 @@
 
 from splitio.client.factory import SplitFactory
 from splitio.client.manager import SplitManager, _LOGGER as _logger
+from splitio.storage import SplitStorage, EventStorage, ImpressionStorage, SegmentStorage
+from splitio.storage.inmemmory import InMemoryTelemetryStorage
+from splitio.engine.impressions.impressions import Manager as ImpressionManager
+from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageConsumer
+from splitio.recorder.recorder import StandardRecorder
 
 
 class ManagerTests(object):  # pylint: disable=too-few-public-methods
@@ -11,9 +16,25 @@ class ManagerTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property = mocker.PropertyMock()
         destroyed_property.return_value = False
 
-        factory = mocker.Mock(spec=SplitFactory)
-        factory._waiting_fork.return_value = True
-        type(factory).destroyed = destroyed_property
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        recorder = StandardRecorder(impmanager, mocker.Mock(), mocker.Mock())
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        factory = SplitFactory(mocker.Mock(),
+            {'splits': mocker.Mock(),
+            'segments': mocker.Mock(),
+            'impressions': mocker.Mock(),
+            'events': mocker.Mock()},
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_consumer.get_telemetry_init_consumer(),
+            mocker.Mock(),
+            True
+        )
 
         expected_msg = [
             mocker.call('Client is not ready - no calls possible')

@@ -3,13 +3,14 @@
 import json
 import os
 import threading
+import pytest
 
 from redis import StrictRedis
 
 from splitio.client.factory import get_factory, SplitFactory
 from splitio.client.util import SdkMetadata
 from splitio.storage.inmemmory import InMemoryEventStorage, InMemoryImpressionStorage, \
-    InMemorySegmentStorage, InMemorySplitStorage
+    InMemorySegmentStorage, InMemorySplitStorage, InMemoryTelemetryStorage
 from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \
     RedisSplitStorage, RedisSegmentStorage
 from splitio.storage.adapters.redis import build, RedisAdapter
@@ -17,8 +18,12 @@ from splitio.models import splits, segments
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager, ImpressionsMode
 from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyOptimizedMode
 from splitio.engine.impressions.manager import Counter
+from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer
+from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder
 from splitio.client.config import DEFAULT_CONFIG
+from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer
+from splitio.sync.manager import Manager
 
 class InMemoryIntegrationTests(object):
     """Inmemory storage-based integration tests."""
@@ -44,15 +49,27 @@ class InMemoryIntegrationTests(object):
             data = json.loads(flo.read())
         segment_storage.put(segments.from_raw(data))
 
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
-            'impressions': InMemoryImpressionStorage(5000),
-            'events': InMemoryEventStorage(5000),
+            'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
+            'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
         }
-        impmanager = ImpressionsManager(None, StrategyDebugMode()) # no listener
+        impmanager = ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer) # no listener
         recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'])
-        self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init
+        self.factory = SplitFactory('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    None,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_consumer=telemetry_consumer.get_telemetry_init_consumer(),
+                                    )  # pylint:disable=attribute-defined-outside-init
 
     def teardown_method(self):
         """Shut down the factory."""
@@ -292,15 +309,27 @@ class InMemoryOptimizedIntegrationTests(object):
             data = json.loads(flo.read())
         segment_storage.put(segments.from_raw(data))
 
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
-            'impressions': InMemoryImpressionStorage(5000),
-            'events': InMemoryEventStorage(5000),
+            'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
+            'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
         }
-        impmanager = ImpressionsManager(None, StrategyOptimizedMode(Counter()))
+        impmanager = ImpressionsManager(StrategyOptimizedMode(ImpressionsCounter()), telemetry_runtime_producer) # no listener
         recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'])
-        self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init
+        self.factory = SplitFactory('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    None,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_consumer=telemetry_consumer.get_telemetry_init_consumer(),
+                                    )  # pylint:disable=attribute-defined-outside-init
 
     def _validate_last_impressions(self, client, *to_validate):
         """Validate the last N impressions are present disregarding the order."""
@@ -510,16 +539,27 @@ class RedisIntegrationTests(object):
         redis_client.sadd(segment_storage._get_key(data['name']), *data['added'])
         redis_client.set(segment_storage._get_till_key(data['name']), data['till'])
 
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
             'impressions': RedisImpressionsStorage(redis_client, metadata),
             'events': RedisEventsStorage(redis_client, metadata),
         }
-        impmanager = ImpressionsManager(None, StrategyDebugMode())
+        impmanager = ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer) # no listener
         recorder = PipelinedRecorder(redis_client.pipeline, impmanager,
                                      storages['events'], storages['impressions'])
-        self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init
+        self.factory = SplitFactory('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_consumer=telemetry_consumer.get_telemetry_init_consumer(),
+                                    )  # pylint:disable=attribute-defined-outside-init
 
     def _validate_last_impressions(self, client, *to_validate):
         """Validate the last N impressions are present disregarding the order."""
@@ -787,17 +827,28 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
         redis_client.sadd(segment_storage._get_key(data['name']), *data['added'])
         redis_client.set(segment_storage._get_till_key(data['name']), data['till'])
 
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
             'impressions': RedisImpressionsStorage(redis_client, metadata),
             'events': RedisEventsStorage(redis_client, metadata),
         }
-        impmanager = ImpressionsManager(None, StrategyDebugMode())
+        impmanager = ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer) # no listener
         recorder = PipelinedRecorder(redis_client.pipeline, impmanager,
                                      storages['events'], storages['impressions'])
-        self.factory = SplitFactory('some_api_key', storages, True, recorder)  # pylint:disable=attribute-defined-outside-init
-
+        self.factory = SplitFactory('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_consumer=telemetry_consumer.get_telemetry_init_consumer(),
+                                    )  # pylint:disable=attribute-defined-outside-init
 
 class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-methods
     """Client & Manager integration tests."""

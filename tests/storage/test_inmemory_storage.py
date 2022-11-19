@@ -8,6 +8,7 @@ from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
 from splitio.models.events import Event, EventWrapper
 import splitio.models.telemetry as ModelTelemetry
+from splitio.engine.telemetry import TelemetryStorageProducer
 
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
     InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage
@@ -262,12 +263,16 @@ class InMemorySegmentStorageTests(object):
 class InMemoryImpressionsStorageTests(object):
     """InMemory impressions storage test cases."""
 
-    def test_push_pop_impressions(self):
+    def test_push_pop_impressions(self, mocker):
         """Test pushing and retrieving impressions."""
-        storage = InMemoryImpressionStorage(100)
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        storage = InMemoryImpressionStorage(100, telemetry_runtime_producer)
         storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
         storage.put([Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
         storage.put([Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
+        assert(telemetry_storage._counters._impressions_queued == 3)
 
         # Assert impressions are retrieved in the same order they are inserted.
         assert storage.pop_many(1) == [
@@ -301,7 +306,7 @@ class InMemoryImpressionsStorageTests(object):
 
     def test_queue_full_hook(self, mocker):
         """Test queue_full_hook is executed when the queue is full."""
-        storage = InMemoryImpressionStorage(100)
+        storage = InMemoryImpressionStorage(100, mocker.Mock())
         queue_full_hook = mocker.Mock()
         storage.set_queue_full_hook(queue_full_hook)
         impressions = [
@@ -311,22 +316,34 @@ class InMemoryImpressionsStorageTests(object):
         storage.put(impressions)
         assert queue_full_hook.mock_calls == mocker.call()
 
-    def test_clear(self):
+    def test_clear(self, mocker):
         """Test clear method."""
-        storage = InMemoryImpressionStorage(100)
+        storage = InMemoryImpressionStorage(100, mocker.Mock())
         storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
 
         assert storage._impressions.qsize() == 1
         storage.clear()
         assert storage._impressions.qsize() == 0
 
+    def test_push_pop_impressions(self, mocker):
+        """Test pushing and retrieving impressions."""
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        storage = InMemoryImpressionStorage(2, telemetry_runtime_producer)
+#        pytest.set_trace()
+        storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
+        storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
+        storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
+        assert(telemetry_storage._counters._impressions_dropped == 1)
+        assert(telemetry_storage._counters._impressions_queued == 2)
 
 class InMemoryEventsStorageTests(object):
     """InMemory events storage test cases."""
 
-    def test_push_pop_events(self):
+    def test_push_pop_events(self, mocker):
         """Test pushing and retrieving events."""
-        storage = InMemoryEventStorage(100)
+        storage = InMemoryEventStorage(100, mocker.Mock())
         storage.put([EventWrapper(
             event=Event('key1', 'user', 'purchase', 3.5, 123456, None),
             size=1024,
@@ -369,7 +386,7 @@ class InMemoryEventsStorageTests(object):
 
     def test_queue_full_hook(self, mocker):
         """Test queue_full_hook is executed when the queue is full."""
-        storage = InMemoryEventStorage(100)
+        storage = InMemoryEventStorage(100, mocker.Mock())
         queue_full_hook = mocker.Mock()
         storage.set_queue_full_hook(queue_full_hook)
         events = [EventWrapper(event=Event('key%d' % i, 'user', 'purchase', 12.5, 321654, None), size=1024) for i in range(0, 101)]
@@ -378,16 +395,16 @@ class InMemoryEventsStorageTests(object):
 
     def test_queue_full_hook_properties(self, mocker):
         """Test queue_full_hook is executed when the queue is full regarding properties."""
-        storage = InMemoryEventStorage(200)
+        storage = InMemoryEventStorage(200, mocker.Mock())
         queue_full_hook = mocker.Mock()
         storage.set_queue_full_hook(queue_full_hook)
         events = [EventWrapper(event=Event('key%d' % i, 'user', 'purchase', 12.5, 1, None),  size=32768) for i in range(160)]
         storage.put(events)
         assert queue_full_hook.mock_calls == [mocker.call()]
 
-    def test_clear(self):
+    def test_clear(self, mocker):
         """Test clear method."""
-        storage = InMemoryEventStorage(100)
+        storage = InMemoryEventStorage(100, mocker.Mock())
         storage.put([EventWrapper(
             event=Event('key1', 'user', 'purchase', 3.5, 123456, None),
             size=1024,
@@ -396,6 +413,27 @@ class InMemoryEventsStorageTests(object):
         assert storage._events.qsize() == 1
         storage.clear()
         assert storage._events.qsize() == 0
+
+    def test_event_telemetry(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        storage = InMemoryEventStorage(2, telemetry_runtime_producer)
+        storage.put([EventWrapper(
+            event=Event('key1', 'user', 'purchase', 3.5, 123456, None),
+            size=1024,
+        )])
+        storage.put([EventWrapper(
+            event=Event('key1', 'user', 'purchase', 3.5, 123456, None),
+            size=1024,
+        )])
+        storage.put([EventWrapper(
+            event=Event('key1', 'user', 'purchase', 3.5, 123456, None),
+            size=1024,
+        )])
+        assert(telemetry_storage._counters._events_dropped == 1)
+        assert(telemetry_storage._counters._events_queued == 2)
+
 
 class InMemoryTelemetryStorageTests(object):
     """InMemory telemetry storage test cases."""
@@ -411,30 +449,30 @@ class InMemoryTelemetryStorageTests(object):
         assert(storage._counters._auth_rejections == 0)
         assert(storage._counters._token_refreshes == 0)
 
-        assert(storage._method_exceptions.pop_all() == {'methodExceptions': {'treatment': 0, 'treatments': 0, 'treatmentWithConfig': 0, 'treatmentsWithConfig': 0, 'track': 0}})
+        assert(storage._method_exceptions.pop_all() == {'methodExceptions': {'treatment': 0, 'treatments': 0, 'treatment_with_config': 0, 'treatments_with_config': 0, 'track': 0}})
         assert(storage._last_synchronization.get_all() == {'lastSynchronizations': {'split': 0, 'segment': 0, 'impression': 0, 'impressionCount': 0, 'event': 0, 'telemetry': 0, 'token': 0}})
         assert(storage._http_sync_errors.pop_all() == {'httpErrors': {'split': {}, 'segment': {}, 'impression': {}, 'impressionCount': {}, 'event': {}, 'telemetry': {}, 'token': {}}})
         assert(storage._tel_config.get_stats() == {
-                'blockUntilReadyTimeout':0,
-                'notReady':0,
-                'timeUntilReady': 0,
-                'operationMode': None,
-                'storageType': None,
-                'streamingEnabled': None,
-                'refreshRate': {'sp': 0, 'se': 0, 'im': 0, 'ev': 0, 'te': 0},
-                'urlOverride': {'s': False, 'e': False, 'a': False, 'st': False, 't': False},
-                'impressionsQueueSize': 0,
-                'eventsQueueSize': 0,
-                'impressionsMode': None,
-                'impressionListener': False,
-                'httpProxy': None,
-                'activeFactoryCount': 0,
-                'redundantFactoryCount': 0
+                'bT':0,
+                'nR':0,
+                'tR': 0,
+                'oM': None,
+                'sT': None,
+                'sE': None,
+                'rR': {'sp': 0, 'se': 0, 'im': 0, 'ev': 0, 'te': 0},
+                'uO': {'s': False, 'e': False, 'a': False, 'st': False, 't': False},
+                'iQ': 0,
+                'eQ': 0,
+                'iM': None,
+                'iL': False,
+                'hp': None,
+                'aF': 0,
+                'rF': 0
             })
         assert(storage._streaming_events.pop_streaming_events() == {'streamingEvents': []})
         assert(storage._tags == [])
 
-        assert(storage._method_latencies.pop_all() == {'methodLatencies': {'treatment': [0] * 23, 'treatments': [0] * 23, 'treatmentWithConfig': [0] * 23, 'treatmentsWithConfig': [0] * 23, 'track': [0] * 23}})
+        assert(storage._method_latencies.pop_all() == {'methodLatencies': {'treatment': [0] * 23, 'treatments': [0] * 23, 'treatment_with_config': [0] * 23, 'treatments_with_config': [0] * 23, 'track': [0] * 23}})
         assert(storage._http_latencies.pop_all() == {'httpLatencies': {'split': [0] * 23, 'segment': [0] * 23, 'impression': [0] * 23, 'impressionCount': [0] * 23, 'event': [0] * 23, 'telemetry': [0] * 23, 'token': [0] * 23}})
 
     def test_record_config(self):
@@ -449,26 +487,25 @@ class InMemoryTelemetryStorageTests(object):
                   'segmentsRefreshRate': 30,
                   'impressionsRefreshRate': 60,
                   'eventsPushRate': 60,
-                  'metrcsRefreshRate': 10,
-                  'activeFactoryCount': 1,
-                  'redundantFactoryCount': 0
+                  'metricsRefreshRate': 10,
                   }
-        storage.record_config(config)
-        assert(storage._tel_config.get_stats() == {'operationMode': 2,
-            'storageType': storage._tel_config._get_storage_type(config['operationMode']),
-            'streamingEnabled': config['streamingEnabled'],
-            'refreshRate': {'sp': 30, 'se': 30, 'im': 60, 'ev': 60, 'te': 10},
-            'urlOverride':  {'s': False, 'e': False, 'a': False, 'st': False, 't': False},
-            'impressionsQueueSize': config['impressionsQueueSize'],
-            'eventsQueueSize': config['eventsQueueSize'],
-            'impressionsMode': storage._tel_config._get_impressions_mode(config['impressionsMode']),
-            'impressionListener': True if config['impressionListener'] is not None else False,
-            'httpProxy': storage._tel_config._check_if_proxy_detected(),
-            'blockUntilReadyTimeout': 0,
-            'timeUntilReady': 0,
-            'notReady': 0,
-            'activeFactoryCount': 1,
-            'redundantFactoryCount': 0}
+        storage.record_config(config, {})
+        storage.record_active_and_redundant_factories(1, 0)
+        assert(storage._tel_config.get_stats() == {'oM': 0,
+            'sT': storage._tel_config._get_storage_type(config['operationMode']),
+            'sE': config['streamingEnabled'],
+            'rR': {'sp': 30, 'se': 30, 'im': 60, 'ev': 60, 'te': 10},
+            'uO':  {'s': False, 'e': False, 'a': False, 'st': False, 't': False},
+            'iQ': config['impressionsQueueSize'],
+            'eQ': config['eventsQueueSize'],
+            'iM': storage._tel_config._get_impressions_mode(config['impressionsMode']),
+            'iL': True if config['impressionListener'] is not None else False,
+            'hp': storage._tel_config._check_if_proxy_detected(),
+            'bT': 0,
+            'tR': 0,
+            'nR': 0,
+            'aF': 1,
+            'rF': 0}
             )
 
     def test_record_counters(self):
@@ -490,19 +527,19 @@ class InMemoryTelemetryStorageTests(object):
         storage.record_not_ready_usage()
         assert(storage._tel_config.get_non_ready_usage() == 2)
 
-        storage.record_exception('treatment')
+        storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT)
         assert(storage._method_exceptions._treatment == 1)
 
-        storage.record_impression_stats('impressionsQueued', 5)
-        assert(storage._counters.get_counter_stats('impressionsQueued') == 5)
+        storage.record_impression_stats(ModelTelemetry.CounterConstants.IMPRESSIONS_QUEUED, 5)
+        assert(storage._counters.get_counter_stats(ModelTelemetry.CounterConstants.IMPRESSIONS_QUEUED) == 5)
 
-        storage.record_event_stats('eventsDropped', 6)
-        assert(storage._counters.get_counter_stats('eventsDropped') == 6)
+        storage.record_event_stats(ModelTelemetry.CounterConstants.EVENTS_DROPPED, 6)
+        assert(storage._counters.get_counter_stats(ModelTelemetry.CounterConstants.EVENTS_DROPPED) == 6)
 
-        storage.record_suceessful_sync('segment', 10)
+        storage.record_successful_sync(ModelTelemetry.HTTPExceptionsAndLatencies.SEGMENT, 10)
         assert(storage._last_synchronization._segment == 10)
 
-        storage.record_sync_error('segment', '500')
+        storage.record_sync_error(ModelTelemetry.HTTPExceptionsAndLatencies.SEGMENT, '500')
         assert(storage._http_sync_errors._segment['500'] == 1)
 
         storage.record_auth_rejections()
@@ -513,9 +550,9 @@ class InMemoryTelemetryStorageTests(object):
         storage.record_token_refreshes()
         assert(storage._counters.pop_token_refreshes() == 2)
 
-        storage.record_streaming_event(('update', 'split', 1234))
-        assert(storage._streaming_events.pop_streaming_events() == {'streamingEvents': [{'e': 'update', 'd': 'split', 't': 1234}]})
-        [storage.record_streaming_event(('update', 'split', 1234)) for i in range(1, 25)]
+        storage.record_streaming_event((ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED, 'split', 1234))
+        assert(storage._streaming_events.pop_streaming_events() == {'streamingEvents': [{'e': ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED.value, 'd': 'split', 't': 1234}]})
+        [storage.record_streaming_event((ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED, 'split', 1234)) for i in range(1, 25)]
         assert(len(storage._streaming_events._streaming_events) == 20)
 
         storage.record_session_length(20)
@@ -524,7 +561,9 @@ class InMemoryTelemetryStorageTests(object):
     def test_record_latencies(self):
         storage = InMemoryTelemetryStorage()
 
-        for method in ['treatment', 'treatments', 'treatmentWithConfig', 'treatmentsWithConfig', 'track']:
+        for method in ModelTelemetry.MethodExceptionsAndLatencies:
+            if self._get_method_latency(method, storage) == None:
+                continue
             storage.record_latency(method, 50)
             assert(self._get_method_latency(method, storage)[ModelTelemetry.get_latency_bucket_index(50)] == 1)
             storage.record_latency(method, 50000000)
@@ -535,7 +574,9 @@ class InMemoryTelemetryStorageTests(object):
                 [storage.record_latency(method, latency) for i in range(2)]
                 assert(self._get_method_latency(method, storage)[ModelTelemetry.get_latency_bucket_index(latency)] == 2 + current_count)
 
-        for resource in ['split', 'segment', 'impression', 'impressionCount', 'event', 'telemetry', 'token']:
+        for resource in ModelTelemetry.HTTPExceptionsAndLatencies:
+            if self._get_http_latency(resource, storage) == None:
+                continue
             storage.record_sync_latency(resource, 50)
             assert(self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(50)] == 1)
             storage.record_sync_latency(resource, 50000000)
@@ -547,33 +588,33 @@ class InMemoryTelemetryStorageTests(object):
                 assert(self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(latency)] == 2 + current_count)
 
     def _get_method_latency(self, resource, storage):
-        if resource == ModelTelemetry.TREATMENT:
+        if resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT:
             return storage._method_latencies._treatment
-        elif resource == ModelTelemetry.TREATMENTS:
+        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS:
             return storage._method_latencies._treatments
-        elif resource == ModelTelemetry.TREATMENT_WITH_CONFIG:
+        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG:
             return storage._method_latencies._treatment_with_config
-        elif resource == ModelTelemetry.TREATMENTS_WITH_CONFIG:
+        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG:
             return storage._method_latencies._treatments_with_config
-        elif resource == ModelTelemetry.TRACK:
+        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TRACK:
             return storage._method_latencies._track
         else:
             return
 
     def _get_http_latency(self, resource, storage):
-        if resource == ModelTelemetry.SPLIT:
+        if resource == ModelTelemetry.HTTPExceptionsAndLatencies.SPLIT:
             return storage._http_latencies._split
-        elif resource == ModelTelemetry.SEGMENT:
+        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.SEGMENT:
             return storage._http_latencies._segment
-        elif resource == ModelTelemetry.IMPRESSION:
+        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.IMPRESSION:
             return storage._http_latencies._impression
-        elif resource == ModelTelemetry.IMPRESSION_COUNT:
+        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.IMPRESSION_COUNT:
             return storage._http_latencies._impression_count
-        elif resource == ModelTelemetry.EVENT:
+        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.EVENT:
             return storage._http_latencies._event
-        elif resource == ModelTelemetry.TELEMETRY:
+        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.TELEMETRY:
             return storage._http_latencies._telemetry
-        elif resource == ModelTelemetry.TOKEN:
+        elif resource == ModelTelemetry.HTTPExceptionsAndLatencies.TOKEN:
             return storage._http_latencies._token
         else:
             return
@@ -581,18 +622,18 @@ class InMemoryTelemetryStorageTests(object):
     def test_pop_counters(self):
         storage = InMemoryTelemetryStorage()
 
-        [storage.record_exception('treatment') for i in range(2)]
-        storage.record_exception('treatments')
-        storage.record_exception('treatmentWithConfig')
-        [storage.record_exception('treatmentsWithConfig') for i in range(5)]
-        [storage.record_exception('track') for i in range(3)]
+        [storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT) for i in range(2)]
+        storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS)
+        storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG)
+        [storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG) for i in range(5)]
+        [storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TRACK) for i in range(3)]
         exceptions = storage.pop_exceptions()
         assert(storage._method_exceptions._treatment == 0)
         assert(storage._method_exceptions._treatments == 0)
         assert(storage._method_exceptions._treatment_with_config == 0)
         assert(storage._method_exceptions._treatments_with_config == 0)
         assert(storage._method_exceptions._track == 0)
-        assert(exceptions == {'methodExceptions': {'treatment': 2, 'treatments': 1, 'treatmentWithConfig': 1, 'treatmentsWithConfig': 5, 'track': 3}})
+        assert(exceptions == {'methodExceptions': {'treatment': 2, 'treatments': 1, 'treatment_with_config': 1, 'treatments_with_config': 5, 'track': 3}})
 
         storage.add_tag('tag1')
         storage.add_tag('tag2')
@@ -600,13 +641,13 @@ class InMemoryTelemetryStorageTests(object):
         assert(storage._tags == [])
         assert(tags == ['tag1', 'tag2'])
 
-        [storage.record_sync_error('segment', str(i)) for i in [500, 501, 502]]
-        [storage.record_sync_error('split', str(i)) for i in [400, 401, 402]]
-        storage.record_sync_error('impression', '502')
-        [storage.record_sync_error('impressionCount', str(i)) for i in [501, 502]]
-        storage.record_sync_error('event', '501')
-        storage.record_sync_error('telemetry', '505')
-        [storage.record_sync_error('token', '502') for i in range(5)]
+        [storage.record_sync_error(ModelTelemetry.HTTPExceptionsAndLatencies.SEGMENT, str(i)) for i in [500, 501, 502]]
+        [storage.record_sync_error(ModelTelemetry.HTTPExceptionsAndLatencies.SPLIT, str(i)) for i in [400, 401, 402]]
+        storage.record_sync_error(ModelTelemetry.HTTPExceptionsAndLatencies.IMPRESSION, '502')
+        [storage.record_sync_error(ModelTelemetry.HTTPExceptionsAndLatencies.IMPRESSION_COUNT, str(i)) for i in [501, 502]]
+        storage.record_sync_error(ModelTelemetry.HTTPExceptionsAndLatencies.EVENT, '501')
+        storage.record_sync_error(ModelTelemetry.HTTPExceptionsAndLatencies.TELEMETRY, '505')
+        [storage.record_sync_error(ModelTelemetry.HTTPExceptionsAndLatencies.TOKEN, '502') for i in range(5)]
         http_errors = storage.pop_http_errors()
         assert(http_errors == {'httpErrors': {'split': {'400': 1, '401': 1, '402': 1}, 'segment': {'500': 1, '501': 1, '502': 1},
                                         'impression': {'502': 1}, 'impressionCount': {'501': 1, '502': 1},
@@ -630,21 +671,21 @@ class InMemoryTelemetryStorageTests(object):
         assert(storage._counters._token_refreshes == 0)
         assert(token_refreshes == 2)
 
-        storage.record_streaming_event(('update', 'split', 1234))
-        storage.record_streaming_event(('delete', 'split', 1234))
+        storage.record_streaming_event((ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED, 'split', 1234))
+        storage.record_streaming_event((ModelTelemetry.StreamingEventTypes.OCCUPANCY_PRI, 'split', 1234))
         streaming_events = storage.pop_streaming_events()
         assert(storage._streaming_events._streaming_events == [])
-        assert(streaming_events == {'streamingEvents': [{'e': 'update', 'd': 'split', 't': 1234},
-                                    {'e': 'delete', 'd': 'split', 't': 1234}]})
+        assert(streaming_events == {'streamingEvents': [{'e': ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED.value, 'd': 'split', 't': 1234},
+                                    {'e': ModelTelemetry.StreamingEventTypes.OCCUPANCY_PRI.value, 'd': 'split', 't': 1234}]})
 
     def test_pop_latencies(self):
         storage = InMemoryTelemetryStorage()
 
-        [storage.record_latency('treatment', i) for i in [5, 10, 10, 10]]
-        [storage.record_latency('treatments', i) for i in [7, 10, 14, 13]]
-        [storage.record_latency('treatmentWithConfig', i) for i in [200]]
-        [storage.record_latency('treatmentsWithConfig', i) for i in [50, 40]]
-        [storage.record_latency('track', i) for i in [1, 10, 100]]
+        [storage.record_latency(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT, i) for i in [5, 10, 10, 10]]
+        [storage.record_latency(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS, i) for i in [7, 10, 14, 13]]
+        [storage.record_latency(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG, i) for i in [200]]
+        [storage.record_latency(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG, i) for i in [50, 40]]
+        [storage.record_latency(ModelTelemetry.MethodExceptionsAndLatencies.TRACK, i) for i in [1, 10, 100]]
         latencies = storage.pop_latencies()
 
         assert(storage._method_latencies._treatment == [0] * 23)
@@ -653,15 +694,15 @@ class InMemoryTelemetryStorageTests(object):
         assert(storage._method_latencies._treatments_with_config == [0] * 23)
         assert(storage._method_latencies._track == [0] * 23)
         assert(latencies ==  {'methodLatencies': {'treatment': [4] + [0] * 22, 'treatments': [4] + [0] * 22,
-                              'treatmentWithConfig': [1] + [0] * 22, 'treatmentsWithConfig': [2] + [0] * 22, 'track': [3] + [0] * 22}})
+                              'treatment_with_config': [1] + [0] * 22, 'treatments_with_config': [2] + [0] * 22, 'track': [3] + [0] * 22}})
 
-        [storage.record_sync_latency('split', i) for i in [50, 10, 20, 40]]
-        [storage.record_sync_latency('segment', i) for i in [70, 100, 40, 30]]
-        [storage.record_sync_latency('impression', i) for i in [10, 20]]
-        [storage.record_sync_latency('impressionCount', i) for i in [5, 10]]
-        [storage.record_sync_latency('event', i) for i in [50, 40]]
-        [storage.record_sync_latency('telemetry', i) for i in [100, 50, 160]]
-        [storage.record_sync_latency('token', i) for i in [10, 15, 100]]
+        [storage.record_sync_latency(ModelTelemetry.HTTPExceptionsAndLatencies.SPLIT, i) for i in [50, 10, 20, 40]]
+        [storage.record_sync_latency(ModelTelemetry.HTTPExceptionsAndLatencies.SEGMENT, i) for i in [70, 100, 40, 30]]
+        [storage.record_sync_latency(ModelTelemetry.HTTPExceptionsAndLatencies.IMPRESSION, i) for i in [10, 20]]
+        [storage.record_sync_latency(ModelTelemetry.HTTPExceptionsAndLatencies.IMPRESSION_COUNT, i) for i in [5, 10]]
+        [storage.record_sync_latency(ModelTelemetry.HTTPExceptionsAndLatencies.EVENT, i) for i in [50, 40]]
+        [storage.record_sync_latency(ModelTelemetry.HTTPExceptionsAndLatencies.TELEMETRY, i) for i in [100, 50, 160]]
+        [storage.record_sync_latency(ModelTelemetry.HTTPExceptionsAndLatencies.TOKEN, i) for i in [10, 15, 100]]
         sync_latency = storage.pop_http_latencies()
 
         assert(storage._http_latencies._split == [0] * 23)

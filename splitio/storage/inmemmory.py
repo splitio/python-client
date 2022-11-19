@@ -7,7 +7,7 @@ import os
 from urllib.error import HTTPError
 
 from splitio.models.segments import Segment
-from splitio.models.telemetry import HTTPErrors, HTTPLatencies, MethodExceptions, MethodLatencies, LastSynchronization, StreamingEvents, TelemetryConfig, TelemetryCounters
+from splitio.models.telemetry import HTTPErrors, HTTPLatencies, MethodExceptions, MethodLatencies, LastSynchronization, StreamingEvents, TelemetryConfig, TelemetryCounters, CounterConstants
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
 
 MAX_SIZE_BYTES = 5 * 1024 * 1024
@@ -308,14 +308,14 @@ class InMemorySegmentStorage(SegmentStorage):
         total_count = 0
         with self._lock:
             for segment in self._segments:
-                total_count = total_count + len(self._segments[segment]._keys)
+                total_count += len(self._segments[segment]._keys)
             return total_count
 
 
 class InMemoryImpressionStorage(ImpressionStorage):
     """In memory implementation of an impressions storage."""
 
-    def __init__(self, queue_size):
+    def __init__(self, queue_size, telemetry_runtime_producer):
         """
         Construct an instance.
 
@@ -325,6 +325,7 @@ class InMemoryImpressionStorage(ImpressionStorage):
         self._impressions = queue.Queue(maxsize=queue_size)
         self._lock = threading.Lock()
         self._queue_full_hook = None
+        self._telemetry_runtime_producer = telemetry_runtime_producer
 
     def set_queue_full_hook(self, hook):
         """
@@ -342,12 +343,17 @@ class InMemoryImpressionStorage(ImpressionStorage):
         :param impressions: List of one or more impressions to store.
         :type impressions: list
         """
+        impressions_stored = 0
         try:
             with self._lock:
                 for impression in impressions:
                     self._impressions.put(impression, False)
+                    impressions_stored += 1
+            self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_QUEUED, len(impressions))
             return True
         except queue.Full:
+            self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_DROPPED, len(impressions) - impressions_stored)
+            self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_QUEUED, impressions_stored)
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
                 self._queue_full_hook()
             _LOGGER.warning(
@@ -385,7 +391,7 @@ class InMemoryEventStorage(EventStorage):
     Supports adding and popping events.
     """
 
-    def __init__(self, eventsQueueSize):
+    def __init__(self, eventsQueueSize, telemetry_runtime_producer):
         """
         Construct an instance.
 
@@ -396,6 +402,7 @@ class InMemoryEventStorage(EventStorage):
         self._events = queue.Queue(maxsize=eventsQueueSize)
         self._queue_full_hook = None
         self._size = 0
+        self._telemetry_runtime_producer = telemetry_runtime_producer
 
     def set_queue_full_hook(self, hook):
         """
@@ -412,6 +419,7 @@ class InMemoryEventStorage(EventStorage):
 
         :param event: Event to be added in the storage
         """
+        events_stored = 0
         try:
             with self._lock:
                 for event in events:
@@ -420,10 +428,13 @@ class InMemoryEventStorage(EventStorage):
                     if self._size >= MAX_SIZE_BYTES:
                         self._queue_full_hook()
                         return False
-
                     self._events.put(event.event, False)
+                    events_stored += 1
+            self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_QUEUED, len(events))
             return True
         except queue.Full:
+            self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_DROPPED, len(events) - events_stored)
+            self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_QUEUED, events_stored)
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
                 self._queue_full_hook()
             _LOGGER.warning(
@@ -473,9 +484,13 @@ class InMemoryTelemetryStorage(TelemetryStorage):
         with self._lock:
             self._tags = []
 
-    def record_config(self, config):
+    def record_config(self, config, extra_config):
         """Record configurations."""
-        self._tel_config.record_config(config)
+        self._tel_config.record_config(config, extra_config)
+
+    def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
+        """Record active and redundant factories."""
+        self._tel_config.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
 
     def record_ready_time(self, ready_time):
         """Record ready time."""
@@ -511,7 +526,7 @@ class InMemoryTelemetryStorage(TelemetryStorage):
         """Record events stats."""
         self._counters.record_events_value(data_type, count)
 
-    def record_suceessful_sync(self, resource, time):
+    def record_successful_sync(self, resource, time):
         """Record successful sync."""
         self._last_synchronization.add_latency(resource, time)
 
@@ -600,3 +615,11 @@ class InMemoryTelemetryStorage(TelemetryStorage):
     def get_session_length(self):
         """Get session length"""
         return self._counters.get_session_length()
+
+class LocalhostTelemetryStorage():
+    """Localhost telemetry storage."""
+    def do_nothing(*_, **__):
+        return {}
+
+    def __getattr__(self, _):
+        return self.do_nothing

@@ -1,7 +1,6 @@
 """Telemetry Worker tests."""
 import unittest.mock as mock
 import json
-
 from splitio.sync.telemetry import TelemetrySynchronizer, TelemetrySubmitter
 from splitio.engine.telemetry import TelemetryEvaluationConsumer, TelemetryInitConsumer, TelemetryRuntimeConsumer, TelemetryStorageConsumer
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemorySegmentStorage, InMemorySplitStorage
@@ -71,19 +70,19 @@ class TelemetrySubmitterTests(object):
         telemetry_storage._streaming_events = StreamingEvents()
         telemetry_storage._tags = ['tag1']
 
-        telemetry_storage._method_latencies._treatment = [10, 20]
-        telemetry_storage._method_latencies._treatments = [50]
-        telemetry_storage._method_latencies._treatment_with_config = [20]
-        telemetry_storage._method_latencies._treatments_with_config = [20, 30, 10]
-        telemetry_storage._method_latencies._track =[100]
+        telemetry_storage._method_latencies._treatment = [1] + [0] * 22
+        telemetry_storage._method_latencies._treatments = [0] * 23
+        telemetry_storage._method_latencies._treatment_with_config = [0] * 23
+        telemetry_storage._method_latencies._treatments_with_config = [0] * 23
+        telemetry_storage._method_latencies._track = [0] * 23
 
-        telemetry_storage._http_latencies._split = [200, 300]
-        telemetry_storage._http_latencies._segment = [400]
-        telemetry_storage._http_latencies._impression = [500, 400, 600]
-        telemetry_storage._http_latencies._impression_count = [200]
-        telemetry_storage._http_latencies._event = [200]
-        telemetry_storage._http_latencies._telemetry = [300]
-        telemetry_storage._http_latencies._token =  [100, 100]
+        telemetry_storage._http_latencies._split = [1] + [0] * 22
+        telemetry_storage._http_latencies._segment = [0] * 23
+        telemetry_storage._http_latencies._impression = [0] * 23
+        telemetry_storage._http_latencies._impression_count = [0] * 23
+        telemetry_storage._http_latencies._event = [0] * 23
+        telemetry_storage._http_latencies._telemetry = [0] * 23
+        telemetry_storage._http_latencies._token =  [0] * 23
 
         telemetry_storage.record_config({'operationMode': 'inmemory',
                                         'streamingEnabled': True,
@@ -95,13 +94,11 @@ class TelemetrySubmitterTests(object):
                                         'segmentsRefreshRate': 30,
                                         'impressionsRefreshRate': 60,
                                         'eventsPushRate': 60,
-                                        'metrcsRefreshRate': 10,
+                                        'metricsRefreshRate': 10,
                                         'activeFactoryCount': 1,
-                                        'redundantFactoryCount': 0,
-                                        'blockUntilReadyTimeout': 10,
                                         'notReady': 0,
                                         'timeUntilReady': 1
-                                       }
+                                       }, {}
         )
         def record_init(*args, **kwargs):
             self.formatted_config = args[0]
@@ -115,7 +112,7 @@ class TelemetrySubmitterTests(object):
 
         api.record_stats.side_effect = record_stats
         telemetry_submitter.synchronize_stats()
-        assert(self.formatted_stats == json.dumps({
+        assert(self.formatted_stats == {
             "iQ": 100,
             "iDe": 30,
             "iDr": 0,
@@ -124,14 +121,14 @@ class TelemetrySubmitterTests(object):
             "lS": {"sp": 5, "se": 3, "im": 10, "ic": 0, "ev": 4, "te": 0, "to": 3},
             "t": ["tag1"],
             "hE": {"sp": {"500": 3, "501": 2}, "se": {"401": 1}, "im": {"500": 1}, "ic": {"401": 5}, "ev": {"404": 10}, "te": {"501": 3}, "to": {"505": 11}},
-            "hL": {"sp": [200, 300], "se": [400], "im": [500, 400, 600], "ic": [200], "ev": [200], "te": [300], "to": [100, 100]},
+            "hL": {"sp": [1] + [0] * 22, "se": [0] * 23, "im": [0] * 23, "ic": [0] * 23, "ev": [0] * 23, "te": [0] * 23, "to": [0] * 23},
             "aR": 1,
             "tR": 3,
             "sE": [],
             "sL": 3,
             "mE": {"t": 10, "ts": 1, "tc": 5, "tcs": 1, "tr": 3},
-            "mL": {"t": [10, 20], "ts": [50], "tc": [20], "tcs": [20, 30, 10], "tr": [100]},
+            "mL": {"t": [1] + [0] * 22, "ts": [0] * 23, "tc": [0] * 23, "tcs": [0] * 23, "tr": [0] * 23},
             "spC": 1,
             "seC": 1,
             "skC": 0
-        }))
+        })

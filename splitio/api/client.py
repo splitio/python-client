@@ -2,9 +2,10 @@
 from collections import namedtuple
 
 import requests
+import logging
+_LOGGER = logging.getLogger(__name__)
 
 HttpResponse = namedtuple('HttpResponse', ['status_code', 'body'])
-
 
 class HttpClientException(Exception):
     """HTTP Client exception."""
@@ -42,7 +43,7 @@ class HttpClient(object):
         :param telemetry_url: Optional alternative telemetry URL.
         :type telemetry_url: str
         """
-        self._timeout = timeout/1000 if timeout else None  # Convert ms to seconds.
+        self._timeout = timeout/1000 if timeout else None # Convert ms to seconds.
         self._urls = {
             'sdk': sdk_url if sdk_url is not None else self.SDK_URL,
             'events': events_url if events_url is not None else self.EVENTS_URL,

@@ -32,7 +32,7 @@ class InMemorySenderAdapterTests(object):
         uniques = {"feature1": set({'key1', 'key2', 'key3'}),
                    "feature2": set({'key1', 'key2', 'key3'}),
                    }
-        telemetry_api = TelemetryAPI(mocker.Mock(), 'some_api_key', mocker.Mock())
+        telemetry_api = TelemetryAPI(mocker.Mock(), 'some_api_key', mocker.Mock(), mocker.Mock())
         sender_adapter = InMemorySenderAdapter(telemetry_api)
         sender_adapter.record_unique_keys(uniques)
 

@@ -2,6 +2,7 @@
 import json
 
 from  splitio.storage.inmemmory import InMemoryTelemetryStorage
+from splitio.models.telemetry import CounterConstants
 
 class TelemetryStorageProducer(object):
     """Telemetry storage producer class."""
@@ -31,9 +32,9 @@ class TelemetryInitProducer(object):
         """Constructor."""
         self._telemetry_storage = telemetry_storage
 
-    def record_config(self, config):
+    def record_config(self, config, extra_config):
         """Record configurations."""
-        self._telemetry_storage.record_config(config)
+        self._telemetry_storage.record_config(config, extra_config)
 
     def record_ready_time(self, ready_time):
         """Record ready time."""
@@ -46,6 +47,9 @@ class TelemetryInitProducer(object):
     def record_not_ready_usage(self):
         """record non-ready usage."""
         self._telemetry_storage.record_not_ready_usage()
+
+    def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
+        self._telemetry_storage.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
 
 class TelemetryEvaluationProducer(object):
     """Telemetry evaluation producer class."""
@@ -81,9 +85,9 @@ class TelemetryRuntimeProducer(object):
         """Record events stats."""
         self._telemetry_storage.record_event_stats(data_type, count)
 
-    def record_suceessful_sync(self, resource, time):
+    def record_successful_sync(self, resource, time):
         """Record successful sync."""
-        self._telemetry_storage.record_suceessful_sync(resource, time)
+        self._telemetry_storage.record_successful_sync(resource, time)
 
     def record_sync_error(self, resource, status):
         """Record sync error."""
@@ -150,24 +154,7 @@ class TelemetryInitConsumer(object):
         return self._telemetry_storage.get_config_stats()
 
     def get_config_stats_to_json(self):
-        config_stats = self._telemetry_storage.get_config_stats()
-        return json.dumps({
-            'oM': config_stats['operationMode'],
-            'sT': config_stats['storageType'],
-            'sE': config_stats['streamingEnabled'],
-            'rR': config_stats['refreshRate'],
-            'uO': config_stats['urlOverride'],
-            'iQ': config_stats['impressionsQueueSize'],
-            'eQ': config_stats['eventsQueueSize'],
-            'iM': config_stats['impressionsMode'],
-            'iL': config_stats['impressionListener'],
-            'hP': config_stats['httpProxy'],
-            'aF': config_stats['activeFactoryCount'],
-            'rF': config_stats['redundantFactoryCount'],
-            'bT': config_stats['blockUntilReadyTimeout'],
-            'nR': config_stats['notReady'],
-            'tR': config_stats['timeUntilReady']}
-        )
+        return json.dumps(self._telemetry_storage.get_config_stats())
 
 class TelemetryEvaluationConsumer(object):
     """Telemetry evaluation consumer class."""
@@ -189,17 +176,17 @@ class TelemetryEvaluationConsumer(object):
         exceptions = self.pop_exceptions()['methodExceptions']
         latencies = self.pop_latencies()['methodLatencies']
         return {
-            **{'mE': {'t': exceptions['treatment'],
+            'mE': {'t': exceptions['treatment'],
                       'ts': exceptions['treatments'],
-                      'tc': exceptions['treatmentWithConfig'],
-                      'tcs': exceptions['treatmentsWithConfig'],
-                      'tr': exceptions['track']}
+                      'tc': exceptions['treatment_with_config'],
+                      'tcs': exceptions['treatments_with_config'],
+                      'tr': exceptions['track']
                },
-            **{'mL':  {'t': latencies['treatment'],
+            'mL':  {'t': latencies['treatment'],
                       'ts': latencies['treatments'],
-                      'tc': latencies['treatmentWithConfig'],
-                      'tcs': latencies['treatmentsWithConfig'],
-                      'tr': latencies['track']}
+                      'tc': latencies['treatment_with_config'],
+                      'tcs': latencies['treatments_with_config'],
+                      'tr': latencies['track']
                },
         }
 
@@ -255,43 +242,43 @@ class TelemetryRuntimeConsumer(object):
         last_synchronization = self.get_last_synchronization()
         http_errors = self.pop_http_errors()['httpErrors']
         http_latencies = self.pop_http_latencies()['httpLatencies']
+
         return {
-            **{'iQ': self.get_impressions_stats('impressionsQueued')},
-            **{'iDe': self.get_impressions_stats('impressionsDeduped')},
-            **{'iDr': self.get_impressions_stats('impressionsDropped')},
-            **{'eQ': self.get_events_stats('eventsQueued')},
-            **{'eD': self.get_events_stats('eventsDropped')},
-            **{'lS': {'sp': last_synchronization['split'],
+            'iQ': self.get_impressions_stats(CounterConstants.IMPRESSIONS_QUEUED),
+            'iDe': self.get_impressions_stats(CounterConstants.IMPRESSIONS_DEDUPED),
+            'iDr': self.get_impressions_stats(CounterConstants.IMPRESSIONS_DROPPED),
+            'eQ': self.get_events_stats(CounterConstants.EVENTS_QUEUED),
+            'eD': self.get_events_stats(CounterConstants.EVENTS_DROPPED),
+            'lS': {'sp': last_synchronization['split'],
                       'se': last_synchronization['segment'],
                       'im': last_synchronization['impression'],
                       'ic': last_synchronization['impressionCount'],
                       'ev': last_synchronization['event'],
                       'te': last_synchronization['telemetry'],
-                      'to': last_synchronization['token']}
+                      'to': last_synchronization['token']
                },
-            **{'t': self.pop_tags()},
-            **{'hE': {'sp': http_errors['split'],
+            't': self.pop_tags(),
+            'hE': {'sp': http_errors['split'],
                       'se': http_errors['segment'],
                       'im': http_errors['impression'],
                       'ic': http_errors['impressionCount'],
                       'ev': http_errors['event'],
                       'te': http_errors['telemetry'],
-                      'to': http_errors['token']}
+                      'to': http_errors['token']
                 },
-            **{'hL': {'sp': http_latencies['split'],
+            'hL': {'sp': http_latencies['split'],
                       'se': http_latencies['segment'],
                       'im': http_latencies['impression'],
                       'ic': http_latencies['impressionCount'],
                       'ev': http_latencies['event'],
                       'te': http_latencies['telemetry'],
-                      'to': http_latencies['token']}
+                      'to': http_latencies['token']
                 },
-            **{'aR': self.pop_auth_rejections()},
-            **{'tR': self.pop_token_refreshes()},
-            **{'sE': [{'e': event['type'],
-                       'd': event['data'],
-                       't': event['time']
-                      } for event in self.pop_streaming_events()['streamingEvents']]
-                },
-            **{'sL': self.get_session_length()}
+            'aR': self.pop_auth_rejections(),
+            'tR': self.pop_token_refreshes(),
+            'sE': [{'e': event['e'],
+                       'd': event['d'],
+                       't': event['t']
+                      } for event in self.pop_streaming_events()['streamingEvents']],
+            'sL': self.get_session_length()
         }

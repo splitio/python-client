@@ -1,4 +1,6 @@
 import json
+import logging
+_LOGGER = logging.getLogger(__name__)
 
 from splitio.api.telemetry import TelemetryAPI
 from splitio.engine.telemetry import TelemetryStorageConsumer
@@ -40,10 +42,11 @@ class TelemetrySubmitter(object):
 
     def _build_stats(self):
         """Format stats to JSON."""
-        return json.dumps({
-            **self._telemetry_runtime_consumer.pop_formatted_stats(),
-            **self._telemetry_evaluation_consumer.pop_formatted_stats(),
-            **{'spC': self._split_storage.get_splits_count()},
-            **{'seC': self._segment_storage.get_segments_count()},
-            **{'skC': self._segment_storage.get_segments_keys_count()}
-        })
+        merged_dict = {
+            'spC': self._split_storage.get_splits_count(),
+            'seC': self._segment_storage.get_segments_count(),
+            'skC': self._segment_storage.get_segments_keys_count()
+        }
+        merged_dict.update(self._telemetry_runtime_consumer.pop_formatted_stats())
+        merged_dict.update(self._telemetry_evaluation_consumer.pop_formatted_stats())
+        return merged_dict
