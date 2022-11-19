@@ -81,11 +81,11 @@ class PushStatusTracker(object):
         self._timestamps.occupancy = event.timestamp
 
         self._publishers[event.channel] = event.publishers
-        if event.channel[-3:] == 'pri':
-            event_type = StreamingEventTypes.OCCUPANCY_PRI
-        else:
-            event_type = StreamingEventTypes.OCCUPANCY_SEC
-        self._telemetry_runtime_producer.record_streaming_event((event_type, len(self._publishers), event.timestamp))
+        self._telemetry_runtime_producer.record_streaming_event((
+            StreamingEventTypes.OCCUPANCY_PRI if event.channel[-3:] == 'pri' else StreamingEventTypes.OCCUPANCY_SEC,
+            len(self._publishers),
+            event.timestamp
+        ))
         return self._update_status()
 
     def handle_control_message(self, event):
