@@ -50,7 +50,7 @@ class UniqueKeysTracker(BaseUniqueKeysTracker):
                 return False
             self._add_or_update(feature_name, key)
             self._filter.add(feature_name+key)
-            self._current_cache_size = self._current_cache_size + 1
+            self._current_cache_size += 1
 
         if self._current_cache_size > self._cache_size:
             _LOGGER.info(

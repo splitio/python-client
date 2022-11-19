@@ -23,7 +23,7 @@ def utctime_ms():
     """
     return int(utctime() * 1000)
 
-def get_current_epoch_time():
+def get_current_epoch_time_ms():
     """
     Get current epoch time in milliseconds
 

@@ -8,7 +8,7 @@ from queue import Queue
 from splitio.push.manager import PushManager, Status
 from splitio.api import APIException
 from splitio.util.backoff import Backoff
-from splitio.util.time import get_current_epoch_time
+from splitio.util.time import get_current_epoch_time_ms
 from splitio.models.telemetry import SSESyncMode, StreamingEventTypes
 
 _LOGGER = logging.getLogger(__name__)
@@ -110,13 +110,13 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
                 self._push.update_workers_status(True)
                 self._backoff.reset()
                 _LOGGER.info('streaming up and running. disabling periodic fetching.')
-                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.STREAMING.value,  get_current_epoch_time()))
+                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.STREAMING.value,  get_current_epoch_time_ms()))
             elif status == Status.PUSH_SUBSYSTEM_DOWN:
                 self._push.update_workers_status(False)
                 self._synchronizer.sync_all()
                 self._synchronizer.start_periodic_fetching()
                 _LOGGER.info('streaming temporarily down. starting periodic fetching')
-                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time()))
+                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time_ms()))
             elif status == Status.PUSH_RETRYABLE_ERROR:
                 self._push.update_workers_status(False)
                 self._push.stop(True)
@@ -132,7 +132,7 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
                 self._synchronizer.sync_all()
                 self._synchronizer.start_periodic_fetching()
                 _LOGGER.info('non-recoverable error in streaming. switching to polling.')
-                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time()))
+                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time_ms()))
                 return
 
 class RedisManager(object):  # pylint:disable=too-many-instance-attributes

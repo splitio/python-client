@@ -154,24 +154,7 @@ class TelemetryInitConsumer(object):
         return self._telemetry_storage.get_config_stats()
 
     def get_config_stats_to_json(self):
-        config_stats = self._telemetry_storage.get_config_stats()
-        return json.dumps({
-            'oM': config_stats['oM'],
-            'sT': config_stats['sT'],
-            'sE': config_stats['sE'],
-            'rR': config_stats['rR'],
-            'uO': config_stats['uO'],
-            'iQ': config_stats['iQ'],
-            'eQ': config_stats['eQ'],
-            'iM': config_stats['iM'],
-            'iL': config_stats['iL'],
-            'hp': config_stats['hp'],
-            'aF': config_stats['aF'],
-            'rF': config_stats['rF'],
-            'bT': config_stats['bT'],
-            'nR': config_stats['nR'],
-            'tR': config_stats['tR']}
-        )
+        return json.dumps(self._telemetry_storage.get_config_stats())
 
 class TelemetryEvaluationConsumer(object):
     """Telemetry evaluation consumer class."""

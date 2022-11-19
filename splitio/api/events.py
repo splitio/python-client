@@ -5,7 +5,7 @@ import time
 from splitio.api import APIException
 from splitio.api.client import HttpClientException
 from splitio.api.commons import headers_from_metadata, record_telemetry
-from splitio.util.time import get_current_epoch_time
+from splitio.util.time import get_current_epoch_time_ms
 from splitio.models.telemetry import HTTPExceptionsAndLatencies
 
 
@@ -65,7 +65,7 @@ class EventsAPI(object):  # pylint: disable=too-few-public-methods
         :rtype: bool
         """
         bulk = self._build_bulk(events)
-        start = get_current_epoch_time()
+        start = get_current_epoch_time_ms()
         try:
             response = self._client.post(
                 'events',
@@ -74,7 +74,7 @@ class EventsAPI(object):  # pylint: disable=too-few-public-methods
                 body=bulk,
                 extra_headers=self._metadata,
             )
-            record_telemetry(response.status_code, get_current_epoch_time() - start, HTTPExceptionsAndLatencies.EVENT, self._telemetry_runtime_producer)
+            record_telemetry(response.status_code, get_current_epoch_time_ms() - start, HTTPExceptionsAndLatencies.EVENT, self._telemetry_runtime_producer)
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:

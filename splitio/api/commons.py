@@ -1,5 +1,5 @@
 """Commons module."""
-from splitio.util.time import get_current_epoch_time
+from splitio.util.time import get_current_epoch_time_ms
 
 _CACHE_CONTROL = 'Cache-Control'
 _CACHE_CONTROL_NO_CACHE = 'no-cache'
@@ -50,7 +50,7 @@ def record_telemetry(status_code, elapsed, metric_name, telemetry_runtime_produc
     """
     telemetry_runtime_producer.record_sync_latency(metric_name, elapsed)
     if 200 <= status_code < 300:
-        telemetry_runtime_producer.record_successful_sync(metric_name, get_current_epoch_time())
+        telemetry_runtime_producer.record_successful_sync(metric_name, get_current_epoch_time_ms())
         return
     telemetry_runtime_producer.record_sync_error(metric_name, status_code)
 

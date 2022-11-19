@@ -33,7 +33,7 @@ from splitio.api.impressions import ImpressionsAPI
 from splitio.api.events import EventsAPI
 from splitio.api.auth import AuthAPI
 from splitio.api.telemetry import TelemetryAPI, LocalhostTelemetryAPI
-from splitio.util.time import get_current_epoch_time
+from splitio.util.time import get_current_epoch_time_ms
 
 # Tasks
 from splitio.tasks.split_sync import SplitSynchronizationTask
@@ -130,7 +130,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         self._telemetry_init_producer = telemetry_producer.get_telemetry_init_producer()
         self._telemetry_init_consumer = telemetry_init_consumer
         self._telemetry_api = telemetry_api
-        self._ready_time = get_current_epoch_time()
+        self._ready_time = get_current_epoch_time_ms()
         self._start_status_updater()
 
     def _start_status_updater(self):
@@ -158,7 +158,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         self._sdk_internal_ready_flag.wait()
         self._status = Status.READY
         self._sdk_ready_flag.set()
-        self._telemetry_init_producer.record_ready_time(get_current_epoch_time() - self._ready_time)
+        self._telemetry_init_producer.record_ready_time(get_current_epoch_time_ms() - self._ready_time)
         redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
         self._telemetry_init_producer.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
 
@@ -601,7 +601,7 @@ def _get_active_and_redundant_count():
     active_factory_count = 0
     _INSTANTIATED_FACTORIES_LOCK.acquire()
     for item in _INSTANTIATED_FACTORIES:
-        redundant_factory_count = redundant_factory_count + _INSTANTIATED_FACTORIES[item] - 1
-        active_factory_count = active_factory_count + _INSTANTIATED_FACTORIES[item]
+        redundant_factory_count += _INSTANTIATED_FACTORIES[item] - 1
+        active_factory_count += _INSTANTIATED_FACTORIES[item]
     _INSTANTIATED_FACTORIES_LOCK.release()
     return redundant_factory_count, active_factory_count

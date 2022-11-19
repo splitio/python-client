@@ -6,7 +6,7 @@ from itertools import groupby
 from splitio.api import APIException
 from splitio.api.client import HttpClientException
 from splitio.api.commons import headers_from_metadata, record_telemetry
-from splitio.util.time import get_current_epoch_time
+from splitio.util.time import get_current_epoch_time_ms
 from splitio.engine.impressions import ImpressionsMode
 from splitio.models.telemetry import HTTPExceptionsAndLatencies
 
@@ -94,7 +94,7 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
         :type impressions: list
         """
         bulk = self._build_bulk(impressions)
-        start = get_current_epoch_time()
+        start = get_current_epoch_time_ms()
         try:
             response = self._client.post(
                 'events',
@@ -103,7 +103,7 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
                 body=bulk,
                 extra_headers=self._metadata,
             )
-            record_telemetry(response.status_code, get_current_epoch_time() - start, HTTPExceptionsAndLatencies.IMPRESSION, self._telemetry_runtime_producer)
+            record_telemetry(response.status_code, get_current_epoch_time_ms() - start, HTTPExceptionsAndLatencies.IMPRESSION, self._telemetry_runtime_producer)
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
@@ -121,7 +121,7 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
         :type impressions: list
         """
         bulk = self._build_counters(counters)
-        start = get_current_epoch_time()
+        start = get_current_epoch_time_ms()
         try:
             response = self._client.post(
                 'events',
@@ -130,7 +130,7 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
                 body=bulk,
                 extra_headers=self._metadata,
             )
-            record_telemetry(response.status_code, get_current_epoch_time() - start, HTTPExceptionsAndLatencies.IMPRESSION_COUNT, self._telemetry_runtime_producer)
+            record_telemetry(response.status_code, get_current_epoch_time_ms() - start, HTTPExceptionsAndLatencies.IMPRESSION_COUNT, self._telemetry_runtime_producer)
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
