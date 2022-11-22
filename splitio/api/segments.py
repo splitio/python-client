@@ -6,7 +6,7 @@ import time
 
 from splitio.api import APIException
 from splitio.api.commons import headers_from_metadata, build_fetch, record_telemetry
-from splitio.util.time import get_current_epoch_time
+from splitio.util.time import get_current_epoch_time_ms
 from splitio.api.client import HttpClientException
 from splitio.models.telemetry import HTTPExceptionsAndLatencies
 
@@ -50,7 +50,7 @@ class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
         :return: Json representation of a segmentChange response.
         :rtype: dict
         """
-        start = get_current_epoch_time()
+        start = get_current_epoch_time_ms()
         try:
             query, extra_headers = build_fetch(change_number, fetch_options, self._metadata)
             response = self._client.get(
@@ -60,7 +60,7 @@ class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
                 extra_headers=extra_headers,
                 query=query,
             )
-            record_telemetry(response.status_code, get_current_epoch_time() - start, HTTPExceptionsAndLatencies.SEGMENT, self._telemetry_runtime_producer)
+            record_telemetry(response.status_code, get_current_epoch_time_ms() - start, HTTPExceptionsAndLatencies.SEGMENT, self._telemetry_runtime_producer)
             if 200 <= response.status_code < 300:
                 return json.loads(response.body)
             else:

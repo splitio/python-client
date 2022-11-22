@@ -308,7 +308,7 @@ class InMemorySegmentStorage(SegmentStorage):
         total_count = 0
         with self._lock:
             for segment in self._segments:
-                total_count = total_count + len(self._segments[segment]._keys)
+                total_count += len(self._segments[segment]._keys)
             return total_count
 
 
@@ -348,7 +348,7 @@ class InMemoryImpressionStorage(ImpressionStorage):
             with self._lock:
                 for impression in impressions:
                     self._impressions.put(impression, False)
-                    impressions_stored = impressions_stored + 1
+                    impressions_stored += 1
             self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_QUEUED, len(impressions))
             return True
         except queue.Full:
@@ -429,7 +429,7 @@ class InMemoryEventStorage(EventStorage):
                         self._queue_full_hook()
                         return False
                     self._events.put(event.event, False)
-                    events_stored = events_stored + 1
+                    events_stored += 1
             self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_QUEUED, len(events))
             return True
         except queue.Full:
@@ -532,7 +532,7 @@ class InMemoryTelemetryStorage(TelemetryStorage):
 
     def record_sync_error(self, resource, status):
         """Record sync http error."""
-        self._http_sync_errors.add_error(resource, str(status))
+        self._http_sync_errors.add_error(resource, status)
 
     def record_sync_latency(self, resource, latency):
         """Record latency time."""

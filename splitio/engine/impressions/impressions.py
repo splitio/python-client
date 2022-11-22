@@ -14,7 +14,7 @@ class ImpressionsMode(Enum):
 class Manager(object):  # pylint:disable=too-few-public-methods
     """Impression manager."""
 
-    def __init__(self, strategy, telemetry_runtime_producer=None, listener=None):
+    def __init__(self, strategy, telemetry_runtime_producer, listener=None):
         """
         Construct a manger to track and forward impressions to the queue.
 

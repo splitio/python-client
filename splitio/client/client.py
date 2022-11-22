@@ -7,7 +7,7 @@ from splitio.models.impressions import Impression, Label
 from splitio.models.events import Event, EventWrapper
 from splitio.models.telemetry import get_latency_bucket_index, MethodExceptionsAndLatencies
 from splitio.client import input_validator
-from splitio.util.time import get_current_epoch_time, utctime_ms
+from splitio.util.time import get_current_epoch_time_ms, utctime_ms
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -92,7 +92,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                 _LOGGER.error("Client is not ready - no calls possible")
                 return CONTROL, None
 
-            start = get_current_epoch_time()
+            start = get_current_epoch_time_ms()
 
             matching_key, bucketing_key = input_validator.validate_key(key, method_name)
             feature = input_validator.validate_feature_name(
@@ -148,7 +148,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             _LOGGER.error("Client is not ready - no calls possible")
             return input_validator.generate_control_treatments(features, method_name)
 
-        start = get_current_epoch_time()
+        start = get_current_epoch_time_ms()
 
         matching_key, bucketing_key = input_validator.validate_key(key, method_name)
         if matching_key is None and bucketing_key is None:
@@ -208,7 +208,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                 _LOGGER.debug('Error: ', exc_info=True)
                 self._telemetry_evaluation_producer.record_exception(self._get_method_constant(method_name[4:]))
 
-            self._telemetry_evaluation_producer.record_latency(self._get_method_constant(method_name[4:]), get_current_epoch_time() - start)
+            self._telemetry_evaluation_producer.record_latency(self._get_method_constant(method_name[4:]), get_current_epoch_time_ms() - start)
             return treatments
         except Exception:  # pylint: disable=broad-except
             self._telemetry_evaluation_producer.record_exception(self._get_method_constant(method_name[4:]))
@@ -346,7 +346,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :param operation: operation performed.
         :type operation: str
         """
-        end = get_current_epoch_time()
+        end = get_current_epoch_time_ms()
         self._recorder.record_treatment_stats(impressions, get_latency_bucket_index(end - start),
                                               operation)
         if method_name is not None:
@@ -381,7 +381,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             _LOGGER.warn("track: the SDK is not ready, results may be incorrect. Make sure to wait for SDK readiness before using this method")
             self._telemetry_init_producer.record_not_ready_usage()
 
-        start = get_current_epoch_time()
+        start = get_current_epoch_time_ms()
         key = input_validator.validate_track_key(key)
         event_type = input_validator.validate_event_type(event_type)
         should_validate_existance = self.ready and self._factory._apikey != 'localhost'  # pylint: disable=protected-access
@@ -412,7 +412,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                 event=event,
                 size=size,
             )])
-            self._telemetry_evaluation_producer.record_latency(MethodExceptionsAndLatencies.TRACK, get_current_epoch_time() - start)
+            self._telemetry_evaluation_producer.record_latency(MethodExceptionsAndLatencies.TRACK, get_current_epoch_time_ms() - start)
             return return_flag
         except Exception:  # pylint: disable=broad-except
             self._telemetry_evaluation_producer.record_exception(MethodExceptionsAndLatencies.TRACK)

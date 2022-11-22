@@ -411,6 +411,7 @@ class HTTPErrors(object):
         :param status: http error code
         :type status: str
         """
+        status = str(status)
         with self._lock:
             if resource == HTTPExceptionsAndLatencies.SPLIT:
                 if status not in self._split:

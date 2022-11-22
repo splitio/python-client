@@ -19,7 +19,7 @@ class TelemetryModelTests(object):
             result_bucket = 0
             counter = -1
             for j in ModelTelemetry.BUCKETS:
-                counter = counter + 1
+                counter += 1
                 if old_bucket == 0:
                     if latency < j:
                         old_bucket = 0

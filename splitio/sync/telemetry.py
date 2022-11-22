@@ -1,4 +1,6 @@
 import json
+import logging
+_LOGGER = logging.getLogger(__name__)
 
 from splitio.api.telemetry import TelemetryAPI
 from splitio.engine.telemetry import TelemetryStorageConsumer

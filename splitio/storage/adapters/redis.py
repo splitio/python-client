@@ -3,6 +3,7 @@ from builtins import str
 import socket
 import logging
 from splitio.version import __version__
+from splitio.client.util import _get_ip
 
 try:
     from redis import StrictRedis
@@ -322,8 +323,8 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
         host_name = 'Unknown'
         host_ip = 'Unknown'
         try:
+            host_ip = _get_ip()
             host_name = socket.gethostname()
-            host_ip = socket.gethostbyname(socket.gethostname())
         except:
             _LOGGER.debug("Could not get hostname or ip")
             pass
