@@ -1,6 +1,7 @@
 """Synchronization manager module."""
 import logging
 import time
+import threading
 from threading import Thread
 from queue import Queue
 from splitio.push.manager import PushManager, Status
@@ -127,3 +128,44 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
                 self._synchronizer.start_periodic_fetching()
                 _LOGGER.info('non-recoverable error in streaming. switching to polling.')
                 return
+
+class RedisManager(object):  # pylint:disable=too-many-instance-attributes
+    """Manager Class."""
+
+    def __init__(self, synchronizer):  # pylint:disable=too-many-arguments
+        """
+        Construct Manager.
+
+        :param unique_keys_task: unique keys task instance
+        :type unique_keys_task: splitio.tasks.unique_keys_sync.UniqueKeysSyncTask
+
+        :param clear_filter_task: clear filter task instance
+        :type clear_filter_task: splitio.tasks.clear_filter_task.ClearFilterSynchronizer
+
+        """
+        self._ready_flag = True
+        self._synchronizer = synchronizer
+
+    def recreate(self):
+        """Not implemented"""
+        return
+
+    def start(self):
+        """Start the SDK synchronization tasks."""
+        try:
+            self._synchronizer.start_periodic_data_recording()
+
+        except (APIException, RuntimeError):
+            _LOGGER.error('Exception raised starting Split Manager')
+            _LOGGER.debug('Exception information: ', exc_info=True)
+            raise
+
+    def stop(self, blocking):
+        """
+        Stop manager logic.
+
+        :param blocking: flag to wait until tasks are stopped
+        :type blocking: bool
+        """
+        _LOGGER.info('Stopping manager tasks')
+        self._synchronizer.shutdown(blocking)

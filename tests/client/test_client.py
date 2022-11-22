@@ -12,7 +12,7 @@ from splitio.storage import EventStorage, ImpressionStorage, SegmentStorage, Spl
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
     InMemoryImpressionStorage, InMemoryEventStorage
 from splitio.models import splits, segments
-from splitio.engine.impressions import Manager as ImpressionManager
+from splitio.engine.impressions.impressions import Manager as ImpressionManager
 
 # Recorder
 from splitio.recorder.recorder import StandardRecorder

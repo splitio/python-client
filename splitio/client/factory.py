@@ -11,7 +11,12 @@ from splitio.client.manager import SplitManager
 from splitio.client.config import sanitize as sanitize_config, DEFAULT_DATA_SAMPLING
 from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper
-from splitio.engine.impressions import Manager as ImpressionsManager
+from splitio.engine.impressions.impressions import Manager as ImpressionsManager
+from splitio.engine.impressions.impressions import ImpressionsMode
+from splitio.engine.impressions.manager import Counter as ImpressionsCounter
+from splitio.engine.impressions.strategies import StrategyNoneMode, StrategyDebugMode, StrategyOptimizedMode
+from splitio.engine.impressions.adapters import InMemorySenderAdapter, RedisSenderAdapter
+from splitio.engine.impressions import set_classes
 
 # Storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
@@ -27,21 +32,25 @@ from splitio.api.segments import SegmentsAPI
 from splitio.api.impressions import ImpressionsAPI
 from splitio.api.events import EventsAPI
 from splitio.api.auth import AuthAPI
+from splitio.api.telemetry import TelemetryAPI
 
 # Tasks
 from splitio.tasks.split_sync import SplitSynchronizationTask
 from splitio.tasks.segment_sync import SegmentSynchronizationTask
 from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask
 from splitio.tasks.events_sync import EventsSyncTask
+from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTask
 
 # Synchronizer
 from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, \
-    LocalhostSynchronizer
-from splitio.sync.manager import Manager
+    LocalhostSynchronizer, RedisSynchronizer
+from splitio.sync.manager import Manager, RedisManager
 from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer
 from splitio.sync.segment import SegmentSynchronizer
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.sync.event import EventSynchronizer
+from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer
+
 
 # Recorder
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder
@@ -207,6 +216,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
             return
 
         try:
+            _LOGGER.info('Factory destroy called, stopping tasks.')
             if self._sync_manager is not None:
                 if destroyed_event is not None:
 
@@ -283,7 +293,7 @@ def _wrap_impression_listener(listener, metadata):
 
 
 def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pylint:disable=too-many-arguments,too-many-locals
-                             auth_api_base_url=None, streaming_api_base_url=None):
+                             auth_api_base_url=None, streaming_api_base_url=None, telemetry_api_base_url=None):
     """Build and return a split factory tailored to the supplied config."""
     if not input_validator.validate_factory_instantiation(api_key):
         return None
@@ -292,6 +302,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         sdk_url=sdk_url,
         events_url=events_url,
         auth_url=auth_api_base_url,
+        telemetry_url=telemetry_api_base_url,
         timeout=cfg.get('connectionTimeout')
     )
 
@@ -302,6 +313,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'segments': SegmentsAPI(http_client, api_key, sdk_metadata),
         'impressions': ImpressionsAPI(http_client, api_key, sdk_metadata, cfg['impressionsMode']),
         'events': EventsAPI(http_client, api_key, sdk_metadata),
+        'telemetry': TelemetryAPI(http_client, api_key, sdk_metadata),
     }
 
     if not input_validator.validate_apikey_type(apis['segments']):
@@ -314,10 +326,13 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'events': InMemoryEventStorage(cfg['eventsQueueSize']),
     }
 
+    unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
+    clear_filter_task, impressions_count_sync, impressions_count_task, \
+    imp_strategy = set_classes('MEMORY', cfg['impressionsMode'], apis)
+
     imp_manager = ImpressionsManager(
-        cfg['impressionsMode'],
-        True,
-        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata))
+        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
+        imp_strategy)
 
     synchronizers = SplitSynchronizers(
         SplitSynchronizer(apis['splits'], storages['splits']),
@@ -325,7 +340,9 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         ImpressionSynchronizer(apis['impressions'], storages['impressions'],
                                cfg['impressionsBulkSize']),
         EventSynchronizer(apis['events'], storages['events'], cfg['eventsBulkSize']),
-        ImpressionsCountSynchronizer(apis['impressions'], imp_manager),
+        impressions_count_sync,
+        unique_keys_synchronizer,
+        clear_filter_sync
     )
 
     tasks = SplitTasks(
@@ -342,7 +359,9 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
             cfg['impressionsRefreshRate'],
         ),
         EventsSyncTask(synchronizers.events_sync.synchronize_events, cfg['eventsPushRate']),
-        ImpressionsCountSyncTask(synchronizers.impressions_count_sync.synchronize_counters)
+        impressions_count_task,
+        unique_keys_task,
+        clear_filter_task
     )
 
     synchronizer = Synchronizer(synchronizers, tasks)
@@ -393,19 +412,47 @@ def _build_redis_factory(api_key, cfg):
         _LOGGER.warning("dataSampling cannot be less than %.2f, defaulting to minimum",
                         _MIN_DEFAULT_DATA_SAMPLING_ALLOWED)
         data_sampling = _MIN_DEFAULT_DATA_SAMPLING_ALLOWED
+
+    unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
+    clear_filter_task, impressions_count_sync, impressions_count_task, \
+    imp_strategy = set_classes('REDIS', cfg['impressionsMode'], redis_adapter)
+
+    imp_manager = ImpressionsManager(
+        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
+        imp_strategy)
+
+    synchronizers = SplitSynchronizers(None, None, None, None,
+        impressions_count_sync,
+        unique_keys_synchronizer,
+        clear_filter_sync
+    )
+
+    tasks = SplitTasks(None, None, None, None,
+        impressions_count_task,
+        unique_keys_task,
+        clear_filter_task
+    )
+
+    synchronizer = RedisSynchronizer(synchronizers, tasks)
     recorder = PipelinedRecorder(
         redis_adapter.pipeline,
-        ImpressionsManager(cfg['impressionsMode'], False,
-                           _wrap_impression_listener(cfg['impressionListener'], sdk_metadata)),
+        imp_manager,
         storages['events'],
         storages['impressions'],
         data_sampling,
     )
+
+    manager = RedisManager(synchronizer)
+    initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer")
+    initialization_thread.setDaemon(True)
+    initialization_thread.start()
+
     return SplitFactory(
         api_key,
         storages,
         cfg['labelsEnabled'],
         recorder,
+        manager,
     )
 
 
@@ -436,7 +483,7 @@ def _build_localhost_factory(cfg):
     manager = Manager(ready_event, synchronizer, None, False, sdk_metadata)
     manager.start()
     recorder = StandardRecorder(
-        ImpressionsManager(cfg['impressionsMode'], True, None),
+        ImpressionsManager(None, StrategyDebugMode()),
         storages['events'],
         storages['impressions'],
     )
@@ -485,7 +532,8 @@ def get_factory(api_key, **kwargs):
             kwargs.get('sdk_api_base_url'),
             kwargs.get('events_api_base_url'),
             kwargs.get('auth_api_base_url'),
-            kwargs.get('streaming_api_base_url')
+            kwargs.get('streaming_api_base_url'),
+            kwargs.get('telemetry_api_base_url')
         )
     finally:
         _INSTANTIATED_FACTORIES.update([api_key])

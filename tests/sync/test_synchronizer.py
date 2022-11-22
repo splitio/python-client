@@ -1,9 +1,10 @@
 """Synchronizer tests."""
 
-import pytest
+from turtle import clear
 
 from splitio.sync.synchronizer import Synchronizer, SplitTasks, SplitSynchronizers
 from splitio.tasks.split_sync import SplitSynchronizationTask
+from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTask
 from splitio.tasks.segment_sync import SegmentSynchronizationTask
 from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask
 from splitio.tasks.events_sync import EventsSyncTask
@@ -195,14 +196,18 @@ class SynchronizerTests(object):
         impression_task = mocker.Mock(spec=ImpressionsSyncTask)
         impression_count_task = mocker.Mock(spec=ImpressionsCountSyncTask)
         event_task = mocker.Mock(spec=EventsSyncTask)
+        unique_keys_task = mocker.Mock(spec=UniqueKeysSyncTask)
+        clear_filter_task = mocker.Mock(spec=ClearFilterSyncTask)
         split_tasks = SplitTasks(mocker.Mock(), mocker.Mock(), impression_task, event_task,
-                                 impression_count_task)
+                                 impression_count_task, unique_keys_task, clear_filter_task)
         synchronizer = Synchronizer(mocker.Mock(spec=SplitSynchronizers), split_tasks)
         synchronizer.start_periodic_data_recording()
 
         assert len(impression_task.start.mock_calls) == 1
         assert len(impression_count_task.start.mock_calls) == 1
         assert len(event_task.start.mock_calls) == 1
+        assert len(unique_keys_task.start.mock_calls) == 1
+        assert len(clear_filter_task.start.mock_calls) == 1
 
     def test_stop_periodic_data_recording(self, mocker):
 
@@ -219,14 +224,21 @@ class SynchronizerTests(object):
         impression_count_task.stop.side_effect = stop_mock
         event_task = mocker.Mock(spec=EventsSyncTask)
         event_task.stop.side_effect = stop_mock
+        unique_keys_task = mocker.Mock(spec=UniqueKeysSyncTask)
+        unique_keys_task.stop.side_effect = stop_mock
+        clear_filter_task = mocker.Mock(spec=ClearFilterSyncTask)
+        clear_filter_task.stop.side_effect = stop_mock
         split_tasks = SplitTasks(mocker.Mock(), mocker.Mock(), impression_task, event_task,
-                                 impression_count_task)
+                                 impression_count_task, unique_keys_task, clear_filter_task)
         synchronizer = Synchronizer(mocker.Mock(spec=SplitSynchronizers), split_tasks)
         synchronizer.stop_periodic_data_recording(True)
 
         assert len(impression_task.stop.mock_calls) == 1
         assert len(impression_count_task.stop.mock_calls) == 1
         assert len(event_task.stop.mock_calls) == 1
+        assert len(unique_keys_task.stop.mock_calls) == 1
+        assert len(clear_filter_task.stop.mock_calls) == 1
+
 
     def test_shutdown(self, mocker):
 
@@ -247,13 +259,17 @@ class SynchronizerTests(object):
         impression_count_task.stop.side_effect = stop_mock
         event_task = mocker.Mock(spec=EventsSyncTask)
         event_task.stop.side_effect = stop_mock
+        unique_keys_task = mocker.Mock(spec=UniqueKeysSyncTask)
+        unique_keys_task.stop.side_effect = stop_mock
+        clear_filter_task = mocker.Mock(spec=ClearFilterSyncTask)
+        clear_filter_task.stop.side_effect = stop_mock
 
         segment_sync = mocker.Mock(spec=SegmentSynchronizer)
 
         split_synchronizers = SplitSynchronizers(mocker.Mock(), segment_sync, mocker.Mock(),
-                                                 mocker.Mock(), mocker.Mock())
+                                                 mocker.Mock(), mocker.Mock(), mocker.Mock())
         split_tasks = SplitTasks(split_task, segment_task, impression_task, event_task,
-                                 impression_count_task)
+                                 impression_count_task, unique_keys_task, clear_filter_task)
         synchronizer = Synchronizer(split_synchronizers, split_tasks)
         synchronizer.shutdown(True)
 
@@ -263,6 +279,8 @@ class SynchronizerTests(object):
         assert len(impression_task.stop.mock_calls) == 1
         assert len(impression_count_task.stop.mock_calls) == 1
         assert len(event_task.stop.mock_calls) == 1
+        assert len(unique_keys_task.stop.mock_calls) == 1
+        assert len(clear_filter_task.stop.mock_calls) == 1
 
     def test_sync_all_ok(self, mocker):
         """Test that 3 attempts are done before failing."""

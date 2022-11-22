@@ -2,7 +2,7 @@
 # pylint: disable=protected-access,no-self-use,line-too-long
 
 from splitio.client import config
-from splitio.engine.impressions import ImpressionsMode
+from splitio.engine.impressions.impressions import ImpressionsMode
 
 
 class ConfigSanitizationTests(object):
