@@ -1,9 +1,9 @@
 """Redis client wrapper with prefix support."""
 from builtins import str
-import socket
 import logging
+
 from splitio.version import __version__
-from splitio.client.util import _get_ip
+from splitio.util.host_info import get_ip, get_hostname
 
 try:
     from redis import StrictRedis
@@ -314,52 +314,11 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
 
     def record_init(self, *values):
         try:
-            host_name, host_ip = self._get_host_info()
+            host_ip = get_ip()
+            host_name = get_hostname()
             return self.hset(TELEMETRY_CONFIG_KEY, 'python-' + __version__ + '/' + host_name+ '/' + host_ip, str(*values))
         except RedisError as exc:
             raise RedisAdapterException('Error pushing telemetry config operation') from exc
-
-    def _get_host_info(self):
-        host_name = 'Unknown'
-        host_ip = 'Unknown'
-        try:
-            host_ip = _get_ip()
-            host_name = socket.gethostname()
-        except:
-            _LOGGER.debug("Could not get hostname or ip")
-            pass
-        return host_name, host_ip
-
-    def record_stats(self, values):
-        try:
-            host_name, host_ip = self._get_host_info()
-            for item in values['mL']:
-                bucket_number = 0
-                for bucket in values['mL'][item]:
-                    if bucket > 0:
-                        self.hincrby(TELEMETRY_LATENCIES_KEY, 'python-' + __version__ + '/' + host_name+ '/' + host_ip + '/' +
-                             self._get_method_name(item) + '/' + str(bucket_number), bucket)
-                    bucket_number = bucket_number + 0
-            for item in values['mE']:
-                if values['mE'][item] > 0:
-                    self.hincrby(TELEMETRY_EXCEPTIONS_KEY, 'python-' + __version__ + '/' + host_name+ '/' + host_ip + '/' +
-                            self._get_method_name(item), values['mE'][item])
-        except RedisError as exc:
-            raise RedisAdapterException('Error pushing telemetry evaluation operation') from exc
-
-    def _get_method_name(self, item):
-        if item == 't':
-            return 'treatment'
-        elif item == 'ts':
-            return 'treatments'
-        elif item == 'tc':
-            return 'treatment_with_config'
-        elif item == 'tcs':
-            return 'treatments_with_config'
-        elif item == 'tr':
-            return 'track'
-        else:
-            return ''
 
 class RedisPipelineAdapter(object):
     """
@@ -385,7 +344,11 @@ class RedisPipelineAdapter(object):
     def incr(self, name, amount=1):
         """Mimic original redis function but using user custom prefix."""
         self._pipe.incr(self._prefix_helper.add_prefix(name), amount)
-
+        
+    def hincrby(self, name, key, amount=1):
+        """Mimic original redis function but using user custom prefix."""
+        self._pipe.hincrby(self._prefix_helper.add_prefix(name), key, amount)
+        
     def execute(self):
         """Mimic original redis function but using user custom prefix."""
         try:

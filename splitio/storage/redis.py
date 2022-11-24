@@ -1,11 +1,15 @@
 """Redis storage module."""
 import json
 import logging
+from splitio.version import __version__
 
+from splitio.util.host_info import get_hostname, get_ip
+from splitio.client.util import get_method_constant
 from splitio.models.impressions import Impression
 from splitio.models import splits, segments
+from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, \
-    ImpressionPipelinedStorage
+    ImpressionPipelinedStorage, TelemetryStorage
 from splitio.storage.adapters.redis import RedisAdapterException
 from splitio.storage.adapters.cache_trait import decorate as add_cache, DEFAULT_MAX_AGE
 
@@ -536,3 +540,110 @@ class RedisEventsStorage(EventStorage):
         Clear data.
         """
         raise NotImplementedError('Not supported for redis.')
+
+class RedisTelemetryStorage(TelemetryStorage):
+    """Redis based telemetry storage class."""
+
+    TELEMETRY_LATENCIES_KEY = 'SPLITIO.telemetry.latencies'
+    TELEMETRY_EXCEPTIONS_KEY = 'SPLITIO.telemetry.exceptions'
+    TELEMETRY_KEY_DEFAULT_TTL = 3600
+
+    def __init__(self, redis_client, sdk_metadata):
+        """
+        Class constructor.
+
+        :param redis_client: Redis client or compliant interface.
+        :type redis_client: splitio.storage.adapters.redis.RedisAdapter
+        :param sdk_metadata: SDK & Machine information.
+        :type sdk_metadata: splitio.client.util.SdkMetadata
+        """
+        self._redis_client = redis_client
+        self._sdk_metadata = sdk_metadata
+        self._method_latencies = MethodLatencies()
+        self._method_exceptions = MethodExceptions()
+        self._tel_config = TelemetryConfig()
+        self.host_ip = get_ip()
+        self.host_name = get_hostname()
+        self._make_pipe = redis_client.pipeline
+   
+    def record_config(self, config, extra_config):
+        """
+        initilize telemetry objects
+
+        :param congif: factory configuration parameters
+        :type config: splitio.client.config
+        """
+        self._tel_config.record_config(config, extra_config)
+
+    def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
+        """Record active and redundant factories."""
+        self._tel_config.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+        self._redis_client.record_init(self._tel_config.get_stats())
+
+    def record_latency(self, method, latency):
+        """
+        record latency data
+
+        :param method: method name
+        :type method: string
+        :param latency: latency
+        :type latency: int64
+        :param pipe: Redis pipe.
+        :type pipe: redis.pipe
+        """
+        self._method_latencies.add_latency(get_method_constant(method), latency)
+        latencies = self._method_latencies.pop_all()['methodLatencies']
+        values = latencies[method]
+        pipe = self._make_pipe()
+        total_keys = 0
+        bucket_number = 0
+        for bucket in values:
+            if bucket > 0:
+                pipe.hincrby(self.TELEMETRY_LATENCIES_KEY, 'python-' + __version__ + '/' + self.host_name+ '/' + self.host_ip + '/' +
+                        method + '/' + str(bucket_number), bucket)
+                total_keys += 1
+            bucket_number = bucket_number + 0
+        result = pipe.execute()
+        self._expire_keys(self.TELEMETRY_LATENCIES_KEY, self.TELEMETRY_KEY_DEFAULT_TTL, total_keys, result[0])
+
+    def record_exception(self, method):
+        """
+        record an exception
+
+        :param method: method name
+        :type method: string
+        """
+        pipe = self._make_pipe()
+        pipe.hincrby(self.TELEMETRY_EXCEPTIONS_KEY, 'python-' + __version__ + '/' + self.host_name+ '/' + self.host_ip + '/' +
+                    method.value, 1)
+        result = pipe.execute()
+        self._expire_keys(self.TELEMETRY_EXCEPTIONS_KEY, self.TELEMETRY_KEY_DEFAULT_TTL, 1, result[0])
+
+    def record_not_ready_usage(self):
+        """
+        record not ready time
+
+        """
+        pass
+
+    def record_bur_time_out(self):
+        """
+        record BUR timeouts
+
+        """
+        pass
+
+    def record_impression_stats(self, data_type, count):
+        pass
+
+    def _expire_keys(self, queue_key, key_default_ttl, total_keys, inserted):
+        """
+        Set expire
+
+        :param total_keys: length of keys.
+        :type total_keys: int
+        :param inserted: added keys.
+        :type inserted: int
+        """
+        if total_keys == inserted:
+            self._redis_client.expire(queue_key, key_default_ttl)

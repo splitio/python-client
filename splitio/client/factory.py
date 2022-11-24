@@ -23,7 +23,7 @@ from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStora
     InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, LocalhostTelemetryStorage
 from splitio.storage.adapters import redis
 from splitio.storage.redis import RedisSplitStorage, RedisSegmentStorage, RedisImpressionsStorage, \
-    RedisEventsStorage
+    RedisEventsStorage, RedisTelemetryStorage
 
 # APIs
 from splitio.api.client import HttpClient
@@ -152,19 +152,9 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
             ready_updater.start()
         else:
             self._status = Status.READY
-            ready_updater = threading.Thread(target=self._update_redis_telemetry_config,
-                                             name='SDKRedisTelemetryConfig')
-            ready_updater.setDaemon(True)
-            ready_updater.start()
-
-    def _update_redis_telemetry_config(self):
-        """Push Config Telemetry into storage."""
-        self._telemetry_init_producer.record_ready_time(get_current_epoch_time_ms() - self._ready_time)
-        redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
-        self._telemetry_init_producer.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
-        config_post_thread = threading.Thread(target=self._telemetry_api.record_init(self._telemetry_init_consumer.get_config_stats()), name="PostConfigData")
-        config_post_thread.setDaemon(True)
-        config_post_thread.start()        
+            #Push Config Telemetry into redis storage
+            redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
+            self._telemetry_init_producer.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
 
     def _update_status_when_ready(self):
         """Wait until the sdk is ready and update the status."""
@@ -343,8 +333,8 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     telemetry_storage = InMemoryTelemetryStorage()
     telemetry_producer = TelemetryStorageProducer(telemetry_storage)
     telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
-    telemetry_runtime_producer=telemetry_producer.get_telemetry_runtime_producer()
-#    telemetry_evaluation_producer=telemetry_producer.get_telemetry_evaluation_producer()
+    telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+    telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
 
 
     http_client = HttpClient(
@@ -430,6 +420,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         imp_manager,
         storages['events'],
         storages['impressions'],
+        telemetry_evaluation_producer
     )
 
     if preforked_initialization:
@@ -453,16 +444,16 @@ def _build_redis_factory(api_key, cfg):
     redis_adapter = redis.build(cfg)
     cache_enabled = cfg.get('redisLocalCacheEnabled', False)
     cache_ttl = cfg.get('redisLocalCacheTTL', 5)
+    telemetry_storage = RedisTelemetryStorage(redis_adapter, sdk_metadata)
+    telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+    telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+    telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
     storages = {
         'splits': RedisSplitStorage(redis_adapter, cache_enabled, cache_ttl),
         'segments': RedisSegmentStorage(redis_adapter),
         'impressions': RedisImpressionsStorage(redis_adapter, sdk_metadata),
-        'events': RedisEventsStorage(redis_adapter, sdk_metadata),
+        'events': RedisEventsStorage(redis_adapter, sdk_metadata)
     }
-    telemetry_storage = InMemoryTelemetryStorage()
-    telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-    telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
-    telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
 
     data_sampling = cfg.get('dataSampling', DEFAULT_DATA_SAMPLING)
     if data_sampling < _MIN_DEFAULT_DATA_SAMPLING_ALLOWED:
@@ -482,14 +473,14 @@ def _build_redis_factory(api_key, cfg):
 
     synchronizers = SplitSynchronizers(None, None, None, None,
         impressions_count_sync,
-        TelemetrySynchronizer(telemetry_consumer, storages['splits'], storages['segments'], redis_adapter),
+        None,
         unique_keys_synchronizer,
         clear_filter_sync
     )
 
     tasks = SplitTasks(None, None, None, None,
         impressions_count_task,
-        TelemetrySyncTask(synchronizers.telemetry_sync.synchronize_stats, cfg['metricsRefreshRate']),
+        None,
         unique_keys_task,
         clear_filter_task
     )
@@ -500,6 +491,7 @@ def _build_redis_factory(api_key, cfg):
         imp_manager,
         storages['events'],
         storages['impressions'],
+        telemetry_storage,
         data_sampling,
     )
 
@@ -528,6 +520,7 @@ def _build_localhost_factory(cfg):
     telemetry_producer = TelemetryStorageProducer(telemetry_storage)
     telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
     telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+    telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
 
     storages = {
         'splits': InMemorySplitStorage(),
@@ -557,6 +550,7 @@ def _build_localhost_factory(cfg):
         ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer),
         storages['events'],
         storages['impressions'],
+        telemetry_evaluation_producer
     )
     return SplitFactory(
         'localhost',
