@@ -100,7 +100,7 @@ class SplitFactoryTests(object):
         assert adapter == factory._get_storage('impressions')._redis
         assert adapter == factory._get_storage('events')._redis
 
-        assert strict_redis_mock.mock_calls == [mocker.call(
+        assert strict_redis_mock.mock_calls[0] == mocker.call(
             host='some_host',
             port=1234,
             db=1,
@@ -121,8 +121,8 @@ class SplitFactoryTests(object):
             ssl_certfile='some_cert_file',
             ssl_cert_reqs='some_cert_req',
             ssl_ca_certs='some_ca_cert',
-            max_connections=999
-        )]
+            max_connections=999,
+        )
         assert factory._labels_enabled is False
         assert isinstance(factory._recorder, PipelinedRecorder)
         assert isinstance(factory._recorder._impressions_manager, ImpressionsManager)

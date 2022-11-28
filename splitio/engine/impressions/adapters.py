@@ -130,23 +130,3 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         :rtype: json
         """
         return [json.dumps({'f': feature, 'ks': list(keys)}) for feature, keys in uniques.items()]
-
-    def _build_counters(self, counters):
-        """
-        Build an impression bulk formatted as the API expects it.
-
-        :param counters: List of impression counters per feature.
-        :type counters: list[splitio.engine.impressions.Counter.CountPerFeature]
-
-        :return: dict with list of impression count dtos
-        :rtype: dict
-        """
-        return json.dumps({
-            'pf': [
-                {
-                    'f': pf_count.feature,
-                    'm': pf_count.timeframe,
-                    'rc': pf_count.count
-                } for pf_count in counters
-            ]
-        })
