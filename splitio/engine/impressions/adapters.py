@@ -66,6 +66,8 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         :type telemtry_http_client: splitio.api.telemetry.TelemetryAPI
         """
         self._redis_client = redis_client
+        self.pipe = self._redis_client.pipeline()
+
 
     def record_unique_keys(self, uniques):
         """
@@ -88,13 +90,14 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         """
         post the impression counters to redis.
 
-        :param uniques: unique keys disctionary
-        :type uniques: Dictionary {'feature1': set(), 'feature2': set(), .. }
+        :param to_send: unique keys disctionary
+        :type to_send: Dictionary {'feature1': set(), 'feature2': set(), .. }
         """
-        bulk_counts = self._build_counters(to_send)
         try:
-            inserted = self._redis_client.rpush(self.IMP_COUNT_QUEUE_KEY, bulk_counts)
-            self._expire_keys(self.IMP_COUNT_QUEUE_KEY, self.IMP_COUNT_KEY_DEFAULT_TTL, inserted, len(to_send))
+            for pf_count in to_send:
+                self.pipe.hincrby(self.IMP_COUNT_QUEUE_KEY, pf_count.feature + "::" + str(pf_count.timeframe), pf_count.count)
+                result = self.pipe.execute()
+                self._expire_keys(self.IMP_COUNT_QUEUE_KEY, self.IMP_COUNT_KEY_DEFAULT_TTL, result[0], pf_count.count)
             return True
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add counters to redis')
