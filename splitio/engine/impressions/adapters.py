@@ -94,10 +94,13 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         :type to_send: Dictionary {'feature1': set(), 'feature2': set(), .. }
         """
         try:
+            resulted = 0
+            counted = 0
             for pf_count in to_send:
                 self.pipe.hincrby(self.IMP_COUNT_QUEUE_KEY, pf_count.feature + "::" + str(pf_count.timeframe), pf_count.count)
-                result = self.pipe.execute()
-                self._expire_keys(self.IMP_COUNT_QUEUE_KEY, self.IMP_COUNT_KEY_DEFAULT_TTL, result[0], pf_count.count)
+                counted += pf_count.count
+            resulted = sum(self.pipe.execute())
+            self._expire_keys(self.IMP_COUNT_QUEUE_KEY, self.IMP_COUNT_KEY_DEFAULT_TTL, resulted, counted)
             return True
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add counters to redis')
