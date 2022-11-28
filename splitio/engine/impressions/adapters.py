@@ -93,8 +93,8 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         """
         bulk_counts = self._build_counters(to_send)
         try:
-            inserted = self._redis_client.rpush(self.IMP_COUNT_QUEUE_KEY, *bulk_counts)
-            self._expire_keys(self.IMP_COUNT_QUEUE_KEY, self.IMP_COUNT_KEY_DEFAULT_TTL, inserted, len(bulk_counts))
+            inserted = self._redis_client.rpush(self.IMP_COUNT_QUEUE_KEY, bulk_counts)
+            self._expire_keys(self.IMP_COUNT_QUEUE_KEY, self.IMP_COUNT_KEY_DEFAULT_TTL, inserted, len(to_send))
             return True
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add counters to redis')
