@@ -316,9 +316,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'telemetry': TelemetryAPI(http_client, api_key, sdk_metadata),
     }
 
-    if not input_validator.validate_apikey_type(apis['segments']):
-        return None
-
     storages = {
         'splits': InMemorySplitStorage(),
         'segments': InMemorySegmentStorage(),

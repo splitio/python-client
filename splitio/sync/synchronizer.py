@@ -3,8 +3,10 @@
 import abc
 import logging
 import threading
+import time
 
 from splitio.api import APIException
+from splitio.util.backoff import Backoff
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -212,6 +214,9 @@ class BaseSynchronizer(object, metaclass=abc.ABCMeta):
 class Synchronizer(BaseSynchronizer):
     """Synchronizer."""
 
+    _ON_DEMAND_FETCH_BACKOFF_BASE = 10  # backoff base starting at 10 seconds
+    _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT = 30  # don't sleep for more than 1 minute
+
     def __init__(self, split_synchronizers, split_tasks):
         """
         Class constructor.
@@ -221,6 +226,9 @@ class Synchronizer(BaseSynchronizer):
         :param split_tasks: tasks for starting/stopping tasks
         :type split_tasks: splitio.sync.synchronizer.SplitTasks
         """
+        self._backoff = Backoff(
+                                self._ON_DEMAND_FETCH_BACKOFF_BASE,
+                                self._ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
         self._split_synchronizers = split_synchronizers
         self._split_tasks = split_tasks
         self._periodic_data_recording_tasks = [
@@ -291,6 +299,8 @@ class Synchronizer(BaseSynchronizer):
             try:
                 if not self.synchronize_splits(None, False):
                     attempts -= 1
+                    how_long = self._backoff.get()
+                    time.sleep(how_long)
                     continue
 
                 # Only retrying splits, since segments may trigger too many calls.
