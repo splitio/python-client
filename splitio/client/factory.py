@@ -187,8 +187,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         """
         if self._sdk_internal_ready_flag is not None:
             ready = self._sdk_ready_flag.wait(timeout)
-
-            if not ready:
+            if not (ready and self._sync_manager.is_ready()):
                 raise TimeoutException('SDK Initialization: time of %d exceeded' % timeout)
 
     @property
@@ -315,9 +314,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'events': EventsAPI(http_client, api_key, sdk_metadata),
         'telemetry': TelemetryAPI(http_client, api_key, sdk_metadata),
     }
-
-    if not input_validator.validate_apikey_type(apis['segments']):
-        return None
 
     storages = {
         'splits': InMemorySplitStorage(),

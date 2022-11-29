@@ -129,6 +129,9 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
                 _LOGGER.info('non-recoverable error in streaming. switching to polling.')
                 return
 
+    def is_ready(self):
+        return self._synchronizer.is_ready()
+
 class RedisManager(object):  # pylint:disable=too-many-instance-attributes
     """Manager Class."""
 

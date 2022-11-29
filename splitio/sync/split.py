@@ -4,6 +4,7 @@ import re
 import itertools
 import yaml
 import time
+import threading
 
 from splitio.api import APIException
 from splitio.api.commons import FetchOptions
@@ -41,6 +42,8 @@ class SplitSynchronizer(object):
         self._backoff = Backoff(
                                 _ON_DEMAND_FETCH_BACKOFF_BASE,
                                 _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
+        self.is_ready = False
+        self._lock = threading.RLock()
 
     def _fetch_until(self, fetch_options, till=None):
         """
@@ -108,6 +111,15 @@ class SplitSynchronizer(object):
                 return False, remaining_attempts, change_number, final_segment_list
             how_long = self._backoff.get()
             time.sleep(how_long)
+
+    def set_is_ready(self, value):
+        with self._lock:
+            self.is_ready = value
+
+    def get_is_ready(self):
+        with self._lock:
+            return self.is_ready
+
 
     def synchronize_splits(self, till=None):
         """

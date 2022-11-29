@@ -298,6 +298,8 @@ class Synchronizer(BaseSynchronizer):
                     _LOGGER.warning('Segments failed to synchronize.')
 
                 # All is good
+                _LOGGER.debug('Setting is_ready')
+                self._split_synchronizers.split_sync.set_is_ready(True)
                 return
             except Exception as exc:  # pylint:disable=broad-except
                 attempts -= 1
@@ -305,6 +307,7 @@ class Synchronizer(BaseSynchronizer):
                 _LOGGER.debug('Error: ', exc_info=True)
 
         _LOGGER.error("Could not correctly synchronize splits and segments after 3 attempts.")
+        self._split_synchronizers.split_sync.set_is_ready(False)
 
     def shutdown(self, blocking):
         """
@@ -369,6 +372,9 @@ class Synchronizer(BaseSynchronizer):
         """
         self._split_synchronizers.split_sync.kill_split(split_name, default_treatment,
                                                         change_number)
+
+    def is_ready(self):
+        return self._split_synchronizers.split_sync.get_is_ready()
 
 class RedisSynchronizer(BaseSynchronizer):
     """Redis Synchronizer."""
@@ -514,3 +520,6 @@ class LocalhostSynchronizer(BaseSynchronizer):
         :type blocking: bool
         """
         self.stop_periodic_fetching()
+
+    def is_ready(self):
+        return True

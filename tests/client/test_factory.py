@@ -221,7 +221,10 @@ class SplitFactoryTests(object):
 
         # Start factory and make assertions
         factory = get_factory('some_api_key')
-        factory.block_until_ready()
+        try:
+            factory.block_until_ready(0.5)
+        except:
+            pass
         assert factory.ready
         assert factory.destroyed is False
 
@@ -304,7 +307,10 @@ class SplitFactoryTests(object):
 
         # Start factory and make assertions
         factory = get_factory('some_api_key')
-        factory.block_until_ready()
+        try:
+            factory.block_until_ready(0.5)
+        except:
+            pass
         assert factory.ready
         assert factory.destroyed is False
 
