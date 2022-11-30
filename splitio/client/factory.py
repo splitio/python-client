@@ -379,7 +379,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     )
 
     if preforked_initialization:
-        synchronizer.sync_all()
+        synchronizer.sync_all(max_retry_attempts=3)
         synchronizer._split_synchronizers._segment_sync.shutdown()
         return SplitFactory(api_key, storages, cfg['labelsEnabled'],
                             recorder, manager, preforked_initialization=preforked_initialization)
@@ -390,7 +390,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
 
     return SplitFactory(api_key, storages, cfg['labelsEnabled'],
                         recorder, manager, sdk_ready_flag)
-
 
 def _build_redis_factory(api_key, cfg):
     """Build and return a split factory with redis-based storage."""

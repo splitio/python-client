@@ -58,10 +58,15 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
         """Recreate poolers for forked processes."""
         self._synchronizer._split_synchronizers._segment_sync.recreate()
 
-    def start(self):
-        """Start the SDK synchronization tasks."""
+    def start(self, retry_attempts=-1):
+        """
+        Start the SDK synchronization tasks.
+
+        :param max_retry_attempts: apply max attempts if it set to absilute integer.
+        :type max_retry_attempts: int
+        """
         try:
-            self._synchronizer.sync_all()
+            self._synchronizer.sync_all(retry_attempts)
             self._ready_flag.set()
             self._synchronizer.start_periodic_data_recording()
             if self._streaming_enabled:

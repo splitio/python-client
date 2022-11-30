@@ -292,15 +292,20 @@ class Synchronizer(BaseSynchronizer):
             _LOGGER.debug('Error: ', exc_info=True)
             return False
 
-    def sync_all(self):
-        """Synchronize all split data."""
-        attempts = 3
-        while attempts > 0:
+    def sync_all(self, max_retry_attempts=-1):
+        """
+        Synchronize all splits.
+
+        :param max_retry_attempts: apply max attempts if it set to absilute integer.
+        :type max_retry_attempts: int
+        """
+        retry_attempts = 0
+        while True:
             try:
                 if not self.synchronize_splits(None, False):
-                    attempts -= 1
-                    how_long = self._backoff.get()
-                    time.sleep(how_long)
+                    retry_attempts = self._retry_block(max_retry_attempts, retry_attempts)
+                    if not max_retry_attempts == -1 and retry_attempts == -1:
+                        break
                     continue
 
                 # Only retrying splits, since segments may trigger too many calls.
@@ -310,11 +315,23 @@ class Synchronizer(BaseSynchronizer):
                 # All is good
                 return
             except Exception as exc:  # pylint:disable=broad-except
-                attempts -= 1
                 _LOGGER.error("Exception caught when trying to sync all data: %s", str(exc))
                 _LOGGER.debug('Error: ', exc_info=True)
+                retry_attempts = self._retry_block(max_retry_attempts, retry_attempts)
+                if not max_retry_attempts == -1 and retry_attempts == -1:
+                    break
+                continue
 
-        _LOGGER.error("Could not correctly synchronize splits and segments after 3 attempts.")
+        _LOGGER.error("Could not correctly synchronize splits and segments after %d attempts.", retry_attempts)
+
+    def _retry_block(self, max_retry_attempts, retry_attempts):
+        if not max_retry_attempts == -1:
+            retry_attempts += 1
+            if retry_attempts > max_retry_attempts:
+                return -1
+        how_long = self._backoff.get()
+        time.sleep(how_long)
+        return retry_attempts
 
     def shutdown(self, blocking):
         """
@@ -478,8 +495,12 @@ class LocalhostSynchronizer(BaseSynchronizer):
         self._split_synchronizers = split_synchronizers
         self._split_tasks = split_tasks
 
-    def sync_all(self):
-        """Synchronize all split data."""
+    def sync_all(self, max_retry_attempts=-1):
+        """
+        Synchronize all splits.
+
+        :param max_retry_attempts: Not used, added for compatibility
+        """
         try:
             self._split_synchronizers.split_sync.synchronize_splits(None)
         except APIException as exc:

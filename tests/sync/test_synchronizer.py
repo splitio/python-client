@@ -34,7 +34,7 @@ class SynchronizerTests(object):
 
         sychronizer.synchronize_splits(None)  # APIExceptions are handled locally and should not be propagated!
 
-        sychronizer.sync_all()  # sync_all should not throw!
+        sychronizer.sync_all(1)  # sync_all should not throw!
 
     def test_sync_all_failed_segments(self, mocker):
         api = mocker.Mock()
@@ -53,7 +53,7 @@ class SynchronizerTests(object):
                                                  mocker.Mock(), mocker.Mock())
         sychronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
 
-        sychronizer.sync_all()  # SyncAll should not throw!
+        sychronizer.sync_all(1)  # SyncAll should not throw!
         assert not sychronizer._synchronize_segments()
 
     splits = [{
@@ -319,7 +319,7 @@ class SynchronizerTests(object):
         split_tasks = mocker.Mock(spec=SplitTasks)
         synchronizer = Synchronizer(split_synchronizers, split_tasks)
 
-        synchronizer.sync_all()
+        synchronizer.sync_all(2)
         assert counts['splits'] == 3
 
     def test_sync_all_segment_attempts(self, mocker):
