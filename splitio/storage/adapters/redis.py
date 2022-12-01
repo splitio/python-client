@@ -241,6 +241,13 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
         except RedisError as exc:
             raise RedisAdapterException('Error executing hget operation') from exc
 
+    def hincrby(self, name, key, amount=1):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return self._decorated.hincrby(self._prefix_helper.add_prefix(name), key, amount)
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing hincrby operation') from exc
+
     def incr(self, name, amount=1):
         """Mimic original redis function but using user custom prefix."""
         try:
@@ -322,6 +329,10 @@ class RedisPipelineAdapter(object):
     def incr(self, name, amount=1):
         """Mimic original redis function but using user custom prefix."""
         self._pipe.incr(self._prefix_helper.add_prefix(name), amount)
+
+    def hincrby(self, name, key, amount=1):
+        """Mimic original redis function but using user custom prefix."""
+        self._pipe.hincrby(self._prefix_helper.add_prefix(name), key, amount)
 
     def execute(self):
         """Mimic original redis function but using user custom prefix."""

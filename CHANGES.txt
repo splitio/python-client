@@ -1,4 +1,4 @@
-9.2.1 (Nov 29, 2022)
+9.2.1 (Dec 1, 2022)
 - Changed redis record type for impressions counts from list using rpush to hashed key using hincrby.
 - Apply Timeout Exception when incorrect SDK API Key is used.
 - Changed potential initial fetching segment Warning to Debug in logging.
