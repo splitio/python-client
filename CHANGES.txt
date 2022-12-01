@@ -1,3 +1,8 @@
+9.2.1 (Nov 29, 2022)
+- Changed redis record type for impressions counts from list using rpush to hashed key using hincrby.
+- Apply Timeout Exception when incorrect SDK API Key is used.
+- Changed potential initial fetching segment Warning to Debug in logging.
+
 9.2.0 (Oct 14, 2022)
 - Added a new impressions mode for the SDK called NONE , to be used in factory when there is no desire to capture impressions on an SDK factory to feed Split's analytics engine. Running NONE mode, the SDK will only capture unique keys evaluated for a particular feature flag instead of full blown impressions
 
