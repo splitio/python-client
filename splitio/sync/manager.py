@@ -15,6 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 class Manager(object):  # pylint:disable=too-many-instance-attributes
     """Manager Class."""
 
+    _SYNC_ALL_ATTEMPTS = -1
     _CENTINEL_EVENT = object()
 
     def __init__(self, ready_flag, synchronizer, auth_api, streaming_enabled, sdk_metadata, sse_url=None, client_key=None):  # pylint:disable=too-many-arguments
@@ -59,9 +60,14 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
         self._synchronizer._split_synchronizers._segment_sync.recreate()
 
     def start(self):
-        """Start the SDK synchronization tasks."""
+        """
+        Start the SDK synchronization tasks.
+
+        :param max_retry_attempts: apply max attempts if it set to absilute integer.
+        :type max_retry_attempts: int
+        """
         try:
-            self._synchronizer.sync_all()
+            self._synchronizer.sync_all(self._SYNC_ALL_ATTEMPTS)
             self._ready_flag.set()
             self._synchronizer.start_periodic_data_recording()
             if self._streaming_enabled:

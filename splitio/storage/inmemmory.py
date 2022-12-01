@@ -193,7 +193,7 @@ class InMemorySegmentStorage(SegmentStorage):
         with self._lock:
             fetched = self._segments.get(segment_name)
             if fetched is None:
-                _LOGGER.warning(
+                _LOGGER.debug(
                     "Tried to retrieve nonexistant segment %s. Skipping",
                     segment_name
                 )

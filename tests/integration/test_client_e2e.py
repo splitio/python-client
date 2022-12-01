@@ -3,6 +3,7 @@
 import json
 import os
 import threading
+import pytest
 
 from redis import StrictRedis
 
