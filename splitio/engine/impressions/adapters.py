@@ -66,8 +66,6 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         :type telemtry_http_client: splitio.api.telemetry.TelemetryAPI
         """
         self._redis_client = redis_client
-        self.pipe = self._redis_client.pipeline()
-
 
     def record_unique_keys(self, uniques):
         """
@@ -96,10 +94,11 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         try:
             resulted = 0
             counted = 0
+            pipe = self._redis_client.pipeline()
             for pf_count in to_send:
-                self.pipe.hincrby(self.IMP_COUNT_QUEUE_KEY, pf_count.feature + "::" + str(pf_count.timeframe), pf_count.count)
+                pipe.hincrby(self.IMP_COUNT_QUEUE_KEY, pf_count.feature + "::" + str(pf_count.timeframe), pf_count.count)
                 counted += pf_count.count
-            resulted = sum(self.pipe.execute())
+            resulted = sum(pipe.execute())
             self._expire_keys(self.IMP_COUNT_QUEUE_KEY, self.IMP_COUNT_KEY_DEFAULT_TTL, resulted, counted)
             return True
         except RedisAdapterException:

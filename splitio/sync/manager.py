@@ -7,7 +7,7 @@ from queue import Queue
 from splitio.push.manager import PushManager, Status
 from splitio.api import APIException
 from splitio.util.backoff import Backoff
-
+from splitio.sync.synchronizer import _SYNC_ALL_NO_RETRIES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -15,7 +15,6 @@ _LOGGER = logging.getLogger(__name__)
 class Manager(object):  # pylint:disable=too-many-instance-attributes
     """Manager Class."""
 
-    _SYNC_ALL_ATTEMPTS = -1
     _CENTINEL_EVENT = object()
 
     def __init__(self, ready_flag, synchronizer, auth_api, streaming_enabled, sdk_metadata, sse_url=None, client_key=None):  # pylint:disable=too-many-arguments
@@ -59,15 +58,12 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
         """Recreate poolers for forked processes."""
         self._synchronizer._split_synchronizers._segment_sync.recreate()
 
-    def start(self):
+    def start(self, max_retry_attempts=_SYNC_ALL_NO_RETRIES):
         """
         Start the SDK synchronization tasks.
-
-        :param max_retry_attempts: apply max attempts if it set to absilute integer.
-        :type max_retry_attempts: int
         """
         try:
-            self._synchronizer.sync_all(self._SYNC_ALL_ATTEMPTS)
+            self._synchronizer.sync_all(max_retry_attempts)
             self._ready_flag.set()
             self._synchronizer.start_periodic_data_recording()
             if self._streaming_enabled:
