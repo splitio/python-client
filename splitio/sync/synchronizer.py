@@ -314,11 +314,10 @@ class Synchronizer(BaseSynchronizer):
             except Exception as exc:  # pylint:disable=broad-except
                 _LOGGER.error("Exception caught when trying to sync all data: %s", str(exc))
                 _LOGGER.debug('Error: ', exc_info=True)
-
-            retry_attempts = self._retry_block(max_retry_attempts, retry_attempts)
-            if max_retry_attempts != -1 and retry_attempts == -1:
-                break
-            continue
+                retry_attempts = self._retry_block(max_retry_attempts, retry_attempts)
+                if max_retry_attempts != -1 and retry_attempts == -1:
+                    break
+                continue
 
         _LOGGER.error("Could not correctly synchronize splits and segments after %d attempts.", retry_attempts)
 
