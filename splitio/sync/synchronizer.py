@@ -10,7 +10,7 @@ from splitio.util.backoff import Backoff
 
 
 _LOGGER = logging.getLogger(__name__)
-_SYNC_ALL_NO_RETRIES = 3
+_SYNC_ALL_NO_RETRIES = -1
 
 class SplitSynchronizers(object):
     """SplitSynchronizers."""
@@ -314,7 +314,7 @@ class Synchronizer(BaseSynchronizer):
             except Exception as exc:  # pylint:disable=broad-except
                 _LOGGER.error("Exception caught when trying to sync all data: %s", str(exc))
                 _LOGGER.debug('Error: ', exc_info=True)
-                if max_retry_attempts != -1:
+                if max_retry_attempts != _SYNC_ALL_NO_RETRIES:
                     retry_attempts += 1
                     if retry_attempts > max_retry_attempts:
                         break
