@@ -320,7 +320,6 @@ class Synchronizer(BaseSynchronizer):
                         break
                 how_long = self._backoff.get()
                 time.sleep(how_long)
-                continue
 
         _LOGGER.error("Could not correctly synchronize splits and segments after %d attempts.", retry_attempts)
 

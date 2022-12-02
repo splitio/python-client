@@ -142,7 +142,7 @@ class SplitFactoryTests(object):
 
     def test_uwsgi_forked_client_creation(self):
         """Test client with preforked initialization."""
-#        pytest.set_trace()
+        # Invalid API Key with preforked should exit after 3 attempts.
         factory = get_factory('some_api_key', config={'preforkedInitialization': True})
         assert isinstance(factory._storages['splits'], inmemmory.InMemorySplitStorage)
         assert isinstance(factory._storages['segments'], inmemmory.InMemorySegmentStorage)
@@ -228,9 +228,10 @@ class SplitFactoryTests(object):
         mocker.patch('splitio.sync.manager.Manager.__init__', new=_split_synchronizer)
 
         # Start factory and make assertions
+        # Using invalid key should result in a timeout exception
         factory = get_factory('some_api_key')
         try:
-            factory.block_until_ready(1) 
+            factory.block_until_ready(1)
         except:
             pass
         assert factory.ready is False
@@ -316,7 +317,7 @@ class SplitFactoryTests(object):
         # Start factory and make assertions
         factory = get_factory('some_api_key')
         try:
-            factory.block_until_ready(1) 
+            factory.block_until_ready(1)
         except:
             pass
         assert factory.ready is False

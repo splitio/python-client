@@ -34,6 +34,7 @@ class SynchronizerTests(object):
 
         sychronizer.synchronize_splits(None)  # APIExceptions are handled locally and should not be propagated!
 
+        # test forcing to have only one retry attempt and then exit
         sychronizer.sync_all(1)  # sync_all should not throw!
 
     def test_sync_all_failed_segments(self, mocker):
