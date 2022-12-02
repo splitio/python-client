@@ -126,9 +126,6 @@ class PipelinedRecorder(StatsRecorder):
         :type operation: str
         """
         try:
-            # TODO @matias.melograno
-            # Changing logic until TelemetryV2 released to avoid using pipelined operations
-            # Deprecated Old Telemetry
             if self._data_sampling < DEFAULT_DATA_SAMPLING:
                 rnumber = random.uniform(0, 1)
                 if self._data_sampling < rnumber:
@@ -138,11 +135,12 @@ class PipelinedRecorder(StatsRecorder):
                 return
             pipe = self._make_pipe()
             self._impression_storage.add_impressions_to_pipe(impressions, pipe)
+            if method_name is not None:
+                self._telemetry_redis_storage.add_latency_to_pipe(method_name[4:], latency, pipe)
             result = pipe.execute()
             if len(result) == 2:
                 self._impression_storage.expire_key(result[0], len(impressions))
-            if method_name is not None:
-                self._telemetry_redis_storage.record_latency(method_name[4:], latency)
+                self._telemetry_redis_storage.expire_latency_keys(result[1], latency)
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error recording impressions')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -154,5 +152,10 @@ class PipelinedRecorder(StatsRecorder):
         :param event: events tracked
         :type event: splitio.models.events.EventWrapper
         """
-        self._telemetry_redis_storage.record_latency(MethodExceptionsAndLatencies.TRACK.value, latency)
-        return self._event_sotrage.put(event)
+        pipe = self._make_pipe()
+        rc = self._event_sotrage.add_events_to_pipe(event, pipe)
+        self._telemetry_redis_storage.add_latency_to_pipe(MethodExceptionsAndLatencies.TRACK.value, latency, pipe)
+        result = pipe.execute()
+        self._event_sotrage.expire_keys(result[0], len(event))
+        self._telemetry_redis_storage.expire_latency_keys(result[1], latency)
+        return rc

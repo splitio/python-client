@@ -421,7 +421,6 @@ class RedisImpressionsStorage(ImpressionStorage, ImpressionPipelinedStorage):
         :type inserted: int
         """
         if total_keys == inserted:
-            _LOGGER.debug("SET EXPIRE KEY FOR QUEUE")
             self._redis.expire(self.IMPRESSIONS_QUEUE_KEY, self.IMPRESSIONS_KEY_DEFAULT_TTL)
 
     def add_impressions_to_pipe(self, impressions, pipe):
@@ -475,7 +474,8 @@ class RedisImpressionsStorage(ImpressionStorage, ImpressionPipelinedStorage):
 class RedisEventsStorage(EventStorage):
     """Redis based event storage class."""
 
-    _KEY_TEMPLATE = 'SPLITIO.events'
+    _EVENTS_KEY_TEMPLATE = 'SPLITIO.events'
+    _EVENTS_KEY_DEFAULT_TTL = 3600
 
     def __init__(self, redis_client, sdk_metadata):
         """
@@ -489,6 +489,38 @@ class RedisEventsStorage(EventStorage):
         self._redis = redis_client
         self._sdk_metadata = sdk_metadata
 
+    def add_events_to_pipe(self, events, pipe):
+        """
+        Add put operation to pipeline
+
+        :param impressions: List of one or more impressions to store.
+        :type impressions: list
+        :param pipe: Redis pipe.
+        :type pipe: redis.pipe
+        """
+        bulk_events = self._wrap_events(events)
+        pipe.rpush(self._EVENTS_KEY_TEMPLATE, *bulk_events)
+
+    def _wrap_events(self, events):
+        return [
+        json.dumps({
+            'e': {
+                'key': e.event.key,
+                'trafficTypeName': e.event.traffic_type_name,
+                'eventTypeId': e.event.event_type_id,
+                'value': e.event.value,
+                'timestamp': e.event.timestamp,
+                'properties': e.event.properties,
+            },
+            'm': {
+                's': self._sdk_metadata.sdk_version,
+                'n': self._sdk_metadata.instance_name,
+                'i': self._sdk_metadata.instance_ip,
+            }
+        })
+        for e in events
+    ]
+
     def put(self, events):
         """
         Add an event to the redis storage.
@@ -499,25 +531,8 @@ class RedisEventsStorage(EventStorage):
         :return: Whether the event has been added or not.
         :rtype: bool
         """
-        key = self._KEY_TEMPLATE
-        to_store = [
-            json.dumps({
-                'e': {
-                    'key': e.event.key,
-                    'trafficTypeName': e.event.traffic_type_name,
-                    'eventTypeId': e.event.event_type_id,
-                    'value': e.event.value,
-                    'timestamp': e.event.timestamp,
-                    'properties': e.event.properties,
-                },
-                'm': {
-                    's': self._sdk_metadata.sdk_version,
-                    'n': self._sdk_metadata.instance_name,
-                    'i': self._sdk_metadata.instance_ip,
-                }
-            })
-            for e in events
-        ]
+        key = self._EVENTS_KEY_TEMPLATE
+        to_store = self._wrap_events(events)
         try:
             self._redis.rpush(key, *to_store)
             return True
@@ -541,12 +556,24 @@ class RedisEventsStorage(EventStorage):
         """
         raise NotImplementedError('Not supported for redis.')
 
+    def expire_keys(self, total_keys, inserted):
+        """
+        Set expire
+
+        :param total_keys: length of keys.
+        :type total_keys: int
+        :param inserted: added keys.
+        :type inserted: int
+        """
+        if total_keys == inserted:
+            self._redis.expire(self._EVENTS_KEY_TEMPLATE, self._EVENTS_KEY_DEFAULT_TTL)
+
 class RedisTelemetryStorage(TelemetryStorage):
     """Redis based telemetry storage class."""
 
-    TELEMETRY_LATENCIES_KEY = 'SPLITIO.telemetry.latencies'
-    TELEMETRY_EXCEPTIONS_KEY = 'SPLITIO.telemetry.exceptions'
-    TELEMETRY_KEY_DEFAULT_TTL = 3600
+    _TELEMETRY_LATENCIES_KEY = 'SPLITIO.telemetry.latencies'
+    _TELEMETRY_EXCEPTIONS_KEY = 'SPLITIO.telemetry.exceptions'
+    _TELEMETRY_KEY_DEFAULT_TTL = 3600
 
     def __init__(self, redis_client, sdk_metadata):
         """
@@ -565,7 +592,7 @@ class RedisTelemetryStorage(TelemetryStorage):
         self.host_ip = get_ip()
         self.host_name = get_hostname()
         self._make_pipe = redis_client.pipeline
-   
+
     def record_config(self, config, extra_config):
         """
         initilize telemetry objects
@@ -580,7 +607,7 @@ class RedisTelemetryStorage(TelemetryStorage):
         self._tel_config.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
         self._redis_client.record_init(self._tel_config.get_stats())
 
-    def record_latency(self, method, latency):
+    def add_latency_to_pipe(self, method, latency, pipe):
         """
         record latency data
 
@@ -594,17 +621,20 @@ class RedisTelemetryStorage(TelemetryStorage):
         self._method_latencies.add_latency(get_method_constant(method), latency)
         latencies = self._method_latencies.pop_all()['methodLatencies']
         values = latencies[method]
-        pipe = self._make_pipe()
         total_keys = 0
         bucket_number = 0
         for bucket in values:
             if bucket > 0:
-                pipe.hincrby(self.TELEMETRY_LATENCIES_KEY, 'python-' + __version__ + '/' + self.host_name+ '/' + self.host_ip + '/' +
+                pipe.hincrby(self._TELEMETRY_LATENCIES_KEY, 'python-' + __version__ + '/' + self.host_name+ '/' + self.host_ip + '/' +
                         method + '/' + str(bucket_number), bucket)
                 total_keys += 1
             bucket_number = bucket_number + 0
-        result = pipe.execute()
-        self._expire_keys(self.TELEMETRY_LATENCIES_KEY, self.TELEMETRY_KEY_DEFAULT_TTL, total_keys, result[0])
+
+    def record_latency(self, method, latency):
+        """
+        Not implemented
+        """
+        raise NotImplementedError('Only redis pipe is used.')
 
     def record_exception(self, method):
         """
@@ -614,10 +644,10 @@ class RedisTelemetryStorage(TelemetryStorage):
         :type method: string
         """
         pipe = self._make_pipe()
-        pipe.hincrby(self.TELEMETRY_EXCEPTIONS_KEY, 'python-' + __version__ + '/' + self.host_name+ '/' + self.host_ip + '/' +
+        pipe.hincrby(self._TELEMETRY_EXCEPTIONS_KEY, 'python-' + __version__ + '/' + self.host_name+ '/' + self.host_ip + '/' +
                     method.value, 1)
         result = pipe.execute()
-        self._expire_keys(self.TELEMETRY_EXCEPTIONS_KEY, self.TELEMETRY_KEY_DEFAULT_TTL, 1, result[0])
+        self._expire_keys(self._TELEMETRY_EXCEPTIONS_KEY, self._TELEMETRY_KEY_DEFAULT_TTL, 1, result[0])
 
     def record_not_ready_usage(self):
         """
@@ -636,7 +666,10 @@ class RedisTelemetryStorage(TelemetryStorage):
     def record_impression_stats(self, data_type, count):
         pass
 
-    def _expire_keys(self, queue_key, key_default_ttl, total_keys, inserted):
+    def expire_latency_keys(self, total_keys, inserted):
+        self.expire_keys(self._TELEMETRY_LATENCIES_KEY, self._TELEMETRY_KEY_DEFAULT_TTL, total_keys, inserted)
+
+    def expire_keys(self, queue_key, key_default_ttl, total_keys, inserted):
         """
         Set expire
 
