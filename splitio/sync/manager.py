@@ -7,7 +7,7 @@ from queue import Queue
 from splitio.push.manager import PushManager, Status
 from splitio.api import APIException
 from splitio.util.backoff import Backoff
-
+from splitio.sync.synchronizer import _SYNC_ALL_NO_RETRIES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,10 +58,12 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
         """Recreate poolers for forked processes."""
         self._synchronizer._split_synchronizers._segment_sync.recreate()
 
-    def start(self):
-        """Start the SDK synchronization tasks."""
+    def start(self, max_retry_attempts=_SYNC_ALL_NO_RETRIES):
+        """
+        Start the SDK synchronization tasks.
+        """
         try:
-            self._synchronizer.sync_all()
+            self._synchronizer.sync_all(max_retry_attempts)
             self._ready_flag.set()
             self._synchronizer.start_periodic_data_recording()
             if self._streaming_enabled:

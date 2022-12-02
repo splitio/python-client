@@ -88,13 +88,18 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         """
         post the impression counters to redis.
 
-        :param uniques: unique keys disctionary
-        :type uniques: Dictionary {'feature1': set(), 'feature2': set(), .. }
+        :param to_send: unique keys disctionary
+        :type to_send: Dictionary {'feature1': set(), 'feature2': set(), .. }
         """
-        bulk_counts = self._build_counters(to_send)
         try:
-            inserted = self._redis_client.rpush(self.IMP_COUNT_QUEUE_KEY, *bulk_counts)
-            self._expire_keys(self.IMP_COUNT_QUEUE_KEY, self.IMP_COUNT_KEY_DEFAULT_TTL, inserted, len(bulk_counts))
+            resulted = 0
+            counted = 0
+            pipe = self._redis_client.pipeline()
+            for pf_count in to_send:
+                pipe.hincrby(self.IMP_COUNT_QUEUE_KEY, pf_count.feature + "::" + str(pf_count.timeframe), pf_count.count)
+                counted += pf_count.count
+            resulted = sum(pipe.execute())
+            self._expire_keys(self.IMP_COUNT_QUEUE_KEY, self.IMP_COUNT_KEY_DEFAULT_TTL, resulted, counted)
             return True
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add counters to redis')
@@ -124,23 +129,3 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         :rtype: json
         """
         return [json.dumps({'f': feature, 'ks': list(keys)}) for feature, keys in uniques.items()]
-
-    def _build_counters(self, counters):
-        """
-        Build an impression bulk formatted as the API expects it.
-
-        :param counters: List of impression counters per feature.
-        :type counters: list[splitio.engine.impressions.Counter.CountPerFeature]
-
-        :return: dict with list of impression count dtos
-        :rtype: dict
-        """
-        return json.dumps({
-            'pf': [
-                {
-                    'f': pf_count.feature,
-                    'm': pf_count.timeframe,
-                    'rc': pf_count.count
-                } for pf_count in counters
-            ]
-        })

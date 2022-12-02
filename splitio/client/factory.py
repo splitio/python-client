@@ -63,6 +63,7 @@ _LOGGER = logging.getLogger(__name__)
 _INSTANTIATED_FACTORIES = Counter()
 _INSTANTIATED_FACTORIES_LOCK = threading.RLock()
 _MIN_DEFAULT_DATA_SAMPLING_ALLOWED = 0.1  # 10%
+_MAX_RETRY_SYNC_ALL = 3
 
 
 class Status(Enum):
@@ -316,9 +317,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'telemetry': TelemetryAPI(http_client, api_key, sdk_metadata),
     }
 
-    if not input_validator.validate_apikey_type(apis['segments']):
-        return None
-
     storages = {
         'splits': InMemorySplitStorage(),
         'segments': InMemorySegmentStorage(),
@@ -382,7 +380,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     )
 
     if preforked_initialization:
-        synchronizer.sync_all()
+        synchronizer.sync_all(max_retry_attempts=_MAX_RETRY_SYNC_ALL)
         synchronizer._split_synchronizers._segment_sync.shutdown()
         return SplitFactory(api_key, storages, cfg['labelsEnabled'],
                             recorder, manager, preforked_initialization=preforked_initialization)
@@ -393,7 +391,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
 
     return SplitFactory(api_key, storages, cfg['labelsEnabled'],
                         recorder, manager, sdk_ready_flag)
-
 
 def _build_redis_factory(api_key, cfg):
     """Build and return a split factory with redis-based storage."""
