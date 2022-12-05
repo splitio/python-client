@@ -12,7 +12,7 @@ from splitio.client.util import SdkMetadata
 from splitio.storage.inmemmory import InMemoryEventStorage, InMemoryImpressionStorage, \
     InMemorySegmentStorage, InMemorySplitStorage, InMemoryTelemetryStorage
 from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \
-    RedisSplitStorage, RedisSegmentStorage
+    RedisSplitStorage, RedisSegmentStorage, RedisTelemetryStorage
 from splitio.storage.adapters.redis import build, RedisAdapter
 from splitio.models import splits, segments
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager, ImpressionsMode
@@ -53,6 +53,7 @@ class InMemoryIntegrationTests(object):
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
 
         storages = {
             'splits': split_storage,
@@ -61,7 +62,7 @@ class InMemoryIntegrationTests(object):
             'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
         }
         impmanager = ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'])
+        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer)
         self.factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
@@ -313,6 +314,7 @@ class InMemoryOptimizedIntegrationTests(object):
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
 
         storages = {
             'splits': split_storage,
@@ -321,7 +323,7 @@ class InMemoryOptimizedIntegrationTests(object):
             'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
         }
         impmanager = ImpressionsManager(StrategyOptimizedMode(ImpressionsCounter()), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'])
+        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer)
         self.factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
@@ -539,9 +541,9 @@ class RedisIntegrationTests(object):
         redis_client.sadd(segment_storage._get_key(data['name']), *data['added'])
         redis_client.set(segment_storage._get_till_key(data['name']), data['till'])
 
-        telemetry_storage = InMemoryTelemetryStorage()
-        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        telemetry_redis_storage = RedisTelemetryStorage(redis_client, metadata)
+        telemetry_producer = TelemetryStorageProducer(telemetry_redis_storage)
+        telemetry_consumer = TelemetryStorageConsumer(telemetry_redis_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
 
         storages = {
@@ -551,8 +553,8 @@ class RedisIntegrationTests(object):
             'events': RedisEventsStorage(redis_client, metadata),
         }
         impmanager = ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer) # no listener
-        recorder = PipelinedRecorder(redis_client.pipeline, impmanager,
-                                     storages['events'], storages['impressions'])
+        recorder = PipelinedRecorder(redis_client.pipeline, impmanager, storages['events'],
+                                    storages['impressions'], telemetry_redis_storage)
         self.factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
@@ -827,10 +829,10 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
         redis_client.sadd(segment_storage._get_key(data['name']), *data['added'])
         redis_client.set(segment_storage._get_till_key(data['name']), data['till'])
 
-        telemetry_storage = InMemoryTelemetryStorage()
-        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_redis_storage = RedisTelemetryStorage(redis_client, metadata)
+        telemetry_producer = TelemetryStorageProducer(telemetry_redis_storage)
+        telemetry_consumer = TelemetryStorageConsumer(telemetry_redis_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
-        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
 
         storages = {
@@ -841,7 +843,7 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
         }
         impmanager = ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer) # no listener
         recorder = PipelinedRecorder(redis_client.pipeline, impmanager,
-                                     storages['events'], storages['impressions'])
+                                     storages['events'], storages['impressions'], telemetry_redis_storage)
         self.factory = SplitFactory('some_api_key',
                                     storages,
                                     True,

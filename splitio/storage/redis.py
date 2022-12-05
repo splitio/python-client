@@ -195,11 +195,23 @@ class RedisSplitStorage(SplitStorage):
     def get_all_splits(self):
         """
         Return all the splits in cache.
-
-        :return: 0
-        :rtype: int
+        :return: List of all splits in cache.
+        :rtype: list(splitio.models.splits.Split)
         """
-        return 0
+        keys = self._redis.keys(self._get_key('*'))
+        to_return = []
+        try:
+            raw_splits = self._redis.mget(keys)
+            for raw in raw_splits:
+                try:
+                    to_return.append(splits.from_raw(json.loads(raw)))
+                except (ValueError, TypeError):
+                    _LOGGER.error('Could not parse split. Skipping')
+                    _LOGGER.debug("Raw split that failed parsing attempt: %s", raw)
+        except RedisAdapterException:
+            _LOGGER.error('Error fetching all splits from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+        return to_return
 
     def kill_locally(self, split_name, default_treatment, change_number):
         """
