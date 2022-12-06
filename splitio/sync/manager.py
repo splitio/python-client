@@ -10,6 +10,7 @@ from splitio.api import APIException
 from splitio.util.backoff import Backoff
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.models.telemetry import SSESyncMode, StreamingEventTypes
+from splitio.sync.synchronizer import _SYNC_ALL_NO_RETRIES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -61,10 +62,10 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
         """Recreate poolers for forked processes."""
         self._synchronizer._split_synchronizers._segment_sync.recreate()
 
-    def start(self):
+    def start(self, max_retry_attempts=_SYNC_ALL_NO_RETRIES):
         """Start the SDK synchronization tasks."""
         try:
-            self._synchronizer.sync_all()
+            self._synchronizer.sync_all(max_retry_attempts)
             self._ready_flag.set()
             self._synchronizer.start_periodic_data_recording()
             if self._streaming_enabled:

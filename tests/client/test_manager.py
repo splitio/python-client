@@ -17,10 +17,10 @@ class ManagerTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property.return_value = False
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, mocker.Mock(), mocker.Mock())
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, mocker.Mock(), mocker.Mock(), telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {'splits': mocker.Mock(),
             'segments': mocker.Mock(),
