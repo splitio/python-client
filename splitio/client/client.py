@@ -1,6 +1,7 @@
 """A module for Split.io SDK API clients."""
 import logging
-import time
+
+from splitio.client.util import get_method_constant
 from splitio.engine.evaluator import Evaluator, CONTROL
 from splitio.engine.splitters import Splitter
 from splitio.models.impressions import Impression, Label
@@ -123,7 +124,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error getting treatment for feature')
             _LOGGER.debug('Error: ', exc_info=True)
-            self._telemetry_evaluation_producer.record_exception(self._get_method_constant(method_name[4:]))
+            self._telemetry_evaluation_producer.record_exception(get_method_constant(method_name[4:]))
             try:
                 impression = self._build_impression(
                     matching_key,
@@ -200,18 +201,18 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                     self._record_stats(
                         [(i, attributes) for i in bulk_impressions],
                         start,
-                        metric_name
+                        metric_name,
+                        method_name
                     )
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.error('%s: An exception when trying to store '
                               'impressions.' % method_name)
                 _LOGGER.debug('Error: ', exc_info=True)
-                self._telemetry_evaluation_producer.record_exception(self._get_method_constant(method_name[4:]))
+                self._telemetry_evaluation_producer.record_exception(get_method_constant(method_name[4:]))
 
-            self._telemetry_evaluation_producer.record_latency(self._get_method_constant(method_name[4:]), get_current_epoch_time_ms() - start)
             return treatments
         except Exception:  # pylint: disable=broad-except
-            self._telemetry_evaluation_producer.record_exception(self._get_method_constant(method_name[4:]))
+            self._telemetry_evaluation_producer.record_exception(get_method_constant(method_name[4:]))
             _LOGGER.error('Error getting treatment for features')
             _LOGGER.debug('Error: ', exc_info=True)
         return input_validator.generate_control_treatments(list(features), method_name)
@@ -348,10 +349,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         """
         end = get_current_epoch_time_ms()
         self._recorder.record_treatment_stats(impressions, get_latency_bucket_index(end - start),
-                                              operation)
-        if method_name is not None:
-            self._telemetry_evaluation_producer.record_latency(self._get_method_constant(method_name[4:]), end - start)
-
+                                              operation, method_name)
 
     def track(self, key, traffic_type, event_type, value=None, properties=None):
         """
@@ -411,8 +409,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             return_flag = self._recorder.record_track_stats([EventWrapper(
                 event=event,
                 size=size,
-            )])
-            self._telemetry_evaluation_producer.record_latency(MethodExceptionsAndLatencies.TRACK, get_current_epoch_time_ms() - start)
+            )], get_current_epoch_time_ms() - start)
             return return_flag
         except Exception:  # pylint: disable=broad-except
             self._telemetry_evaluation_producer.record_exception(MethodExceptionsAndLatencies.TRACK)
@@ -420,12 +417,3 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             _LOGGER.debug('Error: ', exc_info=True)
             return False
 
-    def _get_method_constant(self, method):
-        if method == 'treatment':
-            return MethodExceptionsAndLatencies.TREATMENT
-        elif method == 'treatments':
-            return MethodExceptionsAndLatencies.TREATMENTS
-        elif method == 'treatment_with_config':
-            return MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG
-        elif method == 'treatments_with_config':
-            return MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG

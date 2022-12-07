@@ -1,6 +1,4 @@
-import json
-import logging
-_LOGGER = logging.getLogger(__name__)
+"""Telemetry Sync Class."""
 
 from splitio.api.telemetry import TelemetryAPI
 from splitio.engine.telemetry import TelemetryStorageConsumer
@@ -41,7 +39,12 @@ class TelemetrySubmitter(object):
         self._telemetry_api.record_stats(self._build_stats())
 
     def _build_stats(self):
-        """Format stats to JSON."""
+        """
+        Format stats to Dict.
+
+        :returns: formatted stats
+        :rtype: Dict
+        """
         merged_dict = {
             'spC': self._split_storage.get_splits_count(),
             'seC': self._segment_storage.get_segments_count(),

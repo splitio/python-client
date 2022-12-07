@@ -1,41 +1,40 @@
 """General purpose SDK utilities."""
 
-import socket
 from collections import namedtuple
 from splitio.version import __version__
+from splitio.util.host_info import get_hostname, get_ip
+
+from splitio.models.telemetry import MethodExceptionsAndLatencies
+
+_MAP_METHOD_TO_ENUM = {'treatment': MethodExceptionsAndLatencies.TREATMENT,
+                       'treatments': MethodExceptionsAndLatencies.TREATMENTS,
+                        'treatment_with_config': MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG,
+                        'treatments_with_config': MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG,
+                        'track': MethodExceptionsAndLatencies.TRACK
+                       }
 
 SdkMetadata = namedtuple(
     'SdkMetadata',
     ['sdk_version', 'instance_name', 'instance_ip']
 )
 
-
-def _get_ip():
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        # doesn't even have to be reachable
-        sock.connect(('10.255.255.255', 1))
-        ip_address = sock.getsockname()[0]
-    except Exception:  # pylint: disable=broad-except
-        ip_address = 'unknown'
-    finally:
-        sock.close()
-    return ip_address
-
-
-def _get_hostname(ip_address):
-    return 'unknown' if ip_address == 'unknown' else 'ip-' + ip_address.replace('.', '-')
-
-
 def _get_hostname_and_ip(config):
+    """
+    Get current hostname and IP address if config parameters are not set.
+
+    :param config: User supplied config augmented with defaults.
+    :type config: dict
+
+    :return: IP address and Hostname
+    :rtype: Tuple (str, str)
+    """
     if config.get('IPAddressesEnabled') is False:
         return 'NA', 'NA'
     ip_from_config = config.get('machineIp')
     machine_from_config = config.get('machineName')
-    ip_address = ip_from_config if ip_from_config is not None else _get_ip()
-    hostname = machine_from_config if machine_from_config is not None else _get_hostname(ip_address)
+    ip_address = ip_from_config if ip_from_config is not None else get_ip()
+    hostname = machine_from_config if machine_from_config is not None else get_hostname()
     return ip_address, hostname
-
 
 def get_metadata(config):
     """
@@ -50,3 +49,12 @@ def get_metadata(config):
     version = 'python-%s' % __version__
     ip_address, hostname = _get_hostname_and_ip(config)
     return SdkMetadata(version, hostname, ip_address)
+
+def get_method_constant(method):
+    """
+    Get method name mapped to the Method Enum object
+
+    :return: method name
+    :rtype: str
+    """
+    return _MAP_METHOD_TO_ENUM[method]

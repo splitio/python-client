@@ -58,7 +58,10 @@ class SplitFactoryTests(object):
         assert isinstance(factory._recorder._impression_storage, inmemmory.ImpressionStorage)
 
         assert factory._labels_enabled is True
-        factory.block_until_ready()
+        try:
+            factory.block_until_ready(1)
+        except:
+            pass
         assert factory.ready
         factory.destroy()
 
@@ -102,7 +105,7 @@ class SplitFactoryTests(object):
         assert adapter == factory._get_storage('impressions')._redis
         assert adapter == factory._get_storage('events')._redis
 
-        assert strict_redis_mock.mock_calls == [mocker.call(
+        assert strict_redis_mock.mock_calls[0] == mocker.call(
             host='some_host',
             port=1234,
             db=1,
@@ -124,19 +127,23 @@ class SplitFactoryTests(object):
             ssl_cert_reqs='some_cert_req',
             ssl_ca_certs='some_ca_cert',
             max_connections=999
-        )]
+        )
         assert factory._labels_enabled is False
         assert isinstance(factory._recorder, PipelinedRecorder)
         assert isinstance(factory._recorder._impressions_manager, ImpressionsManager)
         assert isinstance(factory._recorder._make_pipe(), RedisPipelineAdapter)
         assert isinstance(factory._recorder._event_sotrage, redis.RedisEventsStorage)
         assert isinstance(factory._recorder._impression_storage, redis.RedisImpressionsStorage)
-        factory.block_until_ready()
+        try:
+            factory.block_until_ready(1)
+        except:
+            pass
         assert factory.ready
         factory.destroy()
 
     def test_uwsgi_forked_client_creation(self):
         """Test client with preforked initialization."""
+        # Invalid API Key with preforked should exit after 3 attempts.
         factory = get_factory('some_api_key', config={'preforkedInitialization': True})
         assert isinstance(factory._storages['splits'], inmemmory.InMemorySplitStorage)
         assert isinstance(factory._storages['segments'], inmemmory.InMemorySegmentStorage)
@@ -232,7 +239,10 @@ class SplitFactoryTests(object):
 
         # Start factory and make assertions
         factory = get_factory('some_api_key')
-        factory.block_until_ready()
+        try:
+            factory.block_until_ready(1)
+        except:
+            pass
         assert factory.ready
         assert factory.destroyed is False
 
@@ -324,8 +334,11 @@ class SplitFactoryTests(object):
 
         # Start factory and make assertions
         factory = get_factory('some_api_key')
-        factory.block_until_ready()
-        assert factory.ready
+        try:
+            factory.block_until_ready(1)
+        except:
+            pass
+        assert factory.ready is True
         assert factory.destroyed is False
 
         event = threading.Event()
@@ -492,7 +505,10 @@ class SplitFactoryTests(object):
             'preforkedInitialization': True,
         }
         factory = get_factory("none", config=config)
-        factory.block_until_ready(10)
+        try:
+            factory.block_until_ready(10)
+        except:
+            pass
         assert factory._status == Status.WAITING_FORK
         assert len(sync_all_mock.mock_calls) == 1
         assert len(start_mock.mock_calls) == 0
@@ -503,6 +519,7 @@ class SplitFactoryTests(object):
 
         assert clear_impressions._called == 1
         assert clear_events._called == 1
+        factory.destroy()
 
     def test_error_prefork(self, mocker):
         """Test not handling fork."""
@@ -512,9 +529,12 @@ class SplitFactoryTests(object):
 
         filename = os.path.join(os.path.dirname(__file__), '../integration/files', 'file2.yaml')
         factory = get_factory('localhost', config={'splitFile': filename})
-        factory.block_until_ready(1)
-
+        try:
+            factory.block_until_ready(1)
+        except:
+            pass
         _logger = mocker.Mock()
         mocker.patch('splitio.client.factory._LOGGER', new=_logger)
         factory.resume()
         assert _logger.warning.mock_calls == expected_msg
+        factory.destroy()

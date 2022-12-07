@@ -30,10 +30,10 @@ class ClientInputValidationTests(object):
         storage_mock.get.return_value = split_mock
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {
                 'splits': storage_mock,
@@ -265,10 +265,10 @@ class ClientInputValidationTests(object):
         storage_mock.get.return_value = split_mock
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {
                 'splits': storage_mock,
@@ -533,15 +533,14 @@ class ClientInputValidationTests(object):
         events_storage_mock.put.return_value = True
         event_storage = mocker.Mock(spec=EventStorage)
         event_storage.put.return_value = True
-        recorder = StandardRecorder(mocker.Mock(), event_storage, mocker.Mock())
         split_storage_mock = mocker.Mock(spec=SplitStorage)
         split_storage_mock.is_valid_traffic_type.return_value = True
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, events_storage_mock, ImpressionStorage)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, events_storage_mock, ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {
                 'splits': split_storage_mock,
@@ -813,10 +812,10 @@ class ClientInputValidationTests(object):
         }
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage))
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {
                 'splits': storage_mock,
@@ -954,10 +953,10 @@ class ClientInputValidationTests(object):
         }
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage))
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {
                 'splits': storage_mock,
@@ -1090,10 +1089,10 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
         storage_mock.get.return_value = split_mock
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage))
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {
                 'splits': storage_mock,
@@ -1179,7 +1178,8 @@ class FactoryInputValidationTests(object):  #pylint: disable=too-few-public-meth
         ]
 
         logger.reset_mock()
-        f = get_factory(True, config={'redisHost': 'some-host'})
-        assert f is not None
+        try:
+            f = get_factory(True, config={'redisHost': 'some-host'})
+        except:
+            pass
         assert logger.error.mock_calls == []
-        f.destroy()

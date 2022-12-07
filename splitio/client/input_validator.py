@@ -448,31 +448,6 @@ class _ApiLogFilter(logging.Filter):  # pylint: disable=too-few-public-methods
         return record.name not in ('SegmentsAPI', 'HttpClient')
 
 
-def validate_apikey_type(segment_api):
-    """
-    Try to guess if the apikey is of browser type and let the user know.
-
-    :param segment_api: Segments API client.
-    :type segment_api: splitio.api.segments.SegmentsAPI
-    """
-    api_messages_filter = _ApiLogFilter()
-    _logger = logging.getLogger('splitio.api.segments')
-    try:
-        _logger.addFilter(api_messages_filter)  # pylint: disable=protected-access
-        segment_api.fetch_segment('__SOME_INVALID_SEGMENT__', -1, FetchOptions())
-    except APIException as exc:
-        if exc.status_code == 403:
-            _LOGGER.error('factory instantiation: you passed a browser type '
-                          + 'api_key, please grab an api key from the Split '
-                          + 'console that is of type sdk')
-            return False
-    finally:
-        _logger.removeFilter(api_messages_filter)  # pylint: disable=protected-access
-
-    # True doesn't mean that the APIKEY is right, only that it's not of type "browser"
-    return True
-
-
 def validate_factory_instantiation(apikey):
     """
     Check if the factory if being instantiated with the appropriate arguments.

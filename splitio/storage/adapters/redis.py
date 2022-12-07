@@ -1,6 +1,9 @@
 """Redis client wrapper with prefix support."""
 from builtins import str
 
+from splitio.version import __version__
+from splitio.util.host_info import get_ip, get_hostname
+
 try:
     from redis import StrictRedis
     from redis.sentinel import Sentinel
@@ -14,6 +17,7 @@ except ImportError:
         )
     StrictRedis = Sentinel = missing_redis_dependencies
 
+TELEMETRY_CONFIG_KEY = 'SPLITIO.telemetry.init'
 
 class RedisAdapterException(Exception):
     """Exception to be thrown when a redis command fails with an exception."""
@@ -241,6 +245,13 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
         except RedisError as exc:
             raise RedisAdapterException('Error executing hget operation') from exc
 
+    def hincrby(self, name, key, amount=1):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return self._decorated.hincrby(self._prefix_helper.add_prefix(name), key, amount)
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing hincrby operation') from exc
+
     def incr(self, name, amount=1):
         """Mimic original redis function but using user custom prefix."""
         try:
@@ -297,6 +308,13 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
         except RedisError as exc:
             raise RedisAdapterException('Error executing ttl operation') from exc
 
+    def record_init(self, *values):
+        try:
+            host_ip = get_ip()
+            host_name = get_hostname()
+            return self.hset(TELEMETRY_CONFIG_KEY, 'python-' + __version__ + '/' + host_name+ '/' + host_ip, str(*values))
+        except RedisError as exc:
+            raise RedisAdapterException('Error pushing telemetry config operation') from exc
 
 class RedisPipelineAdapter(object):
     """
@@ -322,6 +340,10 @@ class RedisPipelineAdapter(object):
     def incr(self, name, amount=1):
         """Mimic original redis function but using user custom prefix."""
         self._pipe.incr(self._prefix_helper.add_prefix(name), amount)
+
+    def hincrby(self, name, key, amount=1):
+        """Mimic original redis function but using user custom prefix."""
+        self._pipe.hincrby(self._prefix_helper.add_prefix(name), key, amount)
 
     def execute(self):
         """Mimic original redis function but using user custom prefix."""

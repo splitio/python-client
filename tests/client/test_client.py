@@ -39,10 +39,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, event_storage, impression_storage)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -108,10 +108,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property.return_value = False
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, event_storage, impression_storage)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -185,10 +185,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property.return_value = False
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, event_storage, impression_storage)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -258,10 +258,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property = mocker.PropertyMock()
         destroyed_property.return_value = False
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, event_storage, impression_storage)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -335,10 +335,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         event_storage = mocker.Mock(spec=EventStorage)
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, event_storage, impression_storage)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -367,10 +367,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         event_storage.put.return_value = True
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, event_storage, impression_storage)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -404,10 +404,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property.return_value = False
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, mocker.Mock(), mocker.Mock())
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, mocker.Mock(), mocker.Mock(), telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {'splits': mocker.Mock(),
             'segments': mocker.Mock(),
@@ -454,10 +454,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
     @mock.patch('splitio.client.client.Client.ready', side_effect=None)
     def test_telemetry_not_ready(self, mocker):
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, mocker.Mock(), mocker.Mock())
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, mocker.Mock(), mocker.Mock(), telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory('localhost',
             {'splits': mocker.Mock(),
             'segments': mocker.Mock(),
@@ -492,10 +492,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, event_storage, impression_storage)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -536,10 +536,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, event_storage, impression_storage)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -579,10 +579,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, event_storage, impression_storage)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -621,10 +621,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         impmanager = mocker.Mock(spec=ImpressionManager)
-        recorder = StandardRecorder(impmanager, event_storage, impression_storage)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,

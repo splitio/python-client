@@ -130,12 +130,6 @@ class StreamingIntegrationTests(object):
                                                          '[?occupancy=metrics.publishers]control_sec'])
         assert qs['v'][0] == '1.1'
 
-        # Initial apikey validation
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/segmentChanges/__SOME_INVALID_SEGMENT__?since=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
         # Initial splits fetch
         req = split_backend_requests.get()
         assert req.method == 'GET'
@@ -337,12 +331,6 @@ class StreamingIntegrationTests(object):
                                                          '[?occupancy=metrics.publishers]control_sec'])
         assert qs['v'][0] == '1.1'
 
-        # Initial apikey validation
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/segmentChanges/__SOME_INVALID_SEGMENT__?since=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
         # Initial splits fetch
         req = split_backend_requests.get()
         assert req.method == 'GET'
@@ -516,12 +504,6 @@ class StreamingIntegrationTests(object):
                                                          '[?occupancy=metrics.publishers]control_pri',
                                                          '[?occupancy=metrics.publishers]control_sec'])
         assert qs['v'][0] == '1.1'
-
-        # Initial apikey validation
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/segmentChanges/__SOME_INVALID_SEGMENT__?since=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Initial splits fetch
         req = split_backend_requests.get()
@@ -706,12 +688,6 @@ class StreamingIntegrationTests(object):
                                                          '[?occupancy=metrics.publishers]control_pri',
                                                          '[?occupancy=metrics.publishers]control_sec'])
         assert qs['v'][0] == '1.1'
-
-        # Initial apikey validation
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/segmentChanges/__SOME_INVALID_SEGMENT__?since=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Initial splits fetch
         req = split_backend_requests.get()
@@ -933,12 +909,6 @@ class StreamingIntegrationTests(object):
                                                          '[?occupancy=metrics.publishers]control_pri',
                                                          '[?occupancy=metrics.publishers]control_sec'])
         assert qs['v'][0] == '1.1'
-
-        # Initial apikey validation
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/segmentChanges/__SOME_INVALID_SEGMENT__?since=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Initial splits fetch
         req = split_backend_requests.get()
@@ -1170,12 +1140,6 @@ class StreamingIntegrationTests(object):
                                                          '[?occupancy=metrics.publishers]control_pri',
                                                          '[?occupancy=metrics.publishers]control_sec'])
         assert qs['v'][0] == '1.1'
-
-        # Initial apikey validation
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/segmentChanges/__SOME_INVALID_SEGMENT__?since=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Initial splits fetch
         req = split_backend_requests.get()

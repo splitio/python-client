@@ -56,22 +56,6 @@ class RedisSenderAdapterTests(object):
         for i in range(0,1):
             assert(sorted(ast.literal_eval(sender_adapter._uniques_formatter(uniques)[i])["ks"]) == sorted(formatted[i]["ks"]))
 
-    def test_build_counters(self, mocker):
-        """Test formatting counters dict to json."""
-
-        counters = [
-            Counter.CountPerFeature('f1', 123, 2),
-            Counter.CountPerFeature('f2', 123, 123),
-        ]
-        formatted = [
-            {'f': 'f1', 'm': 123, 'rc': 2},
-            {'f': 'f2', 'm': 123, 'rc': 123},
-        ]
-
-        sender_adapter = RedisSenderAdapter(mocker.Mock())
-        for i in range(0,1):
-            assert(sorted(ast.literal_eval(sender_adapter._build_counters(counters))['pf'][i]) == sorted(formatted[i]))
-
     @mock.patch('splitio.storage.adapters.redis.RedisAdapter.rpush')
     def test_record_unique_keys(self, mocker):
         """Test sending unique keys."""
@@ -85,7 +69,7 @@ class RedisSenderAdapterTests(object):
 
         assert(mocker.called)
 
-    @mock.patch('splitio.storage.adapters.redis.RedisAdapter.rpush')
+    @mock.patch('splitio.storage.adapters.redis.RedisPipelineAdapter.hincrby')
     def test_flush_counters(self, mocker):
         """Test sending counters."""
 
