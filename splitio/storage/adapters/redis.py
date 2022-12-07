@@ -1,6 +1,5 @@
 """Redis client wrapper with prefix support."""
 from builtins import str
-import logging
 
 from splitio.version import __version__
 from splitio.util.host_info import get_ip, get_hostname
@@ -18,10 +17,7 @@ except ImportError:
         )
     StrictRedis = Sentinel = missing_redis_dependencies
 
-_LOGGER = logging.getLogger(__name__)
 TELEMETRY_CONFIG_KEY = 'SPLITIO.telemetry.init'
-TELEMETRY_EXCEPTIONS_KEY = 'SPLITIO.telemetry.exceptions'
-TELEMETRY_LATENCIES_KEY = 'SPLITIO.telemetry.latencies'
 
 class RedisAdapterException(Exception):
     """Exception to be thrown when a redis command fails with an exception."""
@@ -344,11 +340,11 @@ class RedisPipelineAdapter(object):
     def incr(self, name, amount=1):
         """Mimic original redis function but using user custom prefix."""
         self._pipe.incr(self._prefix_helper.add_prefix(name), amount)
-        
+
     def hincrby(self, name, key, amount=1):
         """Mimic original redis function but using user custom prefix."""
         self._pipe.hincrby(self._prefix_helper.add_prefix(name), key, amount)
-        
+
     def execute(self):
         """Mimic original redis function but using user custom prefix."""
         try:

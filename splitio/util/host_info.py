@@ -2,6 +2,12 @@
 import socket
 
 def get_ip():
+    """
+    Fetching current host IP address
+
+    :returns: IP address
+    :rtype: str
+    """
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         # doesn't even have to be reachable
@@ -15,6 +21,12 @@ def get_ip():
 
 
 def get_hostname():
+    """
+    Fetching current host name
+
+    :returns: host name
+    :rtype: str
+    """
     try:
         return socket.gethostname()
     except Exception:

@@ -172,7 +172,12 @@ class TelemetryEvaluationConsumer(object):
         return self._telemetry_storage.pop_latencies()
 
     def pop_formatted_stats(self):
-        """Get formatted and reset stats."""
+        """
+        Get formatted and reset stats.
+
+        :returns: formatted stats
+        :rtype: Dict
+        """
         exceptions = self.pop_exceptions()['methodExceptions']
         latencies = self.pop_latencies()['methodLatencies']
         return {
@@ -238,7 +243,12 @@ class TelemetryRuntimeConsumer(object):
         return self._telemetry_storage.get_session_length()
 
     def pop_formatted_stats(self):
-        """Get formatted and reset stats."""
+        """
+        Get formatted and reset stats.
+
+        :returns: formatted stats
+        :rtype: Dict
+        """
         last_synchronization = self.get_last_synchronization()
         http_errors = self.pop_http_errors()['httpErrors']
         http_latencies = self.pop_http_latencies()['httpLatencies']
