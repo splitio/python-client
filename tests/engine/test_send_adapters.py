@@ -54,7 +54,7 @@ class RedisSenderAdapterTests(object):
 
         sender_adapter = RedisSenderAdapter(mocker.Mock())
         for i in range(0,1):
-            assert(sorted(ast.literal_eval(sender_adapter._uniques_formatter(uniques)[i])["ks"]) == sorted(formatted[i]["ks"]))
+            assert(sorted(ast.literal_eval(sender_adapter._uniques_formatter(uniques)[i])[0]["ks"]) == sorted(formatted[i]["ks"]))
 
     @mock.patch('splitio.storage.adapters.redis.RedisAdapter.rpush')
     def test_record_unique_keys(self, mocker):
