@@ -128,4 +128,4 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         :return: unique keys JSON array
         :rtype: json
         """
-        return [json.dumps({'f': feature, 'ks': list(keys)}) for feature, keys in uniques.items()]
+        return [json.dumps([{'f': feature, 'ks': list(keys)}]) for feature, keys in uniques.items()]
