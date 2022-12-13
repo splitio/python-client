@@ -1,3 +1,6 @@
+9.2.2 (Dec 13, 2022)
+- Fixed updating redis with unique keys info
+
 9.2.1 (Dec 2, 2022)
 - Changed redis record type for impressions counts from list using rpush to hashed key using hincrby.
 - Apply Timeout Exception when incorrect SDK API Key is used.
