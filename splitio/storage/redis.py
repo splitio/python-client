@@ -617,7 +617,16 @@ class RedisTelemetryStorage(TelemetryStorage):
     def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
         """Record active and redundant factories."""
         self._tel_config.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
-        self._redis_client.record_init(self._tel_config.get_stats())
+        self._redis_client.record_init(self._format_config_stats())
+
+    def _format_config_stats(self):
+        config_stats = self._tel_config.get_stats()
+        return json.dumps({
+            'aF': config_stats['aF'],
+            'rF': config_stats['rF'],
+            'sT': config_stats['sT'],
+            'oM': config_stats['oM']
+        })
 
     def add_latency_to_pipe(self, method, latency, pipe):
         """
