@@ -51,9 +51,6 @@ class TelemetryInitProducer(object):
     def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
         self._telemetry_storage.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
 
-    def get_telemetry_storage(self):
-        return self._telemetry_storage
-
 class TelemetryEvaluationProducer(object):
     """Telemetry evaluation producer class."""
 
@@ -295,3 +292,54 @@ class TelemetryRuntimeConsumer(object):
                       } for event in self.pop_streaming_events()['streamingEvents']],
             'sL': self.get_session_length()
         }
+
+class RedisTelemetryStorageProducer(object):
+    """Telemetry storage producer class."""
+
+    def __init__(self, telemetry_storage):
+        """Initialize all producer classes."""
+        self._telemetry_init_producer = RedisTelemetryInitProducer(telemetry_storage)
+        self._telemetry_evaluation_producer = TelemetryEvaluationProducer(telemetry_storage)
+        self._telemetry_runtime_producer = TelemetryRuntimeProducer(telemetry_storage)
+
+    def get_telemetry_init_producer(self):
+        """get init producer instance."""
+        return self._telemetry_init_producer
+
+    def get_telemetry_evaluation_producer(self):
+        """get evaluation producer instance."""
+        return self._telemetry_evaluation_producer
+
+    def get_telemetry_runtime_producer(self):
+        """get runtime producer instance."""
+        return self._telemetry_runtime_producer
+
+class RedisTelemetryInitProducer(object):
+    """Telemetry init producer class."""
+
+    def __init__(self, telemetry_storage):
+        """Constructor."""
+        self._telemetry_storage = telemetry_storage
+
+    def record_config(self, config, extra_config):
+        """Record configurations."""
+        self._telemetry_storage.record_config(config, extra_config)
+
+    def push_config(self):
+        """Record configurations."""
+        self._telemetry_storage.push_config_stats()
+
+    def record_ready_time(self, ready_time):
+        """Record ready time."""
+        pass
+
+    def record_bur_time_out(self):
+        """Record block until ready timeout."""
+        pass
+
+    def record_not_ready_usage(self):
+        """record non-ready usage."""
+        pass
+
+    def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
+        self._telemetry_storage.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)

@@ -583,6 +583,7 @@ class RedisEventsStorage(EventStorage):
 class RedisTelemetryStorage(TelemetryStorage):
     """Redis based telemetry storage class."""
 
+    _TELEMETRY_CONFIG_KEY = 'SPLITIO.telemetry.init'
     _TELEMETRY_LATENCIES_KEY = 'SPLITIO.telemetry.latencies'
     _TELEMETRY_EXCEPTIONS_KEY = 'SPLITIO.telemetry.exceptions'
     _TELEMETRY_KEY_DEFAULT_TTL = 3600
@@ -616,7 +617,9 @@ class RedisTelemetryStorage(TelemetryStorage):
 
     def push_config_stats(self):
         """push config stats to redis."""
-        self._redis_client.record_init(self._format_config_stats())
+        host_ip = get_ip()
+        host_name = get_hostname()
+        self._redis_client.hset(self._TELEMETRY_CONFIG_KEY, 'python-' + __version__ + '/' + host_name+ '/' + host_ip, str(self._format_config_stats()))
 
     def _format_config_stats(self):
         """format only selected config stats to json"""
