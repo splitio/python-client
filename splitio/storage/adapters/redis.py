@@ -1,6 +1,9 @@
 """Redis client wrapper with prefix support."""
 from builtins import str
 
+import logging
+_LOGGER = logging.getLogger(__name__)
+
 from splitio.version import __version__
 from splitio.util.host_info import get_ip, get_hostname
 
@@ -309,6 +312,7 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
             raise RedisAdapterException('Error executing ttl operation') from exc
 
     def record_init(self, *values):
+        """Write config init values to redis."""
         try:
             host_ip = get_ip()
             host_name = get_hostname()

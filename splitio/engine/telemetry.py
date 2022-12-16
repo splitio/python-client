@@ -51,6 +51,9 @@ class TelemetryInitProducer(object):
     def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
         self._telemetry_storage.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
 
+    def get_telemetry_storage(self):
+        return self._telemetry_storage
+
 class TelemetryEvaluationProducer(object):
     """Telemetry evaluation producer class."""
 

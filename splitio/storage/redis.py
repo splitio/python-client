@@ -614,12 +614,12 @@ class RedisTelemetryStorage(TelemetryStorage):
         """
         self._tel_config.record_config(config, extra_config)
 
-    def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
-        """Record active and redundant factories."""
-        self._tel_config.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+    def push_config_stats(self):
+        """push config stats to redis."""
         self._redis_client.record_init(self._format_config_stats())
 
     def _format_config_stats(self):
+        """format only selected config stats to json"""
         config_stats = self._tel_config.get_stats()
         return json.dumps({
             'aF': config_stats['aF'],
@@ -627,6 +627,10 @@ class RedisTelemetryStorage(TelemetryStorage):
             'sT': config_stats['sT'],
             'oM': config_stats['oM']
         })
+
+    def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
+        """Record active and redundant factories."""
+        self._tel_config.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
 
     def add_latency_to_pipe(self, method, latency, pipe):
         """
@@ -668,7 +672,7 @@ class RedisTelemetryStorage(TelemetryStorage):
         pipe.hincrby(self._TELEMETRY_EXCEPTIONS_KEY, 'python-' + __version__ + '/' + self.host_name+ '/' + self.host_ip + '/' +
                     method.value, 1)
         result = pipe.execute()
-        self._expire_keys(self._TELEMETRY_EXCEPTIONS_KEY, self._TELEMETRY_KEY_DEFAULT_TTL, 1, result[0])
+        self.expire_keys(self._TELEMETRY_EXCEPTIONS_KEY, self._TELEMETRY_KEY_DEFAULT_TTL, 1, result[0])
 
     def record_not_ready_usage(self):
         """

@@ -161,6 +161,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         """Push Config Telemetry into redis storage"""
         redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
         self._telemetry_init_producer.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+        self._telemetry_init_producer.get_telemetry_storage().push_config_stats()
 
     def _update_status_when_ready(self):
         """Wait until the sdk is ready and update the status."""
