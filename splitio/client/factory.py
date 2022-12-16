@@ -16,7 +16,7 @@ from splitio.engine.impressions import ImpressionsMode, set_classes
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.engine.impressions.strategies import StrategyNoneMode, StrategyDebugMode, StrategyOptimizedMode
 from splitio.engine.impressions.adapters import InMemorySenderAdapter, RedisSenderAdapter
-from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageConsumer, RedisTelemetryInitProducer, RedisTelemetryStorageProducer
+from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageConsumer
 
 # Storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
@@ -160,8 +160,9 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
     def _update_redis_init(self):
         """Push Config Telemetry into redis storage"""
         redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
-        self._telemetry_init_producer.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
-        self._telemetry_init_producer.push_config()
+        self._storages['telemetry'].record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+        self._storages['telemetry'].push_config_stats()
+
 
     def _update_status_when_ready(self):
         """Wait until the sdk is ready and update the status."""
@@ -448,16 +449,16 @@ def _build_redis_factory(api_key, cfg):
     redis_adapter = redis.build(cfg)
     cache_enabled = cfg.get('redisLocalCacheEnabled', False)
     cache_ttl = cfg.get('redisLocalCacheTTL', 5)
-    telemetry_storage = RedisTelemetryStorage(redis_adapter, sdk_metadata)
-    telemetry_producer = RedisTelemetryStorageProducer(telemetry_storage)
-    telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
-    telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
     storages = {
         'splits': RedisSplitStorage(redis_adapter, cache_enabled, cache_ttl),
         'segments': RedisSegmentStorage(redis_adapter),
         'impressions': RedisImpressionsStorage(redis_adapter, sdk_metadata),
-        'events': RedisEventsStorage(redis_adapter, sdk_metadata)
+        'events': RedisEventsStorage(redis_adapter, sdk_metadata),
+        'telemetry': RedisTelemetryStorage(redis_adapter, sdk_metadata)
     }
+    telemetry_producer = TelemetryStorageProducer(storages['telemetry'])
+    telemetry_consumer = TelemetryStorageConsumer(storages['telemetry'])
+    telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
 
     data_sampling = cfg.get('dataSampling', DEFAULT_DATA_SAMPLING)
     if data_sampling < _MIN_DEFAULT_DATA_SAMPLING_ALLOWED:
@@ -495,7 +496,7 @@ def _build_redis_factory(api_key, cfg):
         imp_manager,
         storages['events'],
         storages['impressions'],
-        telemetry_storage,
+        storages['telemetry'],
         data_sampling,
     )
 

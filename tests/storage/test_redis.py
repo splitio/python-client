@@ -404,7 +404,7 @@ class RedisTelemetryStorageTests(object):
         redis_telemetry.record_config(mocker.Mock(), mocker.Mock())
         assert(mocker.called)
 
-    @mock.patch('splitio.storage.adapters.redis.RedisAdapter.record_init')
+    @mock.patch('splitio.storage.adapters.redis.RedisAdapter.hset')
     def test_push_config_stats(self, mocker):
         adapter = build({})
         redis_telemetry = RedisTelemetryStorage(adapter, mocker.Mock())
