@@ -68,6 +68,7 @@ _INSTANTIATED_FACTORIES_LOCK = threading.RLock()
 _MIN_DEFAULT_DATA_SAMPLING_ALLOWED = 0.1  # 10%
 _MAX_RETRY_SYNC_ALL = 3
 
+
 class Status(Enum):
     """Factory Status."""
 

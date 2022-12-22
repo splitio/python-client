@@ -5,6 +5,7 @@
 import os
 import time
 import threading
+import pytest
 from splitio.client.factory import get_factory, SplitFactory, _INSTANTIATED_FACTORIES, Status,\
     _LOGGER as _logger
 from splitio.client.config import DEFAULT_CONFIG
@@ -126,7 +127,7 @@ class SplitFactoryTests(object):
             ssl_certfile='some_cert_file',
             ssl_cert_reqs='some_cert_req',
             ssl_ca_certs='some_ca_cert',
-            max_connections=999
+            max_connections=999,
         )
         assert factory._labels_enabled is False
         assert isinstance(factory._recorder, PipelinedRecorder)
@@ -238,6 +239,7 @@ class SplitFactoryTests(object):
         mocker.patch('splitio.sync.manager.Manager.__init__', new=_split_synchronizer)
 
         # Start factory and make assertions
+        # Using invalid key should result in a timeout exception
         factory = get_factory('some_api_key')
         try:
             factory.block_until_ready(1)
@@ -338,6 +340,7 @@ class SplitFactoryTests(object):
             factory.block_until_ready(1)
         except:
             pass
+            
         assert factory.ready is True
         assert factory.destroyed is False
 

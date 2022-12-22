@@ -8,6 +8,7 @@ import time
 from splitio.api import APIException
 from splitio.util.backoff import Backoff
 
+
 _LOGGER = logging.getLogger(__name__)
 _SYNC_ALL_NO_RETRIES = -1
 
@@ -306,6 +307,7 @@ class Synchronizer(BaseSynchronizer):
     def sync_all(self, max_retry_attempts=_SYNC_ALL_NO_RETRIES):
         """
         Synchronize all splits.
+        
         :param max_retry_attempts: apply max attempts if it set to absilute integer.
         :type max_retry_attempts: int
         """
@@ -332,7 +334,10 @@ class Synchronizer(BaseSynchronizer):
                 how_long = self._backoff.get()
                 time.sleep(how_long)
 
-            _LOGGER.error("Could not correctly synchronize splits and segments after %d attempts.", retry_attempts)
+        _LOGGER.error("Could not correctly synchronize splits and segments after %d attempts.", retry_attempts)
+
+    def _retry_block(self, max_retry_attempts, retry_attempts):
+        return retry_attempts
 
     def shutdown(self, blocking):
         """
@@ -504,6 +509,7 @@ class LocalhostSynchronizer(BaseSynchronizer):
     def sync_all(self, max_retry_attempts=-1):
         """
         Synchronize all splits.
+        
         :param max_retry_attempts: Not used, added for compatibility
         """
         try:

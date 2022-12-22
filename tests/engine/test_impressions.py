@@ -121,11 +121,6 @@ class ImpressionManagerTests(object):
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
-        assert [Counter.CountPerFeature(k.feature, k.timeframe, v)
-                for (k, v) in manager._strategy._counter._data.items()] == [
-            Counter.CountPerFeature('f1', truncate_time(utc_now-3), 1),
-            Counter.CountPerFeature('f2', truncate_time(utc_now-3), 1)]
-
         # Tracking the same impression a ms later should be empty
         imps = manager.process_impressions([
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
@@ -154,12 +149,24 @@ class ImpressionManagerTests(object):
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1)]
 
         assert len(manager._strategy._observer._cache._data) == 3  # distinct impressions seen
-        assert len(manager._strategy._counter._data) == 3  # 2 distinct features. 1 seen in 2 different timeframes
+        assert len(manager._strategy._counter._data) == 2  # 2 distinct features. 1 seen in 2 different timeframes
 
         assert set(manager._strategy._counter.pop_all()) == set([
-            Counter.CountPerFeature('f1', truncate_time(old_utc), 3),
-            Counter.CountPerFeature('f2', truncate_time(old_utc), 1),
+            Counter.CountPerFeature('f1', truncate_time(old_utc), 1),
             Counter.CountPerFeature('f1', truncate_time(utc_now), 2)
+        ])
+
+        # Test counting only from the second impression
+        imps = manager.process_impressions([
+            (Impression('k3', 'f3', 'on', 'l1', 123, None, utc_now-1), None)
+        ])
+        assert set(manager._strategy._counter.pop_all()) == set([])
+
+        imps = manager.process_impressions([
+            (Impression('k3', 'f3', 'on', 'l1', 123, None, utc_now-1), None)
+        ])
+        assert set(manager._strategy._counter.pop_all()) == set([
+            Counter.CountPerFeature('f3', truncate_time(utc_now), 1)
         ])
 
     def test_standalone_debug(self, mocker):
@@ -304,10 +311,6 @@ class ImpressionManagerTests(object):
         ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
-        assert [Counter.CountPerFeature(k.feature, k.timeframe, v)
-                for (k, v) in manager._strategy._counter._data.items()] == [
-            Counter.CountPerFeature('f1', truncate_time(utc_now-3), 1),
-            Counter.CountPerFeature('f2', truncate_time(utc_now-3), 1)]
 
         # Tracking the same impression a ms later should return empty
         imps = manager.process_impressions([
@@ -336,11 +339,10 @@ class ImpressionManagerTests(object):
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1)]
 
         assert len(manager._strategy._observer._cache._data) == 3  # distinct impressions seen
-        assert len(manager._strategy._counter._data) == 3  # 2 distinct features. 1 seen in 2 different timeframes
+        assert len(manager._strategy._counter._data) == 2  # 2 distinct features. 1 seen in 2 different timeframes
 
         assert set(manager._strategy._counter.pop_all()) == set([
-            Counter.CountPerFeature('f1', truncate_time(old_utc), 3),
-            Counter.CountPerFeature('f2', truncate_time(old_utc), 1),
+            Counter.CountPerFeature('f1', truncate_time(old_utc), 1),
             Counter.CountPerFeature('f1', truncate_time(utc_now), 2)
         ])
 
@@ -352,6 +354,19 @@ class ImpressionManagerTests(object):
             mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3), None),
             mocker.call(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1), None)
         ]
+
+        # Test counting only from the second impression
+        imps = manager.process_impressions([
+            (Impression('k3', 'f3', 'on', 'l1', 123, None, utc_now-1), None)
+        ])
+        assert set(manager._strategy._counter.pop_all()) == set([])
+
+        imps = manager.process_impressions([
+            (Impression('k3', 'f3', 'on', 'l1', 123, None, utc_now-1), None)
+        ])
+        assert set(manager._strategy._counter.pop_all()) == set([
+            Counter.CountPerFeature('f3', truncate_time(utc_now), 1)
+        ])
 
     def test_standalone_debug_listener(self, mocker):
         """Test impressions manager in optimized mode with sdk in standalone mode."""

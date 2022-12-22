@@ -88,8 +88,8 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         """
         post the impression counters to redis.
 
-        :param uniques: unique keys disctionary
-        :type uniques: Dictionary {'feature1': set(), 'feature2': set(), .. }
+        :param to_send: unique keys disctionary
+        :type to_send: Dictionary {'feature1': set(), 'feature2': set(), .. }
         """
         try:
             resulted = 0

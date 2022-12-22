@@ -56,7 +56,7 @@ class SyncManagerTests(object):
         manager = Manager(threading.Event(), synchronizer,  mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
 
         manager._SYNC_ALL_ATTEMPTS = 1
-        manager.start(2) # should not throw!
+        manager.start(2)  # should not throw!
 
     def test_start_streaming_false(self, mocker):
         splits_ready_event = threading.Event()
