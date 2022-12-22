@@ -92,7 +92,10 @@ class InMemoryIntegrationTests(object):
 
     def test_get_treatment(self):
         """Test client.get_treatment()."""
-        client = self.factory.client()
+        try:
+            client = self.factory.client()
+        except:
+            pass
 
         assert client.get_treatment('user1', 'sample_feature') == 'on'
         self._validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
@@ -135,8 +138,10 @@ class InMemoryIntegrationTests(object):
 
     def test_get_treatment_with_config(self):
         """Test client.get_treatment_with_config()."""
-        client = self.factory.client()
-
+        try:
+            client = self.factory.client()
+        except:
+            pass
         result = client.get_treatment_with_config('user1', 'sample_feature')
         assert result == ('on', '{"size":15,"test":20}')
         self._validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
@@ -161,8 +166,10 @@ class InMemoryIntegrationTests(object):
 
     def test_get_treatments(self):
         """Test client.get_treatments()."""
-        client = self.factory.client()
-
+        try:
+            client = self.factory.client()
+        except:
+            pass
         result = client.get_treatments('user1', ['sample_feature'])
         assert len(result) == 1
         assert result['sample_feature'] == 'on'
@@ -211,7 +218,10 @@ class InMemoryIntegrationTests(object):
 
     def test_get_treatments_with_config(self):
         """Test client.get_treatments_with_config()."""
-        client = self.factory.client()
+        try:
+            client = self.factory.client()
+        except:
+            pass
 
         result = client.get_treatments_with_config('user1', ['sample_feature'])
         assert len(result) == 1
@@ -757,7 +767,10 @@ class RedisIntegrationTests(object):
 
     def test_manager_methods(self):
         """Test manager.split/splits."""
-        manager = self.factory.manager()
+        try:
+            manager = self.factory.manager()
+        except:
+            pass
         result = manager.split('all_feature')
         assert result.name == 'all_feature'
         assert result.traffic_type is None

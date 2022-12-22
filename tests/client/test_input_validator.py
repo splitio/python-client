@@ -1179,7 +1179,8 @@ class FactoryInputValidationTests(object):  #pylint: disable=too-few-public-meth
 
         logger.reset_mock()
         try:
-            f = get_factory(True, config={'redisHost': 'some-host'})
+            f = get_factory(True, config={'redisHost': 'localhost'})
         except:
             pass
         assert logger.error.mock_calls == []
+        f.destroy()

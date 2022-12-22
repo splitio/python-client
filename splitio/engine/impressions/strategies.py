@@ -100,5 +100,5 @@ class StrategyOptimizedMode(BaseStrategy):
         """
         imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions]
         self._counter.track([imp for imp, _ in imps if imp.previous_time != None])
-        this_hour = truncate_time(util.utctime_ms())
+        this_hour = truncate_time(utctime_ms())
         return [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour], imps
