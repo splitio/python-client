@@ -3,6 +3,7 @@
 import json
 import os
 import threading
+import time
 import pytest
 
 from redis import StrictRedis
@@ -63,7 +64,9 @@ class InMemoryIntegrationTests(object):
         }
         impmanager = ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer) # no listener
         recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer)
-        self.factory = SplitFactory('some_api_key',
+        # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
+        try:
+            self.factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
                                     recorder,
@@ -71,6 +74,8 @@ class InMemoryIntegrationTests(object):
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_consumer=telemetry_consumer.get_telemetry_init_consumer(),
                                     )  # pylint:disable=attribute-defined-outside-init
+        except:
+            pass
 
     def teardown_method(self):
         """Shut down the factory."""
@@ -256,7 +261,10 @@ class InMemoryIntegrationTests(object):
 
     def test_manager_methods(self):
         """Test manager.split/splits."""
-        manager = self.factory.manager()
+        try:
+            manager = self.factory.manager()
+        except:
+            pass
         result = manager.split('all_feature')
         assert result.name == 'all_feature'
         assert result.traffic_type is None

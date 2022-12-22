@@ -2,7 +2,6 @@
 from builtins import str
 
 from splitio.version import __version__
-from splitio.util.host_info import get_ip, get_hostname
 
 try:
     from redis import StrictRedis
@@ -16,8 +15,6 @@ except ImportError:
             'Please use `pip install splitio_client[redis]` to install the sdk with redis support'
         )
     StrictRedis = Sentinel = missing_redis_dependencies
-
-TELEMETRY_CONFIG_KEY = 'SPLITIO.telemetry.init'
 
 class RedisAdapterException(Exception):
     """Exception to be thrown when a redis command fails with an exception."""
@@ -307,14 +304,6 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
             return RedisPipelineAdapter(self._decorated, self._prefix_helper)
         except RedisError as exc:
             raise RedisAdapterException('Error executing ttl operation') from exc
-
-    def record_init(self, *values):
-        try:
-            host_ip = get_ip()
-            host_name = get_hostname()
-            return self.hset(TELEMETRY_CONFIG_KEY, 'python-' + __version__ + '/' + host_name+ '/' + host_ip, str(*values))
-        except RedisError as exc:
-            raise RedisAdapterException('Error pushing telemetry config operation') from exc
 
 class RedisPipelineAdapter(object):
     """

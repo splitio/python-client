@@ -3,14 +3,17 @@
 
 import json
 import time
+import unittest.mock as mock
+import pytest
 
-from splitio.client.util import get_metadata
+from splitio.client.util import get_metadata, SdkMetadata, get_method_constant
 from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \
-    RedisSegmentStorage, RedisSplitStorage
+    RedisSegmentStorage, RedisSplitStorage, RedisTelemetryStorage
+from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterException, build
 from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
 from splitio.models.events import Event, EventWrapper
-from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterException
+from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig
 
 
 class RedisSplitStorageTests(object):
@@ -380,3 +383,97 @@ class RedisEventsStorageTests(object):  # pylint: disable=too-few-public-methods
             raise RedisAdapterException('something')
         adapter.rpush.side_effect = _raise_exc
         assert storage.put(events) is False
+
+class RedisTelemetryStorageTests(object):
+    """Redis Telemetry storage test cases."""
+
+    def test_init(self, mocker):
+        redis_telemetry = RedisTelemetryStorage(mocker.Mock(), mocker.Mock())
+        assert(redis_telemetry._redis_client is not None)
+        assert(redis_telemetry._sdk_metadata is not None)
+        assert(isinstance(redis_telemetry._method_latencies, MethodLatencies))
+        assert(isinstance(redis_telemetry._method_exceptions, MethodExceptions))
+        assert(isinstance(redis_telemetry._tel_config, TelemetryConfig))
+        assert(redis_telemetry.host_ip is not None)
+        assert(redis_telemetry.host_name is not None)
+        assert(redis_telemetry._make_pipe is not None)
+
+    @mock.patch('splitio.models.telemetry.TelemetryConfig.record_config')
+    def test_record_config(self, mocker):
+        redis_telemetry = RedisTelemetryStorage(mocker.Mock(), mocker.Mock())
+        redis_telemetry.record_config(mocker.Mock(), mocker.Mock())
+        assert(mocker.called)
+
+    @mock.patch('splitio.storage.adapters.redis.RedisAdapter.hset')
+    def test_push_config_stats(self, mocker):
+        adapter = build({})
+        redis_telemetry = RedisTelemetryStorage(adapter, mocker.Mock())
+        redis_telemetry.push_config_stats()
+        assert(mocker.called)
+
+    def test_format_config_stats(self, mocker):
+        redis_telemetry = RedisTelemetryStorage(mocker.Mock(), mocker.Mock())
+        json_value = redis_telemetry._format_config_stats()
+        stats = redis_telemetry._tel_config.get_stats()
+        assert(json_value == json.dumps({
+            'aF': stats['aF'],
+            'rF': stats['rF'],
+            'sT': stats['sT'],
+            'oM': stats['oM']
+        }))
+
+    def test_record_active_and_redundant_factories(self, mocker):
+        redis_telemetry = RedisTelemetryStorage(mocker.Mock(), mocker.Mock())
+        active_factory_count = 1
+        redundant_factory_count = 2
+        redis_telemetry.record_active_and_redundant_factories(1, 2)
+        assert (redis_telemetry._tel_config._active_factory_count == active_factory_count)
+        assert (redis_telemetry._tel_config._redundant_factory_count == redundant_factory_count)
+
+    def test_add_latency_to_pipe(self, mocker):
+        def _mocked_hincrby(*args, **kwargs):
+            assert(args[1] == RedisTelemetryStorage._TELEMETRY_LATENCIES_KEY)
+            assert(args[2][-11:] == 'treatment/0')
+            assert(args[3] == 1)
+
+        adapter = build({})
+        metadata = SdkMetadata('python-1.1.1', 'hostname', 'ip')
+        redis_telemetry = RedisTelemetryStorage(adapter, metadata)
+        pipe = adapter._decorated.pipeline()
+        with mock.patch('redis.client.Pipeline.hincrby', _mocked_hincrby):
+            redis_telemetry.add_latency_to_pipe('treatment', 20, pipe)
+
+    def test_record_exception(self, mocker):
+        def _mocked_hincrby(*args, **kwargs):
+            assert(args[1] == RedisTelemetryStorage._TELEMETRY_EXCEPTIONS_KEY)
+            assert(args[2][-9:] == 'treatment')
+            assert(args[3] == 1)
+
+        adapter = build({})
+        metadata = SdkMetadata('python-1.1.1', 'hostname', 'ip')
+        redis_telemetry = RedisTelemetryStorage(adapter, metadata)
+        with mock.patch('redis.client.Pipeline.hincrby', _mocked_hincrby):
+            with mock.patch('redis.client.Pipeline.execute') as mock_method:
+                mock_method.return_value = [1]
+                redis_telemetry.record_exception(get_method_constant('treatment'))
+
+    def test_expire_latency_keys(self, mocker):
+        redis_telemetry = RedisTelemetryStorage(mocker.Mock(), mocker.Mock())
+        def _mocked_method(*args, **kwargs):
+            assert(args[1] == RedisTelemetryStorage._TELEMETRY_LATENCIES_KEY)
+            assert(args[2] == RedisTelemetryStorage._TELEMETRY_KEY_DEFAULT_TTL)
+            assert(args[3] == 1)
+            assert(args[4] == 2)
+
+        with mock.patch('splitio.storage.redis.RedisTelemetryStorage.expire_keys', _mocked_method):
+            redis_telemetry.expire_latency_keys(1, 2)
+
+    @mock.patch('redis.client.Redis.expire')
+    def test_expire_keys(self, mocker):
+        adapter = build({})
+        metadata = SdkMetadata('python-1.1.1', 'hostname', 'ip')
+        redis_telemetry = RedisTelemetryStorage(adapter, metadata)
+        redis_telemetry.expire_keys('key', 12, 1, 2)
+        assert(not mocker.called)
+        redis_telemetry.expire_keys('key', 12, 2, 2)
+        assert(mocker.called)

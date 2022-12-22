@@ -2,12 +2,15 @@
 
 import pytest
 
+from splitio.client.util import get_method_constant
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager
-from splitio.storage.inmemmory import EventStorage, ImpressionStorage
-from splitio.storage.redis import ImpressionPipelinedStorage, EventStorage, RedisEventsStorage, RedisImpressionsStorage
+from splitio.engine.telemetry import TelemetryStorageProducer
+from splitio.storage.inmemmory import EventStorage, ImpressionStorage, InMemoryTelemetryStorage
+from splitio.storage.redis import ImpressionPipelinedStorage, EventStorage, RedisEventsStorage, RedisImpressionsStorage, RedisTelemetryStorage
 from splitio.storage.adapters.redis import RedisAdapter
 from splitio.models.impressions import Impression
+
 
 
 class StandardRecorderTests(object):
@@ -22,10 +25,20 @@ class StandardRecorderTests(object):
         impmanager.process_impressions.return_value = impressions
         event = mocker.Mock(spec=EventStorage)
         impression = mocker.Mock(spec=ImpressionStorage)
-        recorder = StandardRecorder(impmanager, event, impression, mocker.Mock())
+        telemetry_storage = mocker.Mock(spec=InMemoryTelemetryStorage)
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+
+        def record_latency(*args, **kwargs):
+            self.passed_args = args
+
+        telemetry_storage.record_latency.side_effect = record_latency
+
+        recorder = StandardRecorder(impmanager, event, impression, telemetry_producer.get_telemetry_evaluation_producer())
         recorder.record_treatment_stats(impressions, 1, 'some', 'get_treatment')
 
         assert recorder._impression_storage.put.mock_calls[0][1][0] == impressions
+        assert(self.passed_args[0] == get_method_constant('treatment'))
+        assert(self.passed_args[1] == 1)
 
     def test_pipelined_recorder(self, mocker):
         impressions = [
