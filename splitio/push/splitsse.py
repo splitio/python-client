@@ -135,7 +135,7 @@ class SplitSSEClient(object):  # pylint: disable=too-many-instance-attributes
 
         url = self._build_url(token)
         task = threading.Thread(target=connect, name='SSEConnection', args=(url,))
-        task.setDaemon(True)
+        task.daemon = True
         task.start()
         event_group.wait()
         return self._status == SplitSSEClient._Status.CONNECTED

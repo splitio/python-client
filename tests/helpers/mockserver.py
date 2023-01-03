@@ -24,7 +24,7 @@ class SSEMockServer(object):
         self._server = HTTPServer(('localhost', 0),
                                   lambda *xs: SSEHandler(self._queue, *xs, req_queue=req_queue))
         self._server_thread = threading.Thread(target=self._blocking_run)
-        self._server_thread.setDaemon(True)
+        self._server_thread.daemon = True
         self._done_event = threading.Event()
 
     def _blocking_run(self):
@@ -117,7 +117,7 @@ class SplitMockServer(object):
                                                          req_queue=req_queue,
                                                          auth_response=auth_response))
         self._server_thread = threading.Thread(target=self._blocking_run, name="SplitMockServer")
-        self._server_thread.setDaemon(True)
+        self._server_thread.daemon = True
         self._done_event = threading.Event()
 
     def _blocking_run(self):

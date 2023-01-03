@@ -27,7 +27,7 @@ class WorkerPool(object):
             for i in range(0, worker_count)
         ]
         for thread in self._threads:
-            thread.setDaemon(True)
+            thread.daemon = True
 
     def start(self):
         """Start the workers."""
@@ -117,7 +117,7 @@ class WorkerPool(object):
     def stop(self, event=None):
         """Stop all worker nodes."""
         async_stop = Thread(target=self._wait_workers_shutdown, args=(event,))
-        async_stop.setDaemon(True)
+        async_stop.daemon = True
         async_stop.start()
 
     def _wait_workers_shutdown(self, event):

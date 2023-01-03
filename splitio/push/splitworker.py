@@ -54,7 +54,7 @@ class SplitWorker(object):
 
         _LOGGER.debug('Starting Split Worker')
         self._worker = threading.Thread(target=self._run, name='PushSplitWorker')
-        self._worker.setDaemon(True)
+        self._worker.daemon = True
         self._worker.start()
 
     def stop(self):
