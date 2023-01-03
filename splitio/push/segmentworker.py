@@ -54,8 +54,7 @@ class SegmentWorker(object):
         self._running = True
 
         _LOGGER.debug('Starting Segment Worker')
-        self._worker = threading.Thread(target=self._run, name='PushSegmentWorker')
-        self._worker.daemon = True
+        self._worker = threading.Thread(target=self._run, name='PushSegmentWorker', daemon=True)
         self._worker.start()
 
     def stop(self):

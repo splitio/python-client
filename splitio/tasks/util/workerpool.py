@@ -116,8 +116,7 @@ class WorkerPool(object):
 
     def stop(self, event=None):
         """Stop all worker nodes."""
-        async_stop = Thread(target=self._wait_workers_shutdown, args=(event,))
-        async_stop.daemon = True
+        async_stop = Thread(target=self._wait_workers_shutdown, args=(event,), daemon=True)
         async_stop.start()
 
     def _wait_workers_shutdown(self, event):
