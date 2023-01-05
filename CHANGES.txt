@@ -1,3 +1,6 @@
+9.2.3-rc1 (Jan 4, 2023)
+- Removed deprecated threading.Thread.setDaemon() method.
+
 9.2.2 (Dec 13, 2022)
 - Fixed RedisSenderAdapter instantiation to store mtk keys.
 
