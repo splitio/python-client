@@ -32,7 +32,7 @@ from splitio.api.segments import SegmentsAPI
 from splitio.api.impressions import ImpressionsAPI
 from splitio.api.events import EventsAPI
 from splitio.api.auth import AuthAPI
-from splitio.api.telemetry import TelemetryAPI, LocalhostTelemetryAPI
+from splitio.api.telemetry import TelemetryAPI
 from splitio.util.time import get_current_epoch_time_ms
 
 # Tasks
@@ -52,7 +52,7 @@ from splitio.sync.segment import SegmentSynchronizer
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.sync.event import EventSynchronizer
 from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer
-from splitio.sync.telemetry import TelemetrySynchronizer
+from splitio.sync.telemetry import TelemetrySynchronizer, InMemoryTelemetrySubmitter, LocalhostTelemetrySubmitter, RedisTelemetrySubmitter
 
 
 # Recorder
@@ -96,8 +96,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
             sync_manager=None,
             sdk_ready_flag=None,
             telemetry_producer=None,
-            telemetry_init_consumer=None,
-            telemetry_api=None,
+            telemetry_submitter=None,
             preforked_initialization=False,
     ):
         """
@@ -129,8 +128,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         self._telemetry_init_producer = None
         self._telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
         self._telemetry_init_producer = telemetry_producer.get_telemetry_init_producer()
-        self._telemetry_init_consumer = telemetry_init_consumer
-        self._telemetry_api = telemetry_api
+        self._telemetry_submitter = telemetry_submitter
         self._ready_time = get_current_epoch_time_ms()
         self._start_status_updater()
 
@@ -153,17 +151,6 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
             ready_updater.start()
         else:
             self._status = Status.READY
-            init_updater = threading.Thread(target=self._update_redis_init,
-                                             name='RedisInitUpdater')
-            init_updater.setDaemon(True)
-            init_updater.start()
-
-    def _update_redis_init(self):
-        """Push Config Telemetry into redis storage"""
-        redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
-        self._storages['telemetry'].record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
-        self._storages['telemetry'].push_config_stats()
-
 
     def _update_status_when_ready(self):
         """Wait until the sdk is ready and update the status."""
@@ -174,7 +161,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
         self._telemetry_init_producer.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
 
-        config_post_thread = threading.Thread(target=self._telemetry_api.record_init(self._telemetry_init_consumer.get_config_stats()), name="PostConfigData")
+        config_post_thread = threading.Thread(target=self._telemetry_submitter.synchronize_config(), name="PostConfigData")
         config_post_thread.setDaemon(True)
         config_post_thread.start()
 
@@ -371,6 +358,8 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'events': InMemoryEventStorage(cfg['eventsQueueSize'], telemetry_runtime_producer),
     }
 
+    telemetry_submitter = InMemoryTelemetrySubmitter(telemetry_consumer, storages['splits'], storages['segments'], apis['telemetry'])
+
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
     clear_filter_task, impressions_count_sync, impressions_count_task, \
     imp_strategy = set_classes('MEMORY', cfg['impressionsMode'], apis)
@@ -386,7 +375,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
                                cfg['impressionsBulkSize']),
         EventSynchronizer(apis['events'], storages['events'], cfg['eventsBulkSize']),
         impressions_count_sync,
-        TelemetrySynchronizer(telemetry_consumer, storages['splits'], storages['segments'], apis['telemetry']),
+        TelemetrySynchronizer(telemetry_submitter),
         unique_keys_synchronizer,
         clear_filter_sync,
     )
@@ -433,7 +422,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         synchronizer.sync_all(max_retry_attempts=_MAX_RETRY_SYNC_ALL)
         synchronizer._split_synchronizers._segment_sync.shutdown()
         return SplitFactory(api_key, storages, cfg['labelsEnabled'],
-                            recorder, manager, None, telemetry_producer, telemetry_consumer.get_telemetry_init_consumer(), apis['telemetry'], preforked_initialization=preforked_initialization)
+                            recorder, manager, None, telemetry_producer, apis['telemetry'], preforked_initialization=preforked_initialization)
 
     initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer")
     initialization_thread.setDaemon(True)
@@ -442,7 +431,9 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     telemetry_producer.get_telemetry_init_producer().record_config(cfg, extra_cfg)
 
     return SplitFactory(api_key, storages, cfg['labelsEnabled'],
-                        recorder, manager, sdk_ready_flag, telemetry_producer, telemetry_consumer.get_telemetry_init_consumer(), apis['telemetry'])
+                        recorder, manager, sdk_ready_flag,
+                        telemetry_producer,
+                        telemetry_submitter)
 
 def _build_redis_factory(api_key, cfg):
     """Build and return a split factory with redis-based storage."""
@@ -458,8 +449,8 @@ def _build_redis_factory(api_key, cfg):
         'telemetry': RedisTelemetryStorage(redis_adapter, sdk_metadata)
     }
     telemetry_producer = TelemetryStorageProducer(storages['telemetry'])
-    telemetry_consumer = TelemetryStorageConsumer(storages['telemetry'])
     telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+    telemetry_submitter = RedisTelemetrySubmitter(storages['telemetry'])
 
     data_sampling = cfg.get('dataSampling', DEFAULT_DATA_SAMPLING)
     if data_sampling < _MIN_DEFAULT_DATA_SAMPLING_ALLOWED:
@@ -508,23 +499,26 @@ def _build_redis_factory(api_key, cfg):
 
     telemetry_producer.get_telemetry_init_producer().record_config(cfg, {})
 
-    return SplitFactory(
+    split_factory = SplitFactory(
         api_key,
         storages,
         cfg['labelsEnabled'],
         recorder,
         manager,
         sdk_ready_flag=None,
-        telemetry_api=redis_adapter,
         telemetry_producer=telemetry_producer,
-        telemetry_init_consumer=telemetry_consumer.get_telemetry_init_consumer()
     )
+    redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
+    storages['telemetry'].record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+    telemetry_submitter.synchronize_config()
+
+    return split_factory
+
 
 def _build_localhost_factory(cfg):
     """Build and return a localhost factory for testing/development purposes."""
     telemetry_storage = LocalhostTelemetryStorage()
     telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-    telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
     telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
     telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
 
@@ -566,51 +560,49 @@ def _build_localhost_factory(cfg):
         manager,
         ready_event,
         telemetry_producer=telemetry_producer,
-        telemetry_init_consumer=telemetry_consumer.get_telemetry_init_consumer(),
-        telemetry_api=LocalhostTelemetryAPI()
+        telemetry_submitter=LocalhostTelemetrySubmitter(),
     )
 
 def get_factory(api_key, **kwargs):
     """Build and return the appropriate factory."""
-    try:
-        _INSTANTIATED_FACTORIES_LOCK.acquire()
-        if _INSTANTIATED_FACTORIES:
-            if api_key in _INSTANTIATED_FACTORIES:
-                _LOGGER.warning(
-                    "factory instantiation: You already have %d %s with this API Key. "
-                    "We recommend keeping only one instance of the factory at all times "
-                    "(Singleton pattern) and reusing it throughout your application.",
-                    _INSTANTIATED_FACTORIES[api_key],
-                    'factory' if _INSTANTIATED_FACTORIES[api_key] == 1 else 'factories'
-                )
-            else:
-                _LOGGER.warning(
-                    "factory instantiation: You already have an instance of the Split factory. "
-                    "Make sure you definitely want this additional instance. "
-                    "We recommend keeping only one instance of the factory at all times "
-                    "(Singleton pattern) and reusing it throughout your application."
-                )
+    _INSTANTIATED_FACTORIES_LOCK.acquire()
+    if _INSTANTIATED_FACTORIES:
+        if api_key in _INSTANTIATED_FACTORIES:
+            _LOGGER.warning(
+                "factory instantiation: You already have %d %s with this API Key. "
+                "We recommend keeping only one instance of the factory at all times "
+                "(Singleton pattern) and reusing it throughout your application.",
+                _INSTANTIATED_FACTORIES[api_key],
+                'factory' if _INSTANTIATED_FACTORIES[api_key] == 1 else 'factories'
+            )
+        else:
+            _LOGGER.warning(
+                "factory instantiation: You already have an instance of the Split factory. "
+                "Make sure you definitely want this additional instance. "
+                "We recommend keeping only one instance of the factory at all times "
+                "(Singleton pattern) and reusing it throughout your application."
+            )
 
-        config = sanitize_config(api_key, kwargs.get('config', {}))
+    _INSTANTIATED_FACTORIES.update([api_key])
+    _INSTANTIATED_FACTORIES_LOCK.release()
 
-        if config['operationMode'] == 'localhost-standalone':
-            return _build_localhost_factory(config)
+    config = sanitize_config(api_key, kwargs.get('config', {}))
 
-        if config['operationMode'] == 'redis-consumer':
-            return _build_redis_factory(api_key, config)
+    if config['operationMode'] == 'localhost-standalone':
+        split_factory =  _build_localhost_factory(config)
+    elif config['operationMode'] == 'redis-consumer':
+        split_factory = _build_redis_factory(api_key, config)
+    else:
+        split_factory = _build_in_memory_factory(
+        api_key,
+        config,
+        kwargs.get('sdk_api_base_url'),
+        kwargs.get('events_api_base_url'),
+        kwargs.get('auth_api_base_url'),
+        kwargs.get('streaming_api_base_url'),
+        kwargs.get('telemetry_api_base_url'))
 
-        return _build_in_memory_factory(
-            api_key,
-            config,
-            kwargs.get('sdk_api_base_url'),
-            kwargs.get('events_api_base_url'),
-            kwargs.get('auth_api_base_url'),
-            kwargs.get('streaming_api_base_url'),
-            kwargs.get('telemetry_api_base_url')
-        )
-    finally:
-        _INSTANTIATED_FACTORIES.update([api_key])
-        _INSTANTIATED_FACTORIES_LOCK.release()
+    return split_factory
 
 def _get_active_and_redundant_count():
     redundant_factory_count = 0

@@ -1,7 +1,6 @@
 """A module for Split.io SDK API clients."""
 import logging
 
-from splitio.client.util import get_method_constant
 from splitio.engine.evaluator import Evaluator, CONTROL
 from splitio.engine.splitters import Splitter
 from splitio.models.impressions import Impression, Label
@@ -15,11 +14,6 @@ _LOGGER = logging.getLogger(__name__)
 
 class Client(object):  # pylint: disable=too-many-instance-attributes
     """Entry point for the split sdk."""
-
-    _METRIC_GET_TREATMENT = 'sdk.getTreatment'
-    _METRIC_GET_TREATMENTS = 'sdk.getTreatments'
-    _METRIC_GET_TREATMENT_WITH_CONFIG = 'sdk.getTreatmentWithConfig'
-    _METRIC_GET_TREATMENTS_WITH_CONFIG = 'sdk.getTreatmentsWithConfig'
 
     def __init__(self, factory, recorder, labels_enabled=True):
         """
@@ -124,7 +118,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error getting treatment for feature')
             _LOGGER.debug('Error: ', exc_info=True)
-            self._telemetry_evaluation_producer.record_exception(get_method_constant(method_name[4:]))
+            self._telemetry_evaluation_producer.record_exception(metric_name)
             try:
                 impression = self._build_impression(
                     matching_key,
@@ -208,11 +202,11 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                 _LOGGER.error('%s: An exception when trying to store '
                               'impressions.' % method_name)
                 _LOGGER.debug('Error: ', exc_info=True)
-                self._telemetry_evaluation_producer.record_exception(get_method_constant(method_name[4:]))
+                self._telemetry_evaluation_producer.record_exception(metric_name)
 
             return treatments
         except Exception:  # pylint: disable=broad-except
-            self._telemetry_evaluation_producer.record_exception(get_method_constant(method_name[4:]))
+            self._telemetry_evaluation_producer.record_exception(metric_name)
             _LOGGER.error('Error getting treatment for features')
             _LOGGER.debug('Error: ', exc_info=True)
         return input_validator.generate_control_treatments(list(features), method_name)
@@ -253,7 +247,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :rtype: tuple(str, str)
         """
         return self._make_evaluation(key, feature, attributes, 'get_treatment_with_config',
-                                     self._METRIC_GET_TREATMENT_WITH_CONFIG)
+                                     MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG)
 
     def get_treatment(self, key, feature, attributes=None):
         """
@@ -272,7 +266,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :rtype: str
         """
         treatment, _ = self._make_evaluation(key, feature, attributes, 'get_treatment',
-                                             self._METRIC_GET_TREATMENT)
+                                             MethodExceptionsAndLatencies.TREATMENT)
         return treatment
 
     def get_treatments_with_config(self, key, features, attributes=None):
@@ -292,7 +286,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :rtype: dict
         """
         return self._make_evaluations(key, features, attributes, 'get_treatments_with_config',
-                                      self._METRIC_GET_TREATMENTS_WITH_CONFIG)
+                                      MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG)
 
     def get_treatments(self, key, features, attributes=None):
         """
@@ -311,7 +305,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :rtype: dict
         """
         with_config = self._make_evaluations(key, features, attributes, 'get_treatments',
-                                             self._METRIC_GET_TREATMENTS)
+                                             MethodExceptionsAndLatencies.TREATMENTS)
         return {feature: result[0] for (feature, result) in with_config.items()}
 
     def _build_impression(  # pylint: disable=too-many-arguments
@@ -416,4 +410,3 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             _LOGGER.error('Error processing track event')
             _LOGGER.debug('Error: ', exc_info=True)
             return False
-

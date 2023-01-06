@@ -1,4 +1,5 @@
 """Telemetry Sync Class."""
+import abc
 
 from splitio.api.telemetry import TelemetryAPI
 from splitio.engine.telemetry import TelemetryStorageConsumer
@@ -6,9 +7,9 @@ from splitio.engine.telemetry import TelemetryStorageConsumer
 class TelemetrySynchronizer(object):
     """Telemetry synchronizer class."""
 
-    def __init__(self, telemetry_consumer, split_storage, segment_storage, telemetry_api):
+    def __init__(self, telemetry_submitter):
         """Initialize Telemetry sync class."""
-        self._telemetry_submitter = TelemetrySubmitter(telemetry_consumer, split_storage, segment_storage, telemetry_api)
+        self._telemetry_submitter = telemetry_submitter
 
     def synchronize_config(self):
         """synchronize initial config data class."""
@@ -18,7 +19,18 @@ class TelemetrySynchronizer(object):
         """synchronize runtime stats class."""
         self._telemetry_submitter.synchronize_stats()
 
-class TelemetrySubmitter(object):
+class TelemetrySubmitter(object, metaclass=abc.ABCMeta):
+    """Telemetry sumbitter interface."""
+
+    @abc.abstractmethod
+    def synchronize_config(self):
+        """synchronize initial config data classe."""
+
+    @abc.abstractmethod
+    def synchronize_stats(self):
+        """synchronize runtime stats class."""
+
+class InMemoryTelemetrySubmitter(object):
     """Telemetry sumbitter class."""
 
     def __init__(self, telemetry_consumer, split_storage, segment_storage, telemetry_api):
@@ -32,7 +44,7 @@ class TelemetrySubmitter(object):
 
     def synchronize_config(self):
         """synchronize initial config data classe."""
-        self._telemetry_api.record_init(self._telemetry_init_consumer.get_config_stats_to_json())
+        self._telemetry_api.record_init(self._telemetry_init_consumer.get_config_stats())
 
     def synchronize_stats(self):
         """synchronize runtime stats class."""
@@ -53,3 +65,30 @@ class TelemetrySubmitter(object):
         merged_dict.update(self._telemetry_runtime_consumer.pop_formatted_stats())
         merged_dict.update(self._telemetry_evaluation_consumer.pop_formatted_stats())
         return merged_dict
+
+class RedisTelemetrySubmitter(object):
+    """Telemetry sumbitter class."""
+
+    def __init__(self, telemetry_storage):
+        """Initialize all producer classes."""
+        self._telemetry_storage = telemetry_storage
+
+    def synchronize_config(self):
+        """synchronize initial config data classe."""
+        self._telemetry_storage.push_config_stats()
+
+    def synchronize_stats(self):
+        """No implementation."""
+        pass
+
+
+class LocalhostTelemetrySubmitter(object):
+    """Telemetry sumbitter class."""
+
+    def synchronize_config(self):
+        """No implementation."""
+        pass
+
+    def synchronize_stats(self):
+        """No implementation."""
+        pass

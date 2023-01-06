@@ -1,8 +1,6 @@
 """Redis client wrapper with prefix support."""
 from builtins import str
 
-from splitio.version import __version__
-
 try:
     from redis import StrictRedis
     from redis.sentinel import Sentinel

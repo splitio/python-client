@@ -1,10 +1,7 @@
 """Redis storage module."""
 import json
 import logging
-from splitio.version import __version__
 
-from splitio.util.host_info import get_hostname, get_ip
-from splitio.client.util import get_method_constant
 from splitio.models.impressions import Impression
 from splitio.models import splits, segments
 from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig
@@ -602,8 +599,6 @@ class RedisTelemetryStorage(TelemetryStorage):
         self._method_latencies = MethodLatencies()
         self._method_exceptions = MethodExceptions()
         self._tel_config = TelemetryConfig()
-        self.host_ip = get_ip()
-        self.host_name = get_hostname()
         self._make_pipe = redis_client.pipeline
 
     def record_config(self, config, extra_config):
@@ -617,9 +612,7 @@ class RedisTelemetryStorage(TelemetryStorage):
 
     def push_config_stats(self):
         """push config stats to redis."""
-        host_ip = get_ip()
-        host_name = get_hostname()
-        self._redis_client.hset(self._TELEMETRY_CONFIG_KEY, 'python-' + __version__ + '/' + host_name+ '/' + host_ip, str(self._format_config_stats()))
+        self._redis_client.hset(self._TELEMETRY_CONFIG_KEY, 'python-' + self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip, str(self._format_config_stats()))
 
     def _format_config_stats(self):
         """format only selected config stats to json"""
@@ -646,15 +639,15 @@ class RedisTelemetryStorage(TelemetryStorage):
         :param pipe: Redis pipe.
         :type pipe: redis.pipe
         """
-        self._method_latencies.add_latency(get_method_constant(method), latency)
+        self._method_latencies.add_latency(method, latency)
         latencies = self._method_latencies.pop_all()['methodLatencies']
-        values = latencies[method]
+        values = latencies[method.value]
         total_keys = 0
         bucket_number = 0
         for bucket in values:
             if bucket > 0:
-                pipe.hincrby(self._TELEMETRY_LATENCIES_KEY, 'python-' + __version__ + '/' + self.host_name+ '/' + self.host_ip + '/' +
-                        method + '/' + str(bucket_number), bucket)
+                pipe.hincrby(self._TELEMETRY_LATENCIES_KEY, 'python-' + self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
+                        method.value + '/' + str(bucket_number), bucket)
                 total_keys += 1
             bucket_number = bucket_number + 0
 
@@ -672,7 +665,7 @@ class RedisTelemetryStorage(TelemetryStorage):
         :type method: string
         """
         pipe = self._make_pipe()
-        pipe.hincrby(self._TELEMETRY_EXCEPTIONS_KEY, 'python-' + __version__ + '/' + self.host_name+ '/' + self.host_ip + '/' +
+        pipe.hincrby(self._TELEMETRY_EXCEPTIONS_KEY, 'python-' + self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
                     method.value, 1)
         result = pipe.execute()
         self.expire_keys(self._TELEMETRY_EXCEPTIONS_KEY, self._TELEMETRY_KEY_DEFAULT_TTL, 1, result[0])

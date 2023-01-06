@@ -104,11 +104,3 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
             )
             _LOGGER.debug('Error: ', exc_info=True)
             raise APIException('Runtime stats not flushed properly.') from exc
-
-class LocalhostTelemetryAPI(object):  # pylint: disable=too-few-public-methods
-    """Mock class for Localhost."""
-    def do_nothing(*_, **__):
-        pass
-
-    def __getattr__(self, _):
-        return self.do_nothing

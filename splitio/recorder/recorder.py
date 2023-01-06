@@ -3,7 +3,6 @@ import abc
 import logging
 import random
 
-from splitio.client.util import get_method_constant
 from splitio.client.config import DEFAULT_DATA_SAMPLING
 from splitio.models.telemetry import MethodExceptionsAndLatencies
 
@@ -70,7 +69,7 @@ class StandardRecorder(StatsRecorder):
         """
         try:
             if method_name is not None:
-                self._telemetry_evaluation_producer.record_latency(get_method_constant(method_name[4:]), latency)
+                self._telemetry_evaluation_producer.record_latency(operation, latency)
             impressions = self._impressions_manager.process_impressions(impressions)
             self._impression_storage.put(impressions)
         except Exception:  # pylint: disable=broad-except
@@ -133,10 +132,11 @@ class PipelinedRecorder(StatsRecorder):
             impressions = self._impressions_manager.process_impressions(impressions)
             if not impressions:
                 return
+
             pipe = self._make_pipe()
             self._impression_storage.add_impressions_to_pipe(impressions, pipe)
             if method_name is not None:
-                self._telemetry_redis_storage.add_latency_to_pipe(method_name[4:], latency, pipe)
+                self._telemetry_redis_storage.add_latency_to_pipe(operation, latency, pipe)
             result = pipe.execute()
             if len(result) == 2:
                 self._impression_storage.expire_key(result[0], len(impressions))
@@ -154,8 +154,9 @@ class PipelinedRecorder(StatsRecorder):
         """
         pipe = self._make_pipe()
         rc = self._event_sotrage.add_events_to_pipe(event, pipe)
-        self._telemetry_redis_storage.add_latency_to_pipe(MethodExceptionsAndLatencies.TRACK.value, latency, pipe)
+        self._telemetry_redis_storage.add_latency_to_pipe(MethodExceptionsAndLatencies.TRACK, latency, pipe)
         result = pipe.execute()
-        self._event_sotrage.expire_keys(result[0], len(event))
-        self._telemetry_redis_storage.expire_latency_keys(result[1], latency)
+        if len(result) == 2:
+            self._event_sotrage.expire_keys(result[0], len(event))
+            self._telemetry_redis_storage.expire_latency_keys(result[1], latency)
         return rc
