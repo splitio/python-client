@@ -1,6 +1,7 @@
 """A module for Split.io Factories."""
 import logging
 import threading
+import sys
 from collections import Counter
 
 from enum import Enum
@@ -96,6 +97,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
             sync_manager=None,
             sdk_ready_flag=None,
             telemetry_producer=None,
+            telemetry_init_producer=None,
             telemetry_submitter=None,
             preforked_initialization=False,
     ):
@@ -124,10 +126,8 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         self._sdk_internal_ready_flag = sdk_ready_flag
         self._recorder = recorder
         self._preforked_initialization = preforked_initialization
-        self._telemetry_evaluation_producer = None
-        self._telemetry_init_producer = None
         self._telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
-        self._telemetry_init_producer = telemetry_producer.get_telemetry_init_producer()
+        self._telemetry_init_producer = telemetry_init_producer
         self._telemetry_submitter = telemetry_submitter
         self._ready_time = get_current_epoch_time_ms()
         self._start_status_updater()
@@ -331,7 +331,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
     telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
     telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
-
+    telemetry_init_producer = telemetry_producer.get_telemetry_init_producer()
 
     http_client = HttpClient(
         sdk_url=sdk_url,
@@ -418,21 +418,25 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         telemetry_evaluation_producer
     )
 
+    telemetry_init_producer.record_config(cfg, extra_cfg)
+    if int(_get_uwsgi_worker_id()) > -1:
+        telemetry_init_producer.add_config_tag("initilization:uwsgi")
+        telemetry_init_producer.add_config_tag("uwsgi_worker:#" + _get_uwsgi_worker_id())
+
     if preforked_initialization:
         synchronizer.sync_all(max_retry_attempts=_MAX_RETRY_SYNC_ALL)
         synchronizer._split_synchronizers._segment_sync.shutdown()
+
         return SplitFactory(api_key, storages, cfg['labelsEnabled'],
-                            recorder, manager, None, telemetry_producer, apis['telemetry'], preforked_initialization=preforked_initialization)
+                            recorder, manager, None, telemetry_producer, telemetry_init_producer, telemetry_submitter, preforked_initialization=preforked_initialization)
 
     initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer")
     initialization_thread.setDaemon(True)
     initialization_thread.start()
 
-    telemetry_producer.get_telemetry_init_producer().record_config(cfg, extra_cfg)
-
     return SplitFactory(api_key, storages, cfg['labelsEnabled'],
                         recorder, manager, sdk_ready_flag,
-                        telemetry_producer,
+                        telemetry_producer, telemetry_init_producer,
                         telemetry_submitter)
 
 def _build_redis_factory(api_key, cfg):
@@ -450,6 +454,7 @@ def _build_redis_factory(api_key, cfg):
     }
     telemetry_producer = TelemetryStorageProducer(storages['telemetry'])
     telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+    telemetry_init_producer = telemetry_producer.get_telemetry_init_producer()
     telemetry_submitter = RedisTelemetrySubmitter(storages['telemetry'])
 
     data_sampling = cfg.get('dataSampling', DEFAULT_DATA_SAMPLING)
@@ -497,7 +502,10 @@ def _build_redis_factory(api_key, cfg):
     initialization_thread.setDaemon(True)
     initialization_thread.start()
 
-    telemetry_producer.get_telemetry_init_producer().record_config(cfg, {})
+    telemetry_init_producer.record_config(cfg, {})
+    if int(_get_uwsgi_worker_id()) > -1:
+        telemetry_init_producer.add_config_tag("initilization:uwsgi")
+        telemetry_init_producer.add_config_tag("uwsgi_worker:#" + _get_uwsgi_worker_id())
 
     split_factory = SplitFactory(
         api_key,
@@ -507,6 +515,7 @@ def _build_redis_factory(api_key, cfg):
         manager,
         sdk_ready_flag=None,
         telemetry_producer=telemetry_producer,
+        telemetry_init_producer=telemetry_init_producer
     )
     redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
     storages['telemetry'].record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
@@ -560,6 +569,7 @@ def _build_localhost_factory(cfg):
         manager,
         ready_event,
         telemetry_producer=telemetry_producer,
+        telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
         telemetry_submitter=LocalhostTelemetrySubmitter(),
     )
 
@@ -613,3 +623,12 @@ def _get_active_and_redundant_count():
         active_factory_count += _INSTANTIATED_FACTORIES[item]
     _INSTANTIATED_FACTORIES_LOCK.release()
     return redundant_factory_count, active_factory_count
+
+def _get_uwsgi_worker_id():
+    try:
+        import uwsgi
+        _LOGGER.debug("uwsgi lib detected")
+        return str(uwsgi.worker_id())
+    except ModuleNotFoundError:
+        pass
+        return "-1"

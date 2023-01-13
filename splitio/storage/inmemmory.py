@@ -469,6 +469,7 @@ class InMemoryTelemetryStorage(TelemetryStorage):
         """Constructor"""
         self._lock = threading.RLock()
         self._reset_tags()
+        self._reset_config_tags()
         self._method_exceptions = MethodExceptions()
         self._last_synchronization = LastSynchronization()
         self._counters = TelemetryCounters()
@@ -481,6 +482,10 @@ class InMemoryTelemetryStorage(TelemetryStorage):
     def _reset_tags(self):
         with self._lock:
             self._tags = []
+
+    def _reset_config_tags(self):
+        with self._lock:
+            self._config_tags = []
 
     def record_config(self, config, extra_config):
         """Record configurations."""
@@ -499,6 +504,12 @@ class InMemoryTelemetryStorage(TelemetryStorage):
         with self._lock:
             if len(self._tags) < MAX_TAGS:
                 self._tags.append(tag)
+
+    def add_config_tag(self, tag):
+        """Record tag string."""
+        with self._lock:
+            if len(self._config_tags) < MAX_TAGS:
+                self._config_tags.append(tag)
 
     def record_bur_time_out(self):
         """Record block until ready timeout."""
@@ -573,6 +584,13 @@ class InMemoryTelemetryStorage(TelemetryStorage):
         with self._lock:
             tags = self._tags
             self._reset_tags()
+            return tags
+
+    def pop_config_tags(self):
+        """Get and reset tags."""
+        with self._lock:
+            tags = self._config_tags
+            self._reset_config_tags()
             return tags
 
     def pop_latencies(self):

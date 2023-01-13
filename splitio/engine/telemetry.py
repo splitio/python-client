@@ -51,6 +51,10 @@ class TelemetryInitProducer(object):
     def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
         self._telemetry_storage.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
 
+    def add_config_tag(self, tag):
+        """Record tag string."""
+        self._telemetry_storage.add_config_tag(tag)
+
 class TelemetryEvaluationProducer(object):
     """Telemetry evaluation producer class."""
 
@@ -150,11 +154,18 @@ class TelemetryInitConsumer(object):
         return self._telemetry_storage.get_not_ready_usage()
 
     def get_config_stats(self):
-        """Get none-ready usage."""
-        return self._telemetry_storage.get_config_stats()
+        """Get config stats."""
+        config_stats = self._telemetry_storage.get_config_stats()
+        config_stats.update({'t': self.pop_config_tags()})
+        return config_stats
 
     def get_config_stats_to_json(self):
+        """Get config stats in json."""
         return json.dumps(self._telemetry_storage.get_config_stats())
+
+    def pop_config_tags(self):
+        """Get and reset tags."""
+        return self._telemetry_storage.pop_config_tags()
 
 class TelemetryEvaluationConsumer(object):
     """Telemetry evaluation consumer class."""
@@ -215,7 +226,7 @@ class TelemetryRuntimeConsumer(object):
         return self._telemetry_storage.get_last_synchronization()['lastSynchronizations']
 
     def pop_tags(self):
-        """Get and reset http errors."""
+        """Get and reset tags."""
         return self._telemetry_storage.pop_tags()
 
     def pop_http_errors(self):

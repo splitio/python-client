@@ -1,6 +1,7 @@
 """Redis storage module."""
 import json
 import logging
+import threading
 
 from splitio.models.impressions import Impression
 from splitio.models import splits, segments
@@ -12,7 +13,7 @@ from splitio.storage.adapters.cache_trait import decorate as add_cache, DEFAULT_
 
 
 _LOGGER = logging.getLogger(__name__)
-
+MAX_TAGS = 10
 
 class RedisSplitStorage(SplitStorage):
     """Redis-based storage for splits."""
@@ -594,12 +595,24 @@ class RedisTelemetryStorage(TelemetryStorage):
         :param sdk_metadata: SDK & Machine information.
         :type sdk_metadata: splitio.client.util.SdkMetadata
         """
+        self._lock = threading.RLock()
+        self._reset_config_tags()
         self._redis_client = redis_client
         self._sdk_metadata = sdk_metadata
         self._method_latencies = MethodLatencies()
         self._method_exceptions = MethodExceptions()
         self._tel_config = TelemetryConfig()
         self._make_pipe = redis_client.pipeline
+
+    def _reset_config_tags(self):
+        with self._lock:
+            self._config_tags = []
+
+    def add_config_tag(self, tag):
+        """Record tag string."""
+        with self._lock:
+            if len(self._config_tags) < MAX_TAGS:
+                self._config_tags.append(tag)
 
     def record_config(self, config, extra_config):
         """
@@ -609,6 +622,13 @@ class RedisTelemetryStorage(TelemetryStorage):
         :type config: splitio.client.config
         """
         self._tel_config.record_config(config, extra_config)
+
+    def pop_config_tags(self):
+        """Get and reset tags."""
+        with self._lock:
+            tags = self._config_tags
+            self._reset_config_tags()
+            return tags
 
     def push_config_stats(self):
         """push config stats to redis."""
@@ -621,7 +641,8 @@ class RedisTelemetryStorage(TelemetryStorage):
             'aF': config_stats['aF'],
             'rF': config_stats['rF'],
             'sT': config_stats['sT'],
-            'oM': config_stats['oM']
+            'oM': config_stats['oM'],
+            't': self.pop_config_tags()
         })
 
     def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):

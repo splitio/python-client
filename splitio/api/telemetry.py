@@ -1,6 +1,5 @@
 """Impressions API module."""
 import logging
-import time
 
 from splitio.api import APIException
 from splitio.api.client import HttpClientException
