@@ -1,7 +1,6 @@
 """A module for Split.io Factories."""
 import logging
 import threading
-import sys
 from collections import Counter
 
 from enum import Enum
@@ -419,9 +418,6 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     )
 
     telemetry_init_producer.record_config(cfg, extra_cfg)
-    if int(_get_uwsgi_worker_id()) > -1:
-        telemetry_init_producer.add_config_tag("initilization:uwsgi")
-        telemetry_init_producer.add_config_tag("uwsgi_worker:#" + _get_uwsgi_worker_id())
 
     if preforked_initialization:
         synchronizer.sync_all(max_retry_attempts=_MAX_RETRY_SYNC_ALL)
@@ -503,9 +499,6 @@ def _build_redis_factory(api_key, cfg):
     initialization_thread.start()
 
     telemetry_init_producer.record_config(cfg, {})
-    if int(_get_uwsgi_worker_id()) > -1:
-        telemetry_init_producer.add_config_tag("initilization:uwsgi")
-        telemetry_init_producer.add_config_tag("uwsgi_worker:#" + _get_uwsgi_worker_id())
 
     split_factory = SplitFactory(
         api_key,
@@ -623,12 +616,3 @@ def _get_active_and_redundant_count():
         active_factory_count += _INSTANTIATED_FACTORIES[item]
     _INSTANTIATED_FACTORIES_LOCK.release()
     return redundant_factory_count, active_factory_count
-
-def _get_uwsgi_worker_id():
-    try:
-        import uwsgi
-        _LOGGER.debug("uwsgi lib detected")
-        return str(uwsgi.worker_id())
-    except ModuleNotFoundError:
-        pass
-        return "-1"

@@ -1,5 +1,9 @@
 """Telemetry engine classes."""
 import json
+import os
+
+import logging
+_LOGGER = logging.getLogger(__name__)
 
 from  splitio.storage.inmemmory import InMemoryTelemetryStorage
 from splitio.models.telemetry import CounterConstants
@@ -35,6 +39,10 @@ class TelemetryInitProducer(object):
     def record_config(self, config, extra_config):
         """Record configurations."""
         self._telemetry_storage.record_config(config, extra_config)
+        current_app, app_worker_id = self._get_app_worker_id()
+        if  current_app is not None:
+            self.add_config_tag("initilization:" + current_app)
+            self.add_config_tag("worker:#" + app_worker_id)
 
     def record_ready_time(self, ready_time):
         """Record ready time."""
@@ -54,6 +62,20 @@ class TelemetryInitProducer(object):
     def add_config_tag(self, tag):
         """Record tag string."""
         self._telemetry_storage.add_config_tag(tag)
+
+    def _get_app_worker_id(self):
+        try:
+            import uwsgi
+            return "uwsgi", str(uwsgi.worker_id())
+        except ModuleNotFoundError:
+            _LOGGER.debug("NO uwsgi")
+            pass
+
+        if 'gunicorn' in os.environ.get("SERVER_SOFTWARE", ""):
+            return "gunicorn", str(os.getpid())
+        else:
+            return None, None
+
 
 class TelemetryEvaluationProducer(object):
     """Telemetry evaluation producer class."""
