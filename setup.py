@@ -12,6 +12,7 @@ TESTS_REQUIRES = [
     'pytest-cov',
     'importlib-metadata==4.2',
     'tomli==1.2.3',
+    'iniconfig==1.1.1'
 ]
 
 INSTALL_REQUIRES = [
