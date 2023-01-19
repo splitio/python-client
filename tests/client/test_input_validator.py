@@ -553,7 +553,7 @@ class ClientInputValidationTests(object):
             impmanager,
             mocker.Mock(),
             telemetry_producer,
-            telemetry_consumer.get_telemetry_init_consumer(),
+            telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
         factory._apikey = 'some-test'
@@ -828,7 +828,7 @@ class ClientInputValidationTests(object):
             impmanager,
             mocker.Mock(),
             telemetry_producer,
-            telemetry_consumer.get_telemetry_init_consumer(),
+            telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
         ready_mock = mocker.PropertyMock()
@@ -969,7 +969,7 @@ class ClientInputValidationTests(object):
             impmanager,
             mocker.Mock(),
             telemetry_producer,
-            telemetry_consumer.get_telemetry_init_consumer(),
+            telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
 
@@ -1105,7 +1105,7 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
             impmanager,
             mocker.Mock(),
             telemetry_producer,
-            telemetry_consumer.get_telemetry_init_consumer(),
+            telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
 

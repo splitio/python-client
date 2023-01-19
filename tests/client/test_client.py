@@ -53,8 +53,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
-            telemetry_consumer.get_telemetry_init_consumer(),
-            mocker.Mock()
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock(),
         )
 
         client = Client(factory, recorder, True)
@@ -122,7 +122,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
-            telemetry_consumer.get_telemetry_init_consumer(),
+            telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
 
@@ -199,7 +199,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
-            telemetry_consumer.get_telemetry_init_consumer(),
+            telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
 
@@ -272,7 +272,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
-            telemetry_consumer.get_telemetry_init_consumer(),
+            telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
 
@@ -349,7 +349,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
-            telemetry_consumer.get_telemetry_init_consumer(),
+            telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
 
@@ -381,7 +381,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
-            telemetry_consumer.get_telemetry_init_consumer(),
+            telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
 
@@ -418,7 +418,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
-            telemetry_consumer.get_telemetry_init_consumer(),
+            telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock(),
             True
         )
@@ -468,7 +468,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
-            telemetry_consumer.get_telemetry_init_consumer(),
+            telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
         client = Client(factory, mocker.Mock())
@@ -506,7 +506,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             impmanager,
             mocker.Mock(),
             telemetry_producer,
-            telemetry_consumer.get_telemetry_init_consumer(),
+            telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
         client = Client(factory, recorder, True)
@@ -550,7 +550,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             impmanager,
             mocker.Mock(),
             telemetry_producer,
-            telemetry_consumer.get_telemetry_init_consumer(),
+            telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
         client = Client(factory, recorder, True)
@@ -593,7 +593,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             impmanager,
             mocker.Mock(),
             telemetry_producer,
-            telemetry_consumer.get_telemetry_init_consumer(),
+            telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
         client = Client(factory, recorder, True)
@@ -635,7 +635,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             impmanager,
             mocker.Mock(),
             telemetry_producer,
-            telemetry_consumer.get_telemetry_init_consumer(),
+            telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
         client = Client(factory, recorder, True)

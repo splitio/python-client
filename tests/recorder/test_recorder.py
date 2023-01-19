@@ -2,7 +2,6 @@
 
 import pytest
 
-from splitio.client.util import get_method_constant
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager
 from splitio.engine.telemetry import TelemetryStorageProducer
@@ -10,7 +9,7 @@ from splitio.storage.inmemmory import EventStorage, ImpressionStorage, InMemoryT
 from splitio.storage.redis import ImpressionPipelinedStorage, EventStorage, RedisEventsStorage, RedisImpressionsStorage, RedisTelemetryStorage
 from splitio.storage.adapters.redis import RedisAdapter
 from splitio.models.impressions import Impression
-
+from splitio.models.telemetry import MethodExceptionsAndLatencies
 
 
 class StandardRecorderTests(object):
@@ -34,10 +33,10 @@ class StandardRecorderTests(object):
         telemetry_storage.record_latency.side_effect = record_latency
 
         recorder = StandardRecorder(impmanager, event, impression, telemetry_producer.get_telemetry_evaluation_producer())
-        recorder.record_treatment_stats(impressions, 1, 'some', 'get_treatment')
+        recorder.record_treatment_stats(impressions, 1, MethodExceptionsAndLatencies.TREATMENT, 'get_treatment')
 
         assert recorder._impression_storage.put.mock_calls[0][1][0] == impressions
-        assert(self.passed_args[0] == get_method_constant('treatment'))
+        assert(self.passed_args[0] == MethodExceptionsAndLatencies.TREATMENT)
         assert(self.passed_args[1] == 1)
 
     def test_pipelined_recorder(self, mocker):
@@ -51,12 +50,11 @@ class StandardRecorderTests(object):
         event = mocker.Mock(spec=RedisEventsStorage)
         impression = mocker.Mock(spec=RedisImpressionsStorage)
         recorder = PipelinedRecorder(redis, impmanager, event, impression, mocker.Mock())
-        recorder.record_treatment_stats(impressions, 1, 'some', 'get_treatment')
+        recorder.record_treatment_stats(impressions, 1, MethodExceptionsAndLatencies.TREATMENT, 'get_treatment')
 #        pytest.set_trace()
         assert recorder._impression_storage.add_impressions_to_pipe.mock_calls[0][1][0] == impressions
-        assert recorder._telemetry_redis_storage.add_latency_to_pipe.mock_calls[0][1][0] == 'treatment'
+        assert recorder._telemetry_redis_storage.add_latency_to_pipe.mock_calls[0][1][0] == MethodExceptionsAndLatencies.TREATMENT
         assert recorder._telemetry_redis_storage.add_latency_to_pipe.mock_calls[0][1][1] == 1
-
 
     def test_sampled_recorder(self, mocker):
         impressions = [

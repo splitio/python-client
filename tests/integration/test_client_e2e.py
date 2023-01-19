@@ -72,7 +72,7 @@ class InMemoryIntegrationTests(object):
                                     recorder,
                                     None,
                                     telemetry_producer=telemetry_producer,
-                                    telemetry_init_consumer=telemetry_consumer.get_telemetry_init_consumer(),
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     )  # pylint:disable=attribute-defined-outside-init
         except:
             pass
@@ -348,7 +348,7 @@ class InMemoryOptimizedIntegrationTests(object):
                                     recorder,
                                     None,
                                     telemetry_producer=telemetry_producer,
-                                    telemetry_init_consumer=telemetry_consumer.get_telemetry_init_consumer(),
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     )  # pylint:disable=attribute-defined-outside-init
 
     def _validate_last_impressions(self, client, *to_validate):
@@ -578,7 +578,7 @@ class RedisIntegrationTests(object):
                                     True,
                                     recorder,
                                     telemetry_producer=telemetry_producer,
-                                    telemetry_init_consumer=telemetry_consumer.get_telemetry_init_consumer(),
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     )  # pylint:disable=attribute-defined-outside-init
 
     def _validate_last_impressions(self, client, *to_validate):
@@ -870,7 +870,7 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
                                     True,
                                     recorder,
                                     telemetry_producer=telemetry_producer,
-                                    telemetry_init_consumer=telemetry_consumer.get_telemetry_init_consumer(),
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     )  # pylint:disable=attribute-defined-outside-init
 
 class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-methods

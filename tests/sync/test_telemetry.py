@@ -1,25 +1,26 @@
 """Telemetry Worker tests."""
 import unittest.mock as mock
 import json
-from splitio.sync.telemetry import TelemetrySynchronizer, TelemetrySubmitter
+from splitio.sync.telemetry import TelemetrySynchronizer, InMemoryTelemetrySubmitter
 from splitio.engine.telemetry import TelemetryEvaluationConsumer, TelemetryInitConsumer, TelemetryRuntimeConsumer, TelemetryStorageConsumer
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemorySegmentStorage, InMemorySplitStorage
 from splitio.models.splits import Split, Status
 from splitio.models.segments import Segment
 from splitio.models.telemetry import StreamingEvents
+from splitio.api.telemetry import TelemetryAPI
 
 class TelemetrySynchronizerTests(object):
     """Telemetry synchronizer test cases."""
 
-    @mock.patch('splitio.sync.telemetry.TelemetrySubmitter.synchronize_config')
+    @mock.patch('splitio.sync.telemetry.InMemoryTelemetrySubmitter.synchronize_config')
     def test_synchronize_config(self, mocker):
-        telemetry_synchronizer = TelemetrySynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
+        telemetry_synchronizer = TelemetrySynchronizer(InMemoryTelemetrySubmitter(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock()))
         telemetry_synchronizer.synchronize_config()
         assert(mocker.called)
 
-    @mock.patch('splitio.sync.telemetry.TelemetrySubmitter.synchronize_stats')
+    @mock.patch('splitio.sync.telemetry.InMemoryTelemetrySubmitter.synchronize_stats')
     def test_synchronize_stats(self, mocker):
-        telemetry_synchronizer = TelemetrySynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
+        telemetry_synchronizer = TelemetrySynchronizer(InMemoryTelemetrySubmitter(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock()))
         telemetry_synchronizer.synchronize_stats()
         assert(mocker.called)
 
@@ -27,14 +28,14 @@ class TelemetrySubmitterTests(object):
     """Telemetry submitter test cases."""
 
     def test_synchronize_telemetry(self, mocker):
-        api = mocker.Mock()
+        api = mocker.Mock(spec=TelemetryAPI)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         split_storage = InMemorySplitStorage()
         split_storage.put(Split('split1', 1234, 1, False, 'user', Status.ACTIVE, 123))
         segment_storage = InMemorySegmentStorage()
         segment_storage.put(Segment('segment1', [], 123))
-        telemetry_submitter = TelemetrySubmitter(telemetry_consumer, split_storage, segment_storage, api)
+        telemetry_submitter = InMemoryTelemetrySubmitter(telemetry_consumer, split_storage, segment_storage, api)
 
         telemetry_storage._counters._impressions_queued = 100
         telemetry_storage._counters._impressions_deduped = 30
@@ -100,12 +101,13 @@ class TelemetrySubmitterTests(object):
                                         'timeUntilReady': 1
                                        }, {}
         )
+        self.formatted_config = ""
         def record_init(*args, **kwargs):
             self.formatted_config = args[0]
 
         api.record_init.side_effect = record_init
         telemetry_submitter.synchronize_config()
-        assert(self.formatted_config == telemetry_submitter._telemetry_init_consumer.get_config_stats_to_json())
+        assert(self.formatted_config == telemetry_submitter._telemetry_init_consumer.get_config_stats())
 
         def record_stats(*args, **kwargs):
             self.formatted_stats = args[0]
@@ -130,5 +132,6 @@ class TelemetrySubmitterTests(object):
             "mL": {"t": [1] + [0] * 22, "ts": [0] * 23, "tc": [0] * 23, "tcs": [0] * 23, "tr": [0] * 23},
             "spC": 1,
             "seC": 1,
-            "skC": 0
+            "skC": 0,
+            "t": ['tag1']
         })

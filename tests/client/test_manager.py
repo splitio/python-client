@@ -31,7 +31,7 @@ class ManagerTests(object):  # pylint: disable=too-few-public-methods
             impmanager,
             mocker.Mock(),
             telemetry_producer,
-            telemetry_consumer.get_telemetry_init_consumer(),
+            telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock(),
             True
         )
