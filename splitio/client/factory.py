@@ -145,8 +145,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
             self._status = Status.NOT_INITIALIZED
             # add a listener that updates the status to READY once the flag is set.
             ready_updater = threading.Thread(target=self._update_status_when_ready,
-                                             name='SDKReadyFlagUpdater')
-            ready_updater.setDaemon(True)
+                                             name='SDKReadyFlagUpdater', daemon=True)
             ready_updater.start()
         else:
             self._status = Status.READY
@@ -244,8 +243,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
                         self._sync_manager.stop(True)
                         destroyed_event.set()
 
-                    wait_thread = threading.Thread(target=_wait_for_tasks_to_stop)
-                    wait_thread.setDaemon(True)
+                    wait_thread = threading.Thread(target=_wait_for_tasks_to_stop, daemon=True)
                     wait_thread.start()
                 else:
                     self._sync_manager.stop(False)
@@ -291,8 +289,8 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         initialization_thread = threading.Thread(
             target=self._sync_manager.start,
             name="SDKInitializer",
+            daemon=True
         )
-        initialization_thread.setDaemon(True)
         initialization_thread.start()
         self._preforked_initialization = False  # reset for status updater
         self._start_status_updater()
@@ -426,8 +424,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         return SplitFactory(api_key, storages, cfg['labelsEnabled'],
                             recorder, manager, None, telemetry_producer, telemetry_init_producer, telemetry_submitter, preforked_initialization=preforked_initialization)
 
-    initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer")
-    initialization_thread.setDaemon(True)
+    initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
     initialization_thread.start()
 
     return SplitFactory(api_key, storages, cfg['labelsEnabled'],
@@ -494,8 +491,7 @@ def _build_redis_factory(api_key, cfg):
     )
 
     manager = RedisManager(synchronizer)
-    initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer")
-    initialization_thread.setDaemon(True)
+    initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
     initialization_thread.start()
 
     telemetry_init_producer.record_config(cfg, {})

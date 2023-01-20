@@ -55,8 +55,7 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
             self._queue = Queue()
             self._push = PushManager(auth_api, synchronizer, self._queue, sdk_metadata, telemetry_runtime_producer, sse_url, client_key)
             self._push_status_handler = Thread(target=self._streaming_feedback_handler,
-                                               name='PushStatusHandler')
-            self._push_status_handler.setDaemon(True)
+                                               name='PushStatusHandler', daemon=True)
 
     def recreate(self):
         """Recreate poolers for forked processes."""
