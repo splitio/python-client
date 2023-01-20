@@ -19,6 +19,7 @@ class SplitManager(object):
         """
         self._factory = factory
         self._storage = factory._get_storage('splits')  # pylint: disable=protected-access
+        self._telemetry_init_producer = factory._telemetry_init_producer
 
     def split_names(self):
         """
@@ -35,6 +36,7 @@ class SplitManager(object):
             return []
 
         if not self._factory.ready:
+            self._telemetry_init_producer.record_not_ready_usage()
             _LOGGER.warning(
                 "split_names: The SDK is not ready, results may be incorrect. "
                 "Make sure to wait for SDK readiness before using this method"
@@ -57,6 +59,7 @@ class SplitManager(object):
             return []
 
         if not self._factory.ready:
+            self._telemetry_init_producer.record_not_ready_usage()
             _LOGGER.warning(
                 "splits: The SDK is not ready, results may be incorrect. "
                 "Make sure to wait for SDK readiness before using this method"
@@ -88,6 +91,7 @@ class SplitManager(object):
         )
 
         if not self._factory.ready:
+            self._telemetry_init_producer.record_not_ready_usage()
             _LOGGER.warning(
                 "split: The SDK is not ready, results may be incorrect. "
                 "Make sure to wait for SDK readiness before using this method"

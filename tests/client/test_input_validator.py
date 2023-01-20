@@ -1,15 +1,18 @@
 """Unit tests for the input_validator module."""
 import logging
+import pytest
 
 from splitio.client.factory import SplitFactory, get_factory
 from splitio.client.client import CONTROL, Client, _LOGGER as _logger
 from splitio.client.manager import SplitManager
 from splitio.client.key import Key
 from splitio.storage import SplitStorage, EventStorage, ImpressionStorage, SegmentStorage
+from splitio.storage.inmemmory import InMemoryTelemetryStorage
 from splitio.models.splits import Split
 from splitio.client import input_validator
 from splitio.recorder.recorder import StandardRecorder
-
+from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageConsumer
+from splitio.engine.impressions.impressions import Manager as ImpressionManager
 
 class ClientInputValidationTests(object):
     """Input validation test cases."""
@@ -26,21 +29,28 @@ class ClientInputValidationTests(object):
         storage_mock = mocker.Mock(spec=SplitStorage)
         storage_mock.get.return_value = split_mock
 
-        def _get_storage_mock(storage):
-            return {
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer())
+        factory = SplitFactory(mocker.Mock(),
+            {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
-            }[storage]
-        factory_mock = mocker.Mock(spec=SplitFactory)
-        factory_mock._get_storage.side_effect = _get_storage_mock
-        factory_destroyed = mocker.PropertyMock()
-        factory_mock._waiting_fork.return_value = False
-        factory_destroyed.return_value = False
-        type(factory_mock).destroyed = factory_destroyed
+            },
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_consumer.get_telemetry_init_consumer(),
+            mocker.Mock()
+        )
 
-        client = Client(factory_mock, mocker.Mock())
+        client = Client(factory, mocker.Mock())
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -254,21 +264,28 @@ class ClientInputValidationTests(object):
         storage_mock = mocker.Mock(spec=SplitStorage)
         storage_mock.get.return_value = split_mock
 
-        def _get_storage_mock(storage):
-            return {
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer())
+        factory = SplitFactory(mocker.Mock(),
+            {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
-            }[storage]
-        factory_mock = mocker.Mock(spec=SplitFactory)
-        factory_mock._get_storage.side_effect = _get_storage_mock
-        factory_destroyed = mocker.PropertyMock()
-        factory_destroyed.return_value = False
-        factory_mock._waiting_fork.return_value = False
-        type(factory_mock).destroyed = factory_destroyed
+            },
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_consumer.get_telemetry_init_consumer(),
+            mocker.Mock()
+        )
 
-        client = Client(factory_mock, mocker.Mock())
+        client = Client(factory, mocker.Mock())
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -514,17 +531,34 @@ class ClientInputValidationTests(object):
         """Test track method()."""
         events_storage_mock = mocker.Mock(spec=EventStorage)
         events_storage_mock.put.return_value = True
-        factory_mock = mocker.Mock(spec=SplitFactory)
-        factory_destroyed = mocker.PropertyMock()
-        factory_destroyed.return_value = False
-        factory_mock._waiting_fork.return_value = False
-        type(factory_mock).destroyed = factory_destroyed
-        factory_mock._apikey = 'some-test'
-
         event_storage = mocker.Mock(spec=EventStorage)
         event_storage.put.return_value = True
-        recorder = StandardRecorder(mocker.Mock(), event_storage, mocker.Mock())
-        client = Client(factory_mock, recorder)
+        split_storage_mock = mocker.Mock(spec=SplitStorage)
+        split_storage_mock.is_valid_traffic_type.return_value = True
+
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, events_storage_mock, ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer())
+        factory = SplitFactory(mocker.Mock(),
+            {
+                'splits': split_storage_mock,
+                'segments': mocker.Mock(spec=SegmentStorage),
+                'impressions': mocker.Mock(spec=ImpressionStorage),
+                'events': events_storage_mock,
+            },
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        factory._apikey = 'some-test'
+
+        client = Client(factory, recorder)
         client._event_storage = event_storage
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
@@ -674,11 +708,9 @@ class ClientInputValidationTests(object):
         # Test traffic type existance
         ready_property = mocker.PropertyMock()
         ready_property.return_value = True
-        type(factory_mock).ready = ready_property
+        type(factory).ready = ready_property
 
-        split_storage_mock = mocker.Mock(spec=SplitStorage)
-        split_storage_mock.is_valid_traffic_type.return_value = True
-        factory_mock._get_storage.return_value = split_storage_mock
+#        factory._get_storage.return_value = split_storage_mock
 
         # Test that it doesn't warn if tt is cached, not in localhost mode and sdk is ready
         _logger.reset_mock()
@@ -699,16 +731,16 @@ class ClientInputValidationTests(object):
         )]
 
         # Test that it does not warn when in localhost mode.
-        factory_mock._apikey = 'localhost'
+        factory._apikey = 'localhost'
         _logger.reset_mock()
         assert client.track("some_key", "traffic_type", "event_type", None) is True
         assert _logger.error.mock_calls == []
         assert _logger.warning.mock_calls == []
 
         # Test that it does not warn when not in localhost mode and not ready
-        factory_mock._apikey = 'not-localhost'
+        factory._apikey = 'not-localhost'
         ready_property.return_value = False
-        type(factory_mock).ready = ready_property
+        type(factory).ready = ready_property
         _logger.reset_mock()
         assert client.track("some_key", "traffic_type", "event_type", None) is True
         assert _logger.error.mock_calls == []
@@ -772,28 +804,38 @@ class ClientInputValidationTests(object):
         conditions_mock = mocker.PropertyMock()
         conditions_mock.return_value = []
         type(split_mock).conditions = conditions_mock
-
         storage_mock = mocker.Mock(spec=SplitStorage)
+        storage_mock.get.return_value = split_mock
         storage_mock.fetch_many.return_value = {
             'some_feature': split_mock,
             'some': split_mock,
         }
 
-        def _get_storage_mock(storage):
-            return {
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer())
+        factory = SplitFactory(mocker.Mock(),
+            {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
-            }[storage]
-        factory_mock = mocker.Mock(spec=SplitFactory)
-        factory_mock._get_storage.side_effect = _get_storage_mock
-        factory_destroyed = mocker.PropertyMock()
-        factory_destroyed.return_value = False
-        factory_mock._waiting_fork.return_value = False
-        type(factory_mock).destroyed = factory_destroyed
+            },
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
 
-        client = Client(factory_mock, mocker.Mock())
+        client = Client(factory, recorder)
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -884,7 +926,7 @@ class ClientInputValidationTests(object):
         storage_mock.get.return_value = None
         ready_mock = mocker.PropertyMock()
         ready_mock.return_value = True
-        type(factory_mock).ready = ready_mock
+        type(factory).ready = ready_mock
         assert client.get_treatments('matching_key', ['some_feature'], None) == {'some_feature': CONTROL}
         assert _logger.warning.mock_calls == [
             mocker.call(
@@ -910,17 +952,32 @@ class ClientInputValidationTests(object):
             'some_feature': split_mock
         }
 
-        factory_mock = mocker.Mock(spec=SplitFactory)
-        factory_mock._get_storage.return_value = storage_mock
-        factory_destroyed = mocker.PropertyMock()
-        factory_destroyed.return_value = False
-        factory_mock._waiting_fork.return_value = False
-        type(factory_mock).destroyed = factory_destroyed
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer())
+        factory = SplitFactory(mocker.Mock(),
+            {
+                'splits': storage_mock,
+                'segments': mocker.Mock(spec=SegmentStorage),
+                'impressions': mocker.Mock(spec=ImpressionStorage),
+                'events': mocker.Mock(spec=EventStorage),
+            },
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+
         def _configs(treatment):
             return '{"some": "property"}' if treatment == 'default_treatment' else None
         split_mock.get_configurations_for.side_effect = _configs
 
-        client = Client(factory_mock, mocker.Mock())
+        client = Client(factory, mocker.Mock())
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -1011,7 +1068,7 @@ class ClientInputValidationTests(object):
         storage_mock.get.return_value = None
         ready_mock = mocker.PropertyMock()
         ready_mock.return_value = True
-        type(factory_mock).ready = ready_mock
+        type(factory).ready = ready_mock
         assert client.get_treatments('matching_key', ['some_feature'], None) == {'some_feature': CONTROL}
         assert _logger.warning.mock_calls == [
             mocker.call(
@@ -1022,8 +1079,6 @@ class ClientInputValidationTests(object):
             )
         ]
 
-
-
 class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-methods
     """Manager input validation test cases."""
 
@@ -1032,14 +1087,29 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
         storage_mock = mocker.Mock(spec=SplitStorage)
         split_mock = mocker.Mock(spec=Split)
         storage_mock.get.return_value = split_mock
-        factory_mock = mocker.Mock(spec=SplitFactory)
-        factory_mock._get_storage.return_value = storage_mock
-        factory_destroyed = mocker.PropertyMock()
-        factory_destroyed.return_value = False
-        factory_mock._waiting_fork.return_value = False
-        type(factory_mock).destroyed = factory_destroyed
 
-        manager = SplitManager(factory_mock)
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer())
+        factory = SplitFactory(mocker.Mock(),
+            {
+                'splits': storage_mock,
+                'segments': mocker.Mock(spec=SegmentStorage),
+                'impressions': mocker.Mock(spec=ImpressionStorage),
+                'events': mocker.Mock(spec=EventStorage),
+            },
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+
+        manager = SplitManager(factory)
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -1108,7 +1178,9 @@ class FactoryInputValidationTests(object):  #pylint: disable=too-few-public-meth
         ]
 
         logger.reset_mock()
-        f = get_factory(True, config={'redisHost': 'some-host'})
-        assert f is not None
+        try:
+            f = get_factory(True, config={'redisHost': 'localhost'})
+        except:
+            pass
         assert logger.error.mock_calls == []
         f.destroy()

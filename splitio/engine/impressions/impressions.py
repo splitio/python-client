@@ -2,6 +2,7 @@
 from enum import Enum
 
 from splitio.client.listener import ImpressionListenerException
+from splitio.models import telemetry
 
 class ImpressionsMode(Enum):
     """Impressions tracking mode."""
@@ -13,7 +14,7 @@ class ImpressionsMode(Enum):
 class Manager(object):  # pylint:disable=too-few-public-methods
     """Impression manager."""
 
-    def __init__(self, listener=None, strategy=None):
+    def __init__(self, strategy, telemetry_runtime_producer, listener=None):
         """
         Construct a manger to track and forward impressions to the queue.
 
@@ -26,6 +27,7 @@ class Manager(object):  # pylint:disable=too-few-public-methods
 
         self._strategy = strategy
         self._listener = listener
+        self._telemetry_runtime_producer = telemetry_runtime_producer
 
     def process_impressions(self, impressions):
         """
@@ -37,6 +39,8 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
         """
         for_log, for_listener = self._strategy.process_impressions(impressions)
+        if len(impressions) > len(for_log):
+            self._telemetry_runtime_producer.record_impression_stats(telemetry.CounterConstants.IMPRESSIONS_DEDUPED, len(impressions) - len(for_log))
         self._send_impressions_to_listener(for_listener)
         return for_log
 

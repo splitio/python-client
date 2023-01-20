@@ -1,4 +1,5 @@
-9.2.3-rc1 (Jan 4, 2023)
+9.3.0-rc1 (Jan 20, 2023)
+- Updated SDK telemetry storage, metrics and updater to be more effective and send less often.
 - Removed deprecated threading.Thread.setDaemon() method.
 
 9.2.2 (Dec 13, 2022)

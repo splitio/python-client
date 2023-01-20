@@ -3,9 +3,8 @@ import abc
 import logging
 import random
 
-
 from splitio.client.config import DEFAULT_DATA_SAMPLING
-
+from splitio.models.telemetry import MethodExceptionsAndLatencies
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,7 +40,7 @@ class StatsRecorder(object, metaclass=abc.ABCMeta):
 class StandardRecorder(StatsRecorder):
     """StandardRecorder class."""
 
-    def __init__(self, impressions_manager, event_storage, impression_storage):
+    def __init__(self, impressions_manager, event_storage, impression_storage, telemetry_evaluation_producer):
         """
         Class constructor.
 
@@ -55,8 +54,9 @@ class StandardRecorder(StatsRecorder):
         self._impressions_manager = impressions_manager
         self._event_sotrage = event_storage
         self._impression_storage = impression_storage
+        self._telemetry_evaluation_producer = telemetry_evaluation_producer
 
-    def record_treatment_stats(self, impressions, latency, operation):
+    def record_treatment_stats(self, impressions, latency, operation, method_name):
         """
         Record stats for treatment evaluation.
 
@@ -68,19 +68,22 @@ class StandardRecorder(StatsRecorder):
         :type operation: str
         """
         try:
+            if method_name is not None:
+                self._telemetry_evaluation_producer.record_latency(operation, latency)
             impressions = self._impressions_manager.process_impressions(impressions)
             self._impression_storage.put(impressions)
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error recording impressions')
             _LOGGER.debug('Error: ', exc_info=True)
 
-    def record_track_stats(self, event):
+    def record_track_stats(self, event, latency):
         """
         Record stats for tracking events.
 
         :param event: events tracked
         :type event: splitio.models.events.EventWrapper
         """
+        self._telemetry_evaluation_producer.record_latency(MethodExceptionsAndLatencies.TRACK, latency)
         return self._event_sotrage.put(event)
 
 
@@ -88,7 +91,7 @@ class PipelinedRecorder(StatsRecorder):
     """PipelinedRecorder class."""
 
     def __init__(self, pipe, impressions_manager, event_storage,
-                 impression_storage, data_sampling=DEFAULT_DATA_SAMPLING):
+                 impression_storage, telemetry_redis_storage, data_sampling=DEFAULT_DATA_SAMPLING):
         """
         Class constructor.
 
@@ -108,8 +111,9 @@ class PipelinedRecorder(StatsRecorder):
         self._event_sotrage = event_storage
         self._impression_storage = impression_storage
         self._data_sampling = data_sampling
+        self._telemetry_redis_storage = telemetry_redis_storage
 
-    def record_treatment_stats(self, impressions, latency, operation):
+    def record_treatment_stats(self, impressions, latency, operation, method_name):
         """
         Record stats for treatment evaluation.
 
@@ -121,9 +125,6 @@ class PipelinedRecorder(StatsRecorder):
         :type operation: str
         """
         try:
-            # TODO @matias.melograno
-            # Changing logic until TelemetryV2 released to avoid using pipelined operations
-            # Deprecated Old Telemetry
             if self._data_sampling < DEFAULT_DATA_SAMPLING:
                 rnumber = random.uniform(0, 1)
                 if self._data_sampling < rnumber:
@@ -131,22 +132,31 @@ class PipelinedRecorder(StatsRecorder):
             impressions = self._impressions_manager.process_impressions(impressions)
             if not impressions:
                 return
-            # pipe = self._make_pipe()
-            # self._impression_storage.add_impressions_to_pipe(impressions, pipe)
-            # self._telemetry_storage.add_latency_to_pipe(operation, latency, pipe)
-            # result = pipe.execute()
-            # if len(result) == 2:
-            #   self._impression_storage.expire_key(result[0], len(impressions))
-            self._impression_storage.put(impressions)
+
+            pipe = self._make_pipe()
+            self._impression_storage.add_impressions_to_pipe(impressions, pipe)
+            if method_name is not None:
+                self._telemetry_redis_storage.add_latency_to_pipe(operation, latency, pipe)
+            result = pipe.execute()
+            if len(result) == 2:
+                self._impression_storage.expire_key(result[0], len(impressions))
+                self._telemetry_redis_storage.expire_latency_keys(result[1], latency)
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error recording impressions')
             _LOGGER.debug('Error: ', exc_info=True)
 
-    def record_track_stats(self, event):
+    def record_track_stats(self, event, latency):
         """
         Record stats for tracking events.
 
         :param event: events tracked
         :type event: splitio.models.events.EventWrapper
         """
-        return self._event_sotrage.put(event)
+        pipe = self._make_pipe()
+        rc = self._event_sotrage.add_events_to_pipe(event, pipe)
+        self._telemetry_redis_storage.add_latency_to_pipe(MethodExceptionsAndLatencies.TRACK, latency, pipe)
+        result = pipe.execute()
+        if len(result) == 2:
+            self._event_sotrage.expire_keys(result[0], len(event))
+            self._telemetry_redis_storage.expire_latency_keys(result[1], latency)
+        return rc

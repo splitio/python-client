@@ -13,7 +13,7 @@ _CLEAR_FILTER_SYNC_PERIOD = 60 * 60 * 24  # 24 hours
 class UniqueKeysSyncTask(BaseSynchronizationTask):
     """Unique Keys synchronization task uses an asynctask.AsyncTask to send MTKs."""
 
-    def __init__(self, synchronize_unique_keys, period = None):
+    def __init__(self, synchronize_unique_keys, period = _UNIQUE_KEYS_SYNC_PERIOD):
         """
         Class constructor.
 
@@ -22,9 +22,6 @@ class UniqueKeysSyncTask(BaseSynchronizationTask):
         :param period: How many seconds to wait between subsequent unique keys pushes to the BE.
         :type period: int
         """
-
-        if period == None:
-            period = _UNIQUE_KEYS_SYNC_PERIOD
         self._task = AsyncTask(synchronize_unique_keys, period,
                                on_stop=synchronize_unique_keys)
 
@@ -53,7 +50,7 @@ class UniqueKeysSyncTask(BaseSynchronizationTask):
 class ClearFilterSyncTask(BaseSynchronizationTask):
     """Unique Keys synchronization task uses an asynctask.AsyncTask to send MTKs."""
 
-    def __init__(self, clear_filter, period = None):
+    def __init__(self, clear_filter, period = _CLEAR_FILTER_SYNC_PERIOD):
         """
         Class constructor.
 
@@ -62,9 +59,6 @@ class ClearFilterSyncTask(BaseSynchronizationTask):
         :param period: How many seconds to wait between subsequent clearing of bloom filter
         :type period: int
         """
-        if period == None:
-            period = _CLEAR_FILTER_SYNC_PERIOD
-
         self._task = AsyncTask(clear_filter, period,
                                on_stop=clear_filter)
 
