@@ -152,11 +152,18 @@ class PipelinedRecorder(StatsRecorder):
         :param event: events tracked
         :type event: splitio.models.events.EventWrapper
         """
-        pipe = self._make_pipe()
-        rc = self._event_sotrage.add_events_to_pipe(event, pipe)
-        self._telemetry_redis_storage.add_latency_to_pipe(MethodExceptionsAndLatencies.TRACK, latency, pipe)
-        result = pipe.execute()
-        if len(result) == 2:
-            self._event_sotrage.expire_keys(result[0], len(event))
-            self._telemetry_redis_storage.expire_latency_keys(result[1], latency)
-        return rc
+        try:
+            pipe = self._make_pipe()
+            self._event_sotrage.add_events_to_pipe(event, pipe)
+            self._telemetry_redis_storage.add_latency_to_pipe(MethodExceptionsAndLatencies.TRACK, latency, pipe)
+            result = pipe.execute()
+            if len(result) == 2:
+                self._event_sotrage.expire_keys(result[0], len(event))
+                self._telemetry_redis_storage.expire_latency_keys(result[1], latency)
+                if result[0] > 0:
+                    return True
+            return False
+        except Exception:  # pylint: disable=broad-except
+            _LOGGER.error('Error recording events')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return False

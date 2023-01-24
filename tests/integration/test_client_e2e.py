@@ -269,6 +269,17 @@ class InMemoryIntegrationTests(object):
             ('sample_feature', 'invalidKey', 'off'),
         )
 
+    def test_track(self):
+        """Test client.track()."""
+        try:
+            client = self.factory.client()
+        except:
+            pass
+        assert(client.track('user1', 'user', 'conversion'))
+        assert(not client.track(None, 'user', 'conversion'))
+        assert(not client.track('user1', None, 'conversion'))
+        assert(not client.track('user1', 'user', None))
+
     def test_manager_methods(self):
         """Test manager.split/splits."""
         try:
@@ -529,6 +540,13 @@ class InMemoryOptimizedIntegrationTests(object):
         assert len(manager.split_names()) == 7
         assert len(manager.splits()) == 7
 
+    def test_track(self):
+        """Test client.track()."""
+        client = self.factory.client()
+        assert(client.track('user1', 'user', 'conversion'))
+        assert(not client.track(None, 'user', 'conversion'))
+        assert(not client.track('user1', None, 'conversion'))
+        assert(not client.track('user1', 'user', None))
 
 class RedisIntegrationTests(object):
     """Redis storage-based integration tests."""
@@ -764,6 +782,14 @@ class RedisIntegrationTests(object):
             ('killed_feature', 'invalidKey', 'defTreatment'),
             ('sample_feature', 'invalidKey', 'off'),
         )
+
+    def test_track(self):
+        """Test client.track()."""
+        client = self.factory.client()
+        assert(client.track('user1', 'user', 'conversion'))
+        assert(not client.track(None, 'user', 'conversion'))
+        assert(not client.track('user1', None, 'conversion'))
+        assert(not client.track('user1', 'user', None))
 
     def test_manager_methods(self):
         """Test manager.split/splits."""
