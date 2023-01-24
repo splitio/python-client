@@ -1,5 +1,5 @@
 """Commons module."""
-
+from splitio.util.time import get_current_epoch_time_ms
 
 _CACHE_CONTROL = 'Cache-Control'
 _CACHE_CONTROL_NO_CACHE = 'no-cache'
@@ -32,6 +32,27 @@ def headers_from_metadata(sdk_metadata, client_key=None):
 
     return metadata
 
+def record_telemetry(status_code, elapsed, metric_name, telemetry_runtime_producer):
+    """
+    Record Telemetry info
+
+    :param status_code: http request status code
+    :type status_code: int
+
+    :param elapsed: response time elapsed.
+    :type status_code: int
+
+    :param metric_name: metric name for telemetry
+    :type metric_name: str
+
+    :param telemetry_runtime_producer: telemetry recording instance
+    :type telemetry_runtime_producer: splitio.engine.telemetry.TelemetryRuntimeProducer
+    """
+    telemetry_runtime_producer.record_sync_latency(metric_name, elapsed)
+    if 200 <= status_code < 300:
+        telemetry_runtime_producer.record_successful_sync(metric_name, get_current_epoch_time_ms())
+        return
+    telemetry_runtime_producer.record_sync_error(metric_name, status_code)
 
 class FetchOptions(object):
     """Fetch Options object."""

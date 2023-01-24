@@ -3,18 +3,20 @@
 import abc
 import logging
 import threading
+import time
 
 from splitio.api import APIException
+from splitio.util.backoff import Backoff
 
 
 _LOGGER = logging.getLogger(__name__)
-
+_SYNC_ALL_NO_RETRIES = -1
 
 class SplitSynchronizers(object):
     """SplitSynchronizers."""
 
     def __init__(self, split_sync, segment_sync, impressions_sync, events_sync,  # pylint:disable=too-many-arguments
-                 impressions_count_sync, unique_keys_sync = None, clear_filter_sync = None):
+                 impressions_count_sync, telemetry_sync=None, unique_keys_sync = None, clear_filter_sync = None):
         """
         Class constructor.
 
@@ -36,6 +38,7 @@ class SplitSynchronizers(object):
         self._impressions_count_sync = impressions_count_sync
         self._unique_keys_sync = unique_keys_sync
         self._clear_filter_sync = clear_filter_sync
+        self._telemetry_sync = telemetry_sync
 
     @property
     def split_sync(self):
@@ -72,11 +75,16 @@ class SplitSynchronizers(object):
         """Return clear filter synchonizer."""
         return self._clear_filter_sync
 
+    @property
+    def telemetry_sync(self):
+        """Return clear filter synchonizer."""
+        return self._telemetry_sync
+
 class SplitTasks(object):
     """SplitTasks."""
 
     def __init__(self, split_task, segment_task, impressions_task, events_task,  # pylint:disable=too-many-arguments
-                 impressions_count_task, unique_keys_task = None, clear_filter_task = None):
+                 impressions_count_task, telemetry_task=None, unique_keys_task = None, clear_filter_task = None):
         """
         Class constructor.
 
@@ -98,6 +106,7 @@ class SplitTasks(object):
         self._impressions_count_task = impressions_count_task
         self._unique_keys_task = unique_keys_task
         self._clear_filter_task = clear_filter_task
+        self._telemetry_task = telemetry_task
 
     @property
     def split_task(self):
@@ -133,6 +142,11 @@ class SplitTasks(object):
     def clear_filter_task(self):
         """Return clear filter sync task."""
         return self._clear_filter_task
+
+    @property
+    def telemetry_task(self):
+        """Return clear filter sync task."""
+        return self._telemetry_task
 
 class BaseSynchronizer(object, metaclass=abc.ABCMeta):
     """Synchronizer interface."""
@@ -212,6 +226,9 @@ class BaseSynchronizer(object, metaclass=abc.ABCMeta):
 class Synchronizer(BaseSynchronizer):
     """Synchronizer."""
 
+    _ON_DEMAND_FETCH_BACKOFF_BASE = 10  # backoff base starting at 10 seconds
+    _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT = 30  # don't sleep for more than 1 minute
+
     def __init__(self, split_synchronizers, split_tasks):
         """
         Class constructor.
@@ -221,11 +238,15 @@ class Synchronizer(BaseSynchronizer):
         :param split_tasks: tasks for starting/stopping tasks
         :type split_tasks: splitio.sync.synchronizer.SplitTasks
         """
+        self._backoff = Backoff(
+                                self._ON_DEMAND_FETCH_BACKOFF_BASE,
+                                self._ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
         self._split_synchronizers = split_synchronizers
         self._split_tasks = split_tasks
         self._periodic_data_recording_tasks = [
             self._split_tasks.impressions_task,
-            self._split_tasks.events_task
+            self._split_tasks.events_task,
+            self._split_tasks.telemetry_task
         ]
         if self._split_tasks.impressions_count_task:
             self._periodic_data_recording_tasks.append(self._split_tasks.impressions_count_task)
@@ -233,7 +254,6 @@ class Synchronizer(BaseSynchronizer):
             self._periodic_data_recording_tasks.append(self._split_tasks.unique_keys_task)
         if self._split_tasks.clear_filter_task:
             self._periodic_data_recording_tasks.append(self._split_tasks.clear_filter_task)
-
 
     def _synchronize_segments(self):
         _LOGGER.debug('Starting segments synchronization')
@@ -284,27 +304,40 @@ class Synchronizer(BaseSynchronizer):
             _LOGGER.debug('Error: ', exc_info=True)
             return False
 
-    def sync_all(self):
-        """Synchronize all split data."""
-        attempts = 3
-        while attempts > 0:
+    def sync_all(self, max_retry_attempts=_SYNC_ALL_NO_RETRIES):
+        """
+        Synchronize all splits.
+        
+        :param max_retry_attempts: apply max attempts if it set to absilute integer.
+        :type max_retry_attempts: int
+        """
+        retry_attempts = 0
+        while True:
             try:
                 if not self.synchronize_splits(None, False):
-                    attempts -= 1
-                    continue
+                    raise Exception("split sync failed")
 
                 # Only retrying splits, since segments may trigger too many calls.
+
                 if not self._synchronize_segments():
                     _LOGGER.warning('Segments failed to synchronize.')
 
                 # All is good
                 return
             except Exception as exc:  # pylint:disable=broad-except
-                attempts -= 1
                 _LOGGER.error("Exception caught when trying to sync all data: %s", str(exc))
                 _LOGGER.debug('Error: ', exc_info=True)
+                if max_retry_attempts != _SYNC_ALL_NO_RETRIES:
+                    retry_attempts += 1
+                    if retry_attempts > max_retry_attempts:
+                        break
+                how_long = self._backoff.get()
+                time.sleep(how_long)
 
-        _LOGGER.error("Could not correctly synchronize splits and segments after 3 attempts.")
+        _LOGGER.error("Could not correctly synchronize splits and segments after %d attempts.", retry_attempts)
+
+    def _retry_block(self, max_retry_attempts, retry_attempts):
+        return retry_attempts
 
     def shutdown(self, blocking):
         """
@@ -347,10 +380,14 @@ class Synchronizer(BaseSynchronizer):
         if blocking:
             events = []
             for task in self._periodic_data_recording_tasks:
-                stop_event = threading.Event()
-                task.stop(stop_event)
-                events.append(stop_event)
-            if all(event.wait() for event in events):
+                if task != self._split_tasks.telemetry_task:
+                    stop_event = threading.Event()
+                    task.stop(stop_event)
+                    events.append(stop_event)
+            all(event.wait() for event in events)
+            telemetry_event = threading.Event()
+            self._split_tasks.telemetry_task.stop(telemetry_event)
+            if telemetry_event.wait():
                 _LOGGER.debug('all tasks finished successfully.')
         else:
             for task in self._periodic_data_recording_tasks:
@@ -390,6 +427,7 @@ class RedisSynchronizer(BaseSynchronizer):
             self._tasks.append(split_tasks.unique_keys_task)
         if split_tasks.clear_filter_task is not None:
             self._tasks.append(split_tasks.clear_filter_task)
+        self._periodic_data_recording_tasks = []
 
     def sync_all(self):
         """
@@ -468,8 +506,12 @@ class LocalhostSynchronizer(BaseSynchronizer):
         self._split_synchronizers = split_synchronizers
         self._split_tasks = split_tasks
 
-    def sync_all(self):
-        """Synchronize all split data."""
+    def sync_all(self, max_retry_attempts=-1):
+        """
+        Synchronize all splits.
+        
+        :param max_retry_attempts: Not used, added for compatibility
+        """
         try:
             self._split_synchronizers.split_sync.synchronize_splits(None)
         except APIException as exc:

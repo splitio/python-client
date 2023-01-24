@@ -39,7 +39,7 @@ class UniqueKeysSynchronizer(object):
         bulk = {}
         total_size = 0
         for feature in cache:
-            total_size = total_size + len(cache[feature])
+            total_size += len(cache[feature])
             if total_size > self._max_bulk_size:
                 keys_list = list(cache[feature])
                 chunk_list = self._chunks(keys_list)

@@ -25,8 +25,7 @@ class SSEClientTests(object):
         def runner():
             """SSE client runner thread."""
             assert client.start('http://127.0.0.1:' + str(server.port()))
-        client_task = threading.Thread(target=runner)
-        client_task.setDaemon(True)
+        client_task = threading.Thread(target=runner, daemon=True)
         client_task.setName('client')
         client_task.start()
         with pytest.raises(RuntimeError):
@@ -66,8 +65,7 @@ class SSEClientTests(object):
         def runner():
             """SSE client runner thread."""
             assert client.start('http://127.0.0.1:' + str(server.port()))
-        client_task = threading.Thread(target=runner)
-        client_task.setDaemon(True)
+        client_task = threading.Thread(target=runner, daemon=True)
         client_task.setName('client')
         client_task.start()
 
@@ -93,7 +91,7 @@ class SSEClientTests(object):
         """Test correct initialization. Server ends connection."""
         server = SSEMockServer()
         server.start()
- 
+
         events = []
         def callback(event):
             """Callback."""
@@ -104,8 +102,7 @@ class SSEClientTests(object):
         def runner():
             """SSE client runner thread."""
             assert client.start('http://127.0.0.1:' + str(server.port()))
-        client_task = threading.Thread(target=runner)
-        client_task.setDaemon(True)
+        client_task = threading.Thread(target=runner, daemon=True)
         client_task.setName('client')
         client_task.start()
 

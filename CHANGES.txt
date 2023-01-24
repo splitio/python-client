@@ -1,3 +1,18 @@
+9.3.0-rc1 (Jan 20, 2023)
+- Updated SDK telemetry storage, metrics and updater to be more effective and send less often.
+- Removed deprecated threading.Thread.setDaemon() method.
+
+9.2.2 (Dec 13, 2022)
+- Fixed RedisSenderAdapter instantiation to store mtk keys.
+
+9.2.1 (Dec 2, 2022)
+- Changed redis record type for impressions counts from list using rpush to hashed key using hincrby.
+- Apply Timeout Exception when incorrect SDK API Key is used.
+- Changed potential initial fetching segment Warning to Debug in logging.
+
+9.2.0 (Oct 14, 2022)
+- Added a new impressions mode for the SDK called NONE , to be used in factory when there is no desire to capture impressions on an SDK factory to feed Split's analytics engine. Running NONE mode, the SDK will only capture unique keys evaluated for a particular feature flag instead of full blown impressions
+
 9.1.3 (July 25, 2022)
 - Fixed synching missed segment(s) after receiving split update
 

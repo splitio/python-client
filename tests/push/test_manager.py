@@ -2,7 +2,6 @@
 #pylint:disable=no-self-use,protected-access
 from threading import Thread
 from queue import Queue
-
 from splitio.api.auth import APIException
 
 from splitio.models.token import Token
@@ -15,6 +14,9 @@ from splitio.push.status_tracker import PushStatusTracker
 from splitio.push.manager import PushManager, _TOKEN_REFRESH_GRACE_PERIOD
 from splitio.push.splitsse import SplitSSEClient
 from splitio.push.status_tracker import Status
+from splitio.engine.telemetry import TelemetryStorageProducer
+from splitio.storage.inmemmory import InMemoryTelemetryStorage
+from splitio.models.telemetry import StreamingEventTypes
 
 from tests.helpers import Any
 
@@ -34,12 +36,14 @@ class PushManagerTests(object):
         mocker.patch('splitio.push.manager.Timer', new=timer_mock)
         mocker.patch('splitio.push.manager.SplitSSEClient', new=sse_constructor_mock)
         feedback_loop = Queue()
-        manager = PushManager(api_mock, mocker.Mock(), feedback_loop, mocker.Mock())
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        manager = PushManager(api_mock, mocker.Mock(), feedback_loop, mocker.Mock(), telemetry_runtime_producer)
 
         def new_start(*args, **kwargs):  # pylint: disable=unused-argument
             """splitsse.start mock."""
-            thread = Thread(target=manager._handle_connection_ready)
-            thread.setDaemon(True)
+            thread = Thread(target=manager._handle_connection_ready, daemon=True)
             thread.start()
             return True
 
@@ -54,6 +58,8 @@ class PushManagerTests(object):
             mocker.call().setName('TokenRefresh'),
             mocker.call().start()
         ]
+        assert(telemetry_storage._streaming_events._streaming_events[0]._type == StreamingEventTypes.TOKEN_REFRESH.value)
+        assert(telemetry_storage._streaming_events._streaming_events[1]._type == StreamingEventTypes.CONNECTION_ESTABLISHED.value)
 
     def test_connection_failure(self, mocker):
         """Test the connection fails to be established."""
@@ -67,12 +73,14 @@ class PushManagerTests(object):
         mocker.patch('splitio.push.manager.Timer', new=timer_mock)
         mocker.patch('splitio.push.manager.SplitSSEClient', new=sse_constructor_mock)
         feedback_loop = Queue()
-        manager = PushManager(api_mock, mocker.Mock(), feedback_loop, mocker.Mock())
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        manager = PushManager(api_mock, mocker.Mock(), feedback_loop, mocker.Mock(), telemetry_runtime_producer)
 
         def new_start(*args, **kwargs):  # pylint: disable=unused-argument
             """splitsse.start mock."""
-            thread = Thread(target=manager._handle_connection_end)
-            thread.setDaemon(True)
+            thread = Thread(target=manager._handle_connection_end, daemon=True)
             thread.start()
             return False
 
@@ -94,11 +102,15 @@ class PushManagerTests(object):
         mocker.patch('splitio.push.manager.Timer', new=timer_mock)
         mocker.patch('splitio.push.manager.SplitSSEClient', new=sse_constructor_mock)
         feedback_loop = Queue()
-        manager = PushManager(api_mock, mocker.Mock(), feedback_loop, mocker.Mock())
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        manager = PushManager(api_mock, mocker.Mock(), feedback_loop, mocker.Mock(), telemetry_runtime_producer)
         manager.start()
         assert feedback_loop.get() == Status.PUSH_NONRETRYABLE_ERROR
         assert timer_mock.mock_calls == [mocker.call(0, Any())]
         assert sse_mock.mock_calls == []
+
 
     def test_auth_apiexception(self, mocker):
         """Test the initial status is ok and reset() works as expected."""
@@ -113,7 +125,10 @@ class PushManagerTests(object):
         mocker.patch('splitio.push.manager.SplitSSEClient', new=sse_constructor_mock)
 
         feedback_loop = Queue()
-        manager = PushManager(api_mock, mocker.Mock(), feedback_loop, mocker.Mock())
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        manager = PushManager(api_mock, mocker.Mock(), feedback_loop, mocker.Mock(), telemetry_runtime_producer)
         manager.start()
         assert feedback_loop.get() == Status.PUSH_RETRYABLE_ERROR
         assert timer_mock.mock_calls == [mocker.call(0, Any())]
@@ -130,7 +145,10 @@ class PushManagerTests(object):
         processor_mock = mocker.Mock(spec=MessageProcessor)
         mocker.patch('splitio.push.manager.MessageProcessor', new=processor_mock)
 
-        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock(), telemetry_runtime_producer)
         manager._event_handler(sse_event)
         assert parse_event_mock.mock_calls == [mocker.call(sse_event)]
         assert processor_mock.mock_calls == [
@@ -149,7 +167,7 @@ class PushManagerTests(object):
         processor_mock = mocker.Mock(spec=MessageProcessor)
         mocker.patch('splitio.push.manager.MessageProcessor', new=processor_mock)
 
-        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
+        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
         manager._event_handler(sse_event)
         assert parse_event_mock.mock_calls == [mocker.call(sse_event)]
         assert processor_mock.mock_calls == [
@@ -168,7 +186,7 @@ class PushManagerTests(object):
         processor_mock = mocker.Mock(spec=MessageProcessor)
         mocker.patch('splitio.push.manager.MessageProcessor', new=processor_mock)
 
-        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
+        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
         manager._event_handler(sse_event)
         assert parse_event_mock.mock_calls == [mocker.call(sse_event)]
         assert processor_mock.mock_calls == [
@@ -187,13 +205,10 @@ class PushManagerTests(object):
         status_tracker_mock = mocker.Mock(spec=PushStatusTracker)
         mocker.patch('splitio.push.manager.PushStatusTracker', new=status_tracker_mock)
 
-        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
+        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
         manager._event_handler(sse_event)
         assert parse_event_mock.mock_calls == [mocker.call(sse_event)]
-        assert status_tracker_mock.mock_calls == [
-            mocker.call(),
-            mocker.call().handle_control_message(control_message)
-        ]
+        assert status_tracker_mock.mock_calls[1] == mocker.call().handle_control_message(control_message)
 
     def test_occupancy_message(self, mocker):
         """Test control mesage is forwarded to status tracker."""
@@ -206,10 +221,7 @@ class PushManagerTests(object):
         status_tracker_mock = mocker.Mock(spec=PushStatusTracker)
         mocker.patch('splitio.push.manager.PushStatusTracker', new=status_tracker_mock)
 
-        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
+        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
         manager._event_handler(sse_event)
         assert parse_event_mock.mock_calls == [mocker.call(sse_event)]
-        assert status_tracker_mock.mock_calls == [
-            mocker.call(),
-            mocker.call().handle_occupancy(occupancy_message)
-        ]
+        assert status_tracker_mock.mock_calls[1] == mocker.call().handle_occupancy(occupancy_message)

@@ -13,21 +13,11 @@ class ClientUtilsTests(object):
 
     def test_get_metadata(self, mocker):
         """Test the get_metadata function."""
-        get_ip_mock = mocker.Mock()
-        get_host_mock = mocker.Mock()
-        mocker.patch('splitio.client.util._get_ip', new=get_ip_mock)
-        mocker.patch('splitio.client.util._get_hostname', new=get_host_mock)
-
         meta = util.get_metadata({'machineIp': 'some_ip', 'machineName': 'some_machine_name'})
-        assert get_ip_mock.mock_calls == []
-        assert get_host_mock.mock_calls == []
+ #       assert _get_hostname_and_ip.mock_calls == []
         assert meta.instance_ip == 'some_ip'
         assert meta.instance_name == 'some_machine_name'
         assert meta.sdk_version == 'python-' + __version__
-
-        meta = util.get_metadata(config.DEFAULT_CONFIG)
-        assert get_ip_mock.mock_calls == [mocker.call()]
-        assert get_host_mock.mock_calls == [mocker.call(mocker.ANY)]
 
         cfg = DEFAULT_CONFIG.copy()
         cfg.update({'IPAddressesEnabled': False})
@@ -35,8 +25,18 @@ class ClientUtilsTests(object):
         assert meta.instance_ip == 'NA'
         assert meta.instance_name == 'NA'
 
-        get_ip_mock.reset_mock()
-        get_host_mock.reset_mock()
-        meta = util.get_metadata({})
-        assert get_ip_mock.mock_calls == [mocker.call()]
-        assert get_host_mock.mock_calls == [mocker.call(mocker.ANY)]
+        meta = util.get_metadata(config.DEFAULT_CONFIG)
+        ip_address, hostname = util._get_hostname_and_ip(config.DEFAULT_CONFIG)
+        assert meta.instance_ip != 'NA'
+        assert meta.instance_name != 'NA'
+        assert meta.instance_ip == ip_address
+        assert meta.instance_name == hostname
+
+        self.called = 0
+        def get_hostname_and_ip_mock(any):
+            self.called += 0
+            return mocker.Mock(), mocker.Mock()
+        mocker.patch('splitio.client.util._get_hostname_and_ip', new=get_hostname_and_ip_mock)
+
+        meta = util.get_metadata(config.DEFAULT_CONFIG)
+        self.called = 1

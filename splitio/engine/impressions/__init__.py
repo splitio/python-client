@@ -7,7 +7,6 @@ from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchron
 from splitio.sync.impression import ImpressionsCountSynchronizer
 from splitio.tasks.impressions_sync import ImpressionsCountSyncTask
 
-
 def set_classes(storage_mode, impressions_mode, api_adapter):
     unique_keys_synchronizer = None
     clear_filter_sync = None
@@ -15,19 +14,21 @@ def set_classes(storage_mode, impressions_mode, api_adapter):
     clear_filter_task = None
     impressions_count_sync = None
     impressions_count_task = None
+    sender_adapter = None
     if storage_mode == 'REDIS':
-        redis_sender_adapter = RedisSenderAdapter(api_adapter)
-        api_telemetry_adapter = redis_sender_adapter
-        api_impressions_adapter = redis_sender_adapter
+        sender_adapter = RedisSenderAdapter(api_adapter)
+        api_telemetry_adapter = sender_adapter
+        api_impressions_adapter = sender_adapter
     else:
         api_telemetry_adapter = api_adapter['telemetry']
         api_impressions_adapter = api_adapter['impressions']
+        sender_adapter = InMemorySenderAdapter(api_telemetry_adapter)
 
     if impressions_mode == ImpressionsMode.NONE:
         imp_counter = ImpressionsCounter()
         imp_strategy = StrategyNoneMode(imp_counter)
         clear_filter_sync = ClearFilterSynchronizer(imp_strategy.get_unique_keys_tracker())
-        unique_keys_synchronizer = UniqueKeysSynchronizer(InMemorySenderAdapter(api_telemetry_adapter), imp_strategy.get_unique_keys_tracker())
+        unique_keys_synchronizer = UniqueKeysSynchronizer(sender_adapter, imp_strategy.get_unique_keys_tracker())
         unique_keys_task = UniqueKeysSyncTask(unique_keys_synchronizer.send_all)
         clear_filter_task = ClearFilterSyncTask(clear_filter_sync.clear_all)
         imp_strategy.get_unique_keys_tracker().set_queue_full_hook(unique_keys_task.flush)
