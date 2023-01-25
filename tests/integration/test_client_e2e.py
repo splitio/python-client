@@ -90,6 +90,13 @@ class InMemoryIntegrationTests(object):
         as_tup_set = set((i.feature_name, i.matching_key, i.treatment) for i in impressions)
         assert as_tup_set == set(to_validate)
 
+    def _validate_last_events(self, client, *to_validate):
+        """Validate the last N impressions are present disregarding the order."""
+        event_storage = client._factory._get_storage('events')
+        events = event_storage.pop_many(len(to_validate))
+        as_tup_set = set((i.key, i.traffic_type_name, i.event_type_id, i.value, str(i.properties)) for i in events)
+        assert as_tup_set == set(to_validate)
+
     def test_get_treatment(self):
         """Test client.get_treatment()."""
         try:
@@ -269,6 +276,21 @@ class InMemoryIntegrationTests(object):
             ('sample_feature', 'invalidKey', 'off'),
         )
 
+    def test_track(self):
+        """Test client.track()."""
+        try:
+            client = self.factory.client()
+        except:
+            pass
+        assert(client.track('user1', 'user', 'conversion', 1, {"prop1": "value1"}))
+        assert(not client.track(None, 'user', 'conversion'))
+        assert(not client.track('user1', None, 'conversion'))
+        assert(not client.track('user1', 'user', None))
+        self._validate_last_events(
+            client,
+            ('user1', 'user', 'conversion', 1, "{'prop1': 'value1'}")
+        )
+
     def test_manager_methods(self):
         """Test manager.split/splits."""
         try:
@@ -356,6 +378,13 @@ class InMemoryOptimizedIntegrationTests(object):
         imp_storage = client._factory._get_storage('impressions')
         impressions = imp_storage.pop_many(len(to_validate))
         as_tup_set = set((i.feature_name, i.matching_key, i.treatment) for i in impressions)
+        assert as_tup_set == set(to_validate)
+
+    def _validate_last_events(self, client, *to_validate):
+        """Validate the last N impressions are present disregarding the order."""
+        event_storage = client._factory._get_storage('events')
+        events = event_storage.pop_many(len(to_validate))
+        as_tup_set = set((i.key, i.traffic_type_name, i.event_type_id, i.value, str(i.properties)) for i in events)
         assert as_tup_set == set(to_validate)
 
     def test_get_treatment(self):
@@ -529,6 +558,17 @@ class InMemoryOptimizedIntegrationTests(object):
         assert len(manager.split_names()) == 7
         assert len(manager.splits()) == 7
 
+    def test_track(self):
+        """Test client.track()."""
+        client = self.factory.client()
+        assert(client.track('user1', 'user', 'conversion', 1, {"prop1": "value1"}))
+        assert(not client.track(None, 'user', 'conversion'))
+        assert(not client.track('user1', None, 'conversion'))
+        assert(not client.track('user1', 'user', None))
+        self._validate_last_events(
+            client,
+            ('user1', 'user', 'conversion', 1, "{'prop1': 'value1'}")
+        )
 
 class RedisIntegrationTests(object):
     """Redis storage-based integration tests."""
@@ -580,6 +620,20 @@ class RedisIntegrationTests(object):
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     )  # pylint:disable=attribute-defined-outside-init
+
+    def _validate_last_events(self, client, *to_validate):
+        """Validate the last N impressions are present disregarding the order."""
+        event_storage = client._factory._get_storage('events')
+        redis_client = event_storage._redis
+        events_raw = [
+            json.loads(redis_client.lpop(event_storage._EVENTS_KEY_TEMPLATE))
+            for _ in to_validate
+        ]
+        as_tup_set = set(
+            (i['e']['key'], i['e']['trafficTypeName'], i['e']['eventTypeId'], i['e']['value'], str(i['e']['properties']))
+            for i in events_raw
+        )
+        assert as_tup_set == set(to_validate)
 
     def _validate_last_impressions(self, client, *to_validate):
         """Validate the last N impressions are present disregarding the order."""
@@ -763,6 +817,18 @@ class RedisIntegrationTests(object):
             ('all_feature', 'invalidKey', 'on'),
             ('killed_feature', 'invalidKey', 'defTreatment'),
             ('sample_feature', 'invalidKey', 'off'),
+        )
+
+    def test_track(self):
+        """Test client.track()."""
+        client = self.factory.client()
+        assert(client.track('user1', 'user', 'conversion', 1, {"prop1": "value1"}))
+        assert(not client.track(None, 'user', 'conversion'))
+        assert(not client.track('user1', None, 'conversion'))
+        assert(not client.track('user1', 'user', None))
+        self._validate_last_events(
+            client,
+            ('user1', 'user', 'conversion', 1, "{'prop1': 'value1'}")
         )
 
     def test_manager_methods(self):
