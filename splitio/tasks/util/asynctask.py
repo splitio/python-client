@@ -128,8 +128,7 @@ class AsyncTask(object):  # pylint: disable=too-many-instance-attributes
 
         # Start execution
         self._thread = threading.Thread(target=self._execution_wrapper,
-                                        name='AsyncTask::' + getattr(self._main, '__name__', 'N/S'))
-        self._thread.setDaemon(True)
+                                        name='AsyncTask::' + getattr(self._main, '__name__', 'N/S'), daemon=True)
         try:
             self._thread.start()
 

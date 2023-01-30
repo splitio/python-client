@@ -2,7 +2,7 @@
 import os.path
 import logging
 
-from splitio.engine.impressions.impressions import ImpressionsMode
+from splitio.engine.impressions import ImpressionsMode
 
 
 _LOGGER = logging.getLogger(__name__)

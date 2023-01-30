@@ -1,5 +1,5 @@
 import threading
-from splitio import util
+from splitio.util.time import utctime_ms
 from splitio.models.impressions import Impression
 from splitio.engine.hashfns import murmur_128
 from splitio.engine.cache.lru import SimpleLruCache
@@ -31,7 +31,7 @@ def truncate_impressions_time(imps, counter = None):
     :returns: truncated list of impressions
     :rtype: list[splitio.models.impression.Impression]
     """
-    this_hour = truncate_time(util.utctime_ms())
+    this_hour = truncate_time(utctime_ms())
     return [imp for imp, _ in imps] if counter is None \
         else [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour]
 

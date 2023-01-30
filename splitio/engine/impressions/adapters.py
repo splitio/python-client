@@ -99,7 +99,8 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
                 pipe.hincrby(self.IMP_COUNT_QUEUE_KEY, pf_count.feature + "::" + str(pf_count.timeframe), pf_count.count)
                 counted += pf_count.count
             resulted = sum(pipe.execute())
-            self._expire_keys(self.IMP_COUNT_QUEUE_KEY, self.IMP_COUNT_KEY_DEFAULT_TTL, resulted, counted)
+            self._expire_keys(self.IMP_COUNT_QUEUE_KEY,
+                              self.IMP_COUNT_KEY_DEFAULT_TTL, resulted, counted)
             return True
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add counters to redis')

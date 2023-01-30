@@ -1,3 +1,7 @@
+9.3.0 (Jan 30, 2023)
+- Updated SDK telemetry storage, metrics and updater to be more effective and send less often.
+- Removed deprecated threading.Thread.setDaemon() method.
+
 9.2.2 (Dec 13, 2022)
 - Fixed RedisSenderAdapter instantiation to store mtk keys.
 

@@ -4,13 +4,13 @@ import logging
 from threading import Timer
 
 from splitio.api import APIException
+from splitio.util.time import get_current_epoch_time_ms
 from splitio.push.splitsse import SplitSSEClient
 from splitio.push.parser import parse_incoming_event, EventParsingException, EventType, \
     MessageType
 from splitio.push.processor import MessageProcessor
 from splitio.push.status_tracker import PushStatusTracker, Status
-
-
+from splitio.models.telemetry import StreamingEventTypes
 _TOKEN_REFRESH_GRACE_PERIOD = 10 * 60  # 10 minutes
 
 
@@ -20,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 class PushManager(object):  # pylint:disable=too-many-instance-attributes
     """Push notifications susbsytem manager."""
 
-    def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, sse_url=None, client_key=None):
+    def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None):
         """
         Class constructor.
 
@@ -45,7 +45,7 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         self._auth_api = auth_api
         self._feedback_loop = feedback_loop
         self._processor = MessageProcessor(synchronizer)
-        self._status_tracker = PushStatusTracker()
+        self._status_tracker = PushStatusTracker(telemetry_runtime_producer)
         self._event_handlers = {
             EventType.MESSAGE: self._handle_message,
             EventType.ERROR: self._handle_error
@@ -62,6 +62,8 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
                                           self._handle_connection_end, client_key, **kwargs)
         self._running = False
         self._next_refresh = Timer(0, lambda: 0)
+        self._telemetry_runtime_producer = telemetry_runtime_producer
+
 
     def update_workers_status(self, enabled):
         """
@@ -144,13 +146,15 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         if not token.push_enabled:
             self._feedback_loop.put(Status.PUSH_NONRETRYABLE_ERROR)
             return
-
+        self._telemetry_runtime_producer.record_token_refreshes()
         _LOGGER.debug("auth token fetched. connecting to streaming.")
+
         self._status_tracker.reset()
         if self._sse_client.start(token):
             _LOGGER.debug("connected to streaming, scheduling next refresh")
             self._setup_next_token_refresh(token)
             self._running = True
+            self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.CONNECTION_ESTABLISHED, 0,  get_current_epoch_time_ms()))
 
     def _setup_next_token_refresh(self, token):
         """
@@ -165,6 +169,7 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
                                    self._token_refresh)
         self._next_refresh.setName('TokenRefresh')
         self._next_refresh.start()
+        self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.TOKEN_REFRESH, 1000 * token.exp,  get_current_epoch_time_ms()))
 
     def _handle_message(self, event):
         """

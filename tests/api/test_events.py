@@ -1,11 +1,15 @@
 """Impressions API tests module."""
 
 import pytest
+import unittest.mock as mock
+
 from splitio.api import events, client, APIException
 from splitio.models.events import Event
 from splitio.client.util import get_metadata
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.version import __version__
+from splitio.engine.telemetry import TelemetryStorageProducer
+from splitio.storage.inmemmory import InMemoryTelemetryStorage
 
 
 class EventsAPITests(object):
@@ -23,6 +27,7 @@ class EventsAPITests(object):
         {'key': 'k4', 'trafficTypeName': 'user', 'eventTypeId': 'purchase', 'value': None, 'timestamp': 123456, 'properties': None},
     ]
 
+    @mock.patch('splitio.engine.telemetry.TelemetryRuntimeProducer.record_sync_latency')
     def test_post_events(self, mocker):
         """Test impressions posting API call."""
         httpclient = mocker.Mock(spec=client.HttpClient)
@@ -30,9 +35,13 @@ class EventsAPITests(object):
         cfg = DEFAULT_CONFIG.copy()
         cfg.update({'IPAddressesEnabled': True, 'machineName': 'some_machine_name', 'machineIp': '123.123.123.123'})
         sdk_metadata = get_metadata(cfg)
-        events_api = events.EventsAPI(httpclient, 'some_api_key', sdk_metadata)
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        events_api = events.EventsAPI(httpclient, 'some_api_key', sdk_metadata, telemetry_runtime_producer)
         response = events_api.flush_events(self.events)
 
+        assert(mocker.called)
         call_made = httpclient.post.mock_calls[0]
 
         # validate positional arguments
@@ -64,7 +73,7 @@ class EventsAPITests(object):
         cfg = DEFAULT_CONFIG.copy()
         cfg.update({'IPAddressesEnabled': False})
         sdk_metadata = get_metadata(cfg)
-        events_api = events.EventsAPI(httpclient, 'some_api_key', sdk_metadata)
+        events_api = events.EventsAPI(httpclient, 'some_api_key', sdk_metadata, mocker.Mock())
         response = events_api.flush_events(self.events)
 
         call_made = httpclient.post.mock_calls[0]

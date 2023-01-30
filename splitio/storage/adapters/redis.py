@@ -14,7 +14,6 @@ except ImportError:
         )
     StrictRedis = Sentinel = missing_redis_dependencies
 
-
 class RedisAdapterException(Exception):
     """Exception to be thrown when a redis command fails with an exception."""
 
@@ -303,7 +302,6 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
             return RedisPipelineAdapter(self._decorated, self._prefix_helper)
         except RedisError as exc:
             raise RedisAdapterException('Error executing ttl operation') from exc
-
 
 class RedisPipelineAdapter(object):
     """
