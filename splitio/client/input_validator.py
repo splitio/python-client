@@ -446,7 +446,7 @@ def validate_attributes(attributes, method_name):
 class _ApiLogFilter(logging.Filter):  # pylint: disable=too-few-public-methods
     def filter(self, record):
         return record.name not in ('SegmentsAPI', 'HttpClient')
-        
+
 
 def validate_factory_instantiation(apikey):
     """

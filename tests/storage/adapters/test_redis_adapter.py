@@ -55,6 +55,12 @@ class RedisStorageAdapterTests(object):
         adapter.incr('key1')
         assert redis_mock.incr.mock_calls[0] == mocker.call('some_prefix.key1', 1)
 
+        adapter.hincrby('key1', 'name1')
+        assert redis_mock.hincrby.mock_calls[0] == mocker.call('some_prefix.key1', 'name1', 1)
+
+        adapter.hincrby('key1', 'name1', 5)
+        assert redis_mock.hincrby.mock_calls[1] == mocker.call('some_prefix.key1', 'name1', 5)
+
         adapter.getset('key1', 'new_value')
         assert redis_mock.getset.mock_calls[0] == mocker.call('some_prefix.key1', 'new_value')
 
@@ -194,3 +200,9 @@ class RedisPipelineAdapterTests(object):
 
         adapter.incr('key1')
         assert redis_mock_2.incr.mock_calls[0] == mocker.call('some_prefix.key1', 1)
+
+        adapter.hincrby('key1', 'name1')
+        assert redis_mock_2.hincrby.mock_calls[0] == mocker.call('some_prefix.key1', 'name1', 1)
+
+        adapter.hincrby('key1', 'name1', 5)
+        assert redis_mock_2.hincrby.mock_calls[1] == mocker.call('some_prefix.key1', 'name1', 5)
