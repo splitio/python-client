@@ -1,5 +1,7 @@
 import logging
 import time
+import json
+import hashlib
 
 from splitio.api import APIException
 from splitio.api.commons import FetchOptions
@@ -174,13 +176,124 @@ class SegmentSynchronizer(object):
         """
         if segment_names is None:
             segment_names = self._split_storage.get_segment_names()
-            
+
         for segment_name in segment_names:
             self._worker_pool.submit_work(segment_name)
         if (dont_wait):
             return True
         return not self._worker_pool.wait_for_completion()
-    
+
+    def segment_exist_in_storage(self, segment_name):
+        """
+        Check if a segment exists in the storage
+
+        :param segment_name: Name of the segment
+        :type segment_name: str
+
+        :return: True if segment exist. False otherwise.
+        :rtype: bool
+        """
+        return self._segment_storage.get(segment_name) != None
+
+class LocalSegmentSynchronizer(object):
+    def __init__(self, segment_folder, split_storage, segment_storage):
+        """
+        Class constructor.
+
+        :param segment_api: API to retrieve segments from backend.
+        :type segment_api: splitio.api.SegmentApi
+
+        :param split_storage: Split Storage.
+        :type split_storage: splitio.storage.InMemorySplitStorage
+
+        :param segment_storage: Segment storage reference.
+        :type segment_storage: splitio.storage.SegmentStorage
+
+        """
+        self._segment_folder = segment_folder
+        self._split_storage = split_storage
+        self._segment_storage = segment_storage
+
+    def synchronize_segment(self, segment_name, till=None):
+        """
+        Update a segment from queue
+
+        :param segment_name: Name of the segment to update.
+        :type segment_name: str
+
+        :param till: ChangeNumber received.
+        :type till: int
+
+        :return: True if no error occurs. False otherwise.
+        :rtype: bool
+        """
+        try:
+            fetched = self._read_segment_from_json_file(segment_name)
+            if not self.segment_exist_in_storage(segment_name):
+                    self._segment_storage.put(segments.from_raw(fetched))
+                    self._segment_storage.set_change_number(segment_name, self._get_sha(json.dumps(fetched)))
+                    _LOGGER.debug("segment %s is added to storage", segment_name)
+            else:
+                if self._segment_storage.get_change_number(segment_name) != self._get_sha(json.dumps(fetched)):
+                    self._segment_storage.update(
+                        segment_name,
+                        fetched['added'],
+                        fetched['removed'],
+                        self._get_sha(json.dumps(fetched))
+                    )
+                    _LOGGER.debug("segment %s is updated", segment_name)
+        except Exception as e:
+            _LOGGER.error("Could not fetch segment: %s \n" + str(e), segment_name)
+
+        return True
+
+    def _get_sha(self, fetched):
+        return hashlib.sha256(fetched.encode()).hexdigest()
+
+    def _read_segment_from_json_file(self, filename):
+        """
+        Parse a segment and store in segment storage.
+
+        :param filename: Path of the file containing split
+        :type filename: str.
+
+        :return: Sanitized segment structure
+        :rtype: Dict
+        """
+        try:
+            with open(self._segment_folder + '/' + filename + '.json', 'r') as flo:
+                parsed = json.load(flo)
+            santitized_segment = self._sanitize_segment(parsed)
+            return santitized_segment
+        except IOError as exc:
+            raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc
+
+    def _sanitize_segment(self, segment):
+        """To be implemented."""
+        return segment
+
+    def synchronize_segments(self, segment_names = None):
+        """
+        Submit all current segments and wait for them to finish depend on dont_wait flag, then set the ready flag.
+
+        :param segment_names: Optional, array of segment names to update.
+        :type segment_name: {str}
+
+        :param dont_wait: Optional, instruct the function to not wait for task completion
+        :type segment_name: boolean
+
+        :return: True if no error occurs or dont_wait flag is True. False otherwise.
+        :rtype: bool
+        """
+        _LOGGER.info('Synchronizing segments now.')
+        if segment_names is None:
+            segment_names = self._split_storage.get_segment_names()
+
+        for segment_name in segment_names:
+            self.synchronize_segment(segment_name)
+
+        return True
+
     def segment_exist_in_storage(self, segment_name):
         """
         Check if a segment exists in the storage
