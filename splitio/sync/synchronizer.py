@@ -550,22 +550,16 @@ class LocalhostSynchronizer(BaseSynchronizer):
                     _LOGGER.error('Failed to schedule sync one or all segment(s) below.')
                     _LOGGER.error(','.join(new_segments))
                 else:
-                    _LOGGER.debug('Segment sync successful.')
+                    _LOGGER.debug('Segment sync scheduled.')
             return True
 
         except APIException as exc:
             _LOGGER.error('Failed syncing splits')
             raise APIException('Failed to sync splits') from exc
 
-    def synchronize_segment(self, segment_names, till):
+    def synchronize_segment(self, segment_name, till):
         """Synchronize particular segment."""
-        success = self._split_synchronizers.segment_sync.synchronize_segments(segment_names, True)
-        if not success:
-            _LOGGER.error('Failed to schedule sync one or all segment(s) below.')
-            _LOGGER.error(','.join(segment_names))
-        else:
-            _LOGGER.debug('Segment sync successful.')
-        return success
+        pass
 
     def start_periodic_data_recording(self):
         """Start recorders."""

@@ -362,15 +362,6 @@ class LocalhostSynchronizerTests(object):
         assert(local_synchronizer.synchronize_splits())
         assert(mocker.called)
 
-    @mock.patch('splitio.sync.segment.LocalSegmentSynchronizer.synchronize_segments')
-    def test_synchronize_segments(self, mocker):
-        synchronizers = SplitSynchronizers(
-            None, LocalSegmentSynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock()), None, None, None)
-        local_synchronizer = LocalhostSynchronizer(synchronizers, mocker.Mock())
-
-        local_synchronizer.synchronize_segment(["segment1"], -1)
-        assert(mocker.called)
-
     def test_start_and_stop_tasks(self, mocker):
         synchronizers = SplitSynchronizers(
             LocalSplitSynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock()),

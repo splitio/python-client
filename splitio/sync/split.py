@@ -316,7 +316,7 @@ class LocalSplitSynchronizer(object):
         except IOError as exc:
             raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc
 
-    def synchronize_splits(self):  # pylint:disable=unused-argument
+    def synchronize_splits(self, till=None):  # pylint:disable=unused-argument
         """Update splits in storage."""
         _LOGGER.info('Synchronizing splits now.')
         if self._localhost_mode == LocalhostMode.JSON:
@@ -344,7 +344,7 @@ class LocalSplitSynchronizer(object):
         """Update splits in storage for json mode."""
         fetched, since, till = self._read_splits_from_json_file(self._filename)
         segment_list = set()
-        if self._current_till == -1 or till > self._current_till:
+        if self._split_storage.get_change_number() <= till:
             to_delete = []
             if since == -1:
                 to_delete = [name for name in self._split_storage.get_split_names()
@@ -353,12 +353,13 @@ class LocalSplitSynchronizer(object):
                 parsed = splits.from_raw(split)
                 _LOGGER.debug("split %s is updated", parsed.name)
                 self._split_storage.put(parsed)
+
                 segment_list.update(set(parsed.get_segment_names()))
 
             for split in to_delete:
                 self._split_storage.remove(split)
 
-            self._current_till = till
+            self._split_storage.set_change_number(till)
 
         return segment_list
 

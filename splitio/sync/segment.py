@@ -233,7 +233,7 @@ class LocalSegmentSynchronizer(object):
                     self._segment_storage.put(segments.from_raw(fetched))
                     _LOGGER.debug("segment %s is added to storage", segment_name)
             else:
-                if self._segment_storage.get_change_number(segment_name) < fetched['till']:
+                if self._segment_storage.get_change_number(segment_name) <= fetched['till']:
                     self._segment_storage.update(
                         segment_name,
                         fetched['added'],
