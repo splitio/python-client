@@ -248,23 +248,24 @@ class LocalSegmentsSynchronizerTests(object):
         assert segment.contains('key8')
         assert segment.contains('key9')
 
-        # Should not sync when changenumber is not changed
+        # Should sync when changenumber is not changed
         segment_a['added'] = ['key111']
         segments_synchronizer.synchronize_segments(['segmentA'])
         segment = storage.get('segmentA')
-        assert not segment.contains('key111')
+        assert segment.contains('key111')
 
         # Should not sync when changenumber below till
         segment_a['till'] = 122
+        segment_a['added'] = ['key222']
         segments_synchronizer.synchronize_segments(['segmentA'])
         segment = storage.get('segmentA')
-        assert not segment.contains('key111')
+        assert not segment.contains('key222')
 
         # Should sync when changenumber above till
         segment_a['till'] = 124
         segments_synchronizer.synchronize_segments(['segmentA'])
         segment = storage.get('segmentA')
-        assert segment.contains('key111')
+        assert segment.contains('key222')
 
         # verify remove keys
         segment_a['added'] = []

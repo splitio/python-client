@@ -232,7 +232,7 @@ class LocalSplitsSynchronizerTests(object):
         storage = InMemorySplitStorage()
 
         since = -1
-        till = 122
+        till = 123
         splits = [{
            'changeNumber': 123,
            'trafficTypeName': 'user',
@@ -279,23 +279,24 @@ class LocalSplitsSynchronizerTests(object):
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
 
-        # Should not sync when changenumber is not changed
+        # Should sync when changenumber is not changed
         splits[0]['killed'] = True
         split_synchronizer.synchronize_splits()
         inserted_split = storage.get(splits[0]['name'])
-        assert inserted_split.killed == False
+        assert inserted_split.killed
 
         # Should not sync when changenumber is less than stored
         till = 122
+        splits[0]['killed'] = False
         split_synchronizer.synchronize_splits()
         inserted_split = storage.get(splits[0]['name'])
-        assert inserted_split.killed == False
+        assert inserted_split.killed
 
         # Should sync when changenumber is higher than stored
         till = 124
         split_synchronizer.synchronize_splits()
         inserted_split = storage.get(splits[0]['name'])
-        assert inserted_split.killed == True
+        assert inserted_split.killed == False
 
         # Should not remove any splits from storage when are not in the load and since > -1
         since = 12
