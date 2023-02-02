@@ -52,6 +52,8 @@ DEFAULT_CONFIG = {
     'machineName': None,
     'machineIp': None,
     'splitFile': os.path.join(os.path.expanduser('~'), '.split'),
+    'segmentDirectory': os.path.expanduser('~'),
+    'localhostRefreshEnabled': False,
     'preforkedInitialization': False,
     'dataSampling': DEFAULT_DATA_SAMPLING,
 }

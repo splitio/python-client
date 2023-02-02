@@ -518,15 +518,19 @@ class LocalhostSynchronizer(BaseSynchronizer):
 
     def start_periodic_fetching(self):
         """Start fetchers for splits and segments."""
-        _LOGGER.debug('Starting periodic data fetching')
-        self._split_tasks.split_task.start()
-        self._split_tasks.segment_task.start()
+        if self._split_tasks.split_task is not None:
+            _LOGGER.debug('Starting periodic data fetching')
+            self._split_tasks.split_task.start()
+        if self._split_tasks.segment_task is not None:
+            self._split_tasks.segment_task.start()
 
     def stop_periodic_fetching(self):
         """Stop fetchers for splits and segments."""
-        _LOGGER.debug('Stopping periodic fetching')
-        self._split_tasks.split_task.stop()
-        self._split_tasks.segment_task.stop()
+        if self._split_tasks.split_task is not None:
+            _LOGGER.debug('Stopping periodic fetching')
+            self._split_tasks.split_task.stop()
+        if self._split_tasks.segment_task is not None:
+            self._split_tasks.segment_task.stop()
 
     def kill_split(self, split_name, default_treatment, change_number):
         """Kill a split locally."""
@@ -546,7 +550,7 @@ class LocalhostSynchronizer(BaseSynchronizer):
                     _LOGGER.error('Failed to schedule sync one or all segment(s) below.')
                     _LOGGER.error(','.join(new_segments))
                 else:
-                    _LOGGER.debug('Segment sync scheduled.')
+                    _LOGGER.debug('Segment sync successful.')
             return True
 
         except APIException as exc:
@@ -560,7 +564,8 @@ class LocalhostSynchronizer(BaseSynchronizer):
             _LOGGER.error('Failed to schedule sync one or all segment(s) below.')
             _LOGGER.error(','.join(segment_names))
         else:
-            _LOGGER.debug('Segment sync scheduled.')
+            _LOGGER.debug('Segment sync successful.')
+        return success
 
     def start_periodic_data_recording(self):
         """Start recorders."""

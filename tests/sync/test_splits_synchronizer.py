@@ -1,12 +1,16 @@
 """Split Worker tests."""
 
 import pytest
+import os
+import json
 
 from splitio.util.backoff import Backoff
 from splitio.api import APIException
 from splitio.api.commons import FetchOptions
 from splitio.storage import SplitStorage
+from splitio.storage.inmemmory import InMemorySplitStorage
 from splitio.models.splits import Split
+from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer, LocalhostMode
 
 
 class SplitsSynchronizerTests(object):
@@ -23,7 +27,6 @@ class SplitsSynchronizerTests(object):
         api.fetch_splits.side_effect = run
         storage.get_change_number.return_value = -1
 
-        from splitio.sync.split import SplitSynchronizer
         split_synchronizer = SplitSynchronizer(api, storage)
 
         with pytest.raises(APIException):
@@ -95,7 +98,6 @@ class SplitsSynchronizerTests(object):
         get_changes.called = 0
         api.fetch_splits.side_effect = get_changes
 
-        from splitio.sync.split import SplitSynchronizer
         split_synchronizer = SplitSynchronizer(api, storage)
         split_synchronizer.synchronize_splits()
 
@@ -123,7 +125,6 @@ class SplitsSynchronizerTests(object):
         api = mocker.Mock()
         api.fetch_splits.side_effect = get_changes
 
-        from splitio.sync.split import SplitSynchronizer
         split_synchronizer = SplitSynchronizer(api, storage)
         split_synchronizer.synchronize_splits(1)
 
@@ -132,7 +133,6 @@ class SplitsSynchronizerTests(object):
     def test_synchronize_splits_cdn(self, mocker):
         """Test split sync with bypassing cdn."""
         mocker.patch('splitio.sync.split._ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES', new=3)
-        from splitio.sync.split import SplitSynchronizer
 
         storage = mocker.Mock(spec=SplitStorage)
 
@@ -215,3 +215,150 @@ class SplitsSynchronizerTests(object):
         inserted_split = storage.put.mock_calls[0][1][0]
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
+
+class LocalSplitsSynchronizerTests(object):
+    """Split synchronizer test cases."""
+
+    def test_synchronize_splits_error(self, mocker):
+        """Test that if fetching splits fails at some_point, the task will continue running."""
+        storage = mocker.Mock(spec=SplitStorage)
+        split_synchronizer = LocalSplitSynchronizer("/incorrect_file", storage)
+
+        with pytest.raises(Exception):
+            split_synchronizer.synchronize_splits(1)
+
+    def test_synchronize_splits(self, mocker):
+        """Test split sync."""
+        storage = InMemorySplitStorage()
+
+        since = -1
+        till = 122
+        splits = [{
+           'changeNumber': 123,
+           'trafficTypeName': 'user',
+           'name': 'some_name',
+           'trafficAllocation': 100,
+           'trafficAllocationSeed': 123456,
+           'seed': 321654,
+           'status': 'ACTIVE',
+           'killed': False,
+           'defaultTreatment': 'off',
+           'algo': 2,
+           'conditions': [
+               {
+                   'partitions': [
+                       {'treatment': 'on', 'size': 50},
+                       {'treatment': 'off', 'size': 50}
+                   ],
+                   'contitionType': 'WHITELIST',
+                   'label': 'some_label',
+                   'matcherGroup': {
+                       'matchers': [
+                           {
+                               'matcherType': 'WHITELIST',
+                               'whitelistMatcherData': {
+                                   'whitelist': ['k1', 'k2', 'k3']
+                               },
+                               'negate': False,
+                           }
+                       ],
+                       'combiner': 'AND'
+                   }
+               }
+            ]
+        }]
+
+        def read_splits_from_json_file(*args, **kwargs):
+                return splits, since, till
+
+        split_synchronizer = LocalSplitSynchronizer("split.json", storage, LocalhostMode.JSON)
+        split_synchronizer._read_splits_from_json_file = read_splits_from_json_file
+
+        split_synchronizer.synchronize_splits()
+        inserted_split = storage.get(splits[0]['name'])
+        assert isinstance(inserted_split, Split)
+        assert inserted_split.name == 'some_name'
+
+        # Should not sync when changenumber is not changed
+        splits[0]['killed'] = True
+        split_synchronizer.synchronize_splits()
+        inserted_split = storage.get(splits[0]['name'])
+        assert inserted_split.killed == False
+
+        # Should not sync when changenumber is less than stored
+        till = 122
+        split_synchronizer.synchronize_splits()
+        inserted_split = storage.get(splits[0]['name'])
+        assert inserted_split.killed == False
+
+        # Should sync when changenumber is higher than stored
+        till = 124
+        split_synchronizer.synchronize_splits()
+        inserted_split = storage.get(splits[0]['name'])
+        assert inserted_split.killed == True
+
+        # Should not remove any splits from storage when are not in the load and since > -1
+        since = 12
+        splits = []
+        split_synchronizer.synchronize_splits()
+        assert storage.get_splits_count() == 1
+
+        # Should remove all splits from storage when are not in the load and since -1
+        since = -1
+        splits = []
+        split_synchronizer._current_till = -1
+        split_synchronizer.synchronize_splits()
+        assert storage.get_splits_count() == 0
+
+    def test_reading_json(self, mocker):
+        """Test reading json file."""
+        f = open("./splits.json", "w")
+        json_body = {'splits': [{
+           'changeNumber': 123,
+           'trafficTypeName': 'user',
+           'name': 'some_name',
+           'trafficAllocation': 100,
+           'trafficAllocationSeed': 123456,
+           'seed': 321654,
+           'status': 'ACTIVE',
+           'killed': False,
+           'defaultTreatment': 'off',
+           'algo': 2,
+           'conditions': [
+               {
+                   'partitions': [
+                       {'treatment': 'on', 'size': 50},
+                       {'treatment': 'off', 'size': 50}
+                   ],
+                   'contitionType': 'WHITELIST',
+                   'label': 'some_label',
+                   'matcherGroup': {
+                       'matchers': [
+                           {
+                               'matcherType': 'WHITELIST',
+                               'whitelistMatcherData': {
+                                   'whitelist': ['k1', 'k2', 'k3']
+                               },
+                               'negate': False,
+                           }
+                       ],
+                       'combiner': 'AND'
+                   }
+               }
+            ]
+        }],
+        "till":1675095324253,
+        "since":-1,
+        }
+
+        f.write(json.dumps(json_body))
+        f.close()
+        storage = InMemorySplitStorage()
+        split_synchronizer = LocalSplitSynchronizer("./splits.json", storage, LocalhostMode.JSON)
+        split_synchronizer.synchronize_splits()
+
+        inserted_split = storage.get(json_body['splits'][0]['name'])
+        assert isinstance(inserted_split, Split)
+        assert inserted_split.name == 'some_name'
+
+        os.remove("./splits.json")

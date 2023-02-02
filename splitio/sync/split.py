@@ -5,7 +5,6 @@ import itertools
 import yaml
 import time
 import json
-import hashlib
 from enum import Enum
 
 from splitio.api import APIException
@@ -155,14 +154,15 @@ class SplitSynchronizer(object):
 
 class LocalhostMode(Enum):
     """types for localhost modes"""
-    LEGACY_YAML = 0
-    JSON = 1
+    LEGACY = 0
+    YAML = 1
+    JSON = 2
 
 class LocalSplitSynchronizer(object):
     """Localhost mode split synchronizer."""
 
 
-    def __init__(self, filename, split_storage, localhost_mode=LocalhostMode.LEGACY_YAML):
+    def __init__(self, filename, split_storage, localhost_mode=LocalhostMode.LEGACY):
         """
         Class constructor.
 
@@ -170,13 +170,13 @@ class LocalSplitSynchronizer(object):
         :type filename: str
         :param split_storage: Split Storage.
         :type split_storage: splitio.storage.InMemorySplitStorage
-        :param localhost_mode: mode for localhost either JSON or YAML.
-        :type split_storage: splitio.storage.InMemorySplitStorage
+        :param localhost_mode: mode for localhost either JSON, YAML or LEGACY.
+        :type localhost_mode: splitio.sync.split.LocalhostMode
         """
         self._filename = filename
         self._split_storage = split_storage
         self._localhost_mode = localhost_mode
-        self._current_json_sha = "-1"
+        self._current_till = -1
 
     @staticmethod
     def _make_split(split_name, conditions, configs=None):
@@ -319,10 +319,10 @@ class LocalSplitSynchronizer(object):
     def synchronize_splits(self):  # pylint:disable=unused-argument
         """Update splits in storage."""
         _LOGGER.info('Synchronizing splits now.')
-        if self._localhost_mode == LocalhostMode.LEGACY_YAML:
-            return self._synchronize_legacy()
-        else:
+        if self._localhost_mode == LocalhostMode.JSON:
             return self._synchronize_json()
+        else:
+            return self._synchronize_legacy()
 
     def _synchronize_legacy(self):
         """Update splits in storage for legacy mode."""
@@ -338,34 +338,30 @@ class LocalSplitSynchronizer(object):
         for split in to_delete:
             self._split_storage.remove(split)
 
-        return None
+        return []
 
     def _synchronize_json(self):
         """Update splits in storage for json mode."""
-        if not self._filename.lower().endswith(('.json')):
-            raise ValueError("json File provided %s does not have .json extension." % self._filename)
-
-        fetched = self._read_splits_from_json_file(self._filename)
+        fetched, since, till = self._read_splits_from_json_file(self._filename)
         segment_list = set()
-        if self._current_json_sha == "-1" or self._get_sha(json.dumps(fetched)) != self._current_json_sha:
-            to_delete = [name for name in self._split_storage.get_split_names()
-                        if name not in json.dumps(fetched)]
+        if self._current_till == -1 or till > self._current_till:
+            to_delete = []
+            if since == -1:
+                to_delete = [name for name in self._split_storage.get_split_names()
+                            if name not in json.dumps(fetched)]
             for split in fetched:
                 parsed = splits.from_raw(split)
+                _LOGGER.debug("split %s is updated", parsed.name)
                 self._split_storage.put(parsed)
                 segment_list.update(set(parsed.get_segment_names()))
 
             for split in to_delete:
                 self._split_storage.remove(split)
 
-            self._current_json_sha = self._get_sha(json.dumps(fetched))
+            self._current_till = till
 
         return segment_list
 
-    def _get_sha(self, fetched):
-        return hashlib.sha256(fetched.encode()).hexdigest()
-
-    @classmethod
     def _read_splits_from_json_file(self, filename):
         """
         Parse a splits file and return a populated storage.
@@ -373,18 +369,20 @@ class LocalSplitSynchronizer(object):
         :param filename: Path of the file containing split
         :type filename: str.
 
-        :return: Sanitized split structure
-        :rtype: Dict
+        :return: Tuple: sanitized split structure dict, since and till
+        :rtype: Tuple(Dict, int, int)
         """
         try:
             with open(filename, 'r') as flo:
-                parsed = json.load(flo)['splits']
+                json_obj = json.load(flo)
+                since = json_obj['since']
+                till = json_obj['till']
+                parsed = json_obj['splits']
             santitized_split = self._sanitize_split(parsed)
-            return santitized_split
+            return santitized_split, since, till
         except IOError as exc:
             raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc
 
-    @classmethod
     def _sanitize_split(self, split):
         """To be implemented."""
         return split
