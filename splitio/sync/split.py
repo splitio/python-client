@@ -338,7 +338,7 @@ class LocalSplitSynchronizer(object):
         for split in to_delete:
             self._split_storage.remove(split)
 
-        return None
+        return []
 
     def _synchronize_json(self):
         """Update splits in storage for json mode."""
