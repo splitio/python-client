@@ -232,6 +232,7 @@ class LocalSplitsSynchronizerTests(object):
         storage = InMemorySplitStorage()
 
         since = -1
+        till = 122
         splits = [{
            'changeNumber': 123,
            'trafficTypeName': 'user',
@@ -268,7 +269,7 @@ class LocalSplitsSynchronizerTests(object):
         }]
 
         def read_splits_from_json_file(*args, **kwargs):
-                return splits, since
+                return splits, since, till
 
         split_synchronizer = LocalSplitSynchronizer("split.json", storage, LocalhostMode.JSON)
         split_synchronizer._read_splits_from_json_file = read_splits_from_json_file
@@ -285,13 +286,13 @@ class LocalSplitsSynchronizerTests(object):
         assert inserted_split.killed == False
 
         # Should not sync when changenumber is less than stored
-        splits[0]['changeNumber'] = 122
+        till = 122
         split_synchronizer.synchronize_splits()
         inserted_split = storage.get(splits[0]['name'])
         assert inserted_split.killed == False
 
         # Should sync when changenumber is higher than stored
-        splits[0]['changeNumber'] = 124
+        till = 124
         split_synchronizer.synchronize_splits()
         inserted_split = storage.get(splits[0]['name'])
         assert inserted_split.killed == True
@@ -304,7 +305,8 @@ class LocalSplitsSynchronizerTests(object):
 
         # Should remove all splits from storage when are not in the load and since -1
         since = -1
-        split_synchronizer._current_json_sha = "-1"
+        splits = []
+        split_synchronizer._current_till = -1
         split_synchronizer.synchronize_splits()
         assert storage.get_splits_count() == 0
 
