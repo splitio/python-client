@@ -241,7 +241,6 @@ class LocalSegmentSynchronizer(object):
                         fetched['till']
                     )
                     _LOGGER.debug("segment %s is updated", segment_name)
-                    _LOGGER.debug(self._segment_storage.get_segments_keys_count())
         except Exception as e:
             _LOGGER.error("Could not fetch segment: %s \n" + str(e), segment_name)
             return False
