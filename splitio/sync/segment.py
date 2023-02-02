@@ -200,8 +200,8 @@ class LocalSegmentSynchronizer(object):
         """
         Class constructor.
 
-        :param segment_api: API to retrieve segments from backend.
-        :type segment_api: splitio.api.SegmentApi
+        :param segment_folder: patch to the segment folder
+        :type segment_folder: str
 
         :param split_storage: Split Storage.
         :type split_storage: splitio.storage.InMemorySplitStorage
@@ -231,24 +231,21 @@ class LocalSegmentSynchronizer(object):
             fetched = self._read_segment_from_json_file(segment_name)
             if not self.segment_exist_in_storage(segment_name):
                     self._segment_storage.put(segments.from_raw(fetched))
-                    self._segment_storage.set_change_number(segment_name, self._get_sha(json.dumps(fetched)))
                     _LOGGER.debug("segment %s is added to storage", segment_name)
             else:
-                if self._segment_storage.get_change_number(segment_name) != self._get_sha(json.dumps(fetched)):
+                if self._segment_storage.get_change_number(segment_name) < fetched['till']:
                     self._segment_storage.update(
                         segment_name,
                         fetched['added'],
                         fetched['removed'],
-                        self._get_sha(json.dumps(fetched))
+                        fetched['till']
                     )
                     _LOGGER.debug("segment %s is updated", segment_name)
         except Exception as e:
             _LOGGER.error("Could not fetch segment: %s \n" + str(e), segment_name)
+            return False
 
         return True
-
-    def _get_sha(self, fetched):
-        return hashlib.sha256(fetched.encode()).hexdigest()
 
     def _read_segment_from_json_file(self, filename):
         """
@@ -289,10 +286,12 @@ class LocalSegmentSynchronizer(object):
         if segment_names is None:
             segment_names = self._split_storage.get_segment_names()
 
+        return_flag = True
         for segment_name in segment_names:
-            self.synchronize_segment(segment_name)
+            if not self.synchronize_segment(segment_name):
+                return_flag = False
 
-        return True
+        return return_flag
 
     def segment_exist_in_storage(self, segment_name):
         """
