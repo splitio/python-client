@@ -47,8 +47,8 @@ from splitio.tasks.telemetry_sync import TelemetrySyncTask
 from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, \
     LocalhostSynchronizer, RedisSynchronizer
 from splitio.sync.manager import Manager, RedisManager
-from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer
-from splitio.sync.segment import SegmentSynchronizer
+from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer, LocalhostMode
+from splitio.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.sync.event import EventSynchronizer
 from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer
@@ -528,15 +528,28 @@ def _build_localhost_factory(cfg):
     }
 
     synchronizers = SplitSynchronizers(
-        LocalSplitSynchronizer(cfg['splitFile'], storages['splits']),
-        None, None, None, None,
+        LocalSplitSynchronizer(cfg['splitFile'],
+                               storages['splits'],
+                               LocalhostMode.JSON if cfg['splitFile'][-5:].lower() == '.json' else LocalhostMode.LEGACY),
+        LocalSegmentSynchronizer(cfg['segmentDirectory'], storages['splits'], storages['segments']),
+        None, None, None,
     )
 
-    tasks = SplitTasks(
-        SplitSynchronizationTask(
+    split_sync_task = None
+    segment_sync_task = None
+    if cfg['localhostRefreshEnabled']:
+        split_sync_task = SplitSynchronizationTask(
             synchronizers.split_sync.synchronize_splits,
             cfg['featuresRefreshRate'],
-        ), None, None, None, None,
+        )
+        segment_sync_task = SegmentSynchronizationTask(
+            synchronizers.segment_sync.synchronize_segments,
+            cfg['segmentsRefreshRate'],
+        )
+    tasks = SplitTasks(
+        split_sync_task,
+        segment_sync_task,
+        None, None, None,
     )
 
     sdk_metadata = util.get_metadata(cfg)
