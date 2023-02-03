@@ -271,15 +271,12 @@ class LocalSegmentSynchronizer(object):
 
     def synchronize_segments(self, segment_names = None):
         """
-        Submit all current segments and wait for them to finish depend on dont_wait flag, then set the ready flag.
+        Loop through given segment names and synchronize each one.
 
         :param segment_names: Optional, array of segment names to update.
         :type segment_name: {str}
 
-        :param dont_wait: Optional, instruct the function to not wait for task completion
-        :type segment_name: boolean
-
-        :return: True if no error occurs or dont_wait flag is True. False otherwise.
+        :return: True if no error occurs. False otherwise.
         :rtype: bool
         """
         _LOGGER.info('Synchronizing segments now.')
