@@ -161,7 +161,6 @@ class LocalhostMode(Enum):
 class LocalSplitSynchronizer(object):
     """Localhost mode split synchronizer."""
 
-
     def __init__(self, filename, split_storage, localhost_mode=LocalhostMode.LEGACY):
         """
         Class constructor.
@@ -176,7 +175,6 @@ class LocalSplitSynchronizer(object):
         self._filename = filename
         self._split_storage = split_storage
         self._localhost_mode = localhost_mode
-        self._current_till = -1
 
     @staticmethod
     def _make_split(split_name, conditions, configs=None):
@@ -325,7 +323,13 @@ class LocalSplitSynchronizer(object):
             return self._synchronize_legacy()
 
     def _synchronize_legacy(self):
-        """Update splits in storage for legacy mode."""
+        """
+        Update splits in storage for legacy mode.
+
+        :return: empty array for compatibility with json mode
+        :rtype: []
+        """
+
         if self._filename.lower().endswith(('.yaml', '.yml')):
             fetched = self._read_splits_from_yaml_file(self._filename)
         else:
@@ -341,7 +345,12 @@ class LocalSplitSynchronizer(object):
         return []
 
     def _synchronize_json(self):
-        """Update splits in storage for json mode."""
+        """
+        Update splits in storage for json mode.
+
+        :return: segment names string array
+        :rtype: [str]
+        """
         fetched, since, till = self._read_splits_from_json_file(self._filename)
         segment_list = set()
         if self._split_storage.get_change_number() <= till:
