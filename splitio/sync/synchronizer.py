@@ -307,7 +307,7 @@ class Synchronizer(BaseSynchronizer):
     def sync_all(self, max_retry_attempts=_SYNC_ALL_NO_RETRIES):
         """
         Synchronize all splits.
-        
+
         :param max_retry_attempts: apply max attempts if it set to absilute integer.
         :type max_retry_attempts: int
         """
@@ -506,39 +506,60 @@ class LocalhostSynchronizer(BaseSynchronizer):
         self._split_synchronizers = split_synchronizers
         self._split_tasks = split_tasks
 
-    def sync_all(self, max_retry_attempts=-1):
+    def sync_all(self, till=None):
         """
         Synchronize all splits.
-        
-        :param max_retry_attempts: Not used, added for compatibility
         """
         try:
-            self._split_synchronizers.split_sync.synchronize_splits(None)
+            return self.synchronize_splits()
         except APIException as exc:
-            _LOGGER.error('Failed syncing splits')
-            raise APIException('Failed to sync splits') from exc
+            _LOGGER.error('Failed syncing all')
+            raise APIException('Failed to sync all') from exc
 
     def start_periodic_fetching(self):
         """Start fetchers for splits and segments."""
-        _LOGGER.debug('Starting periodic data fetching')
-        self._split_tasks.split_task.start()
+        if self._split_tasks.split_task is not None:
+            _LOGGER.debug('Starting periodic data fetching')
+            self._split_tasks.split_task.start()
+        if self._split_tasks.segment_task is not None:
+            self._split_tasks.segment_task.start()
 
     def stop_periodic_fetching(self):
         """Stop fetchers for splits and segments."""
-        _LOGGER.debug('Stopping periodic fetching')
-        self._split_tasks.split_task.stop()
+        if self._split_tasks.split_task is not None:
+            _LOGGER.debug('Stopping periodic fetching')
+            self._split_tasks.split_task.stop()
+        if self._split_tasks.segment_task is not None:
+            self._split_tasks.segment_task.stop()
 
     def kill_split(self, split_name, default_treatment, change_number):
         """Kill a split locally."""
         raise NotImplementedError()
 
-    def synchronize_splits(self, till):
+    def synchronize_splits(self):
         """Synchronize all splits."""
-        raise NotImplementedError()
+        try:
+            new_segments = []
+            for segment in self._split_synchronizers.split_sync.synchronize_splits():
+                    if not self._split_synchronizers.segment_sync.segment_exist_in_storage(segment):
+                        new_segments.append(segment)
+            if len(new_segments) != 0:
+                _LOGGER.debug('Synching Segments: %s', ','.join(new_segments))
+                success = self._split_synchronizers.segment_sync.synchronize_segments(new_segments)
+                if not success:
+                    _LOGGER.error('Failed to schedule sync one or all segment(s) below.')
+                    _LOGGER.error(','.join(new_segments))
+                else:
+                    _LOGGER.debug('Segment sync scheduled.')
+            return True
+
+        except APIException as exc:
+            _LOGGER.error('Failed syncing splits')
+            raise APIException('Failed to sync splits') from exc
 
     def synchronize_segment(self, segment_name, till):
         """Synchronize particular segment."""
-        raise NotImplementedError()
+        pass
 
     def start_periodic_data_recording(self):
         """Start recorders."""

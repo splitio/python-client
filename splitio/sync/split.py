@@ -4,6 +4,8 @@ import re
 import itertools
 import yaml
 import time
+import json
+from enum import Enum
 
 from splitio.api import APIException
 from splitio.api.commons import FetchOptions
@@ -150,11 +152,16 @@ class SplitSynchronizer(object):
         """
         self._split_storage.kill_locally(split_name, default_treatment, change_number)
 
+class LocalhostMode(Enum):
+    """types for localhost modes"""
+    LEGACY = 0
+    YAML = 1
+    JSON = 2
 
 class LocalSplitSynchronizer(object):
     """Localhost mode split synchronizer."""
 
-    def __init__(self, filename, split_storage):
+    def __init__(self, filename, split_storage, localhost_mode=LocalhostMode.LEGACY):
         """
         Class constructor.
 
@@ -162,9 +169,12 @@ class LocalSplitSynchronizer(object):
         :type filename: str
         :param split_storage: Split Storage.
         :type split_storage: splitio.storage.InMemorySplitStorage
+        :param localhost_mode: mode for localhost either JSON, YAML or LEGACY.
+        :type localhost_mode: splitio.sync.split.LocalhostMode
         """
         self._filename = filename
         self._split_storage = split_storage
+        self._localhost_mode = localhost_mode
 
     @staticmethod
     def _make_split(split_name, conditions, configs=None):
@@ -307,6 +317,19 @@ class LocalSplitSynchronizer(object):
     def synchronize_splits(self, till=None):  # pylint:disable=unused-argument
         """Update splits in storage."""
         _LOGGER.info('Synchronizing splits now.')
+        if self._localhost_mode == LocalhostMode.JSON:
+            return self._synchronize_json()
+        else:
+            return self._synchronize_legacy()
+
+    def _synchronize_legacy(self):
+        """
+        Update splits in storage for legacy mode.
+
+        :return: empty array for compatibility with json mode
+        :rtype: []
+        """
+
         if self._filename.lower().endswith(('.yaml', '.yml')):
             fetched = self._read_splits_from_yaml_file(self._filename)
         else:
@@ -318,3 +341,58 @@ class LocalSplitSynchronizer(object):
 
         for split in to_delete:
             self._split_storage.remove(split)
+
+        return []
+
+    def _synchronize_json(self):
+        """
+        Update splits in storage for json mode.
+
+        :return: segment names string array
+        :rtype: [str]
+        """
+        fetched, since, till = self._read_splits_from_json_file(self._filename)
+        segment_list = set()
+        if self._split_storage.get_change_number() <= till:
+            to_delete = []
+            if since == -1:
+                to_delete = [name for name in self._split_storage.get_split_names()
+                            if name not in json.dumps(fetched)]
+            for split in fetched:
+                parsed = splits.from_raw(split)
+                _LOGGER.debug("split %s is updated", parsed.name)
+                self._split_storage.put(parsed)
+
+                segment_list.update(set(parsed.get_segment_names()))
+
+            for split in to_delete:
+                self._split_storage.remove(split)
+
+            self._split_storage.set_change_number(till)
+
+        return segment_list
+
+    def _read_splits_from_json_file(self, filename):
+        """
+        Parse a splits file and return a populated storage.
+
+        :param filename: Path of the file containing split
+        :type filename: str.
+
+        :return: Tuple: sanitized split structure dict, since and till
+        :rtype: Tuple(Dict, int, int)
+        """
+        try:
+            with open(filename, 'r') as flo:
+                json_obj = json.load(flo)
+                since = json_obj['since']
+                till = json_obj['till']
+                parsed = json_obj['splits']
+            santitized_split = self._sanitize_split(parsed)
+            return santitized_split, since, till
+        except IOError as exc:
+            raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc
+
+    def _sanitize_split(self, split):
+        """To be implemented."""
+        return split

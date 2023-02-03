@@ -1,11 +1,16 @@
 """Split Worker tests."""
 
+import os
+
 from splitio.util.backoff import Backoff
 from splitio.api import APIException
 from splitio.api.commons import FetchOptions
 from splitio.storage import SplitStorage, SegmentStorage
+from splitio.storage.inmemmory import InMemorySegmentStorage, InMemorySplitStorage
+from splitio.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer
 from splitio.models.segments import Segment
 
+import pytest
 
 class SegmentsSynchronizerTests(object):
     """Segments synchronizer test cases."""
@@ -24,7 +29,6 @@ class SegmentsSynchronizerTests(object):
             raise APIException("something broke")
 
         api.fetch_segment.side_effect = run
-        from splitio.sync.segment import SegmentSynchronizer
         segments_synchronizer = SegmentSynchronizer(api, split_storage, storage)
         assert not segments_synchronizer.synchronize_segments()
 
@@ -75,7 +79,6 @@ class SegmentsSynchronizerTests(object):
         api = mocker.Mock()
         api.fetch_segment.side_effect = fetch_segment_mock
 
-        from splitio.sync.segment import SegmentSynchronizer
         segments_synchronizer = SegmentSynchronizer(api, split_storage, storage)
         assert segments_synchronizer.synchronize_segments()
 
@@ -120,7 +123,6 @@ class SegmentsSynchronizerTests(object):
         api = mocker.Mock()
         api.fetch_segment.side_effect = fetch_segment_mock
 
-        from splitio.sync.segment import SegmentSynchronizer
         segments_synchronizer = SegmentSynchronizer(api, split_storage, storage)
         segments_synchronizer.synchronize_segment('segmentA')
 
@@ -131,7 +133,6 @@ class SegmentsSynchronizerTests(object):
     def test_synchronize_segment_cdn(self, mocker):
         """Test particular segment update cdn bypass."""
         mocker.patch('splitio.sync.segment._ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES', new=3)
-        from splitio.sync.segment import SegmentSynchronizer
 
         split_storage = mocker.Mock(spec=SplitStorage)
         storage = mocker.Mock(spec=SegmentStorage)
@@ -181,8 +182,113 @@ class SegmentsSynchronizerTests(object):
 
     def test_recreate(self, mocker):
         """Test recreate logic."""
-        from splitio.sync.segment import SegmentSynchronizer
         segments_synchronizer = SegmentSynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock())
         current_pool = segments_synchronizer._worker_pool
         segments_synchronizer.recreate()
         assert segments_synchronizer._worker_pool != current_pool
+
+class LocalSegmentsSynchronizerTests(object):
+    """Segments synchronizer test cases."""
+
+    def test_synchronize_segments_error(self, mocker):
+        """On error."""
+        split_storage = mocker.Mock(spec=SplitStorage)
+        split_storage.get_segment_names.return_value = ['segmentA', 'segmentB', 'segmentC']
+
+        storage = mocker.Mock(spec=SegmentStorage)
+        storage.get_change_number.return_value = -1
+
+        segments_synchronizer = LocalSegmentSynchronizer('/,/,/invalid folder name/,/,/', split_storage, storage)
+        assert not segments_synchronizer.synchronize_segments()
+
+    def test_synchronize_segments(self, mocker):
+        """Test the normal operation flow."""
+        split_storage = mocker.Mock(spec=InMemorySplitStorage)
+        split_storage.get_segment_names.return_value = ['segmentA', 'segmentB', 'segmentC']
+        storage = InMemorySegmentStorage()
+
+        segment_a = {'name': 'segmentA', 'added': ['key1', 'key2', 'key3'], 'removed': [],
+                        'since': -1, 'till': 123}
+        segment_b = {'name': 'segmentB', 'added': ['key4', 'key5', 'key6'], 'removed': [],
+                        'since': -1, 'till': 123}
+        segment_c = {'name': 'segmentC', 'added': ['key7', 'key8', 'key9'], 'removed': [],
+                        'since': -1, 'till': 123}
+        blank = {'added': [], 'removed': [], 'since': 123, 'till': 123}
+
+        def read_segment_from_json_file(*args, **kwargs):
+            if args[0] == 'segmentA':
+                return segment_a
+            if args[0] == 'segmentB':
+                return segment_b
+            if args[0] == 'segmentC':
+                return segment_c
+            return blank
+
+        segments_synchronizer = LocalSegmentSynchronizer('segment_path', split_storage, storage)
+        segments_synchronizer._read_segment_from_json_file = read_segment_from_json_file
+
+#        pytest.set_trace()
+        assert segments_synchronizer.synchronize_segments()
+
+        segment = storage.get('segmentA')
+        assert segment.name == 'segmentA'
+        assert segment.contains('key1')
+        assert segment.contains('key2')
+        assert segment.contains('key3')
+
+        segment = storage.get('segmentB')
+        assert segment.name == 'segmentB'
+        assert segment.contains('key4')
+        assert segment.contains('key5')
+        assert segment.contains('key6')
+
+        segment = storage.get('segmentC')
+        assert segment.name == 'segmentC'
+        assert segment.contains('key7')
+        assert segment.contains('key8')
+        assert segment.contains('key9')
+
+        # Should sync when changenumber is not changed
+        segment_a['added'] = ['key111']
+        segments_synchronizer.synchronize_segments(['segmentA'])
+        segment = storage.get('segmentA')
+        assert segment.contains('key111')
+
+        # Should not sync when changenumber below till
+        segment_a['till'] = 122
+        segment_a['added'] = ['key222']
+        segments_synchronizer.synchronize_segments(['segmentA'])
+        segment = storage.get('segmentA')
+        assert not segment.contains('key222')
+
+        # Should sync when changenumber above till
+        segment_a['till'] = 124
+        segments_synchronizer.synchronize_segments(['segmentA'])
+        segment = storage.get('segmentA')
+        assert segment.contains('key222')
+
+        # verify remove keys
+        segment_a['added'] = []
+        segment_a['removed'] = ['key111']
+        segment_a['till'] = 125
+        segments_synchronizer.synchronize_segments(['segmentA'])
+        segment = storage.get('segmentA')
+        assert not segment.contains('key111')
+
+    def test_reading_json(self, mocker):
+        """Test reading json file."""
+        f = open("./segmentA.json", "w")
+        f.write('{"name": "segmentA", "added": ["key1", "key2", "key3"], "removed": [],"since": -1, "till": 123}')
+        f.close()
+        split_storage = mocker.Mock(spec=InMemorySplitStorage)
+        storage = InMemorySegmentStorage()
+        segments_synchronizer = LocalSegmentSynchronizer('.', split_storage, storage)
+        assert segments_synchronizer.synchronize_segments(['segmentA'])
+
+        segment = storage.get('segmentA')
+        assert segment.name == 'segmentA'
+        assert segment.contains('key1')
+        assert segment.contains('key2')
+        assert segment.contains('key3')
+
+        os.remove("./segmentA.json")
