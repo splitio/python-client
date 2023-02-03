@@ -213,6 +213,7 @@ class LocalSegmentSynchronizer(object):
         self._segment_folder = segment_folder
         self._split_storage = split_storage
         self._segment_storage = segment_storage
+        self._segment_sha = {}
 
     def synchronize_segment(self, segment_name, till=None):
         """
@@ -230,17 +231,20 @@ class LocalSegmentSynchronizer(object):
         try:
             fetched = self._read_segment_from_json_file(segment_name)
             if not self.segment_exist_in_storage(segment_name):
+                    self._segment_sha[segment_name] = self._get_sha(json.dumps(fetched))
                     self._segment_storage.put(segments.from_raw(fetched))
                     _LOGGER.debug("segment %s is added to storage", segment_name)
             else:
-                if self._segment_storage.get_change_number(segment_name) <= fetched['till']:
-                    self._segment_storage.update(
-                        segment_name,
-                        fetched['added'],
-                        fetched['removed'],
-                        fetched['till']
-                    )
-                    _LOGGER.debug("segment %s is updated", segment_name)
+                if self._get_sha(json.dumps(fetched)) != self._segment_sha[segment_name]:
+                    self._segment_sha[segment_name] = self._get_sha(json.dumps(fetched))
+                    if self._segment_storage.get_change_number(segment_name) <= fetched['till']:
+                        self._segment_storage.update(
+                            segment_name,
+                            fetched['added'],
+                            fetched['removed'],
+                            fetched['till']
+                        )
+                        _LOGGER.debug("segment %s is updated", segment_name)
         except Exception as e:
             _LOGGER.error("Could not fetch segment: %s \n" + str(e), segment_name)
             return False
@@ -268,6 +272,9 @@ class LocalSegmentSynchronizer(object):
     def _sanitize_segment(self, segment):
         """To be implemented."""
         return segment
+
+    def _get_sha(self, fetched):
+        return hashlib.sha256(fetched.encode()).hexdigest()
 
     def synchronize_segments(self, segment_names = None):
         """

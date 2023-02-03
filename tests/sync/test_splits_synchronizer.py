@@ -231,7 +231,6 @@ class LocalSplitsSynchronizerTests(object):
         """Test split sync."""
         storage = InMemorySplitStorage()
 
-        since = -1
         till = 123
         splits = [{
            'changeNumber': 123,
@@ -269,7 +268,7 @@ class LocalSplitsSynchronizerTests(object):
         }]
 
         def read_splits_from_json_file(*args, **kwargs):
-                return splits, since, till
+                return splits, till
 
         split_synchronizer = LocalSplitSynchronizer("split.json", storage, LocalhostMode.JSON)
         split_synchronizer._read_splits_from_json_file = read_splits_from_json_file
@@ -294,22 +293,10 @@ class LocalSplitsSynchronizerTests(object):
 
         # Should sync when changenumber is higher than stored
         till = 124
+        split_synchronizer._current_json_sha = "-1"
         split_synchronizer.synchronize_splits()
         inserted_split = storage.get(splits[0]['name'])
         assert inserted_split.killed == False
-
-        # Should not remove any splits from storage when are not in the load and since > -1
-        since = 12
-        splits = []
-        split_synchronizer.synchronize_splits()
-        assert storage.get_splits_count() == 1
-
-        # Should remove all splits from storage when are not in the load and since -1
-        since = -1
-        splits = []
-        split_synchronizer._current_till = -1
-        split_synchronizer.synchronize_splits()
-        assert storage.get_splits_count() == 0
 
     def test_reading_json(self, mocker):
         """Test reading json file."""
