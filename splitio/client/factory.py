@@ -163,7 +163,6 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         config_post_thread.setDaemon(True)
         config_post_thread.start()
 
-
     def _get_storage(self, name):
         """
         Return a reference to the specified storage.
@@ -556,7 +555,9 @@ def _build_localhost_factory(cfg):
     ready_event = threading.Event()
     synchronizer = LocalhostSynchronizer(synchronizers, tasks)
     manager = Manager(ready_event, synchronizer, None, False, sdk_metadata, telemetry_runtime_producer)
-    manager.start()
+    initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
+    initialization_thread.start()
+
     recorder = StandardRecorder(
         ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer),
         storages['events'],

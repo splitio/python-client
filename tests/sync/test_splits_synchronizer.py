@@ -11,6 +11,7 @@ from splitio.storage import SplitStorage
 from splitio.storage.inmemmory import InMemorySplitStorage
 from splitio.models.splits import Split
 from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer, LocalhostMode
+from splitio import sync
 
 
 class SplitsSynchronizerTests(object):
@@ -220,12 +221,12 @@ class LocalSplitsSynchronizerTests(object):
     """Split synchronizer test cases."""
 
     def test_synchronize_splits_error(self, mocker):
-        """Test that if fetching splits fails at some_point, the task will continue running."""
+        """Test that if fetching splits fails at some_point, split list returns empty."""
         storage = mocker.Mock(spec=SplitStorage)
         split_synchronizer = LocalSplitSynchronizer("/incorrect_file", storage)
+        sync.split._ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES = 1
 
-        with pytest.raises(Exception):
-            split_synchronizer.synchronize_splits(1)
+        assert (split_synchronizer.synchronize_splits(1) == [])
 
     def test_synchronize_splits(self, mocker):
         """Test split sync."""
