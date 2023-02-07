@@ -25,7 +25,7 @@ from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer
 from splitio.sync.manager import Manager
-
+from tests.integration import splits_json
 class InMemoryIntegrationTests(object):
     """Inmemory storage-based integration tests."""
 
@@ -972,6 +972,127 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
         event.wait()
 
         # hack to increase isolation and prevent conflicts with other tests
-        thread = factory._sync_manager._synchronizer._split_tasks.split_task._task._thread
-        if thread is not None and thread.is_alive():
-            thread.join()
+#        thread = factory._sync_manager._synchronizer._split_tasks.split_task._task._thread
+#        if thread is not None and thread.is_alive():
+#            thread.join()
+
+    def test_localhost_json_e2e(self):
+        """Instantiate a client with a JSON file and issue get_treatment() calls."""
+        filename = os.path.join(os.path.dirname(__file__), 'files', 'split_changes_temp.json')
+        factory = get_factory('localhost', config={'splitFile': filename})
+        factory.block_until_ready()
+        client = factory.client()
+
+        factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
+        self._update_temp_file(splits_json['splitChange1_1'])
+        self._synchronize_now(factory)
+
+        assert factory.manager().split_names() == ["SPLIT_2", "SPLIT_1"]
+        assert client.get_treatment("key", "SPLIT_1", None) == 'off'
+        assert client.get_treatment("key", "SPLIT_2", None) == 'on'
+
+        self._update_temp_file(splits_json['splitChange1_2'])
+        self._synchronize_now(factory)
+
+        assert factory.manager().split_names() == ["SPLIT_2", "SPLIT_1"]
+        assert client.get_treatment("key", "SPLIT_1", None) == 'off'
+        assert client.get_treatment("key", "SPLIT_2", None) == 'off'
+
+        self._update_temp_file(splits_json['splitChange1_3'])
+        self._synchronize_now(factory)
+
+        assert factory.manager().split_names() == ["SPLIT_2"]
+        assert client.get_treatment("key", "SPLIT_1", None) == 'control'
+        assert client.get_treatment("key", "SPLIT_2", None) == 'on'
+
+        # Tests 2 - Enable after Sanitization is added
+#        factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
+#        self._update_temp_file(splits_json['splitChange2_1'])
+#        self._synchronize_now(factory)
+
+#        assert factory.manager().split_names() == ["SPLIT_1"]
+#        assert client.get_treatment("key", "SPLIT_1", None) == 'on'
+
+        # Tests 3
+        factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
+        self._update_temp_file(splits_json['splitChange3_1'])
+        self._synchronize_now(factory)
+
+        assert factory.manager().split_names() == ["SPLIT_2"]
+        assert client.get_treatment("key", "SPLIT_2", None) == 'on'
+
+        self._update_temp_file(splits_json['splitChange3_2'])
+        self._synchronize_now(factory)
+
+        assert factory.manager().split_names() == ["SPLIT_2"]
+        assert client.get_treatment("key", "SPLIT_2", None) == 'off'
+
+        # Tests 4
+        factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
+        self._update_temp_file(splits_json['splitChange4_1'])
+        self._synchronize_now(factory)
+
+        assert factory.manager().split_names() == ["SPLIT_2", "SPLIT_1"]
+        assert client.get_treatment("key", "SPLIT_1", None) == 'off'
+        assert client.get_treatment("key", "SPLIT_2", None) == 'on'
+
+        self._update_temp_file(splits_json['splitChange4_2'])
+        self._synchronize_now(factory)
+
+        assert factory.manager().split_names() == ["SPLIT_2", "SPLIT_1"]
+        assert client.get_treatment("key", "SPLIT_1", None) == 'off'
+        assert client.get_treatment("key", "SPLIT_2", None) == 'off'
+
+        self._update_temp_file(splits_json['splitChange4_3'])
+        self._synchronize_now(factory)
+
+        assert factory.manager().split_names() == ["SPLIT_2"]
+        assert client.get_treatment("key", "SPLIT_1", None) == 'control'
+        assert client.get_treatment("key", "SPLIT_2", None) == 'on'
+
+        # Tests 5
+        factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
+        self._update_temp_file(splits_json['splitChange5_1'])
+        self._synchronize_now(factory)
+
+        assert factory.manager().split_names() == ["SPLIT_2"]
+        assert client.get_treatment("key", "SPLIT_2", None) == 'on'
+
+        self._update_temp_file(splits_json['splitChange5_2'])
+        self._synchronize_now(factory)
+
+        assert factory.manager().split_names() == ["SPLIT_2"]
+        assert client.get_treatment("key", "SPLIT_2", None) == 'on'
+
+        # Tests 6
+        factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
+        self._update_temp_file(splits_json['splitChange6_1'])
+        self._synchronize_now(factory)
+
+        assert factory.manager().split_names() == ["SPLIT_2", "SPLIT_1"]
+        assert client.get_treatment("key", "SPLIT_1", None) == 'off'
+        assert client.get_treatment("key", "SPLIT_2", None) == 'on'
+
+        self._update_temp_file(splits_json['splitChange6_2'])
+        self._synchronize_now(factory)
+
+        assert factory.manager().split_names() == ["SPLIT_2", "SPLIT_1"]
+        assert client.get_treatment("key", "SPLIT_1", None) == 'off'
+        assert client.get_treatment("key", "SPLIT_2", None) == 'off'
+
+        self._update_temp_file(splits_json['splitChange6_3'])
+        self._synchronize_now(factory)
+
+        assert factory.manager().split_names() == ["SPLIT_2"]
+        assert client.get_treatment("key", "SPLIT_1", None) == 'control'
+        assert client.get_treatment("key", "SPLIT_2", None) == 'on'
+
+    def _update_temp_file(self, json_body):
+        f = open(os.path.join(os.path.dirname(__file__), 'files','split_changes_temp.json'), 'w')
+        f.write(json.dumps(json_body))
+        f.close()
+
+    def _synchronize_now(self, factory):
+        filename = os.path.join(os.path.dirname(__file__), 'files', 'split_changes_temp.json')
+        factory._sync_manager._synchronizer._split_synchronizers._split_sync._filename = filename
+        factory._sync_manager._synchronizer._split_synchronizers._split_sync.synchronize_splits()

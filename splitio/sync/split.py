@@ -5,6 +5,7 @@ import itertools
 import yaml
 import time
 import json
+import hashlib
 from enum import Enum
 
 from splitio.api import APIException
@@ -175,6 +176,7 @@ class LocalSplitSynchronizer(object):
         self._filename = filename
         self._split_storage = split_storage
         self._localhost_mode = localhost_mode
+        self._current_json_sha = "-1"
 
     @staticmethod
     def _make_split(split_name, conditions, configs=None):
@@ -351,24 +353,22 @@ class LocalSplitSynchronizer(object):
         :return: segment names string array
         :rtype: [str]
         """
-        fetched, since, till = self._read_splits_from_json_file(self._filename)
+        fetched, till = self._read_splits_from_json_file(self._filename)
         segment_list = set()
-        if self._split_storage.get_change_number() <= till:
-            to_delete = []
-            if since == -1:
-                to_delete = [name for name in self._split_storage.get_split_names()
-                            if name not in json.dumps(fetched)]
-            for split in fetched:
-                parsed = splits.from_raw(split)
-                _LOGGER.debug("split %s is updated", parsed.name)
-                self._split_storage.put(parsed)
+        fecthed_sha = self._get_sha(json.dumps(fetched))
+        if fecthed_sha != self._current_json_sha:
+            self._current_json_sha = fecthed_sha
+            if self._split_storage.get_change_number() <= till:
+                for split in fetched:
+                    if split['status'] == splits.Status.ACTIVE.value:
+                        parsed = splits.from_raw(split)
+                        self._split_storage.put(parsed)
+                        _LOGGER.debug("split %s is updated", parsed.name)
+                        segment_list.update(set(parsed.get_segment_names()))
+                    else:
+                        self._split_storage.remove(split['name'])
 
-                segment_list.update(set(parsed.get_segment_names()))
-
-            for split in to_delete:
-                self._split_storage.remove(split)
-
-            self._split_storage.set_change_number(till)
+                self._split_storage.set_change_number(till)
 
         return segment_list
 
@@ -385,14 +385,17 @@ class LocalSplitSynchronizer(object):
         try:
             with open(filename, 'r') as flo:
                 json_obj = json.load(flo)
-                since = json_obj['since']
-                till = json_obj['till']
+                till = json_obj['till'] if 'till' in json_obj else -1
                 parsed = json_obj['splits']
             santitized_split = self._sanitize_split(parsed)
-            return santitized_split, since, till
+            flo.close
+            return santitized_split, till
         except IOError as exc:
             raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc
 
     def _sanitize_split(self, split):
         """To be implemented."""
         return split
+
+    def _get_sha(self, fetched):
+        return hashlib.sha256(fetched.encode()).hexdigest()
