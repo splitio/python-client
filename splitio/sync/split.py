@@ -177,6 +177,9 @@ class LocalSplitSynchronizer(object):
         self._split_storage = split_storage
         self._localhost_mode = localhost_mode
         self._current_json_sha = "-1"
+        self._backoff = Backoff(
+                                _ON_DEMAND_FETCH_BACKOFF_BASE,
+                                _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
 
     @staticmethod
     def _make_split(split_name, conditions, configs=None):
@@ -319,10 +322,22 @@ class LocalSplitSynchronizer(object):
     def synchronize_splits(self, till=None):  # pylint:disable=unused-argument
         """Update splits in storage."""
         _LOGGER.info('Synchronizing splits now.')
-        if self._localhost_mode == LocalhostMode.JSON:
-            return self._synchronize_json()
-        else:
-            return self._synchronize_legacy()
+        self._backoff.reset()
+        remaining_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES
+        while remaining_attempts > 0:
+            remaining_attempts -= 1
+            try:
+                if self._localhost_mode == LocalhostMode.JSON:
+                    return self._synchronize_json()
+                else:
+                    return self._synchronize_legacy()
+            except Exception as e:
+                _LOGGER.error("Error fetching splits information")
+                _LOGGER.error(str(e))
+
+            how_long = self._backoff.get()
+            time.sleep(how_long)
+        return []
 
     def _synchronize_legacy(self):
         """
@@ -369,7 +384,6 @@ class LocalSplitSynchronizer(object):
                         self._split_storage.remove(split['name'])
 
                 self._split_storage.set_change_number(till)
-
         return segment_list
 
     def _read_splits_from_json_file(self, filename):
