@@ -370,8 +370,9 @@ class LocalSplitSynchronizer(object):
         """
         fetched, till = self._read_splits_from_json_file(self._filename)
         segment_list = set()
-        if self._get_sha(json.dumps(fetched)) != self._current_json_sha:
-            self._current_json_sha = self._get_sha(json.dumps(fetched))
+        fecthed_sha = self._get_sha(json.dumps(fetched))
+        if fecthed_sha != self._current_json_sha:
+            self._current_json_sha = fecthed_sha
             if self._split_storage.get_change_number() <= till:
                 for split in fetched:
                     if split['status'] == splits.Status.ACTIVE.value:

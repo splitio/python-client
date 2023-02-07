@@ -230,13 +230,14 @@ class LocalSegmentSynchronizer(object):
         """
         try:
             fetched = self._read_segment_from_json_file(segment_name)
+            fetched_sha = self._get_sha(json.dumps(fetched))
             if not self.segment_exist_in_storage(segment_name):
-                    self._segment_sha[segment_name] = self._get_sha(json.dumps(fetched))
+                    self._segment_sha[segment_name] = fetched_sha
                     self._segment_storage.put(segments.from_raw(fetched))
                     _LOGGER.debug("segment %s is added to storage", segment_name)
             else:
-                if self._get_sha(json.dumps(fetched)) != self._segment_sha[segment_name]:
-                    self._segment_sha[segment_name] = self._get_sha(json.dumps(fetched))
+                if fetched_sha != self._segment_sha[segment_name]:
+                    self._segment_sha[segment_name] = fetched_sha
                     if self._segment_storage.get_change_number(segment_name) <= fetched['till']:
                         self._segment_storage.update(
                             segment_name,
