@@ -8,6 +8,7 @@ import pytest
 
 from redis import StrictRedis
 
+from splitio.exceptions import TimeoutException
 from splitio.client.factory import get_factory, SplitFactory
 from splitio.client.util import SdkMetadata
 from splitio.storage.inmemmory import InMemoryEventStorage, InMemoryImpressionStorage, \
@@ -941,6 +942,16 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
 
 class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-methods
     """Client & Manager integration tests."""
+
+    def test_incorrect_file_e2e(self):
+        factory = get_factory('localhost', config={'splitFile': 'filename'})
+        exception_raised = False
+        try:
+            factory.block_until_ready(1)
+        except TimeoutException as e:
+            exception_raised = True
+
+        assert(exception_raised)
 
     def test_localhost_e2e(self):
         """Instantiate a client with a YAML file and issue get_treatment() calls."""

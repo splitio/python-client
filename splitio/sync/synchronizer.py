@@ -7,6 +7,7 @@ import time
 
 from splitio.api import APIException
 from splitio.util.backoff import Backoff
+from splitio.sync.split import _ON_DEMAND_FETCH_BACKOFF_BASE, _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES, _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -226,9 +227,6 @@ class BaseSynchronizer(object, metaclass=abc.ABCMeta):
 class Synchronizer(BaseSynchronizer):
     """Synchronizer."""
 
-    _ON_DEMAND_FETCH_BACKOFF_BASE = 10  # backoff base starting at 10 seconds
-    _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT = 30  # don't sleep for more than 1 minute
-
     def __init__(self, split_synchronizers, split_tasks):
         """
         Class constructor.
@@ -239,8 +237,8 @@ class Synchronizer(BaseSynchronizer):
         :type split_tasks: splitio.sync.synchronizer.SplitTasks
         """
         self._backoff = Backoff(
-                                self._ON_DEMAND_FETCH_BACKOFF_BASE,
-                                self._ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
+                                _ON_DEMAND_FETCH_BACKOFF_BASE,
+                                _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
         self._split_synchronizers = split_synchronizers
         self._split_tasks = split_tasks
         self._periodic_data_recording_tasks = [
@@ -505,16 +503,28 @@ class LocalhostSynchronizer(BaseSynchronizer):
         """
         self._split_synchronizers = split_synchronizers
         self._split_tasks = split_tasks
+        self._backoff = Backoff(
+                                _ON_DEMAND_FETCH_BACKOFF_BASE,
+                                _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
 
     def sync_all(self, till=None):
         """
         Synchronize all splits.
         """
-        try:
-            return self.synchronize_splits()
-        except APIException as exc:
-            _LOGGER.error('Failed syncing all')
-            raise APIException('Failed to sync all') from exc
+        _LOGGER.debug("SYNC ALL")
+        self._backoff.reset()
+        remaining_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES
+        while remaining_attempts > 0:
+            _LOGGER.debug(remaining_attempts)
+            remaining_attempts -= 1
+            try:
+                return self.synchronize_splits()
+            except APIException as exc:
+                _LOGGER.error('Failed syncing all')
+                _LOGGER.error(str(exc))
+
+            how_long = self._backoff.get()
+            time.sleep(how_long)
 
     def start_periodic_fetching(self):
         """Start fetchers for splits and segments."""
