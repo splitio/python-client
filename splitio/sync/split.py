@@ -22,7 +22,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 _ON_DEMAND_FETCH_BACKOFF_BASE = 10  # backoff base starting at 10 seconds
-_ON_DEMAND_FETCH_BACKOFF_MAX_WAIT = 60  # don't sleep for more than 1 minute
+_ON_DEMAND_FETCH_BACKOFF_MAX_WAIT = 30  # don't sleep for more than 1 minute
 _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES = 10
 
 
@@ -177,9 +177,6 @@ class LocalSplitSynchronizer(object):
         self._split_storage = split_storage
         self._localhost_mode = localhost_mode
         self._current_json_sha = "-1"
-        self._backoff = Backoff(
-                                _ON_DEMAND_FETCH_BACKOFF_BASE,
-                                _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
 
     @staticmethod
     def _make_split(split_name, conditions, configs=None):
@@ -322,22 +319,18 @@ class LocalSplitSynchronizer(object):
     def synchronize_splits(self, till=None):  # pylint:disable=unused-argument
         """Update splits in storage."""
         _LOGGER.info('Synchronizing splits now.')
-        self._backoff.reset()
-        remaining_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES
-        while remaining_attempts > 0:
-            remaining_attempts -= 1
-            try:
-                if self._localhost_mode == LocalhostMode.JSON:
-                    return self._synchronize_json()
-                else:
-                    return self._synchronize_legacy()
-            except Exception as e:
-                _LOGGER.error("Error fetching splits information")
-                _LOGGER.error(str(e))
+        try:
+            if self._localhost_mode == LocalhostMode.JSON:
+                return self._synchronize_json()
+            else:
+                return self._synchronize_legacy()
+        except Exception as exc:
+            _LOGGER.error(str(exc))
+            raise APIException("Error fetching splits information") from exc
 
-            how_long = self._backoff.get()
-            time.sleep(how_long)
-        return []
+#            _LOGGER.error("Error fetching splits information")
+#            _LOGGER.error(str(e))
+#        return []
 
     def _synchronize_legacy(self):
         """
@@ -368,23 +361,26 @@ class LocalSplitSynchronizer(object):
         :return: segment names string array
         :rtype: [str]
         """
-        fetched, till = self._read_splits_from_json_file(self._filename)
-        segment_list = set()
-        fecthed_sha = self._get_sha(json.dumps(fetched))
-        if fecthed_sha != self._current_json_sha:
-            self._current_json_sha = fecthed_sha
-            if self._split_storage.get_change_number() <= till:
-                for split in fetched:
-                    if split['status'] == splits.Status.ACTIVE.value:
-                        parsed = splits.from_raw(split)
-                        self._split_storage.put(parsed)
-                        _LOGGER.debug("split %s is updated", parsed.name)
-                        segment_list.update(set(parsed.get_segment_names()))
-                    else:
-                        self._split_storage.remove(split['name'])
+        try:
+            fetched, till = self._read_splits_from_json_file(self._filename)
+            segment_list = set()
+            fecthed_sha = self._get_sha(json.dumps(fetched))
+            if fecthed_sha != self._current_json_sha:
+                self._current_json_sha = fecthed_sha
+                if self._split_storage.get_change_number() <= till:
+                    for split in fetched:
+                        if split['status'] == splits.Status.ACTIVE.value:
+                            parsed = splits.from_raw(split)
+                            self._split_storage.put(parsed)
+                            _LOGGER.debug("split %s is updated", parsed.name)
+                            segment_list.update(set(parsed.get_segment_names()))
+                        else:
+                            self._split_storage.remove(split['name'])
 
-                self._split_storage.set_change_number(till)
-        return segment_list
+                    self._split_storage.set_change_number(till)
+            return segment_list
+        except Exception as exc:
+            raise ValueError("Error reading splits from json.") from exc
 
     def _read_splits_from_json_file(self, filename):
         """
