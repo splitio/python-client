@@ -511,11 +511,9 @@ class LocalhostSynchronizer(BaseSynchronizer):
         """
         Synchronize all splits.
         """
-        _LOGGER.debug("SYNC ALL")
         self._backoff.reset()
         remaining_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES
         while remaining_attempts > 0:
-            _LOGGER.debug(remaining_attempts)
             remaining_attempts -= 1
             try:
                 return self.synchronize_splits()

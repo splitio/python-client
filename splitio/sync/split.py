@@ -12,7 +12,7 @@ from splitio.api import APIException
 from splitio.api.commons import FetchOptions
 from splitio.models import splits
 from splitio.util.backoff import Backoff
-
+from splitio.util.time import get_current_epoch_time_ms
 
 _LEGACY_COMMENT_LINE_RE = re.compile(r'^#.*$')
 _LEGACY_DEFINITION_LINE_RE = re.compile(r'^(?<![^#])(?P<feature>[\w_-]+)\s+(?P<treatment>[\w_-]+)$')
@@ -394,18 +394,179 @@ class LocalSplitSynchronizer(object):
         """
         try:
             with open(filename, 'r') as flo:
-                json_obj = json.load(flo)
-                till = json_obj['till'] if 'till' in json_obj else -1
-                parsed = json_obj['splits']
-            santitized_split = self._sanitize_split(parsed)
+                parsed = json.load(flo)
+            santitized = self._sanitize_split(parsed)
             flo.close
-            return santitized_split, till
-        except IOError as exc:
+            return santitized['splits'], santitized['till']
+        except Exception as exc:
+            _LOGGER.error(str(exc))
             raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc
 
-    def _sanitize_split(self, split):
-        """To be implemented."""
-        return split
+    def _sanitize_split(self, parsed):
+        """
+        implement Sanitization if neded.
+
+        :param parsed: splits, till and since elements dict
+        :type parsed: Dict
+
+        :return: sanitized structure dict
+        :rtype: Dict
+        """
+        parsed = self._sanitize_json_elements(parsed)
+        parsed['splits'] = self._sanitize_split_elements(parsed['splits'])
+
+        return parsed
 
     def _get_sha(self, fetched):
+        """
+        Return sha256 of given string.
+
+        :param fetched: string variable
+        :type fetched: str
+
+        :return: hex representation of sha256
+        :rtype: str
+        """
         return hashlib.sha256(fetched.encode()).hexdigest()
+
+    def _sanitize_json_elements(self, parsed):
+        """
+        Sanitize all json elements.
+
+        :param parsed: splits, till and since elements dict
+        :type parsed: Dict
+
+        :return: sanitized structure dict
+        :rtype: Dict
+        """
+        if 'splits' not in parsed:
+            parsed['splits'] = []
+        if 'till' not in parsed or parsed['till'] is None or parsed['till'] < -1:
+            parsed['till'] = -1
+        if 'since' not in parsed or parsed['since'] is None or parsed['since'] < -1 or parsed['since'] > parsed['till']:
+            parsed['since'] = parsed['till']
+
+        return parsed
+
+    def _sanitize_split_elements(self, parsed_splits):
+        """
+        Sanitize all splits elements.
+
+        :param parsed_splits: splits array
+        :type parsed_splits: [Dict]
+
+        :return: sanitized structure dict
+        :rtype: [Dict]
+        """
+        sanitized_splits = []
+        for split in parsed_splits:
+            if 'name' not in split or split['name'].strip() == '':
+                _LOGGER.warning("A split in json file does not have (Name) or property is empty, skipping.")
+                continue
+            for element in [('trafficTypeName', 'user', None, None, None),
+                            ('trafficAllocation', 100, 0, 100,  None),
+                            ('trafficAllocationSeed', get_current_epoch_time_ms(), 0, None, None),
+                            ('seed', get_current_epoch_time_ms(), 0, None, None),
+                            ('status', splits.Status.ACTIVE.value, None, None, [e.value for e in splits.Status]),
+                            ('killed', False, None, None, None),
+                            ('defaultTreatment', 'on', None, None, None, ['', ' ']),
+                            ('changeNumber', 0, 0, None, None),
+                            ('algo', 2, 1, 3, None)]:
+                split = self._sanitize_split_element(split, element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=element[4])
+            split = self._santizie_condition(split)
+            sanitized_splits.append(split)
+        return sanitized_splits
+
+    def _sanitize_split_element(self, split, element_name, default_value, lower_value=None, upper_value=None, in_list=None, not_in_list=None):
+        """
+        Sanitize specific split element.
+
+        :param split: split dict object
+        :type split: Dict
+        :param element_name: split element name
+        :type element_name: str
+        :param default_value: element default value
+        :type default_value: any
+        :param lower_value: Optional, element lower value limit
+        :type lower_value: any
+        :param upper_value: Optional, element upper value limit
+        :type upper_value: any
+        :param in_list: Optional, list of values expected in element
+        :type in_list: [any]
+        :param not_in_list: Optional, list of values not expected in element
+        :type not_in_list: [any]
+
+        :return: sanitized split
+        :rtype: Dict
+        """
+        if element_name not in split or split[element_name] is None:
+                split[element_name] = default_value
+                _LOGGER.debug("Sanitized element [%s] to '%s' in split: %s.", element_name, default_value, split['name'])
+        if lower_value is not None:
+            if split[element_name] < lower_value:
+                if upper_value is not None:
+                    if split[element_name] > upper_value:
+                        split[element_name] = default_value
+                        _LOGGER.debug("Sanitized element [%s] to '%s' in split: %s.", element_name, default_value, split['name'])
+        if in_list is not None:
+            if split[element_name] not in in_list:
+                split[element_name] = default_value
+                _LOGGER.debug("Sanitized element [%s] to '%s' in split: %s.", element_name, default_value, split['name'])
+        if not_in_list is not None:
+            if split[element_name] in not_in_list:
+                split[element_name] = default_value
+                _LOGGER.debug("Sanitized element [%s] to '%s' in split: %s.", element_name, default_value, split['name'])
+
+        return split
+
+    def _santizie_condition(self, split):
+        """
+        Sanitize split and ensure a matcher exist with ALL_KEYS element.
+
+        :param split: split dict object
+        :type split: Dict
+
+        :return: sanitized split
+        :rtype: Dict
+        """
+        found_all_keys_matcher = False
+        if 'conditions' not in split or split['conditions'] is None:
+            split['conditions'] = []
+        for condition in split['conditions']:
+            if 'conditionType' in condition:
+                if condition['conditionType'] == 'ROLLOUT':
+                    if 'matcherGroup' in condition:
+                        if 'matchers' in condition['matcherGroup']:
+                            for matcher in condition['matcherGroup']['matchers']:
+                                if matcher['matcherType'] == 'ALL_KEYS':
+                                    found_all_keys_matcher = True
+                                    break
+
+        if not found_all_keys_matcher:
+            _LOGGER.debug("Missing default rule condition for split: %s, adding default rule with 100%% off treatment", split['name'])
+            split['conditions'].append(
+            {
+                "conditionType": "ROLLOUT",
+                "matcherGroup": {
+                "combiner": "AND",
+                "matchers": [{
+                    "keySelector": { "trafficType": "user", "attribute": None },
+                    "matcherType": "ALL_KEYS",
+                    "negate": False,
+                    "userDefinedSegmentMatcherData": None,
+                    "whitelistMatcherData": None,
+                    "unaryNumericMatcherData": None,
+                    "betweenMatcherData": None,
+                    "booleanMatcherData": None,
+                    "dependencyMatcherData": None,
+                    "stringMatcherData": None
+                    }]
+                },
+                "partitions": [
+                    { "treatment": "on", "size": 0 },
+                    { "treatment": "off", "size": 100 }
+                ],
+            "label": "default rule"
+        })
+
+        return split
