@@ -471,7 +471,7 @@ class LocalSplitSynchronizer(object):
                             ('killed', False, None, None, None),
                             ('defaultTreatment', 'on', None, None, None, ['', ' ']),
                             ('changeNumber', 0, 0, None, None),
-                            ('algo', 2, 1, 3, None)]:
+                            ('algo', 2, 2, 2, None)]:
                 split = self._sanitize_split_element(split, element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=element[4])
             split = self._santizie_condition(split)
             sanitized_splits.append(split)
@@ -502,12 +502,18 @@ class LocalSplitSynchronizer(object):
         if element_name not in split or split[element_name] is None:
                 split[element_name] = default_value
                 _LOGGER.debug("Sanitized element [%s] to '%s' in split: %s.", element_name, default_value, split['name'])
-        if lower_value is not None:
+        if lower_value is not None and upper_value is not None:
+            if split[element_name] < lower_value or split[element_name] > upper_value:
+                split[element_name] = default_value
+                _LOGGER.debug("Sanitized element [%s] to '%s' in split: %s.", element_name, default_value, split['name'])
+        elif lower_value is not None:
             if split[element_name] < lower_value:
-                if upper_value is not None:
-                    if split[element_name] > upper_value:
-                        split[element_name] = default_value
-                        _LOGGER.debug("Sanitized element [%s] to '%s' in split: %s.", element_name, default_value, split['name'])
+                split[element_name] = default_value
+                _LOGGER.debug("Sanitized element [%s] to '%s' in split: %s.", element_name, default_value, split['name'])
+        elif upper_value is not None:
+            if split[element_name] > upper_value:
+                split[element_name] = default_value
+                _LOGGER.debug("Sanitized element [%s] to '%s' in split: %s.", element_name, default_value, split['name'])
         if in_list is not None:
             if split[element_name] not in in_list:
                 split[element_name] = default_value
@@ -521,7 +527,7 @@ class LocalSplitSynchronizer(object):
 
     def _santizie_condition(self, split):
         """
-        Sanitize split and ensure a matcher exist with ALL_KEYS element.
+        Sanitize split and ensure a condition type ROLLOUT and matcher exist with ALL_KEYS elements.
 
         :param split: split dict object
         :type split: Dict

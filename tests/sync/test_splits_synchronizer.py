@@ -11,7 +11,7 @@ from splitio.storage import SplitStorage
 from splitio.storage.inmemmory import InMemorySplitStorage
 from splitio.models.splits import Split
 from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer, LocalhostMode
-
+from tests.integration import splits_json
 
 class SplitsSynchronizerTests(object):
     """Split synchronizer test cases."""
@@ -350,3 +350,152 @@ class LocalSplitsSynchronizerTests(object):
         assert inserted_split.name == 'some_name'
 
         os.remove("./splits.json")
+
+    def test_json_elements_sanitization(self, mocker):
+        """Test sanitization."""
+        split_synchronizer = LocalSplitSynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock())
+
+        # check no changes if all elements exist with valid values
+        parsed = {"splits": [], "since": -1, "till": -1}
+        assert (split_synchronizer._sanitize_json_elements(parsed) == parsed)
+
+        # check set since to -1 when is None
+        parsed2 = parsed.copy()
+        parsed2['since'] = None
+        assert (split_synchronizer._sanitize_json_elements(parsed2) == parsed)
+
+        # check no changes if since > -1
+        parsed2 = parsed.copy()
+        parsed2['since'] = 12
+        assert (split_synchronizer._sanitize_json_elements(parsed2) == parsed)
+
+        # check set till to -1 when is None
+        parsed2 = parsed.copy()
+        parsed2['till'] = None
+        assert (split_synchronizer._sanitize_json_elements(parsed2) == parsed)
+
+        # check add since when missing
+        parsed2 = {"splits": [], "till": -1}
+        assert (split_synchronizer._sanitize_json_elements(parsed2) == parsed)
+
+        # check add till when missing
+        parsed2 = {"splits": [], "since": -1}
+        assert (split_synchronizer._sanitize_json_elements(parsed2) == parsed)
+
+        # check add splits when missing
+        parsed2 = {"since": -1, "till": -1}
+        assert (split_synchronizer._sanitize_json_elements(parsed2) == parsed)
+
+    def test_split_elements_sanitization(self, mocker):
+        """Test sanitization."""
+        split_synchronizer = LocalSplitSynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock())
+
+        # No changes when split structure is good
+        assert (split_synchronizer._sanitize_split_elements(splits_json["splitChange1_1"]["splits"]) == splits_json["splitChange1_1"]["splits"])
+
+        # test 'trafficTypeName' value None
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        split[0]['trafficTypeName'] = None
+        assert (split_synchronizer._sanitize_split_elements(split) == splits_json["splitChange1_1"]["splits"])
+
+        # test 'trafficAllocation' value None
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        split[0]['trafficAllocation'] = None
+        assert (split_synchronizer._sanitize_split_elements(split) == splits_json["splitChange1_1"]["splits"])
+
+        # test 'trafficAllocation' valid value should not change
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        split[0]['trafficAllocation'] = 50
+        assert (split_synchronizer._sanitize_split_elements(split) == split)
+
+        # test 'trafficAllocation' invalid value should change
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        split[0]['trafficAllocation'] = 110
+        assert (split_synchronizer._sanitize_split_elements(split) == splits_json["splitChange1_1"]["splits"])
+
+        # test 'trafficAllocationSeed' is set to millisec epoch when None
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        split[0]['trafficAllocationSeed'] = None
+        assert (split_synchronizer._sanitize_split_elements(split)[0]['trafficAllocationSeed'] > 0)
+
+        # test 'seed' is set to millisec epoch when None
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        split[0]['seed'] = None
+        assert (split_synchronizer._sanitize_split_elements(split)[0]['seed'] > 0)
+
+        # test 'status' is set to ACTIVE when None
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        split[0]['status'] = None
+        assert (split_synchronizer._sanitize_split_elements(split) == splits_json["splitChange1_1"]["splits"])
+
+        # test 'status' is set to ACTIVE when incorrect
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        split[0]['status'] = 'ww'
+        assert (split_synchronizer._sanitize_split_elements(split) == splits_json["splitChange1_1"]["splits"])
+
+        # test ''killed' is set to False when incorrect
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        split[0]['killed'] = None
+        assert (split_synchronizer._sanitize_split_elements(split) == splits_json["splitChange1_1"]["splits"])
+
+        # test 'defaultTreatment' is set to on when None
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        split[0]['defaultTreatment'] = None
+        assert (split_synchronizer._sanitize_split_elements(split) == splits_json["splitChange1_1"]["splits"])
+
+        # test 'changeNumber' is set to 0 when None
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        split[0]['changeNumber'] = None
+        assert (split_synchronizer._sanitize_split_elements(split)[0]['changeNumber'] == 0)
+
+        # test 'changeNumber' is set to 0 when invalid
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        split[0]['changeNumber'] = -33
+        assert (split_synchronizer._sanitize_split_elements(split)[0]['changeNumber'] == 0)
+
+        # test 'algo' is set to 2 when None
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        split[0]['algo'] = None
+        assert (split_synchronizer._sanitize_split_elements(split)[0]['algo'] == 2)
+
+        # test 'algo' is set to 2 when higher than 2
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        split[0]['algo'] = 3
+        assert (split_synchronizer._sanitize_split_elements(split)[0]['algo'] == 2)
+
+        # test 'algo' is set to 2 when lower than 2
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        split[0]['algo'] = 1
+        assert (split_synchronizer._sanitize_split_elements(split)[0]['algo'] == 2)
+
+    def test_split_condition_sanitization(self, mocker):
+        """Test sanitization."""
+        split_synchronizer = LocalSplitSynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock())
+
+        # test missing all conditions with default rule set to 100% off
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        target_split = splits_json["splitChange1_1"]["splits"].copy()
+        target_split[0]["conditions"][0]['partitions'][0]['size'] = 0
+        target_split[0]["conditions"][0]['partitions'][1]['size'] = 100
+        split[0]["conditions"] = None
+        assert (split_synchronizer._sanitize_split_elements(split) == target_split)
+
+        # test missing ALL_KEYS condition matcher with default rule set to 100% off
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        target_split = splits_json["splitChange1_1"]["splits"].copy()
+        split[0]["conditions"][0]["matcherGroup"]["matchers"][0]["matcherType"] = "IN_STR"
+        target_split = split.copy()
+        target_split[0]["conditions"].append(splits_json["splitChange1_1"]["splits"][0]["conditions"][0])
+        target_split[0]["conditions"][1]['partitions'][0]['size'] = 0
+        target_split[0]["conditions"][1]['partitions'][1]['size'] = 100
+        assert (split_synchronizer._sanitize_split_elements(split) == target_split)
+
+        # test missing ROLLOUT condition type with default rule set to 100% off
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        target_split = splits_json["splitChange1_1"]["splits"].copy()
+        split[0]["conditions"][0]["conditionType"] = "NOT"
+        target_split = split.copy()
+        target_split[0]["conditions"].append(splits_json["splitChange1_1"]["splits"][0]["conditions"][0])
+        target_split[0]["conditions"][1]['partitions'][0]['size'] = 0
+        target_split[0]["conditions"][1]['partitions'][1]['size'] = 100
+        assert (split_synchronizer._sanitize_split_elements(split) == target_split)
