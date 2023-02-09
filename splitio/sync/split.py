@@ -163,6 +163,8 @@ class LocalhostMode(Enum):
 class LocalSplitSynchronizer(object):
     """Localhost mode split synchronizer."""
 
+    _DEFAULT_SPLIT_TILL = -1
+
     def __init__(self, filename, split_storage, localhost_mode=LocalhostMode.LEGACY):
         """
         Class constructor.
@@ -368,7 +370,7 @@ class LocalSplitSynchronizer(object):
             fecthed_sha = util._get_sha(json.dumps(fetched))
             if fecthed_sha != self._current_json_sha:
                 self._current_json_sha = fecthed_sha
-                if self._split_storage.get_change_number() <= till:
+                if self._split_storage.get_change_number() <= till or till == self._DEFAULT_SPLIT_TILL:
                     for split in fetched:
                         if split['status'] == splits.Status.ACTIVE.value:
                             parsed = splits.from_raw(split)

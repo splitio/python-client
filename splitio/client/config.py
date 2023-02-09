@@ -15,7 +15,7 @@ DEFAULT_CONFIG = {
     'streamingEnabled': True,
     'featuresRefreshRate': 30,
     'segmentsRefreshRate': 30,
-    'metricsRefreshRate': 60,
+    'metricsRefreshRate': 3600,
     'impressionsRefreshRate': 5 * 60,
     'impressionsBulkSize': 5000,
     'impressionsQueueSize': 10000,
@@ -125,4 +125,7 @@ def sanitize(apikey, config):
                                                     config.get('impressionsRefreshRate'))
     processed['impressionsMode'] = imp_mode
     processed['impressionsRefreshRate'] = imp_rate
+    if processed['metricsRefreshRate'] < 60:
+        processed['metricsRefreshRate'] = 60
+
     return processed
