@@ -265,6 +265,13 @@ class LocalSegmentsSynchronizerTests(object):
         segment = storage.get('segmentA')
         assert segment.contains('key222')
 
+        # Should sync when till is default (-1)
+        segment_a['till'] = -1
+        segment_a['added'] = ['key33']
+        segments_synchronizer.synchronize_segments(['segmentA'])
+        segment = storage.get('segmentA')
+        assert segment.contains('key33')
+
         # verify remove keys
         segment_a['added'] = []
         segment_a['removed'] = ['key111']

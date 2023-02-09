@@ -298,6 +298,14 @@ class LocalSplitsSynchronizerTests(object):
         inserted_split = storage.get(splits[0]['name'])
         assert inserted_split.killed == False
 
+        # Should sync when till is default (-1)
+        till = -1
+        split_synchronizer._current_json_sha = "-1"
+        splits[0]['killed'] = True
+        split_synchronizer.synchronize_splits()
+        inserted_split = storage.get(splits[0]['name'])
+        assert inserted_split.killed == True
+
     def test_reading_json(self, mocker):
         """Test reading json file."""
         f = open("./splits.json", "w")

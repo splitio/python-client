@@ -195,6 +195,10 @@ class SegmentSynchronizer(object):
         return self._segment_storage.get(segment_name) != None
 
 class LocalSegmentSynchronizer(object):
+    """Localhost mode segment synchronizer."""
+
+    _DEFAULT_SEGMENT_TILL = -1
+
     def __init__(self, segment_folder, split_storage, segment_storage):
         """
         Class constructor.
@@ -260,7 +264,7 @@ class LocalSegmentSynchronizer(object):
             else:
                 if fetched_sha != self._segment_sha[segment_name]:
                     self._segment_sha[segment_name] = fetched_sha
-                    if self._segment_storage.get_change_number(segment_name) <= fetched['till']:
+                    if self._segment_storage.get_change_number(segment_name) <= fetched['till'] or fetched['till'] == self._DEFAULT_SEGMENT_TILL:
                         self._segment_storage.update(
                             segment_name,
                             fetched['added'],
