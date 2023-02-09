@@ -13,6 +13,7 @@ from splitio.api.commons import FetchOptions
 from splitio.models import splits
 from splitio.util.backoff import Backoff
 from splitio.util.time import get_current_epoch_time_ms
+from splitio.sync import util
 
 _LEGACY_COMMENT_LINE_RE = re.compile(r'^#.*$')
 _LEGACY_DEFINITION_LINE_RE = re.compile(r'^(?<![^#])(?P<feature>[\w_-]+)\s+(?P<treatment>[\w_-]+)$')
@@ -364,7 +365,7 @@ class LocalSplitSynchronizer(object):
         try:
             fetched, till = self._read_splits_from_json_file(self._filename)
             segment_list = set()
-            fecthed_sha = self._get_sha(json.dumps(fetched))
+            fecthed_sha = util._get_sha(json.dumps(fetched))
             if fecthed_sha != self._current_json_sha:
                 self._current_json_sha = fecthed_sha
                 if self._split_storage.get_change_number() <= till:
@@ -417,18 +418,6 @@ class LocalSplitSynchronizer(object):
 
         return parsed
 
-    def _get_sha(self, fetched):
-        """
-        Return sha256 of given string.
-
-        :param fetched: string variable
-        :type fetched: str
-
-        :return: hex representation of sha256
-        :rtype: str
-        """
-        return hashlib.sha256(fetched.encode()).hexdigest()
-
     def _sanitize_json_elements(self, parsed):
         """
         Sanitize all json elements.
@@ -472,58 +461,10 @@ class LocalSplitSynchronizer(object):
                             ('defaultTreatment', 'on', None, None, None, ['', ' ']),
                             ('changeNumber', 0, 0, None, None, None),
                             ('algo', 2, 2, 2, None, None)]:
-                split = self._sanitize_split_element(split, element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=element[4], not_in_list=element[5])
+                split = util._sanitize_object_element(split, 'split', element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=element[4], not_in_list=element[5])
             split = self._santizie_condition(split)
             sanitized_splits.append(split)
         return sanitized_splits
-
-    def _sanitize_split_element(self, split, element_name, default_value, lower_value=None, upper_value=None, in_list=None, not_in_list=None):
-        """
-        Sanitize specific split element.
-
-        :param split: split dict object
-        :type split: Dict
-        :param element_name: split element name
-        :type element_name: str
-        :param default_value: element default value
-        :type default_value: any
-        :param lower_value: Optional, element lower value limit
-        :type lower_value: any
-        :param upper_value: Optional, element upper value limit
-        :type upper_value: any
-        :param in_list: Optional, list of values expected in element
-        :type in_list: [any]
-        :param not_in_list: Optional, list of values not expected in element
-        :type not_in_list: [any]
-
-        :return: sanitized split
-        :rtype: Dict
-        """
-        if element_name not in split or split[element_name] is None:
-                split[element_name] = default_value
-                _LOGGER.debug("Sanitized element [%s] to '%s' in split: %s.", element_name, default_value, split['name'])
-        if lower_value is not None and upper_value is not None:
-            if split[element_name] < lower_value or split[element_name] > upper_value:
-                split[element_name] = default_value
-                _LOGGER.debug("Sanitized element [%s] to '%s' in split: %s.", element_name, default_value, split['name'])
-        elif lower_value is not None:
-            if split[element_name] < lower_value:
-                split[element_name] = default_value
-                _LOGGER.debug("Sanitized element [%s] to '%s' in split: %s.", element_name, default_value, split['name'])
-        elif upper_value is not None:
-            if split[element_name] > upper_value:
-                split[element_name] = default_value
-                _LOGGER.debug("Sanitized element [%s] to '%s' in split: %s.", element_name, default_value, split['name'])
-        if in_list is not None:
-            if split[element_name] not in in_list:
-                split[element_name] = default_value
-                _LOGGER.debug("Sanitized element [%s] to '%s' in split: %s.", element_name, default_value, split['name'])
-        if not_in_list is not None:
-            if split[element_name] in not_in_list:
-                split[element_name] = default_value
-                _LOGGER.debug("Sanitized element [%s] to '%s' in split: %s.", element_name, default_value, split['name'])
-
-        return split
 
     def _santizie_condition(self, split):
         """

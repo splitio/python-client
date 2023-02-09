@@ -1,13 +1,13 @@
 import logging
 import time
 import json
-import hashlib
 
 from splitio.api import APIException
 from splitio.api.commons import FetchOptions
 from splitio.tasks.util import workerpool
 from splitio.models import segments
 from splitio.util.backoff import Backoff
+from splitio.sync import util
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -252,7 +252,7 @@ class LocalSegmentSynchronizer(object):
             fetched = self._read_segment_from_json_file(segment_name)
             if fetched == {}:
                 return False
-            fetched_sha = self._get_sha(json.dumps(fetched))
+            fetched_sha = util._get_sha(json.dumps(fetched))
             if not self.segment_exist_in_storage(segment_name):
                     self._segment_sha[segment_name] = fetched_sha
                     self._segment_storage.put(segments.from_raw(fetched))
@@ -292,18 +292,6 @@ class LocalSegmentSynchronizer(object):
         except Exception as exc:
             raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc
 
-    def _get_sha(self, fetched):
-        """
-        Return sha256 of given string.
-
-        :param fetched: string variable
-        :type fetched: str
-
-        :return: hex representation of sha256
-        :rtype: str
-        """
-        return hashlib.sha256(fetched.encode()).hexdigest()
-
     def _sanitize_segment(self, parsed):
         """
         Sanitize json elements.
@@ -314,48 +302,21 @@ class LocalSegmentSynchronizer(object):
         :return: sanitized segment structure dict
         :rtype: Dict
         """
-        if 'name' not in parsed or parsed['name'].strip() == '':
+        if 'name' not in parsed or parsed['name'] is None:
             _LOGGER.warning("Segment does not have [name] element, skipping")
             return {}
+        if parsed['name'].strip() == '':
+            _LOGGER.warning("Segment [name] element is blank, skipping")
+            return {}
 
-        for element in [('till', -1, -1, None, None),
-                        ('added', [], None, None, None),
-                        ('removed', [], None, None, None)
+        for element in [('till', -1, -1, None, None, [0]),
+                        ('added', [], None, None, None, None),
+                        ('removed', [], None, None, None, None)
                         ]:
-            parsed = self._sanitize_element(parsed, element[0], element[1], lower_value=element[2], upper_value=element[3])
-        parsed = self._sanitize_element(parsed, 'since', parsed['till'], -1, parsed['till'])
+            parsed = util._sanitize_object_element(parsed, 'segment', element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=None, not_in_list=element[5])
+        parsed = util._sanitize_object_element(parsed, 'segment', 'since', parsed['till'], -1, parsed['till'], None, [0])
 
         return parsed
-
-    def _sanitize_element(self, segment, element_name, default_value, lower_value=None, upper_value=None):
-        """
-        Sanitize specific element.
-
-        :param segment: segment dict
-        :type segment: Dict
-        :param element_name: element name
-        :type element_name: str
-        :param default_value: element default value
-        :type default_value: any
-        :param lower_value: Optional, element lower value limit
-        :type lower_value: any
-        :param upper_value: Optional, element upper value limit
-        :type upper_value: any
-
-        :return: sanitized segment
-        :rtype: Dict
-        """
-        if element_name not in segment or segment[element_name] is None:
-                segment[element_name] = default_value
-                _LOGGER.debug("Sanitized element [%s] to '%s' in segment: %s.", element_name, default_value, segment['name'])
-        if lower_value is not None:
-            if segment[element_name] < lower_value:
-                if upper_value is not None:
-                    if segment[element_name] > upper_value:
-                        segment[element_name] = default_value
-                        _LOGGER.debug("Sanitized element [%s] to '%s' in segment: %s.", element_name, default_value, segment['name'])
-
-        return segment
 
     def segment_exist_in_storage(self, segment_name):
         """
