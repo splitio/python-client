@@ -463,16 +463,16 @@ class LocalSplitSynchronizer(object):
             if 'name' not in split or split['name'].strip() == '':
                 _LOGGER.warning("A split in json file does not have (Name) or property is empty, skipping.")
                 continue
-            for element in [('trafficTypeName', 'user', None, None, None),
-                            ('trafficAllocation', 100, 0, 100,  None),
-                            ('trafficAllocationSeed', get_current_epoch_time_ms(), 0, None, None),
-                            ('seed', get_current_epoch_time_ms(), 0, None, None),
-                            ('status', splits.Status.ACTIVE.value, None, None, [e.value for e in splits.Status]),
-                            ('killed', False, None, None, None),
+            for element in [('trafficTypeName', 'user', None, None, None, None),
+                            ('trafficAllocation', 100, 0, 100,  None, None),
+                            ('trafficAllocationSeed', get_current_epoch_time_ms(), None, None, None, [0]),
+                            ('seed', get_current_epoch_time_ms(), None, None, None, [0]),
+                            ('status', splits.Status.ACTIVE.value, None, None, [e.value for e in splits.Status], None),
+                            ('killed', False, None, None, None, None),
                             ('defaultTreatment', 'on', None, None, None, ['', ' ']),
-                            ('changeNumber', 0, 0, None, None),
-                            ('algo', 2, 2, 2, None)]:
-                split = self._sanitize_split_element(split, element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=element[4])
+                            ('changeNumber', 0, 0, None, None, None),
+                            ('algo', 2, 2, 2, None, None)]:
+                split = self._sanitize_split_element(split, element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=element[4], not_in_list=element[5])
             split = self._santizie_condition(split)
             sanitized_splits.append(split)
         return sanitized_splits

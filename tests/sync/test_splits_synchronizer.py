@@ -418,9 +418,19 @@ class LocalSplitsSynchronizerTests(object):
         split[0]['trafficAllocationSeed'] = None
         assert (split_synchronizer._sanitize_split_elements(split)[0]['trafficAllocationSeed'] > 0)
 
+        # test 'trafficAllocationSeed' is set to millisec epoch when 0
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        split[0]['trafficAllocationSeed'] = 0
+        assert (split_synchronizer._sanitize_split_elements(split)[0]['trafficAllocationSeed'] > 0)
+
         # test 'seed' is set to millisec epoch when None
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['seed'] = None
+        assert (split_synchronizer._sanitize_split_elements(split)[0]['seed'] > 0)
+
+        # test 'seed' is set to millisec epoch when its 0
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        split[0]['seed'] = 0
         assert (split_synchronizer._sanitize_split_elements(split)[0]['seed'] > 0)
 
         # test 'status' is set to ACTIVE when None
@@ -441,6 +451,11 @@ class LocalSplitsSynchronizerTests(object):
         # test 'defaultTreatment' is set to on when None
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['defaultTreatment'] = None
+        assert (split_synchronizer._sanitize_split_elements(split) == splits_json["splitChange1_1"]["splits"])
+
+        # test 'defaultTreatment' is set to on when its empty
+        split = splits_json["splitChange1_1"]["splits"].copy()
+        split[0]['defaultTreatment'] = ' '
         assert (split_synchronizer._sanitize_split_elements(split) == splits_json["splitChange1_1"]["splits"])
 
         # test 'changeNumber' is set to 0 when None
