@@ -226,8 +226,6 @@ class LocalSegmentsSynchronizerTests(object):
 
         segments_synchronizer = LocalSegmentSynchronizer('segment_path', split_storage, storage)
         segments_synchronizer._read_segment_from_json_file = read_segment_from_json_file
-
-#        pytest.set_trace()
         assert segments_synchronizer.synchronize_segments()
 
         segment = storage.get('segmentA')
@@ -292,3 +290,52 @@ class LocalSegmentsSynchronizerTests(object):
         assert segment.contains('key3')
 
         os.remove("./segmentA.json")
+
+    def test_json_elements_sanitization(self, mocker):
+        """Test sanitization."""
+        segment_synchronizer = LocalSegmentSynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock())
+        segment1 = {"name": 'seg', "added": [], "removed": [], "since": -1, "till": 12}
+
+        # should reject segment if 'name' is null
+        segment2 = {"name": None, "added": [], "removed": [], "since": -1, "till": 12}
+        assert(segment_synchronizer._sanitize_segment(segment2) == {})
+
+        # should reject segment if 'name' does not exist
+        segment2 = {"added": [], "removed": [], "since": -1, "till": 12}
+        assert(segment_synchronizer._sanitize_segment(segment2) == {})
+
+        # should add missing 'added' element
+        segment2 = {"name": 'seg', "removed": [], "since": -1, "till": 12}
+        assert(segment_synchronizer._sanitize_segment(segment2) == segment1)
+
+        # should add missing 'removed' element
+        segment2 = {"name": 'seg', "added": [], "since": -1, "till": 12}
+        assert(segment_synchronizer._sanitize_segment(segment2) == segment1)
+
+        # should reset added and remved to array if values are None
+        segment2 = {"name": 'seg', "added": None, "removed": None, "since": -1, "till": 12}
+        assert(segment_synchronizer._sanitize_segment(segment2) == segment1)
+
+        # should reset since and till to -1 if values are None
+        segment3 = segment1.copy()
+        segment3["till"] = -1
+        segment2 = {"name": 'seg', "added": [], "removed": [], "since": None, "till": None}
+        assert(segment_synchronizer._sanitize_segment(segment2) == segment3)
+
+        # should add since and till with -1 if they are missing
+        segment2 = {"name": 'seg', "added": [], "removed": []}
+        assert(segment_synchronizer._sanitize_segment(segment2) == segment3)
+
+        # should reset since and till to -1 if values are 0
+        segment2 = {"name": 'seg', "added": [], "removed": [], "since": 0, "till": 0}
+        assert(segment_synchronizer._sanitize_segment(segment2) == segment3)
+
+        # should reset till and since to -1 if values below -1
+        segment2 = {"name": 'seg', "added": [], "removed": [], "since": -2, "till": -2}
+        assert(segment_synchronizer._sanitize_segment(segment2) == segment3)
+
+        # should reset since to till if value above till
+        segment3["since"] = 12
+        segment3["till"] = 12
+        segment2 = {"name": 'seg', "added": [], "removed": [], "since": 20, "till": 12}
+        assert(segment_synchronizer._sanitize_segment(segment2) == segment3)

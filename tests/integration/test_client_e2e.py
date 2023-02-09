@@ -994,18 +994,19 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
         factory.block_until_ready()
         client = factory.client()
 
+        # Tests 1
         factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange1_1'])
         self._synchronize_now(factory)
 
-        assert factory.manager().split_names() == ["SPLIT_2", "SPLIT_1"]
+        assert sorted(factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         self._update_temp_file(splits_json['splitChange1_2'])
         self._synchronize_now(factory)
 
-        assert factory.manager().split_names() == ["SPLIT_2", "SPLIT_1"]
+        assert sorted(factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert client.get_treatment("key", "SPLIT_2", None) == 'off'
 
@@ -1016,15 +1017,17 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
         assert client.get_treatment("key", "SPLIT_1", None) == 'control'
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
-        # Tests 2 - Enable after Sanitization is added
-#        factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
-#        self._update_temp_file(splits_json['splitChange2_1'])
-#        self._synchronize_now(factory)
+        # Tests 2
+        factory._storages['splits'].remove('SPLIT_2')
+        factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
+        self._update_temp_file(splits_json['splitChange2_1'])
+        self._synchronize_now(factory)
 
-#        assert factory.manager().split_names() == ["SPLIT_1"]
-#        assert client.get_treatment("key", "SPLIT_1", None) == 'on'
+        assert factory.manager().split_names() == ["SPLIT_1"]
+        assert client.get_treatment("key", "SPLIT_1", None) == 'off'
 
         # Tests 3
+        factory._storages['splits'].remove('SPLIT_1')
         factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange3_1'])
         self._synchronize_now(factory)
@@ -1039,18 +1042,19 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
         assert client.get_treatment("key", "SPLIT_2", None) == 'off'
 
         # Tests 4
+        factory._storages['splits'].remove('SPLIT_2')
         factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange4_1'])
         self._synchronize_now(factory)
 
-        assert factory.manager().split_names() == ["SPLIT_2", "SPLIT_1"]
+        assert sorted(factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         self._update_temp_file(splits_json['splitChange4_2'])
         self._synchronize_now(factory)
 
-        assert factory.manager().split_names() == ["SPLIT_2", "SPLIT_1"]
+        assert sorted(factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert client.get_treatment("key", "SPLIT_2", None) == 'off'
 
@@ -1062,6 +1066,7 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         # Tests 5
+        factory._storages['splits'].remove('SPLIT_2')
         factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange5_1'])
         self._synchronize_now(factory)
@@ -1076,18 +1081,19 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         # Tests 6
+        factory._storages['splits'].remove('SPLIT_2')
         factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange6_1'])
         self._synchronize_now(factory)
 
-        assert factory.manager().split_names() == ["SPLIT_2", "SPLIT_1"]
+        assert sorted(factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         self._update_temp_file(splits_json['splitChange6_2'])
         self._synchronize_now(factory)
 
-        assert factory.manager().split_names() == ["SPLIT_2", "SPLIT_1"]
+        assert sorted(factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert client.get_treatment("key", "SPLIT_2", None) == 'off'
 

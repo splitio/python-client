@@ -1,14 +1,13 @@
 import logging
 import time
 import json
-import hashlib
 
 from splitio.api import APIException
 from splitio.api.commons import FetchOptions
 from splitio.tasks.util import workerpool
 from splitio.models import segments
 from splitio.util.backoff import Backoff
-
+from splitio.sync import util
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -215,6 +214,27 @@ class LocalSegmentSynchronizer(object):
         self._segment_storage = segment_storage
         self._segment_sha = {}
 
+    def synchronize_segments(self, segment_names = None):
+        """
+        Loop through given segment names and synchronize each one.
+
+        :param segment_names: Optional, array of segment names to update.
+        :type segment_name: {str}
+
+        :return: True if no error occurs. False otherwise.
+        :rtype: bool
+        """
+        _LOGGER.info('Synchronizing segments now.')
+        if segment_names is None:
+            segment_names = self._split_storage.get_segment_names()
+
+        return_flag = True
+        for segment_name in segment_names:
+            if not self.synchronize_segment(segment_name):
+                return_flag = False
+
+        return return_flag
+
     def synchronize_segment(self, segment_name, till=None):
         """
         Update a segment from queue
@@ -230,7 +250,9 @@ class LocalSegmentSynchronizer(object):
         """
         try:
             fetched = self._read_segment_from_json_file(segment_name)
-            fetched_sha = self._get_sha(json.dumps(fetched))
+            if fetched == {}:
+                return False
+            fetched_sha = util._get_sha(json.dumps(fetched))
             if not self.segment_exist_in_storage(segment_name):
                     self._segment_sha[segment_name] = fetched_sha
                     self._segment_storage.put(segments.from_raw(fetched))
@@ -267,36 +289,34 @@ class LocalSegmentSynchronizer(object):
                 parsed = json.load(flo)
             santitized_segment = self._sanitize_segment(parsed)
             return santitized_segment
-        except IOError as exc:
+        except Exception as exc:
             raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc
 
-    def _sanitize_segment(self, segment):
-        """To be implemented."""
-        return segment
-
-    def _get_sha(self, fetched):
-        return hashlib.sha256(fetched.encode()).hexdigest()
-
-    def synchronize_segments(self, segment_names = None):
+    def _sanitize_segment(self, parsed):
         """
-        Loop through given segment names and synchronize each one.
+        Sanitize json elements.
 
-        :param segment_names: Optional, array of segment names to update.
-        :type segment_name: {str}
+        :param parsed: segment dict
+        :type parsed: Dict
 
-        :return: True if no error occurs. False otherwise.
-        :rtype: bool
+        :return: sanitized segment structure dict
+        :rtype: Dict
         """
-        _LOGGER.info('Synchronizing segments now.')
-        if segment_names is None:
-            segment_names = self._split_storage.get_segment_names()
+        if 'name' not in parsed or parsed['name'] is None:
+            _LOGGER.warning("Segment does not have [name] element, skipping")
+            return {}
+        if parsed['name'].strip() == '':
+            _LOGGER.warning("Segment [name] element is blank, skipping")
+            return {}
 
-        return_flag = True
-        for segment_name in segment_names:
-            if not self.synchronize_segment(segment_name):
-                return_flag = False
+        for element in [('till', -1, -1, None, None, [0]),
+                        ('added', [], None, None, None, None),
+                        ('removed', [], None, None, None, None)
+                        ]:
+            parsed = util._sanitize_object_element(parsed, 'segment', element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=None, not_in_list=element[5])
+        parsed = util._sanitize_object_element(parsed, 'segment', 'since', parsed['till'], -1, parsed['till'], None, [0])
 
-        return return_flag
+        return parsed
 
     def segment_exist_in_storage(self, segment_name):
         """
