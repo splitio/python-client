@@ -111,6 +111,12 @@ class PushManagerTests(object):
         assert timer_mock.mock_calls == [mocker.call(0, Any())]
         assert sse_mock.mock_calls == []
 
+    def test_null_token(self, mocker):
+        """Test no exception raised if auth token is null."""
+        api_mock = mocker.Mock()
+        api_mock.authenticate.return_value = None
+        manager = PushManager(api_mock, mocker.Mock(), Queue(), mocker.Mock(), mocker.Mock())
+        manager._trigger_connection_flow()
 
     def test_auth_apiexception(self, mocker):
         """Test the initial status is ok and reset() works as expected."""

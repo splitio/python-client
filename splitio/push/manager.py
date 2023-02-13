@@ -143,9 +143,10 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
             self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
             return
 
-        if not token.push_enabled:
+        if token is None or not token.push_enabled:
             self._feedback_loop.put(Status.PUSH_NONRETRYABLE_ERROR)
             return
+
         self._telemetry_runtime_producer.record_token_refreshes()
         _LOGGER.debug("auth token fetched. connecting to streaming.")
 
