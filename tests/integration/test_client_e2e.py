@@ -1109,6 +1109,8 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
         f = open(os.path.join(os.path.dirname(__file__), 'files','split_changes_temp.json'), 'w')
         f.write(json.dumps(json_body))
         f.close()
+        # adding delay to avoid failing to load the file
+        time.sleep(1)
 
     def _synchronize_now(self):
         filename = os.path.join(os.path.dirname(__file__), 'files', 'split_changes_temp.json')
