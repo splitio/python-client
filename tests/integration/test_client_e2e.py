@@ -953,6 +953,10 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
 
         assert(exception_raised)
 
+        event = threading.Event()
+        factory.destroy(event)
+        event.wait()
+
     def test_localhost_e2e(self):
         """Instantiate a client with a YAML file and issue get_treatment() calls."""
         filename = os.path.join(os.path.dirname(__file__), 'files', 'file2.yaml')
@@ -1109,8 +1113,6 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
         f = open(os.path.join(os.path.dirname(__file__), 'files','split_changes_temp.json'), 'w')
         f.write(json.dumps(json_body))
         f.close()
-        # adding delay to avoid failing to load the file
-        time.sleep(1)
 
     def _synchronize_now(self):
         filename = os.path.join(os.path.dirname(__file__), 'files', 'split_changes_temp.json')
