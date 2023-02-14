@@ -456,8 +456,8 @@ class LocalSplitSynchronizer(object):
                 continue
             for element in [('trafficTypeName', 'user', None, None, None, None),
                             ('trafficAllocation', 100, 0, 100,  None, None),
-                            ('trafficAllocationSeed', get_current_epoch_time_ms(), None, None, None, [0]),
-                            ('seed', get_current_epoch_time_ms(), None, None, None, [0]),
+                            ('trafficAllocationSeed', int(get_current_epoch_time_ms() / 1000), None, None, None, [0]),
+                            ('seed', int(get_current_epoch_time_ms() / 1000), None, None, None, [0]),
                             ('status', splits.Status.ACTIVE.value, None, None, [e.value for e in splits.Status], None),
                             ('killed', False, None, None, None, None),
                             ('defaultTreatment', 'on', None, None, None, ['', ' ']),
