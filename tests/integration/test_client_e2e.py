@@ -53,7 +53,7 @@ class InMemoryIntegrationTests(object):
 
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+#        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
 
@@ -990,119 +990,118 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
     def test_localhost_json_e2e(self):
         """Instantiate a client with a JSON file and issue get_treatment() calls."""
         filename = os.path.join(os.path.dirname(__file__), 'files', 'split_changes_temp.json')
-        factory = get_factory('localhost', config={'splitFile': filename})
-        factory.block_until_ready()
-        client = factory.client()
+        self.factory = get_factory('localhost', config={'splitFile': filename})
+        self.factory.block_until_ready(1)
+        client = self.factory.client()
 
         # Tests 1
-        factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
+        self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange1_1'])
-        self._synchronize_now(factory)
+        self._synchronize_now()
 
-        assert sorted(factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert sorted(self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         self._update_temp_file(splits_json['splitChange1_2'])
-        self._synchronize_now(factory)
+        self._synchronize_now()
 
-        assert sorted(factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert sorted(self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert client.get_treatment("key", "SPLIT_2", None) == 'off'
 
         self._update_temp_file(splits_json['splitChange1_3'])
-        self._synchronize_now(factory)
+        self._synchronize_now()
 
-        assert factory.manager().split_names() == ["SPLIT_2"]
+        assert self.factory.manager().split_names() == ["SPLIT_2"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'control'
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         # Tests 2
-        factory._storages['splits'].remove('SPLIT_1')
-        factory._storages['splits'].remove('SPLIT_2')
-        factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
+        self.factory._storages['splits'].remove('SPLIT_2')
+        self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange2_1'])
-        self._synchronize_now(factory)
+        self._synchronize_now()
 
-        assert factory.manager().split_names() == ["SPLIT_1"]
+        assert self.factory.manager().split_names() == ["SPLIT_1"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'off'
 
         # Tests 3
-        factory._storages['splits'].remove('SPLIT_1')
-        factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
+        self.factory._storages['splits'].remove('SPLIT_1')
+        self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange3_1'])
-        self._synchronize_now(factory)
+        self._synchronize_now()
 
-        assert factory.manager().split_names() == ["SPLIT_2"]
+        assert self.factory.manager().split_names() == ["SPLIT_2"]
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         self._update_temp_file(splits_json['splitChange3_2'])
-        self._synchronize_now(factory)
+        self._synchronize_now()
 
-        assert factory.manager().split_names() == ["SPLIT_2"]
+        assert self.factory.manager().split_names() == ["SPLIT_2"]
         assert client.get_treatment("key", "SPLIT_2", None) == 'off'
 
         # Tests 4
-        factory._storages['splits'].remove('SPLIT_2')
-        factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
+        self.factory._storages['splits'].remove('SPLIT_2')
+        self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange4_1'])
-        self._synchronize_now(factory)
+        self._synchronize_now()
 
-        assert sorted(factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert sorted(self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         self._update_temp_file(splits_json['splitChange4_2'])
-        self._synchronize_now(factory)
+        self._synchronize_now()
 
-        assert sorted(factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert sorted(self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert client.get_treatment("key", "SPLIT_2", None) == 'off'
 
         self._update_temp_file(splits_json['splitChange4_3'])
-        self._synchronize_now(factory)
+        self._synchronize_now()
 
-        assert factory.manager().split_names() == ["SPLIT_2"]
+        assert self.factory.manager().split_names() == ["SPLIT_2"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'control'
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         # Tests 5
-        factory._storages['splits'].remove('SPLIT_1')
-        factory._storages['splits'].remove('SPLIT_2')
-        factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
+        self.factory._storages['splits'].remove('SPLIT_1')
+        self.factory._storages['splits'].remove('SPLIT_2')
+        self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange5_1'])
-        self._synchronize_now(factory)
+        self._synchronize_now()
 
-        assert factory.manager().split_names() == ["SPLIT_2"]
+        assert self.factory.manager().split_names() == ["SPLIT_2"]
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         self._update_temp_file(splits_json['splitChange5_2'])
-        self._synchronize_now(factory)
+        self._synchronize_now()
 
-        assert factory.manager().split_names() == ["SPLIT_2"]
+        assert self.factory.manager().split_names() == ["SPLIT_2"]
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         # Tests 6
-        factory._storages['splits'].remove('SPLIT_2')
-        factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
+        self.factory._storages['splits'].remove('SPLIT_2')
+        self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange6_1'])
-        self._synchronize_now(factory)
+        self._synchronize_now()
 
-        assert sorted(factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert sorted(self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         self._update_temp_file(splits_json['splitChange6_2'])
-        self._synchronize_now(factory)
+        self._synchronize_now()
 
-        assert sorted(factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert sorted(self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert client.get_treatment("key", "SPLIT_2", None) == 'off'
 
         self._update_temp_file(splits_json['splitChange6_3'])
-        self._synchronize_now(factory)
+        self._synchronize_now()
 
-        assert factory.manager().split_names() == ["SPLIT_2"]
+        assert self.factory.manager().split_names() == ["SPLIT_2"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'control'
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
@@ -1111,7 +1110,7 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
         f.write(json.dumps(json_body))
         f.close()
 
-    def _synchronize_now(self, factory):
+    def _synchronize_now(self):
         filename = os.path.join(os.path.dirname(__file__), 'files', 'split_changes_temp.json')
-        factory._sync_manager._synchronizer._split_synchronizers._split_sync._filename = filename
-        factory._sync_manager._synchronizer._split_synchronizers._split_sync.synchronize_splits()
+        self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._filename = filename
+        self.factory._sync_manager._synchronizer._split_synchronizers._split_sync.synchronize_splits()
