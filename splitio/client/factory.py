@@ -525,18 +525,18 @@ def _build_localhost_factory(cfg):
         'impressions': LocalhostImpressionsStorage(),
         'events': LocalhostEventsStorage(),
     }
-
+    localhost_mode = LocalhostMode.JSON if cfg['splitFile'][-5:].lower() == '.json' else LocalhostMode.LEGACY
     synchronizers = SplitSynchronizers(
         LocalSplitSynchronizer(cfg['splitFile'],
                                storages['splits'],
-                               LocalhostMode.JSON if cfg['splitFile'][-5:].lower() == '.json' else LocalhostMode.LEGACY),
+                               localhost_mode),
         LocalSegmentSynchronizer(cfg['segmentDirectory'], storages['splits'], storages['segments']),
         None, None, None,
     )
 
     split_sync_task = None
     segment_sync_task = None
-    if cfg['localhostRefreshEnabled']:
+    if cfg['localhostRefreshEnabled'] and localhost_mode == LocalhostMode.JSON:
         split_sync_task = SplitSynchronizationTask(
             synchronizers.split_sync.synchronize_splits,
             cfg['featuresRefreshRate'],

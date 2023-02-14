@@ -370,7 +370,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             _LOGGER.error("Client is not ready - no calls possible")
             return False
         if not self.ready:
-            _LOGGER.warn("track: the SDK is not ready, results may be incorrect. Make sure to wait for SDK readiness before using this method")
+            _LOGGER.warning("track: the SDK is not ready, results may be incorrect. Make sure to wait for SDK readiness before using this method")
             self._telemetry_init_producer.record_not_ready_usage()
 
         start = get_current_epoch_time_ms()

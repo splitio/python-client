@@ -1018,6 +1018,7 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         # Tests 2
+        factory._storages['splits'].remove('SPLIT_1')
         factory._storages['splits'].remove('SPLIT_2')
         factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange2_1'])
@@ -1066,6 +1067,7 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         # Tests 5
+        factory._storages['splits'].remove('SPLIT_1')
         factory._storages['splits'].remove('SPLIT_2')
         factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange5_1'])

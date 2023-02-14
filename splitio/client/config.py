@@ -126,6 +126,7 @@ def sanitize(apikey, config):
     processed['impressionsMode'] = imp_mode
     processed['impressionsRefreshRate'] = imp_rate
     if processed['metricsRefreshRate'] < 60:
-        processed['metricsRefreshRate'] = 60
+        _LOGGER.warning('metricRefreshRate parameter minimum value is 60 seconds, defaulting to 3600 seconds.')
+        processed['metricsRefreshRate'] = 3600
 
     return processed

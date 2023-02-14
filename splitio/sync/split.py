@@ -23,7 +23,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 _ON_DEMAND_FETCH_BACKOFF_BASE = 10  # backoff base starting at 10 seconds
-_ON_DEMAND_FETCH_BACKOFF_MAX_WAIT = 30  # don't sleep for more than 1 minute
+_ON_DEMAND_FETCH_BACKOFF_MAX_WAIT = 30  # don't sleep for more than 30 seconds
 _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES = 10
 
 
@@ -481,15 +481,19 @@ class LocalSplitSynchronizer(object):
         found_all_keys_matcher = False
         if 'conditions' not in split or split['conditions'] is None:
             split['conditions'] = []
+        conditions_count = len(split['conditions'])
+        count = 0
         for condition in split['conditions']:
-            if 'conditionType' in condition:
-                if condition['conditionType'] == 'ROLLOUT':
-                    if 'matcherGroup' in condition:
-                        if 'matchers' in condition['matcherGroup']:
-                            for matcher in condition['matcherGroup']['matchers']:
-                                if matcher['matcherType'] == 'ALL_KEYS':
-                                    found_all_keys_matcher = True
-                                    break
+            count += 1
+            if count == conditions_count: # checking only last condition
+                if 'conditionType' in condition:
+                    if condition['conditionType'] == 'ROLLOUT':
+                        if 'matcherGroup' in condition:
+                            if 'matchers' in condition['matcherGroup']:
+                                for matcher in condition['matcherGroup']['matchers']:
+                                    if matcher['matcherType'] == 'ALL_KEYS':
+                                        found_all_keys_matcher = True
+                                        break
 
         if not found_all_keys_matcher:
             _LOGGER.debug("Missing default rule condition for split: %s, adding default rule with 100%% off treatment", split['name'])
