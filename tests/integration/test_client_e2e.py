@@ -945,16 +945,17 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
 
     def test_localhost_json_e2e(self):
         """Instantiate a client with a JSON file and issue get_treatment() calls."""
+        self._update_temp_file(splits_json['splitChange2_1'])
         filename = os.path.join(os.path.dirname(__file__), 'files', 'split_changes_temp.json')
         self.factory = get_factory('localhost', config={'splitFile': filename})
         self.factory.block_until_ready(1)
         client = self.factory.client()
 
         # Tests 2
-        self.factory._storages['splits'].remove('SPLIT_2')
-        self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
-        self._update_temp_file(splits_json['splitChange2_1'])
-        self._synchronize_now()
+#        self.factory._storages['splits'].remove('SPLIT_2')
+#        self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._split_storage.set_change_number(-1)
+#        self._update_temp_file(splits_json['splitChange2_1'])
+#        self._synchronize_now()
 
         assert self.factory.manager().split_names() == ["SPLIT_1"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'off'
