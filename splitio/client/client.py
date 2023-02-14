@@ -115,8 +115,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             )
             self._record_stats([(impression, attributes)], start, metric_name, method_name)
             return result['treatment'], result['configurations']
-        except Exception:  # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except
             _LOGGER.error('Error getting treatment for feature')
+            _LOGGER.error(str(e))
             _LOGGER.debug('Error: ', exc_info=True)
             self._telemetry_evaluation_producer.record_exception(metric_name)
             try:
