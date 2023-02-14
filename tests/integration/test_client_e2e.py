@@ -954,7 +954,7 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
         # Tests 2
         assert self.factory.manager().split_names() == ["SPLIT_1"]
         print(self.factory._storages['splits'].get('SPLIT_1').to_json())
-        assert client.get_treatment("key", "SPLIT_1", None) == 'off'
+        assert client.get_treatment("key", "SPLIT_1") == 'off'
 
         # Tests 1
         self.factory._storages['splits'].remove('SPLIT_1')
