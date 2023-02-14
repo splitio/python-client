@@ -953,7 +953,6 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
 
         # Tests 2
         assert self.factory.manager().split_names() == ["SPLIT_1"]
-        print(self.factory._storages['splits'].get('SPLIT_1').to_json())
         assert client.get_treatment("key", "SPLIT_1") == 'off'
 
         # Tests 1
@@ -1062,13 +1061,10 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
     def _update_temp_file(self, json_body):
         f = open(os.path.join(os.path.dirname(__file__), 'files','split_changes_temp.json'), 'w')
         f.write(json.dumps(json_body))
-        print(os.path.join(os.path.dirname(__file__), 'files','split_changes_temp.json'))
-        print(json.dumps(json_body))
         f.close()
 
     def _synchronize_now(self):
         filename = os.path.join(os.path.dirname(__file__), 'files', 'split_changes_temp.json')
-        print(filename)
         self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._filename = filename
         self.factory._sync_manager._synchronizer._split_synchronizers._split_sync.synchronize_splits()
 
