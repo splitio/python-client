@@ -254,7 +254,7 @@ class LocalSegmentSynchronizer(object):
         """
         try:
             fetched = self._read_segment_from_json_file(segment_name)
-            if fetched == {}:
+            if fetched is None:
                 return False
             fetched_sha = util._get_sha(json.dumps(fetched))
             if not self.segment_exist_in_storage(segment_name):
@@ -308,10 +308,10 @@ class LocalSegmentSynchronizer(object):
         """
         if 'name' not in parsed or parsed['name'] is None:
             _LOGGER.warning("Segment does not have [name] element, skipping")
-            return {}
+            return None
         if parsed['name'].strip() == '':
             _LOGGER.warning("Segment [name] element is blank, skipping")
-            return {}
+            return None
 
         for element in [('till', -1, -1, None, None, [0]),
                         ('added', [], None, None, None, None),
