@@ -4,12 +4,16 @@ import re
 import itertools
 import yaml
 import time
+import json
+import hashlib
+from enum import Enum
 
 from splitio.api import APIException
 from splitio.api.commons import FetchOptions
 from splitio.models import splits
 from splitio.util.backoff import Backoff
-
+from splitio.util.time import get_current_epoch_time_ms
+from splitio.sync import util
 
 _LEGACY_COMMENT_LINE_RE = re.compile(r'^#.*$')
 _LEGACY_DEFINITION_LINE_RE = re.compile(r'^(?<![^#])(?P<feature>[\w_-]+)\s+(?P<treatment>[\w_-]+)$')
@@ -19,7 +23,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 _ON_DEMAND_FETCH_BACKOFF_BASE = 10  # backoff base starting at 10 seconds
-_ON_DEMAND_FETCH_BACKOFF_MAX_WAIT = 60  # don't sleep for more than 1 minute
+_ON_DEMAND_FETCH_BACKOFF_MAX_WAIT = 30  # don't sleep for more than 30 seconds
 _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES = 10
 
 
@@ -150,11 +154,18 @@ class SplitSynchronizer(object):
         """
         self._split_storage.kill_locally(split_name, default_treatment, change_number)
 
+class LocalhostMode(Enum):
+    """types for localhost modes"""
+    LEGACY = 0
+    YAML = 1
+    JSON = 2
 
 class LocalSplitSynchronizer(object):
     """Localhost mode split synchronizer."""
 
-    def __init__(self, filename, split_storage):
+    _DEFAULT_SPLIT_TILL = -1
+
+    def __init__(self, filename, split_storage, localhost_mode=LocalhostMode.LEGACY):
         """
         Class constructor.
 
@@ -162,9 +173,13 @@ class LocalSplitSynchronizer(object):
         :type filename: str
         :param split_storage: Split Storage.
         :type split_storage: splitio.storage.InMemorySplitStorage
+        :param localhost_mode: mode for localhost either JSON, YAML or LEGACY.
+        :type localhost_mode: splitio.sync.split.LocalhostMode
         """
         self._filename = filename
         self._split_storage = split_storage
+        self._localhost_mode = localhost_mode
+        self._current_json_sha = "-1"
 
     @staticmethod
     def _make_split(split_name, conditions, configs=None):
@@ -307,6 +322,27 @@ class LocalSplitSynchronizer(object):
     def synchronize_splits(self, till=None):  # pylint:disable=unused-argument
         """Update splits in storage."""
         _LOGGER.info('Synchronizing splits now.')
+        try:
+            if self._localhost_mode == LocalhostMode.JSON:
+                return self._synchronize_json()
+            else:
+                return self._synchronize_legacy()
+        except Exception as exc:
+            _LOGGER.error(str(exc))
+            raise APIException("Error fetching splits information") from exc
+
+#            _LOGGER.error("Error fetching splits information")
+#            _LOGGER.error(str(e))
+#        return []
+
+    def _synchronize_legacy(self):
+        """
+        Update splits in storage for legacy mode.
+
+        :return: empty array for compatibility with json mode
+        :rtype: []
+        """
+
         if self._filename.lower().endswith(('.yaml', '.yml')):
             fetched = self._read_splits_from_yaml_file(self._filename)
         else:
@@ -318,3 +354,169 @@ class LocalSplitSynchronizer(object):
 
         for split in to_delete:
             self._split_storage.remove(split)
+
+        return []
+
+    def _synchronize_json(self):
+        """
+        Update splits in storage for json mode.
+
+        :return: segment names string array
+        :rtype: [str]
+        """
+        try:
+            fetched, till = self._read_splits_from_json_file(self._filename)
+            segment_list = set()
+            fecthed_sha = util._get_sha(json.dumps(fetched))
+            if fecthed_sha != self._current_json_sha:
+                self._current_json_sha = fecthed_sha
+                if self._split_storage.get_change_number() <= till or till == self._DEFAULT_SPLIT_TILL:
+                    for split in fetched:
+                        if split['status'] == splits.Status.ACTIVE.value:
+                            parsed = splits.from_raw(split)
+                            self._split_storage.put(parsed)
+                            _LOGGER.debug("split %s is updated", parsed.name)
+                            segment_list.update(set(parsed.get_segment_names()))
+                        else:
+                            self._split_storage.remove(split['name'])
+
+                    self._split_storage.set_change_number(till)
+            return segment_list
+        except Exception as exc:
+            raise ValueError("Error reading splits from json.") from exc
+
+    def _read_splits_from_json_file(self, filename):
+        """
+        Parse a splits file and return a populated storage.
+
+        :param filename: Path of the file containing split
+        :type filename: str.
+
+        :return: Tuple: sanitized split structure dict, since and till
+        :rtype: Tuple(Dict, int, int)
+        """
+        try:
+            with open(filename, 'r') as flo:
+                parsed = json.load(flo)
+            santitized = self._sanitize_split(parsed)
+            flo.close
+            return santitized['splits'], santitized['till']
+        except Exception as exc:
+            _LOGGER.error(str(exc))
+            raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc
+
+    def _sanitize_split(self, parsed):
+        """
+        implement Sanitization if neded.
+
+        :param parsed: splits, till and since elements dict
+        :type parsed: Dict
+
+        :return: sanitized structure dict
+        :rtype: Dict
+        """
+        parsed = self._sanitize_json_elements(parsed)
+        parsed['splits'] = self._sanitize_split_elements(parsed['splits'])
+
+        return parsed
+
+    def _sanitize_json_elements(self, parsed):
+        """
+        Sanitize all json elements.
+
+        :param parsed: splits, till and since elements dict
+        :type parsed: Dict
+
+        :return: sanitized structure dict
+        :rtype: Dict
+        """
+        if 'splits' not in parsed:
+            parsed['splits'] = []
+        if 'till' not in parsed or parsed['till'] is None or parsed['till'] < -1:
+            parsed['till'] = -1
+        if 'since' not in parsed or parsed['since'] is None or parsed['since'] < -1 or parsed['since'] > parsed['till']:
+            parsed['since'] = parsed['till']
+
+        return parsed
+
+    def _sanitize_split_elements(self, parsed_splits):
+        """
+        Sanitize all splits elements.
+
+        :param parsed_splits: splits array
+        :type parsed_splits: [Dict]
+
+        :return: sanitized structure dict
+        :rtype: [Dict]
+        """
+        sanitized_splits = []
+        for split in parsed_splits:
+            if 'name' not in split or split['name'].strip() == '':
+                _LOGGER.warning("A split in json file does not have (Name) or property is empty, skipping.")
+                continue
+            for element in [('trafficTypeName', 'user', None, None, None, None),
+                            ('trafficAllocation', 100, 0, 100,  None, None),
+                            ('trafficAllocationSeed', int(get_current_epoch_time_ms() / 1000), None, None, None, [0]),
+                            ('seed', int(get_current_epoch_time_ms() / 1000), None, None, None, [0]),
+                            ('status', splits.Status.ACTIVE.value, None, None, [e.value for e in splits.Status], None),
+                            ('killed', False, None, None, None, None),
+                            ('defaultTreatment', 'on', None, None, None, ['', ' ']),
+                            ('changeNumber', 0, 0, None, None, None),
+                            ('algo', 2, 2, 2, None, None)]:
+                split = util._sanitize_object_element(split, 'split', element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=element[4], not_in_list=element[5])
+            split = self._santizie_condition(split)
+            sanitized_splits.append(split)
+        return sanitized_splits
+
+    def _santizie_condition(self, split):
+        """
+        Sanitize split and ensure a condition type ROLLOUT and matcher exist with ALL_KEYS elements.
+
+        :param split: split dict object
+        :type split: Dict
+
+        :return: sanitized split
+        :rtype: Dict
+        """
+        found_all_keys_matcher = False
+        if 'conditions' not in split or split['conditions'] is None:
+            split['conditions'] = []
+        if len(split['conditions']) > 0:
+            last_condition = split['conditions'][-1]
+            if 'conditionType' in last_condition:
+                if last_condition['conditionType'] == 'ROLLOUT':
+                    if 'matcherGroup' in last_condition:
+                        if 'matchers' in last_condition['matcherGroup']:
+                            for matcher in last_condition['matcherGroup']['matchers']:
+                                if matcher['matcherType'] == 'ALL_KEYS':
+                                    found_all_keys_matcher = True
+                                    break
+
+        if not found_all_keys_matcher:
+            _LOGGER.debug("Missing default rule condition for split: %s, adding default rule with 100%% off treatment", split['name'])
+            split['conditions'].append(
+            {
+                "conditionType": "ROLLOUT",
+                "matcherGroup": {
+                "combiner": "AND",
+                "matchers": [{
+                    "keySelector": { "trafficType": "user", "attribute": None },
+                    "matcherType": "ALL_KEYS",
+                    "negate": False,
+                    "userDefinedSegmentMatcherData": None,
+                    "whitelistMatcherData": None,
+                    "unaryNumericMatcherData": None,
+                    "betweenMatcherData": None,
+                    "booleanMatcherData": None,
+                    "dependencyMatcherData": None,
+                    "stringMatcherData": None
+                    }]
+                },
+                "partitions": [
+                    { "treatment": "on", "size": 0 },
+                    { "treatment": "off", "size": 100 }
+                ],
+            "label": "default rule"
+        })
+
+        return split

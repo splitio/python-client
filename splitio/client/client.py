@@ -115,8 +115,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             )
             self._record_stats([(impression, attributes)], start, metric_name, method_name)
             return result['treatment'], result['configurations']
-        except Exception:  # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except
             _LOGGER.error('Error getting treatment for feature')
+            _LOGGER.error(str(e))
             _LOGGER.debug('Error: ', exc_info=True)
             self._telemetry_evaluation_producer.record_exception(metric_name)
             try:
@@ -370,7 +371,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             _LOGGER.error("Client is not ready - no calls possible")
             return False
         if not self.ready:
-            _LOGGER.warn("track: the SDK is not ready, results may be incorrect. Make sure to wait for SDK readiness before using this method")
+            _LOGGER.warning("track: the SDK is not ready, results may be incorrect. Make sure to wait for SDK readiness before using this method")
             self._telemetry_init_producer.record_not_ready_usage()
 
         start = get_current_epoch_time_ms()
