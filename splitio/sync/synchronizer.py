@@ -551,7 +551,7 @@ class LocalhostSynchronizer(BaseSynchronizer):
             for segment in self._split_synchronizers.split_sync.synchronize_splits():
                     if not self._split_synchronizers.segment_sync.segment_exist_in_storage(segment):
                         new_segments.append(segment)
-            if len(new_segments) != 0:
+            if len(new_segments) > 0:
                 _LOGGER.debug('Synching Segments: %s', ','.join(new_segments))
                 success = self._split_synchronizers.segment_sync.synchronize_segments(new_segments)
                 if not success:

@@ -481,19 +481,16 @@ class LocalSplitSynchronizer(object):
         found_all_keys_matcher = False
         if 'conditions' not in split or split['conditions'] is None:
             split['conditions'] = []
-        conditions_count = len(split['conditions'])
-        count = 0
-        for condition in split['conditions']:
-            count += 1
-            if count == conditions_count: # checking only last condition
-                if 'conditionType' in condition:
-                    if condition['conditionType'] == 'ROLLOUT':
-                        if 'matcherGroup' in condition:
-                            if 'matchers' in condition['matcherGroup']:
-                                for matcher in condition['matcherGroup']['matchers']:
-                                    if matcher['matcherType'] == 'ALL_KEYS':
-                                        found_all_keys_matcher = True
-                                        break
+        if len(split['conditions']) > 0:
+            last_condition = split['conditions'][-1]
+            if 'conditionType' in last_condition:
+                if last_condition['conditionType'] == 'ROLLOUT':
+                    if 'matcherGroup' in last_condition:
+                        if 'matchers' in last_condition['matcherGroup']:
+                            for matcher in last_condition['matcherGroup']['matchers']:
+                                if matcher['matcherType'] == 'ALL_KEYS':
+                                    found_all_keys_matcher = True
+                                    break
 
         if not found_all_keys_matcher:
             _LOGGER.debug("Missing default rule condition for split: %s, adding default rule with 100%% off treatment", split['name'])
