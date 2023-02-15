@@ -516,7 +516,7 @@ class LocalhostSynchronizer(BaseSynchronizer):
             return self.synchronize_splits()
 
         self._backoff.reset()
-        remaining_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES if till == None else till
+        remaining_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES
         while remaining_attempts > 0:
             remaining_attempts -= 1
             try:
