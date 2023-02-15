@@ -9,7 +9,7 @@ from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTa
 from splitio.tasks.segment_sync import SegmentSynchronizationTask
 from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask
 from splitio.tasks.events_sync import EventsSyncTask
-from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer
+from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer, LocalhostMode
 from splitio.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.sync.event import EventSynchronizer
@@ -349,7 +349,7 @@ class LocalhostSynchronizerTests(object):
         split_sync = LocalSplitSynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock())
         segment_sync = LocalSegmentSynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock())
         synchronizers = SplitSynchronizers(split_sync, segment_sync, None, None, None)
-        local_synchronizer = LocalhostSynchronizer(synchronizers, mocker.Mock())
+        local_synchronizer = LocalhostSynchronizer(synchronizers, mocker.Mock(), mocker.Mock())
 
         def synchronize_splits(*args, **kwargs):
             return ["segmentA", "segmentB"]
@@ -390,7 +390,7 @@ class LocalhostSynchronizerTests(object):
             self.segment_task_stop_called = True
         segment_task.stop = segment_task_stop
 
-        local_synchronizer = LocalhostSynchronizer(synchronizers, tasks)
+        local_synchronizer = LocalhostSynchronizer(synchronizers, tasks, LocalhostMode.JSON)
         local_synchronizer.start_periodic_fetching()
         assert(self.split_task_start_called)
         assert(self.segment_task_start_called)

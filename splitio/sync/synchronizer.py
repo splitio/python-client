@@ -7,8 +7,7 @@ import time
 
 from splitio.api import APIException
 from splitio.util.backoff import Backoff
-from splitio.sync.split import _ON_DEMAND_FETCH_BACKOFF_BASE, _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES, _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT
-
+from splitio.sync.split import _ON_DEMAND_FETCH_BACKOFF_BASE, _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES, _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT, LocalhostMode
 
 _LOGGER = logging.getLogger(__name__)
 _SYNC_ALL_NO_RETRIES = -1
@@ -492,7 +491,7 @@ class RedisSynchronizer(BaseSynchronizer):
 class LocalhostSynchronizer(BaseSynchronizer):
     """LocalhostSynchronizer."""
 
-    def __init__(self, split_synchronizers, split_tasks):
+    def __init__(self, split_synchronizers, split_tasks, localhost_mode):
         """
         Class constructor.
 
@@ -503,6 +502,7 @@ class LocalhostSynchronizer(BaseSynchronizer):
         """
         self._split_synchronizers = split_synchronizers
         self._split_tasks = split_tasks
+        self._localhost_mode = localhost_mode
         self._backoff = Backoff(
                                 _ON_DEMAND_FETCH_BACKOFF_BASE,
                                 _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
@@ -511,6 +511,10 @@ class LocalhostSynchronizer(BaseSynchronizer):
         """
         Synchronize all splits.
         """
+        # TODO: to be removed when legacy and yaml use BUR
+        if self._localhost_mode != LocalhostMode.JSON:
+            return self.synchronize_splits()
+
         self._backoff.reset()
         remaining_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES
         while remaining_attempts > 0:

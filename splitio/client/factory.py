@@ -553,10 +553,15 @@ def _build_localhost_factory(cfg):
 
     sdk_metadata = util.get_metadata(cfg)
     ready_event = threading.Event()
-    synchronizer = LocalhostSynchronizer(synchronizers, tasks)
+    synchronizer = LocalhostSynchronizer(synchronizers, tasks, localhost_mode)
     manager = Manager(ready_event, synchronizer, None, False, sdk_metadata, telemetry_runtime_producer)
-    initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
-    initialization_thread.start()
+
+# TODO: BUR is only applied for Localhost JSON mode, in future legacy and yaml will also use BUR
+    if localhost_mode == LocalhostMode.JSON:
+        initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
+        initialization_thread.start()
+    else:
+        manager.start()
 
     recorder = StandardRecorder(
         ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer),
