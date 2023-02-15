@@ -47,7 +47,7 @@ from splitio.tasks.telemetry_sync import TelemetrySyncTask
 from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, \
     LocalhostSynchronizer, RedisSynchronizer
 from splitio.sync.manager import Manager, RedisManager
-from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer, LocalhostMode
+from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer, LocalhostMode, _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES
 from splitio.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.sync.event import EventSynchronizer
@@ -555,8 +555,13 @@ def _build_localhost_factory(cfg):
     ready_event = threading.Event()
     synchronizer = LocalhostSynchronizer(synchronizers, tasks)
     manager = Manager(ready_event, synchronizer, None, False, sdk_metadata, telemetry_runtime_producer)
-    initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
-    initialization_thread.start()
+
+# TODO: BUR is only applied for Localhost JSON mode, in future legacy and yaml will also use BUR
+    if localhost_mode == LocalhostMode.JSON:
+        initialization_thread = threading.Thread(target=manager.start, args = [_ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES], name="SDKInitializer", daemon=True)
+        initialization_thread.start()
+    else:
+        manager.start(1)
 
     recorder = StandardRecorder(
         ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer),

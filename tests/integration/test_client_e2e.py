@@ -1069,11 +1069,24 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
         self.factory._sync_manager._synchronizer._split_synchronizers._split_sync.synchronize_splits()
 
     def test_incorrect_file_e2e(self):
-        factory = get_factory('localhost', config={'splitFile': 'filename'})
+        """Test initialize factory with a incorrect file name."""
+        # TODO: secontion below is removed when legacu use BUR
+        # legacy and yaml
+        exception_raised = False
+        factory = None
+        try:
+            factory = get_factory('localhost', config={'splitFile': 'filename'})
+        except Exception as e:
+            exception_raised = True
+
+        assert(exception_raised)
+
+        # json using BUR
+        factory = get_factory('localhost', config={'splitFile': 'filename.json'})
         exception_raised = False
         try:
             factory.block_until_ready(1)
-        except TimeoutException as e:
+        except Exception as e:
             exception_raised = True
 
         assert(exception_raised)
@@ -1081,6 +1094,7 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
         event = threading.Event()
         factory.destroy(event)
         event.wait()
+
 
     def test_localhost_e2e(self):
         """Instantiate a client with a YAML file and issue get_treatment() calls."""
