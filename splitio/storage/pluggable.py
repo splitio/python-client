@@ -13,9 +13,9 @@ class PluggableSplitStorage(SplitStorage):
     def __init__(self, pluggable_adapter, prefix=None):
         """Constructor."""
         self._pluggable_adapter = pluggable_adapter
-        self._prefix = "split."
-        self._traffic_type_prefix = "trafficType."
-        self._split_till_prefix = "splits.till"
+        self._prefix = "SPLITIO.split."
+        self._traffic_type_prefix = "SPLITIO.trafficType."
+        self._split_till_prefix = "SPLITIO.splits.till"
         if prefix is not None:
             self._prefix = prefix + "." + self._prefix
             self._traffic_type_prefix = prefix + "." + self._traffic_type_prefix
@@ -34,10 +34,6 @@ class PluggableSplitStorage(SplitStorage):
         if not split:
             return None
         return splits.from_raw(split)
-
-    def _get_key(self, key):
-        """Retrieve a key content."""
-        return self._pluggable_adapter.get(key)
 
     def fetch_many(self, split_names):
         """
@@ -79,8 +75,7 @@ class PluggableSplitStorage(SplitStorage):
             return False
 
         self._pluggable_adapter.delete(self._prefix + split_name)
-        if self._decrease_traffic_type_count(split.traffic_type_name) == 0:
-            self._pluggable_adapter.delete(self._traffic_type_prefix + split.traffic_type_name)
+        self._decrease_traffic_type_count(split.traffic_type_name)
         return True
 
     def get_change_number(self):
@@ -116,7 +111,7 @@ class PluggableSplitStorage(SplitStorage):
         :return: List of all the splits.
         :rtype: list
         """
-        return [splits.from_raw(self._get_key(key)) for key in self._pluggable_adapter.get_keys_by_prefix(self._prefix)]
+        return [splits.from_raw(self._pluggable_adapter.get(key)) for key in self._pluggable_adapter.get_keys_by_prefix(self._prefix)]
 
     def traffic_type_exists(self, traffic_type_name):
         """
@@ -172,9 +167,8 @@ class PluggableSplitStorage(SplitStorage):
         :rtype: int
         """
         return_count = self._pluggable_adapter.decrement(self._traffic_type_prefix + traffic_type_name, 1)
-        if self._pluggable_adapter.get(self._traffic_type_prefix + traffic_type_name) == 0:
+        if return_count == 0:
             self._pluggable_adapter.delete(self._traffic_type_prefix + traffic_type_name)
-        return return_count
 
     def get_all_splits(self):
         """
@@ -205,7 +199,11 @@ class PluggableSplitStorage(SplitStorage):
         :type split: splitio.models.split.Split
         """
         existing_split = self.get(split.name)
-        if existing_split is not None:
-            self._decrease_traffic_type_count(existing_split.traffic_type_name)
         self._pluggable_adapter.set(self._prefix + split.name, split.to_json())
-        self._increase_traffic_type_count(split.traffic_type_name)
+        if existing_split is None:
+            self._increase_traffic_type_count(split.traffic_type_name)
+            return
+
+        if existing_split is not None and existing_split.traffic_type_name != split.traffic_type_name:
+            self._increase_traffic_type_count(split.traffic_type_name)
+            self._decrease_traffic_type_count(existing_split.traffic_type_name)

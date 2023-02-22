@@ -29,11 +29,13 @@ class MockAdapter(object):
         if key not in self._keys:
             self._keys[key] = 0
         self._keys[key]+= value
+        return self._keys[key]
 
     def decrement(self, key, value):
         if key not in self._keys:
-            return
+            return None
         self._keys[key]-= value
+        return self._keys[key]
 
     def get_keys_by_prefix(self, prefix):
         keys = []
@@ -58,14 +60,14 @@ class PluggableSplitStorageTests(object):
         self.pluggable_split_storage = PluggableSplitStorage(self.mock_adapter, 'myprefix')
 
     def test_init(self):
-        assert(self.pluggable_split_storage._prefix == "myprefix.split.")
-        assert(self.pluggable_split_storage._traffic_type_prefix == "myprefix.trafficType.")
-        assert(self.pluggable_split_storage._split_till_prefix == "myprefix.splits.till")
+        assert(self.pluggable_split_storage._prefix == "myprefix.SPLITIO.split.")
+        assert(self.pluggable_split_storage._traffic_type_prefix == "myprefix.SPLITIO.trafficType.")
+        assert(self.pluggable_split_storage._split_till_prefix == "myprefix.SPLITIO.splits.till")
 
         pluggable2 = PluggableSplitStorage(self.mock_adapter)
-        assert(pluggable2._prefix == "split.")
-        assert(pluggable2._traffic_type_prefix == "trafficType.")
-        assert(pluggable2._split_till_prefix == "splits.till")
+        assert(pluggable2._prefix == "SPLITIO.split.")
+        assert(pluggable2._traffic_type_prefix == "SPLITIO.trafficType.")
+        assert(pluggable2._split_till_prefix == "SPLITIO.splits.till")
 
     def test_put_many(self):
         split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
@@ -76,10 +78,10 @@ class PluggableSplitStorageTests(object):
         traffic_type = splits_json['splitChange1_2']['splits'][0]['trafficTypeName']
 
         self.pluggable_split_storage.put_many([split1, split2], change_number)
-        assert (self.mock_adapter._keys['myprefix.split.' + split1.name] == split1.to_json())
-        assert (self.mock_adapter._keys['myprefix.split.' + split2.name] == split2.to_json())
-        assert (self.mock_adapter._keys['myprefix.trafficType.' + traffic_type] == 2)
-        assert (self.mock_adapter._keys["myprefix.splits.till"] == change_number)
+        assert (self.mock_adapter._keys['myprefix.SPLITIO.split.' + split1.name] == split1.to_json())
+        assert (self.mock_adapter._keys['myprefix.SPLITIO.split.' + split2.name] == split2.to_json())
+        assert (self.mock_adapter._keys['myprefix.SPLITIO.trafficType.' + traffic_type] == 2)
+        assert (self.mock_adapter._keys["myprefix.SPLITIO.splits.till"] == change_number)
 
     def test_get(self):
         self.mock_adapter._keys = {}
@@ -167,10 +169,10 @@ class PluggableSplitStorageTests(object):
         assert(self.pluggable_split_storage.is_valid_traffic_type('user'))
 
         self.pluggable_split_storage._increase_traffic_type_count('user')
-        assert(self.mock_adapter._keys['myprefix.trafficType.user'] == 2)
+        assert(self.mock_adapter._keys['myprefix.SPLITIO.trafficType.user'] == 2)
 
         self.pluggable_split_storage._decrease_traffic_type_count('user')
-        assert(self.mock_adapter._keys['myprefix.trafficType.user'] == 1)
+        assert(self.mock_adapter._keys['myprefix.SPLITIO.trafficType.user'] == 1)
 
         self.pluggable_split_storage._decrease_traffic_type_count('user')
         assert(not self.pluggable_split_storage.is_valid_traffic_type('user'))
@@ -179,5 +181,17 @@ class PluggableSplitStorageTests(object):
         self.mock_adapter._keys = {}
         split = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
         self.pluggable_split_storage.put(split)
-        assert(self.mock_adapter._keys['myprefix.trafficType.user'] == 1)
-        assert(split.to_json() == self.mock_adapter.get('myprefix.split.' + split.name))
+        assert(self.mock_adapter._keys['myprefix.SPLITIO.trafficType.user'] == 1)
+        assert(split.to_json() == self.mock_adapter.get('myprefix.SPLITIO.split.' + split.name))
+
+        # changing traffic type should delete existing one and add new one
+        split._traffic_type_name = 'account'
+        self.pluggable_split_storage.put(split)
+        assert('myprefix.SPLITIO.trafficType.user' not in self.mock_adapter._keys)
+        assert(self.mock_adapter._keys['myprefix.SPLITIO.trafficType.account'] == 1)
+
+        # making update without changing traffic type should not increase the count
+        split._killed = 'False'
+        self.pluggable_split_storage.put(split)
+        assert(self.mock_adapter._keys['myprefix.SPLITIO.trafficType.account'] == 1)
+        assert(split.to_json()['killed'] == self.mock_adapter.get('myprefix.SPLITIO.split.' + split.name)['killed'])
