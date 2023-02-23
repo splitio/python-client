@@ -1,12 +1,13 @@
 """Pluggable storage test module."""
 from splitio.models.splits import Split
-from splitio.models import splits
-from splitio.storage.pluggable import PluggableSplitStorage
+from splitio.models import splits, segments
+from splitio.models.segments import Segment
+from splitio.storage.pluggable import PluggableSplitStorage, PluggableSegmentStorage
 
 from tests.integration import splits_json
 import pytest
 
-class MockAdapter(object):
+class SplitMockAdapter(object):
     def __init__(self):
         self._keys = {}
 
@@ -56,7 +57,7 @@ class PluggableSplitStorageTests(object):
 
     def setup_method(self):
         """Prepare storages with test data."""
-        self.mock_adapter = MockAdapter()
+        self.mock_adapter = SplitMockAdapter()
         self.pluggable_split_storage = PluggableSplitStorage(self.mock_adapter, 'myprefix')
 
     def test_init(self):
@@ -195,3 +196,129 @@ class PluggableSplitStorageTests(object):
         self.pluggable_split_storage.put(split)
         assert(self.mock_adapter._keys['myprefix.SPLITIO.trafficType.account'] == 1)
         assert(split.to_json()['killed'] == self.mock_adapter.get('myprefix.SPLITIO.split.' + split.name)['killed'])
+
+class SegmentMockAdapter(object):
+    def __init__(self):
+        self._keys = {}
+
+    def get(self, key):
+        if key not in self._keys:
+            return None
+        return self._keys[key]
+
+    def set(self, key, value):
+        self._keys[key] = value
+
+    def add_items(self, key, added_items):
+        items = set()
+        if key in self._keys:
+            items = set(self._keys[key])
+        [items.add(item) for item in added_items]
+        self._keys[key] = items
+
+    def remove_items(self, key, removed_items):
+        new_items = set()
+        for item in self._keys[key]:
+            if item not in removed_items:
+                new_items.add(item)
+        self._keys[key] = new_items
+
+    def get_keys_by_prefix(self, prefix):
+        keys = []
+        for key in self._keys:
+            if prefix in key:
+                keys.append(key)
+        return keys
+
+    def item_contains(self, key, item):
+        if item in self._keys[key]:
+            return True
+        return False
+
+    def get_items_count(self, key):
+        if key in self._keys:
+            return len(self._keys[key])
+        return None
+
+class PluggableSegmentStorageTests(object):
+    """In memory split storage test cases."""
+
+    def setup_method(self):
+        """Prepare storages with test data."""
+        self.mock_adapter = SegmentMockAdapter()
+        self.pluggable_segment_storage = PluggableSegmentStorage(self.mock_adapter, 'myprefix')
+
+    def test_init(self):
+        assert(self.pluggable_segment_storage._prefix == "myprefix.SPLITIO.segment.{segment_name}")
+        assert(self.pluggable_segment_storage._segment_till_prefix == "myprefix.SPLITIO.segment.{segment_name}.till")
+
+        pluggable2 = PluggableSegmentStorage(self.mock_adapter)
+        assert(pluggable2._prefix == "SPLITIO.segment.{segment_name}")
+        assert(pluggable2._segment_till_prefix == "SPLITIO.segment.{segment_name}.till")
+
+    def test_update(self):
+        self.pluggable_segment_storage.update('segment1', ['key1', 'key2'], [], 123)
+        assert('myprefix.SPLITIO.segment.segment1' in self.mock_adapter._keys)
+        assert(self.mock_adapter._keys['myprefix.SPLITIO.segment.segment1'] == set(['key1', 'key2']))
+        assert(self.mock_adapter._keys['myprefix.SPLITIO.segment.segment1.till'] == 123)
+
+        self.pluggable_segment_storage.update('segment1', ['key3', 'key4'], ['key1'], 124)
+        assert('myprefix.SPLITIO.segment.segment1' in self.mock_adapter._keys)
+        assert(self.mock_adapter._keys['myprefix.SPLITIO.segment.segment1'] == set(['key2', 'key3', 'key4']))
+        assert(self.mock_adapter._keys['myprefix.SPLITIO.segment.segment1.till'] == 124)
+
+    def test_update_change_number(self):
+        self.mock_adapter._keys = {}
+        assert(self.pluggable_segment_storage.get_change_number('segment1') is None)
+
+        self.pluggable_segment_storage.update('segment1', ['key1', 'key2'], [], 123)
+        assert(self.pluggable_segment_storage.get_change_number('segment1') == 123)
+
+        self.pluggable_segment_storage.set_change_number('segment1', 124)
+        assert(self.mock_adapter._keys['myprefix.SPLITIO.segment.segment1.till'] == 124)
+
+    def test_get_segment_names(self):
+        self.mock_adapter._keys = {}
+        assert(self.pluggable_segment_storage.get_segment_names() == [])
+        self.pluggable_segment_storage.update('segment1', ['key1', 'key2'], [], 123)
+        self.pluggable_segment_storage.update('segment2', [], [], 123)
+        self.pluggable_segment_storage.update('segment3', ['key1', 'key5'], [], 123)
+        assert(self.pluggable_segment_storage.get_segment_names() == ['segment1', 'segment2', 'segment3'])
+
+    def test_get_keys(self):
+        self.mock_adapter._keys = {}
+        self.pluggable_segment_storage.update('segment1', ['key1', 'key2'], [], 123)
+        assert(self.pluggable_segment_storage.get_keys('segment1').sort() == ['key1', 'key2'].sort())
+
+    def test_segment_contains(self):
+        self.mock_adapter._keys = {}
+        self.pluggable_segment_storage.update('segment1', ['key1', 'key2'], [], 123)
+        assert(self.pluggable_segment_storage.segment_contains('segment1', 'key1'))
+        assert(not self.pluggable_segment_storage.segment_contains('segment1', 'key5'))
+
+    def get_segment_keys_count(self):
+        self.mock_adapter._keys = {}
+        self.pluggable_segment_storage.update('segment1', ['key1', 'key2'], [], 123)
+        self.pluggable_segment_storage.update('segment2', [], [], 123)
+        self.pluggable_segment_storage.update('segment3', ['key1', 'key5'], [], 123)
+        assert(self.pluggable_segment_storage.get_segment_keys_count() == 4)
+
+    def test_get(self):
+        self.mock_adapter._keys = {}
+        self.pluggable_segment_storage.update('segment1', ['key1', 'key2'], [], 123)
+        segment = self.pluggable_segment_storage.get('segment1')
+        assert(segment.name == 'segment1')
+        assert(segment.keys == {'key1', 'key2'})
+        assert(segment.change_number == 123)
+
+    def test_put(self):
+        self.mock_adapter._keys = {}
+        self.pluggable_segment_storage.update('segment1', ['key1', 'key2'], [], 123)
+        segment = self.pluggable_segment_storage.get('segment1')
+        segment._name = 'segment2'
+        segment._keys.add('key3')
+
+        self.pluggable_segment_storage.put(segment)
+        assert('myprefix.SPLITIO.segment.segment2' in self.mock_adapter._keys)
+        assert(self.mock_adapter._keys['myprefix.SPLITIO.segment.segment2'] == {'key1', 'key2', 'key3'})
+        assert(self.mock_adapter._keys['myprefix.SPLITIO.segment.segment2.till'] == 123)
