@@ -315,7 +315,7 @@ class PluggableSegmentStorage(SegmentStorage):
 #            _LOGGER.debug('Error: ', exc_info=True)
 #            return None
 
-    def segment_contains_key(self, segment_name, key):
+    def segment_contains(self, segment_name, key):
         """
         Check if segment contains a key
 
@@ -333,20 +333,6 @@ class PluggableSegmentStorage(SegmentStorage):
             _LOGGER.error('Error checking segment key')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
-
-    def segment_contains(self, segment_name, key):
-        """
-        Check if segment contains a key, added for backward compatibility as its implemented in Redis
-
-        :param segment_name: segment name
-        :type segment_name: str
-        :param key: key
-        :type key: str
-
-        :return: True if found, otherwise False
-        :rtype: bool
-        """
-        self.segment_contains_key(segment_name, key)
 
     def get_segment_keys_count(self):
         """

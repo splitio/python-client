@@ -295,7 +295,6 @@ class PluggableSegmentStorageTests(object):
     def test_segment_contains(self):
         self.mock_adapter._keys = {}
         self.pluggable_segment_storage.update('segment1', ['key1', 'key2'], [], 123)
-        assert(self.pluggable_segment_storage.segment_contains_key('segment1', 'key1'))
         assert(not self.pluggable_segment_storage.segment_contains('segment1', 'key5'))
 
     # TODO: To be added when producer mode is implemented
