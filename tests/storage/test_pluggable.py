@@ -285,10 +285,11 @@ class PluggableSegmentStorageTests(object):
         self.pluggable_segment_storage.update('segment3', ['key1', 'key5'], [], 123)
         assert(self.pluggable_segment_storage.get_segment_names() == ['segment1', 'segment2', 'segment3'])
 
-    def test_get_keys(self):
-        self.mock_adapter._keys = {}
-        self.pluggable_segment_storage.update('segment1', ['key1', 'key2'], [], 123)
-        assert(self.pluggable_segment_storage.get_keys('segment1').sort() == ['key1', 'key2'].sort())
+    # TODO: to be added when get_keys() is added
+#    def test_get_keys(self):
+#        self.mock_adapter._keys = {}
+#        self.pluggable_segment_storage.update('segment1', ['key1', 'key2'], [], 123)
+#        assert(self.pluggable_segment_storage.get_keys('segment1').sort() == ['key1', 'key2'].sort())
 
     def test_segment_contains(self):
         self.mock_adapter._keys = {}

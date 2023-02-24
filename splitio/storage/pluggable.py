@@ -211,7 +211,7 @@ class PluggableSplitStorage(SplitStorage):
 
 class PluggableSegmentStorage(SegmentStorage):
     """Pluggable implementation of segment storage."""
-    _SEGMENT_NAME_LEMNGTH = 14
+    _SEGMENT_NAME_LENGTH = 14
     _TILL_LENGTH = 4
 
     def __init__(self, pluggable_adapter, prefix=None):
@@ -235,10 +235,12 @@ class PluggableSegmentStorage(SegmentStorage):
         :type to_remove: Set
         """
         try:
-            self._pluggable_adapter.add_items(self._prefix.format(segment_name=segment_name), to_add)
-            self._pluggable_adapter.remove_items(self._prefix.format(segment_name=segment_name), to_remove)
+            if to_add is not None:
+                self._pluggable_adapter.add_items(self._prefix.format(segment_name=segment_name), to_add)
+            if to_remove is not None:
+                self._pluggable_adapter.remove_items(self._prefix.format(segment_name=segment_name), to_remove)
             if change_number is not None:
-                self._pluggable_adapter.set(self._segment_till_prefix.format(segment_name=segment_name), change_number)
+                self.set_change_number(segment_name, change_number)
         except Exception:
             _LOGGER.error('Error updating segment storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -284,31 +286,32 @@ class PluggableSegmentStorage(SegmentStorage):
         """
         try:
             keys = []
-            for key in self._pluggable_adapter.get_keys_by_prefix(self._prefix[:-self._SEGMENT_NAME_LEMNGTH]):
+            for key in self._pluggable_adapter.get_keys_by_prefix(self._prefix[:-self._SEGMENT_NAME_LENGTH]):
                 if key[-self._TILL_LENGTH:] != 'till':
-                    keys.append(key[len(self._prefix[:-self._SEGMENT_NAME_LEMNGTH]):])
+                    keys.append(key[len(self._prefix[:-self._SEGMENT_NAME_LENGTH]):])
             return keys
         except Exception:
             _LOGGER.error('Error getting segments')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
-    def get_keys(self, segment_name):
-        """
-        Get keys of a segment.
-
-        :param segment_name: segment name
-        :type segment_name: str
-
-        :return: list of segment keys
-        :rtype: str[]
-        """
-        try:
-            return list(self._pluggable_adapter.get(self._prefix.format(segment_name=segment_name)))
-        except Exception:
-            _LOGGER.error('Error getting segments keys')
-            _LOGGER.debug('Error: ', exc_info=True)
-            return None
+    # TODO: To be added in the future because this data is not being sent by telemetry in consumer/synchronizer mode
+#    def get_keys(self, segment_name):
+#        """
+#        Get keys of a segment.
+#
+#        :param segment_name: segment name
+#        :type segment_name: str
+#
+#        :return: list of segment keys
+#        :rtype: str[]
+#        """
+#        try:
+#            return list(self._pluggable_adapter.get(self._prefix.format(segment_name=segment_name)))
+#        except Exception:
+#            _LOGGER.error('Error getting segments keys')
+#            _LOGGER.debug('Error: ', exc_info=True)
+#            return None
 
     def segment_contains(self, segment_name, key):
         """
