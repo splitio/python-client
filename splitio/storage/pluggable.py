@@ -2,8 +2,8 @@
 
 import logging
 
-from splitio.models import splits
-from splitio.storage import SplitStorage
+from splitio.models import splits, segments
+from splitio.storage import SplitStorage, SegmentStorage
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -207,3 +207,181 @@ class PluggableSplitStorage(SplitStorage):
         if existing_split is not None and existing_split.traffic_type_name != split.traffic_type_name:
             self._increase_traffic_type_count(split.traffic_type_name)
             self._decrease_traffic_type_count(existing_split.traffic_type_name)
+
+
+class PluggableSegmentStorage(SegmentStorage):
+    """Pluggable implementation of segment storage."""
+    _SEGMENT_NAME_LENGTH = 14
+    _TILL_LENGTH = 4
+
+    def __init__(self, pluggable_adapter, prefix=None):
+        """Constructor."""
+        self._pluggable_adapter = pluggable_adapter
+        self._prefix = "SPLITIO.segment.{segment_name}"
+        self._segment_till_prefix = "SPLITIO.segment.{segment_name}.till"
+        if prefix is not None:
+            self._prefix = prefix + "." + self._prefix
+            self._segment_till_prefix = prefix + "." + self._segment_till_prefix
+
+    def update(self, segment_name, to_add, to_remove, change_number=None):
+        """
+        Update a segment. Create it if it doesn't exist.
+
+        :param segment_name: Name of the segment to update.
+        :type segment_name: str
+        :param to_add: Set of members to add to the segment.
+        :type to_add: set
+        :param to_remove: List of members to remove from the segment.
+        :type to_remove: Set
+        """
+        try:
+            if to_add is not None:
+                self._pluggable_adapter.add_items(self._prefix.format(segment_name=segment_name), to_add)
+            if to_remove is not None:
+                self._pluggable_adapter.remove_items(self._prefix.format(segment_name=segment_name), to_remove)
+            if change_number is not None:
+                self._pluggable_adapter.set(self._segment_till_prefix.format(segment_name=segment_name), change_number)
+        except Exception:
+            _LOGGER.error('Error updating segment storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+
+    def set_change_number(self, segment_name, change_number):
+        """
+        Store a segment change number.
+
+        :param segment_name: segment name
+        :type segment_name: str
+        :param change_number: change number
+        :type segment_name: int
+        """
+        pass
+        # TODO: To be added when producer mode is aupported
+#        try:
+#            self._pluggable_adapter.set(self._segment_till_prefix.format(segment_name=segment_name), change_number)
+#        except Exception:
+#            _LOGGER.error('Error updating segment change number')
+#            _LOGGER.debug('Error: ', exc_info=True)
+
+    def get_change_number(self, segment_name):
+        """
+        Get a segment change number.
+
+        :param segment_name: segment name
+        :type segment_name: str
+
+        :return: change number
+        :rtype: int
+        """
+        try:
+            return self._pluggable_adapter.get(self._segment_till_prefix.format(segment_name=segment_name))
+        except Exception:
+            _LOGGER.error('Error fetching segment change number')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+
+    def get_segment_names(self):
+        """
+        Get list of segment names.
+
+        :return: list of segment names
+        :rtype: str[]
+        """
+        try:
+            keys = []
+            for key in self._pluggable_adapter.get_keys_by_prefix(self._prefix[:-self._SEGMENT_NAME_LENGTH]):
+                if key[-self._TILL_LENGTH:] != 'till':
+                    keys.append(key[len(self._prefix[:-self._SEGMENT_NAME_LENGTH]):])
+            return keys
+        except Exception:
+            _LOGGER.error('Error getting segments')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+
+    # TODO: To be added in the future because this data is not being sent by telemetry in consumer/synchronizer mode
+#    def get_keys(self, segment_name):
+#        """
+#        Get keys of a segment.
+#
+#        :param segment_name: segment name
+#        :type segment_name: str
+#
+#        :return: list of segment keys
+#        :rtype: str[]
+#        """
+#        try:
+#            return list(self._pluggable_adapter.get(self._prefix.format(segment_name=segment_name)))
+#        except Exception:
+#            _LOGGER.error('Error getting segments keys')
+#            _LOGGER.debug('Error: ', exc_info=True)
+#            return None
+
+    def segment_contains(self, segment_name, key):
+        """
+        Check if segment contains a key
+
+        :param segment_name: segment name
+        :type segment_name: str
+        :param key: key
+        :type key: str
+
+        :return: True if found, otherwise False
+        :rtype: bool
+        """
+        try:
+            return self._pluggable_adapter.item_contains(self._prefix.format(segment_name=segment_name), key)
+        except Exception:
+            _LOGGER.error('Error checking segment key')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+
+    def get_segment_keys_count(self):
+        """
+        Get count of all keys in segments.
+
+        :return: keys count
+        :rtype: int
+        """
+        pass
+        # TODO: To be added when producer mode is aupported
+#        try:
+#            return sum([self._pluggable_adapter.get_items_count(key) for key in self._pluggable_adapter.get_keys_by_prefix(self._prefix)])
+#        except Exception:
+#            _LOGGER.error('Error getting segment keys')
+#            _LOGGER.debug('Error: ', exc_info=True)
+#            return None
+
+    def get(self, segment_name):
+        """
+        Get a segment
+
+        :param segment_name: segment name
+        :type segment_name: str
+
+        :return: segment object
+        :rtype: splitio.models.segments.Segment
+        """
+        pass
+        # TODO: To be added when producer mode is aupported
+#        try:
+#            return segments.from_raw({'name': segment_name, 'added': list(self._pluggable_adapter.get(self._prefix.format(segment_name=segment_name))), 'removed': [], 'till': self._pluggable_adapter.get(self._segment_till_prefix.format(segment_name=segment_name))})
+#        except Exception:
+#            _LOGGER.error('Error getting segment')
+#            _LOGGER.debug('Error: ', exc_info=True)
+#            return None
+
+    def put(self, segment):
+        """
+        Store a segment.
+
+        :param segment: Segment to store.
+        :type segment: splitio.models.segment.Segment
+        """
+        pass
+        # TODO: To be added when producer mode is aupported
+#       try:
+#            self._pluggable_adapter.add_items(self._prefix.format(segment_name=segment.name), list(segment.keys))
+#            if segment.change_number is not None:
+#                self._pluggable_adapter.set(self._segment_till_prefix.format(segment_name=segment.name), segment.change_number)
+#        except Exception:
+#            _LOGGER.error('Error updating segment storage')
+#            _LOGGER.debug('Error: ', exc_info=True)
