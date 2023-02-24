@@ -60,7 +60,7 @@ class PluggableSplitStorage(SplitStorage):
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
-    # TODO: To be added when producer mode is aupported
+    # TODO: To be added when producer mode is supported
 #    def put_many(self, splits, change_number):
 #        """
 #        Store multiple splits.
@@ -447,7 +447,6 @@ class PluggableSegmentStorage(SegmentStorage):
         :return: segment object
         :rtype: splitio.models.segments.Segment
         """
-        pass
         try:
             return segments.from_raw({'name': segment_name, 'added': list(self._pluggable_adapter.get(self._prefix.format(segment_name=segment_name))), 'removed': [], 'till': self._pluggable_adapter.get(self._segment_till_prefix.format(segment_name=segment_name))})
         except Exception:

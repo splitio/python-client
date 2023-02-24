@@ -7,7 +7,7 @@ from splitio.storage.pluggable import PluggableSplitStorage, PluggableSegmentSto
 from tests.integration import splits_json
 import pytest
 
-class SplitMockAdapter(object):
+class StorageMockAdapter(object):
     def __init__(self):
         self._keys = {}
 
@@ -52,12 +52,36 @@ class SplitMockAdapter(object):
                 returned_keys.append(self._keys[key])
         return returned_keys
 
+    def add_items(self, key, added_items):
+        items = set()
+        if key in self._keys:
+            items = set(self._keys[key])
+        [items.add(item) for item in added_items]
+        self._keys[key] = items
+
+    def remove_items(self, key, removed_items):
+        new_items = set()
+        for item in self._keys[key]:
+            if item not in removed_items:
+                new_items.add(item)
+        self._keys[key] = new_items
+
+    def item_contains(self, key, item):
+        if item in self._keys[key]:
+            return True
+        return False
+
+    def get_items_count(self, key):
+        if key in self._keys:
+            return len(self._keys[key])
+        return None
+
 class PluggableSplitStorageTests(object):
     """In memory split storage test cases."""
 
     def setup_method(self):
         """Prepare storages with test data."""
-        self.mock_adapter = SplitMockAdapter()
+        self.mock_adapter = StorageMockAdapter()
         self.pluggable_split_storage = PluggableSplitStorage(self.mock_adapter, 'myprefix')
 
     def test_init(self):
@@ -201,55 +225,12 @@ class PluggableSplitStorageTests(object):
 #        assert(self.mock_adapter._keys['myprefix.SPLITIO.trafficType.account'] == 1)
 #        assert(split.to_json()['killed'] == self.mock_adapter.get('myprefix.SPLITIO.split.' + split.name)['killed'])
 
-class SegmentMockAdapter(object):
-    def __init__(self):
-        self._keys = {}
-
-    def get(self, key):
-        if key not in self._keys:
-            return None
-        return self._keys[key]
-
-    def set(self, key, value):
-        self._keys[key] = value
-
-    def add_items(self, key, added_items):
-        items = set()
-        if key in self._keys:
-            items = set(self._keys[key])
-        [items.add(item) for item in added_items]
-        self._keys[key] = items
-
-    def remove_items(self, key, removed_items):
-        new_items = set()
-        for item in self._keys[key]:
-            if item not in removed_items:
-                new_items.add(item)
-        self._keys[key] = new_items
-
-    def get_keys_by_prefix(self, prefix):
-        keys = []
-        for key in self._keys:
-            if prefix in key:
-                keys.append(key)
-        return keys
-
-    def item_contains(self, key, item):
-        if item in self._keys[key]:
-            return True
-        return False
-
-    def get_items_count(self, key):
-        if key in self._keys:
-            return len(self._keys[key])
-        return None
-
 class PluggableSegmentStorageTests(object):
     """In memory split storage test cases."""
 
     def setup_method(self):
         """Prepare storages with test data."""
-        self.mock_adapter = SegmentMockAdapter()
+        self.mock_adapter = StorageMockAdapter()
         self.pluggable_segment_storage = PluggableSegmentStorage(self.mock_adapter, 'myprefix')
 
     def test_init(self):
