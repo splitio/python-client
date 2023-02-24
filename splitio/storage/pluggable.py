@@ -10,11 +10,13 @@ _LOGGER = logging.getLogger(__name__)
 class PluggableSplitStorage(SplitStorage):
     """InMemory implementation of a split storage."""
 
+    _SPLIT_NAME_LENGTH = 12
+
     def __init__(self, pluggable_adapter, prefix=None):
         """Constructor."""
         self._pluggable_adapter = pluggable_adapter
-        self._prefix = "SPLITIO.split."
-        self._traffic_type_prefix = "SPLITIO.trafficType."
+        self._prefix = "SPLITIO.split.{split_name}"
+        self._traffic_type_prefix = "SPLITIO.trafficType.{traffic_type_name}"
         self._split_till_prefix = "SPLITIO.splits.till"
         if prefix is not None:
             self._prefix = prefix + "." + self._prefix
@@ -30,10 +32,15 @@ class PluggableSplitStorage(SplitStorage):
 
         :rtype: splitio.models.splits.Split
         """
-        split = self._pluggable_adapter.get(self._prefix + split_name)
-        if not split:
+        try:
+            split = self._pluggable_adapter.get(self._prefix.format(split_name=split_name))
+            if not split:
+                return None
+            return splits.from_raw(split)
+        except Exception:
+            _LOGGER.error('Error getting split from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
             return None
-        return splits.from_raw(split)
 
     def fetch_many(self, split_names):
         """
@@ -45,19 +52,29 @@ class PluggableSplitStorage(SplitStorage):
         :return: A dict with split objects parsed from queue.
         :rtype: dict(split_name, splitio.models.splits.Split)
         """
-        prefix_added = [self._prefix + split for split in split_names]
-        return {split['name']: splits.from_raw(split) for split in self._pluggable_adapter.get_many(prefix_added)}
+        try:
+            prefix_added = [self._prefix.format(split_name=split_name) for split_name in split_names]
+            return {split['name']: splits.from_raw(split) for split in self._pluggable_adapter.get_many(prefix_added)}
+        except Exception:
+            _LOGGER.error('Error getting split from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
 
-    def put_many(self, splits, change_number):
-        """
-        Store a split.
-
-        :param split: Split object.
-        :type split: splitio.models.split.Split
-        """
-        for split in splits:
-            self.put(split)
-        self._pluggable_adapter.set(self._split_till_prefix, change_number)
+    # TODO: To be added when producer mode is aupported
+#    def put_many(self, splits, change_number):
+#        """
+#        Store multiple splits.
+#
+#        :param split: array of Split objects.
+#        :type split: splitio.models.split.Split[]
+#        """
+#        try:
+#            for split in splits:
+#                self.put(split)
+#            self._pluggable_adapter.set(self._split_till_prefix, change_number)
+#        except Exception:
+#            _LOGGER.error('Error storing splits in storage')
+#            _LOGGER.debug('Error: ', exc_info=True)
 
     def remove(self, split_name):
         """
@@ -69,14 +86,20 @@ class PluggableSplitStorage(SplitStorage):
         :return: True if the split was found and removed. False otherwise.
         :rtype: bool
         """
-        split = self.get(split_name)
-        if not split:
-            _LOGGER.warning("Tried to delete nonexistant split %s. Skipping", split_name)
-            return False
-
-        self._pluggable_adapter.delete(self._prefix + split_name)
-        self._decrease_traffic_type_count(split.traffic_type_name)
-        return True
+        pass
+        # TODO: To be added when producer mode is aupported
+#        try:
+#            split = self.get(split_name)
+#            if not split:
+#                _LOGGER.warning("Tried to delete nonexistant split %s. Skipping", split_name)
+#                return False
+#            self._pluggable_adapter.delete(self._prefix.format(split_name=split_name))
+#            self._decrease_traffic_type_count(split.traffic_type_name)
+#            return True
+#        except Exception:
+#            _LOGGER.error('Error removing split from storage')
+#            _LOGGER.debug('Error: ', exc_info=True)
+#            return False
 
     def get_change_number(self):
         """
@@ -84,7 +107,12 @@ class PluggableSplitStorage(SplitStorage):
 
         :rtype: int
         """
-        return self._pluggable_adapter.get(self._split_till_prefix)
+        try:
+            return self._pluggable_adapter.get(self._split_till_prefix)
+        except Exception:
+            _LOGGER.error('Error getting change number in split storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
 
     def set_change_number(self, new_change_number):
         """
@@ -93,7 +121,14 @@ class PluggableSplitStorage(SplitStorage):
         :param new_change_number: New change number.
         :type new_change_number: int
         """
-        self._pluggable_adapter.set(self._split_till_prefix, new_change_number)
+        pass
+        # TODO: To be added when producer mode is aupported
+#        try:
+#            self._pluggable_adapter.set(self._split_till_prefix, new_change_number)
+#        except Exception:
+#            _LOGGER.error('Error setting change number in split storage')
+#            _LOGGER.debug('Error: ', exc_info=True)
+#            return None
 
     def get_split_names(self):
         """
@@ -102,7 +137,12 @@ class PluggableSplitStorage(SplitStorage):
         :return: List of split names.
         :rtype: list(str)
         """
-        return [split.name for split in self.get_all()]
+        try:
+            return [split.name for split in self.get_all()]
+        except Exception:
+            _LOGGER.error('Error getting split names from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
 
     def get_all(self):
         """
@@ -111,7 +151,12 @@ class PluggableSplitStorage(SplitStorage):
         :return: List of all the splits.
         :rtype: list
         """
-        return [splits.from_raw(self._pluggable_adapter.get(key)) for key in self._pluggable_adapter.get_keys_by_prefix(self._prefix)]
+        try:
+            return [splits.from_raw(self._pluggable_adapter.get(key)) for key in self._pluggable_adapter.get_keys_by_prefix(self._prefix[:-self._SPLIT_NAME_LENGTH])]
+        except Exception:
+            _LOGGER.error('Error getting split keys from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
 
     def traffic_type_exists(self, traffic_type_name):
         """
@@ -123,7 +168,12 @@ class PluggableSplitStorage(SplitStorage):
         :return: True if the traffic type is valid. False otherwise.
         :rtype: bool
         """
-        return self._pluggable_adapter.get(self._traffic_type_prefix + traffic_type_name) != None
+        try:
+            return self._pluggable_adapter.get(self._traffic_type_prefix.format(traffic_type_name=traffic_type_name)) != None
+        except Exception:
+            _LOGGER.error('Error getting split info from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
 
     def kill_locally(self, split_name, default_treatment, change_number):
         """
@@ -136,39 +186,57 @@ class PluggableSplitStorage(SplitStorage):
         :param change_number: change_number
         :type change_number: int
         """
-        split = self.get(split_name)
-        if not split:
-            return
-        if self.get_change_number() > change_number:
-            return
-        split.local_kill(default_treatment, change_number)
-        self._pluggable_adapter.set(self._prefix + split_name, split.to_json())
+        pass
+        # TODO: To be added when producer mode is aupported
+#        try:
+#            split = self.get(split_name)
+#            if not split:
+#                return
+#            if self.get_change_number() > change_number:
+#                return
+#            split.local_kill(default_treatment, change_number)
+#            self._pluggable_adapter.set(self._prefix.format(split_name=split_name), split.to_json())
+#        except Exception:
+#            _LOGGER.error('Error updating split in storage')
+#            _LOGGER.debug('Error: ', exc_info=True)
 
-    def _increase_traffic_type_count(self, traffic_type_name):
-        """
-        Increase by one the count for a specific traffic type name.
+    # TODO: To be added when producer mode is aupported
+#    def _increase_traffic_type_count(self, traffic_type_name):
+#        """
+#        Increase by one the count for a specific traffic type name.
+#
+#        :param traffic_type_name: Traffic type to increase the count.
+#        :type traffic_type_name: str
+#
+#        :return: existing count of traffic type
+#        :rtype: int
+#        """
+#        try:
+#            return self._pluggable_adapter.increment(self._traffic_type_prefix.format(traffic_type_name=traffic_type_name), 1)
+#        except Exception:
+#            _LOGGER.error('Error updating traffic type count in split storage')
+#            _LOGGER.debug('Error: ', exc_info=True)
+#            return None
 
-        :param traffic_type_name: Traffic type to increase the count.
-        :type traffic_type_name: str
-
-        :return: existing count of traffic type
-        :rtype: int
-        """
-        return self._pluggable_adapter.increment(self._traffic_type_prefix + traffic_type_name, 1)
-
-    def _decrease_traffic_type_count(self, traffic_type_name):
-        """
-        Decrease by one the count for a specific traffic type name.
-
-        :param traffic_type_name: Traffic type to decrease the count.
-        :type traffic_type_name: str
-
-        :return: existing count of traffic type
-        :rtype: int
-        """
-        return_count = self._pluggable_adapter.decrement(self._traffic_type_prefix + traffic_type_name, 1)
-        if return_count == 0:
-            self._pluggable_adapter.delete(self._traffic_type_prefix + traffic_type_name)
+    # TODO: To be added when producer mode is aupported
+#   def _decrease_traffic_type_count(self, traffic_type_name):
+#        """
+#        Decrease by one the count for a specific traffic type name.
+#
+#        :param traffic_type_name: Traffic type to decrease the count.
+#        :type traffic_type_name: str
+#
+#        :return: existing count of traffic type
+#        :rtype: int
+#        """
+#        try:
+#            return_count = self._pluggable_adapter.decrement(self._traffic_type_prefix.format(traffic_type_name=traffic_type_name), 1)
+#            if return_count == 0:
+#                self._pluggable_adapter.delete(self._traffic_type_prefix.format(traffic_type_name=traffic_type_name))
+#        except Exception:
+#            _LOGGER.error('Error updating traffic type count in split storage')
+#            _LOGGER.debug('Error: ', exc_info=True)
+#            return None
 
     def get_all_splits(self):
         """
@@ -177,7 +245,12 @@ class PluggableSplitStorage(SplitStorage):
         :return: List of all the splits.
         :rtype: list
         """
-        return self.get_all()
+        try:
+            return self.get_all()
+        except Exception:
+            _LOGGER.error('Error fetching splits from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
 
     def is_valid_traffic_type(self, traffic_type_name):
         """
@@ -189,7 +262,12 @@ class PluggableSplitStorage(SplitStorage):
         :return: True if the traffic type is valid. False otherwise.
         :rtype: bool
         """
-        return self.traffic_type_exists(traffic_type_name)
+        try:
+            return self.traffic_type_exists(traffic_type_name)
+        except Exception:
+            _LOGGER.error('Error getting split info from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
 
     def put(self, split):
         """
@@ -198,15 +276,22 @@ class PluggableSplitStorage(SplitStorage):
         :param split: Split object.
         :type split: splitio.models.split.Split
         """
-        existing_split = self.get(split.name)
-        self._pluggable_adapter.set(self._prefix + split.name, split.to_json())
-        if existing_split is None:
-            self._increase_traffic_type_count(split.traffic_type_name)
-            return
-
-        if existing_split is not None and existing_split.traffic_type_name != split.traffic_type_name:
-            self._increase_traffic_type_count(split.traffic_type_name)
-            self._decrease_traffic_type_count(existing_split.traffic_type_name)
+        pass
+        # TODO: To be added when producer mode is aupported
+#        try:
+#            existing_split = self.get(split.name)
+#            self._pluggable_adapter.set(self._prefix.format(split_name=split.name), split.to_json())
+#            if existing_split is None:
+#                self._increase_traffic_type_count(split.traffic_type_name)
+#                return
+#
+#            if existing_split is not None and existing_split.traffic_type_name != split.traffic_type_name:
+#                self._increase_traffic_type_count(split.traffic_type_name)
+#                self._decrease_traffic_type_count(existing_split.traffic_type_name)
+#        except Exception:
+#            _LOGGER.error('Error ADDING split to storage')
+#            _LOGGER.debug('Error: ', exc_info=True)
+#            return None
 
 
 class PluggableSegmentStorage(SegmentStorage):
@@ -234,16 +319,18 @@ class PluggableSegmentStorage(SegmentStorage):
         :param to_remove: List of members to remove from the segment.
         :type to_remove: Set
         """
-        try:
-            if to_add is not None:
-                self._pluggable_adapter.add_items(self._prefix.format(segment_name=segment_name), to_add)
-            if to_remove is not None:
-                self._pluggable_adapter.remove_items(self._prefix.format(segment_name=segment_name), to_remove)
-            if change_number is not None:
-                self._pluggable_adapter.set(self._segment_till_prefix.format(segment_name=segment_name), change_number)
-        except Exception:
-            _LOGGER.error('Error updating segment storage')
-            _LOGGER.debug('Error: ', exc_info=True)
+        pass
+        # TODO: To be added when producer mode is aupported
+#        try:
+#            if to_add is not None:
+#                self._pluggable_adapter.add_items(self._prefix.format(segment_name=segment_name), to_add)
+#            if to_remove is not None:
+#                self._pluggable_adapter.remove_items(self._prefix.format(segment_name=segment_name), to_remove)
+#            if change_number is not None:
+#                self._pluggable_adapter.set(self._segment_till_prefix.format(segment_name=segment_name), change_number)
+#        except Exception:
+#            _LOGGER.error('Error updating segment storage')
+#            _LOGGER.debug('Error: ', exc_info=True)
 
     def set_change_number(self, segment_name, change_number):
         """
@@ -361,13 +448,12 @@ class PluggableSegmentStorage(SegmentStorage):
         :rtype: splitio.models.segments.Segment
         """
         pass
-        # TODO: To be added when producer mode is aupported
-#        try:
-#            return segments.from_raw({'name': segment_name, 'added': list(self._pluggable_adapter.get(self._prefix.format(segment_name=segment_name))), 'removed': [], 'till': self._pluggable_adapter.get(self._segment_till_prefix.format(segment_name=segment_name))})
-#        except Exception:
-#            _LOGGER.error('Error getting segment')
-#            _LOGGER.debug('Error: ', exc_info=True)
-#            return None
+        try:
+            return segments.from_raw({'name': segment_name, 'added': list(self._pluggable_adapter.get(self._prefix.format(segment_name=segment_name))), 'removed': [], 'till': self._pluggable_adapter.get(self._segment_till_prefix.format(segment_name=segment_name))})
+        except Exception:
+            _LOGGER.error('Error getting segment')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
 
     def put(self, segment):
         """
