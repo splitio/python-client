@@ -274,8 +274,9 @@ class PluggableSegmentStorageTests(object):
         self.pluggable_segment_storage.update('segment1', ['key1', 'key2'], [], 123)
         assert(self.pluggable_segment_storage.get_change_number('segment1') == 123)
 
-        self.pluggable_segment_storage.set_change_number('segment1', 124)
-        assert(self.mock_adapter._keys['myprefix.SPLITIO.segment.segment1.till'] == 124)
+    # TODO: To be added when producer mode is implemented
+#        self.pluggable_segment_storage.set_change_number('segment1', 124)
+#        assert(self.mock_adapter._keys['myprefix.SPLITIO.segment.segment1.till'] == 124)
 
     def test_get_segment_names(self):
         self.mock_adapter._keys = {}
@@ -294,32 +295,35 @@ class PluggableSegmentStorageTests(object):
     def test_segment_contains(self):
         self.mock_adapter._keys = {}
         self.pluggable_segment_storage.update('segment1', ['key1', 'key2'], [], 123)
-        assert(self.pluggable_segment_storage.segment_contains('segment1', 'key1'))
+        assert(self.pluggable_segment_storage.segment_contains_key('segment1', 'key1'))
         assert(not self.pluggable_segment_storage.segment_contains('segment1', 'key5'))
 
-    def get_segment_keys_count(self):
-        self.mock_adapter._keys = {}
-        self.pluggable_segment_storage.update('segment1', ['key1', 'key2'], [], 123)
-        self.pluggable_segment_storage.update('segment2', [], [], 123)
-        self.pluggable_segment_storage.update('segment3', ['key1', 'key5'], [], 123)
-        assert(self.pluggable_segment_storage.get_segment_keys_count() == 4)
+    # TODO: To be added when producer mode is implemented
+#    def get_segment_keys_count(self):
+#        self.mock_adapter._keys = {}
+#        self.pluggable_segment_storage.update('segment1', ['key1', 'key2'], [], 123)
+#        self.pluggable_segment_storage.update('segment2', [], [], 123)
+#        self.pluggable_segment_storage.update('segment3', ['key1', 'key5'], [], 123)
+#        assert(self.pluggable_segment_storage.get_segment_keys_count() == 4)
 
-    def test_get(self):
-        self.mock_adapter._keys = {}
-        self.pluggable_segment_storage.update('segment1', ['key1', 'key2'], [], 123)
-        segment = self.pluggable_segment_storage.get('segment1')
-        assert(segment.name == 'segment1')
-        assert(segment.keys == {'key1', 'key2'})
-        assert(segment.change_number == 123)
+    # TODO: To be added when producer mode is implemented
+#    def test_get(self):
+#        self.mock_adapter._keys = {}
+#        self.pluggable_segment_storage.update('segment1', ['key1', 'key2'], [], 123)
+#        segment = self.pluggable_segment_storage.get('segment1')
+#        assert(segment.name == 'segment1')
+#        assert(segment.keys == {'key1', 'key2'})
+#        assert(segment.change_number == 123)
 
-    def test_put(self):
-        self.mock_adapter._keys = {}
-        self.pluggable_segment_storage.update('segment1', ['key1', 'key2'], [], 123)
-        segment = self.pluggable_segment_storage.get('segment1')
-        segment._name = 'segment2'
-        segment._keys.add('key3')
-
-        self.pluggable_segment_storage.put(segment)
-        assert('myprefix.SPLITIO.segment.segment2' in self.mock_adapter._keys)
-        assert(self.mock_adapter._keys['myprefix.SPLITIO.segment.segment2'] == {'key1', 'key2', 'key3'})
-        assert(self.mock_adapter._keys['myprefix.SPLITIO.segment.segment2.till'] == 123)
+    # TODO: To be added when producer mode is implemented
+#    def test_put(self):
+#        self.mock_adapter._keys = {}
+#        self.pluggable_segment_storage.update('segment1', ['key1', 'key2'], [], 123)
+#        segment = self.pluggable_segment_storage.get('segment1')
+#        segment._name = 'segment2'
+#        segment._keys.add('key3')
+#
+#        self.pluggable_segment_storage.put(segment)
+#        assert('myprefix.SPLITIO.segment.segment2' in self.mock_adapter._keys)
+#        assert(self.mock_adapter._keys['myprefix.SPLITIO.segment.segment2'] == {'key1', 'key2', 'key3'})
+#        assert(self.mock_adapter._keys['myprefix.SPLITIO.segment.segment2.till'] == 123)
