@@ -448,7 +448,7 @@ class PluggableSegmentStorage(SegmentStorage):
         :rtype: splitio.models.segments.Segment
         """
         try:
-            return segments.from_raw({'name': segment_name, 'added': list(self._pluggable_adapter.get(self._prefix.format(segment_name=segment_name))), 'removed': [], 'till': self._pluggable_adapter.get(self._segment_till_prefix.format(segment_name=segment_name))})
+            return segments.from_raw({'name': segment_name, 'added': self._pluggable_adapter.get_items(self._prefix.format(segment_name=segment_name)), 'removed': [], 'till': self._pluggable_adapter.get(self._segment_till_prefix.format(segment_name=segment_name))})
         except Exception:
             _LOGGER.error('Error getting segment')
             _LOGGER.debug('Error: ', exc_info=True)

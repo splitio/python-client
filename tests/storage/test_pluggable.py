@@ -16,6 +16,11 @@ class StorageMockAdapter(object):
             return None
         return self._keys[key]
 
+    def get_items(self, key):
+        if key not in self._keys:
+            return None
+        return list(self._keys[key])
+
     def get_many(self, keys):
         return [self.get(key) for key in keys]
 
