@@ -1,6 +1,7 @@
 import logging
 import time
 import json
+import os
 
 from splitio.api import APIException
 from splitio.api.commons import FetchOptions
@@ -261,17 +262,17 @@ class LocalSegmentSynchronizer(object):
                     self._segment_sha[segment_name] = fetched_sha
                     self._segment_storage.put(segments.from_raw(fetched))
                     _LOGGER.debug("segment %s is added to storage", segment_name)
-            else:
-                if fetched_sha != self._segment_sha[segment_name]:
-                    self._segment_sha[segment_name] = fetched_sha
-                    if self._segment_storage.get_change_number(segment_name) <= fetched['till'] or fetched['till'] == self._DEFAULT_SEGMENT_TILL:
-                        self._segment_storage.update(
-                            segment_name,
-                            fetched['added'],
-                            fetched['removed'],
-                            fetched['till']
-                        )
-                        _LOGGER.debug("segment %s is updated", segment_name)
+                    return True
+
+            if fetched_sha == self._segment_sha[segment_name]:
+                return True
+
+            self._segment_sha[segment_name] = fetched_sha
+            if self._segment_storage.get_change_number(segment_name) > fetched['till'] and fetched['till'] != self._DEFAULT_SEGMENT_TILL:
+                return True
+
+            self._segment_storage.update(segment_name, fetched['added'], fetched['removed'], fetched['till'])
+            _LOGGER.debug("segment %s is updated", segment_name)
         except Exception as e:
             _LOGGER.error("Could not fetch segment: %s \n" + str(e), segment_name)
             return False
@@ -289,7 +290,7 @@ class LocalSegmentSynchronizer(object):
         :rtype: Dict
         """
         try:
-            with open(self._segment_folder + '/' + filename + '.json', 'r') as flo:
+            with open(os.path.join(self._segment_folder, "%s.json" % filename), 'r') as flo:
                 parsed = json.load(flo)
             santitized_segment = self._sanitize_segment(parsed)
             return santitized_segment
