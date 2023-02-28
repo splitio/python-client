@@ -1,8 +1,12 @@
 """Pluggable storage test module."""
+import json
+
 from splitio.models.splits import Split
 from splitio.models import splits, segments
 from splitio.models.segments import Segment
-from splitio.storage.pluggable import PluggableSplitStorage, PluggableSegmentStorage
+from splitio.models.impressions import Impression
+from splitio.storage.pluggable import PluggableSplitStorage, PluggableSegmentStorage, PluggableImpressionsStorage
+from splitio.client.util import get_metadata, SdkMetadata
 
 from tests.integration import splits_json
 import pytest
@@ -26,6 +30,13 @@ class StorageMockAdapter(object):
 
     def set(self, key, value):
         self._keys[key] = value
+
+    def push_items(self, key, *value):
+        items = []
+        if key in self._keys:
+            items = self._keys[key]
+        [items.append(item) for item in value]
+        self._keys[key] = items
 
     def delete(self, key):
         if key in self._keys:
@@ -314,3 +325,78 @@ class PluggableSegmentStorageTests(object):
 #        assert('myprefix.SPLITIO.segment.segment2' in self.mock_adapter._keys)
 #        assert(self.mock_adapter._keys['myprefix.SPLITIO.segment.segment2'] == {'key1', 'key2', 'key3'})
 #        assert(self.mock_adapter._keys['myprefix.SPLITIO.segment.segment2.till'] == 123)
+
+
+class PluggableImpressionsStorageTests(object):
+    """In memory impressions storage test cases."""
+
+    def setup_method(self):
+        """Prepare storages with test data."""
+        self.mock_adapter = StorageMockAdapter()
+        self.metadata = SdkMetadata('python-1.1.1', 'hostname', 'ip')
+        self.pluggable_imp_storage = PluggableImpressionsStorage(self.mock_adapter, self.metadata, 'myprefix')
+
+    def test_init(self):
+        assert(self.pluggable_imp_storage._impressions_queue_key == "myprefix.SPLITIO.impressions")
+        assert(self.pluggable_imp_storage._sdk_metadata == self.metadata)
+
+        pluggable2 = PluggableImpressionsStorage(self.mock_adapter, self.metadata)
+        assert(pluggable2._impressions_queue_key == "SPLITIO.impressions")
+
+    def test_put(self):
+        impressions = [
+            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654)
+        ]
+        self.pluggable_imp_storage.put(impressions)
+        assert(self.pluggable_imp_storage._impressions_queue_key in self.mock_adapter._keys)
+        assert(self.mock_adapter._keys["myprefix.SPLITIO.impressions"] == self.pluggable_imp_storage._wrap_impressions(impressions))
+
+        impressions2 = [
+            Impression('key5', 'feature1', 'off', 'some_label', 123456, 'buck1', 321654),
+            Impression('key6', 'feature2', 'off', 'some_label', 123456, 'buck1', 321654),
+        ]
+        self.pluggable_imp_storage.put(impressions2)
+        assert(self.mock_adapter._keys["myprefix.SPLITIO.impressions"] == self.pluggable_imp_storage._wrap_impressions(impressions + impressions2))
+
+    def test_wrap_impressions(self):
+        impressions = [
+            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key2', 'feature2', 'off', 'some_label', 123456, 'buck1', 321654),
+        ]
+        assert(self.pluggable_imp_storage._wrap_impressions(impressions) == [
+            json.dumps({
+                'm': {
+                    's': self.metadata.sdk_version,
+                    'n': self.metadata.instance_name,
+                    'i': self.metadata.instance_ip,
+                },
+                'i': {
+                    'k': 'key1',
+                    'b': 'buck1',
+                    'f': 'feature1',
+                    't': 'on',
+                    'r': 'some_label',
+                    'c': 123456,
+                    'm': 321654,
+                }
+            }),
+            json.dumps({
+                'm': {
+                    's': self.metadata.sdk_version,
+                    'n': self.metadata.instance_name,
+                    'i': self.metadata.instance_ip,
+                },
+                'i': {
+                    'k': 'key2',
+                    'b': 'buck1',
+                    'f': 'feature2',
+                    't': 'off',
+                    'r': 'some_label',
+                    'c': 123456,
+                    'm': 321654,
+                }
+            })
+        ])
