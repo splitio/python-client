@@ -15,7 +15,7 @@ DEFAULT_CONFIG = {
     'streamingEnabled': True,
     'featuresRefreshRate': 30,
     'segmentsRefreshRate': 30,
-    'metricsRefreshRate': 60,
+    'metricsRefreshRate': 3600,
     'impressionsRefreshRate': 5 * 60,
     'impressionsBulkSize': 5000,
     'impressionsQueueSize': 10000,
@@ -52,6 +52,8 @@ DEFAULT_CONFIG = {
     'machineName': None,
     'machineIp': None,
     'splitFile': os.path.join(os.path.expanduser('~'), '.split'),
+    'segmentDirectory': os.path.expanduser('~'),
+    'localhostRefreshEnabled': False,
     'preforkedInitialization': False,
     'dataSampling': DEFAULT_DATA_SAMPLING,
 }
@@ -123,4 +125,8 @@ def sanitize(apikey, config):
                                                     config.get('impressionsRefreshRate'))
     processed['impressionsMode'] = imp_mode
     processed['impressionsRefreshRate'] = imp_rate
+    if processed['metricsRefreshRate'] < 60:
+        _LOGGER.warning('metricRefreshRate parameter minimum value is 60 seconds, defaulting to 3600 seconds.')
+        processed['metricsRefreshRate'] = 3600
+
     return processed

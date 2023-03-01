@@ -47,8 +47,8 @@ from splitio.tasks.telemetry_sync import TelemetrySyncTask
 from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, \
     LocalhostSynchronizer, RedisSynchronizer
 from splitio.sync.manager import Manager, RedisManager
-from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer
-from splitio.sync.segment import SegmentSynchronizer
+from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer, LocalhostMode
+from splitio.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.sync.event import EventSynchronizer
 from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer
@@ -162,7 +162,6 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         config_post_thread = threading.Thread(target=self._telemetry_submitter.synchronize_config(), name="PostConfigData")
         config_post_thread.setDaemon(True)
         config_post_thread.start()
-
 
     def _get_storage(self, name):
         """
@@ -526,24 +525,44 @@ def _build_localhost_factory(cfg):
         'impressions': LocalhostImpressionsStorage(),
         'events': LocalhostEventsStorage(),
     }
-
+    localhost_mode = LocalhostMode.JSON if cfg['splitFile'][-5:].lower() == '.json' else LocalhostMode.LEGACY
     synchronizers = SplitSynchronizers(
-        LocalSplitSynchronizer(cfg['splitFile'], storages['splits']),
-        None, None, None, None,
+        LocalSplitSynchronizer(cfg['splitFile'],
+                               storages['splits'],
+                               localhost_mode),
+        LocalSegmentSynchronizer(cfg['segmentDirectory'], storages['splits'], storages['segments']),
+        None, None, None,
     )
 
-    tasks = SplitTasks(
-        SplitSynchronizationTask(
+    split_sync_task = None
+    segment_sync_task = None
+    if cfg['localhostRefreshEnabled'] and localhost_mode == LocalhostMode.JSON:
+        split_sync_task = SplitSynchronizationTask(
             synchronizers.split_sync.synchronize_splits,
             cfg['featuresRefreshRate'],
-        ), None, None, None, None,
+        )
+        segment_sync_task = SegmentSynchronizationTask(
+            synchronizers.segment_sync.synchronize_segments,
+            cfg['segmentsRefreshRate'],
+        )
+    tasks = SplitTasks(
+        split_sync_task,
+        segment_sync_task,
+        None, None, None,
     )
 
     sdk_metadata = util.get_metadata(cfg)
     ready_event = threading.Event()
-    synchronizer = LocalhostSynchronizer(synchronizers, tasks)
+    synchronizer = LocalhostSynchronizer(synchronizers, tasks, localhost_mode)
     manager = Manager(ready_event, synchronizer, None, False, sdk_metadata, telemetry_runtime_producer)
-    manager.start()
+
+# TODO: BUR is only applied for Localhost JSON mode, in future legacy and yaml will also use BUR
+    if localhost_mode == LocalhostMode.JSON:
+        initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
+        initialization_thread.start()
+    else:
+        manager.start()
+
     recorder = StandardRecorder(
         ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer),
         storages['events'],
