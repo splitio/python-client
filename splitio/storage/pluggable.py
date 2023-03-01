@@ -1,9 +1,11 @@
 """Pluggable Storage classes."""
 
 import logging
+import json
 
 from splitio.models import splits, segments
-from splitio.storage import SplitStorage, SegmentStorage
+from splitio.models.impressions import Impression
+from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -470,3 +472,87 @@ class PluggableSegmentStorage(SegmentStorage):
 #        except Exception:
 #            _LOGGER.error('Error updating segment storage')
 #            _LOGGER.debug('Error: ', exc_info=True)
+
+
+class PluggableImpressionsStorage(ImpressionStorage):
+
+    def __init__(self, pluggable_adapter, sdk_metadata, prefix=None):
+        """
+        Class constructor.
+
+        :param pluggable_adapter: Storage client or compliant interface.
+        :type pluggable_adapter: TBD
+        :param sdk_metadata: SDK & Machine information.
+        :type sdk_metadata: splitio.client.util.SdkMetadata
+        """
+        self._pluggable_adapter = pluggable_adapter
+        self._sdk_metadata = {
+                                's': sdk_metadata.sdk_version,
+                                'n': sdk_metadata.instance_name,
+                                'i': sdk_metadata.instance_ip,
+                            }
+        self._impressions_queue_key = 'SPLITIO.impressions'
+        if prefix is not None:
+            self._impressions_queue_key = prefix + "." + self._impressions_queue_key
+
+    def _wrap_impressions(self, impressions):
+        """
+        Wrap impressions to be stored in storage
+
+        :param impressions: Impression to add to the queue.
+        :type impressions: splitio.models.impressions.Impression
+
+        :return: Processed impressions.
+        :rtype: list[splitio.models.impressions.Impression]
+        """
+        bulk_impressions = []
+        for impression in impressions:
+            if isinstance(impression, Impression):
+                to_store = {
+                    'm': self._sdk_metadata,
+                    'i': {
+                        'k': impression.matching_key,
+                        'b': impression.bucketing_key,
+                        'f': impression.feature_name,
+                        't': impression.treatment,
+                        'r': impression.label,
+                        'c': impression.change_number,
+                        'm': impression.time,
+                    }
+                }
+            bulk_impressions.append(json.dumps(to_store))
+        return bulk_impressions
+
+    def put(self, impressions):
+        """
+        Add an impression to the pluggable storage.
+
+        :param impressions: Impression to add to the queue.
+        :type impressions: splitio.models.impressions.Impression
+
+        :return: Whether the impression has been added or not.
+        :rtype: bool
+        """
+        bulk_impressions = self._wrap_impressions(impressions)
+        try:
+            self._pluggable_adapter.push_items(self._impressions_queue_key, *bulk_impressions)
+            return True
+        except Exception:
+            _LOGGER.error('Something went wrong when trying to add impression to storage')
+            _LOGGER.error('Error: ', exc_info=True)
+            return False
+
+    def pop_many(self, count):
+        """
+        Pop the oldest N events from storage.
+
+        :param count: Number of events to pop.
+        :type count: int
+        """
+        raise NotImplementedError('Only consumer mode is supported.')
+
+    def clear(self):
+        """
+        Clear data.
+        """
+        raise NotImplementedError('Only consumer mode is supported.')
