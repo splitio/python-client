@@ -338,7 +338,11 @@ class PluggableImpressionsStorageTests(object):
 
     def test_init(self):
         assert(self.pluggable_imp_storage._impressions_queue_key == "myprefix.SPLITIO.impressions")
-        assert(self.pluggable_imp_storage._sdk_metadata == self.metadata)
+        assert(self.pluggable_imp_storage._sdk_metadata == {
+                                's': self.metadata.sdk_version,
+                                'n': self.metadata.instance_name,
+                                'i': self.metadata.instance_ip,
+                            })
 
         pluggable2 = PluggableImpressionsStorage(self.mock_adapter, self.metadata)
         assert(pluggable2._impressions_queue_key == "SPLITIO.impressions")

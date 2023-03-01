@@ -486,7 +486,11 @@ class PluggableImpressionsStorage(ImpressionStorage):
         :type sdk_metadata: splitio.client.util.SdkMetadata
         """
         self._pluggable_adapter = pluggable_adapter
-        self._sdk_metadata = sdk_metadata
+        self._sdk_metadata = {
+                                's': sdk_metadata.sdk_version,
+                                'n': sdk_metadata.instance_name,
+                                'i': sdk_metadata.instance_ip,
+                            }
         self._impressions_queue_key = 'SPLITIO.impressions'
         if prefix is not None:
             self._impressions_queue_key = prefix + "." + self._impressions_queue_key
@@ -505,12 +509,8 @@ class PluggableImpressionsStorage(ImpressionStorage):
         for impression in impressions:
             if isinstance(impression, Impression):
                 to_store = {
-                    'm': {  # METADATA PORTION
-                        's': self._sdk_metadata.sdk_version,
-                        'n': self._sdk_metadata.instance_name,
-                        'i': self._sdk_metadata.instance_ip,
-                    },
-                    'i': {  # IMPRESSION PORTION
+                    'm': self._sdk_metadata,
+                    'i': {
                         'k': impression.matching_key,
                         'b': impression.bucketing_key,
                         'f': impression.feature_name,
