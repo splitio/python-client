@@ -5,7 +5,8 @@ from splitio.models.splits import Split
 from splitio.models import splits, segments
 from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
-from splitio.storage.pluggable import PluggableSplitStorage, PluggableSegmentStorage, PluggableImpressionsStorage
+from splitio.models.events import Event, EventWrapper
+from splitio.storage.pluggable import PluggableSplitStorage, PluggableSegmentStorage, PluggableImpressionsStorage, PluggableEventsStorage
 from splitio.client.util import get_metadata, SdkMetadata
 
 from tests.integration import splits_json
@@ -401,6 +402,82 @@ class PluggableImpressionsStorageTests(object):
                     'r': 'some_label',
                     'c': 123456,
                     'm': 321654,
+                }
+            })
+        ])
+
+class PluggableEventsStorageTests(object):
+    """In memory events storage test cases."""
+
+    def setup_method(self):
+        """Prepare storages with test data."""
+        self.mock_adapter = StorageMockAdapter()
+        self.metadata = SdkMetadata('python-1.1.1', 'hostname', 'ip')
+        self.pluggable_events_storage = PluggableEventsStorage(self.mock_adapter, self.metadata, 'myprefix')
+
+    def test_init(self):
+        assert(self.pluggable_events_storage._events_queue_key == "myprefix.SPLITIO.events")
+        assert(self.pluggable_events_storage._sdk_metadata == {
+                                's': self.metadata.sdk_version,
+                                'n': self.metadata.instance_name,
+                                'i': self.metadata.instance_ip,
+                            })
+
+        pluggable2 = PluggableEventsStorage(self.mock_adapter, self.metadata)
+        assert(pluggable2._events_queue_key == "SPLITIO.events")
+
+    def test_put(self):
+        events = [
+            EventWrapper(event=Event('key1', 'user', 'purchase', 10, 123456, None),  size=32768),
+            EventWrapper(event=Event('key2', 'user', 'purchase', 10, 123456, None),  size=32768),
+            EventWrapper(event=Event('key3', 'user', 'purchase', 10, 123456, None),  size=32768),
+            EventWrapper(event=Event('key4', 'user', 'purchase', 10, 123456, None),  size=32768),
+        ]
+        self.pluggable_events_storage.put(events)
+        assert(self.pluggable_events_storage._events_queue_key in self.mock_adapter._keys)
+        assert(self.mock_adapter._keys["myprefix.SPLITIO.events"] == self.pluggable_events_storage._wrap_events(events))
+
+        events2 = [
+            EventWrapper(event=Event('key5', 'user', 'purchase', 10, 123456, None),  size=32768),
+            EventWrapper(event=Event('key6', 'user', 'purchase', 10, 123456, None),  size=32768),
+        ]
+        self.pluggable_events_storage.put(events2)
+        assert(self.mock_adapter._keys["myprefix.SPLITIO.events"] == self.pluggable_events_storage._wrap_events(events + events2))
+
+    def test_wrap_events(self):
+        events = [
+            EventWrapper(event=Event('key1', 'user', 'purchase', 10, 123456, None),  size=32768),
+            EventWrapper(event=Event('key2', 'user', 'purchase', 10, 123456, None),  size=32768),
+        ]
+        assert(self.pluggable_events_storage._wrap_events(events) == [
+            json.dumps({
+                'e': {
+                    'key': 'key1',
+                    'trafficTypeName': 'user',
+                    'eventTypeId': 'purchase',
+                    'value': 10,
+                    'timestamp': 123456,
+                    'properties': None,
+                },
+                'm': {
+                    's': self.metadata.sdk_version,
+                    'n': self.metadata.instance_name,
+                    'i': self.metadata.instance_ip,
+                }
+            }),
+            json.dumps({
+                'e': {
+                    'key': 'key2',
+                    'trafficTypeName': 'user',
+                    'eventTypeId': 'purchase',
+                    'value': 10,
+                    'timestamp': 123456,
+                    'properties': None,
+                },
+                'm': {
+                    's': self.metadata.sdk_version,
+                    'n': self.metadata.instance_name,
+                    'i': self.metadata.instance_ip,
                 }
             })
         ])

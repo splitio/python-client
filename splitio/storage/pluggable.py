@@ -5,7 +5,7 @@ import json
 
 from splitio.models import splits, segments
 from splitio.models.impressions import Impression
-from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage
+from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -556,3 +556,76 @@ class PluggableImpressionsStorage(ImpressionStorage):
         Clear data.
         """
         raise NotImplementedError('Only consumer mode is supported.')
+
+
+class PluggableEventsStorage(EventStorage):
+    """Redis based event storage class."""
+
+    def __init__(self, pluggable_adapter, sdk_metadata, prefix=None):
+        """
+        Class constructor.
+
+        :param redis_client: Redis client or compliant interface.
+        :type redis_client: splitio.storage.adapters.redis.RedisAdapter
+        :param sdk_metadata: SDK & Machine information.
+        :type sdk_metadata: splitio.client.util.SdkMetadata
+        """
+        self._pluggable_adapter = pluggable_adapter
+        self._sdk_metadata = {
+                                's': sdk_metadata.sdk_version,
+                                'n': sdk_metadata.instance_name,
+                                'i': sdk_metadata.instance_ip,
+                            }
+        self._events_queue_key = 'SPLITIO.events'
+        if prefix is not None:
+            self._events_queue_key = prefix + "." + self._events_queue_key
+
+    def _wrap_events(self, events):
+        return [
+        json.dumps({
+            'e': {
+                'key': e.event.key,
+                'trafficTypeName': e.event.traffic_type_name,
+                'eventTypeId': e.event.event_type_id,
+                'value': e.event.value,
+                'timestamp': e.event.timestamp,
+                'properties': e.event.properties,
+            },
+            'm': self._sdk_metadata
+        })
+        for e in events
+    ]
+
+    def put(self, events):
+        """
+        Add an event to the redis storage.
+
+        :param event: Event to add to the queue.
+        :type event: splitio.models.events.Event
+
+        :return: Whether the event has been added or not.
+        :rtype: bool
+        """
+        to_store = self._wrap_events(events)
+        try:
+            self._pluggable_adapter.push_items(self._events_queue_key, *to_store)
+            return True
+        except Exception:
+            _LOGGER.error('Something went wrong when trying to add event to redis')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return False
+
+    def pop_many(self, count):
+        """
+        Pop the oldest N events from storage.
+
+        :param count: Number of events to pop.
+        :type count: int
+        """
+        raise NotImplementedError('Only redis-consumer mode is supported.')
+
+    def clear(self):
+        """
+        Clear data.
+        """
+        raise NotImplementedError('Not supported for redis.')
