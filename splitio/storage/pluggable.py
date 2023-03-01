@@ -476,6 +476,8 @@ class PluggableSegmentStorage(SegmentStorage):
 
 class PluggableImpressionsStorage(ImpressionStorage):
 
+    IMPRESSIONS_KEY_DEFAULT_TTL = 3600
+
     def __init__(self, pluggable_adapter, sdk_metadata, prefix=None):
         """
         Class constructor.
@@ -542,6 +544,18 @@ class PluggableImpressionsStorage(ImpressionStorage):
             _LOGGER.error('Error: ', exc_info=True)
             return False
 
+    def expire_key(self, total_keys, inserted):
+        """
+        Set expire
+
+        :param total_keys: length of keys.
+        :type total_keys: int
+        :param inserted: added keys.
+        :type inserted: int
+        """
+        if total_keys == inserted:
+            self._pluggable_adapter.expire(self._impressions_queue_key, self.IMPRESSIONS_KEY_DEFAULT_TTL)
+
     def pop_many(self, count):
         """
         Pop the oldest N events from storage.
@@ -560,6 +574,8 @@ class PluggableImpressionsStorage(ImpressionStorage):
 
 class PluggableEventsStorage(EventStorage):
     """Redis based event storage class."""
+
+    _EVENTS_KEY_DEFAULT_TTL = 3600
 
     def __init__(self, pluggable_adapter, sdk_metadata, prefix=None):
         """
@@ -614,6 +630,18 @@ class PluggableEventsStorage(EventStorage):
             _LOGGER.error('Something went wrong when trying to add event to redis')
             _LOGGER.debug('Error: ', exc_info=True)
             return False
+
+    def expire_key(self, total_keys, inserted):
+        """
+        Set expire
+
+        :param total_keys: length of keys.
+        :type total_keys: int
+        :param inserted: added keys.
+        :type inserted: int
+        """
+        if total_keys == inserted:
+            self._pluggable_adapter.expire(self._events_queue_key, self._EVENTS_KEY_DEFAULT_TTL)
 
     def pop_many(self, count):
         """

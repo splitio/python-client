@@ -93,6 +93,10 @@ class StorageMockAdapter(object):
             return len(self._keys[key])
         return None
 
+    def expire(self, key, ttl):
+        #Not needed for Memory storage
+        pass
+
 class PluggableSplitStorageTests(object):
     """In memory split storage test cases."""
 
@@ -406,6 +410,27 @@ class PluggableImpressionsStorageTests(object):
             })
         ])
 
+    def test_expire_key(self):
+        self.expired_called = False
+        self.key = ""
+        self.ttl = 0
+        def mock_expire(impressions_queue_key, ttl):
+            self.key = impressions_queue_key
+            self.ttl = ttl
+            self.expired_called = True
+
+        self.mock_adapter.expire = mock_expire
+
+        # should not call if total_keys are higher
+        self.pluggable_imp_storage.expire_key(200, 10)
+        assert(not self.expired_called)
+
+        self.pluggable_imp_storage.expire_key(200, 200)
+        assert(self.expired_called)
+        assert(self.key == "myprefix.SPLITIO.impressions")
+        assert(self.ttl == self.pluggable_imp_storage.IMPRESSIONS_KEY_DEFAULT_TTL)
+
+
 class PluggableEventsStorageTests(object):
     """In memory events storage test cases."""
 
@@ -481,3 +506,23 @@ class PluggableEventsStorageTests(object):
                 }
             })
         ])
+
+    def test_expire_key(self):
+        self.expired_called = False
+        self.key = ""
+        self.ttl = 0
+        def mock_expire(impressions_event_key, ttl):
+            self.key = impressions_event_key
+            self.ttl = ttl
+            self.expired_called = True
+
+        self.mock_adapter.expire = mock_expire
+
+        # should not call if total_keys are higher
+        self.pluggable_events_storage.expire_key(200, 10)
+        assert(not self.expired_called)
+
+        self.pluggable_events_storage.expire_key(200, 200)
+        assert(self.expired_called)
+        assert(self.key == "myprefix.SPLITIO.events")
+        assert(self.ttl == self.pluggable_events_storage._EVENTS_KEY_DEFAULT_TTL)
