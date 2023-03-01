@@ -500,7 +500,7 @@ class LocalSplitsSynchronizerTests(object):
         target_split = splits_json["splitChange1_1"]["splits"].copy()
         target_split[0]["conditions"][0]['partitions'][0]['size'] = 0
         target_split[0]["conditions"][0]['partitions'][1]['size'] = 100
-        split[0]["conditions"] = None
+        del split[0]["conditions"]
         assert (split_synchronizer._sanitize_split_elements(split) == target_split)
 
         # test missing ALL_KEYS condition matcher with default rule set to 100% off
