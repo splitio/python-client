@@ -2,10 +2,12 @@
 
 import logging
 import json
+import threading
 
 from splitio.models import splits, segments
 from splitio.models.impressions import Impression
-from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage
+from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MAX_TAGS
+from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -15,7 +17,14 @@ class PluggableSplitStorage(SplitStorage):
     _SPLIT_NAME_LENGTH = 12
 
     def __init__(self, pluggable_adapter, prefix=None):
-        """Constructor."""
+        """
+        Class constructor.
+
+        :param pluggable_adapter: Storage client or compliant interface.
+        :type pluggable_adapter: TBD
+        :param prefix: optional, prefix to storage keys
+        :type prefix: str
+        """
         self._pluggable_adapter = pluggable_adapter
         self._prefix = "SPLITIO.split.{split_name}"
         self._traffic_type_prefix = "SPLITIO.trafficType.{traffic_type_name}"
@@ -302,7 +311,14 @@ class PluggableSegmentStorage(SegmentStorage):
     _TILL_LENGTH = 4
 
     def __init__(self, pluggable_adapter, prefix=None):
-        """Constructor."""
+        """
+        Class constructor.
+
+        :param pluggable_adapter: Storage client or compliant interface.
+        :type pluggable_adapter: TBD
+        :param prefix: optional, prefix to storage keys
+        :type prefix: str
+        """
         self._pluggable_adapter = pluggable_adapter
         self._prefix = "SPLITIO.segment.{segment_name}"
         self._segment_till_prefix = "SPLITIO.segment.{segment_name}.till"
@@ -475,6 +491,7 @@ class PluggableSegmentStorage(SegmentStorage):
 
 
 class PluggableImpressionsStorage(ImpressionStorage):
+    """Pluggable Impressions storage class."""
 
     IMPRESSIONS_KEY_DEFAULT_TTL = 3600
 
@@ -486,6 +503,8 @@ class PluggableImpressionsStorage(ImpressionStorage):
         :type pluggable_adapter: TBD
         :param sdk_metadata: SDK & Machine information.
         :type sdk_metadata: splitio.client.util.SdkMetadata
+        :param prefix: optional, prefix to storage keys
+        :type prefix: str
         """
         self._pluggable_adapter = pluggable_adapter
         self._sdk_metadata = {
@@ -573,7 +592,7 @@ class PluggableImpressionsStorage(ImpressionStorage):
 
 
 class PluggableEventsStorage(EventStorage):
-    """Redis based event storage class."""
+    """Pluggable Event storage class."""
 
     _EVENTS_KEY_DEFAULT_TTL = 3600
 
@@ -581,10 +600,12 @@ class PluggableEventsStorage(EventStorage):
         """
         Class constructor.
 
-        :param redis_client: Redis client or compliant interface.
-        :type redis_client: splitio.storage.adapters.redis.RedisAdapter
+        :param pluggable_adapter: Storage client or compliant interface.
+        :type pluggable_adapter: TBD
         :param sdk_metadata: SDK & Machine information.
         :type sdk_metadata: splitio.client.util.SdkMetadata
+        :param prefix: optional, prefix to storage keys
+        :type prefix: str
         """
         self._pluggable_adapter = pluggable_adapter
         self._sdk_metadata = {
@@ -657,3 +678,167 @@ class PluggableEventsStorage(EventStorage):
         Clear data.
         """
         raise NotImplementedError('Not supported for redis.')
+
+
+class PluggableTelemetryStorage(TelemetryStorage):
+    """Pluggable telemetry storage class."""
+
+    _TELEMETRY_KEY_DEFAULT_TTL = 3600
+
+    def __init__(self, pluggable_adapter, sdk_metadata, prefix=None):
+        """
+        Class constructor.
+
+        :param pluggable_adapter: Storage client or compliant interface.
+        :type pluggable_adapter: TBD
+        :param sdk_metadata: SDK & Machine information.
+        :type sdk_metadata: splitio.client.util.SdkMetadata
+        :param prefix: optional, prefix to storage keys
+        :type prefix: str
+        """
+        self._lock = threading.RLock()
+        self._reset_config_tags()
+        self._pluggable_adapter = pluggable_adapter
+        self._sdk_metadata = sdk_metadata.sdk_version + '/' + sdk_metadata.instance_name + '/' + sdk_metadata.instance_ip
+        self._method_latencies = MethodLatencies()
+        self._method_exceptions = MethodExceptions()
+        self._tel_config = TelemetryConfig()
+        self._telemetry_config_key = 'SPLITIO.telemetry.init'
+        self._telemetry_latencies_key = 'SPLITIO.telemetry.latencies'
+        self._telemetry_exceptions_key = 'SPLITIO.telemetry.exceptions'
+        if prefix is not None:
+            self._telemetry_config_key = prefix + "." + self._telemetry_config_key
+            self._telemetry_latencies_key = prefix + "." + self._telemetry_latencies_key
+            self._telemetry_exceptions_key = prefix + "." + self._telemetry_exceptions_key
+
+    def _reset_config_tags(self):
+        """Reset config tags."""
+        with self._lock:
+            self._config_tags = []
+
+    def add_config_tag(self, tag):
+        """
+        Record tag string.
+
+        :param tag: tag to be added
+        :type tag: str
+        """
+        with self._lock:
+            if len(self._config_tags) < MAX_TAGS:
+                self._config_tags.append(tag)
+
+    def record_config(self, config, extra_config):
+        """
+        initilize telemetry objects
+
+        :param config: factory configuration parameters
+        :type config: Dict
+        :param extra_config: any extra configs
+        :type extra_config: Dict
+        """
+        self._tel_config.record_config(config, extra_config)
+
+    def pop_config_tags(self):
+        """Get and reset configs."""
+        with self._lock:
+            tags = self._config_tags
+            self._reset_config_tags()
+            return tags
+
+    def push_config_stats(self):
+        """push config stats to storage."""
+        self._pluggable_adapter.set(self._telemetry_config_key + "::" + self._sdk_metadata, str(self._format_config_stats()))
+
+    def _format_config_stats(self):
+        """format only selected config stats to json"""
+        config_stats = self._tel_config.get_stats()
+        return json.dumps({
+            'aF': config_stats['aF'],
+            'rF': config_stats['rF'],
+            'sT': config_stats['sT'],
+            'oM': config_stats['oM'],
+            't': self.pop_config_tags()
+        })
+
+    def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
+        """
+        Record active and redundant factories.
+
+        :param active_factory_count: active factory count
+        :type active_factory_count: int
+        :param redundant_factory_count: redundant factory count
+        :type redundant_factory_count: int
+        """
+        self._tel_config.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+
+    def record_latency(self, method, latency):
+        """
+        record latency data
+
+        :param method: method name
+        :type method: string
+        :param latency: latency
+        :type latency: int64
+        """
+        self._method_latencies.add_latency(method, latency)
+        latencies = self._method_latencies.pop_all()['methodLatencies']
+        values = latencies[method.value]
+        total_keys = 0
+        bucket_number = 0
+        for bucket in values:
+            if bucket > 0:
+                latency_key = self._telemetry_latencies_key + '::' + self._sdk_metadata + '/' + method.value + '/' + str(bucket_number)
+                result = self._pluggable_adapter.increment(latency_key, bucket)
+                self.expire_keys(latency_key, self._TELEMETRY_KEY_DEFAULT_TTL, 1, result)
+                total_keys += 1
+            bucket_number = bucket_number + 0
+
+    def record_exception(self, method):
+        """
+        record an exception
+
+        :param method: method name
+        :type method: string
+        """
+        except_key = self._telemetry_exceptions_key + "::" + self._sdk_metadata + '/' + method.value
+        result = self._pluggable_adapter.increment(except_key, 1)
+        self.expire_keys(except_key, self._TELEMETRY_KEY_DEFAULT_TTL, 1, result)
+
+    def record_not_ready_usage(self):
+        """Not implemented"""
+        pass
+
+    def record_bur_time_out(self):
+        """Not implemented"""
+        pass
+
+    def record_impression_stats(self, data_type, count):
+        """Not implemented"""
+        pass
+
+    def expire_latency_keys(self, total_keys, inserted):
+        """
+        Set expire ttl for a latency key in storage
+
+        :param total_keys: length of keys.
+        :type total_keys: int
+        :param inserted: added keys.
+        :type inserted: int
+        """
+        self.expire_keys(self._telemetry_latencies_key, self._TELEMETRY_KEY_DEFAULT_TTL, total_keys, inserted)
+
+    def expire_keys(self, queue_key, key_default_ttl, total_keys, inserted):
+        """
+        Set expire ttl for a key in storage if total keys equal inserted
+
+        :param queue_keys: key to be set
+        :type queue_keys: str
+        :param ey_default_ttl: ttl value
+        :type ey_default_ttl: int
+        :param total_keys: length of keys.
+        :type total_keys: int
+        :param inserted: added keys.
+        :type inserted: int
+        """
+        if total_keys == inserted:
+            self._pluggable_adapter.expire(queue_key, key_default_ttl)

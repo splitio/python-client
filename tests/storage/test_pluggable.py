@@ -6,8 +6,9 @@ from splitio.models import splits, segments
 from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
 from splitio.models.events import Event, EventWrapper
-from splitio.storage.pluggable import PluggableSplitStorage, PluggableSegmentStorage, PluggableImpressionsStorage, PluggableEventsStorage
+from splitio.storage.pluggable import PluggableSplitStorage, PluggableSegmentStorage, PluggableImpressionsStorage, PluggableEventsStorage, PluggableTelemetryStorage
 from splitio.client.util import get_metadata, SdkMetadata
+from splitio.models.telemetry import MAX_TAGS, MethodExceptionsAndLatencies, OperationMode
 
 from tests.integration import splits_json
 import pytest
@@ -432,7 +433,7 @@ class PluggableImpressionsStorageTests(object):
 
 
 class PluggableEventsStorageTests(object):
-    """In memory events storage test cases."""
+    """Pluggable events storage test cases."""
 
     def setup_method(self):
         """Prepare storages with test data."""
@@ -526,3 +527,109 @@ class PluggableEventsStorageTests(object):
         assert(self.expired_called)
         assert(self.key == "myprefix.SPLITIO.events")
         assert(self.ttl == self.pluggable_events_storage._EVENTS_KEY_DEFAULT_TTL)
+
+class PluggableTelemetryStorageTests(object):
+    """Pluggable telemetry storage test cases."""
+
+    def setup_method(self):
+        """Prepare storages with test data."""
+        self.mock_adapter = StorageMockAdapter()
+        self.sdk_metadata = SdkMetadata('python-1.1.1', 'hostname', 'ip')
+        self.pluggable_telemetry_storage = PluggableTelemetryStorage(self.mock_adapter, self.sdk_metadata, 'myprefix')
+
+    def test_init(self):
+        assert(self.pluggable_telemetry_storage._telemetry_config_key == 'myprefix.SPLITIO.telemetry.init')
+        assert(self.pluggable_telemetry_storage._telemetry_latencies_key == 'myprefix.SPLITIO.telemetry.latencies')
+        assert(self.pluggable_telemetry_storage._telemetry_exceptions_key == 'myprefix.SPLITIO.telemetry.exceptions')
+        assert(self.pluggable_telemetry_storage._sdk_metadata == self.sdk_metadata.sdk_version + '/' + self.sdk_metadata.instance_name + '/' + self.sdk_metadata.instance_ip)
+        assert(self.pluggable_telemetry_storage._config_tags == [])
+
+        pluggable2 = PluggableTelemetryStorage(self.mock_adapter, self.sdk_metadata)
+        assert(pluggable2._telemetry_config_key == 'SPLITIO.telemetry.init')
+        assert(pluggable2._telemetry_latencies_key == 'SPLITIO.telemetry.latencies')
+        assert(pluggable2._telemetry_exceptions_key == 'SPLITIO.telemetry.exceptions')
+
+    def test_reset_config_tags(self):
+        self.pluggable_telemetry_storage._config_tags = ['a']
+        self.pluggable_telemetry_storage._reset_config_tags()
+        assert(self.pluggable_telemetry_storage._config_tags == [])
+
+    def test_add_config_tag(self):
+        self.pluggable_telemetry_storage.add_config_tag('q')
+        assert(self.pluggable_telemetry_storage._config_tags == ['q'])
+
+        self.pluggable_telemetry_storage._config_tags = []
+        for i in range(0, 20):
+            self.pluggable_telemetry_storage.add_config_tag('q' + str(i))
+        assert(len(self.pluggable_telemetry_storage._config_tags) == MAX_TAGS)
+        assert(self.pluggable_telemetry_storage._config_tags == ['q' + str(i)  for i in range(0, MAX_TAGS)])
+
+    def test_record_config(self):
+        self.config = {}
+        self.extra_config = {}
+        def record_config_mock(config, extra_config):
+            self.config = config
+            self.extra_config = extra_config
+
+        self.pluggable_telemetry_storage.record_config = record_config_mock
+        self.pluggable_telemetry_storage.record_config({'item': 'value'}, {'item2': 'value2'})
+        assert(self.config == {'item': 'value'})
+        assert(self.extra_config == {'item2': 'value2'})
+
+    def test_pop_config_tags(self):
+        self.pluggable_telemetry_storage._config_tags = ['a']
+        self.pluggable_telemetry_storage.pop_config_tags()
+        assert(self.pluggable_telemetry_storage._config_tags == [])
+
+    def test_record_active_and_redundant_factories(self):
+        self.active_factory_count = 0
+        self.redundant_factory_count = 0
+        def record_active_and_redundant_factories_mock(active_factory_count, redundant_factory_count):
+            self.active_factory_count = active_factory_count
+            self.redundant_factory_count = redundant_factory_count
+
+        self.pluggable_telemetry_storage.record_active_and_redundant_factories = record_active_and_redundant_factories_mock
+        self.pluggable_telemetry_storage.record_active_and_redundant_factories(2, 1)
+        assert(self.active_factory_count == 2)
+        assert(self.redundant_factory_count == 1)
+
+    def test_record_latency(self):
+        def expire_keys_mock(*args, **kwargs):
+            assert(args[0] == self.pluggable_telemetry_storage._telemetry_latencies_key + '::python-1.1.1/hostname/ip/treatment/0')
+            assert(args[1] == self.pluggable_telemetry_storage._TELEMETRY_KEY_DEFAULT_TTL)
+            assert(args[2] == 1)
+            assert(args[3] == 1)
+
+        self.pluggable_telemetry_storage.expire_keys = expire_keys_mock
+        self.pluggable_telemetry_storage.record_latency(MethodExceptionsAndLatencies.TREATMENT, 10)
+        assert(self.mock_adapter._keys[self.pluggable_telemetry_storage._telemetry_latencies_key + '::python-1.1.1/hostname/ip/treatment/0'] == 1)
+
+    def test_record_exception(self):
+        def expire_keys_mock(*args, **kwargs):
+            assert(args[0] == self.pluggable_telemetry_storage._telemetry_exceptions_key + '::python-1.1.1/hostname/ip/treatment')
+            assert(args[1] == self.pluggable_telemetry_storage._TELEMETRY_KEY_DEFAULT_TTL)
+            assert(args[2] == 1)
+            assert(args[3] == 1)
+
+        self.pluggable_telemetry_storage.expire_keys = expire_keys_mock
+        self.pluggable_telemetry_storage.record_exception(MethodExceptionsAndLatencies.TREATMENT)
+        assert(self.mock_adapter._keys[self.pluggable_telemetry_storage._telemetry_exceptions_key + '::python-1.1.1/hostname/ip/treatment'] == 1)
+
+    def test_push_config_stats(self):
+        self.pluggable_telemetry_storage.record_config(
+                    {'operationMode': 'inmemory',
+                  'streamingEnabled': True,
+                  'impressionsQueueSize': 100,
+                  'eventsQueueSize': 200,
+                  'impressionsMode': 'DEBUG',''
+                  'impressionListener': None,
+                  'featuresRefreshRate': 30,
+                  'segmentsRefreshRate': 30,
+                  'impressionsRefreshRate': 60,
+                  'eventsPushRate': 60,
+                  'metricsRefreshRate': 10,
+                  }, {}
+        )
+        self.pluggable_telemetry_storage.record_active_and_redundant_factories(2, 1)
+        self.pluggable_telemetry_storage.push_config_stats()
+        assert(self.mock_adapter._keys[self.pluggable_telemetry_storage._telemetry_config_key + "::" + self.pluggable_telemetry_storage._sdk_metadata] == '{"aF": 2, "rF": 1, "sT": "memory", "oM": 0, "t": []}')
