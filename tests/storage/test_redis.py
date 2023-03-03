@@ -430,17 +430,26 @@ class RedisTelemetryStorageTests(object):
         assert (redis_telemetry._tel_config._redundant_factory_count == redundant_factory_count)
 
     def test_add_latency_to_pipe(self, mocker):
-        def _mocked_hincrby(*args, **kwargs):
-            assert(args[1] == RedisTelemetryStorage._TELEMETRY_LATENCIES_KEY)
-            assert(args[2][-11:] == 'treatment/0')
-            assert(args[3] == 1)
-
         adapter = build({})
         metadata = SdkMetadata('python-1.1.1', 'hostname', 'ip')
         redis_telemetry = RedisTelemetryStorage(adapter, metadata)
         pipe = adapter._decorated.pipeline()
+
+        def _mocked_hincrby(*args, **kwargs):
+            assert(args[1] == RedisTelemetryStorage._TELEMETRY_LATENCIES_KEY)
+            assert(args[2][-11:] == 'treatment/0')
+            assert(args[3] == 1)
+        # should increment bucket 0
         with mock.patch('redis.client.Pipeline.hincrby', _mocked_hincrby):
             redis_telemetry.add_latency_to_pipe(MethodExceptionsAndLatencies.TREATMENT, 20, pipe)
+
+        def _mocked_hincrby2(*args, **kwargs):
+            assert(args[1] == RedisTelemetryStorage._TELEMETRY_LATENCIES_KEY)
+            assert(args[2][-11:] == 'treatment/3')
+            assert(args[3] == 1)
+        # should increment bucket 3
+        with mock.patch('redis.client.Pipeline.hincrby', _mocked_hincrby2):
+            redis_telemetry.add_latency_to_pipe(MethodExceptionsAndLatencies.TREATMENT, 2260, pipe)
 
     def test_record_exception(self, mocker):
         def _mocked_hincrby(*args, **kwargs):

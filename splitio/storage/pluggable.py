@@ -6,7 +6,7 @@ import threading
 
 from splitio.models import splits, segments
 from splitio.models.impressions import Impression
-from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MAX_TAGS
+from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MAX_TAGS, get_latency_bucket_index
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
 
 _LOGGER = logging.getLogger(__name__)
@@ -780,18 +780,10 @@ class PluggableTelemetryStorage(TelemetryStorage):
         :param latency: latency
         :type latency: int64
         """
-        self._method_latencies.add_latency(method, latency)
-        latencies = self._method_latencies.pop_all()['methodLatencies']
-        values = latencies[method.value]
-        total_keys = 0
-        bucket_number = 0
-        for bucket in values:
-            if bucket > 0:
-                latency_key = self._telemetry_latencies_key + '::' + self._sdk_metadata + '/' + method.value + '/' + str(bucket_number)
-                result = self._pluggable_adapter.increment(latency_key, bucket)
-                self.expire_keys(latency_key, self._TELEMETRY_KEY_DEFAULT_TTL, 1, result)
-                total_keys += 1
-            bucket_number = bucket_number + 0
+        bucket = get_latency_bucket_index(latency)
+        latency_key = self._telemetry_latencies_key + '::' + self._sdk_metadata + '/' + method.value + '/' + str(bucket)
+        result = self._pluggable_adapter.increment(latency_key, 1)
+        self.expire_keys(latency_key, self._TELEMETRY_KEY_DEFAULT_TTL, 1, result)
 
     def record_exception(self, method):
         """

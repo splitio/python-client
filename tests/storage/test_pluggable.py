@@ -599,10 +599,29 @@ class PluggableTelemetryStorageTests(object):
             assert(args[1] == self.pluggable_telemetry_storage._TELEMETRY_KEY_DEFAULT_TTL)
             assert(args[2] == 1)
             assert(args[3] == 1)
-
         self.pluggable_telemetry_storage.expire_keys = expire_keys_mock
+        # should increment bucket 0
         self.pluggable_telemetry_storage.record_latency(MethodExceptionsAndLatencies.TREATMENT, 10)
         assert(self.mock_adapter._keys[self.pluggable_telemetry_storage._telemetry_latencies_key + '::python-1.1.1/hostname/ip/treatment/0'] == 1)
+
+        def expire_keys_mock2(*args, **kwargs):
+            assert(args[0] == self.pluggable_telemetry_storage._telemetry_latencies_key + '::python-1.1.1/hostname/ip/treatment/3')
+            assert(args[1] == self.pluggable_telemetry_storage._TELEMETRY_KEY_DEFAULT_TTL)
+            assert(args[2] == 1)
+            assert(args[3] == 1)
+        self.pluggable_telemetry_storage.expire_keys = expire_keys_mock2
+        # should increment bucket 3
+        self.pluggable_telemetry_storage.record_latency(MethodExceptionsAndLatencies.TREATMENT, 2260)
+
+        def expire_keys_mock3(*args, **kwargs):
+            assert(args[0] == self.pluggable_telemetry_storage._telemetry_latencies_key + '::python-1.1.1/hostname/ip/treatment/3')
+            assert(args[1] == self.pluggable_telemetry_storage._TELEMETRY_KEY_DEFAULT_TTL)
+            assert(args[2] == 1)
+            assert(args[3] == 2)
+        self.pluggable_telemetry_storage.expire_keys = expire_keys_mock3
+        # should increment bucket 3
+        self.pluggable_telemetry_storage.record_latency(MethodExceptionsAndLatencies.TREATMENT, 3280)
+        assert(self.mock_adapter._keys[self.pluggable_telemetry_storage._telemetry_latencies_key + '::python-1.1.1/hostname/ip/treatment/3'] == 2)
 
     def test_record_exception(self):
         def expire_keys_mock(*args, **kwargs):
