@@ -1259,3 +1259,9 @@ class PluggableInputValidationTests(object):  #pylint: disable=too-few-public-me
 
         # expected mock adapter should pass
         assert(input_validator.validate_pluggable_adapter({'storageType': 'PLUGGABLE', 'storageWrapper': self.mock_adapter4()}))
+
+        # using string type prefix should pass
+        assert(input_validator.validate_pluggable_adapter({'storageType': 'PLUGGABLE', 'storagePrefix': 'myprefix', 'storageWrapper': self.mock_adapter4()}))
+
+        # using non-string type prefix should not pass
+        assert(not input_validator.validate_pluggable_adapter({'storageType': 'PLUGGABLE', 'storagePrefix': 'myprefix', 123: self.mock_adapter4()}))

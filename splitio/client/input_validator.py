@@ -536,6 +536,11 @@ def validate_pluggable_adapter(config):
         _LOGGER.error("Expecting custom storage `wrapper` in options, but no valid wrapper instance was provided.")
         return False
 
+    if config.get('storagePrefix') is not None:
+        if not isinstance(config.get('storagePrefix'), str):
+            _LOGGER.error("Custom storage prefix should be string type only")
+            return False
+
     pluggable_adapter = config.get('storageWrapper')
     if not isinstance(pluggable_adapter, object):
         _LOGGER.error("Custom storage instance is not inherted from object class")
