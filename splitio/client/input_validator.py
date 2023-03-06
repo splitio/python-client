@@ -3,6 +3,7 @@ from numbers import Number
 import logging
 import re
 import math
+import inspect
 
 from splitio.api import APIException
 from splitio.api.commons import FetchOptions
@@ -517,3 +518,46 @@ def valid_properties(properties):
         _LOGGER.warning('Event has more than 300 properties. Some of them will be trimmed' +
                         ' when processed')
     return True, valid_properties if len(valid_properties) else None, size
+
+def validate_pluggable_adapter(config):
+    """
+    Check if pluggable adapter contains the expected method signature
+
+    :param config: config parameters
+    :type config: Dict
+
+    :return: True if no issue found otherwise False
+    :rtype: bool
+    """
+    if config.get('storageType') != 'PLUGGABLE':
+        return True
+
+    if config.get('storageWrapper') is None:
+        _LOGGER.error("Expecting custom storage `wrapper` in options, but no valid wrapper instance was provided.")
+        return False
+
+    pluggable_adapter = config.get('storageWrapper')
+    if not isinstance(pluggable_adapter, object):
+        _LOGGER.error("Custom storage instance is not inherted from object class")
+        return False
+
+    expected_methods = {'get': 1, 'get_items': 1, 'get_many': 1, 'set': 2, 'push_items': 2,
+                        'delete': 1, 'increment': 2, 'decrement': 2, 'get_keys_by_prefix': 1,
+                        'get_many': 1, 'add_items' : 2, 'remove_items': 2, 'item_contains': 2,
+                        'get_items_count': 1, 'expire': 2}
+    methods = inspect.getmembers(pluggable_adapter, predicate=inspect.ismethod)
+    for exp_method in expected_methods:
+        method_found = False
+        get_method_args = set()
+        for method in methods:
+            if exp_method == method[0]:
+                method_found = True
+                get_method_args = inspect.signature(method[1]).parameters
+                break
+        if not method_found:
+            _LOGGER.error("Pluggable adapter does not have required method: %s" % exp_method)
+            return False
+        if len(get_method_args) < expected_methods[exp_method]:
+            _LOGGER.error("Pluggable adapter method %s has less than required arguments count: %s : " % (exp_method, len(get_method_args)))
+            return False
+    return True
