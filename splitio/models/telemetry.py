@@ -17,6 +17,7 @@ BUCKETS = (
 MAX_LATENCY = 7481828
 MAX_LATENCY_BUCKET_COUNT = 23
 MAX_STREAMING_EVENTS = 20
+MAX_TAGS = 10
 
 class CounterConstants(Enum):
     """Impressions and events counters constants"""
