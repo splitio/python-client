@@ -1,5 +1,3 @@
-import logging
-
 from splitio.engine.impressions.impressions import ImpressionsMode
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.engine.impressions.strategies import StrategyNoneMode, StrategyDebugMode, StrategyOptimizedMode
@@ -8,8 +6,6 @@ from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTa
 from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer
 from splitio.sync.impression import ImpressionsCountSynchronizer
 from splitio.tasks.impressions_sync import ImpressionsCountSyncTask
-
-_LOGGER = logging.getLogger(__name__)
 
 def set_classes(storage_mode, impressions_mode, api_adapter):
     unique_keys_synchronizer = None
