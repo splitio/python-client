@@ -529,7 +529,7 @@ def validate_pluggable_adapter(config):
     :return: True if no issue found otherwise False
     :rtype: bool
     """
-    if config.get('storageType') != 'PLUGGABLE':
+    if config.get('storageType') != 'CUSTOM':
         return True
 
     if config.get('storageWrapper') is None:

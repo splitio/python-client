@@ -771,7 +771,7 @@ class PluggableTelemetryStorage(TelemetryStorage):
         """
         self._tel_config.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
 
-    def record_latency(self, method, latency):
+    def record_latency(self, method, bucket):
         """
         record latency data
 
@@ -780,7 +780,6 @@ class PluggableTelemetryStorage(TelemetryStorage):
         :param latency: latency
         :type latency: int64
         """
-        bucket = get_latency_bucket_index(latency)
         latency_key = self._telemetry_latencies_key + '::' + self._sdk_metadata + '/' + method.value + '/' + str(bucket)
         result = self._pluggable_adapter.increment(latency_key, 1)
         self.expire_keys(latency_key, self._TELEMETRY_KEY_DEFAULT_TTL, 1, result)

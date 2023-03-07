@@ -9,7 +9,7 @@ import pytest
 from splitio.client.factory import get_factory, SplitFactory, _INSTANTIATED_FACTORIES, Status,\
     _LOGGER as _logger
 from splitio.client.config import DEFAULT_CONFIG
-from splitio.storage import redis, inmemmory
+from splitio.storage import redis, inmemmory, pluggable
 from splitio.tasks import events_sync, impressions_sync, split_sync, segment_sync
 from splitio.tasks.util import asynctask
 from splitio.api.splits import SplitsAPI
@@ -23,6 +23,7 @@ from splitio.sync.split import SplitSynchronizer
 from splitio.sync.segment import SegmentSynchronizer
 from splitio.recorder.recorder import PipelinedRecorder, StandardRecorder
 from splitio.storage.adapters.redis import RedisAdapter, RedisPipelineAdapter
+from tests.storage.test_pluggable import StorageMockAdapter
 
 
 class SplitFactoryTests(object):
@@ -221,9 +222,9 @@ class SplitFactoryTests(object):
                      new=_telemetry_task_init_mock)
 
         split_sync = mocker.Mock(spec=SplitSynchronizer)
-        split_sync.synchronize_splits.return_values = None
+        split_sync.synchronize_splits.return_value = []
         segment_sync = mocker.Mock(spec=SegmentSynchronizer)
-        segment_sync.synchronize_segments.return_values = None
+        segment_sync.synchronize_segments.return_value = None
         syncs = SplitSynchronizers(split_sync, segment_sync, mocker.Mock(),
                                    mocker.Mock(), mocker.Mock(), mocker.Mock())
         tasks = SplitTasks(split_async_task_mock, segment_async_task_mock, imp_async_task_mock,
@@ -317,7 +318,7 @@ class SplitFactoryTests(object):
                      new=_telemetry_task_init_mock)
 
         split_sync = mocker.Mock(spec=SplitSynchronizer)
-        split_sync.synchronize_splits.return_values = None
+        split_sync.synchronize_splits.return_value = []
         segment_sync = mocker.Mock(spec=SegmentSynchronizer)
         segment_sync.synchronize_segments.return_values = None
         syncs = SplitSynchronizers(split_sync, segment_sync, mocker.Mock(),
@@ -340,7 +341,7 @@ class SplitFactoryTests(object):
             factory.block_until_ready(1)
         except:
             pass
-            
+
         assert factory.ready is True
         assert factory.destroyed is False
 
@@ -541,3 +542,53 @@ class SplitFactoryTests(object):
         factory.resume()
         assert _logger.warning.mock_calls == expected_msg
         factory.destroy()
+
+    def test_pluggable_client_creation(self, mocker):
+        """Test that a client with pluggable storage is created correctly."""
+        config = {
+            'labelsEnabled': False,
+            'impressionListener': 123,
+            'storageType': 'custom',
+            'storageWrapper': StorageMockAdapter()
+        }
+        factory = get_factory('some_api_key', config=config)
+        assert isinstance(factory._get_storage('splits'), pluggable.PluggableSplitStorage)
+        assert isinstance(factory._get_storage('segments'), pluggable.PluggableSegmentStorage)
+        assert isinstance(factory._get_storage('impressions'), pluggable.PluggableImpressionsStorage)
+        assert isinstance(factory._get_storage('events'), pluggable.PluggableEventsStorage)
+
+        adapter = factory._get_storage('splits')._pluggable_adapter
+        assert adapter == factory._get_storage('segments')._pluggable_adapter
+        assert adapter == factory._get_storage('impressions')._pluggable_adapter
+        assert adapter == factory._get_storage('events')._pluggable_adapter
+
+        assert factory._labels_enabled is False
+        assert isinstance(factory._recorder, StandardRecorder)
+        assert isinstance(factory._recorder._impressions_manager, ImpressionsManager)
+        assert isinstance(factory._recorder._event_sotrage, pluggable.PluggableEventsStorage)
+        assert isinstance(factory._recorder._impression_storage, pluggable.PluggableImpressionsStorage)
+        try:
+            factory.block_until_ready(1)
+        except:
+            pass
+        assert factory.ready
+        factory.destroy()
+
+    def test_destroy_with_event_pluggable(self, mocker):
+        config = {
+            'labelsEnabled': False,
+            'impressionListener': 123,
+            'storageType': 'custom',
+            'storageWrapper': StorageMockAdapter()
+        }
+
+        factory = get_factory("none", config=config)
+        event = threading.Event()
+        factory.destroy(event)
+        event.wait()
+        assert factory.destroyed
+
+        factory = get_factory("none", config=config)
+        factory.destroy(None)
+        time.sleep(0.1)
+        assert factory.destroyed

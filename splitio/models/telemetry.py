@@ -124,11 +124,13 @@ class StorageType(Enum):
     MEMORY = 'memory'
     REDIS = 'redis'
     LOCALHOST = 'localhost'
+    CUSTOM = 'custom'
 
 class OperationMode(Enum):
     """Storage modes constants"""
     MEMORY = 'inmemory'
     REDIS = 'redis-consumer'
+    CUSTOM = 'custom'
 
 def get_latency_bucket_index(micros):
     """
@@ -874,7 +876,7 @@ class TelemetryConfig(object):
             elif StorageType.REDIS.value in op_mode:
                 return StorageType.REDIS.value
             else:
-                return StorageType.LOCALHOST.value
+                return StorageType.CUSTOM.value
 
     def _get_refresh_rates(self, config):
         """

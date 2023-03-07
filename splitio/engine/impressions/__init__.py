@@ -1,3 +1,5 @@
+import logging
+
 from splitio.engine.impressions.impressions import ImpressionsMode
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.engine.impressions.strategies import StrategyNoneMode, StrategyDebugMode, StrategyOptimizedMode
@@ -7,6 +9,8 @@ from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchron
 from splitio.sync.impression import ImpressionsCountSynchronizer
 from splitio.tasks.impressions_sync import ImpressionsCountSyncTask
 
+_LOGGER = logging.getLogger(__name__)
+
 def set_classes(storage_mode, impressions_mode, api_adapter):
     unique_keys_synchronizer = None
     clear_filter_sync = None
@@ -15,7 +19,10 @@ def set_classes(storage_mode, impressions_mode, api_adapter):
     impressions_count_sync = None
     impressions_count_task = None
     sender_adapter = None
-    if storage_mode == 'REDIS':
+    if storage_mode == 'PLUGGABLE':
+        api_telemetry_adapter = sender_adapter
+        api_impressions_adapter = sender_adapter
+    elif storage_mode == 'REDIS':
         sender_adapter = RedisSenderAdapter(api_adapter)
         api_telemetry_adapter = sender_adapter
         api_impressions_adapter = sender_adapter
