@@ -224,7 +224,7 @@ class SplitFactoryTests(object):
         split_sync = mocker.Mock(spec=SplitSynchronizer)
         split_sync.synchronize_splits.return_value = []
         segment_sync = mocker.Mock(spec=SegmentSynchronizer)
-        segment_sync.synchronize_segments.return_value = None
+        segment_sync.synchronize_segments.return_values = None
         syncs = SplitSynchronizers(split_sync, segment_sync, mocker.Mock(),
                                    mocker.Mock(), mocker.Mock(), mocker.Mock())
         tasks = SplitTasks(split_async_task_mock, segment_async_task_mock, imp_async_task_mock,
