@@ -441,7 +441,7 @@ class RedisTelemetryStorageTests(object):
             assert(args[3] == 1)
         # should increment bucket 0
         with mock.patch('redis.client.Pipeline.hincrby', _mocked_hincrby):
-            redis_telemetry.add_latency_to_pipe(MethodExceptionsAndLatencies.TREATMENT, 20, pipe)
+            redis_telemetry.add_latency_to_pipe(MethodExceptionsAndLatencies.TREATMENT, 0, pipe)
 
         def _mocked_hincrby2(*args, **kwargs):
             assert(args[1] == RedisTelemetryStorage._TELEMETRY_LATENCIES_KEY)
@@ -449,7 +449,7 @@ class RedisTelemetryStorageTests(object):
             assert(args[3] == 1)
         # should increment bucket 3
         with mock.patch('redis.client.Pipeline.hincrby', _mocked_hincrby2):
-            redis_telemetry.add_latency_to_pipe(MethodExceptionsAndLatencies.TREATMENT, 2260, pipe)
+            redis_telemetry.add_latency_to_pipe(MethodExceptionsAndLatencies.TREATMENT, 3, pipe)
 
     def test_record_exception(self, mocker):
         def _mocked_hincrby(*args, **kwargs):

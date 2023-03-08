@@ -15,7 +15,10 @@ def set_classes(storage_mode, impressions_mode, api_adapter):
     impressions_count_sync = None
     impressions_count_task = None
     sender_adapter = None
-    if storage_mode == 'REDIS':
+    if storage_mode == 'PLUGGABLE':
+        api_telemetry_adapter = sender_adapter
+        api_impressions_adapter = sender_adapter
+    elif storage_mode == 'REDIS':
         sender_adapter = RedisSenderAdapter(api_adapter)
         api_telemetry_adapter = sender_adapter
         api_impressions_adapter = sender_adapter

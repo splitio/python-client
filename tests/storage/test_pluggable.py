@@ -1,5 +1,6 @@
 """Pluggable storage test module."""
 import json
+import threading
 
 from splitio.models.splits import Split
 from splitio.models import splits, segments
@@ -16,83 +17,94 @@ import pytest
 class StorageMockAdapter(object):
     def __init__(self):
         self._keys = {}
+        self._lock = threading.RLock()
 
     def get(self, key):
-        if key not in self._keys:
-            return None
-        return self._keys[key]
+        with self._lock:
+            if key not in self._keys:
+                return None
+            return self._keys[key]
 
     def get_items(self, key):
-        if key not in self._keys:
-            return None
-        return list(self._keys[key])
-
-    def get_many(self, keys):
-        return [self.get(key) for key in keys]
+        with self._lock:
+            if key not in self._keys:
+                return None
+            return list(self._keys[key])
 
     def set(self, key, value):
-        self._keys[key] = value
+        with self._lock:
+            self._keys[key] = value
 
     def push_items(self, key, *value):
-        items = []
-        if key in self._keys:
-            items = self._keys[key]
-        [items.append(item) for item in value]
-        self._keys[key] = items
+        with self._lock:
+            items = []
+            if key in self._keys:
+                items = self._keys[key]
+            [items.append(item) for item in value]
+            self._keys[key] = items
 
     def delete(self, key):
-        if key in self._keys:
-            del self._keys[key]
+        with self._lock:
+            if key in self._keys:
+                del self._keys[key]
 
     def increment(self, key, value):
-        if key not in self._keys:
-            self._keys[key] = 0
-        self._keys[key]+= value
-        return self._keys[key]
+        with self._lock:
+            if key not in self._keys:
+                self._keys[key] = 0
+            self._keys[key]+= value
+            return self._keys[key]
 
     def decrement(self, key, value):
-        if key not in self._keys:
-            return None
-        self._keys[key]-= value
-        return self._keys[key]
+        with self._lock:
+            if key not in self._keys:
+                return None
+            self._keys[key]-= value
+            return self._keys[key]
 
     def get_keys_by_prefix(self, prefix):
-        keys = []
-        for key in self._keys:
-            if prefix in key:
-                keys.append(key)
-        return keys
+        with self._lock:
+            keys = []
+            for key in self._keys:
+                if prefix in key:
+                    keys.append(key)
+            return keys
 
     def get_many(self, keys):
-        returned_keys = []
-        for key in self._keys:
-            if key in keys:
-                returned_keys.append(self._keys[key])
-        return returned_keys
+        with self._lock:
+            returned_keys = []
+            for key in self._keys:
+                if key in keys:
+                    returned_keys.append(self._keys[key])
+            return returned_keys
 
     def add_items(self, key, added_items):
-        items = set()
-        if key in self._keys:
-            items = set(self._keys[key])
-        [items.add(item) for item in added_items]
-        self._keys[key] = items
+        with self._lock:
+            items = set()
+            if key in self._keys:
+                items = set(self._keys[key])
+            [items.add(item) for item in added_items]
+            self._keys[key] = items
 
     def remove_items(self, key, removed_items):
-        new_items = set()
-        for item in self._keys[key]:
-            if item not in removed_items:
-                new_items.add(item)
-        self._keys[key] = new_items
+        with self._lock:
+            new_items = set()
+            for item in self._keys[key]:
+                if item not in removed_items:
+                    new_items.add(item)
+            self._keys[key] = new_items
 
     def item_contains(self, key, item):
-        if item in self._keys[key]:
-            return True
-        return False
+        with self._lock:
+            if item in self._keys[key]:
+                return True
+            return False
 
     def get_items_count(self, key):
-        if key in self._keys:
-            return len(self._keys[key])
-        return None
+        with self._lock:
+            if key in self._keys:
+                return len(self._keys[key])
+            return None
 
     def expire(self, key, ttl):
         #Not needed for Memory storage
@@ -601,7 +613,7 @@ class PluggableTelemetryStorageTests(object):
             assert(args[3] == 1)
         self.pluggable_telemetry_storage.expire_keys = expire_keys_mock
         # should increment bucket 0
-        self.pluggable_telemetry_storage.record_latency(MethodExceptionsAndLatencies.TREATMENT, 10)
+        self.pluggable_telemetry_storage.record_latency(MethodExceptionsAndLatencies.TREATMENT, 0)
         assert(self.mock_adapter._keys[self.pluggable_telemetry_storage._telemetry_latencies_key + '::python-1.1.1/hostname/ip/treatment/0'] == 1)
 
         def expire_keys_mock2(*args, **kwargs):
@@ -611,7 +623,7 @@ class PluggableTelemetryStorageTests(object):
             assert(args[3] == 1)
         self.pluggable_telemetry_storage.expire_keys = expire_keys_mock2
         # should increment bucket 3
-        self.pluggable_telemetry_storage.record_latency(MethodExceptionsAndLatencies.TREATMENT, 2260)
+        self.pluggable_telemetry_storage.record_latency(MethodExceptionsAndLatencies.TREATMENT, 3)
 
         def expire_keys_mock3(*args, **kwargs):
             assert(args[0] == self.pluggable_telemetry_storage._telemetry_latencies_key + '::python-1.1.1/hostname/ip/treatment/3')
@@ -620,7 +632,7 @@ class PluggableTelemetryStorageTests(object):
             assert(args[3] == 2)
         self.pluggable_telemetry_storage.expire_keys = expire_keys_mock3
         # should increment bucket 3
-        self.pluggable_telemetry_storage.record_latency(MethodExceptionsAndLatencies.TREATMENT, 3280)
+        self.pluggable_telemetry_storage.record_latency(MethodExceptionsAndLatencies.TREATMENT, 3)
         assert(self.mock_adapter._keys[self.pluggable_telemetry_storage._telemetry_latencies_key + '::python-1.1.1/hostname/ip/treatment/3'] == 2)
 
     def test_record_exception(self):

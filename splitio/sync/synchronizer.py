@@ -589,3 +589,69 @@ class LocalhostSynchronizer(BaseSynchronizer):
         :type blocking: bool
         """
         self.stop_periodic_fetching()
+
+
+class PluggableSynchronizer(BaseSynchronizer):
+    """Plugable Synchronizer."""
+
+    def synchronize_segment(self, segment_name, till):
+        """
+        Synchronize particular segment.
+
+        :param segment_name: segment associated
+        :type segment_name: str
+        :param till: to fetch
+        :type till: int
+        """
+        pass
+
+    def synchronize_splits(self, till):
+        """
+        Synchronize all splits.
+
+        :param till: to fetch
+        :type till: int
+        """
+        pass
+
+    def sync_all(self):
+        """Synchronize all split data."""
+        pass
+
+    def start_periodic_fetching(self):
+        """Start fetchers for splits and segments."""
+        pass
+
+    def stop_periodic_fetching(self):
+        """Stop fetchers for splits and segments."""
+        pass
+
+    def start_periodic_data_recording(self):
+        """Start recorders."""
+        pass
+
+    def stop_periodic_data_recording(self, blocking):
+        """Stop recorders."""
+        pass
+
+    def kill_split(self, split_name, default_treatment, change_number):
+        """
+        Kill a split locally.
+
+        :param split_name: name of the split to perform kill
+        :type split_name: str
+        :param default_treatment: name of the default treatment to return
+        :type default_treatment: str
+        :param change_number: change_number
+        :type change_number: int
+        """
+        pass
+
+    def shutdown(self, blocking):
+        """
+        Stop tasks.
+
+        :param blocking:flag to wait until tasks are stopped
+        :type blocking: bool
+        """
+        pass

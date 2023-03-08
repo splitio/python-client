@@ -649,7 +649,7 @@ class RedisTelemetryStorage(TelemetryStorage):
         """Record active and redundant factories."""
         self._tel_config.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
 
-    def add_latency_to_pipe(self, method, latency, pipe):
+    def add_latency_to_pipe(self, method, bucket, pipe):
         """
         record latency data
 
@@ -660,7 +660,6 @@ class RedisTelemetryStorage(TelemetryStorage):
         :param pipe: Redis pipe.
         :type pipe: redis.pipe
         """
-        bucket = get_latency_bucket_index(latency)
         pipe.hincrby(self._TELEMETRY_LATENCIES_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
             method.value + '/' + str(bucket), 1)
 

@@ -24,6 +24,8 @@ from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStora
 from splitio.storage.adapters import redis
 from splitio.storage.redis import RedisSplitStorage, RedisSegmentStorage, RedisImpressionsStorage, \
     RedisEventsStorage, RedisTelemetryStorage
+from splitio.storage.pluggable import PluggableEventsStorage, PluggableImpressionsStorage, PluggableSegmentStorage, \
+    PluggableSplitStorage, PluggableTelemetryStorage
 
 # APIs
 from splitio.api.client import HttpClient
@@ -45,7 +47,7 @@ from splitio.tasks.telemetry_sync import TelemetrySyncTask
 
 # Synchronizer
 from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, \
-    LocalhostSynchronizer, RedisSynchronizer
+    LocalhostSynchronizer, RedisSynchronizer, PluggableSynchronizer
 from splitio.sync.manager import Manager, RedisManager
 from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer, LocalhostMode
 from splitio.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer
@@ -512,6 +514,69 @@ def _build_redis_factory(api_key, cfg):
     return split_factory
 
 
+def _build_pluggable_factory(api_key, cfg):
+    """Build and return a split factory with pluggable storage."""
+    sdk_metadata = util.get_metadata(cfg)
+    if not input_validator.validate_pluggable_adapter(cfg):
+        raise Exception("Pluggable Adapter validation failed, exiting")
+
+    pluggable_adapter = cfg.get('storageWrapper')
+    storage_prefix = cfg.get('storagePrefix')
+    storages = {
+        'splits': PluggableSplitStorage(pluggable_adapter, storage_prefix),
+        'segments': PluggableSegmentStorage(pluggable_adapter, storage_prefix),
+        'impressions': PluggableImpressionsStorage(pluggable_adapter, sdk_metadata, storage_prefix),
+        'events': PluggableEventsStorage(pluggable_adapter, sdk_metadata, storage_prefix),
+        'telemetry': PluggableTelemetryStorage(pluggable_adapter, sdk_metadata, storage_prefix)
+    }
+    telemetry_producer = TelemetryStorageProducer(storages['telemetry'])
+    telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+    telemetry_init_producer = telemetry_producer.get_telemetry_init_producer()
+    # Using same class as redis
+    telemetry_submitter = RedisTelemetrySubmitter(storages['telemetry'])
+
+    unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
+    clear_filter_task, impressions_count_sync, impressions_count_task, \
+    imp_strategy = set_classes('PLUGGABLE', cfg['impressionsMode'], pluggable_adapter)
+
+    imp_manager = ImpressionsManager(
+        imp_strategy,
+        telemetry_runtime_producer,
+        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
+        )
+
+    synchronizer = PluggableSynchronizer()
+    recorder = StandardRecorder(
+        imp_manager,
+        storages['events'],
+        storages['impressions'],
+        storages['telemetry']
+    )
+
+    # Using same class as redis for consumer mode only
+    manager = RedisManager(synchronizer)
+    initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
+    initialization_thread.start()
+
+    telemetry_init_producer.record_config(cfg, {})
+
+    split_factory = SplitFactory(
+        api_key,
+        storages,
+        cfg['labelsEnabled'],
+        recorder,
+        manager,
+        sdk_ready_flag=None,
+        telemetry_producer=telemetry_producer,
+        telemetry_init_producer=telemetry_init_producer
+    )
+    redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
+    storages['telemetry'].record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+    telemetry_submitter.synchronize_config()
+
+    return split_factory
+
+
 def _build_localhost_factory(cfg):
     """Build and return a localhost factory for testing/development purposes."""
     telemetry_storage = LocalhostTelemetryStorage()
@@ -610,6 +675,8 @@ def get_factory(api_key, **kwargs):
         split_factory =  _build_localhost_factory(config)
     elif config['operationMode'] == 'redis-consumer':
         split_factory = _build_redis_factory(api_key, config)
+    elif config['operationMode'] == 'pluggable':
+        split_factory = _build_pluggable_factory(api_key, config)
     else:
         split_factory = _build_in_memory_factory(
         api_key,
