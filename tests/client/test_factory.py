@@ -548,7 +548,7 @@ class SplitFactoryTests(object):
         config = {
             'labelsEnabled': False,
             'impressionListener': 123,
-            'storageType': 'custom',
+            'storageType': 'pluggable',
             'storageWrapper': StorageMockAdapter()
         }
         factory = get_factory('some_api_key', config=config)
@@ -578,7 +578,7 @@ class SplitFactoryTests(object):
         config = {
             'labelsEnabled': False,
             'impressionListener': 123,
-            'storageType': 'custom',
+            'storageType': 'pluggable',
             'storageWrapper': StorageMockAdapter()
         }
 

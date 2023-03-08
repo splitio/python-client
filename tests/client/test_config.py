@@ -13,7 +13,7 @@ class ConfigSanitizationTests(object):
         assert config._parse_operation_mode('some', {}) == 'inmemory-standalone'
         assert config._parse_operation_mode('localhost', {}) == 'localhost-standalone'
         assert config._parse_operation_mode('some', {'redisHost': 'x'}) == 'redis-consumer'
-        assert config._parse_operation_mode('some', {'storageType': 'custom'}) == 'custom'
+        assert config._parse_operation_mode('some', {'storageType': 'pluggable'}) == 'pluggable'
         assert config._parse_operation_mode('some', {'storageType': 'custom2'}) == 'inmemory-standalone'
 
     def test_sanitize_imp_mode(self):
@@ -34,15 +34,15 @@ class ConfigSanitizationTests(object):
         assert mode == ImpressionsMode.OPTIMIZED
         assert rate == 200
 
-        mode, rate = config._sanitize_impressions_mode('custom', 'ANYTHING', 200)
+        mode, rate = config._sanitize_impressions_mode('pluggable', 'ANYTHING', 200)
         assert mode == ImpressionsMode.DEBUG
         assert rate == 200
 
-        mode, rate = config._sanitize_impressions_mode('custom', 'NONE', 200)
+        mode, rate = config._sanitize_impressions_mode('pluggable', 'NONE', 200)
         assert mode == ImpressionsMode.DEBUG
         assert rate == 200
 
-        mode, rate = config._sanitize_impressions_mode('custom', 'OPTIMIZED', 200)
+        mode, rate = config._sanitize_impressions_mode('pluggable', 'OPTIMIZED', 200)
         assert mode == ImpressionsMode.DEBUG
         assert rate == 200
 

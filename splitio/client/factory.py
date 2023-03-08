@@ -675,7 +675,7 @@ def get_factory(api_key, **kwargs):
         split_factory =  _build_localhost_factory(config)
     elif config['operationMode'] == 'redis-consumer':
         split_factory = _build_redis_factory(api_key, config)
-    elif config['operationMode'] == 'custom':
+    elif config['operationMode'] == 'pluggable':
         split_factory = _build_pluggable_factory(api_key, config)
     else:
         split_factory = _build_in_memory_factory(

@@ -58,7 +58,7 @@ DEFAULT_CONFIG = {
     'dataSampling': DEFAULT_DATA_SAMPLING,
     'storageWrapper': None,
     'storagePrefix': None,
-    'strageType': None
+    'storageType': None
 }
 
 
@@ -81,11 +81,11 @@ def _parse_operation_mode(apikey, config):
         return 'redis-consumer'
 
     if 'storageType' in config:
-        if config.get('storageType').lower() == 'custom':
-            _LOGGER.debug('Using Custom storage operation mode')
-            return 'custom'
+        if config.get('storageType').lower() == 'pluggable':
+            _LOGGER.debug('Using Pluggable storage operation mode')
+            return 'pluggable'
         _LOGGER.warning('You passed an invalid storageType, acceptable value is '
-                            '`custom`. Defaulting storage to In-Memory mode.')
+                            '`pluggable`. Defaulting storage to In-Memory mode.')
 
     _LOGGER.debug('Using In-Memory operation mode')
     return 'inmemory-standalone'
@@ -110,9 +110,9 @@ def _sanitize_impressions_mode(operation_mode, mode, refresh_rate=None):
                             'one of the following values: `debug`, `none` or `optimized`. '
                             ' Defaulting to `optimized` mode.')
 
-    if operation_mode == 'custom' and mode != ImpressionsMode.DEBUG:
+    if operation_mode == 'pluggable' and mode != ImpressionsMode.DEBUG:
         mode = ImpressionsMode.DEBUG
-        _LOGGER.warning('`custom` storageMode only support `debug` impressionMode, adjusting impressionsMode to `debug`. ')
+        _LOGGER.warning('`pluggable` storageMode only support `debug` impressionMode, adjusting impressionsMode to `debug`. ')
 
     if mode == ImpressionsMode.DEBUG:
         refresh_rate = max(1, refresh_rate) if refresh_rate is not None else 60

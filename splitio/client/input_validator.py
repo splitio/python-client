@@ -529,21 +529,21 @@ def validate_pluggable_adapter(config):
     :return: True if no issue found otherwise False
     :rtype: bool
     """
-    if config.get('storageType') != 'CUSTOM':
+    if config.get('storageType') != 'pluggable':
         return True
 
     if config.get('storageWrapper') is None:
-        _LOGGER.error("Expecting custom storage `wrapper` in options, but no valid wrapper instance was provided.")
+        _LOGGER.error("Expecting pluggable storage `wrapper` in options, but no valid wrapper instance was provided.")
         return False
 
     if config.get('storagePrefix') is not None:
         if not isinstance(config.get('storagePrefix'), str):
-            _LOGGER.error("Custom storage prefix should be string type only")
+            _LOGGER.error("Pluggable storage prefix should be string type only")
             return False
 
     pluggable_adapter = config.get('storageWrapper')
     if not isinstance(pluggable_adapter, object):
-        _LOGGER.error("Custom storage instance is not inherted from object class")
+        _LOGGER.error("Pluggable storage instance is not inherted from object class")
         return False
 
     expected_methods = {'get': 1, 'get_items': 1, 'get_many': 1, 'set': 2, 'push_items': 2,
