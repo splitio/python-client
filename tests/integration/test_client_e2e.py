@@ -1190,7 +1190,6 @@ class PluggableIntegrationTests(object):
         self.pluggable_storage_adapter.set(segment_storage._prefix.format(segment_name=data['name']), set(data['added']))
         self.pluggable_storage_adapter.set(segment_storage._segment_till_prefix.format(segment_name=data['name']), data['till'])
 
-
     def _validate_last_events(self, client, *to_validate):
         """Validate the last N impressions are present disregarding the order."""
         event_storage = client._factory._get_storage('events')
@@ -1434,7 +1433,7 @@ class PluggableIntegrationTests(object):
         assert len(manager.splits()) == 7
 
     def teardown_method(self):
-        """Clear redis cache."""
+        """Clear pluggable cache."""
         keys_to_delete = [
             "SPLITIO.segment.human_beigns",
             "SPLITIO.segment.employees.till",

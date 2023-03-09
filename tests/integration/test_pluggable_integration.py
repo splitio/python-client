@@ -1,4 +1,4 @@
-"""Redis storage end to end tests."""
+"""Pluggable storage end to end tests."""
 #pylint: disable=no-self-use,protected-access,line-too-long,too-few-public-methods
 
 import json
@@ -15,7 +15,7 @@ class PluggableSplitStorageIntegrationTests(object):
     """Pluggable Split storage e2e tests."""
 
     def test_put_fetch(self):
-        """Test storing and retrieving splits in redis."""
+        """Test storing and retrieving splits in pluggable."""
         adapter = StorageMockAdapter()
         try:
             storage = PluggableSplitStorage(adapter)
@@ -127,10 +127,10 @@ class PluggableSplitStorageIntegrationTests(object):
 
 
 class PluggableSegmentStorageIntegrationTests(object):
-    """Redis Segment storage e2e tests."""
+    """Pluggable Segment storage e2e tests."""
 
     def test_put_fetch_contains(self):
-        """Test storing and retrieving splits in redis."""
+        """Test storing and retrieving splits in pluggable."""
         adapter = StorageMockAdapter()
         try:
             storage = PluggableSegmentStorage(adapter)
@@ -164,7 +164,7 @@ class PluggableImpressionsStorageIntegrationTests(object):
 
 
     def test_put_fetch_contains(self):
-        """Test storing and retrieving splits in redis."""
+        """Test storing and retrieving splits in pluggable."""
         adapter = StorageMockAdapter()
         try:
             self._put_impressions(adapter, get_metadata({}))
@@ -179,7 +179,7 @@ class PluggableImpressionsStorageIntegrationTests(object):
             adapter.delete('SPLITIO.impressions')
 
     def test_put_fetch_contains_ip_address_disabled(self):
-        """Test storing and retrieving splits in redis."""
+        """Test storing and retrieving splits in pluggable."""
         adapter = StorageMockAdapter()
         try:
             cfg = DEFAULT_CONFIG.copy()
@@ -197,7 +197,7 @@ class PluggableImpressionsStorageIntegrationTests(object):
 
 
 class PluggableEventsStorageIntegrationTests(object):
-    """Redis Events storage e2e tests."""
+    """Pluggable Events storage e2e tests."""
     def _put_events(self, adapter, metadata):
         storage = PluggableEventsStorage(adapter, metadata)
         storage.put([
@@ -216,7 +216,7 @@ class PluggableEventsStorageIntegrationTests(object):
         ])
 
     def test_put_fetch_contains(self):
-        """Test storing and retrieving splits in redis."""
+        """Test storing and retrieving splits in pluggable."""
         adapter = StorageMockAdapter()
         try:
             self._put_events(adapter, get_metadata({}))
@@ -230,7 +230,7 @@ class PluggableEventsStorageIntegrationTests(object):
             adapter.delete('SPLITIO.events')
 
     def test_put_fetch_contains_ip_address_disabled(self):
-        """Test storing and retrieving splits in redis."""
+        """Test storing and retrieving splits in pluggable."""
         adapter = StorageMockAdapter()
         try:
             cfg = DEFAULT_CONFIG.copy()
