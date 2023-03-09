@@ -1194,8 +1194,9 @@ class PluggableIntegrationTests(object):
         """Validate the last N impressions are present disregarding the order."""
         event_storage = client._factory._get_storage('events')
         events_raw = []
-        if self.pluggable_storage_adapter.get(event_storage._events_queue_key) is not None:
-            events_raw = [json.loads(im) for im in self.pluggable_storage_adapter.get(event_storage._events_queue_key)]
+        stored_events = self.pluggable_storage_adapter.pop_items(event_storage._events_queue_key)
+        if stored_events is not None:
+            events_raw = [json.loads(im) for im in stored_events]
 
         as_tup_set = set(
             (i['e']['key'], i['e']['trafficTypeName'], i['e']['eventTypeId'], i['e']['value'], str(i['e']['properties']))
@@ -1207,15 +1208,15 @@ class PluggableIntegrationTests(object):
         """Validate the last N impressions are present disregarding the order."""
         imp_storage = client._factory._get_storage('impressions')
         impressions_raw = []
-        if self.pluggable_storage_adapter.get(imp_storage._impressions_queue_key) is not None:
-            impressions_raw = [json.loads(im) for im in self.pluggable_storage_adapter.get(imp_storage._impressions_queue_key)]
+        stored_impressions = self.pluggable_storage_adapter.pop_items(imp_storage._impressions_queue_key)
+        if stored_impressions is not None:
+            impressions_raw = [json.loads(im) for im in stored_impressions]
         as_tup_set = set(
             (i['i']['f'], i['i']['k'], i['i']['t'])
             for i in impressions_raw
         )
 
         assert as_tup_set == set(to_validate)
-        self.pluggable_storage_adapter.delete(imp_storage._impressions_queue_key)
 
     def test_get_treatment(self):
         """Test client.get_treatment()."""

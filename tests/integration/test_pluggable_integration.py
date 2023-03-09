@@ -169,7 +169,7 @@ class PluggableImpressionsStorageIntegrationTests(object):
         try:
             self._put_impressions(adapter, get_metadata({}))
 
-            imps = adapter.get('SPLITIO.impressions')
+            imps = adapter.pop_items('SPLITIO.impressions')
             assert len(imps) == 3
             for rawImpression in imps:
                 impression = json.loads(rawImpression)
@@ -186,7 +186,7 @@ class PluggableImpressionsStorageIntegrationTests(object):
             cfg.update({'IPAddressesEnabled': False})
             self._put_impressions(adapter, get_metadata(cfg))
 
-            imps = adapter.get('SPLITIO.impressions')
+            imps = adapter.pop_items('SPLITIO.impressions')
             assert len(imps) == 3
             for rawImpression in imps:
                 impression = json.loads(rawImpression)
@@ -220,7 +220,7 @@ class PluggableEventsStorageIntegrationTests(object):
         adapter = StorageMockAdapter()
         try:
             self._put_events(adapter, get_metadata({}))
-            evts = adapter.get('SPLITIO.events')
+            evts = adapter.pop_items('SPLITIO.events')
             assert len(evts) == 3
             for rawEvent in evts:
                 event = json.loads(rawEvent)
@@ -237,7 +237,7 @@ class PluggableEventsStorageIntegrationTests(object):
             cfg.update({'IPAddressesEnabled': False})
             self._put_events(adapter, get_metadata(cfg))
 
-            evts = adapter.get('SPLITIO.events')
+            evts = adapter.pop_items('SPLITIO.events')
             assert len(evts) == 3
             for rawEvent in evts:
                 event = json.loads(rawEvent)

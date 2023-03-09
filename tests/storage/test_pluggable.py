@@ -48,6 +48,15 @@ class StorageMockAdapter(object):
             if key in self._keys:
                 del self._keys[key]
 
+    def pop_items(self, key):
+        with self._lock:
+            if key not in self._keys:
+                return None
+            items = list(self._keys[key])
+            del self._keys[key]
+            return items
+
+
     def increment(self, key, value):
         with self._lock:
             if key not in self._keys:
