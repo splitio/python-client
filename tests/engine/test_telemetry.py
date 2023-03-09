@@ -7,7 +7,7 @@ from splitio.storage.inmemmory import InMemoryTelemetryStorage
 class TelemetryStorageProducerTests(object):
     """TelemetryStorageProducer test."""
 
-    def test_producer_instances(self):
+    def test_instances(self):
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
 
