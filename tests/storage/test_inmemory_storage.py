@@ -477,7 +477,7 @@ class InMemoryTelemetryStorageTests(object):
 
     def test_record_config(self):
         storage = InMemoryTelemetryStorage()
-        config = {'operationMode': 'inmemory',
+        config = {'operationMode': 'standalone',
                   'streamingEnabled': True,
                   'impressionsQueueSize': 100,
                   'eventsQueueSize': 200,
@@ -488,11 +488,12 @@ class InMemoryTelemetryStorageTests(object):
                   'impressionsRefreshRate': 60,
                   'eventsPushRate': 60,
                   'metricsRefreshRate': 10,
+                  'storageType': None
                   }
         storage.record_config(config, {})
         storage.record_active_and_redundant_factories(1, 0)
         assert(storage._tel_config.get_stats() == {'oM': 0,
-            'sT': storage._tel_config._get_storage_type(config['operationMode']),
+            'sT': storage._tel_config._get_storage_type(config['operationMode'], config['storageType']),
             'sE': config['streamingEnabled'],
             'rR': {'sp': 30, 'se': 30, 'im': 60, 'ev': 60, 'te': 10},
             'uO':  {'s': False, 'e': False, 'a': False, 'st': False, 't': False},

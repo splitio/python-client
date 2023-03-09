@@ -657,7 +657,7 @@ class PluggableTelemetryStorageTests(object):
 
     def test_push_config_stats(self):
         self.pluggable_telemetry_storage.record_config(
-                    {'operationMode': 'inmemory',
+                    {'operationMode': 'standalone',
                   'streamingEnabled': True,
                   'impressionsQueueSize': 100,
                   'eventsQueueSize': 200,
@@ -668,6 +668,7 @@ class PluggableTelemetryStorageTests(object):
                   'impressionsRefreshRate': 60,
                   'eventsPushRate': 60,
                   'metricsRefreshRate': 10,
+                  'storageType': None
                   }, {}
         )
         self.pluggable_telemetry_storage.record_active_and_redundant_factories(2, 1)
