@@ -671,11 +671,11 @@ def get_factory(api_key, **kwargs):
 
     config = sanitize_config(api_key, kwargs.get('config', {}))
 
-    if config['operationMode'] == 'localhost-standalone':
+    if config['operationMode'] == 'localhost':
         split_factory =  _build_localhost_factory(config)
-    elif config['operationMode'] == 'redis-consumer':
+    elif config['storageType'] == 'redis':
         split_factory = _build_redis_factory(api_key, config)
-    elif config['operationMode'] == 'pluggable':
+    elif config['storageType'] == 'pluggable':
         split_factory = _build_pluggable_factory(api_key, config)
     else:
         split_factory = _build_in_memory_factory(

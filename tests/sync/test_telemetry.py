@@ -86,6 +86,7 @@ class TelemetrySubmitterTests(object):
         telemetry_storage._http_latencies._token =  [0] * 23
 
         telemetry_storage.record_config({'operationMode': 'inmemory',
+                                         'storageType': None,
                                         'streamingEnabled': True,
                                         'impressionsQueueSize': 100,
                                         'eventsQueueSize': 200,

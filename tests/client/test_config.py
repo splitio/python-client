@@ -10,27 +10,31 @@ class ConfigSanitizationTests(object):
 
     def test_parse_operation_mode(self):
         """Make sure operation mode is correctly captured."""
-        assert config._parse_operation_mode('some', {}) == 'inmemory-standalone'
-        assert config._parse_operation_mode('localhost', {}) == 'localhost-standalone'
-        assert config._parse_operation_mode('some', {'redisHost': 'x'}) == 'redis-consumer'
-        assert config._parse_operation_mode('some', {'storageType': 'pluggable'}) == 'pluggable'
-        assert config._parse_operation_mode('some', {'storageType': 'custom2'}) == 'inmemory-standalone'
+        assert (config._parse_operation_mode('some', {})) == ('standalone', 'memory')
+        assert (config._parse_operation_mode('localhost', {})) == ('localhost', 'localhost')
+        assert (config._parse_operation_mode('some', {'redisHost': 'x'})) == ('consumer', 'redis')
+        assert (config._parse_operation_mode('some', {'storageType': 'pluggable'})) == ('consumer', 'pluggable')
+        assert (config._parse_operation_mode('some', {'storageType': 'custom2'})) == ('standalone', 'memory')
 
     def test_sanitize_imp_mode(self):
         """Test sanitization of impressions mode."""
-        mode, rate = config._sanitize_impressions_mode('inmemory-standalone', 'OPTIMIZED', 1)
+        mode, rate = config._sanitize_impressions_mode('memory', 'OPTIMIZED', 1)
         assert mode == ImpressionsMode.OPTIMIZED
         assert rate == 60
 
-        mode, rate = config._sanitize_impressions_mode('inmemory-standalone', 'DEBUG', 1)
+        mode, rate = config._sanitize_impressions_mode('memory', 'DEBUG', 1)
         assert mode == ImpressionsMode.DEBUG
         assert rate == 1
 
-        mode, rate = config._sanitize_impressions_mode('inmemory-standalone', 'debug', 1)
+        mode, rate = config._sanitize_impressions_mode('redis', 'OPTIMIZED', 1)
+        assert mode == ImpressionsMode.OPTIMIZED
+        assert rate == 60
+
+        mode, rate = config._sanitize_impressions_mode('redis', 'debug', 1)
         assert mode == ImpressionsMode.DEBUG
         assert rate == 1
 
-        mode, rate = config._sanitize_impressions_mode('inmemory-standalone', 'ANYTHING', 200)
+        mode, rate = config._sanitize_impressions_mode('memory', 'ANYTHING', 200)
         assert mode == ImpressionsMode.OPTIMIZED
         assert rate == 200
 
@@ -46,15 +50,15 @@ class ConfigSanitizationTests(object):
         assert mode == ImpressionsMode.DEBUG
         assert rate == 200
 
-        mode, rate = config._sanitize_impressions_mode('inmemory-standalone', 43, -1)
+        mode, rate = config._sanitize_impressions_mode('memory', 43, -1)
         assert mode == ImpressionsMode.OPTIMIZED
         assert rate == 60
 
-        mode, rate = config._sanitize_impressions_mode('inmemory-standalone', 'OPTIMIZED')
+        mode, rate = config._sanitize_impressions_mode('memory', 'OPTIMIZED')
         assert mode == ImpressionsMode.OPTIMIZED
         assert rate == 300
 
-        mode, rate = config._sanitize_impressions_mode('inmemory-standalone', 'DEBUG')
+        mode, rate = config._sanitize_impressions_mode('memory', 'DEBUG')
         assert mode == ImpressionsMode.DEBUG
         assert rate == 60
 

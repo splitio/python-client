@@ -123,14 +123,13 @@ class StorageType(Enum):
     """Storage types constants"""
     MEMORY = 'memory'
     REDIS = 'redis'
-    LOCALHOST = 'localhost'
     PLUGGABLE = 'pluggable'
 
 class OperationMode(Enum):
     """Storage modes constants"""
-    MEMORY = 'inmemory'
-    REDIS = 'redis-consumer'
-    PLUGGABLE = 'pluggable'
+    STANDALONE = 'standalone'
+    CONSUMER = 'consumer'
+    PARTIAL_CONSUMER = 'partial_consumer'
 
 def get_latency_bucket_index(micros):
     """
@@ -727,7 +726,7 @@ class TelemetryConfig(object):
         Record configurations.
 
         :param config: config dict: {
-            'operationMode': string, 'storageType': string, 'streamingEnabled': boolean,
+            'operationMode': int, 'storageType': string, 'streamingEnabled': boolean,
             'refreshRate' : {
                 'featuresRefreshRate': int,
                 'segmentsRefreshRate': int,
@@ -746,7 +745,7 @@ class TelemetryConfig(object):
         """
         with self._lock:
             self._operation_mode = self._get_operation_mode(config[ConfigParams.OPERATION_MODE.value])
-            self._storage_type = self._get_storage_type(config[ConfigParams.OPERATION_MODE.value])
+            self._storage_type = self._get_storage_type(config[ConfigParams.OPERATION_MODE.value], config[ConfigParams.STORAGE_TYPE.value])
             self._streaming_enabled = config[ConfigParams.STREAMING_ENABLED.value]
             self._refresh_rate = self._get_refresh_rates(config)
             self._url_override = self._get_url_overrides(extra_config)
@@ -853,14 +852,14 @@ class TelemetryConfig(object):
         :rtype: int
         """
         with self._lock:
-            if OperationMode.MEMORY.value in op_mode:
+            if op_mode == OperationMode.STANDALONE.value:
                 return 0
-            elif op_mode == OperationMode.REDIS.value:
+            elif op_mode == OperationMode.CONSUMER.value:
                 return 1
             else:
                 return 2
 
-    def _get_storage_type(self, op_mode):
+    def _get_storage_type(self, op_mode, st_type):
         """
         Get storage type from operation mode
 
@@ -871,9 +870,9 @@ class TelemetryConfig(object):
         :rtype: str
         """
         with self._lock:
-            if OperationMode.MEMORY.value in op_mode:
+            if op_mode == OperationMode.STANDALONE.value:
                 return StorageType.MEMORY.value
-            elif StorageType.REDIS.value in op_mode:
+            elif st_type == StorageType.REDIS.value:
                 return StorageType.REDIS.value
             else:
                 return StorageType.PLUGGABLE.value
