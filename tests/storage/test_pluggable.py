@@ -17,6 +17,7 @@ import pytest
 class StorageMockAdapter(object):
     def __init__(self):
         self._keys = {}
+        self._expire = {}
         self._lock = threading.RLock()
 
     def get(self, key):
@@ -42,6 +43,7 @@ class StorageMockAdapter(object):
                 items = self._keys[key]
             [items.append(item) for item in value]
             self._keys[key] = items
+            return len(self._keys[key])
 
     def delete(self, key):
         with self._lock:
@@ -55,7 +57,6 @@ class StorageMockAdapter(object):
             items = list(self._keys[key])
             del self._keys[key]
             return items
-
 
     def increment(self, key, value):
         with self._lock:
@@ -116,8 +117,12 @@ class StorageMockAdapter(object):
             return None
 
     def expire(self, key, ttl):
-        #Not needed for Memory storage
-        pass
+        with self._lock:
+            if key in self._expire:
+                self._expire[key] = -1
+            else:
+                self._expire[key] = ttl
+            # should only be called once per key.
 
 class PluggableSplitStorageTests(object):
     """In memory split storage test cases."""
@@ -381,15 +386,16 @@ class PluggableImpressionsStorageTests(object):
             Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
             Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654)
         ]
-        self.pluggable_imp_storage.put(impressions)
+        assert(self.pluggable_imp_storage.put(impressions))
         assert(self.pluggable_imp_storage._impressions_queue_key in self.mock_adapter._keys)
         assert(self.mock_adapter._keys["myprefix.SPLITIO.impressions"] == self.pluggable_imp_storage._wrap_impressions(impressions))
+        assert(self.mock_adapter._expire["myprefix.SPLITIO.impressions"] == PluggableImpressionsStorage.IMPRESSIONS_KEY_DEFAULT_TTL)
 
         impressions2 = [
             Impression('key5', 'feature1', 'off', 'some_label', 123456, 'buck1', 321654),
             Impression('key6', 'feature2', 'off', 'some_label', 123456, 'buck1', 321654),
         ]
-        self.pluggable_imp_storage.put(impressions2)
+        assert(self.pluggable_imp_storage.put(impressions2))
         assert(self.mock_adapter._keys["myprefix.SPLITIO.impressions"] == self.pluggable_imp_storage._wrap_impressions(impressions + impressions2))
 
     def test_wrap_impressions(self):
@@ -480,15 +486,16 @@ class PluggableEventsStorageTests(object):
             EventWrapper(event=Event('key3', 'user', 'purchase', 10, 123456, None),  size=32768),
             EventWrapper(event=Event('key4', 'user', 'purchase', 10, 123456, None),  size=32768),
         ]
-        self.pluggable_events_storage.put(events)
+        assert(self.pluggable_events_storage.put(events))
         assert(self.pluggable_events_storage._events_queue_key in self.mock_adapter._keys)
         assert(self.mock_adapter._keys["myprefix.SPLITIO.events"] == self.pluggable_events_storage._wrap_events(events))
+        assert(self.mock_adapter._expire["myprefix.SPLITIO.events"] == PluggableEventsStorage._EVENTS_KEY_DEFAULT_TTL)
 
         events2 = [
             EventWrapper(event=Event('key5', 'user', 'purchase', 10, 123456, None),  size=32768),
             EventWrapper(event=Event('key6', 'user', 'purchase', 10, 123456, None),  size=32768),
         ]
-        self.pluggable_events_storage.put(events2)
+        assert(self.pluggable_events_storage.put(events2))
         assert(self.mock_adapter._keys["myprefix.SPLITIO.events"] == self.pluggable_events_storage._wrap_events(events + events2))
 
     def test_wrap_events(self):

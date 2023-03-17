@@ -556,7 +556,8 @@ class PluggableImpressionsStorage(ImpressionStorage):
         """
         bulk_impressions = self._wrap_impressions(impressions)
         try:
-            self._pluggable_adapter.push_items(self._impressions_queue_key, *bulk_impressions)
+            total_keys = self._pluggable_adapter.push_items(self._impressions_queue_key, *bulk_impressions)
+            self.expire_key(total_keys, len(bulk_impressions))
             return True
         except Exception:
             _LOGGER.error('Something went wrong when trying to add impression to storage')
@@ -645,7 +646,8 @@ class PluggableEventsStorage(EventStorage):
         """
         to_store = self._wrap_events(events)
         try:
-            self._pluggable_adapter.push_items(self._events_queue_key, *to_store)
+            total_keys = self._pluggable_adapter.push_items(self._events_queue_key, *to_store)
+            self.expire_key(total_keys, len(to_store))
             return True
         except Exception:
             _LOGGER.error('Something went wrong when trying to add event to redis')
