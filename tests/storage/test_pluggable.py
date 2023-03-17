@@ -122,7 +122,7 @@ class StorageMockAdapter(object):
                 self._expire[key] = -1
             else:
                 self._expire[key] = ttl
-            # should pnly be called once per key.
+            # should only be called once per key.
 
 class PluggableSplitStorageTests(object):
     """In memory split storage test cases."""
