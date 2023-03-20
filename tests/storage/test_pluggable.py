@@ -130,17 +130,17 @@ class PluggableSplitStorageTests(object):
     def setup_method(self):
         """Prepare storages with test data."""
         self.mock_adapter = StorageMockAdapter()
-        self.pluggable_split_storage = PluggableSplitStorage(self.mock_adapter, 'myprefix')
 
     def test_init(self):
-        assert(self.pluggable_split_storage._prefix == "myprefix.SPLITIO.split.{split_name}")
-        assert(self.pluggable_split_storage._traffic_type_prefix == "myprefix.SPLITIO.trafficType.{traffic_type_name}")
-        assert(self.pluggable_split_storage._split_till_prefix == "myprefix.SPLITIO.splits.till")
-
-        pluggable2 = PluggableSplitStorage(self.mock_adapter)
-        assert(pluggable2._prefix == "SPLITIO.split.{split_name}")
-        assert(pluggable2._traffic_type_prefix == "SPLITIO.trafficType.{traffic_type_name}")
-        assert(pluggable2._split_till_prefix == "SPLITIO.splits.till")
+        for sprefix in [None, 'myprefix']:
+            pluggable_split_storage = PluggableSplitStorage(self.mock_adapter, prefix=sprefix)
+            if sprefix == 'myprefix':
+                prefix = 'myprefix.'
+            else:
+                prefix = ''
+        assert(pluggable_split_storage._prefix == prefix + "SPLITIO.split.{split_name}")
+        assert(pluggable_split_storage._traffic_type_prefix == prefix + "SPLITIO.trafficType.{traffic_type_name}")
+        assert(pluggable_split_storage._split_till_prefix == prefix + "SPLITIO.splits.till")
 
     # TODO: To be added when producer mode is aupported
 #    def test_put_many(self):
@@ -159,25 +159,30 @@ class PluggableSplitStorageTests(object):
 
     def test_get(self):
         self.mock_adapter._keys = {}
-        split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
-        split_name = splits_json['splitChange1_2']['splits'][0]['name']
+        for sprefix in [None, 'myprefix']:
+            pluggable_split_storage = PluggableSplitStorage(self.mock_adapter, prefix=sprefix)
 
-        self.mock_adapter.set(self.pluggable_split_storage._prefix.format(split_name=split_name), split1.to_json())
-        assert(self.pluggable_split_storage.get(split_name).to_json() ==  splits.from_raw(splits_json['splitChange1_2']['splits'][0]).to_json())
-        assert(self.pluggable_split_storage.get('not_existing') == None)
+            split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
+            split_name = splits_json['splitChange1_2']['splits'][0]['name']
+
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split_name), split1.to_json())
+            assert(pluggable_split_storage.get(split_name).to_json() ==  splits.from_raw(splits_json['splitChange1_2']['splits'][0]).to_json())
+            assert(pluggable_split_storage.get('not_existing') == None)
 
     def test_fetch_many(self):
         self.mock_adapter._keys = {}
-        split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
-        split2_temp = splits_json['splitChange1_2']['splits'][0].copy()
-        split2_temp['name'] = 'another_split'
-        split2 = splits.from_raw(split2_temp)
+        for sprefix in [None, 'myprefix']:
+            pluggable_split_storage = PluggableSplitStorage(self.mock_adapter, prefix=sprefix)
+            split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
+            split2_temp = splits_json['splitChange1_2']['splits'][0].copy()
+            split2_temp['name'] = 'another_split'
+            split2 = splits.from_raw(split2_temp)
 
-        self.mock_adapter.set(self.pluggable_split_storage._prefix.format(split_name=split1.name), split1.to_json())
-        self.mock_adapter.set(self.pluggable_split_storage._prefix.format(split_name=split2.name), split2.to_json())
-        fetched = self.pluggable_split_storage.fetch_many([split1.name, split2.name])
-        assert(fetched[split1.name].to_json() == split1.to_json())
-        assert(fetched[split2.name].to_json() == split2.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split1.name), split1.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split2.name), split2.to_json())
+            fetched = pluggable_split_storage.fetch_many([split1.name, split2.name])
+            assert(fetched[split1.name].to_json() == split1.to_json())
+            assert(fetched[split2.name].to_json() == split2.to_json())
 
     # TODO: To be added when producer mode is aupported
 #    def test_remove(self):
@@ -195,31 +200,40 @@ class PluggableSplitStorageTests(object):
 
     def test_get_change_number(self):
         self.mock_adapter._keys = {}
-        self.mock_adapter.set("myprefix.SPLITIO.splits.till", 1234)
-        assert(self.pluggable_split_storage.get_change_number() == 1234)
+        for sprefix in [None, 'myprefix']:
+            pluggable_split_storage = PluggableSplitStorage(self.mock_adapter, prefix=sprefix)
+            if sprefix == 'myprefix':
+                prefix = 'myprefix.'
+            else:
+                prefix = ''
+            self.mock_adapter.set(prefix + "SPLITIO.splits.till", 1234)
+            assert(pluggable_split_storage.get_change_number() == 1234)
 
     def test_get_split_names(self):
         self.mock_adapter._keys = {}
-        split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
-        split2_temp = splits_json['splitChange1_2']['splits'][0].copy()
-        split2_temp['name'] = 'another_split'
-        split2 = splits.from_raw(split2_temp)
-
-        self.mock_adapter.set(self.pluggable_split_storage._prefix.format(split_name=split1.name), split1.to_json())
-        self.mock_adapter.set(self.pluggable_split_storage._prefix.format(split_name=split2.name), split2.to_json())
-        assert(self.pluggable_split_storage.get_split_names() == [split1.name, split2.name])
+        for sprefix in [None, 'myprefix']:
+            pluggable_split_storage = PluggableSplitStorage(self.mock_adapter, prefix=sprefix)
+            split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
+            split2_temp = splits_json['splitChange1_2']['splits'][0].copy()
+            split2_temp['name'] = 'another_split'
+            split2 = splits.from_raw(split2_temp)
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split1.name), split1.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split2.name), split2.to_json())
+            assert(pluggable_split_storage.get_split_names() == [split1.name, split2.name])
 
     def test_get_all(self):
         self.mock_adapter._keys = {}
-        split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
-        split2_temp = splits_json['splitChange1_2']['splits'][0].copy()
-        split2_temp['name'] = 'another_split'
-        split2 = splits.from_raw(split2_temp)
+        for sprefix in [None, 'myprefix']:
+            pluggable_split_storage = PluggableSplitStorage(self.mock_adapter, prefix=sprefix)
+            split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
+            split2_temp = splits_json['splitChange1_2']['splits'][0].copy()
+            split2_temp['name'] = 'another_split'
+            split2 = splits.from_raw(split2_temp)
 
-        self.mock_adapter.set(self.pluggable_split_storage._prefix.format(split_name=split1.name), split1.to_json())
-        self.mock_adapter.set(self.pluggable_split_storage._prefix.format(split_name=split2.name), split2.to_json())
-        all_splits = self.pluggable_split_storage.get_all()
-        assert([all_splits[0].to_json(), all_splits[1].to_json()] == [split1.to_json(), split2.to_json()])
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split1.name), split1.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split2.name), split2.to_json())
+            all_splits = pluggable_split_storage.get_all()
+            assert([all_splits[0].to_json(), all_splits[1].to_json()] == [split1.to_json(), split2.to_json()])
 
     # TODO: To be added when producer mode is aupported
 #    def test_kill_locally(self):
@@ -279,15 +293,16 @@ class PluggableSegmentStorageTests(object):
     def setup_method(self):
         """Prepare storages with test data."""
         self.mock_adapter = StorageMockAdapter()
-        self.pluggable_segment_storage = PluggableSegmentStorage(self.mock_adapter, 'myprefix')
 
     def test_init(self):
-        assert(self.pluggable_segment_storage._prefix == "myprefix.SPLITIO.segment.{segment_name}")
-        assert(self.pluggable_segment_storage._segment_till_prefix == "myprefix.SPLITIO.segment.{segment_name}.till")
-
-        pluggable2 = PluggableSegmentStorage(self.mock_adapter)
-        assert(pluggable2._prefix == "SPLITIO.segment.{segment_name}")
-        assert(pluggable2._segment_till_prefix == "SPLITIO.segment.{segment_name}.till")
+        for sprefix in [None, 'myprefix']:
+            pluggable_segment_storage = PluggableSegmentStorage(self.mock_adapter, prefix=sprefix)
+            if sprefix == 'myprefix':
+                prefix = 'myprefix.'
+            else:
+                prefix = ''
+            assert(pluggable_segment_storage._prefix == prefix + "SPLITIO.segment.{segment_name}")
+            assert(pluggable_segment_storage._segment_till_prefix == prefix + "SPLITIO.segment.{segment_name}.till")
 
     # TODO: to be added when get_keys() is added
 #    def test_update(self):
@@ -300,10 +315,12 @@ class PluggableSegmentStorageTests(object):
 
     def test_get_change_number(self):
         self.mock_adapter._keys = {}
-        assert(self.pluggable_segment_storage.get_change_number('segment1') is None)
+        for sprefix in [None, 'myprefix']:
+            pluggable_segment_storage = PluggableSegmentStorage(self.mock_adapter, prefix=sprefix)
+            assert(pluggable_segment_storage.get_change_number('segment1') is None)
 
-        self.mock_adapter.set(self.pluggable_segment_storage._segment_till_prefix.format(segment_name='segment1'), 123)
-        assert(self.pluggable_segment_storage.get_change_number('segment1') == 123)
+            self.mock_adapter.set(pluggable_segment_storage._segment_till_prefix.format(segment_name='segment1'), 123)
+            assert(pluggable_segment_storage.get_change_number('segment1') == 123)
 
     # TODO: To be added when producer mode is implemented
 #        self.pluggable_segment_storage.set_change_number('segment1', 124)
@@ -311,12 +328,14 @@ class PluggableSegmentStorageTests(object):
 
     def test_get_segment_names(self):
         self.mock_adapter._keys = {}
-        assert(self.pluggable_segment_storage.get_segment_names() == [])
+        for sprefix in [None, 'myprefix']:
+            pluggable_segment_storage = PluggableSegmentStorage(self.mock_adapter, prefix=sprefix)
+            assert(pluggable_segment_storage.get_segment_names() == [])
 
-        self.mock_adapter.set(self.pluggable_segment_storage._prefix.format(segment_name='segment1'), {'key1', 'key2'})
-        self.mock_adapter.set(self.pluggable_segment_storage._prefix.format(segment_name='segment2'), {})
-        self.mock_adapter.set(self.pluggable_segment_storage._prefix.format(segment_name='segment3'), {'key1', 'key5'})
-        assert(self.pluggable_segment_storage.get_segment_names() == ['segment1', 'segment2', 'segment3'])
+            self.mock_adapter.set(pluggable_segment_storage._prefix.format(segment_name='segment1'), {'key1', 'key2'})
+            self.mock_adapter.set(pluggable_segment_storage._prefix.format(segment_name='segment2'), {})
+            self.mock_adapter.set(pluggable_segment_storage._prefix.format(segment_name='segment3'), {'key1', 'key5'})
+            assert(pluggable_segment_storage.get_segment_names() == ['segment1', 'segment2', 'segment3'])
 
     # TODO: to be added when get_keys() is added
 #    def test_get_keys(self):
@@ -326,9 +345,11 @@ class PluggableSegmentStorageTests(object):
 
     def test_segment_contains(self):
         self.mock_adapter._keys = {}
-        self.mock_adapter.set(self.pluggable_segment_storage._prefix.format(segment_name='segment1'), {'key1', 'key2'})
-        assert(not self.pluggable_segment_storage.segment_contains('segment1', 'key5'))
-        assert(self.pluggable_segment_storage.segment_contains('segment1', 'key1'))
+        for sprefix in [None, 'myprefix']:
+            pluggable_segment_storage = PluggableSegmentStorage(self.mock_adapter, prefix=sprefix)
+            self.mock_adapter.set(pluggable_segment_storage._prefix.format(segment_name='segment1'), {'key1', 'key2'})
+            assert(not pluggable_segment_storage.segment_contains('segment1', 'key5'))
+            assert(pluggable_segment_storage.segment_contains('segment1', 'key1'))
 
     # TODO: To be added when producer mode is implemented
 #    def get_segment_keys_count(self):
@@ -340,10 +361,12 @@ class PluggableSegmentStorageTests(object):
 
     def test_get(self):
         self.mock_adapter._keys = {}
-        self.mock_adapter.set(self.pluggable_segment_storage._prefix.format(segment_name='segment1'), {'key1', 'key2'})
-        segment = self.pluggable_segment_storage.get('segment1')
-        assert(segment.name == 'segment1')
-        assert(segment.keys == {'key1', 'key2'})
+        for sprefix in [None, 'myprefix']:
+            pluggable_segment_storage = PluggableSegmentStorage(self.mock_adapter, prefix=sprefix)
+            self.mock_adapter.set(pluggable_segment_storage._prefix.format(segment_name='segment1'), {'key1', 'key2'})
+            segment = pluggable_segment_storage.get('segment1')
+            assert(segment.name == 'segment1')
+            assert(segment.keys == {'key1', 'key2'})
 
     # TODO: To be added when producer mode is implemented
 #    def test_put(self):
@@ -366,97 +389,114 @@ class PluggableImpressionsStorageTests(object):
         """Prepare storages with test data."""
         self.mock_adapter = StorageMockAdapter()
         self.metadata = SdkMetadata('python-1.1.1', 'hostname', 'ip')
-        self.pluggable_imp_storage = PluggableImpressionsStorage(self.mock_adapter, self.metadata, 'myprefix')
 
     def test_init(self):
-        assert(self.pluggable_imp_storage._impressions_queue_key == "myprefix.SPLITIO.impressions")
-        assert(self.pluggable_imp_storage._sdk_metadata == {
-                                's': self.metadata.sdk_version,
-                                'n': self.metadata.instance_name,
-                                'i': self.metadata.instance_ip,
-                            })
+        for sprefix in [None, 'myprefix']:
+            if sprefix == 'myprefix':
+                prefix = 'myprefix.'
+            else:
+                prefix = ''
+            pluggable_imp_storage = PluggableImpressionsStorage(self.mock_adapter, self.metadata, prefix=sprefix)
+            assert(pluggable_imp_storage._impressions_queue_key == prefix + "SPLITIO.impressions")
+            assert(pluggable_imp_storage._sdk_metadata == {
+                                    's': self.metadata.sdk_version,
+                                    'n': self.metadata.instance_name,
+                                    'i': self.metadata.instance_ip,
+                                })
 
-        pluggable2 = PluggableImpressionsStorage(self.mock_adapter, self.metadata)
-        assert(pluggable2._impressions_queue_key == "SPLITIO.impressions")
 
     def test_put(self):
-        impressions = [
-            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654)
-        ]
-        assert(self.pluggable_imp_storage.put(impressions))
-        assert(self.pluggable_imp_storage._impressions_queue_key in self.mock_adapter._keys)
-        assert(self.mock_adapter._keys["myprefix.SPLITIO.impressions"] == self.pluggable_imp_storage._wrap_impressions(impressions))
-        assert(self.mock_adapter._expire["myprefix.SPLITIO.impressions"] == PluggableImpressionsStorage.IMPRESSIONS_KEY_DEFAULT_TTL)
+        for sprefix in [None, 'myprefix']:
+            if sprefix == 'myprefix':
+                prefix = 'myprefix.'
+            else:
+                prefix = ''
+            pluggable_imp_storage = PluggableImpressionsStorage(self.mock_adapter, self.metadata, prefix=sprefix)
+            impressions = [
+                Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
+                Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
+                Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
+                Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654)
+            ]
+            assert(pluggable_imp_storage.put(impressions))
+            assert(pluggable_imp_storage._impressions_queue_key in self.mock_adapter._keys)
+            assert(self.mock_adapter._keys[prefix + "SPLITIO.impressions"] == pluggable_imp_storage._wrap_impressions(impressions))
+            assert(self.mock_adapter._expire[prefix + "SPLITIO.impressions"] == PluggableImpressionsStorage.IMPRESSIONS_KEY_DEFAULT_TTL)
 
-        impressions2 = [
-            Impression('key5', 'feature1', 'off', 'some_label', 123456, 'buck1', 321654),
-            Impression('key6', 'feature2', 'off', 'some_label', 123456, 'buck1', 321654),
-        ]
-        assert(self.pluggable_imp_storage.put(impressions2))
-        assert(self.mock_adapter._keys["myprefix.SPLITIO.impressions"] == self.pluggable_imp_storage._wrap_impressions(impressions + impressions2))
+            impressions2 = [
+                Impression('key5', 'feature1', 'off', 'some_label', 123456, 'buck1', 321654),
+                Impression('key6', 'feature2', 'off', 'some_label', 123456, 'buck1', 321654),
+            ]
+            assert(pluggable_imp_storage.put(impressions2))
+            assert(self.mock_adapter._keys[prefix + "SPLITIO.impressions"] == pluggable_imp_storage._wrap_impressions(impressions + impressions2))
 
     def test_wrap_impressions(self):
-        impressions = [
-            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key2', 'feature2', 'off', 'some_label', 123456, 'buck1', 321654),
-        ]
-        assert(self.pluggable_imp_storage._wrap_impressions(impressions) == [
-            json.dumps({
-                'm': {
-                    's': self.metadata.sdk_version,
-                    'n': self.metadata.instance_name,
-                    'i': self.metadata.instance_ip,
-                },
-                'i': {
-                    'k': 'key1',
-                    'b': 'buck1',
-                    'f': 'feature1',
-                    't': 'on',
-                    'r': 'some_label',
-                    'c': 123456,
-                    'm': 321654,
-                }
-            }),
-            json.dumps({
-                'm': {
-                    's': self.metadata.sdk_version,
-                    'n': self.metadata.instance_name,
-                    'i': self.metadata.instance_ip,
-                },
-                'i': {
-                    'k': 'key2',
-                    'b': 'buck1',
-                    'f': 'feature2',
-                    't': 'off',
-                    'r': 'some_label',
-                    'c': 123456,
-                    'm': 321654,
-                }
-            })
-        ])
+        for sprefix in [None, 'myprefix']:
+            pluggable_imp_storage = PluggableImpressionsStorage(self.mock_adapter, self.metadata, prefix=sprefix)
+            impressions = [
+                Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
+                Impression('key2', 'feature2', 'off', 'some_label', 123456, 'buck1', 321654),
+            ]
+            assert(pluggable_imp_storage._wrap_impressions(impressions) == [
+                json.dumps({
+                    'm': {
+                        's': self.metadata.sdk_version,
+                        'n': self.metadata.instance_name,
+                        'i': self.metadata.instance_ip,
+                    },
+                    'i': {
+                        'k': 'key1',
+                        'b': 'buck1',
+                        'f': 'feature1',
+                        't': 'on',
+                        'r': 'some_label',
+                        'c': 123456,
+                        'm': 321654,
+                    }
+                }),
+                json.dumps({
+                    'm': {
+                        's': self.metadata.sdk_version,
+                        'n': self.metadata.instance_name,
+                        'i': self.metadata.instance_ip,
+                    },
+                    'i': {
+                        'k': 'key2',
+                        'b': 'buck1',
+                        'f': 'feature2',
+                        't': 'off',
+                        'r': 'some_label',
+                        'c': 123456,
+                        'm': 321654,
+                    }
+                })
+            ])
 
     def test_expire_key(self):
-        self.expired_called = False
-        self.key = ""
-        self.ttl = 0
-        def mock_expire(impressions_queue_key, ttl):
-            self.key = impressions_queue_key
-            self.ttl = ttl
-            self.expired_called = True
+        for sprefix in [None, 'myprefix']:
+            if sprefix == 'myprefix':
+                prefix = 'myprefix.'
+            else:
+                prefix = ''
+            pluggable_imp_storage = PluggableImpressionsStorage(self.mock_adapter, self.metadata, prefix=sprefix)
+            self.expired_called = False
+            self.key = ""
+            self.ttl = 0
+            def mock_expire(impressions_queue_key, ttl):
+                self.key = impressions_queue_key
+                self.ttl = ttl
+                self.expired_called = True
 
-        self.mock_adapter.expire = mock_expire
+            self.mock_adapter.expire = mock_expire
 
-        # should not call if total_keys are higher
-        self.pluggable_imp_storage.expire_key(200, 10)
-        assert(not self.expired_called)
+            # should not call if total_keys are higher
+            pluggable_imp_storage.expire_key(200, 10)
+            assert(not self.expired_called)
 
-        self.pluggable_imp_storage.expire_key(200, 200)
-        assert(self.expired_called)
-        assert(self.key == "myprefix.SPLITIO.impressions")
-        assert(self.ttl == self.pluggable_imp_storage.IMPRESSIONS_KEY_DEFAULT_TTL)
+            pluggable_imp_storage.expire_key(200, 200)
+            assert(self.expired_called)
+            assert(self.key == prefix + "SPLITIO.impressions")
+            assert(self.ttl == pluggable_imp_storage.IMPRESSIONS_KEY_DEFAULT_TTL)
 
 
 class PluggableEventsStorageTests(object):
@@ -466,95 +506,111 @@ class PluggableEventsStorageTests(object):
         """Prepare storages with test data."""
         self.mock_adapter = StorageMockAdapter()
         self.metadata = SdkMetadata('python-1.1.1', 'hostname', 'ip')
-        self.pluggable_events_storage = PluggableEventsStorage(self.mock_adapter, self.metadata, 'myprefix')
 
     def test_init(self):
-        assert(self.pluggable_events_storage._events_queue_key == "myprefix.SPLITIO.events")
-        assert(self.pluggable_events_storage._sdk_metadata == {
-                                's': self.metadata.sdk_version,
-                                'n': self.metadata.instance_name,
-                                'i': self.metadata.instance_ip,
-                            })
-
-        pluggable2 = PluggableEventsStorage(self.mock_adapter, self.metadata)
-        assert(pluggable2._events_queue_key == "SPLITIO.events")
+        for sprefix in [None, 'myprefix']:
+            if sprefix == 'myprefix':
+                prefix = 'myprefix.'
+            else:
+                prefix = ''
+            pluggable_events_storage = PluggableEventsStorage(self.mock_adapter, self.metadata, prefix=sprefix)
+            assert(pluggable_events_storage._events_queue_key == prefix + "SPLITIO.events")
+            assert(pluggable_events_storage._sdk_metadata == {
+                                    's': self.metadata.sdk_version,
+                                    'n': self.metadata.instance_name,
+                                    'i': self.metadata.instance_ip,
+                                })
 
     def test_put(self):
-        events = [
-            EventWrapper(event=Event('key1', 'user', 'purchase', 10, 123456, None),  size=32768),
-            EventWrapper(event=Event('key2', 'user', 'purchase', 10, 123456, None),  size=32768),
-            EventWrapper(event=Event('key3', 'user', 'purchase', 10, 123456, None),  size=32768),
-            EventWrapper(event=Event('key4', 'user', 'purchase', 10, 123456, None),  size=32768),
-        ]
-        assert(self.pluggable_events_storage.put(events))
-        assert(self.pluggable_events_storage._events_queue_key in self.mock_adapter._keys)
-        assert(self.mock_adapter._keys["myprefix.SPLITIO.events"] == self.pluggable_events_storage._wrap_events(events))
-        assert(self.mock_adapter._expire["myprefix.SPLITIO.events"] == PluggableEventsStorage._EVENTS_KEY_DEFAULT_TTL)
+        for sprefix in [None, 'myprefix']:
+            if sprefix == 'myprefix':
+                prefix = 'myprefix.'
+            else:
+                prefix = ''
+            pluggable_events_storage = PluggableEventsStorage(self.mock_adapter, self.metadata, prefix=sprefix)
+            events = [
+                EventWrapper(event=Event('key1', 'user', 'purchase', 10, 123456, None),  size=32768),
+                EventWrapper(event=Event('key2', 'user', 'purchase', 10, 123456, None),  size=32768),
+                EventWrapper(event=Event('key3', 'user', 'purchase', 10, 123456, None),  size=32768),
+                EventWrapper(event=Event('key4', 'user', 'purchase', 10, 123456, None),  size=32768),
+            ]
+            assert(pluggable_events_storage.put(events))
+            assert(pluggable_events_storage._events_queue_key in self.mock_adapter._keys)
+            assert(self.mock_adapter._keys[prefix + "SPLITIO.events"] == pluggable_events_storage._wrap_events(events))
+            assert(self.mock_adapter._expire[prefix + "SPLITIO.events"] == PluggableEventsStorage._EVENTS_KEY_DEFAULT_TTL)
 
-        events2 = [
-            EventWrapper(event=Event('key5', 'user', 'purchase', 10, 123456, None),  size=32768),
-            EventWrapper(event=Event('key6', 'user', 'purchase', 10, 123456, None),  size=32768),
-        ]
-        assert(self.pluggable_events_storage.put(events2))
-        assert(self.mock_adapter._keys["myprefix.SPLITIO.events"] == self.pluggable_events_storage._wrap_events(events + events2))
+            events2 = [
+                EventWrapper(event=Event('key5', 'user', 'purchase', 10, 123456, None),  size=32768),
+                EventWrapper(event=Event('key6', 'user', 'purchase', 10, 123456, None),  size=32768),
+            ]
+            assert(pluggable_events_storage.put(events2))
+            assert(self.mock_adapter._keys[prefix + "SPLITIO.events"] == pluggable_events_storage._wrap_events(events + events2))
 
     def test_wrap_events(self):
-        events = [
-            EventWrapper(event=Event('key1', 'user', 'purchase', 10, 123456, None),  size=32768),
-            EventWrapper(event=Event('key2', 'user', 'purchase', 10, 123456, None),  size=32768),
-        ]
-        assert(self.pluggable_events_storage._wrap_events(events) == [
-            json.dumps({
-                'e': {
-                    'key': 'key1',
-                    'trafficTypeName': 'user',
-                    'eventTypeId': 'purchase',
-                    'value': 10,
-                    'timestamp': 123456,
-                    'properties': None,
-                },
-                'm': {
-                    's': self.metadata.sdk_version,
-                    'n': self.metadata.instance_name,
-                    'i': self.metadata.instance_ip,
-                }
-            }),
-            json.dumps({
-                'e': {
-                    'key': 'key2',
-                    'trafficTypeName': 'user',
-                    'eventTypeId': 'purchase',
-                    'value': 10,
-                    'timestamp': 123456,
-                    'properties': None,
-                },
-                'm': {
-                    's': self.metadata.sdk_version,
-                    'n': self.metadata.instance_name,
-                    'i': self.metadata.instance_ip,
-                }
-            })
-        ])
+        for sprefix in [None, 'myprefix']:
+            pluggable_events_storage = PluggableEventsStorage(self.mock_adapter, self.metadata, prefix=sprefix)
+            events = [
+                EventWrapper(event=Event('key1', 'user', 'purchase', 10, 123456, None),  size=32768),
+                EventWrapper(event=Event('key2', 'user', 'purchase', 10, 123456, None),  size=32768),
+            ]
+            assert(pluggable_events_storage._wrap_events(events) == [
+                json.dumps({
+                    'e': {
+                        'key': 'key1',
+                        'trafficTypeName': 'user',
+                        'eventTypeId': 'purchase',
+                        'value': 10,
+                        'timestamp': 123456,
+                        'properties': None,
+                    },
+                    'm': {
+                        's': self.metadata.sdk_version,
+                        'n': self.metadata.instance_name,
+                        'i': self.metadata.instance_ip,
+                    }
+                }),
+                json.dumps({
+                    'e': {
+                        'key': 'key2',
+                        'trafficTypeName': 'user',
+                        'eventTypeId': 'purchase',
+                        'value': 10,
+                        'timestamp': 123456,
+                        'properties': None,
+                    },
+                    'm': {
+                        's': self.metadata.sdk_version,
+                        'n': self.metadata.instance_name,
+                        'i': self.metadata.instance_ip,
+                    }
+                })
+            ])
 
     def test_expire_key(self):
-        self.expired_called = False
-        self.key = ""
-        self.ttl = 0
-        def mock_expire(impressions_event_key, ttl):
-            self.key = impressions_event_key
-            self.ttl = ttl
-            self.expired_called = True
+        for sprefix in [None, 'myprefix']:
+            if sprefix == 'myprefix':
+                prefix = 'myprefix.'
+            else:
+                prefix = ''
+            pluggable_events_storage = PluggableEventsStorage(self.mock_adapter, self.metadata, prefix=sprefix)
+            self.expired_called = False
+            self.key = ""
+            self.ttl = 0
+            def mock_expire(impressions_event_key, ttl):
+                self.key = impressions_event_key
+                self.ttl = ttl
+                self.expired_called = True
 
-        self.mock_adapter.expire = mock_expire
+            self.mock_adapter.expire = mock_expire
 
-        # should not call if total_keys are higher
-        self.pluggable_events_storage.expire_key(200, 10)
-        assert(not self.expired_called)
+            # should not call if total_keys are higher
+            pluggable_events_storage.expire_key(200, 10)
+            assert(not self.expired_called)
 
-        self.pluggable_events_storage.expire_key(200, 200)
-        assert(self.expired_called)
-        assert(self.key == "myprefix.SPLITIO.events")
-        assert(self.ttl == self.pluggable_events_storage._EVENTS_KEY_DEFAULT_TTL)
+            pluggable_events_storage.expire_key(200, 200)
+            assert(self.expired_called)
+            assert(self.key == prefix + "SPLITIO.events")
+            assert(self.ttl == pluggable_events_storage._EVENTS_KEY_DEFAULT_TTL)
 
 class PluggableTelemetryStorageTests(object):
     """Pluggable telemetry storage test cases."""
@@ -563,121 +619,137 @@ class PluggableTelemetryStorageTests(object):
         """Prepare storages with test data."""
         self.mock_adapter = StorageMockAdapter()
         self.sdk_metadata = SdkMetadata('python-1.1.1', 'hostname', 'ip')
-        self.pluggable_telemetry_storage = PluggableTelemetryStorage(self.mock_adapter, self.sdk_metadata, 'myprefix')
 
     def test_init(self):
-        assert(self.pluggable_telemetry_storage._telemetry_config_key == 'myprefix.SPLITIO.telemetry.init')
-        assert(self.pluggable_telemetry_storage._telemetry_latencies_key == 'myprefix.SPLITIO.telemetry.latencies')
-        assert(self.pluggable_telemetry_storage._telemetry_exceptions_key == 'myprefix.SPLITIO.telemetry.exceptions')
-        assert(self.pluggable_telemetry_storage._sdk_metadata == self.sdk_metadata.sdk_version + '/' + self.sdk_metadata.instance_name + '/' + self.sdk_metadata.instance_ip)
-        assert(self.pluggable_telemetry_storage._config_tags == [])
-
-        pluggable2 = PluggableTelemetryStorage(self.mock_adapter, self.sdk_metadata)
-        assert(pluggable2._telemetry_config_key == 'SPLITIO.telemetry.init')
-        assert(pluggable2._telemetry_latencies_key == 'SPLITIO.telemetry.latencies')
-        assert(pluggable2._telemetry_exceptions_key == 'SPLITIO.telemetry.exceptions')
+        for sprefix in [None, 'myprefix']:
+            if sprefix == 'myprefix':
+                prefix = 'myprefix.'
+            else:
+                prefix = ''
+            pluggable_telemetry_storage = PluggableTelemetryStorage(self.mock_adapter, self.sdk_metadata, prefix=sprefix)
+            assert(pluggable_telemetry_storage._telemetry_config_key == prefix + 'SPLITIO.telemetry.init')
+            assert(pluggable_telemetry_storage._telemetry_latencies_key == prefix + 'SPLITIO.telemetry.latencies')
+            assert(pluggable_telemetry_storage._telemetry_exceptions_key == prefix + 'SPLITIO.telemetry.exceptions')
+            assert(pluggable_telemetry_storage._sdk_metadata == self.sdk_metadata.sdk_version + '/' + self.sdk_metadata.instance_name + '/' + self.sdk_metadata.instance_ip)
+            assert(pluggable_telemetry_storage._config_tags == [])
 
     def test_reset_config_tags(self):
-        self.pluggable_telemetry_storage._config_tags = ['a']
-        self.pluggable_telemetry_storage._reset_config_tags()
-        assert(self.pluggable_telemetry_storage._config_tags == [])
+        for sprefix in [None, 'myprefix']:
+            pluggable_telemetry_storage = PluggableTelemetryStorage(self.mock_adapter, self.sdk_metadata, prefix=sprefix)
+            pluggable_telemetry_storage._config_tags = ['a']
+            pluggable_telemetry_storage._reset_config_tags()
+            assert(pluggable_telemetry_storage._config_tags == [])
 
     def test_add_config_tag(self):
-        self.pluggable_telemetry_storage.add_config_tag('q')
-        assert(self.pluggable_telemetry_storage._config_tags == ['q'])
+        for sprefix in [None, 'myprefix']:
+            pluggable_telemetry_storage = PluggableTelemetryStorage(self.mock_adapter, self.sdk_metadata, prefix=sprefix)
+            pluggable_telemetry_storage.add_config_tag('q')
+            assert(pluggable_telemetry_storage._config_tags == ['q'])
 
-        self.pluggable_telemetry_storage._config_tags = []
-        for i in range(0, 20):
-            self.pluggable_telemetry_storage.add_config_tag('q' + str(i))
-        assert(len(self.pluggable_telemetry_storage._config_tags) == MAX_TAGS)
-        assert(self.pluggable_telemetry_storage._config_tags == ['q' + str(i)  for i in range(0, MAX_TAGS)])
+            pluggable_telemetry_storage._config_tags = []
+            for i in range(0, 20):
+                pluggable_telemetry_storage.add_config_tag('q' + str(i))
+            assert(len(pluggable_telemetry_storage._config_tags) == MAX_TAGS)
+            assert(pluggable_telemetry_storage._config_tags == ['q' + str(i)  for i in range(0, MAX_TAGS)])
 
     def test_record_config(self):
-        self.config = {}
-        self.extra_config = {}
-        def record_config_mock(config, extra_config):
-            self.config = config
-            self.extra_config = extra_config
+        for sprefix in [None, 'myprefix']:
+            pluggable_telemetry_storage = PluggableTelemetryStorage(self.mock_adapter, self.sdk_metadata, prefix=sprefix)
+            self.config = {}
+            self.extra_config = {}
+            def record_config_mock(config, extra_config):
+                self.config = config
+                self.extra_config = extra_config
 
-        self.pluggable_telemetry_storage.record_config = record_config_mock
-        self.pluggable_telemetry_storage.record_config({'item': 'value'}, {'item2': 'value2'})
-        assert(self.config == {'item': 'value'})
-        assert(self.extra_config == {'item2': 'value2'})
+            pluggable_telemetry_storage.record_config = record_config_mock
+            pluggable_telemetry_storage.record_config({'item': 'value'}, {'item2': 'value2'})
+            assert(self.config == {'item': 'value'})
+            assert(self.extra_config == {'item2': 'value2'})
 
     def test_pop_config_tags(self):
-        self.pluggable_telemetry_storage._config_tags = ['a']
-        self.pluggable_telemetry_storage.pop_config_tags()
-        assert(self.pluggable_telemetry_storage._config_tags == [])
+        for sprefix in [None, 'myprefix']:
+            pluggable_telemetry_storage = PluggableTelemetryStorage(self.mock_adapter, self.sdk_metadata, prefix=sprefix)
+            pluggable_telemetry_storage._config_tags = ['a']
+            pluggable_telemetry_storage.pop_config_tags()
+            assert(pluggable_telemetry_storage._config_tags == [])
 
     def test_record_active_and_redundant_factories(self):
-        self.active_factory_count = 0
-        self.redundant_factory_count = 0
-        def record_active_and_redundant_factories_mock(active_factory_count, redundant_factory_count):
-            self.active_factory_count = active_factory_count
-            self.redundant_factory_count = redundant_factory_count
+        for sprefix in [None, 'myprefix']:
+            pluggable_telemetry_storage = PluggableTelemetryStorage(self.mock_adapter, self.sdk_metadata, prefix=sprefix)
+            self.active_factory_count = 0
+            self.redundant_factory_count = 0
+            def record_active_and_redundant_factories_mock(active_factory_count, redundant_factory_count):
+                self.active_factory_count = active_factory_count
+                self.redundant_factory_count = redundant_factory_count
 
-        self.pluggable_telemetry_storage.record_active_and_redundant_factories = record_active_and_redundant_factories_mock
-        self.pluggable_telemetry_storage.record_active_and_redundant_factories(2, 1)
-        assert(self.active_factory_count == 2)
-        assert(self.redundant_factory_count == 1)
+            pluggable_telemetry_storage.record_active_and_redundant_factories = record_active_and_redundant_factories_mock
+            pluggable_telemetry_storage.record_active_and_redundant_factories(2, 1)
+            assert(self.active_factory_count == 2)
+            assert(self.redundant_factory_count == 1)
 
     def test_record_latency(self):
-        def expire_keys_mock(*args, **kwargs):
-            assert(args[0] == self.pluggable_telemetry_storage._telemetry_latencies_key + '::python-1.1.1/hostname/ip/treatment/0')
-            assert(args[1] == self.pluggable_telemetry_storage._TELEMETRY_KEY_DEFAULT_TTL)
-            assert(args[2] == 1)
-            assert(args[3] == 1)
-        self.pluggable_telemetry_storage.expire_keys = expire_keys_mock
-        # should increment bucket 0
-        self.pluggable_telemetry_storage.record_latency(MethodExceptionsAndLatencies.TREATMENT, 0)
-        assert(self.mock_adapter._keys[self.pluggable_telemetry_storage._telemetry_latencies_key + '::python-1.1.1/hostname/ip/treatment/0'] == 1)
+        for sprefix in [None, 'myprefix']:
+            pluggable_telemetry_storage = PluggableTelemetryStorage(self.mock_adapter, self.sdk_metadata, prefix=sprefix)
+            def expire_keys_mock(*args, **kwargs):
+                assert(args[0] == pluggable_telemetry_storage._telemetry_latencies_key + '::python-1.1.1/hostname/ip/treatment/0')
+                assert(args[1] == pluggable_telemetry_storage._TELEMETRY_KEY_DEFAULT_TTL)
+                assert(args[2] == 1)
+                assert(args[3] == 1)
+            pluggable_telemetry_storage.expire_keys = expire_keys_mock
+            # should increment bucket 0
+            pluggable_telemetry_storage.record_latency(MethodExceptionsAndLatencies.TREATMENT, 0)
+            assert(self.mock_adapter._keys[pluggable_telemetry_storage._telemetry_latencies_key + '::python-1.1.1/hostname/ip/treatment/0'] == 1)
 
-        def expire_keys_mock2(*args, **kwargs):
-            assert(args[0] == self.pluggable_telemetry_storage._telemetry_latencies_key + '::python-1.1.1/hostname/ip/treatment/3')
-            assert(args[1] == self.pluggable_telemetry_storage._TELEMETRY_KEY_DEFAULT_TTL)
-            assert(args[2] == 1)
-            assert(args[3] == 1)
-        self.pluggable_telemetry_storage.expire_keys = expire_keys_mock2
-        # should increment bucket 3
-        self.pluggable_telemetry_storage.record_latency(MethodExceptionsAndLatencies.TREATMENT, 3)
+            def expire_keys_mock2(*args, **kwargs):
+                assert(args[0] == pluggable_telemetry_storage._telemetry_latencies_key + '::python-1.1.1/hostname/ip/treatment/3')
+                assert(args[1] == pluggable_telemetry_storage._TELEMETRY_KEY_DEFAULT_TTL)
+                assert(args[2] == 1)
+                assert(args[3] == 1)
+            pluggable_telemetry_storage.expire_keys = expire_keys_mock2
+            # should increment bucket 3
+            pluggable_telemetry_storage.record_latency(MethodExceptionsAndLatencies.TREATMENT, 3)
 
-        def expire_keys_mock3(*args, **kwargs):
-            assert(args[0] == self.pluggable_telemetry_storage._telemetry_latencies_key + '::python-1.1.1/hostname/ip/treatment/3')
-            assert(args[1] == self.pluggable_telemetry_storage._TELEMETRY_KEY_DEFAULT_TTL)
-            assert(args[2] == 1)
-            assert(args[3] == 2)
-        self.pluggable_telemetry_storage.expire_keys = expire_keys_mock3
-        # should increment bucket 3
-        self.pluggable_telemetry_storage.record_latency(MethodExceptionsAndLatencies.TREATMENT, 3)
-        assert(self.mock_adapter._keys[self.pluggable_telemetry_storage._telemetry_latencies_key + '::python-1.1.1/hostname/ip/treatment/3'] == 2)
+            def expire_keys_mock3(*args, **kwargs):
+                assert(args[0] == pluggable_telemetry_storage._telemetry_latencies_key + '::python-1.1.1/hostname/ip/treatment/3')
+                assert(args[1] == pluggable_telemetry_storage._TELEMETRY_KEY_DEFAULT_TTL)
+                assert(args[2] == 1)
+                assert(args[3] == 2)
+            pluggable_telemetry_storage.expire_keys = expire_keys_mock3
+            # should increment bucket 3
+            pluggable_telemetry_storage.record_latency(MethodExceptionsAndLatencies.TREATMENT, 3)
+            assert(self.mock_adapter._keys[pluggable_telemetry_storage._telemetry_latencies_key + '::python-1.1.1/hostname/ip/treatment/3'] == 2)
 
     def test_record_exception(self):
-        def expire_keys_mock(*args, **kwargs):
-            assert(args[0] == self.pluggable_telemetry_storage._telemetry_exceptions_key + '::python-1.1.1/hostname/ip/treatment')
-            assert(args[1] == self.pluggable_telemetry_storage._TELEMETRY_KEY_DEFAULT_TTL)
-            assert(args[2] == 1)
-            assert(args[3] == 1)
+        for sprefix in [None, 'myprefix']:
+            pluggable_telemetry_storage = PluggableTelemetryStorage(self.mock_adapter, self.sdk_metadata, prefix=sprefix)
+            def expire_keys_mock(*args, **kwargs):
+                assert(args[0] == pluggable_telemetry_storage._telemetry_exceptions_key + '::python-1.1.1/hostname/ip/treatment')
+                assert(args[1] == pluggable_telemetry_storage._TELEMETRY_KEY_DEFAULT_TTL)
+                assert(args[2] == 1)
+                assert(args[3] == 1)
 
-        self.pluggable_telemetry_storage.expire_keys = expire_keys_mock
-        self.pluggable_telemetry_storage.record_exception(MethodExceptionsAndLatencies.TREATMENT)
-        assert(self.mock_adapter._keys[self.pluggable_telemetry_storage._telemetry_exceptions_key + '::python-1.1.1/hostname/ip/treatment'] == 1)
+            pluggable_telemetry_storage.expire_keys = expire_keys_mock
+            pluggable_telemetry_storage.record_exception(MethodExceptionsAndLatencies.TREATMENT)
+            assert(self.mock_adapter._keys[pluggable_telemetry_storage._telemetry_exceptions_key + '::python-1.1.1/hostname/ip/treatment'] == 1)
 
     def test_push_config_stats(self):
-        self.pluggable_telemetry_storage.record_config(
-                    {'operationMode': 'standalone',
-                  'streamingEnabled': True,
-                  'impressionsQueueSize': 100,
-                  'eventsQueueSize': 200,
-                  'impressionsMode': 'DEBUG',''
-                  'impressionListener': None,
-                  'featuresRefreshRate': 30,
-                  'segmentsRefreshRate': 30,
-                  'impressionsRefreshRate': 60,
-                  'eventsPushRate': 60,
-                  'metricsRefreshRate': 10,
-                  'storageType': None
-                  }, {}
-        )
-        self.pluggable_telemetry_storage.record_active_and_redundant_factories(2, 1)
-        self.pluggable_telemetry_storage.push_config_stats()
-        assert(self.mock_adapter._keys[self.pluggable_telemetry_storage._telemetry_config_key + "::" + self.pluggable_telemetry_storage._sdk_metadata] == '{"aF": 2, "rF": 1, "sT": "memory", "oM": 0, "t": []}')
+        for sprefix in [None, 'myprefix']:
+            pluggable_telemetry_storage = PluggableTelemetryStorage(self.mock_adapter, self.sdk_metadata, prefix=sprefix)
+            pluggable_telemetry_storage.record_config(
+                        {'operationMode': 'standalone',
+                    'streamingEnabled': True,
+                    'impressionsQueueSize': 100,
+                    'eventsQueueSize': 200,
+                    'impressionsMode': 'DEBUG',''
+                    'impressionListener': None,
+                    'featuresRefreshRate': 30,
+                    'segmentsRefreshRate': 30,
+                    'impressionsRefreshRate': 60,
+                    'eventsPushRate': 60,
+                    'metricsRefreshRate': 10,
+                    'storageType': None
+                    }, {}
+            )
+            pluggable_telemetry_storage.record_active_and_redundant_factories(2, 1)
+            pluggable_telemetry_storage.push_config_stats()
+            assert(self.mock_adapter._keys[pluggable_telemetry_storage._telemetry_config_key + "::" + pluggable_telemetry_storage._sdk_metadata] == '{"aF": 2, "rF": 1, "sT": "memory", "oM": 0, "t": []}')
