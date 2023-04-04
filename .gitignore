@@ -73,3 +73,6 @@ target/
 *.swp
 
 .DS_Store
+
+# Sonarqube
+.scannerwork
