@@ -1,10 +1,14 @@
 [run]
-include =
-    splitio/*.py
+source =
+    splitio/
+
 omit =
     tests/*
     */__init__.py
-branch = true
+
+branch = True
+
+relative_files = True
 
 [report]
 # Regexes for lines to exclude from consideration
@@ -25,6 +29,3 @@ exclude_lines =
     if __name__ == .__main__.:
 
 precision = 2
-
-[xml]
-directory = coverage.xml
