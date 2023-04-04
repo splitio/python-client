@@ -1,4 +1,4 @@
-# Split Python SDK 
+# Split Python SDK
 ![Build Status](https://github.com/splitio/python-client/actions/workflows/ci.yml/badge.svg?branch=master)
 
 ## Overview
@@ -23,7 +23,7 @@ try:
     factory.block_until_ready(5) # wait up to 5 seconds
     split = factory.client()
     treatment = split.get_treatment('CUSTOMER_ID', 'SPLIT_NAME')
-    if treatment == "on": 
+    if treatment == "on":
         # insert code here to show on treatment
     elif treatment == "off":
         # insert code here to show off treatment
