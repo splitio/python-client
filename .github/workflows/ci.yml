@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - master
+      - development
   pull_request:
     branches:
       - master
@@ -10,6 +11,7 @@ on:
 
 jobs:
   test:
+    name: test
     runs-on: ubuntu-20.04
     services:
       redis:
@@ -29,41 +31,38 @@ jobs:
 
       - name: Install dependencies
         run: |
-            pip install -U setuptools pip
+            pip install -U setuptools pip wheel
             pip install -e .[cpphash,redis,uwsgi]
 
       - name: Run tests
         run: python setup.py test
 
+      - name: Set VERSION env
+        run: echo "VERSION=$(cat splitio/version.py | grep "__version__" | awk -F\' '{print $2}')" >> $GITHUB_ENV
+
       - name: SonarQube Scan (Push)
         if: github.event_name == 'push'
-        uses: SonarSource/sonarcloud-github-action@v1.5
+        uses: SonarSource/sonarcloud-github-action@v1.9
         env:
           SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectBaseDir: .
           args: >
             -Dsonar.host.url=${{ secrets.SONARQUBE_HOST }}
-            -Dsonar.projectName=${{ github.event.repository.name }}
-            -Dsonar.projectKey=${{ github.event.repository.name }}
-            -Dsonar.python.coverage.reportPaths=coverage.xml
-            -Dsonar.links.ci="https://github.com/splitio/${{ github.event.repository.name }}/actions"
-            -Dsonar.links.scm="https://github.com/splitio/${{ github.event.repository.name }}"
+            -Dsonar.projectVersion=${{ env.VERSION }}
 
       - name: SonarQube Scan (Pull Request)
         if: github.event_name == 'pull_request'
-        uses: SonarSource/sonarcloud-github-action@v1.5
+        uses: SonarSource/sonarcloud-github-action@v1.9
         env:
           SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectBaseDir: .
           args: >
             -Dsonar.host.url=${{ secrets.SONARQUBE_HOST }}
-            -Dsonar.projectName=${{ github.event.repository.name }}
-            -Dsonar.projectKey=${{ github.event.repository.name }}
-            -Dsonar.python.coverage.reportPaths=coverage.xml
-            -Dsonar.links.ci="https://github.com/splitio/${{ github.event.repository.name }}/actions"
-            -Dsonar.links.scm="https://github.com/splitio/${{ github.event.repository.name }}"
+            -Dsonar.projectVersion=${{ env.VERSION }}
             -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
             -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
             -Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }}
