@@ -127,7 +127,7 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
     IMP_COUNT_QUEUE_KEY = 'SPLITIO.impressions.count'
     IMP_COUNT_KEY_DEFAULT_TTL = 3600
 
-    def __init__(self, adapter_client):
+    def __init__(self, adapter_client, prefix=None):
         """
         Initialize pluggable sender adapter instance
 
@@ -135,6 +135,9 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
         :type telemtry_http_client: splitio.api.telemetry.TelemetryAPI
         """
         self._adapter_client = adapter_client
+        self._prefix = ""
+        if prefix is not None:
+            self._prefix = prefix + "."
 
     def record_unique_keys(self, uniques):
         """
@@ -146,7 +149,7 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
         bulk_mtks = _uniques_formatter(uniques)
         try:
             inserted = self._adapter_client.push_items(self.MTK_QUEUE_KEY, *bulk_mtks)
-            self._expire_keys(self.MTK_QUEUE_KEY, self.MTK_KEY_DEFAULT_TTL, inserted, len(bulk_mtks))
+            self._expire_keys(self._prefix + self.MTK_QUEUE_KEY, self.MTK_KEY_DEFAULT_TTL, inserted, len(bulk_mtks))
             return True
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add mtks to storage adapter')
@@ -163,8 +166,8 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
         try:
             resulted = 0
             for pf_count in to_send:
-                resulted = self._adapter_client.increment(self.IMP_COUNT_QUEUE_KEY + "." + pf_count.feature + "::" + str(pf_count.timeframe), pf_count.count)
-                self._expire_keys(self.IMP_COUNT_QUEUE_KEY + "." + pf_count.feature + "::" + str(pf_count.timeframe),
+                resulted = self._adapter_client.increment(self._prefix + self.IMP_COUNT_QUEUE_KEY + "." + pf_count.feature + "::" + str(pf_count.timeframe), pf_count.count)
+                self._expire_keys(self._prefix + self.IMP_COUNT_QUEUE_KEY + "." + pf_count.feature + "::" + str(pf_count.timeframe),
                               self.IMP_COUNT_KEY_DEFAULT_TTL, resulted, pf_count.count)
             return True
         except RedisAdapterException:
