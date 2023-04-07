@@ -537,7 +537,7 @@ def _build_pluggable_factory(api_key, cfg):
 
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
     clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy = set_classes('PLUGGABLE', cfg['impressionsMode'], pluggable_adapter)
+    imp_strategy = set_classes('PLUGGABLE', cfg['impressionsMode'], pluggable_adapter, storage_prefix)
 
     imp_manager = ImpressionsManager(
         imp_strategy,
@@ -545,7 +545,22 @@ def _build_pluggable_factory(api_key, cfg):
         _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
         )
 
-    synchronizer = PluggableSynchronizer()
+    synchronizers = SplitSynchronizers(None, None, None, None,
+        impressions_count_sync,
+        None,
+        unique_keys_synchronizer,
+        clear_filter_sync
+    )
+
+    tasks = SplitTasks(None, None, None, None,
+        impressions_count_task,
+        None,
+        unique_keys_task,
+        clear_filter_task
+    )
+
+    # Using same class as redis for consumer mode only
+    synchronizer = RedisSynchronizer(synchronizers, tasks)
     recorder = StandardRecorder(
         imp_manager,
         storages['events'],

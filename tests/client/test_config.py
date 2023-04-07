@@ -39,15 +39,15 @@ class ConfigSanitizationTests(object):
         assert rate == 200
 
         mode, rate = config._sanitize_impressions_mode('pluggable', 'ANYTHING', 200)
-        assert mode == ImpressionsMode.DEBUG
+        assert mode == ImpressionsMode.OPTIMIZED
         assert rate == 200
 
         mode, rate = config._sanitize_impressions_mode('pluggable', 'NONE', 200)
-        assert mode == ImpressionsMode.DEBUG
+        assert mode == ImpressionsMode.NONE
         assert rate == 200
 
         mode, rate = config._sanitize_impressions_mode('pluggable', 'OPTIMIZED', 200)
-        assert mode == ImpressionsMode.DEBUG
+        assert mode == ImpressionsMode.OPTIMIZED
         assert rate == 200
 
         mode, rate = config._sanitize_impressions_mode('memory', 43, -1)
