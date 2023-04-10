@@ -120,13 +120,13 @@ class PluggableSenderAdapterTests(object):
         ]
 
         sender_adapter.record_unique_keys(uniques)
-        assert(sorted(json.loads(adapter._keys[sender_adapter.MTK_QUEUE_KEY][0])["ks"]) == sorted(json.loads(formatted[0])["ks"]))
-        assert(sorted(json.loads(adapter._keys[sender_adapter.MTK_QUEUE_KEY][1])["ks"]) == sorted(json.loads(formatted[1])["ks"]))
-        assert(json.loads(adapter._keys[sender_adapter.MTK_QUEUE_KEY][0])["f"] == "feature1")
-        assert(json.loads(adapter._keys[sender_adapter.MTK_QUEUE_KEY][1])["f"] == "feature2")
-        assert(adapter._expire[sender_adapter.MTK_QUEUE_KEY] == sender_adapter.MTK_KEY_DEFAULT_TTL)
+        assert(sorted(json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][0])["ks"]) == sorted(json.loads(formatted[0])["ks"]))
+        assert(sorted(json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][1])["ks"]) == sorted(json.loads(formatted[1])["ks"]))
+        assert(json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][0])["f"] == "feature1")
+        assert(json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][1])["f"] == "feature2")
+        assert(adapter._expire[adapters._MTK_QUEUE_KEY] == adapters._MTK_KEY_DEFAULT_TTL)
         sender_adapter.record_unique_keys(uniques)
-        assert(adapter._expire[sender_adapter.MTK_QUEUE_KEY] != -1)
+        assert(adapter._expire[adapters._MTK_QUEUE_KEY] != -1)
 
     def test_flush_counters(self, mocker):
         """Test sending counters."""
@@ -139,8 +139,8 @@ class PluggableSenderAdapterTests(object):
         ]
 
         sender_adapter.flush_counters(counters)
-        assert(adapter._keys[sender_adapter.IMP_COUNT_QUEUE_KEY + "." + 'f1::123'] == 2)
-        assert(adapter._keys[sender_adapter.IMP_COUNT_QUEUE_KEY + "." + 'f2::123'] == 123)
-        assert(adapter._expire[sender_adapter.IMP_COUNT_QUEUE_KEY + "." + 'f1::123'] == sender_adapter.IMP_COUNT_KEY_DEFAULT_TTL)
+        assert(adapter._keys[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f1::123'] == 2)
+        assert(adapter._keys[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f2::123'] == 123)
+        assert(adapter._expire[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f1::123'] == adapters._IMP_COUNT_KEY_DEFAULT_TTL)
         sender_adapter.flush_counters(counters)
-        assert(adapter._expire[sender_adapter.IMP_COUNT_QUEUE_KEY + "." + 'f2::123'] == sender_adapter.IMP_COUNT_KEY_DEFAULT_TTL)
+        assert(adapter._expire[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f2::123'] == adapters._IMP_COUNT_KEY_DEFAULT_TTL)
