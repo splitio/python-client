@@ -142,7 +142,9 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
         """
         bulk_mtks = _uniques_formatter(uniques)
         try:
-            inserted = self._adapter_client.push_items(_MTK_QUEUE_KEY, *bulk_mtks)
+            _LOGGER.debug("record_unique_keys")
+            _LOGGER.debug(uniques)
+            inserted = self._adapter_client.push_items(self._prefix + _MTK_QUEUE_KEY, *bulk_mtks)
             self._expire_keys(self._prefix + _MTK_QUEUE_KEY, _MTK_KEY_DEFAULT_TTL, inserted, len(bulk_mtks))
             return True
         except RedisAdapterException:
