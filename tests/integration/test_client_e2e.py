@@ -20,13 +20,14 @@ from splitio.storage.pluggable import PluggableEventsStorage, PluggableImpressio
 from splitio.storage.adapters.redis import build, RedisAdapter
 from splitio.models import splits, segments
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager, ImpressionsMode
-from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyOptimizedMode
+from splitio.engine.impressions import set_classes
+from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyOptimizedMode, StrategyNoneMode
 from splitio.engine.impressions.manager import Counter
 from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder
 from splitio.client.config import DEFAULT_CONFIG
-from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer
+from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, RedisSynchronizer
 from splitio.sync.manager import Manager, RedisManager
 from splitio.sync.synchronizer import PluggableSynchronizer
 
@@ -1721,3 +1722,157 @@ class PluggableOptimizedIntegrationTests(object):
             client,
             ('user1', 'user', 'conversion', 1, "{'prop1': 'value1'}")
         )
+
+class PluggableNoneIntegrationTests(object):
+    """Pluggable storage-based integration tests."""
+
+    def setup_method(self):
+        """Prepare storages with test data."""
+        metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
+        self.pluggable_storage_adapter = StorageMockAdapter()
+        split_storage = PluggableSplitStorage(self.pluggable_storage_adapter, 'myprefix')
+        segment_storage = PluggableSegmentStorage(self.pluggable_storage_adapter, 'myprefix')
+
+        telemetry_pluggable_storage = PluggableTelemetryStorage(self.pluggable_storage_adapter, metadata, 'myprefix')
+        telemetry_producer = TelemetryStorageProducer(telemetry_pluggable_storage)
+        telemetry_consumer = TelemetryStorageConsumer(telemetry_pluggable_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+
+        storages = {
+            'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': PluggableImpressionsStorage(self.pluggable_storage_adapter, metadata, 'myprefix'),
+            'events': PluggableEventsStorage(self.pluggable_storage_adapter, metadata, 'myprefix'),
+            'telemetry': telemetry_pluggable_storage
+        }
+
+        unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
+        clear_filter_task, impressions_count_sync, impressions_count_task, \
+        imp_strategy = set_classes('PLUGGABLE', ImpressionsMode.NONE, self.pluggable_storage_adapter, 'myprefix')
+        impmanager = ImpressionsManager(imp_strategy, telemetry_runtime_producer) # no listener
+
+        recorder = StandardRecorder(impmanager, storages['events'],
+                                    storages['impressions'], storages['telemetry'])
+
+        synchronizers = SplitSynchronizers(None, None, None, None,
+            impressions_count_sync,
+            None,
+            unique_keys_synchronizer,
+            clear_filter_sync
+        )
+
+        tasks = SplitTasks(None, None, None, None,
+            impressions_count_task,
+            None,
+            unique_keys_task,
+            clear_filter_task
+        )
+
+        synchronizer = RedisSynchronizer(synchronizers, tasks)
+
+        manager = RedisManager(synchronizer)
+        manager.start()
+        self.factory = SplitFactory('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    manager,
+                                    sdk_ready_flag=None,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    )  # pylint:disable=attribute-defined-outside-init
+
+        # Adding data to storage
+        split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
+        with open(split_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        for split in data['splits']:
+            self.pluggable_storage_adapter.set(split_storage._prefix.format(split_name=split['name']), split)
+        self.pluggable_storage_adapter.set(split_storage._split_till_prefix, data['till'])
+
+        segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
+        with open(segment_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        self.pluggable_storage_adapter.set(segment_storage._prefix.format(segment_name=data['name']), set(data['added']))
+        self.pluggable_storage_adapter.set(segment_storage._segment_till_prefix.format(segment_name=data['name']), data['till'])
+
+        segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentHumanBeignsChanges.json')
+        with open(segment_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        self.pluggable_storage_adapter.set(segment_storage._prefix.format(segment_name=data['name']), set(data['added']))
+        self.pluggable_storage_adapter.set(segment_storage._segment_till_prefix.format(segment_name=data['name']), data['till'])
+        self.client = self.factory.client()
+
+
+    def _validate_last_events(self, client, *to_validate):
+        """Validate the last N impressions are present disregarding the order."""
+        event_storage = client._factory._get_storage('events')
+        events_raw = []
+        stored_events = self.pluggable_storage_adapter.pop_items(event_storage._events_queue_key)
+        if stored_events is not None:
+            events_raw = [json.loads(im) for im in stored_events]
+
+        as_tup_set = set(
+            (i['e']['key'], i['e']['trafficTypeName'], i['e']['eventTypeId'], i['e']['value'], str(i['e']['properties']))
+            for i in events_raw
+        )
+        assert as_tup_set == set(to_validate)
+
+    def test_get_treatment(self):
+        """Test client.get_treatment()."""
+        assert self.client.get_treatment('user1', 'sample_feature') == 'on'
+        assert self.client.get_treatment('invalidKey', 'sample_feature') == 'off'
+        assert self.pluggable_storage_adapter._keys['myprefix.SPLITIO.impressions'] == []
+
+    def test_get_treatments(self):
+        """Test client.get_treatments()."""
+        result = self.client.get_treatments('user1', ['sample_feature'])
+        assert len(result) == 1
+        assert result['sample_feature'] == 'on'
+
+        result = self.client.get_treatments('invalidKey', ['sample_feature'])
+        assert len(result) == 1
+        assert result['sample_feature'] == 'off'
+
+        result = self.client.get_treatments('invalidKey', ['invalid_feature'])
+        assert len(result) == 1
+        assert result['invalid_feature'] == 'control'
+        assert self.pluggable_storage_adapter._keys['myprefix.SPLITIO.impressions'] == []
+
+    def test_get_treatments_with_config(self):
+        """Test client.get_treatments_with_config()."""
+        result = self.client.get_treatments_with_config('user1', ['sample_feature'])
+        assert len(result) == 1
+        assert result['sample_feature'] == ('on', '{"size":15,"test":20}')
+
+        result = self.client.get_treatments_with_config('invalidKey2', ['sample_feature'])
+        assert len(result) == 1
+        assert result['sample_feature'] == ('off', None)
+
+        result = self.client.get_treatments_with_config('invalidKey', ['invalid_feature'])
+        assert len(result) == 1
+        assert result['invalid_feature'] == ('control', None)
+        assert self.pluggable_storage_adapter._keys['myprefix.SPLITIO.impressions'] == []
+
+    def test_track(self):
+        """Test client.track()."""
+        assert(self.client.track('user1', 'user', 'conversion', 1, {"prop1": "value1"}))
+        assert(not self.client.track(None, 'user', 'conversion'))
+        assert(not self.client.track('user1', None, 'conversion'))
+        assert(not self.client.track('user1', 'user', None))
+        self._validate_last_events(
+            self.client,
+            ('user1', 'user', 'conversion', 1, "{'prop1': 'value1'}")
+        )
+
+    def test_mtk(self):
+        self.client.get_treatment('user1', 'sample_feature')
+        self.client.get_treatment('invalidKey', 'sample_feature')
+        self.client.get_treatment('invalidKey2', 'sample_feature')
+        self.client.get_treatment('user22', 'invalidFeature')
+        event = threading.Event()
+        self.factory.destroy(event)
+        event.wait()
+        assert(json.loads(self.pluggable_storage_adapter._keys['myprefix.SPLITIO.uniquekeys'][0])["f"] =="sample_feature")
+        assert(json.loads(self.pluggable_storage_adapter._keys['myprefix.SPLITIO.uniquekeys'][0])["ks"].sort() ==
+               ["invalidKey2", "invalidKey", "user1"].sort())
