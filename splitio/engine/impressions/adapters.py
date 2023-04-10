@@ -5,6 +5,10 @@ import json
 from splitio.storage.adapters.redis import RedisAdapterException
 
 _LOGGER = logging.getLogger(__name__)
+_MTK_QUEUE_KEY = 'SPLITIO.uniquekeys'
+_MTK_KEY_DEFAULT_TTL = 3600
+_IMP_COUNT_QUEUE_KEY = 'SPLITIO.impressions.count'
+_IMP_COUNT_KEY_DEFAULT_TTL = 3600
 
 class ImpressionsSenderAdapter(object, metaclass=abc.ABCMeta):
     """Impressions Sender Adapter interface."""
@@ -53,11 +57,6 @@ class InMemorySenderAdapter(ImpressionsSenderAdapter):
 class RedisSenderAdapter(ImpressionsSenderAdapter):
     """In Memory Impressions Sender Adapter class."""
 
-    MTK_QUEUE_KEY = 'SPLITIO.uniquekeys'
-    MTK_KEY_DEFAULT_TTL = 3600
-    IMP_COUNT_QUEUE_KEY = 'SPLITIO.impressions.count'
-    IMP_COUNT_KEY_DEFAULT_TTL = 3600
-
     def __init__(self, redis_client):
         """
         Initialize In memory sender adapter instance
@@ -76,8 +75,8 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         """
         bulk_mtks = _uniques_formatter(uniques)
         try:
-            inserted = self._redis_client.rpush(self.MTK_QUEUE_KEY, *bulk_mtks)
-            self._expire_keys(self.MTK_QUEUE_KEY, self.MTK_KEY_DEFAULT_TTL, inserted, len(bulk_mtks))
+            inserted = self._redis_client.rpush(_MTK_QUEUE_KEY, *bulk_mtks)
+            self._expire_keys(_MTK_QUEUE_KEY, _MTK_KEY_DEFAULT_TTL, inserted, len(bulk_mtks))
             return True
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add mtks to redis')
@@ -96,11 +95,11 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
             counted = 0
             pipe = self._redis_client.pipeline()
             for pf_count in to_send:
-                pipe.hincrby(self.IMP_COUNT_QUEUE_KEY, pf_count.feature + "::" + str(pf_count.timeframe), pf_count.count)
+                pipe.hincrby(_IMP_COUNT_QUEUE_KEY, pf_count.feature + "::" + str(pf_count.timeframe), pf_count.count)
                 counted += pf_count.count
             resulted = sum(pipe.execute())
-            self._expire_keys(self.IMP_COUNT_QUEUE_KEY,
-                              self.IMP_COUNT_KEY_DEFAULT_TTL, resulted, counted)
+            self._expire_keys(_IMP_COUNT_QUEUE_KEY,
+                              _IMP_COUNT_KEY_DEFAULT_TTL, resulted, counted)
             return True
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add counters to redis')
@@ -121,11 +120,6 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
 
 class PluggableSenderAdapter(ImpressionsSenderAdapter):
     """In Memory Impressions Sender Adapter class."""
-
-    MTK_QUEUE_KEY = 'SPLITIO.uniquekeys'
-    MTK_KEY_DEFAULT_TTL = 3600
-    IMP_COUNT_QUEUE_KEY = 'SPLITIO.impressions.count'
-    IMP_COUNT_KEY_DEFAULT_TTL = 3600
 
     def __init__(self, adapter_client, prefix=None):
         """
@@ -148,8 +142,8 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
         """
         bulk_mtks = _uniques_formatter(uniques)
         try:
-            inserted = self._adapter_client.push_items(self.MTK_QUEUE_KEY, *bulk_mtks)
-            self._expire_keys(self._prefix + self.MTK_QUEUE_KEY, self.MTK_KEY_DEFAULT_TTL, inserted, len(bulk_mtks))
+            inserted = self._adapter_client.push_items(_MTK_QUEUE_KEY, *bulk_mtks)
+            self._expire_keys(self._prefix + _MTK_QUEUE_KEY, _MTK_KEY_DEFAULT_TTL, inserted, len(bulk_mtks))
             return True
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add mtks to storage adapter')
@@ -166,9 +160,9 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
         try:
             resulted = 0
             for pf_count in to_send:
-                resulted = self._adapter_client.increment(self._prefix + self.IMP_COUNT_QUEUE_KEY + "." + pf_count.feature + "::" + str(pf_count.timeframe), pf_count.count)
-                self._expire_keys(self._prefix + self.IMP_COUNT_QUEUE_KEY + "." + pf_count.feature + "::" + str(pf_count.timeframe),
-                              self.IMP_COUNT_KEY_DEFAULT_TTL, resulted, pf_count.count)
+                key = self._prefix + _IMP_COUNT_QUEUE_KEY + "." + pf_count.feature + "::" + str(pf_count.timeframe)
+                resulted = self._adapter_client.increment(key, pf_count.count)
+                self._expire_keys(key, _IMP_COUNT_KEY_DEFAULT_TTL, resulted, pf_count.count)
             return True
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add counters to storage adapter')
