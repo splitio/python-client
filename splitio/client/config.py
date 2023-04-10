@@ -111,10 +111,6 @@ def _sanitize_impressions_mode(storage_type, mode, refresh_rate=None):
                             'one of the following values: `debug`, `none` or `optimized`. '
                             ' Defaulting to `optimized` mode.')
 
-    if storage_type == 'pluggable' and mode != ImpressionsMode.DEBUG:
-        mode = ImpressionsMode.DEBUG
-        _LOGGER.warning('`pluggable` storageMode only support `debug` impressionMode, adjusting impressionsMode to `debug`. ')
-
     if mode == ImpressionsMode.DEBUG:
         refresh_rate = max(1, refresh_rate) if refresh_rate is not None else 60
     else:
