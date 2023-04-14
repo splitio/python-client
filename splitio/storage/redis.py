@@ -5,7 +5,7 @@ import threading
 
 from splitio.models.impressions import Impression
 from splitio.models import splits, segments
-from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig
+from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, get_latency_bucket_index
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, \
     ImpressionPipelinedStorage, TelemetryStorage
 from splitio.storage.adapters.redis import RedisAdapterException
@@ -649,7 +649,7 @@ class RedisTelemetryStorage(TelemetryStorage):
         """Record active and redundant factories."""
         self._tel_config.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
 
-    def add_latency_to_pipe(self, method, latency, pipe):
+    def add_latency_to_pipe(self, method, bucket, pipe):
         """
         record latency data
 
@@ -660,17 +660,8 @@ class RedisTelemetryStorage(TelemetryStorage):
         :param pipe: Redis pipe.
         :type pipe: redis.pipe
         """
-        self._method_latencies.add_latency(method, latency)
-        latencies = self._method_latencies.pop_all()['methodLatencies']
-        values = latencies[method.value]
-        total_keys = 0
-        bucket_number = 0
-        for bucket in values:
-            if bucket > 0:
-                pipe.hincrby(self._TELEMETRY_LATENCIES_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
-                        method.value + '/' + str(bucket_number), bucket)
-                total_keys += 1
-            bucket_number = bucket_number + 0
+        pipe.hincrby(self._TELEMETRY_LATENCIES_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
+            method.value + '/' + str(bucket), 1)
 
     def record_latency(self, method, latency):
         """

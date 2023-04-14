@@ -37,11 +37,10 @@ class TelemetryModelTests(object):
             assert(result_bucket == ModelTelemetry.get_latency_bucket_index(latency))
 
     def test_storage_type_and_operation_mode(self, mocker):
-        assert(StorageType.LOCALHOST.value == 'localhost')
         assert(StorageType.MEMORY.value == 'memory')
         assert(StorageType.REDIS.value == 'redis')
-        assert(OperationMode.MEMORY.value == 'inmemory')
-        assert(OperationMode.REDIS.value == 'redis-consumer')
+        assert(OperationMode.STANDALONE.value == 'standalone')
+        assert(OperationMode.CONSUMER.value == 'consumer')
 
     def test_method_latencies(self, mocker):
         method_latencies = MethodLatencies()
@@ -238,7 +237,7 @@ class TelemetryModelTests(object):
 
     def test_telemetry_config(self):
         telemetry_config = TelemetryConfig()
-        config = {'operationMode': 'inmemory',
+        config = {'operationMode': 'standalone',
                   'streamingEnabled': True,
                   'impressionsQueueSize': 100,
                   'eventsQueueSize': 200,
@@ -249,10 +248,11 @@ class TelemetryModelTests(object):
                   'impressionsRefreshRate': 60,
                   'eventsPushRate': 60,
                   'metricsRefreshRate': 10,
+                  'storageType': None
                 }
         telemetry_config.record_config(config, {})
         assert(telemetry_config.get_stats() == {'oM': 0,
-            'sT': telemetry_config._get_storage_type(config['operationMode']),
+            'sT': telemetry_config._get_storage_type(config['operationMode'], config['storageType']),
             'sE': config['streamingEnabled'],
             'rR': {'sp': 30, 'se': 30, 'im': 60, 'ev': 60, 'te': 10},
             'uO':  {'s': False, 'e': False, 'a': False, 'st': False, 't': False},

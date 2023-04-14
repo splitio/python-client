@@ -404,7 +404,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             return_flag = self._recorder.record_track_stats([EventWrapper(
                 event=event,
                 size=size,
-            )], get_current_epoch_time_ms() - start)
+            )], get_latency_bucket_index(get_current_epoch_time_ms() - start))
             return return_flag
         except Exception:  # pylint: disable=broad-except
             self._telemetry_evaluation_producer.record_exception(MethodExceptionsAndLatencies.TRACK)
