@@ -19,7 +19,7 @@ class PluggableSplitStorageIntegrationTests(object):
         adapter = StorageMockAdapter()
         try:
             storage = PluggableSplitStorage(adapter)
-            split_fn = os.path.join(os.path.dirname(__file__), 'files', 'split_Changes.json')
+            split_fn = os.path.join(os.path.dirname(__file__), 'files', 'split_changes.json')
             with open(split_fn, 'r') as flo:
                 data = json.loads(flo.read())
                 for split in data['splits']:
@@ -85,7 +85,7 @@ class PluggableSplitStorageIntegrationTests(object):
         adapter = StorageMockAdapter()
         try:
             storage = PluggableSplitStorage(adapter)
-            split_fn = os.path.join(os.path.dirname(__file__), 'files', 'split_Changes.json')
+            split_fn = os.path.join(os.path.dirname(__file__), 'files', 'split_changes.json')
             with open(split_fn, 'r') as flo:
                 data = json.loads(flo.read())
                 for split in data['splits']:
