@@ -1,7 +1,7 @@
 9.4.1 (Apr 18, 2023)
 - Fixed storing incorrect Telemetry method latency data
 
-9.4.0 (Feb 14, 2023)
+9.4.0 (Mar 1, 2023)
 - Added support to use JSON files in localhost mode.
 - Updated default periodic telemetry post time to one hour.
 - Fixed unhandeled exception in push.manager.py class when SDK is connected to split proxy

@@ -3,6 +3,7 @@
 import threading
 import unittest.mock as mock
 import time
+import pytest
 
 from splitio.api.auth import AuthAPI
 from splitio.api import auth, client, APIException

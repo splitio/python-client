@@ -305,11 +305,21 @@ class LocalSegmentsSynchronizerTests(object):
 
         # should reject segment if 'name' is null
         segment2 = {"name": None, "added": [], "removed": [], "since": -1, "till": 12}
-        assert(segment_synchronizer._sanitize_segment(segment2) == None)
+        exception_called = False
+        try:
+            segment_synchronizer._sanitize_segment(segment2)
+        except:
+            exception_called = True
+        assert(exception_called)
 
         # should reject segment if 'name' does not exist
         segment2 = {"added": [], "removed": [], "since": -1, "till": 12}
-        assert(segment_synchronizer._sanitize_segment(segment2) == None)
+        exception_called = False
+        try:
+            segment_synchronizer._sanitize_segment(segment2)
+        except:
+            exception_called = True
+        assert(exception_called)
 
         # should add missing 'added' element
         segment2 = {"name": 'seg', "removed": [], "since": -1, "till": 12}

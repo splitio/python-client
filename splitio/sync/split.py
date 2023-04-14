@@ -323,17 +323,10 @@ class LocalSplitSynchronizer(object):
         """Update splits in storage."""
         _LOGGER.info('Synchronizing splits now.')
         try:
-            if self._localhost_mode == LocalhostMode.JSON:
-                return self._synchronize_json()
-            else:
-                return self._synchronize_legacy()
+            return self._synchronize_json() if self._localhost_mode == LocalhostMode.JSON else self._synchronize_legacy()
         except Exception as exc:
             _LOGGER.error(str(exc))
             raise APIException("Error fetching splits information") from exc
-
-#            _LOGGER.error("Error fetching splits information")
-#            _LOGGER.error(str(e))
-#        return []
 
     def _synchronize_legacy(self):
         """
@@ -368,19 +361,21 @@ class LocalSplitSynchronizer(object):
             fetched, till = self._read_splits_from_json_file(self._filename)
             segment_list = set()
             fecthed_sha = util._get_sha(json.dumps(fetched))
-            if fecthed_sha != self._current_json_sha:
-                self._current_json_sha = fecthed_sha
-                if self._split_storage.get_change_number() <= till or till == self._DEFAULT_SPLIT_TILL:
-                    for split in fetched:
-                        if split['status'] == splits.Status.ACTIVE.value:
-                            parsed = splits.from_raw(split)
-                            self._split_storage.put(parsed)
-                            _LOGGER.debug("split %s is updated", parsed.name)
-                            segment_list.update(set(parsed.get_segment_names()))
-                        else:
-                            self._split_storage.remove(split['name'])
+            if fecthed_sha == self._current_json_sha:
+                return []
+            self._current_json_sha = fecthed_sha
+            if self._split_storage.get_change_number() > till and till != self._DEFAULT_SPLIT_TILL:
+                return []
+            for split in fetched:
+                if split['status'] == splits.Status.ACTIVE.value:
+                    parsed = splits.from_raw(split)
+                    self._split_storage.put(parsed)
+                    _LOGGER.debug("split %s is updated", parsed.name)
+                    segment_list.update(set(parsed.get_segment_names()))
+                else:
+                    self._split_storage.remove(split['name'])
 
-                    self._split_storage.set_change_number(till)
+                self._split_storage.set_change_number(till)
             return segment_list
         except Exception as exc:
             raise ValueError("Error reading splits from json.") from exc
@@ -392,14 +387,13 @@ class LocalSplitSynchronizer(object):
         :param filename: Path of the file containing split
         :type filename: str.
 
-        :return: Tuple: sanitized split structure dict, since and till
-        :rtype: Tuple(Dict, int, int)
+        :return: Tuple: sanitized split structure dict and till
+        :rtype: Tuple(Dict, int)
         """
         try:
             with open(filename, 'r') as flo:
                 parsed = json.load(flo)
             santitized = self._sanitize_split(parsed)
-            flo.close
             return santitized['splits'], santitized['till']
         except Exception as exc:
             _LOGGER.error(str(exc))
@@ -464,11 +458,11 @@ class LocalSplitSynchronizer(object):
                             ('changeNumber', 0, 0, None, None, None),
                             ('algo', 2, 2, 2, None, None)]:
                 split = util._sanitize_object_element(split, 'split', element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=element[4], not_in_list=element[5])
-            split = self._santizie_condition(split)
+            split = self._sanitize_condition(split)
             sanitized_splits.append(split)
         return sanitized_splits
 
-    def _santizie_condition(self, split):
+    def _sanitize_condition(self, split):
         """
         Sanitize split and ensure a condition type ROLLOUT and matcher exist with ALL_KEYS elements.
 
@@ -479,8 +473,7 @@ class LocalSplitSynchronizer(object):
         :rtype: Dict
         """
         found_all_keys_matcher = False
-        if 'conditions' not in split or split['conditions'] is None:
-            split['conditions'] = []
+        split['conditions'] = split.get('conditions', [])
         if len(split['conditions']) > 0:
             last_condition = split['conditions'][-1]
             if 'conditionType' in last_condition:

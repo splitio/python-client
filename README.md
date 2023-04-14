@@ -1,5 +1,5 @@
-# Split Python SDK 
-[![Build Status](https://api.travis-ci.com/splitio/python-client.svg?branch=master)](https://api.travis-ci.com/splitio/python-client)
+# Split Python SDK
+![Build Status](https://github.com/splitio/python-client/actions/workflows/ci.yml/badge.svg?branch=master)
 
 ## Overview
 This SDK is designed to work with Split, the platform for controlled rollouts, which serves features to your users via a Split feature flag to manage your complete customer experience.
@@ -23,7 +23,7 @@ try:
     factory.block_until_ready(5) # wait up to 5 seconds
     split = factory.client()
     treatment = split.get_treatment('CUSTOMER_ID', 'SPLIT_NAME')
-    if treatment == "on": 
+    if treatment == "on":
         # insert code here to show on treatment
     elif treatment == "off":
         # insert code here to show off treatment
