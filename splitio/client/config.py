@@ -10,7 +10,7 @@ DEFAULT_DATA_SAMPLING = 1
 
 
 DEFAULT_CONFIG = {
-    'operationMode': 'in-memory',
+    'operationMode': 'standalone',
     'connectionTimeout': 1500,
     'streamingEnabled': True,
     'featuresRefreshRate': 30,
@@ -56,29 +56,43 @@ DEFAULT_CONFIG = {
     'localhostRefreshEnabled': False,
     'preforkedInitialization': False,
     'dataSampling': DEFAULT_DATA_SAMPLING,
+    'storageWrapper': None,
+    'storagePrefix': None,
+    'storageType': None
 }
 
 
 def _parse_operation_mode(apikey, config):
     """
-    Process incoming config to determine operation mode.
+    Process incoming config to determine operation mode and storage type
 
     :param config: user supplied config
     :type config: dict
 
-    :returns: operation mode
-    :rtype: str
+    :returns: operation mode and storage type
+    :rtype: Tuple (str, str)
     """
     if apikey == 'localhost':
-        return 'localhost-standalone'
+        _LOGGER.debug('Using Localhost operation mode')
+        return 'localhost', 'localhost'
 
     if 'redisHost' in config or 'redisSentinels' in config:
-        return 'redis-consumer'
+        _LOGGER.debug('Using Redis storage operation mode')
+        return 'consumer', 'redis'
 
-    return 'inmemory-standalone'
+    if  config.get('storageType') is not None:
+        if config.get('storageType').lower() == 'pluggable':
+            _LOGGER.debug('Using Pluggable storage operation mode')
+            return 'consumer', 'pluggable'
+
+        _LOGGER.warning('You passed an invalid storageType, acceptable value is '
+                            '`pluggable`. Defaulting storage to In-Memory mode.')
+
+    _LOGGER.debug('Using In-Memory operation mode')
+    return 'standalone', 'memory'
 
 
-def _sanitize_impressions_mode(mode, refresh_rate=None):
+def _sanitize_impressions_mode(storage_type, mode, refresh_rate=None):
     """
     Check supplied impressions mode and adjust refresh rate.
 
@@ -92,10 +106,10 @@ def _sanitize_impressions_mode(mode, refresh_rate=None):
         try:
             mode = ImpressionsMode(mode.upper())
         except (ValueError, AttributeError):
-            _LOGGER.warning('You passed an invalid impressionsMode, impressionsMode should be '
-                            'one of the following values: `debug`, `none` or `optimized`. '
-                            'Defaulting to `optimized` mode.')
             mode = ImpressionsMode.OPTIMIZED
+            _LOGGER.warning('You passed an invalid impressionsMode, impressionsMode should be ' \
+                            'one of the following values: `debug`, `none` or `optimized`. '
+                            ' Defaulting to `optimized` mode.')
 
     if mode == ImpressionsMode.DEBUG:
         refresh_rate = max(1, refresh_rate) if refresh_rate is not None else 60
@@ -118,10 +132,10 @@ def sanitize(apikey, config):
     :returns: sanitized config
     :rtype: dict
     """
-    config['operationMode'] = _parse_operation_mode(apikey, config)
+    config['operationMode'], config['storageType'] = _parse_operation_mode(apikey, config)
     processed = DEFAULT_CONFIG.copy()
     processed.update(config)
-    imp_mode, imp_rate = _sanitize_impressions_mode(config.get('impressionsMode'),
+    imp_mode, imp_rate = _sanitize_impressions_mode(config['storageType'], config.get('impressionsMode'),
                                                     config.get('impressionsRefreshRate'))
     processed['impressionsMode'] = imp_mode
     processed['impressionsRefreshRate'] = imp_rate

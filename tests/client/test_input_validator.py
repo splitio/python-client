@@ -1178,3 +1178,90 @@ class FactoryInputValidationTests(object):  #pylint: disable=too-few-public-meth
             pass
         assert logger.error.mock_calls == []
         f.destroy()
+
+class PluggableInputValidationTests(object):  #pylint: disable=too-few-public-methods
+    """Pluggable adapter instance validation test cases."""
+
+    class mock_adapter0():
+        def set(self, key, value):
+            print(key)
+
+    class mock_adapter1(object):
+        def set(self, key, value):
+            print(key)
+
+    class mock_adapter2(mock_adapter1):
+        def get(self, key):
+            print(key)
+
+        def get_items(self, key):
+            print(key)
+
+        def get_many(self, keys):
+            print(keys)
+
+        def push_items(self, key, *value):
+            print(key)
+
+        def delete(self, key):
+            print(key)
+
+        def increment(self, key, value):
+            print(key)
+
+        def decrement(self, key, value):
+            print(key)
+
+        def get_keys_by_prefix(self, prefix):
+            print(prefix)
+
+        def get_many(self, keys):
+            print(keys)
+
+        def add_items(self, key, added_items):
+            print(key)
+
+        def remove_items(self, key, removed_items):
+            print(key)
+
+        def item_contains(self, key, item):
+            print(key)
+
+        def get_items_count(self, key):
+            print(key)
+
+    class mock_adapter3(mock_adapter2):
+        def expire(self, key):
+            print(key)
+
+    class mock_adapter4(mock_adapter2):
+        def expire(self, key, value, till):
+            print(key)
+
+    def test_validate_pluggable_adapter(self):
+        # missing storageWrapper config parameter
+        assert(not input_validator.validate_pluggable_adapter({'storageType': 'pluggable'}))
+
+        # ignore if storage type is not pluggable
+        assert(input_validator.validate_pluggable_adapter({'storageType': 'memory'}))
+
+        # mock adapter is not derived from object class
+        assert(not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'pe': self.mock_adapter0()}))
+
+        # mock adapter missing many functions
+        assert(not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storageWrapper': self.mock_adapter1()}))
+
+        # mock adapter missing expire function
+        assert(not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storageWrapper': self.mock_adapter2()}))
+
+        # mock adapter expire function has incrrect args count
+        assert(not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storageWrapper': self.mock_adapter3()}))
+
+        # expected mock adapter should pass
+        assert(input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storageWrapper': self.mock_adapter4()}))
+
+        # using string type prefix should pass
+        assert(input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storagePrefix': 'myprefix', 'storageWrapper': self.mock_adapter4()}))
+
+        # using non-string type prefix should not pass
+        assert(not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storagePrefix': 'myprefix', 123: self.mock_adapter4()}))

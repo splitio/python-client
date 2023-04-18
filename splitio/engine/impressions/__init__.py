@@ -1,13 +1,13 @@
 from splitio.engine.impressions.impressions import ImpressionsMode
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.engine.impressions.strategies import StrategyNoneMode, StrategyDebugMode, StrategyOptimizedMode
-from splitio.engine.impressions.adapters import InMemorySenderAdapter, RedisSenderAdapter
+from splitio.engine.impressions.adapters import InMemorySenderAdapter, RedisSenderAdapter, PluggableSenderAdapter
 from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTask
 from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer
 from splitio.sync.impression import ImpressionsCountSynchronizer
 from splitio.tasks.impressions_sync import ImpressionsCountSyncTask
 
-def set_classes(storage_mode, impressions_mode, api_adapter):
+def set_classes(storage_mode, impressions_mode, api_adapter, prefix=None):
     unique_keys_synchronizer = None
     clear_filter_sync = None
     unique_keys_task = None
@@ -15,7 +15,11 @@ def set_classes(storage_mode, impressions_mode, api_adapter):
     impressions_count_sync = None
     impressions_count_task = None
     sender_adapter = None
-    if storage_mode == 'REDIS':
+    if storage_mode == 'PLUGGABLE':
+        sender_adapter = PluggableSenderAdapter(api_adapter, prefix)
+        api_telemetry_adapter = sender_adapter
+        api_impressions_adapter = sender_adapter
+    elif storage_mode == 'REDIS':
         sender_adapter = RedisSenderAdapter(api_adapter)
         api_telemetry_adapter = sender_adapter
         api_impressions_adapter = sender_adapter
