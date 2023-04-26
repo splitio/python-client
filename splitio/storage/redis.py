@@ -204,9 +204,9 @@ class RedisSplitStorage(SplitStorage):
         :rtype: list(splitio.models.splits.Split)
         """
         keys = self._redis.keys(self._get_key('*'))
-        _LOGGER.debug("Fetchting all Splits from redis: %s" % keys)
         to_return = []
         try:
+            _LOGGER.debug("Fetchting all Splits from redis: %s" % keys)
             raw_splits = self._redis.mget(keys)
             _LOGGER.debug(raw_splits)
             for raw in raw_splits:
@@ -563,9 +563,9 @@ class RedisEventsStorage(EventStorage):
         """
         key = self._EVENTS_KEY_TEMPLATE
         to_store = self._wrap_events(events)
-        _LOGGER.debug("Adding Events to redis key %s" % (key))
-        _LOGGER.debug(to_store)
         try:
+            _LOGGER.debug("Adding Events to redis key %s" % (key))
+            _LOGGER.debug(to_store)
             self._redis.rpush(key, *to_store)
             return True
         except RedisAdapterException:
