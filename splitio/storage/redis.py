@@ -71,8 +71,6 @@ class RedisSplitStorage(SplitStorage):
         """
         try:
             raw = self._redis.get(self._get_key(split_name))
-            _LOGGER.debug("Fetchting Split [%s] from redis" % split_name)
-            _LOGGER.debug(raw)
             return splits.from_raw(json.loads(raw)) if raw is not None else None
         except RedisAdapterException:
             _LOGGER.error('Error fetching split from storage')
@@ -93,8 +91,6 @@ class RedisSplitStorage(SplitStorage):
         try:
             keys = [self._get_key(split_name) for split_name in split_names]
             raw_splits = self._redis.mget(keys)
-            _LOGGER.debug("Fetchting Splits [%s] from redis" % split_names)
-            _LOGGER.debug(raw_splits)
             for i in range(len(split_names)):
                 split = None
                 try:
@@ -121,7 +117,6 @@ class RedisSplitStorage(SplitStorage):
         try:
             raw = self._redis.get(self._get_traffic_type_key(traffic_type_name))
             count = json.loads(raw) if raw else 0
-            _LOGGER.debug("Fetching TrafficType [%s] count in redis: %s" % (traffic_type_name, count))
             return count > 0
         except RedisAdapterException:
             _LOGGER.error('Error fetching split from storage')
@@ -157,7 +152,6 @@ class RedisSplitStorage(SplitStorage):
         """
         try:
             stored_value = self._redis.get(self._SPLIT_TILL_KEY)
-            _LOGGER.debug("Fetching Split Change Number from redis: %s" % stored_value)
             return json.loads(stored_value) if stored_value is not None else None
         except RedisAdapterException:
             _LOGGER.error('Error fetching split change number from storage')
@@ -182,7 +176,6 @@ class RedisSplitStorage(SplitStorage):
         """
         try:
             keys = self._redis.keys(self._get_key('*'))
-            _LOGGER.debug("Fetchting Split names from redis: %s" % keys)
             return [key.replace(self._get_key(''), '') for key in keys]
         except RedisAdapterException:
             _LOGGER.error('Error fetching split names from storage')
@@ -206,9 +199,7 @@ class RedisSplitStorage(SplitStorage):
         keys = self._redis.keys(self._get_key('*'))
         to_return = []
         try:
-            _LOGGER.debug("Fetchting all Splits from redis: %s" % keys)
             raw_splits = self._redis.mget(keys)
-            _LOGGER.debug(raw_splits)
             for raw in raw_splits:
                 try:
                     to_return.append(splits.from_raw(json.loads(raw)))
@@ -285,8 +276,6 @@ class RedisSegmentStorage(SegmentStorage):
         """
         try:
             keys = (self._redis.smembers(self._get_key(segment_name)))
-            _LOGGER.debug("Fetchting Segment [%s] from redis" % segment_name)
-            _LOGGER.debug(keys)
             till = self.get_change_number(segment_name)
             if not keys or till is None:
                 return None
@@ -320,7 +309,6 @@ class RedisSegmentStorage(SegmentStorage):
         """
         try:
             stored_value = self._redis.get(self._get_till_key(segment_name))
-            _LOGGER.debug("Fetchting Change Number for Segment [%s] from redis: " % stored_value)
             return json.loads(stored_value) if stored_value is not None else None
         except RedisAdapterException:
             _LOGGER.error('Error fetching segment change number from storage')
@@ -360,9 +348,7 @@ class RedisSegmentStorage(SegmentStorage):
         :rtype: bool
         """
         try:
-            res = self._redis.sismember(self._get_key(segment_name), key)
-            _LOGGER.debug("Checking Segment [%s] contain key [%s] in redis: %s" % (segment_name, key, res))
-            return res
+            return self._redis.sismember(self._get_key(segment_name), key)
         except RedisAdapterException:
             _LOGGER.error('Error testing members in segment stored in redis')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -457,8 +443,6 @@ class RedisImpressionsStorage(ImpressionStorage, ImpressionPipelinedStorage):
         :type pipe: redis.pipe
         """
         bulk_impressions = self._wrap_impressions(impressions)
-        _LOGGER.debug("Adding Impressions to redis key %s" % (self.IMPRESSIONS_QUEUE_KEY))
-        _LOGGER.debug(bulk_impressions)
         pipe.rpush(self.IMPRESSIONS_QUEUE_KEY, *bulk_impressions)
 
     def put(self, impressions):
@@ -473,8 +457,6 @@ class RedisImpressionsStorage(ImpressionStorage, ImpressionPipelinedStorage):
         """
         bulk_impressions = self._wrap_impressions(impressions)
         try:
-            _LOGGER.debug("Adding Impressions to redis key %s" % (self.IMPRESSIONS_QUEUE_KEY))
-            _LOGGER.debug(bulk_impressions)
             inserted = self._redis.rpush(self.IMPRESSIONS_QUEUE_KEY, *bulk_impressions)
             self.expire_key(inserted, len(bulk_impressions))
             return True
@@ -527,8 +509,6 @@ class RedisEventsStorage(EventStorage):
         :type pipe: redis.pipe
         """
         bulk_events = self._wrap_events(events)
-        _LOGGER.debug("Adding Events to redis key %s" % (self._EVENTS_KEY_TEMPLATE))
-        _LOGGER.debug(bulk_events)
         pipe.rpush(self._EVENTS_KEY_TEMPLATE, *bulk_events)
 
     def _wrap_events(self, events):
@@ -564,8 +544,6 @@ class RedisEventsStorage(EventStorage):
         key = self._EVENTS_KEY_TEMPLATE
         to_store = self._wrap_events(events)
         try:
-            _LOGGER.debug("Adding Events to redis key %s" % (key))
-            _LOGGER.debug(to_store)
             self._redis.rpush(key, *to_store)
             return True
         except RedisAdapterException:
@@ -654,8 +632,6 @@ class RedisTelemetryStorage(TelemetryStorage):
 
     def push_config_stats(self):
         """push config stats to redis."""
-        _LOGGER.debug("Adding Config stats to redis key %s" % (self._TELEMETRY_CONFIG_KEY))
-        _LOGGER.debug(str(self._format_config_stats()))
         self._redis_client.hset(self._TELEMETRY_CONFIG_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip, str(self._format_config_stats()))
 
     def _format_config_stats(self):
@@ -684,9 +660,6 @@ class RedisTelemetryStorage(TelemetryStorage):
         :param pipe: Redis pipe.
         :type pipe: redis.pipe
         """
-        _LOGGER.debug("Adding Latency stats to redis key %s" % (self._TELEMETRY_LATENCIES_KEY))
-        _LOGGER.debug(self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
-            method.value + '/' + str(bucket))
         pipe.hincrby(self._TELEMETRY_LATENCIES_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
             method.value + '/' + str(bucket), 1)
 
@@ -703,9 +676,6 @@ class RedisTelemetryStorage(TelemetryStorage):
         :param method: method name
         :type method: string
         """
-        _LOGGER.debug("Adding Excepction stats to redis key %s" % (self._TELEMETRY_EXCEPTIONS_KEY))
-        _LOGGER.debug(self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
-                    method.value)
         pipe = self._make_pipe()
         pipe.hincrby(self._TELEMETRY_EXCEPTIONS_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
                     method.value, 1)
