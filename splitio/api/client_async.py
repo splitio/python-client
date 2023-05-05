@@ -1,16 +1,14 @@
-"""Synchronous HTTP Client for split API."""
+"""Asyncio HTTP Client for split API."""
 from collections import namedtuple
-
-import requests
+import aiohttp
 import logging
 
 from splitio.api import build_basic_headers, HttpClientException
 
 _LOGGER = logging.getLogger(__name__)
-
 HttpResponse = namedtuple('HttpResponse', ['status_code', 'body'])
 
-class HttpClient(object):
+class HttpClientAsync(object):
     """HttpClient wrapper."""
 
     SDK_URL = 'https://sdk.split.io/api'
@@ -33,7 +31,7 @@ class HttpClient(object):
         :param telemetry_url: Optional alternative telemetry URL.
         :type telemetry_url: str
         """
-        self._timeout = timeout/1000 if timeout else None # Convert ms to seconds.
+        self._timeout = timeout/1000 if timeout else None  # Convert ms to seconds.
         self._urls = {
             'sdk': sdk_url if sdk_url is not None else self.SDK_URL,
             'events': events_url if events_url is not None else self.EVENTS_URL,
@@ -55,7 +53,7 @@ class HttpClient(object):
         """
         return self._urls[server] + path
 
-    def get(self, server, path, apikey, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
+    async def get(self, server, path, apikey, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
         Issue a get request.
 
@@ -76,19 +74,20 @@ class HttpClient(object):
         headers = build_basic_headers(apikey)
         if extra_headers is not None:
             headers.update(extra_headers)
-
         try:
-            response = requests.get(
-                self._build_url(server, path),
-                params=query,
-                headers=headers,
-                timeout=self._timeout
-            )
-            return HttpResponse(response.status_code, response.text)
-        except Exception as exc:  # pylint: disable=broad-except
-            raise HttpClientException('requests library is throwing exceptions') from exc
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    self._build_url(server, path),
+                    params=query,
+                    headers=headers,
+                    timeout=self._timeout
+                ) as response:
+                    body = await response.text()
+                    return HttpResponse(response.status, body)
+        except aiohttp.ClientError as exc:  # pylint: disable=broad-except
+            raise HttpClientException('aiohttp library is throwing exceptions') from exc
 
-    def post(self, server, path, apikey, body, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
+    async def post(self, server, path, apikey, body, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
         Issue a POST request.
 
@@ -114,13 +113,15 @@ class HttpClient(object):
             headers.update(extra_headers)
 
         try:
-            response = requests.post(
-                self._build_url(server, path),
-                json=body,
-                params=query,
-                headers=headers,
-                timeout=self._timeout
-            )
-            return HttpResponse(response.status_code, response.text)
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    self._build_url(server, path),
+                    params=query,
+                    headers=headers,
+                    json=body,
+                    timeout=self._timeout
+                ) as response:
+                    body = await response.text()
+                    return HttpResponse(response.status, body)
         except Exception as exc:  # pylint: disable=broad-except
-            raise HttpClientException('requests library is throwing exceptions') from exc
+            raise HttpClientException('aiohttp library is throwing exceptions') from exc
