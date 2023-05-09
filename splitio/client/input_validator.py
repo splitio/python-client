@@ -248,8 +248,8 @@ def validate_feature_name(feature_name, should_validate_existance, split_storage
 
     if should_validate_existance and split_storage.get(feature_name) is None:
         _LOGGER.warning(
-            "%s: you passed feature flag \"%s\" that does not exist in this environment, "
-            "please double check what Splits exist in the web console.",
+            "%s: you passed \"%s\" that does not exist in this environment, "
+            "please double check what Feature flags exist in the Split user interface.",
             method_name,
             feature_name
         )
@@ -283,7 +283,7 @@ def validate_traffic_type(traffic_type, should_validate_existance, split_storage
 
     :param traffic_type: traffic_type to be checked
     :type traffic_type: str
-    :param should_validate_existance: Whether to check for existante in the split storage.
+    :param should_validate_existance: Whether to check for existante in the feature flag storage.
     :type should_validate_existance: bool
     :param split_storage: Split storage.
     :param split_storage: splitio.storages.SplitStorage
@@ -301,7 +301,7 @@ def validate_traffic_type(traffic_type, should_validate_existance, split_storage
 
     if should_validate_existance and not split_storage.is_valid_traffic_type(traffic_type):
         _LOGGER.warning(
-            'track: Traffic Type %s does not have any corresponding Splits in this environment, '
+            'track: Traffic Type %s does not have any corresponding Feature flags in this environment, '
             'make sure you\'re tracking your events to a valid traffic type defined '
             'in the Split console.',
             traffic_type
@@ -360,8 +360,8 @@ def validate_manager_feature_name(feature_name, should_validate_existance, split
 
     if should_validate_existance and split_storage.get(feature_name) is None:
         _LOGGER.warning(
-            "split: you passed feature flag \"%s\" that does not exist in this environment, "
-            "please double check what Splits exist in the web console.",
+            "split: you passed \"%s\" that does not exist in this environment, "
+            "please double check what Feature flags exist in the Split user interface.",
             feature_name
         )
         return None
@@ -405,8 +405,8 @@ def validate_features_get_treatments(  # pylint: disable=invalid-name
     valid_missing_features = set(f for f in filtered_features if split_storage.get(f) is None)
     for missing_feature in valid_missing_features:
         _LOGGER.warning(
-            "%s: you passed feature flag \"%s\" that does not exist in this environment, "
-            "please double check what Splits exist in the web console.",
+            "%s: you passed \"%s\" that does not exist in this environment, "
+            "please double check what Feature flags exist in the Split user interface.",
             method_name,
             missing_feature
         )
