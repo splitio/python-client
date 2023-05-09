@@ -34,12 +34,12 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
 
     def fetch_splits(self, change_number, fetch_options):
         """
-        Fetch splits from backend.
+        Fetch feature flags from backend.
 
         :param change_number: Last known timestamp of a split modification.
         :type change_number: int
 
-        :param fetch_options: Fetch options for getting split definitions.
+        :param fetch_options: Fetch options for getting feature flag definitions.
         :type fetch_options: splitio.api.commons.FetchOptions
 
         :return: Json representation of a splitChanges response.
@@ -61,6 +61,6 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
             else:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error('Error fetching splits because an exception was raised by the HTTPClient')
+            _LOGGER.error('Error fetching feature flags because an exception was raised by the HTTPClient')
             _LOGGER.debug('Error: ', exc_info=True)
-            raise APIException('Splits not fetched correctly.') from exc
+            raise APIException('Feature flags not fetched correctly.') from exc
