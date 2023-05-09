@@ -192,7 +192,7 @@ def _remove_empty_spaces(value, operation):
     """
     strip_value = value.strip()
     if value != strip_value:
-        _LOGGER.warning("%s: feature_name '%s' has extra whitespace, trimming.", operation, value)
+        _LOGGER.warning("%s: feature_flag_name '%s' has extra whitespace, trimming.", operation, value)
     return strip_value
 
 
@@ -234,9 +234,9 @@ def validate_key(key, method_name):
 
 def validate_feature_name(feature_name, should_validate_existance, split_storage, method_name):
     """
-    Check if feature_name is valid for get_treatment.
+    Check if feature flag name is valid for get_treatment.
 
-    :param feature_name: feature_name to be checked
+    :param feature_name: feature flag name to be checked
     :type feature_name: str
     :return: feature_name
     :rtype: str|None
@@ -248,7 +248,7 @@ def validate_feature_name(feature_name, should_validate_existance, split_storage
 
     if should_validate_existance and split_storage.get(feature_name) is None:
         _LOGGER.warning(
-            "%s: you passed \"%s\" that does not exist in this environment, "
+            "%s: you passed feature flag \"%s\" that does not exist in this environment, "
             "please double check what Splits exist in the web console.",
             method_name,
             feature_name
@@ -346,9 +346,9 @@ def validate_value(value):
 
 def validate_manager_feature_name(feature_name, should_validate_existance, split_storage):
     """
-    Check if feature_name is valid for track.
+    Check if feature flag name is valid for track.
 
-    :param feature_name: feature_name to be checked
+    :param feature_name: feature flag name to be checked
     :type feature_name: str
     :return: feature_name
     :rtype: str|None
@@ -360,7 +360,7 @@ def validate_manager_feature_name(feature_name, should_validate_existance, split
 
     if should_validate_existance and split_storage.get(feature_name) is None:
         _LOGGER.warning(
-            "split: you passed \"%s\" that does not exist in this environment, "
+            "split: you passed feature flag \"%s\" that does not exist in this environment, "
             "please double check what Splits exist in the web console.",
             feature_name
         )
@@ -376,27 +376,27 @@ def validate_features_get_treatments(  # pylint: disable=invalid-name
     split_storage=None
 ):
     """
-    Check if features is valid for get_treatments.
+    Check if feature flags is valid for get_treatments.
 
-    :param features: array of features
+    :param features: array of feature flags
     :type features: list
     :return: filtered_features
     :rtype: tuple
     """
     if features is None or not isinstance(features, list):
-        _LOGGER.error("%s: feature_names must be a non-empty array.", method_name)
+        _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
         return None, None
     if not features:
-        _LOGGER.error("%s: feature_names must be a non-empty array.", method_name)
+        _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
         return None, None
     filtered_features = set(
         _remove_empty_spaces(feature, method_name) for feature in features
         if feature is not None and
-        _check_is_string(feature, 'feature_name', method_name) and
-        _check_string_not_empty(feature, 'feature_name', method_name)
+        _check_is_string(feature, 'feature flag name', method_name) and
+        _check_string_not_empty(feature, 'feature flag name', method_name)
     )
     if not filtered_features:
-        _LOGGER.error("%s: feature_names must be a non-empty array.", method_name)
+        _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
         return None, None
 
     if not should_validate_existance:
@@ -405,7 +405,7 @@ def validate_features_get_treatments(  # pylint: disable=invalid-name
     valid_missing_features = set(f for f in filtered_features if split_storage.get(f) is None)
     for missing_feature in valid_missing_features:
         _LOGGER.warning(
-            "%s: you passed \"%s\" that does not exist in this environment, "
+            "%s: you passed feature flag \"%s\" that does not exist in this environment, "
             "please double check what Splits exist in the web console.",
             method_name,
             missing_feature
@@ -415,9 +415,9 @@ def validate_features_get_treatments(  # pylint: disable=invalid-name
 
 def generate_control_treatments(features, method_name):
     """
-    Generate valid features to control.
+    Generate valid feature flags to control.
 
-    :param features: array of features
+    :param features: array of feature flags
     :type features: list
     :return: dict
     :rtype: dict|None
