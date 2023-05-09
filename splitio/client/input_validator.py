@@ -303,7 +303,7 @@ def validate_traffic_type(traffic_type, should_validate_existance, split_storage
         _LOGGER.warning(
             'track: Traffic Type %s does not have any corresponding Feature flags in this environment, '
             'make sure you\'re tracking your events to a valid traffic type defined '
-            'in the Split console.',
+            'in the Split user interface.',
             traffic_type
         )
 
