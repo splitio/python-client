@@ -26,7 +26,7 @@ class SegmentSynchronizer(object):
         :param segment_api: API to retrieve segments from backend.
         :type segment_api: splitio.api.SegmentApi
 
-        :param split_storage: Split Storage.
+        :param split_storage: Feature Flag Storage.
         :type split_storage: splitio.storage.InMemorySplitStorage
 
         :param segment_storage: Segment storage reference.
@@ -110,7 +110,7 @@ class SegmentSynchronizer(object):
         :param segment_name: Name of the segment to update.
         :type segment_name: str
 
-        :param fetch_options Fetch options for getting split definitions.
+        :param fetch_options Fetch options for getting feature flag definitions.
         :type fetch_options splitio.api.FetchOptions
 
         :param till: Passed till from Streaming.
@@ -207,7 +207,7 @@ class LocalSegmentSynchronizer(object):
         :param segment_folder: patch to the segment folder
         :type segment_folder: str
 
-        :param split_storage: Split Storage.
+        :param split_storage: Feature flag Storage.
         :type split_storage: splitio.storage.InMemorySplitStorage
 
         :param segment_storage: Segment storage reference.
@@ -281,7 +281,7 @@ class LocalSegmentSynchronizer(object):
         """
         Parse a segment and store in segment storage.
 
-        :param filename: Path of the file containing split
+        :param filename: Path of the file containing Feature flag
         :type filename: str.
 
         :return: Sanitized segment structure
