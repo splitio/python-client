@@ -232,18 +232,18 @@ def validate_key(key, method_name):
     return matching_key_result, bucketing_key_result
 
 
-def validate_feature_name(feature_flag_name, should_validate_existance, feature_flag_storage, method_name):
+def validate_feature_flag_name(feature_flag_name, should_validate_existance, feature_flag_storage, method_name):
     """
     Check if feature flag name is valid for get_treatment.
 
-    :param feature_name: feature flag name to be checked
-    :type feature_name: str
-    :return: feature_name
+    :param feature_flag_name: feature flag name to be checked
+    :type feature_flag_name: str
+    :return: feature_flag_name
     :rtype: str|None
     """
-    if (not _check_not_null(feature_flag_name, 'feature_name', method_name)) or \
-       (not _check_is_string(feature_flag_name, 'feature_name', method_name)) or \
-       (not _check_string_not_empty(feature_flag_name, 'feature_name', method_name)):
+    if (not _check_not_null(feature_flag_name, 'feature_flag_name', method_name)) or \
+       (not _check_is_string(feature_flag_name, 'feature_flag_name', method_name)) or \
+       (not _check_string_not_empty(feature_flag_name, 'feature_flag_name', method_name)):
         return None
 
     if should_validate_existance and feature_flag_storage.get(feature_flag_name) is None:
@@ -344,18 +344,18 @@ def validate_value(value):
     return value
 
 
-def validate_manager_feature_name(feature_flag_name, should_validate_existance, feature_flag_storage):
+def validate_manager_feature_flag_name(feature_flag_name, should_validate_existance, feature_flag_storage):
     """
     Check if feature flag name is valid for track.
 
-    :param feature_name: feature flag name to be checked
-    :type feature_name: str
-    :return: feature_name
+    :param feature_flag_name: feature flag name to be checked
+    :type feature_flag_name: str
+    :return: feature_flag_name
     :rtype: str|None
     """
-    if (not _check_not_null(feature_flag_name, 'feature_name', 'split')) or \
-       (not _check_is_string(feature_flag_name, 'feature_name', 'split')) or \
-       (not _check_string_not_empty(feature_flag_name, 'feature_name', 'split')):
+    if (not _check_not_null(feature_flag_name, 'feature_flag_name', 'split')) or \
+       (not _check_is_string(feature_flag_name, 'feature_flag_name', 'split')) or \
+       (not _check_string_not_empty(feature_flag_name, 'feature_flag_name', 'split')):
         return None
 
     if should_validate_existance and feature_flag_storage.get(feature_flag_name) is None:

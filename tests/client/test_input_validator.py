@@ -104,31 +104,31 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatment('some_key', None) == CONTROL
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment', 'feature_name', 'feature_name')
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert client.get_treatment('some_key', 123) == CONTROL
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'feature_name', 'feature_name')
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert client.get_treatment('some_key', True) == CONTROL
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'feature_name', 'feature_name')
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert client.get_treatment('some_key', []) == CONTROL
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'feature_name', 'feature_name')
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert client.get_treatment('some_key', '') == CONTROL
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatment', 'feature_name', 'feature_name')
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatment', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
@@ -338,31 +338,31 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatment_with_config('some_key', None) == (CONTROL, None)
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_name', 'feature_name')
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert client.get_treatment_with_config('some_key', 123) == (CONTROL, None)
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_name', 'feature_name')
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert client.get_treatment_with_config('some_key', True) == (CONTROL, None)
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_name', 'feature_name')
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert client.get_treatment_with_config('some_key', []) == (CONTROL, None)
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_name', 'feature_name')
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert client.get_treatment_with_config('some_key', '') == (CONTROL, None)
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_name', 'feature_name')
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
@@ -1109,25 +1109,25 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
 
         assert manager.split(None) is None
         assert _logger.error.mock_calls == [
-            mocker.call("%s: you passed a null %s, %s must be a non-empty string.", 'split', 'feature_name', 'feature_name')
+            mocker.call("%s: you passed a null %s, %s must be a non-empty string.", 'split', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert manager.split("") is None
         assert _logger.error.mock_calls == [
-            mocker.call("%s: you passed an empty %s, %s must be a non-empty string.", 'split', 'feature_name', 'feature_name')
+            mocker.call("%s: you passed an empty %s, %s must be a non-empty string.", 'split', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert manager.split(True) is None
         assert _logger.error.mock_calls == [
-            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'split', 'feature_name', 'feature_name')
+            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'split', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert manager.split([]) is None
         assert _logger.error.mock_calls == [
-            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'split', 'feature_name', 'feature_name')
+            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'split', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()

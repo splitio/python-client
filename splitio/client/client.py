@@ -90,7 +90,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             start = get_current_epoch_time_ms()
 
             matching_key, bucketing_key = input_validator.validate_key(key, method_name)
-            feature_flag = input_validator.validate_feature_name(
+            feature_flag = input_validator.validate_feature_flag_name(
                 feature_flag,
                 self.ready,
                 self._factory._get_storage('splits'),  # pylint: disable=protected-access
