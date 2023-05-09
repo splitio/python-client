@@ -22,7 +22,7 @@ factory = get_factory('YOUR_SDK_TYPE_API_KEY', config=config)
 try:
     factory.block_until_ready(5) # wait up to 5 seconds
     split = factory.client()
-    treatment = split.get_treatment('CUSTOMER_ID', 'SPLIT_NAME')
+    treatment = split.get_treatment('CUSTOMER_ID', 'FEATURE_FLAG_NAME')
     if treatment == "on":
         # insert code here to show on treatment
     elif treatment == "off":
