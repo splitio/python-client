@@ -208,7 +208,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             return treatments
         except Exception:  # pylint: disable=broad-except
             self._telemetry_evaluation_producer.record_exception(metric_name)
-            _LOGGER.error('Error getting treatment for feature flagss')
+            _LOGGER.error('Error getting treatment for feature flags')
             _LOGGER.debug('Error: ', exc_info=True)
         return input_validator.generate_control_treatments(list(features), method_name)
 
