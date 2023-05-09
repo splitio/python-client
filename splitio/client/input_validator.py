@@ -192,7 +192,7 @@ def _remove_empty_spaces(value, operation):
     """
     strip_value = value.strip()
     if value != strip_value:
-        _LOGGER.warning("%s: feature_flag_name '%s' has extra whitespace, trimming.", operation, value)
+        _LOGGER.warning("%s: feature flag name '%s' has extra whitespace, trimming.", operation, value)
     return strip_value
 
 
