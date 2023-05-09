@@ -26,7 +26,7 @@ The following snippet shows you how to create a basic client using the default c
   >>> from splitio import get_factory
   >>> factory = get_factory('some_api_key')
   >>> client = factory.client()
-  >>> client.get_treatment('some_user', 'some_feature')
+  >>> client.get_treatment('some_user', 'some_feature_flag')
   'SOME_TREATMENT'
 
 Bucketing key
@@ -39,11 +39,11 @@ In advanced mode the key can be set as two different parts, one of them just to 
   >>> split_key = Key(user, bucketing_key)
   >>> factory = get_factory('API_KEY')
   >>> client = factory.client()
-  >>> client.get_treatment(split_key, 'some_feature')
+  >>> client.get_treatment(split_key, 'some_feature_flag')
 
 Manager API
 -----------
-Manager API is very useful to get a representation (view) of cached splits: ::
+Manager API is very useful to get a representation (view) of cached feature flags: ::
 
   >>> from splitio import get_factory
   >>> factory = get_factory('API_KEY')
@@ -57,7 +57,7 @@ Available methods:
 **split(name):** Returns a SplitView instance ::
   >>> manager.split('some_test_name')
 
-**split_names():** Returns a list of Split names (String) ::
+**split_names():** Returns a list of Feature Flag names (String) ::
   >>> manager.split_names()
 
 Client configuration
@@ -79,7 +79,7 @@ All the possible configuration options are:
 +------------------------+------+--------------------------------------------------------+---------+
 | readTimeout            | int  | The read timeout for HTTP connections in milliseconds. | 1500    |
 +------------------------+------+--------------------------------------------------------+---------+
-| featuresRefreshRate    | int  | The features (splits) update refresh period in         | 5      |
+| featuresRefreshRate    | int  | The feature flags update refresh period in             | 5       |
 |                        |      | seconds.                                               |         |
 +------------------------+------+--------------------------------------------------------+---------+
 | segmentsRefreshRate    | int  | The segments update refresh period in seconds.         | 60      |
@@ -88,10 +88,10 @@ All the possible configuration options are:
 +------------------------+------+--------------------------------------------------------+---------+
 | impressionsRefreshRate | int  | The impressions report period in seconds               | 60      |
 +------------------------+------+--------------------------------------------------------+---------+
-| ready                  | int  | How long to wait (in milliseconds) for the features    |         |
-|                        |      | and segments information to be available. If the       |         |
-|                        |      | timeout is exceeded, a ``TimeoutException`` will be    |         |
-|                        |      | raised. If value is 0, the constructor will return     |         |
+| ready                  | int  | How long to wait (in milliseconds) for the feature     |         |
+|                        |      | flags and segments information to be available. If     |         |
+|                        |      | the timeout is exceeded, a ``TimeoutException`` will   |         |
+|                        |      | be raised. If value is 0, the constructor will return  |         |
 |                        |      | immediately but not all the information might be       |         |
 |                        |      | available right away.                                  |         |
 +------------------------+------+--------------------------------------------------------+---------+
@@ -106,31 +106,31 @@ directory. The ``.split`` file has the following format: ::
 
   file: (comment | split_line)+
   comment : '#' string*\n
-  split_line : feature_name ' ' treatment\n
-  feature_name : string
+  split_line : feature_flag_name ' ' treatment\n
+  feature_flag_name : string
   treatment : string
 
 This is an example of a ``.split`` file: ::
 
   # This is a comment
-  feature_0 treatment_0
-  feature_1 treatment_1
+  feature_flag_0 treatment_0
+  feature_flag_1 treatment_1
 
-Whenever a treatment is requested for the feature ``feature_0``, ``treatment_0`` is going to be returned. The same goes for ``feature_1`` and ``treatment_1``. The following example illustrates the behaviour: ::
+Whenever a treatment is requested for the feature flag ``feature_flag_0``, ``treatment_0`` is going to be returned. The same goes for ``feature_flag_1`` and ``treatment_1``. The following example illustrates the behaviour: ::
 
   >>> from splitio import get_factory
   >>> factory = get_factory('localhost')
   >>> client = factory.client()
-  >>> client.get_treatment('some_user', 'feature_0')
+  >>> client.get_treatment('some_user', 'feature_flag_0')
   'treatment_0'
-  >>> client.get_treatment('some_other_user', 'feature_0')
+  >>> client.get_treatment('some_other_user', 'feature_flag_0')
   'treatment_0'
-  >>> client.get_treatment('yet_another_user', 'feature_1')
+  >>> client.get_treatment('yet_another_user', 'feature_flag_1')
   'treatment_1'
-  >>> client.get_treatment('some_user', 'non_existent_feature')
+  >>> client.get_treatment('some_user', 'non_existent_feature_flag')
   'CONTROL'
 
-Notice that an API key is not necessary for the localhost environment, and the ``CONTROL`` is returned for non existent features.
+Notice that an API key is not necessary for the localhost environment, and the ``CONTROL`` is returned for non existent feature flags.
 
 It is possible to specify a different splits file using the ``split_definition_file_name`` argument: ::
 
@@ -161,7 +161,7 @@ Before you can use it, you need to install the ``splitio_client`` with support f
 
   pip install splitio_client[redis]
 
-The client depends on the information for features and segments being updated externally. In order to do that, we provide the ``update_splits`` and ``update_segments`` scripts or even the ``splitio.bin.synchronizer`` service.
+The client depends on the information for feature flags and segments being updated externally. In order to do that, we provide the ``update_splits`` and ``update_segments`` scripts or even the ``splitio.bin.synchronizer`` service.
 
 The scripts are configured through a JSON settings file, like the following: ::
 
@@ -198,7 +198,7 @@ These are the possible configuration parameters:
 | redisDb                | int  | The db number on the Redis instance                    | 0                             |
 +------------------------+------+--------------------------------------------------------+-------------------------------+
 
-Let's assume that the configuration file is called ``splitio-config.json`` and that the client is installed in a virtualenv in ``/home/user/venv``. The feature update script can be run with: ::
+Let's assume that the configuration file is called ``splitio-config.json`` and that the client is installed in a virtualenv in ``/home/user/venv``. The feature flag update script can be run with: ::
 
   $ /home/user/venv/bin/python -m splitio.update_scripts.update_splits splitio-config.json
 
