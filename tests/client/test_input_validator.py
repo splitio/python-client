@@ -232,7 +232,7 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatment('matching_key', '  some_feature   ', None) == 'default_treatment'
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature_name \'%s\' has extra whitespace, trimming.', 'get_treatment', '  some_feature   ')
+            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatment', '  some_feature   ')
         ]
 
         _logger.reset_mock()
@@ -241,7 +241,7 @@ class ClientInputValidationTests(object):
         assert _logger.warning.mock_calls == [
             mocker.call(
                 "%s: you passed \"%s\" that does not exist in this environment, "
-                "please double check what Splits exist in the web console.",
+                "please double check what Feature flags exist in the Split user interface.",
                 'get_treatment',
                 'some_feature'
             )
@@ -466,7 +466,7 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatment_with_config('matching_key', '  some_feature   ', None) == ('default_treatment', '{"some": "property"}')
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature_name \'%s\' has extra whitespace, trimming.', 'get_treatment_with_config', '  some_feature   ')
+            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatment_with_config', '  some_feature   ')
         ]
 
         _logger.reset_mock()
@@ -475,7 +475,7 @@ class ClientInputValidationTests(object):
         assert _logger.warning.mock_calls == [
             mocker.call(
                 "%s: you passed \"%s\" that does not exist in this environment, "
-                "please double check what Splits exist in the web console.",
+                "please double check what Feature flags exist in the Split user interface.",
                 'get_treatment_with_config',
                 'some_feature'
             )
@@ -721,9 +721,9 @@ class ClientInputValidationTests(object):
         assert client.track("some_key", "traffic_type", "event_type", None) is True
         assert _logger.error.mock_calls == []
         assert _logger.warning.mock_calls == [mocker.call(
-            'track: Traffic Type %s does not have any corresponding Splits in this environment, '
+            'track: Traffic Type %s does not have any corresponding Feature flags in this environment, '
             'make sure you\'re tracking your events to a valid traffic type defined '
-            'in the Split console.',
+            'in the Split user interface.',
             'traffic_type'
         )]
 
@@ -874,45 +874,45 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatments('some_key', None) == {}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments')
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments')
         ]
 
         _logger.reset_mock()
         assert client.get_treatments('some_key', True) == {}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments')
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments')
         ]
 
         _logger.reset_mock()
         assert client.get_treatments('some_key', 'some_string') == {}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments')
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments')
         ]
 
         _logger.reset_mock()
         assert client.get_treatments('some_key', []) == {}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments')
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments')
         ]
 
         _logger.reset_mock()
         assert client.get_treatments('some_key', [None, None]) == {}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments')
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments')
         ]
 
         _logger.reset_mock()
         assert client.get_treatments('some_key', [True]) == {}
-        assert mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments') in _logger.error.mock_calls
+        assert mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments') in _logger.error.mock_calls
 
         _logger.reset_mock()
         assert client.get_treatments('some_key', ['', '']) == {}
-        assert mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments') in _logger.error.mock_calls
+        assert mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments') in _logger.error.mock_calls
 
         _logger.reset_mock()
         assert client.get_treatments('some_key', ['some   ']) == {'some': 'default_treatment'}
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature_name \'%s\' has extra whitespace, trimming.', 'get_treatments', 'some   ')
+            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatments', 'some   ')
         ]
 
         _logger.reset_mock()
@@ -927,7 +927,7 @@ class ClientInputValidationTests(object):
         assert _logger.warning.mock_calls == [
             mocker.call(
                 "%s: you passed \"%s\" that does not exist in this environment, "
-                "please double check what Splits exist in the web console.",
+                "please double check what Feature flags exist in the Split user interface.",
                 'get_treatments',
                 'some_feature'
             )
@@ -1015,45 +1015,45 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatments_with_config('some_key', None) == {}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments_with_config')
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config')
         ]
 
         _logger.reset_mock()
         assert client.get_treatments_with_config('some_key', True) == {}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments_with_config')
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config')
         ]
 
         _logger.reset_mock()
         assert client.get_treatments_with_config('some_key', 'some_string') == {}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments_with_config')
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config')
         ]
 
         _logger.reset_mock()
         assert client.get_treatments_with_config('some_key', []) == {}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments_with_config')
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config')
         ]
 
         _logger.reset_mock()
         assert client.get_treatments_with_config('some_key', [None, None]) == {}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments_with_config')
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config')
         ]
 
         _logger.reset_mock()
         assert client.get_treatments_with_config('some_key', [True]) == {}
-        assert mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments_with_config') in _logger.error.mock_calls
+        assert mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config') in _logger.error.mock_calls
 
         _logger.reset_mock()
         assert client.get_treatments_with_config('some_key', ['', '']) == {}
-        assert mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments_with_config') in _logger.error.mock_calls
+        assert mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config') in _logger.error.mock_calls
 
         _logger.reset_mock()
         assert client.get_treatments_with_config('some_key', ['some_feature   ']) == {'some_feature': ('default_treatment', '{"some": "property"}')}
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature_name \'%s\' has extra whitespace, trimming.', 'get_treatments_with_config', 'some_feature   ')
+            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatments_with_config', 'some_feature   ')
         ]
 
         _logger.reset_mock()
@@ -1068,7 +1068,7 @@ class ClientInputValidationTests(object):
         assert _logger.warning.mock_calls == [
             mocker.call(
                 "%s: you passed \"%s\" that does not exist in this environment, "
-                "please double check what Splits exist in the web console.",
+                "please double check what Feature flags exist in the Split user interface.",
                 'get_treatments',
                 'some_feature'
             )
@@ -1142,7 +1142,7 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
         assert split_mock.to_split_view.mock_calls == []
         assert _logger.warning.mock_calls == [mocker.call(
             "split: you passed \"%s\" that does not exist in this environment, "
-            "please double check what Splits exist in the web console.",
+            "please double check what Feature flags exist in the Split user interface.",
             'nonexistant-split'
         )]
 
