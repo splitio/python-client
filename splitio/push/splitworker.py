@@ -1,4 +1,4 @@
-"""Split changes processing worker."""
+"""Feature Flag changes processing worker."""
 import logging
 import threading
 
@@ -7,7 +7,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class SplitWorker(object):
-    """Split Worker for processing updates."""
+    """Feature Flag Worker for processing updates."""
 
     _centinel = object()
 
@@ -15,10 +15,10 @@ class SplitWorker(object):
         """
         Class constructor.
 
-        :param synchronize_split: handler to perform split synchronization on incoming event
+        :param synchronize_split: handler to perform feature flag synchronization on incoming event
         :type synchronize_split: callable
 
-        :param split_queue: queue with split updates notifications
+        :param split_queue: queue with feature flag updates notifications
         :type split_queue: queue
         """
         self._split_queue = split_queue
@@ -38,11 +38,11 @@ class SplitWorker(object):
                 break
             if event == self._centinel:
                 continue
-            _LOGGER.debug('Processing split_update %d', event.change_number)
+            _LOGGER.debug('Processing feature flag update %d', event.change_number)
             try:
                 self._handler(event.change_number)
             except Exception:  # pylint: disable=broad-except
-                _LOGGER.error('Exception raised in split synchronization')
+                _LOGGER.error('Exception raised in feature flag synchronization')
                 _LOGGER.debug('Exception information: ', exc_info=True)
 
     def start(self):
@@ -52,13 +52,13 @@ class SplitWorker(object):
             return
         self._running = True
 
-        _LOGGER.debug('Starting Split Worker')
+        _LOGGER.debug('Starting Feature Flag Worker')
         self._worker = threading.Thread(target=self._run, name='PushSplitWorker', daemon=True)
         self._worker.start()
 
     def stop(self):
         """Stop worker."""
-        _LOGGER.debug('Stopping Split Worker')
+        _LOGGER.debug('Stopping Feature Flag Worker')
         if not self.is_running():
             _LOGGER.debug('Worker is not running')
             return
