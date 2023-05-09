@@ -288,7 +288,7 @@ class LocalSplitSynchronizer(object):
         :param filename: Path of the file containing mocked feature flags & treatments.
         :type filename: str.
 
-        :return: Storage populataed with feature flags ready to be evaluated.
+        :return: Storage populated with feature flags ready to be evaluated.
         :rtype: InMemorySplitStorage
         """
         try:
