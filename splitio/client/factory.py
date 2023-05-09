@@ -667,7 +667,7 @@ def get_factory(api_key, **kwargs):
     if _INSTANTIATED_FACTORIES:
         if api_key in _INSTANTIATED_FACTORIES:
             _LOGGER.warning(
-                "factory instantiation: You already have %d %s with this API Key. "
+                "factory instantiation: You already have %d %s with this SDK Key. "
                 "We recommend keeping only one instance of the factory at all times "
                 "(Singleton pattern) and reusing it throughout your application.",
                 _INSTANTIATED_FACTORIES[api_key],
