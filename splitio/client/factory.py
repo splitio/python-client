@@ -614,10 +614,10 @@ def _build_localhost_factory(cfg):
         None, None, None,
     )
 
-    split_sync_task = None
+    feature_flag_sync_task = None
     segment_sync_task = None
     if cfg['localhostRefreshEnabled'] and localhost_mode == LocalhostMode.JSON:
-        split_sync_task = SplitSynchronizationTask(
+        feature_flag_sync_task = SplitSynchronizationTask(
             synchronizers.split_sync.synchronize_splits,
             cfg['featuresRefreshRate'],
         )
@@ -626,7 +626,7 @@ def _build_localhost_factory(cfg):
             cfg['segmentsRefreshRate'],
         )
     tasks = SplitTasks(
-        split_sync_task,
+        feature_flag_sync_task,
         segment_sync_task,
         None, None, None,
     )
