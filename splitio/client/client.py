@@ -116,7 +116,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             self._record_stats([(impression, attributes)], start, metric_name, method_name)
             return result['treatment'], result['configurations']
         except Exception as e:  # pylint: disable=broad-except
-            _LOGGER.error('Error getting treatment for feature')
+            _LOGGER.error('Error getting treatment for feature flag')
             _LOGGER.error(str(e))
             _LOGGER.debug('Error: ', exc_info=True)
             self._telemetry_evaluation_producer.record_exception(metric_name)
@@ -185,7 +185,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
                 except Exception:  # pylint: disable=broad-except
                     _LOGGER.error('%s: An exception occured when evaluating '
-                                  'feature %s returning CONTROL.' % (method_name, feature))
+                                  'feature flag %s returning CONTROL.' % (method_name, feature))
                     treatments[feature] = CONTROL, None
                     _LOGGER.debug('Error: ', exc_info=True)
                     continue
@@ -208,7 +208,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             return treatments
         except Exception:  # pylint: disable=broad-except
             self._telemetry_evaluation_producer.record_exception(metric_name)
-            _LOGGER.error('Error getting treatment for features')
+            _LOGGER.error('Error getting treatment for feature flagss')
             _LOGGER.debug('Error: ', exc_info=True)
         return input_validator.generate_control_treatments(list(features), method_name)
 
@@ -233,18 +233,18 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
     def get_treatment_with_config(self, key, feature, attributes=None):
         """
-        Get the treatment and config for a feature and key, with optional dictionary of attributes.
+        Get the treatment and config for a feature flag and key, with optional dictionary of attributes.
 
         This method never raises an exception. If there's a problem, the appropriate log message
         will be generated and the method will return the CONTROL treatment.
 
         :param key: The key for which to get the treatment
         :type key: str
-        :param feature: The name of the feature for which to get the treatment
+        :param feature: The name of the feature flag for which to get the treatment
         :type feature: str
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
-        :return: The treatment for the key and feature
+        :return: The treatment for the key and feature flag
         :rtype: tuple(str, str)
         """
         return self._make_evaluation(key, feature, attributes, 'get_treatment_with_config',
@@ -252,18 +252,18 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
     def get_treatment(self, key, feature, attributes=None):
         """
-        Get the treatment for a feature and key, with an optional dictionary of attributes.
+        Get the treatment for a feature flag and key, with an optional dictionary of attributes.
 
         This method never raises an exception. If there's a problem, the appropriate log message
         will be generated and the method will return the CONTROL treatment.
 
         :param key: The key for which to get the treatment
         :type key: str
-        :param feature: The name of the feature for which to get the treatment
+        :param feature: The name of the feature flag for which to get the treatment
         :type feature: str
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
-        :return: The treatment for the key and feature
+        :return: The treatment for the key and feature flag
         :rtype: str
         """
         treatment, _ = self._make_evaluation(key, feature, attributes, 'get_treatment',
@@ -272,18 +272,18 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
     def get_treatments_with_config(self, key, features, attributes=None):
         """
-        Evaluate multiple features and return a dict with feature -> (treatment, config).
+        Evaluate multiple feature flags and return a dict with feature flag -> (treatment, config).
 
-        Get the treatments for a list of features considering a key, with an optional dictionary of
+        Get the treatments for a list of feature flags considering a key, with an optional dictionary of
         attributes. This method never raises an exception. If there's a problem, the appropriate
         log message will be generated and the method will return the CONTROL treatment.
         :param key: The key for which to get the treatment
         :type key: str
-        :param features: Array of the names of the features for which to get the treatment
+        :param features: Array of the names of the feature flags for which to get the treatment
         :type feature: list
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
-        :return: Dictionary with the result of all the features provided
+        :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
         return self._make_evaluations(key, features, attributes, 'get_treatments_with_config',
@@ -291,18 +291,18 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
     def get_treatments(self, key, features, attributes=None):
         """
-        Evaluate multiple features and return a dictionary with all the feature/treatments.
+        Evaluate multiple feature flags and return a dictionary with all the feature flag/treatments.
 
-        Get the treatments for a list of features considering a key, with an optional dictionary of
+        Get the treatments for a list of feature flags considering a key, with an optional dictionary of
         attributes. This method never raises an exception. If there's a problem, the appropriate
         log message will be generated and the method will return the CONTROL treatment.
         :param key: The key for which to get the treatment
         :type key: str
-        :param features: Array of the names of the features for which to get the treatment
+        :param features: Array of the names of the feature flags for which to get the treatment
         :type feature: list
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
-        :return: Dictionary with the result of all the features provided
+        :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
         with_config = self._make_evaluations(key, features, attributes, 'get_treatments',
