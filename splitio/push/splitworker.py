@@ -11,18 +11,18 @@ class SplitWorker(object):
 
     _centinel = object()
 
-    def __init__(self, synchronize_split, split_queue):
+    def __init__(self, synchronize_feature_flag, feature_flag_queue):
         """
         Class constructor.
 
-        :param synchronize_split: handler to perform feature flag synchronization on incoming event
-        :type synchronize_split: callable
+        :param synchronize_feature_flag: handler to perform feature flag synchronization on incoming event
+        :type synchronize_feature_flag: callable
 
-        :param split_queue: queue with feature flag updates notifications
-        :type split_queue: queue
+        :param feature_flag_queue: queue with feature flag updates notifications
+        :type feature_flag_queue: queue
         """
-        self._split_queue = split_queue
-        self._handler = synchronize_split
+        self._feature_flag_queue = feature_flag_queue
+        self._handler = synchronize_feature_flag
         self._running = False
         self._worker = None
 
@@ -33,7 +33,7 @@ class SplitWorker(object):
     def _run(self):
         """Run worker handler."""
         while self.is_running():
-            event = self._split_queue.get()
+            event = self._feature_flag_queue.get()
             if not self.is_running():
                 break
             if event == self._centinel:
@@ -53,7 +53,7 @@ class SplitWorker(object):
         self._running = True
 
         _LOGGER.debug('Starting Feature Flag Worker')
-        self._worker = threading.Thread(target=self._run, name='PushSplitWorker', daemon=True)
+        self._worker = threading.Thread(target=self._run, name='PushFeatureFlagWorker', daemon=True)
         self._worker.start()
 
     def stop(self):
@@ -63,4 +63,4 @@ class SplitWorker(object):
             _LOGGER.debug('Worker is not running')
             return
         self._running = False
-        self._split_queue.put(self._centinel)
+        self._feature_flag_queue.put(self._centinel)
