@@ -192,7 +192,7 @@ def _remove_empty_spaces(value, operation):
     """
     strip_value = value.strip()
     if value != strip_value:
-        _LOGGER.warning("%s: feature_name '%s' has extra whitespace, trimming.", operation, value)
+        _LOGGER.warning("%s: feature flag name '%s' has extra whitespace, trimming.", operation, value)
     return strip_value
 
 
@@ -234,9 +234,9 @@ def validate_key(key, method_name):
 
 def validate_feature_name(feature_name, should_validate_existance, split_storage, method_name):
     """
-    Check if feature_name is valid for get_treatment.
+    Check if feature flag name is valid for get_treatment.
 
-    :param feature_name: feature_name to be checked
+    :param feature_name: feature flag name to be checked
     :type feature_name: str
     :return: feature_name
     :rtype: str|None
@@ -249,7 +249,7 @@ def validate_feature_name(feature_name, should_validate_existance, split_storage
     if should_validate_existance and split_storage.get(feature_name) is None:
         _LOGGER.warning(
             "%s: you passed \"%s\" that does not exist in this environment, "
-            "please double check what Splits exist in the web console.",
+            "please double check what Feature flags exist in the Split user interface.",
             method_name,
             feature_name
         )
@@ -283,7 +283,7 @@ def validate_traffic_type(traffic_type, should_validate_existance, split_storage
 
     :param traffic_type: traffic_type to be checked
     :type traffic_type: str
-    :param should_validate_existance: Whether to check for existante in the split storage.
+    :param should_validate_existance: Whether to check for existante in the feature flag storage.
     :type should_validate_existance: bool
     :param split_storage: Split storage.
     :param split_storage: splitio.storages.SplitStorage
@@ -301,7 +301,7 @@ def validate_traffic_type(traffic_type, should_validate_existance, split_storage
 
     if should_validate_existance and not split_storage.is_valid_traffic_type(traffic_type):
         _LOGGER.warning(
-            'track: Traffic Type %s does not have any corresponding Splits in this environment, '
+            'track: Traffic Type %s does not have any corresponding Feature flags in this environment, '
             'make sure you\'re tracking your events to a valid traffic type defined '
             'in the Split console.',
             traffic_type
@@ -346,9 +346,9 @@ def validate_value(value):
 
 def validate_manager_feature_name(feature_name, should_validate_existance, split_storage):
     """
-    Check if feature_name is valid for track.
+    Check if feature flag name is valid for track.
 
-    :param feature_name: feature_name to be checked
+    :param feature_name: feature flag name to be checked
     :type feature_name: str
     :return: feature_name
     :rtype: str|None
@@ -361,7 +361,7 @@ def validate_manager_feature_name(feature_name, should_validate_existance, split
     if should_validate_existance and split_storage.get(feature_name) is None:
         _LOGGER.warning(
             "split: you passed \"%s\" that does not exist in this environment, "
-            "please double check what Splits exist in the web console.",
+            "please double check what Feature flags exist in the Split user interface.",
             feature_name
         )
         return None
@@ -376,27 +376,27 @@ def validate_features_get_treatments(  # pylint: disable=invalid-name
     split_storage=None
 ):
     """
-    Check if features is valid for get_treatments.
+    Check if feature flags is valid for get_treatments.
 
-    :param features: array of features
+    :param features: array of feature flags
     :type features: list
     :return: filtered_features
     :rtype: tuple
     """
     if features is None or not isinstance(features, list):
-        _LOGGER.error("%s: feature_names must be a non-empty array.", method_name)
+        _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
         return None, None
     if not features:
-        _LOGGER.error("%s: feature_names must be a non-empty array.", method_name)
+        _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
         return None, None
     filtered_features = set(
         _remove_empty_spaces(feature, method_name) for feature in features
         if feature is not None and
-        _check_is_string(feature, 'feature_name', method_name) and
-        _check_string_not_empty(feature, 'feature_name', method_name)
+        _check_is_string(feature, 'feature flag name', method_name) and
+        _check_string_not_empty(feature, 'feature flag name', method_name)
     )
     if not filtered_features:
-        _LOGGER.error("%s: feature_names must be a non-empty array.", method_name)
+        _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
         return None, None
 
     if not should_validate_existance:
@@ -406,7 +406,7 @@ def validate_features_get_treatments(  # pylint: disable=invalid-name
     for missing_feature in valid_missing_features:
         _LOGGER.warning(
             "%s: you passed \"%s\" that does not exist in this environment, "
-            "please double check what Splits exist in the web console.",
+            "please double check what Feature flags exist in the Split user interface.",
             method_name,
             missing_feature
         )
@@ -415,9 +415,9 @@ def validate_features_get_treatments(  # pylint: disable=invalid-name
 
 def generate_control_treatments(features, method_name):
     """
-    Generate valid features to control.
+    Generate valid feature flags to control.
 
-    :param features: array of features
+    :param features: array of feature flags
     :type features: list
     :return: dict
     :rtype: dict|None
