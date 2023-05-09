@@ -38,7 +38,7 @@ class InMemorySenderAdapter(ImpressionsSenderAdapter):
         post the unique keys to split back end.
 
         :param uniques: unique keys disctionary
-        :type uniques: Dictionary {'feature1': set(), 'feature2': set(), .. }
+        :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
         self._telemtry_http_client.record_unique_keys({'keys': self._uniques_formatter(uniques)})
 
@@ -47,7 +47,7 @@ class InMemorySenderAdapter(ImpressionsSenderAdapter):
         Format the unique keys dictionary array to a JSON body
 
         :param uniques: unique keys disctionary
-        :type uniques: Dictionary {'feature1': set(), 'feature2': set(), .. }
+        :type uniques: Dictionary {'feature1_flag': set(), 'feature2_flag': set(), .. }
 
         :return: unique keys JSON array
         :rtype: json
@@ -71,7 +71,7 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         post the unique keys to redis.
 
         :param uniques: unique keys disctionary
-        :type uniques: Dictionary {'feature1': set(), 'feature2': set(), .. }
+        :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
         bulk_mtks = _uniques_formatter(uniques)
         try:
@@ -88,7 +88,7 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         post the impression counters to redis.
 
         :param to_send: unique keys disctionary
-        :type to_send: Dictionary {'feature1': set(), 'feature2': set(), .. }
+        :type to_send: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
         try:
             resulted = 0
@@ -138,7 +138,7 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
         post the unique keys to storage.
 
         :param uniques: unique keys disctionary
-        :type uniques: Dictionary {'feature1': set(), 'feature2': set(), .. }
+        :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
         bulk_mtks = _uniques_formatter(uniques)
         try:
@@ -157,7 +157,7 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
         post the impression counters to storage.
 
         :param to_send: unique keys disctionary
-        :type to_send: Dictionary {'feature1': set(), 'feature2': set(), .. }
+        :type to_send: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
         try:
             resulted = 0
@@ -188,7 +188,7 @@ def _uniques_formatter(uniques):
     Format the unique keys dictionary array to a JSON body
 
     :param uniques: unique keys disctionary
-    :type uniques: Dictionary {'feature1': set(), 'feature2': set(), .. }
+    :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
 
     :return: unique keys JSON array
     :rtype: json
