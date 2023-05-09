@@ -1156,19 +1156,19 @@ class FactoryInputValidationTests(object):  #pylint: disable=too-few-public-meth
 
         assert get_factory(None) is None
         assert logger.error.mock_calls == [
-            mocker.call("%s: you passed a null %s, %s must be a non-empty string.", 'factory_instantiation', 'apikey', 'apikey')
+            mocker.call("%s: you passed a null %s, %s must be a non-empty string.", 'factory_instantiation', 'sdkkey', 'sdkkey')
         ]
 
         logger.reset_mock()
         assert get_factory('') is None
         assert logger.error.mock_calls == [
-            mocker.call("%s: you passed an empty %s, %s must be a non-empty string.", 'factory_instantiation', 'apikey', 'apikey')
+            mocker.call("%s: you passed an empty %s, %s must be a non-empty string.", 'factory_instantiation', 'sdkkey', 'sdkkey')
         ]
 
         logger.reset_mock()
         assert get_factory(True) is None
         assert logger.error.mock_calls == [
-            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'factory_instantiation', 'apikey', 'apikey')
+            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'factory_instantiation', 'sdkkey', 'sdkkey')
         ]
 
         logger.reset_mock()

@@ -153,7 +153,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         if input_validator.validate_attributes(attributes, method_name) is False:
             return input_validator.generate_control_treatments(feature_flags, method_name)
 
-        feature_flags, missing = input_validator.validate_features_get_treatments(
+        feature_flags, missing = input_validator.validate_feature_flags_get_treatments(
             method_name,
             feature_flags,
             self.ready,
