@@ -377,7 +377,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         start = get_current_epoch_time_ms()
         key = input_validator.validate_track_key(key)
         event_type = input_validator.validate_event_type(event_type)
-        should_validate_existance = self.ready and self._factory._apikey != 'localhost'  # pylint: disable=protected-access
+        should_validate_existance = self.ready and self._factory._sdkkey != 'localhost'  # pylint: disable=protected-access
         traffic_type = input_validator.validate_traffic_type(
             traffic_type,
             should_validate_existance,

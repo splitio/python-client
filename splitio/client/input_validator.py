@@ -453,8 +453,8 @@ def validate_factory_instantiation(sdkkey):
     """
     Check if the factory if being instantiated with the appropriate arguments.
 
-    :param apikey: str
-    :type apikey: str
+    :param sdkkey: str
+    :type sdkkey: str
     :return: bool
     :rtype: True|False
     """
