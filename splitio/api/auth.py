@@ -16,19 +16,19 @@ _LOGGER = logging.getLogger(__name__)
 class AuthAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the SDK Auth Service API."""
 
-    def __init__(self, client, apikey, sdk_metadata, telemetry_runtime_producer):
+    def __init__(self, client, sdkkey, sdk_metadata, telemetry_runtime_producer):
         """
         Class constructor.
 
         :param client: HTTP Client responsble for issuing calls to the backend.
         :type client: HttpClient
-        :param apikey: User apikey token.
-        :type apikey: string
+        :param sdkkey: User sdk key.
+        :type sdkkey: string
         :param sdk_metadata: SDK version & machine name & IP.
         :type sdk_metadata: splitio.client.util.SdkMetadata
         """
         self._client = client
-        self._apikey = apikey
+        self._sdkkey = sdkkey
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
 
@@ -44,7 +44,7 @@ class AuthAPI(object):  # pylint: disable=too-few-public-methods
             response = self._client.get(
                 'auth',
                 '/v2/auth',
-                self._apikey,
+                self._sdkkey,
                 extra_headers=self._metadata,
             )
             record_telemetry(response.status_code, get_current_epoch_time_ms() - start, HTTPExceptionsAndLatencies.TOKEN, self._telemetry_runtime_producer)

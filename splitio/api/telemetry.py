@@ -12,17 +12,17 @@ _LOGGER = logging.getLogger(__name__)
 class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the Telemetry API."""
 
-    def __init__(self, client, apikey, sdk_metadata, telemetry_runtime_producer):
+    def __init__(self, client, sdkkey, sdk_metadata, telemetry_runtime_producer):
         """
         Class constructor.
 
         :param client: HTTP Client responsble for issuing calls to the backend.
         :type client: HttpClient
-        :param apikey: User apikey token.
-        :type apikey: string
+        :param sdkkey: User sdkkey token.
+        :type sdkkey: string
         """
         self._client = client
-        self._apikey = apikey
+        self._sdkkey = sdkkey
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
 
@@ -38,7 +38,7 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
             response = self._client.post(
                 'telemetry',
                 '/v1/keys/ss',
-                self._apikey,
+                self._sdkkey,
                 body=uniques,
                 extra_headers=self._metadata
             )
@@ -64,7 +64,7 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
             response = self._client.post(
                 'telemetry',
                 '/v1/metrics/config',
-                self._apikey,
+                self._sdkkey,
                 body=configs,
                 extra_headers=self._metadata,
             )
@@ -90,7 +90,7 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
             response = self._client.post(
                 'telemetry',
                 '/v1/metrics/usage',
-                self._apikey,
+                self._sdkkey,
                 body=stats,
                 extra_headers=self._metadata,
             )

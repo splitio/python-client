@@ -17,17 +17,17 @@ _LOGGER = logging.getLogger(__name__)
 class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the impressions API."""
 
-    def __init__(self, client, apikey, sdk_metadata, telemetry_runtime_producer, mode=ImpressionsMode.OPTIMIZED):
+    def __init__(self, client, sdkkey, sdk_metadata, telemetry_runtime_producer, mode=ImpressionsMode.OPTIMIZED):
         """
         Class constructor.
 
         :param client: HTTP Client responsble for issuing calls to the backend.
         :type client: HttpClient
-        :param apikey: User apikey token.
-        :type apikey: string
+        :param sdkkey: sdk key.
+        :type sdkkey: string
         """
         self._client = client
-        self._apikey = apikey
+        self._sdkkey = sdkkey
         self._metadata = headers_from_metadata(sdk_metadata)
         self._metadata['SplitSDKImpressionsMode'] = mode.name
         self._telemetry_runtime_producer = telemetry_runtime_producer
@@ -99,7 +99,7 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
             response = self._client.post(
                 'events',
                 '/testImpressions/bulk',
-                self._apikey,
+                self._sdkkey,
                 body=bulk,
                 extra_headers=self._metadata,
             )
@@ -126,7 +126,7 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
             response = self._client.post(
                 'events',
                 '/testImpressions/count',
-                self._apikey,
+                self._sdkkey,
                 body=bulk,
                 extra_headers=self._metadata,
             )

@@ -66,19 +66,19 @@ class HttpClient(object):
         return self._urls[server] + path
 
     @staticmethod
-    def _build_basic_headers(apikey):
+    def _build_basic_headers(sdkkey):
         """
         Build basic headers with auth.
 
-        :param apikey: API token used to identify backend calls.
-        :type apikey: str
+        :param sdkkey: API token used to identify backend calls.
+        :type sdkkey: str
         """
         return {
             'Content-Type': 'application/json',
-            'Authorization': "Bearer %s" % apikey
+            'Authorization': "Bearer %s" % sdkkey
         }
 
-    def get(self, server, path, apikey, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
+    def get(self, server, path, sdkkey, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
         Issue a get request.
 
@@ -86,8 +86,8 @@ class HttpClient(object):
         :typee server: str
         :param path: path to append to the host url.
         :type path: str
-        :param apikey: api token.
-        :type apikey: str
+        :param sdkkey: sdk key.
+        :type sdkkey: str
         :param query: Query string passed as dictionary.
         :type query: dict
         :param extra_headers: key/value pairs of possible extra headers.
@@ -96,7 +96,7 @@ class HttpClient(object):
         :return: Tuple of status_code & response text
         :rtype: HttpResponse
         """
-        headers = self._build_basic_headers(apikey)
+        headers = self._build_basic_headers(sdkkey)
         if extra_headers is not None:
             headers.update(extra_headers)
 
@@ -111,7 +111,7 @@ class HttpClient(object):
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('requests library is throwing exceptions') from exc
 
-    def post(self, server, path, apikey, body, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
+    def post(self, server, path, sdkkey, body, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
         Issue a POST request.
 
@@ -119,8 +119,8 @@ class HttpClient(object):
         :typee server: str
         :param path: path to append to the host url.
         :type path: str
-        :param apikey: api token.
-        :type apikey: str
+        :param sdkkey: sdk key.
+        :type sdkkey: str
         :param body: body sent in the request.
         :type body: str
         :param query: Query string passed as dictionary.
@@ -131,7 +131,7 @@ class HttpClient(object):
         :return: Tuple of status_code & response text
         :rtype: HttpResponse
         """
-        headers = self._build_basic_headers(apikey)
+        headers = self._build_basic_headers(sdkkey)
 
         if extra_headers is not None:
             headers.update(extra_headers)

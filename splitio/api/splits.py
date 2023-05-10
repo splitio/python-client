@@ -16,19 +16,19 @@ _LOGGER = logging.getLogger(__name__)
 class SplitsAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the splits API."""
 
-    def __init__(self, client, apikey, sdk_metadata, telemetry_runtime_producer):
+    def __init__(self, client, sdkkey, sdk_metadata, telemetry_runtime_producer):
         """
         Class constructor.
 
         :param client: HTTP Client responsble for issuing calls to the backend.
         :type client: HttpClient
-        :param apikey: User apikey token.
-        :type apikey: string
+        :param sdkkey: User sdkkey token.
+        :type sdkkey: string
         :param sdk_metadata: SDK version & machine name & IP.
         :type sdk_metadata: splitio.client.util.SdkMetadata
         """
         self._client = client
-        self._apikey = apikey
+        self._sdkkey = sdkkey
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
 
@@ -51,7 +51,7 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
             response = self._client.get(
                 'sdk',
                 '/splitChanges',
-                self._apikey,
+                self._sdkkey,
                 extra_headers=extra_headers,
                 query=query,
             )
