@@ -62,7 +62,7 @@ DEFAULT_CONFIG = {
 }
 
 
-def _parse_operation_mode(apikey, config):
+def _parse_operation_mode(sdk_key, config):
     """
     Process incoming config to determine operation mode and storage type
 
@@ -72,7 +72,7 @@ def _parse_operation_mode(apikey, config):
     :returns: operation mode and storage type
     :rtype: Tuple (str, str)
     """
-    if apikey == 'localhost':
+    if sdk_key == 'localhost':
         _LOGGER.debug('Using Localhost operation mode')
         return 'localhost', 'localhost'
 
@@ -119,12 +119,12 @@ def _sanitize_impressions_mode(storage_type, mode, refresh_rate=None):
     return mode, refresh_rate
 
 
-def sanitize(apikey, config):
+def sanitize(sdk_key, config):
     """
     Look for inconsistencies or ill-formed configs and tune it accordingly.
 
-    :param apikey: customer's apikey
-    :type apikey: str
+    :param sdk_key: sdk key
+    :type sdk_key: str
 
     :param config: DEFAULT + user supplied config
     :type config: dict
@@ -132,7 +132,7 @@ def sanitize(apikey, config):
     :returns: sanitized config
     :rtype: dict
     """
-    config['operationMode'], config['storageType'] = _parse_operation_mode(apikey, config)
+    config['operationMode'], config['storageType'] = _parse_operation_mode(sdk_key, config)
     processed = DEFAULT_CONFIG.copy()
     processed.update(config)
     imp_mode, imp_rate = _sanitize_impressions_mode(config['storageType'], config.get('impressionsMode'),

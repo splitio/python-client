@@ -91,7 +91,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
 
     def __init__(  # pylint: disable=too-many-arguments
             self,
-            apikey,
+            sdk_key,
             storages,
             labels_enabled,
             recorder,
@@ -120,7 +120,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         :param preforked_initialization: Whether should be instantiated as preforked or not.
         :type preforked_initialization: bool
         """
-        self._apikey = apikey
+        self._sdk_key = sdk_key
         self._storages = storages
         self._labels_enabled = labels_enabled
         self._sync_manager = sync_manager
@@ -253,7 +253,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         finally:
             self._status = Status.DESTROYED
             with _INSTANTIATED_FACTORIES_LOCK:
-                _INSTANTIATED_FACTORIES.subtract([self._apikey])
+                _INSTANTIATED_FACTORIES.subtract([self._sdk_key])
 
     @property
     def destroyed(self):

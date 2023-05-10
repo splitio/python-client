@@ -449,20 +449,20 @@ class _ApiLogFilter(logging.Filter):  # pylint: disable=too-few-public-methods
         return record.name not in ('SegmentsAPI', 'HttpClient')
 
 
-def validate_factory_instantiation(sdkkey):
+def validate_factory_instantiation(sdk_key):
     """
     Check if the factory if being instantiated with the appropriate arguments.
 
-    :param apikey: str
-    :type apikey: str
+    :param sdk_key: str
+    :type sdk_key: str
     :return: bool
     :rtype: True|False
     """
-    if sdkkey == 'localhost':
+    if sdk_key == 'localhost':
         return True
-    if (not _check_not_null(sdkkey, 'sdkkey', 'factory_instantiation')) or \
-       (not _check_is_string(sdkkey, 'sdkkey', 'factory_instantiation')) or \
-       (not _check_string_not_empty(sdkkey, 'sdkkey', 'factory_instantiation')):
+    if (not _check_not_null(sdk_key, 'sdk_key', 'factory_instantiation')) or \
+       (not _check_is_string(sdk_key, 'sdk_key', 'factory_instantiation')) or \
+       (not _check_string_not_empty(sdk_key, 'sdk_key', 'factory_instantiation')):
         return False
     return True
 

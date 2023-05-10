@@ -553,7 +553,7 @@ class ClientInputValidationTests(object):
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
-        factory._apikey = 'some-test'
+        factory._sdk_key = 'some-test'
 
         client = Client(factory, recorder)
         client._event_storage = event_storage
@@ -728,14 +728,14 @@ class ClientInputValidationTests(object):
         )]
 
         # Test that it does not warn when in localhost mode.
-        factory._apikey = 'localhost'
+        factory._sdk_key = 'localhost'
         _logger.reset_mock()
         assert client.track("some_key", "traffic_type", "event_type", None) is True
         assert _logger.error.mock_calls == []
         assert _logger.warning.mock_calls == []
 
         # Test that it does not warn when not in localhost mode and not ready
-        factory._apikey = 'not-localhost'
+        factory._sdk_key = 'not-localhost'
         ready_property.return_value = False
         type(factory).ready = ready_property
         _logger.reset_mock()
@@ -1156,19 +1156,19 @@ class FactoryInputValidationTests(object):  #pylint: disable=too-few-public-meth
 
         assert get_factory(None) is None
         assert logger.error.mock_calls == [
-            mocker.call("%s: you passed a null %s, %s must be a non-empty string.", 'factory_instantiation', 'sdkkey', 'sdkkey')
+            mocker.call("%s: you passed a null %s, %s must be a non-empty string.", 'factory_instantiation', 'sdk_key', 'sdk_key')
         ]
 
         logger.reset_mock()
         assert get_factory('') is None
         assert logger.error.mock_calls == [
-            mocker.call("%s: you passed an empty %s, %s must be a non-empty string.", 'factory_instantiation', 'sdkkey', 'sdkkey')
+            mocker.call("%s: you passed an empty %s, %s must be a non-empty string.", 'factory_instantiation', 'sdk_key', 'sdk_key')
         ]
 
         logger.reset_mock()
         assert get_factory(True) is None
         assert logger.error.mock_calls == [
-            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'factory_instantiation', 'sdkkey', 'sdkkey')
+            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'factory_instantiation', 'sdk_key', 'sdk_key')
         ]
 
         logger.reset_mock()
