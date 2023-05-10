@@ -15,19 +15,19 @@ _LOGGER = logging.getLogger(__name__)
 class EventsAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the events API."""
 
-    def __init__(self, http_client, apikey, sdk_metadata, telemetry_runtime_producer):
+    def __init__(self, http_client, sdk_key, sdk_metadata, telemetry_runtime_producer):
         """
         Class constructor.
 
         :param http_client: HTTP Client responsble for issuing calls to the backend.
         :type http_client: HttpClient
-        :param apikey: User apikey token.
-        :type apikey: string
+        :param sdk_key: sdk key.
+        :type sdk_key: string
         :param sdk_metadata: SDK version & machine name & IP.
         :type sdk_metadata: splitio.client.util.SdkMetadata
         """
         self._client = http_client
-        self._apikey = apikey
+        self._sdk_key = sdk_key
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
 
@@ -70,7 +70,7 @@ class EventsAPI(object):  # pylint: disable=too-few-public-methods
             response = self._client.post(
                 'events',
                 '/events/bulk',
-                self._apikey,
+                self._sdk_key,
                 body=bulk,
                 extra_headers=self._metadata,
             )
