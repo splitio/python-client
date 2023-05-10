@@ -3,8 +3,7 @@
 import os
 
 from splitio.util.backoff import Backoff
-from splitio.api import APIException
-from splitio.api.commons import FetchOptions
+from splitio.api.commons import FetchOptions, APIException
 from splitio.storage import SplitStorage, SegmentStorage
 from splitio.storage.inmemmory import InMemorySegmentStorage, InMemorySplitStorage
 from splitio.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer

@@ -3,8 +3,7 @@ import time
 import json
 import os
 
-from splitio.api import APIException
-from splitio.api.commons import FetchOptions
+from splitio.api.commons import APIException, FetchOptions
 from splitio.tasks.util import workerpool
 from splitio.models import segments
 from splitio.util.backoff import Backoff

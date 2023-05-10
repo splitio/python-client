@@ -3,7 +3,8 @@
 import pytest
 import unittest.mock as mock
 
-from splitio.api import events, client, APIException
+from splitio.api import events, client
+from splitio.api.commons import APIException
 from splitio.models.events import Event
 from splitio.client.util import get_metadata
 from splitio.client.config import DEFAULT_CONFIG

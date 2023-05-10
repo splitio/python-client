@@ -5,8 +5,7 @@ import os
 import json
 
 from splitio.util.backoff import Backoff
-from splitio.api import APIException
-from splitio.api.commons import FetchOptions
+from splitio.api.commons import FetchOptions, APIException
 from splitio.storage import SplitStorage
 from splitio.storage.inmemmory import InMemorySplitStorage
 from splitio.models.splits import Split

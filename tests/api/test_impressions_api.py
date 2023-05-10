@@ -3,7 +3,8 @@
 import pytest
 import unittest.mock as mock
 
-from splitio.api import impressions, client, APIException
+from splitio.api import impressions, client
+from splitio.api.commons import APIException
 from splitio.models.impressions import Impression
 from splitio.engine.impressions.impressions import ImpressionsMode
 from splitio.engine.impressions.manager import Counter

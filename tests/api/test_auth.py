@@ -4,7 +4,8 @@ import pytest
 
 import unittest.mock as mock
 
-from splitio.api import auth, client, APIException
+from splitio.api import auth, client
+from splitio.api.commons import APIException
 from splitio.client.util import get_metadata
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.version import __version__

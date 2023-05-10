@@ -4,11 +4,9 @@ from collections import namedtuple
 import requests
 import logging
 
-from splitio.api import build_basic_headers, HttpClientException
+from splitio.api.commons import HttpResponse, build_basic_headers, HttpClientException
 
 _LOGGER = logging.getLogger(__name__)
-
-HttpResponse = namedtuple('HttpResponse', ['status_code', 'body'])
 
 class HttpClient(object):
     """HttpClient wrapper."""

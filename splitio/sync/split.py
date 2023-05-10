@@ -8,8 +8,7 @@ import json
 import hashlib
 from enum import Enum
 
-from splitio.api import APIException
-from splitio.api.commons import FetchOptions
+from splitio.api.commons import APIException, FetchOptions
 from splitio.models import splits
 from splitio.util.backoff import Backoff
 from splitio.util.time import get_current_epoch_time_ms

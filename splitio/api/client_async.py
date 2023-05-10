@@ -1,5 +1,4 @@
 """Asyncio HTTP Client for split API."""
-from collections import namedtuple
 try:
     import aiohttp
 except ImportError:
@@ -13,10 +12,9 @@ except ImportError:
 
 import logging
 
-from splitio.api import build_basic_headers, HttpClientException
+from splitio.api.commons import HttpResponse, build_basic_headers, HttpClientException
 
 _LOGGER = logging.getLogger(__name__)
-HttpResponse = namedtuple('HttpResponse', ['status_code', 'body'])
 
 class HttpClientAsync(object):
     """HttpClient wrapper."""
@@ -48,6 +46,7 @@ class HttpClientAsync(object):
             'auth': auth_url if auth_url is not None else self.AUTH_URL,
             'telemetry': telemetry_url if telemetry_url is not None else self.TELEMETRY_URL,
         }
+        self._session = aiohttp.ClientSession()
 
     def _build_url(self, server, path):
         """
@@ -85,15 +84,14 @@ class HttpClientAsync(object):
         if extra_headers is not None:
             headers.update(extra_headers)
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    self._build_url(server, path),
-                    params=query,
-                    headers=headers,
-                    timeout=self._timeout
-                ) as response:
-                    body = await response.text()
-                    return HttpResponse(response.status, body)
+            async with self._session.get(
+                self._build_url(server, path),
+                params=query,
+                headers=headers,
+                timeout=self._timeout
+            ) as response:
+                body = await response.text()
+                return HttpResponse(response.status, body)
         except aiohttp.ClientError as exc:  # pylint: disable=broad-except
             raise HttpClientException('aiohttp library is throwing exceptions') from exc
 

@@ -3,9 +3,8 @@
 import logging
 from itertools import groupby
 
-from splitio.api import APIException
 from splitio.api.client import HttpClientException
-from splitio.api.commons import headers_from_metadata, record_telemetry
+from splitio.api.commons import headers_from_metadata, record_telemetry, APIException
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.engine.impressions import ImpressionsMode
 from splitio.models.telemetry import HTTPExceptionsAndLatencies

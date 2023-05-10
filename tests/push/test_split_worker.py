@@ -3,7 +3,7 @@ import time
 import queue
 import pytest
 
-from splitio.api import APIException
+from splitio.api.commons import APIException
 from splitio.push.splitworker import SplitWorker
 from splitio.models.notification import SplitChangeNotification
 

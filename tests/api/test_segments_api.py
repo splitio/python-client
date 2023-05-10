@@ -3,7 +3,8 @@
 import pytest
 import unittest.mock as mock
 
-from splitio.api import segments, client, APIException
+from splitio.api import segments, client
+from splitio.api.commons import APIException
 from splitio.api.commons import FetchOptions
 from splitio.client.util import SdkMetadata
 from splitio.engine.telemetry import TelemetryStorageProducer

@@ -1,7 +1,7 @@
 import logging
 import queue
 
-from splitio.api import APIException
+from splitio.api.commons import APIException
 
 _LOGGER = logging.getLogger(__name__)
 

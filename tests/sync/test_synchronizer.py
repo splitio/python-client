@@ -14,7 +14,7 @@ from splitio.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.sync.event import EventSynchronizer
 from splitio.storage import SegmentStorage, SplitStorage
-from splitio.api import APIException
+from splitio.api.commons import APIException
 from splitio.models.splits import Split
 from splitio.models.segments import Segment
 from splitio.storage.inmemmory import InMemorySegmentStorage, InMemorySplitStorage
