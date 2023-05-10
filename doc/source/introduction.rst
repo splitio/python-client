@@ -166,7 +166,7 @@ The client depends on the information for features and segments being updated ex
 The scripts are configured through a JSON settings file, like the following: ::
 
     {
-      "apiKey": "some-api-key",
+      "sdkKey": "some-sdk-key",
       "sdkApiBaseUrl": "https://sdk.split.io/api",
       "eventsApiBaseUrl": "https://events.split.io/api",
       "redisFactory": 'some.redis.factory',
@@ -180,7 +180,7 @@ These are the possible configuration parameters:
 +------------------------+------+--------------------------------------------------------+-------------------------------+
 | Key                    | Type | Description                                            | Default                       |
 +========================+======+========================================================+===============================+
-| apiKey                 | str  | A valid Split.io API key.                              | None                          |
+| sdkKey                 | str  | A valid Split.io SDK key.                              | None                          |
 +------------------------+------+--------------------------------------------------------+-------------------------------+
 | sdkApiBaseUrl          | str  | The SDK API url base                                   | "https://sdk.split.io/api"    |
 +------------------------+------+--------------------------------------------------------+-------------------------------+
@@ -238,7 +238,7 @@ On the other hand, there is available a python script named ``splitio.bin.synchr
         The configuration file is a JSON file with the following fields:
 
         {
-          "apiKey": "YOUR_API_KEY",
+          "sdkKey": "YOUR_SDK_KEY",
           "redisHost": "REDIS_DNS_OR_IP",
           "redisPort": 6379,
           "redisDb": 0
@@ -274,7 +274,7 @@ In order to support Redis' Sentinel host discovery, you need to provide a custom
 Afterwards you tell the client to use this factory using the config file: ::
 
   {
-    "apiKey": "some-api-key",
+    "sdkKey": "some-sdk-key",
     "sdkApiBaseUrl": "https://sdk.split.io/api",
     "eventsApiBaseUrl": "https://events.split.io/api",
     "redisFactory": 'redis_config.my_redis_factory'
