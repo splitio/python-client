@@ -17,20 +17,20 @@ _LOGGER = logging.getLogger(__name__)
 class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the segments API."""
 
-    def __init__(self, http_client, sdkkey, sdk_metadata, telemetry_runtime_producer):
+    def __init__(self, http_client, sdk_key, sdk_metadata, telemetry_runtime_producer):
         """
         Class constructor.
 
         :param client: HTTP Client responsble for issuing calls to the backend.
         :type client: client.HttpClient
-        :param sdkkey: User sdkkey token.
-        :type sdkkey: string
+        :param sdk_key: User sdk_key token.
+        :type sdk_key: string
         :param sdk_metadata: SDK version & machine name & IP.
         :type sdk_metadata: splitio.client.util.SdkMetadata
 
         """
         self._client = http_client
-        self._sdkkey = sdkkey
+        self._sdk_key = sdk_key
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
 
@@ -56,7 +56,7 @@ class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
             response = self._client.get(
                 'sdk',
                 '/segmentChanges/{segment_name}'.format(segment_name=segment_name),
-                self._sdkkey,
+                self._sdk_key,
                 extra_headers=extra_headers,
                 query=query,
             )
