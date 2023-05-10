@@ -90,7 +90,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             start = get_current_epoch_time_ms()
 
             matching_key, bucketing_key = input_validator.validate_key(key, method_name)
-            feature_flag = input_validator.validate_feature_name(
+            feature_flag = input_validator.validate_feature_flag_name(
                 feature_flag,
                 self.ready,
                 self._factory._get_storage('splits'),  # pylint: disable=protected-access
@@ -153,7 +153,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         if input_validator.validate_attributes(attributes, method_name) is False:
             return input_validator.generate_control_treatments(feature_flags, method_name)
 
-        feature_flags, missing = input_validator.validate_features_get_treatments(
+        feature_flags, missing = input_validator.validate_feature_flags_get_treatments(
             method_name,
             feature_flags,
             self.ready,
