@@ -454,7 +454,7 @@ class LocalSplitSynchronizer(object):
                             ('seed', int(get_current_epoch_time_ms() / 1000), None, None, None, [0]),
                             ('status', splits.Status.ACTIVE.value, None, None, [e.value for e in splits.Status], None),
                             ('killed', False, None, None, None, None),
-                            ('defaultTreatment', 'on', None, None, None, ['', ' ']),
+                            ('defaultTreatment', 'control', None, None, None, ['', ' ']),
                             ('changeNumber', 0, 0, None, None, None),
                             ('algo', 2, 2, 2, None, None)]:
                 split = util._sanitize_object_element(split, 'split', element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=element[4], not_in_list=element[5])
