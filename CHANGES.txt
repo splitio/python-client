@@ -1,5 +1,5 @@
 9.4.2 (May 15, 2023)
-- Updated terminology on the SDKs codebase to be more aligned with current standard without causing a breaking change. The core change is the term split for feature flag on things like logs and intensense comments.
+- Updated terminology on the SDKs codebase to be more aligned with current standard without causing a breaking change. The core change is the term split for feature flag on things like logs and intenseness comments.
 - As part of the update, the following changes were applied:
  * Added detailed debug logging for redis adapter.
  * Fixed setting defaultTreatment to 'control' if it is missing in localhost JSON file.
