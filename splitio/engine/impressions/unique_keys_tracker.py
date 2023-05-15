@@ -9,7 +9,7 @@ class BaseUniqueKeysTracker(object, metaclass=abc.ABCMeta):
     """Unique Keys Tracker interface."""
 
     @abc.abstractmethod
-    def track(self, key, feature_name):
+    def track(self, key, feature_flag_name):
         """
         Return a boolean flag
 
@@ -33,23 +33,23 @@ class UniqueKeysTracker(BaseUniqueKeysTracker):
         self._queue_full_hook = None
         self._current_cache_size = 0
 
-    def track(self, key, feature_name):
+    def track(self, key, feature_flag_name):
         """
         Return a boolean flag
 
         :param key: key to be added to MTK list
         :type key: int
-        :param feature_name: split name associated with the key
-        :type feature_name: str
+        :param feature_flag_name: feature flag name associated with the key
+        :type feature_flag_name: str
 
         :return: True if successful
         :rtype: boolean
         """
         with self._lock:
-            if self._filter.contains(feature_name+key):
+            if self._filter.contains(feature_flag_name+key):
                 return False
-            self._add_or_update(feature_name, key)
-            self._filter.add(feature_name+key)
+            self._add_or_update(feature_flag_name, key)
+            self._filter.add(feature_flag_name+key)
             self._current_cache_size += 1
 
         if self._current_cache_size > self._cache_size:
@@ -61,20 +61,20 @@ class UniqueKeysTracker(BaseUniqueKeysTracker):
                 self._queue_full_hook()
         return True
 
-    def _add_or_update(self, feature_name, key):
+    def _add_or_update(self, feature_flag_name, key):
         """
         Add the feature_name+key to both bloom filter and dictionary.
 
-        :param feature_name: split name associated with the key
-        :type feature_name: str
+        :param feature_flag_name: feature flag name associated with the key
+        :type feature_flag_name: str
         :param key: key to be added to MTK list
         :type key: int
         """
 
         with self._lock:
-            if feature_name not in self._cache:
-                self._cache[feature_name] = set()
-            self._cache[feature_name].add(key)
+            if feature_flag_name not in self._cache:
+                self._cache[feature_flag_name] = set()
+            self._cache[feature_flag_name].add(key)
 
     def set_queue_full_hook(self, hook):
         """

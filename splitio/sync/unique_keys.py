@@ -30,27 +30,27 @@ class UniqueKeysSynchronizer(object):
     def _split_cache_to_bulks(self, cache):
         """
         Split the current unique keys dictionary into seperate dictionaries,
-        each with the size of max_bulk_size. Overflow the last feature set() to new unique keys dictionary.
+        each with the size of max_bulk_size. Overflow the last feature_flag set() to new unique keys dictionary.
 
         :return: array of unique keys dictionaries
-        :rtype: [Dict{'feature1': set(), 'feature2': set(), .. }]
+        :rtype: [Dict{'feature_flag1': set(), 'feature_flag2': set(), .. }]
         """
         bulks = []
         bulk = {}
         total_size = 0
-        for feature in cache:
-            total_size += len(cache[feature])
+        for feature_flag in cache:
+            total_size += len(cache[feature_flag])
             if total_size > self._max_bulk_size:
-                keys_list = list(cache[feature])
+                keys_list = list(cache[feature_flag])
                 chunk_list = self._chunks(keys_list)
                 if bulk != {}:
                     bulks.append(bulk)
                 for bulk_keys in chunk_list:
-                    bulk[feature] = set(bulk_keys)
+                    bulk[feature_flag] = set(bulk_keys)
                     bulks.append(bulk)
                     bulk = {}
             else:
-                bulk[feature] = self.cache[feature]
+                bulk[feature_flag] = self.cache[feature_flag]
         if total_size != 0 and bulk != {}:
             bulks.append(bulk)
 

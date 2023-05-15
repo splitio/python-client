@@ -91,7 +91,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
 
     def __init__(  # pylint: disable=too-many-arguments
             self,
-            apikey,
+            sdk_key,
             storages,
             labels_enabled,
             recorder,
@@ -120,7 +120,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         :param preforked_initialization: Whether should be instantiated as preforked or not.
         :type preforked_initialization: bool
         """
-        self._apikey = apikey
+        self._sdk_key = sdk_key
         self._storages = storages
         self._labels_enabled = labels_enabled
         self._sync_manager = sync_manager
@@ -253,7 +253,7 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         finally:
             self._status = Status.DESTROYED
             with _INSTANTIATED_FACTORIES_LOCK:
-                _INSTANTIATED_FACTORIES.subtract([self._apikey])
+                _INSTANTIATED_FACTORIES.subtract([self._sdk_key])
 
     @property
     def destroyed(self):
@@ -614,10 +614,10 @@ def _build_localhost_factory(cfg):
         None, None, None,
     )
 
-    split_sync_task = None
+    feature_flag_sync_task = None
     segment_sync_task = None
     if cfg['localhostRefreshEnabled'] and localhost_mode == LocalhostMode.JSON:
-        split_sync_task = SplitSynchronizationTask(
+        feature_flag_sync_task = SplitSynchronizationTask(
             synchronizers.split_sync.synchronize_splits,
             cfg['featuresRefreshRate'],
         )
@@ -626,7 +626,7 @@ def _build_localhost_factory(cfg):
             cfg['segmentsRefreshRate'],
         )
     tasks = SplitTasks(
-        split_sync_task,
+        feature_flag_sync_task,
         segment_sync_task,
         None, None, None,
     )
@@ -667,7 +667,7 @@ def get_factory(api_key, **kwargs):
     if _INSTANTIATED_FACTORIES:
         if api_key in _INSTANTIATED_FACTORIES:
             _LOGGER.warning(
-                "factory instantiation: You already have %d %s with this API Key. "
+                "factory instantiation: You already have %d %s with this SDK Key. "
                 "We recommend keeping only one instance of the factory at all times "
                 "(Singleton pattern) and reusing it throughout your application.",
                 _INSTANTIATED_FACTORIES[api_key],
