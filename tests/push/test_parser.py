@@ -59,11 +59,26 @@ class ParserTests(object):
 
         e1 = make_message(
             'NDA5ODc2MTAyNg==_MzAyODY0NDkyOA==_splits',
+            {'type':'SPLIT_UPDATE','changeNumber':1591996685190, 'pcn': 12, 'c': 2, 'd': 'eJzEUtFu2kAQ/BU0z4d0hw2Be0MFRVGJIx'},
+        )
+        parsed1 = parse_incoming_event(e1)
+        assert isinstance(parsed1, SplitChangeUpdate)
+        assert parsed1.change_number == 1591996685190
+        assert parsed1.previous_change_number == 12
+        assert parsed1.compression == 2
+        assert parsed1.split_definition == 'eJzEUtFu2kAQ/BU0z4d0hw2Be0MFRVGJIx'
+
+        e1 = make_message(
+            'NDA5ODc2MTAyNg==_MzAyODY0NDkyOA==_splits',
             {'type':'SPLIT_UPDATE','changeNumber':1591996685190},
         )
         parsed1 = parse_incoming_event(e1)
         assert isinstance(parsed1, SplitChangeUpdate)
         assert parsed1.change_number == 1591996685190
+        assert parsed1.previous_change_number == None
+        assert parsed1.compression == None
+        assert parsed1.split_definition == None
+
 
         e2 = make_message(
             'NDA5ODc2MTAyNg==_MzAyODY0NDkyOA==_segments',
