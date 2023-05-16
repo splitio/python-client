@@ -24,7 +24,7 @@ class EvaluatorTests(object):
     def test_evaluate_treatment_missing_split(self, mocker):
         """Test that a missing split logs and returns CONTROL."""
         e = self._build_evaluator_with_mocks(mocker)
-        e._split_storage.get.return_value = None
+        e._feature_flag_storage.get.return_value = None
         result = e.evaluate_feature('feature1', 'some_key', 'some_bucketing_key', {'attr1': 1})
         assert result['configurations'] == None
         assert result['treatment'] == evaluator.CONTROL
@@ -39,7 +39,7 @@ class EvaluatorTests(object):
         mocked_split.killed = True
         mocked_split.change_number = 123
         mocked_split.get_configurations_for.return_value = '{"some_property": 123}'
-        e._split_storage.get.return_value = mocked_split
+        e._feature_flag_storage.get.return_value = mocked_split
         result = e.evaluate_feature('feature1', 'some_key', 'some_bucketing_key', {'attr1': 1})
         assert result['treatment'] == 'off'
         assert result['configurations'] == '{"some_property": 123}'
@@ -57,7 +57,7 @@ class EvaluatorTests(object):
         mocked_split.killed = False
         mocked_split.change_number = 123
         mocked_split.get_configurations_for.return_value = '{"some_property": 123}'
-        e._split_storage.get.return_value = mocked_split
+        e._feature_flag_storage.get.return_value = mocked_split
         result = e.evaluate_feature('feature1', 'some_key', 'some_bucketing_key', {'attr1': 1})
         assert result['treatment'] == 'on'
         assert result['configurations'] == '{"some_property": 123}'
@@ -76,7 +76,7 @@ class EvaluatorTests(object):
         mocked_split.killed = False
         mocked_split.change_number = 123
         mocked_split.get_configurations_for.return_value = None
-        e._split_storage.get.return_value = mocked_split
+        e._feature_flag_storage.get.return_value = mocked_split
         result = e.evaluate_feature('feature1', 'some_key', 'some_bucketing_key', {'attr1': 1})
         assert result['treatment'] == 'on'
         assert result['configurations'] == None
@@ -95,7 +95,7 @@ class EvaluatorTests(object):
         mocked_split.killed = False
         mocked_split.change_number = 123
         mocked_split.get_configurations_for.return_value = '{"some_property": 123}'
-        e._split_storage.fetch_many.return_value = {
+        e._feature_flag_storage.fetch_many.return_value = {
             'feature1': None,
             'feature2': mocked_split,
         }

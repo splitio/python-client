@@ -459,12 +459,12 @@ class LocalSplitsSynchronizerTests(object):
         # test 'defaultTreatment' is set to on when None
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['defaultTreatment'] = None
-        assert (split_synchronizer._sanitize_split_elements(split) == splits_json["splitChange1_1"]["splits"])
+        assert (split_synchronizer._sanitize_split_elements(split)[0]['defaultTreatment'] == 'control')
 
         # test 'defaultTreatment' is set to on when its empty
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['defaultTreatment'] = ' '
-        assert (split_synchronizer._sanitize_split_elements(split) == splits_json["splitChange1_1"]["splits"])
+        assert (split_synchronizer._sanitize_split_elements(split)[0]['defaultTreatment'] == 'control')
 
         # test 'changeNumber' is set to 0 when None
         split = splits_json["splitChange1_1"]["splits"].copy()
