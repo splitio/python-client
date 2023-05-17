@@ -7,7 +7,6 @@ from splitio.util.decorators import abstract_property
 from splitio.util.time import utctime_ms
 from splitio.push.sse import SSE_EVENT_ERROR, SSE_EVENT_MESSAGE
 
-
 class EventType(Enum):
     """Event type enumeration."""
 
@@ -277,7 +276,7 @@ class OccupancyMessage(BaseMessage):
 
 
 class BaseUpdate(BaseMessage, metaclass=abc.ABCMeta):
-    """Split data update notification."""
+    """Feature flag data update notification."""
 
     def __init__(self, channel, timestamp, change_number):
         """
@@ -324,11 +323,14 @@ class BaseUpdate(BaseMessage, metaclass=abc.ABCMeta):
 
 
 class SplitChangeUpdate(BaseUpdate):
-    """Split Change notification."""
+    """Feature flag Change notification."""
 
-    def __init__(self, channel, timestamp, change_number):
+    def __init__(self, channel, timestamp, change_number, previous_change_number, feature_flag_definition, compression):
         """Class constructor."""
         BaseUpdate.__init__(self, channel, timestamp, change_number)
+        self._previous_change_number = previous_change_number
+        self._feature_flag_definition = feature_flag_definition
+        self._compression = compression
 
     @property
     def update_type(self):  # pylint:disable=no-self-use
@@ -340,18 +342,48 @@ class SplitChangeUpdate(BaseUpdate):
         """
         return UpdateType.SPLIT_UPDATE
 
+    @property
+    def previous_change_number(self):  # pylint:disable=no-self-use
+        """
+        Return previous change number
+
+        :returns: The previous change number
+        :rtype: int
+        """
+        return self._previous_change_number
+
+    @property
+    def feature_flag_definition(self):  # pylint:disable=no-self-use
+        """
+        Return feature flag definition
+
+        :returns: The new feature flag definition
+        :rtype: str
+        """
+        return self._feature_flag_definition
+
+    @property
+    def compression(self):  # pylint:disable=no-self-use
+        """
+        Return previous compression type
+
+        :returns: The compression type
+        :rtype: int
+        """
+        return self._compression
+
     def __str__(self):
         """Return string representation."""
         return "SplitChange - changeNumber=%d" % (self.change_number)
 
 
 class SplitKillUpdate(BaseUpdate):
-    """Split Kill notification."""
+    """Feature flag Kill notification."""
 
-    def __init__(self, channel, timestamp, change_number, split_name, default_treatment):  # pylint:disable=too-many-arguments
+    def __init__(self, channel, timestamp, change_number, feature_flag_name, default_treatment):  # pylint:disable=too-many-arguments
         """Class constructor."""
         BaseUpdate.__init__(self, channel, timestamp, change_number)
-        self._split_name = split_name
+        self._feature_flag_name = feature_flag_name
         self._default_treatment = default_treatment
 
     @property
@@ -365,14 +397,14 @@ class SplitKillUpdate(BaseUpdate):
         return UpdateType.SPLIT_KILL
 
     @property
-    def split_name(self):
+    def feature_flag_name(self):
         """
-        Return the name of the killed split.
+        Return the name of the killed feature flag.
 
-        :returns: name of the killed split
+        :returns: name of the killed feature flag
         :rtype: str
         """
-        return self._split_name
+        return self._feature_flag_name
 
     @property
     def default_treatment(self):
@@ -387,7 +419,7 @@ class SplitKillUpdate(BaseUpdate):
     def __str__(self):
         """Return string representation."""
         return "SplitKill - changeNumber=%d, name=%s, defaultTreatment=%s" % \
-            (self.change_number, self.split_name, self.default_treatment)
+            (self.change_number, self.feature_flag, self.default_treatment)
 
 
 class SegmentChangeUpdate(BaseUpdate):
@@ -472,7 +504,7 @@ def _parse_update(channel, timestamp, data):
     update_type = UpdateType(data['type'])
     change_number = data['changeNumber']
     if update_type == UpdateType.SPLIT_UPDATE:
-        return SplitChangeUpdate(channel, timestamp, change_number)
+        return SplitChangeUpdate(channel, timestamp, change_number, data.get('pcn'), data.get('d'), data.get('c'))
     elif update_type == UpdateType.SPLIT_KILL:
         return SplitKillUpdate(channel, timestamp, change_number,
                                data['splitName'], data['defaultTreatment'])
