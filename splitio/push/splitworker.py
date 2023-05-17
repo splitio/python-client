@@ -57,7 +57,6 @@ class SplitWorker(object):
             try:
                 if event.compression is not None and event.previous_change_number == self._feature_flag_storage.get_change_number():
                     feature_flag_definition = self._get_feature_flag_definition(event)
-                    _LOGGER.debug(feature_flag_definition)
                     self._feature_flag_storage.put(from_raw(json.loads(self._get_feature_flag_definition(event))))
                     self._feature_flag_storage.set_change_number(event.change_number)
                     continue
