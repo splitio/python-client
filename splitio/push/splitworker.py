@@ -5,11 +5,18 @@ import gzip
 import zlib
 import base64
 import json
+from enum import Enum
 
 from splitio.models.splits import from_raw
 
 _LOGGER = logging.getLogger(__name__)
 
+class CompressionMode(Enum):
+    """Compression modes """
+
+    NO_COMPRESSION = 0
+    GZIP_COMPRESSION = 1
+    ZLIB_COMPRESSION = 2
 
 class SplitWorker(object):
     """Feature Flag Worker for processing updates."""
@@ -38,11 +45,11 @@ class SplitWorker(object):
 
     def _get_feature_flag_definition(self, event):
         """return feature flag definition in event."""
-        if event.compression == 0:
+        if event.compression == CompressionMode.NO_COMPRESSION.value:
             return base64.b64decode(event.feature_flag_definition)
-        elif event.compression == 1:
+        elif event.compression == CompressionMode.GZIP_COMPRESSION.value:
             return gzip.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8')
-        elif event.compression == 2:
+        elif event.compression == CompressionMode.ZLIB_COMPRESSION.value:
             return zlib.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8')
 
     def _run(self):
