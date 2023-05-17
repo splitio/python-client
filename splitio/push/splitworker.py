@@ -38,6 +38,11 @@ class SplitWorker(object):
         self._running = False
         self._worker = None
         self._feature_flag_storage = feature_flag_storage
+        self._compression_handlers = {
+            CompressionMode.NO_COMPRESSION: lambda event: base64.b64decode(event.feature_flag_definition),
+            CompressionMode.GZIP_COMPRESSION: lambda event: gzip.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8'),
+            CompressionMode.ZLIB_COMPRESSION: lambda event: zlib.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8'),
+        }
 
     def is_running(self):
         """Return whether the working is running."""
@@ -45,12 +50,8 @@ class SplitWorker(object):
 
     def _get_feature_flag_definition(self, event):
         """return feature flag definition in event."""
-        if event.compression == CompressionMode.NO_COMPRESSION.value:
-            return base64.b64decode(event.feature_flag_definition)
-        elif event.compression == CompressionMode.GZIP_COMPRESSION.value:
-            return gzip.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8')
-        elif event.compression == CompressionMode.ZLIB_COMPRESSION.value:
-            return zlib.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8')
+        cm = CompressionMode(event.compression) # will throw if the number is not defined in compression mode
+        return self._compression_handlers[cm](event)
 
     def _run(self):
         """Run worker handler."""
@@ -63,10 +64,14 @@ class SplitWorker(object):
             _LOGGER.debug('Processing feature flag update %d', event.change_number)
             try:
                 if event.compression is not None and event.previous_change_number == self._feature_flag_storage.get_change_number():
-                    feature_flag_definition = self._get_feature_flag_definition(event)
-                    self._feature_flag_storage.put(from_raw(json.loads(self._get_feature_flag_definition(event))))
-                    self._feature_flag_storage.set_change_number(event.change_number)
-                    continue
+                    try:
+                        self._feature_flag_storage.put(from_raw(json.loads(self._get_feature_flag_definition(event))))
+                        self._feature_flag_storage.set_change_number(event.change_number)
+                        continue
+                    except Exception as e:
+                        _LOGGER.error('Exception raised in updating feature flag')
+                        _LOGGER.error(str(e))
+                        pass
                 self._handler(event.change_number)
             except Exception as e:  # pylint: disable=broad-except
                 _LOGGER.error('Exception raised in feature flag synchronization')

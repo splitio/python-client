@@ -56,15 +56,32 @@ class SplitWorkerTests(object):
         def get_change_number():
             return 2345
 
+        self._feature_flag = None
+        def put(feature_flag):
+            self._feature_flag = feature_flag
+
+        self.new_change_number = 0
+        def set_change_number(new_change_number):
+            self.new_change_number = new_change_number
+
         split_worker._feature_flag_storage.get_change_number = get_change_number
+        split_worker._feature_flag_storage.set_change_number = set_change_number
+        split_worker._feature_flag_storage.put = put
+
         # should call the handler
         q.put(SplitChangeUpdate('some', 'SPLIT_UPDATE', 123456790, 12345,  "{}", 1))
         time.sleep(0.1)
         assert change_number_received == 123456790
 
+        # should call the handler
+        change_number_received = 0
+        q.put(SplitChangeUpdate('some', 'SPLIT_UPDATE', 123456790, 12345,  "{}", 3))
+        time.sleep(0.1)
+        assert change_number_received == 123456790
+
         # should Not call the handler
         change_number_received = 0
-        q.put(SplitChangeUpdate('some', 'SPLIT_UPDATE', 123456, 2345, "{}", 1))
+        q.put(SplitChangeUpdate('some', 'SPLIT_UPDATE', 123456, 2345, "eJzEUtFq20AQ/JUwz2c4WZZr3ZupTQh1FKjcQinGrKU95cjpZE6nh9To34ssJ3FNX0sfd3Zm53b2TgietDbF9vXIGdUMha5lDwFTQiGOmTQlchLRPJlEEZeTVJZ6oimWZTpP5WyWQMCNyoOxZPft0ZoA8TZ5aW1TUDCNg4qk/AueM5dQkyiez6IonS6mAu0IzWWSxovFLBZoA4WuhcLy8/bh+xoCL8bagaXJtixQsqbOhq1nCjW7AIVGawgUz+Qqzrr6wB4qmi9m00/JIk7TZCpAtmqgpgJF47SpOn9+UQt16s9YaS71z9NHOYQFha9Pm83Tty0EagrFM/t733RHqIFZH4wb7LDMVh+Ecc4Lv+ZsuQiNH8hXF3hLv39XXNCHbJ+v7x/X2eDmuKLA74sPihVr47jMuRpWfxy1Kwo0GLQjmv1xpBFD3+96gSP5cLVouM7QQaA1vxhK9uKmd853bEZS9jsBSwe2UDDu7mJxd2Mo/muQy81m/2X9I7+N8R/FcPmUd76zjH7X/w4AAP//90glTw==", 2))
         time.sleep(0.1)
         assert change_number_received == 0
 
