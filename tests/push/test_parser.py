@@ -55,7 +55,7 @@ class ParserTests(object):
         assert isinstance(parsed0, SplitKillUpdate)
         assert parsed0.default_treatment == 'some'
         assert parsed0.change_number == 1591996754396
-        assert parsed0.split_name == 'test'
+        assert parsed0.feature_flag_name == 'test'
 
         e1 = make_message(
             'NDA5ODc2MTAyNg==_MzAyODY0NDkyOA==_splits',
@@ -66,7 +66,7 @@ class ParserTests(object):
         assert parsed1.change_number == 1591996685190
         assert parsed1.previous_change_number == 12
         assert parsed1.compression == 2
-        assert parsed1.split_definition == 'eJzEUtFu2kAQ/BU0z4d0hw2Be0MFRVGJIx'
+        assert parsed1.feature_flag_definition == 'eJzEUtFu2kAQ/BU0z4d0hw2Be0MFRVGJIx'
 
         e1 = make_message(
             'NDA5ODc2MTAyNg==_MzAyODY0NDkyOA==_splits',
@@ -77,7 +77,7 @@ class ParserTests(object):
         assert parsed1.change_number == 1591996685190
         assert parsed1.previous_change_number == None
         assert parsed1.compression == None
-        assert parsed1.split_definition == None
+        assert parsed1.feature_flag_definition == None
 
 
         e2 = make_message(
