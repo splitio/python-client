@@ -267,11 +267,11 @@ class LocalSplitsSynchronizerTests(object):
             ]
         }]
 
-        def read_splits_from_json_file(*args, **kwargs):
+        def read_feature_flags_from_json_file(*args, **kwargs):
                 return splits, till
 
         split_synchronizer = LocalSplitSynchronizer("split.json", storage, LocalhostMode.JSON)
-        split_synchronizer._read_splits_from_json_file = read_splits_from_json_file
+        split_synchronizer._read_feature_flags_from_json_file = read_feature_flags_from_json_file
 
         split_synchronizer.synchronize_splits()
         inserted_split = storage.get(splits[0]['name'])
@@ -399,97 +399,97 @@ class LocalSplitsSynchronizerTests(object):
         split_synchronizer = LocalSplitSynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock())
 
         # No changes when split structure is good
-        assert (split_synchronizer._sanitize_split_elements(splits_json["splitChange1_1"]["splits"]) == splits_json["splitChange1_1"]["splits"])
+        assert (split_synchronizer._sanitize_feature_flag_elements(splits_json["splitChange1_1"]["splits"]) == splits_json["splitChange1_1"]["splits"])
 
         # test 'trafficTypeName' value None
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['trafficTypeName'] = None
-        assert (split_synchronizer._sanitize_split_elements(split) == splits_json["splitChange1_1"]["splits"])
+        assert (split_synchronizer._sanitize_feature_flag_elements(split) == splits_json["splitChange1_1"]["splits"])
 
         # test 'trafficAllocation' value None
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['trafficAllocation'] = None
-        assert (split_synchronizer._sanitize_split_elements(split) == splits_json["splitChange1_1"]["splits"])
+        assert (split_synchronizer._sanitize_feature_flag_elements(split) == splits_json["splitChange1_1"]["splits"])
 
         # test 'trafficAllocation' valid value should not change
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['trafficAllocation'] = 50
-        assert (split_synchronizer._sanitize_split_elements(split) == split)
+        assert (split_synchronizer._sanitize_feature_flag_elements(split) == split)
 
         # test 'trafficAllocation' invalid value should change
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['trafficAllocation'] = 110
-        assert (split_synchronizer._sanitize_split_elements(split) == splits_json["splitChange1_1"]["splits"])
+        assert (split_synchronizer._sanitize_feature_flag_elements(split) == splits_json["splitChange1_1"]["splits"])
 
         # test 'trafficAllocationSeed' is set to millisec epoch when None
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['trafficAllocationSeed'] = None
-        assert (split_synchronizer._sanitize_split_elements(split)[0]['trafficAllocationSeed'] > 0)
+        assert (split_synchronizer._sanitize_feature_flag_elements(split)[0]['trafficAllocationSeed'] > 0)
 
         # test 'trafficAllocationSeed' is set to millisec epoch when 0
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['trafficAllocationSeed'] = 0
-        assert (split_synchronizer._sanitize_split_elements(split)[0]['trafficAllocationSeed'] > 0)
+        assert (split_synchronizer._sanitize_feature_flag_elements(split)[0]['trafficAllocationSeed'] > 0)
 
         # test 'seed' is set to millisec epoch when None
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['seed'] = None
-        assert (split_synchronizer._sanitize_split_elements(split)[0]['seed'] > 0)
+        assert (split_synchronizer._sanitize_feature_flag_elements(split)[0]['seed'] > 0)
 
         # test 'seed' is set to millisec epoch when its 0
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['seed'] = 0
-        assert (split_synchronizer._sanitize_split_elements(split)[0]['seed'] > 0)
+        assert (split_synchronizer._sanitize_feature_flag_elements(split)[0]['seed'] > 0)
 
         # test 'status' is set to ACTIVE when None
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['status'] = None
-        assert (split_synchronizer._sanitize_split_elements(split) == splits_json["splitChange1_1"]["splits"])
+        assert (split_synchronizer._sanitize_feature_flag_elements(split) == splits_json["splitChange1_1"]["splits"])
 
         # test 'status' is set to ACTIVE when incorrect
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['status'] = 'ww'
-        assert (split_synchronizer._sanitize_split_elements(split) == splits_json["splitChange1_1"]["splits"])
+        assert (split_synchronizer._sanitize_feature_flag_elements(split) == splits_json["splitChange1_1"]["splits"])
 
         # test ''killed' is set to False when incorrect
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['killed'] = None
-        assert (split_synchronizer._sanitize_split_elements(split) == splits_json["splitChange1_1"]["splits"])
+        assert (split_synchronizer._sanitize_feature_flag_elements(split) == splits_json["splitChange1_1"]["splits"])
 
         # test 'defaultTreatment' is set to on when None
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['defaultTreatment'] = None
-        assert (split_synchronizer._sanitize_split_elements(split)[0]['defaultTreatment'] == 'control')
+        assert (split_synchronizer._sanitize_feature_flag_elements(split)[0]['defaultTreatment'] == 'control')
 
         # test 'defaultTreatment' is set to on when its empty
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['defaultTreatment'] = ' '
-        assert (split_synchronizer._sanitize_split_elements(split)[0]['defaultTreatment'] == 'control')
+        assert (split_synchronizer._sanitize_feature_flag_elements(split)[0]['defaultTreatment'] == 'control')
 
         # test 'changeNumber' is set to 0 when None
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['changeNumber'] = None
-        assert (split_synchronizer._sanitize_split_elements(split)[0]['changeNumber'] == 0)
+        assert (split_synchronizer._sanitize_feature_flag_elements(split)[0]['changeNumber'] == 0)
 
         # test 'changeNumber' is set to 0 when invalid
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['changeNumber'] = -33
-        assert (split_synchronizer._sanitize_split_elements(split)[0]['changeNumber'] == 0)
+        assert (split_synchronizer._sanitize_feature_flag_elements(split)[0]['changeNumber'] == 0)
 
         # test 'algo' is set to 2 when None
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['algo'] = None
-        assert (split_synchronizer._sanitize_split_elements(split)[0]['algo'] == 2)
+        assert (split_synchronizer._sanitize_feature_flag_elements(split)[0]['algo'] == 2)
 
         # test 'algo' is set to 2 when higher than 2
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['algo'] = 3
-        assert (split_synchronizer._sanitize_split_elements(split)[0]['algo'] == 2)
+        assert (split_synchronizer._sanitize_feature_flag_elements(split)[0]['algo'] == 2)
 
         # test 'algo' is set to 2 when lower than 2
         split = splits_json["splitChange1_1"]["splits"].copy()
         split[0]['algo'] = 1
-        assert (split_synchronizer._sanitize_split_elements(split)[0]['algo'] == 2)
+        assert (split_synchronizer._sanitize_feature_flag_elements(split)[0]['algo'] == 2)
 
     def test_split_condition_sanitization(self, mocker):
         """Test sanitization."""
@@ -501,7 +501,7 @@ class LocalSplitsSynchronizerTests(object):
         target_split[0]["conditions"][0]['partitions'][0]['size'] = 0
         target_split[0]["conditions"][0]['partitions'][1]['size'] = 100
         del split[0]["conditions"]
-        assert (split_synchronizer._sanitize_split_elements(split) == target_split)
+        assert (split_synchronizer._sanitize_feature_flag_elements(split) == target_split)
 
         # test missing ALL_KEYS condition matcher with default rule set to 100% off
         split = splits_json["splitChange1_1"]["splits"].copy()
@@ -511,7 +511,7 @@ class LocalSplitsSynchronizerTests(object):
         target_split[0]["conditions"].append(splits_json["splitChange1_1"]["splits"][0]["conditions"][0])
         target_split[0]["conditions"][1]['partitions'][0]['size'] = 0
         target_split[0]["conditions"][1]['partitions'][1]['size'] = 100
-        assert (split_synchronizer._sanitize_split_elements(split) == target_split)
+        assert (split_synchronizer._sanitize_feature_flag_elements(split) == target_split)
 
         # test missing ROLLOUT condition type with default rule set to 100% off
         split = splits_json["splitChange1_1"]["splits"].copy()
@@ -521,4 +521,4 @@ class LocalSplitsSynchronizerTests(object):
         target_split[0]["conditions"].append(splits_json["splitChange1_1"]["splits"][0]["conditions"][0])
         target_split[0]["conditions"][1]['partitions'][0]['size'] = 0
         target_split[0]["conditions"][1]['partitions'][1]['size'] = 100
-        assert (split_synchronizer._sanitize_split_elements(split) == target_split)
+        assert (split_synchronizer._sanitize_feature_flag_elements(split) == target_split)

@@ -6,7 +6,6 @@ from splitio.push.parser import UpdateType
 from splitio.push.splitworker import SplitWorker
 from splitio.push.segmentworker import SegmentWorker
 
-
 class MessageProcessor(object):
     """Message processor class."""
 
@@ -17,36 +16,36 @@ class MessageProcessor(object):
         :param synchronizer: synchronizer component
         :type synchronizer: splitio.sync.synchronizer.Synchronizer
         """
-        self._split_queue = Queue()
+        self._feature_flag_queue = Queue()
         self._segments_queue = Queue()
         self._synchronizer = synchronizer
-        self._split_worker = SplitWorker(synchronizer.synchronize_splits, self._split_queue)
+        self._feature_flag_worker = SplitWorker(synchronizer.synchronize_splits, self._feature_flag_queue, synchronizer.split_sync.feature_flag_storage)
         self._segments_worker = SegmentWorker(synchronizer.synchronize_segment, self._segments_queue)
         self._handlers = {
-            UpdateType.SPLIT_UPDATE: self._handle_split_update,
-            UpdateType.SPLIT_KILL: self._handle_split_kill,
+            UpdateType.SPLIT_UPDATE: self._handle_feature_flag_update,
+            UpdateType.SPLIT_KILL: self._handle_feature_flag_kill,
             UpdateType.SEGMENT_UPDATE: self._handle_segment_change
         }
 
-    def _handle_split_update(self, event):
+    def _handle_feature_flag_update(self, event):
         """
-        Handle incoming split update notification.
+        Handle incoming feature flag update notification.
 
-        :param event: Incoming split change event
+        :param event: Incoming feature flag change event
         :type event: splitio.push.parser.SplitChangeUpdate
         """
-        self._split_queue.put(event)
+        self._feature_flag_queue.put(event)
 
-    def _handle_split_kill(self, event):
+    def _handle_feature_flag_kill(self, event):
         """
-        Handle incoming split kill notification.
+        Handle incoming feature flag kill notification.
 
-        :param event: Incoming split kill event
+        :param event: Incoming feature flag kill event
         :type event: splitio.push.parser.SplitKillUpdate
         """
-        self._synchronizer.kill_split(event.split_name, event.default_treatment,
+        self._synchronizer.kill_split(event.feature_flag_name, event.default_treatment,
                                       event.change_number)
-        self._split_queue.put(event)
+        self._feature_flag_queue.put(event)
 
     def _handle_segment_change(self, event):
         """
@@ -65,10 +64,10 @@ class MessageProcessor(object):
         :type enabled: bool
         """
         if enabled:
-            self._split_worker.start()
+            self._feature_flag_worker.start()
             self._segments_worker.start()
         else:
-            self._split_worker.stop()
+            self._feature_flag_worker.stop()
             self._segments_worker.stop()
 
     def handle(self, event):
@@ -86,6 +85,6 @@ class MessageProcessor(object):
         handle(event)
 
     def shutdown(self):
-        """Stop splits & segments workers."""
-        self._split_worker.stop()
+        """Stop feature flags & segments workers."""
+        self._feature_flag_worker.stop()
         self._segments_worker.stop()

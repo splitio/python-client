@@ -14,7 +14,7 @@ class ProcessorTests(object):
         queue_mock = mocker.Mock(spec=Queue)
         mocker.patch('splitio.push.processor.Queue', new=queue_mock)
         processor = MessageProcessor(sync_mock)
-        update = SplitChangeUpdate('sarasa', 123, 123)
+        update = SplitChangeUpdate('sarasa', 123, 123, None, None, None)
         processor.handle(update)
         assert queue_mock.mock_calls == [
             mocker.call(),  # construction of split queue
