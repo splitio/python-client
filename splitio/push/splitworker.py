@@ -71,6 +71,7 @@ class SplitWorker(object):
                     except Exception as e:
                         _LOGGER.error('Exception raised in updating feature flag')
                         _LOGGER.debug(str(e))
+                        _LOGGER.debug('Exception information: ', exc_info=True)
                         pass
                 self._handler(event.change_number)
             except Exception as e:  # pylint: disable=broad-except
