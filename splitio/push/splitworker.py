@@ -8,6 +8,7 @@ import json
 from enum import Enum
 
 from splitio.models.splits import from_raw
+from splitio.push.parser import UpdateType
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,16 +64,17 @@ class SplitWorker(object):
                 continue
             _LOGGER.debug('Processing feature flag update %d', event.change_number)
             try:
-                if event.compression is not None and event.previous_change_number == self._feature_flag_storage.get_change_number():
-                    try:
-                        self._feature_flag_storage.put(from_raw(json.loads(self._get_feature_flag_definition(event))))
-                        self._feature_flag_storage.set_change_number(event.change_number)
-                        continue
-                    except Exception as e:
-                        _LOGGER.error('Exception raised in updating feature flag')
-                        _LOGGER.debug(str(e))
-                        _LOGGER.debug('Exception information: ', exc_info=True)
-                        pass
+                if event.update_type == UpdateType.SPLIT_UPDATE:
+                    if event.compression is not None and event.previous_change_number == self._feature_flag_storage.get_change_number():
+                        try:
+                            self._feature_flag_storage.put(from_raw(json.loads(self._get_feature_flag_definition(event))))
+                            self._feature_flag_storage.set_change_number(event.change_number)
+                            continue
+                        except Exception as e:
+                            _LOGGER.error('Exception raised in updating feature flag')
+                            _LOGGER.debug(str(e))
+                            _LOGGER.debug('Exception information: ', exc_info=True)
+                            pass
                 self._handler(event.change_number)
             except Exception as e:  # pylint: disable=broad-except
                 _LOGGER.error('Exception raised in feature flag synchronization')

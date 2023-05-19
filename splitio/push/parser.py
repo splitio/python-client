@@ -419,7 +419,7 @@ class SplitKillUpdate(BaseUpdate):
     def __str__(self):
         """Return string representation."""
         return "SplitKill - changeNumber=%d, name=%s, defaultTreatment=%s" % \
-            (self.change_number, self.feature_flag, self.default_treatment)
+            (self.change_number, self.feature_flag_name, self.default_treatment)
 
 
 class SegmentChangeUpdate(BaseUpdate):
