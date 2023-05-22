@@ -5,6 +5,7 @@ import threading
 import time
 import json
 import base64
+import pytest
 
 from queue import Queue
 from splitio.client.factory import get_factory
@@ -107,6 +108,17 @@ class StreamingIntegrationTests(object):
 
         assert factory.client().get_treatment('pindon', 'split2') == 'off'
         assert factory.client().get_treatment('maldo', 'split2') == 'on'
+
+        # test if changeNumber is missing
+#        split_changes = make_split_fast_change_event(4)
+#        data = json.loads(split_changes['data'])
+#        inner_data = json.loads(data['data'])
+#        inner_data['changeNumber'] = None
+#        data['data'] = json.dumps(inner_data)
+#        split_changes['data'] = json.dumps(data)
+#        sse_server.publish(split_changes)
+#        time.sleep(1)
+#        assert factory.client().get_treatment('maldo', 'split1') == 'off'
 
         sse_server.publish(make_split_fast_change_event(4))
         time.sleep(1)

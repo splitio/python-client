@@ -119,3 +119,46 @@ class SplitWorkerTests(object):
         q.put(SplitChangeUpdate('some', 'SPLIT_UPDATE', 123456790, 2345,  'H4sIAAkVZWQC/8WST0+DQBDFv0qzZ0ig/BF6a2xjGismUk2MaZopzOKmy9Isy0EbvrtDwbY2Xo233Tdv5se85cCMBs5FtvrYYwIlsglratTMYiKns+chcAgc24UwsF0Xczt2cm5z8Jw8DmPH9wPyqr5zKyTITb2XwpA4TJ5KWWVgRKXYxHWcX/QUkVi264W+68bjaGyxupdCJ4i9KPI9UgyYpibI9Ha1eJnT/J2QsnNxkDVaLEcOjTQrjWBKVIasFefky95BFZg05Zb2mrhh5I9vgsiL44BAIIuKTeiQVYqLotHHLyLOoT1quRjub4fztQuLxj89LpePzytClGCyd9R3umr21ErOcitUh2PTZHY29HN2+JGixMxUujNfvMB3+u2pY1AXySad3z3Mk46msACDp8W7jhly4uUpFt3qD33vDAx0gLpXkx+P1GusbdcE24M2F4uaywwVEWvxSa1Oa13Vjvn2RXradm0xCVuUVBJqNCBGV0DrX4OcLpeb+/lreh3jH8Uw/JQj3UhkxPgCCurdEnADAAA=', 1))
         time.sleep(0.1)
         assert self._feature_flag.name == 'bilal_split'
+
+    def test_edge_cases(self, mocker):
+        q = queue.Queue()
+        split_worker = SplitWorker(handler_sync, q, mocker.Mock())
+        global change_number_received
+        split_worker.start()
+
+        def get_change_number():
+            return 2345
+
+        def put(feature_flag):
+            self._feature_flag = feature_flag
+
+        split_worker._feature_flag_storage.get_change_number = get_change_number
+        split_worker._feature_flag_storage.put = put
+
+        # should Not call the handler
+        self._feature_flag = None
+        change_number_received = 0
+        q.put(SplitChangeUpdate('some', 'SPLIT_UPDATE', 123456, 2345, "/2X9I7+N8R/FcPmUd76zjH7X/w4AAP//90glTw==", 2))
+        time.sleep(0.1)
+        assert self._feature_flag == None
+
+        # should Not call the handler
+        self._feature_flag = None
+        change_number_received = 0
+        q.put(SplitChangeUpdate('some', 'SPLIT_UPDATE', 123456, 2345, "/2X9I7+N8R/FcPmUd76zjH7X/w4AAP//90glTw==", 4))
+        time.sleep(0.1)
+        assert self._feature_flag == None
+
+        # should Not call the handler
+        self._feature_flag = None
+        change_number_received = 0
+        q.put(SplitChangeUpdate('some', 'SPLIT_UPDATE', 123456, None,  'eJzEUtFq20AQ/JUwz2c4WZZr3ZupTQh1FKjcQinGrKU95cjpZE6nh9To34ssJ3FNX0sfd3Zm53b2TgietDbF9vXIGdUMha5lDwFTQiGOmTQlchLRPJlEEZeTVJZ6oimWZTpP5WyWQMCNyoOxZPft0ZoA8TZ5aW1TUDCNg4qk/AueM5dQkyiez6IonS6mAu0IzWWSxovFLBZoA4WuhcLy8/bh+xoCL8bagaXJtixQsqbOhq1nCjW7AIVGawgUz+Qqzrr6wB4qmi9m00/JIk7TZCpAtmqgpgJF47SpOn9+UQt16s9YaS71z9NHOYQFha9Pm83Tty0EagrFM/t733RHqIFZH4wb7LDMVh+Ecc4Lv+ZsuQiNH8hXF3hLv39XXNCHbJ+v7x/X2eDmuKLA74sPihVr47jMuRpWfxy1Kwo0GLQjmv1xpBFD3+96gSP5cLVouM7QQaA1vxhK9uKmd853bEZS9jsBSwe2UDDu7mJxd2Mo/muQy81m/2X9I7+N8R/FcPmUd76zjH7X/w4AAP//90glTw==', 2))
+        time.sleep(0.1)
+        assert self._feature_flag == None
+
+        # should Not call the handler
+        self._feature_flag = None
+        change_number_received = 0
+        q.put(SplitChangeUpdate('some', 'SPLIT_UPDATE', 123456, 2345, None, 1))
+        time.sleep(0.1)
+        assert self._feature_flag == None
