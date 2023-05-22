@@ -503,9 +503,9 @@ def _parse_update(channel, timestamp, data):
     """
     update_type = UpdateType(data['type'])
     change_number = data['changeNumber']
-    if update_type == UpdateType.SPLIT_UPDATE:
+    if update_type == UpdateType.SPLIT_UPDATE and change_number is not None:
         return SplitChangeUpdate(channel, timestamp, change_number, data.get('pcn'), data.get('d'), data.get('c'))
-    elif update_type == UpdateType.SPLIT_KILL:
+    elif update_type == UpdateType.SPLIT_KILL and change_number is not None:
         return SplitKillUpdate(channel, timestamp, change_number,
                                data['splitName'], data['defaultTreatment'])
     elif update_type == UpdateType.SEGMENT_UPDATE:
