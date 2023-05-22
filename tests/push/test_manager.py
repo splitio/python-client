@@ -137,7 +137,7 @@ class PushManagerTests(object):
     def test_split_change(self, mocker):
         """Test update-type messages are properly forwarded to the processor."""
         sse_event = SSEEvent('1', EventType.MESSAGE, '', '{}')
-        update_message = SplitChangeUpdate('chan', 123, 456)
+        update_message = SplitChangeUpdate('chan', 123, 456, None, None, None)
         parse_event_mock = mocker.Mock(spec=parse_incoming_event)
         parse_event_mock.return_value = update_message
         mocker.patch('splitio.push.manager.parse_incoming_event', new=parse_event_mock)

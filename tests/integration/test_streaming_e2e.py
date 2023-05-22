@@ -4,6 +4,9 @@
 import threading
 import time
 import json
+import base64
+import pytest
+
 from queue import Queue
 from splitio.client.factory import get_factory
 from tests.helpers.mockserver import SSEMockServer, SplitMockServer
@@ -105,6 +108,21 @@ class StreamingIntegrationTests(object):
 
         assert factory.client().get_treatment('pindon', 'split2') == 'off'
         assert factory.client().get_treatment('maldo', 'split2') == 'on'
+
+        # test if changeNumber is missing
+#        split_changes = make_split_fast_change_event(4)
+#        data = json.loads(split_changes['data'])
+#        inner_data = json.loads(data['data'])
+#        inner_data['changeNumber'] = None
+#        data['data'] = json.dumps(inner_data)
+#        split_changes['data'] = json.dumps(data)
+#        sse_server.publish(split_changes)
+#        time.sleep(1)
+#        assert factory.client().get_treatment('maldo', 'split1') == 'off'
+
+        sse_server.publish(make_split_fast_change_event(4))
+        time.sleep(1)
+        assert factory.client().get_treatment('maldo', 'split1') == 'on'
 
         # Validate the SSE request
         sse_request = sse_requests.get()
@@ -1229,6 +1247,32 @@ def make_split_change_event(change_number):
             'data': json.dumps({
                 'type': 'SPLIT_UPDATE',
                 'changeNumber': change_number
+            })
+        })
+    }
+
+def make_split_fast_change_event(change_number):
+    """Make a split change event."""
+    json1 = make_simple_split('split1', 1, True, False, 'off', 'user', True)
+    str1 = json.dumps(json1)
+    byt1 = bytes(str1, encoding='utf-8')
+    compressed = base64.b64encode(byt1)
+    final = compressed.decode('utf-8')
+
+    return {
+        'event': 'message',
+        'data': json.dumps({
+            'id':'TVUsxaabHs:0:0',
+            'clientId':'pri:MzM0ODI1MTkxMw==',
+            'timestamp': change_number-1,
+            'encoding':'json',
+            'channel':'MTYyMTcxOTQ4Mw==_MjA4MzczNDU1Mg==_splits',
+            'data': json.dumps({
+                'type': 'SPLIT_UPDATE',
+                'changeNumber': change_number,
+                'pcn': 3,
+                'c': 0,
+                'd': final
             })
         })
     }
