@@ -54,6 +54,13 @@ class SplitWorker(object):
         cm = CompressionMode(event.compression) # will throw if the number is not defined in compression mode
         return self._compression_handlers[cm](event)
 
+    def _check_instant_ff_update(self, event):
+        if event.update_type == UpdateType.SPLIT_UPDATE:
+            if event.compression is not None and event.previous_change_number == self._feature_flag_storage.get_change_number():
+                return True
+        return False
+
+
     def _run(self):
         """Run worker handler."""
         while self.is_running():
@@ -64,17 +71,16 @@ class SplitWorker(object):
                 continue
             _LOGGER.debug('Processing feature flag update %d', event.change_number)
             try:
-                if event.update_type == UpdateType.SPLIT_UPDATE:
-                    if event.compression is not None and event.previous_change_number == self._feature_flag_storage.get_change_number():
-                        try:
-                            self._feature_flag_storage.put(from_raw(json.loads(self._get_feature_flag_definition(event))))
-                            self._feature_flag_storage.set_change_number(event.change_number)
-                            continue
-                        except Exception as e:
-                            _LOGGER.error('Exception raised in updating feature flag')
-                            _LOGGER.debug(str(e))
-                            _LOGGER.debug('Exception information: ', exc_info=True)
-                            pass
+                if self._check_instant_ff_update(event):
+                    try:
+                        self._feature_flag_storage.put(from_raw(json.loads(self._get_feature_flag_definition(event))))
+                        self._feature_flag_storage.set_change_number(event.change_number)
+                        continue
+                    except Exception as e:
+                        _LOGGER.error('Exception raised in updating feature flag')
+                        _LOGGER.debug(str(e))
+                        _LOGGER.debug('Exception information: ', exc_info=True)
+                        pass
                 self._handler(event.change_number)
             except Exception as e:  # pylint: disable=broad-except
                 _LOGGER.error('Exception raised in feature flag synchronization')
