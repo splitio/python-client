@@ -4,7 +4,7 @@ import pytest
 import unittest.mock as mock
 
 from splitio.api import impressions, client
-from splitio.api.commons import APIException
+from splitio.api import APIException
 from splitio.models.impressions import Impression
 from splitio.engine.impressions.impressions import ImpressionsMode
 from splitio.engine.impressions.manager import Counter
@@ -54,7 +54,7 @@ class ImpressionsAPITests(object):
     def test_post_impressions(self, mocker):
         """Test impressions posting API call."""
         httpclient = mocker.Mock(spec=client.HttpClient)
-        httpclient.post.return_value = client.HttpResponse(200, '')
+        httpclient.post.return_value = client.HttpResponse(200, '', {})
         cfg = DEFAULT_CONFIG.copy()
         cfg.update({'IPAddressesEnabled': True, 'machineName': 'some_machine_name', 'machineIp': '123.123.123.123'})
         sdk_metadata = get_metadata(cfg)
@@ -93,7 +93,7 @@ class ImpressionsAPITests(object):
     def test_post_impressions_ip_address_disabled(self, mocker):
         """Test impressions posting API call."""
         httpclient = mocker.Mock(spec=client.HttpClient)
-        httpclient.post.return_value = client.HttpResponse(200, '')
+        httpclient.post.return_value = client.HttpResponse(200, '', {})
         cfg = DEFAULT_CONFIG.copy()
         cfg.update({'IPAddressesEnabled': False})
         sdk_metadata = get_metadata(cfg)
@@ -117,7 +117,7 @@ class ImpressionsAPITests(object):
     def test_post_counters(self, mocker):
         """Test impressions posting API call."""
         httpclient = mocker.Mock(spec=client.HttpClient)
-        httpclient.post.return_value = client.HttpResponse(200, '')
+        httpclient.post.return_value = client.HttpResponse(200, '', {})
         cfg = DEFAULT_CONFIG.copy()
         cfg.update({'IPAddressesEnabled': True, 'machineName': 'some_machine_name', 'machineIp': '123.123.123.123'})
         sdk_metadata = get_metadata(cfg)

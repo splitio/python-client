@@ -6,7 +6,7 @@ from threading import Thread
 from queue import Queue
 
 from splitio.push.manager import PushManager, Status
-from splitio.api.commons import APIException
+from splitio.api import APIException
 from splitio.util.backoff import Backoff
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.models.telemetry import SSESyncMode, StreamingEventTypes

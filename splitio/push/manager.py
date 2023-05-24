@@ -3,7 +3,7 @@
 import logging
 from threading import Timer
 
-from splitio.api.commons import APIException
+from splitio.api import APIException
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.push.splitsse import SplitSSEClient
 from splitio.push.parser import parse_incoming_event, EventParsingException, EventType, \

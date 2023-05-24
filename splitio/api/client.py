@@ -1,6 +1,9 @@
 """Synchronous HTTP Client for split API."""
 from collections import namedtuple
 import requests
+import urllib
+import abc
+
 try:
     import aiohttp
 except ImportError:
@@ -12,12 +15,12 @@ except ImportError:
         )
     aiohttp = missing_asyncio_dependencies
 
-from splitio.api.commons import HttpResponse, build_basic_headers, HttpClientException
+SDK_URL = 'https://sdk.split.io/api/'
+EVENTS_URL = 'https://events.split.io/api/'
+AUTH_URL = 'https://auth.split.io/api/'
+TELEMETRY_URL = 'https://telemetry.split.io/api/'
 
-SDK_URL = 'https://sdk.split.io/api'
-EVENTS_URL = 'https://events.split.io/api'
-AUTH_URL = 'https://auth.split.io/api'
-TELEMETRY_URL = 'https://telemetry.split.io/api'
+HttpResponse = namedtuple('HttpResponse', ['status_code', 'body', 'headers'])
 
 def _build_url(server, path, urls):
     """
@@ -31,7 +34,8 @@ def _build_url(server, path, urls):
     :return: A fully qualified URL.
     :rtype: str
     """
-    return urls[server] + path
+    return urllib.parse.urljoin(urls[server], path)
+#    return urls[server] + path
 
 def _construct_urls(sdk_url=None, events_url=None, auth_url=None, telemetry_url=None):
     return {
@@ -41,12 +45,38 @@ def _construct_urls(sdk_url=None, events_url=None, auth_url=None, telemetry_url=
         'telemetry': telemetry_url if telemetry_url is not None else TELEMETRY_URL,
     }
 
-class HttpClientBase(object):
+def build_basic_headers(apikey):
+    """
+    Build basic headers with auth.
+
+    :param apikey: API token used to identify backend calls.
+    :type apikey: str
+    """
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': "Bearer %s" % apikey
+    }
+
+class HttpClientException(Exception):
+    """HTTP Client exception."""
+
+    def __init__(self, message):
+        """
+        Class constructor.
+
+        :param message: Information on why this exception happened.
+        :type message: str
+        """
+        Exception.__init__(self, message)
+
+class HttpClientBase(object, metaclass=abc.ABCMeta):
     """HttpClient wrapper template."""
 
+    @abc.abstractmethod
     def get(self, server, path, apikey):
         """http get request"""
 
+    @abc.abstractmethod
     def post(self, server, path, apikey):
         """http post request"""
 
@@ -101,7 +131,7 @@ class HttpClient(HttpClientBase):
                 headers=headers,
                 timeout=self._timeout
             )
-            return HttpResponse(response.status_code, response.text)
+            return HttpResponse(response.status_code, response.text, response.headers)
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('requests library is throwing exceptions') from exc
 
@@ -138,7 +168,7 @@ class HttpClient(HttpClientBase):
                 headers=headers,
                 timeout=self._timeout
             )
-            return HttpResponse(response.status_code, response.text)
+            return HttpResponse(response.status_code, response.text, response.headers)
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('requests library is throwing exceptions') from exc
 
@@ -193,7 +223,7 @@ class HttpClientAsync(HttpClientBase):
                 timeout=self._timeout
             ) as response:
                 body = await response.text()
-                return HttpResponse(response.status, body)
+                return HttpResponse(response.status, body, response.headers)
         except aiohttp.ClientError as exc:  # pylint: disable=broad-except
             raise HttpClientException('aiohttp library is throwing exceptions') from exc
 
@@ -232,6 +262,6 @@ class HttpClientAsync(HttpClientBase):
                     timeout=self._timeout
                 ) as response:
                     body = await response.text()
-                    return HttpResponse(response.status, body)
+                    return HttpResponse(response.status, body, response.headers)
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('aiohttp library is throwing exceptions') from exc

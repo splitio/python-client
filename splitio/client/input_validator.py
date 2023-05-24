@@ -5,7 +5,8 @@ import re
 import math
 import inspect
 
-from splitio.api.commons import FetchOptions, APIException
+from splitio.api.commons import FetchOptions
+from splitio.api import APIException
 from splitio.client.key import Key
 from splitio.engine.evaluator import CONTROL
 

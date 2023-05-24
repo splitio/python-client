@@ -5,7 +5,7 @@ import time
 import pytest
 
 from splitio.api.client import HttpResponse
-from splitio.api.commons import APIException
+from splitio.api import APIException
 from splitio.storage import ImpressionStorage
 from splitio.models.impressions import Impression
 from splitio.sync.impression import ImpressionSynchronizer

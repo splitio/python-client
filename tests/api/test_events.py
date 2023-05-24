@@ -4,7 +4,7 @@ import pytest
 import unittest.mock as mock
 
 from splitio.api import events, client
-from splitio.api.commons import APIException
+from splitio.api import APIException
 from splitio.models.events import Event
 from splitio.client.util import get_metadata
 from splitio.client.config import DEFAULT_CONFIG
@@ -32,7 +32,7 @@ class EventsAPITests(object):
     def test_post_events(self, mocker):
         """Test impressions posting API call."""
         httpclient = mocker.Mock(spec=client.HttpClient)
-        httpclient.post.return_value = client.HttpResponse(200, '')
+        httpclient.post.return_value = client.HttpResponse(200, '', {})
         cfg = DEFAULT_CONFIG.copy()
         cfg.update({'IPAddressesEnabled': True, 'machineName': 'some_machine_name', 'machineIp': '123.123.123.123'})
         sdk_metadata = get_metadata(cfg)
@@ -70,7 +70,7 @@ class EventsAPITests(object):
     def test_post_events_ip_address_disabled(self, mocker):
         """Test impressions posting API call."""
         httpclient = mocker.Mock(spec=client.HttpClient)
-        httpclient.post.return_value = client.HttpResponse(200, '')
+        httpclient.post.return_value = client.HttpResponse(200, '', {})
         cfg = DEFAULT_CONFIG.copy()
         cfg.update({'IPAddressesEnabled': False})
         sdk_metadata = get_metadata(cfg)

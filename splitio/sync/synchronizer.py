@@ -5,7 +5,7 @@ import logging
 import threading
 import time
 
-from splitio.api.commons import APIException
+from splitio.api import APIException
 from splitio.util.backoff import Backoff
 from splitio.sync.split import _ON_DEMAND_FETCH_BACKOFF_BASE, _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES, _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT, LocalhostMode
 

@@ -5,7 +5,7 @@ import pytest
 import unittest.mock as mock
 
 from splitio.api import auth, client
-from splitio.api.commons import APIException
+from splitio.api import APIException
 from splitio.client.util import get_metadata
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.version import __version__
@@ -24,7 +24,7 @@ class AuthAPITests(object):
         cfg = DEFAULT_CONFIG.copy()
         cfg.update({'IPAddressesEnabled': True, 'machineName': 'some_machine_name', 'machineIp': '123.123.123.123'})
         sdk_metadata = get_metadata(cfg)
-        httpclient.get.return_value = client.HttpResponse(200, payload)
+        httpclient.get.return_value = client.HttpResponse(200, payload, {})
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
@@ -65,7 +65,7 @@ class AuthAPITests(object):
         cfg = DEFAULT_CONFIG.copy()
         cfg.update({'IPAddressesEnabled': True, 'machineName': 'some_machine_name', 'machineIp': '123.123.123.123'})
         sdk_metadata = get_metadata(cfg)
-        httpclient.get.return_value = client.HttpResponse(401, payload)
+        httpclient.get.return_value = client.HttpResponse(401, payload, {})
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()

@@ -5,7 +5,7 @@ import time
 import pytest
 
 from splitio.api.client import HttpResponse
-from splitio.api.commons import APIException
+from splitio.api import APIException
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager
 from splitio.engine.impressions.manager import Counter
 from splitio.engine.impressions.strategies import StrategyOptimizedMode

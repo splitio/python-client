@@ -7,7 +7,7 @@ import pytest
 
 from splitio.api.auth import AuthAPI
 from splitio.api import auth, client
-from splitio.api.commons import APIException
+from splitio.api import APIException
 from splitio.client.util import get_metadata
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.tasks.split_sync import SplitSynchronizationTask
@@ -27,8 +27,6 @@ from splitio.sync.synchronizer import Synchronizer, SplitTasks, SplitSynchronize
 from splitio.sync.manager import Manager, RedisManager
 
 from splitio.storage import SplitStorage
-
-from splitio.api.commons import APIException
 
 from splitio.client.util import SdkMetadata
 
