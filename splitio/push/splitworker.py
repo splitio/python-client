@@ -55,9 +55,8 @@ class SplitWorker(object):
         return self._compression_handlers[cm](event)
 
     def _check_instant_ff_update(self, event):
-        if event.update_type == UpdateType.SPLIT_UPDATE:
-            if event.compression is not None and event.previous_change_number == self._feature_flag_storage.get_change_number():
-                return True
+        if event.update_type == UpdateType.SPLIT_UPDATE and event.compression is not None and event.previous_change_number == self._feature_flag_storage.get_change_number():
+            return True
         return False
 
 
