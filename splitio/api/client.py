@@ -45,7 +45,7 @@ def _construct_urls(sdk_url=None, events_url=None, auth_url=None, telemetry_url=
         'telemetry': telemetry_url if telemetry_url is not None else TELEMETRY_URL,
     }
 
-def build_basic_headers(apikey):
+def _build_basic_headers(apikey):
     """
     Build basic headers with auth.
 
@@ -120,7 +120,7 @@ class HttpClient(HttpClientBase):
         :return: Tuple of status_code & response text
         :rtype: HttpResponse
         """
-        headers = build_basic_headers(apikey)
+        headers = _build_basic_headers(apikey)
         if extra_headers is not None:
             headers.update(extra_headers)
 
@@ -155,7 +155,7 @@ class HttpClient(HttpClientBase):
         :return: Tuple of status_code & response text
         :rtype: HttpResponse
         """
-        headers = build_basic_headers(apikey)
+        headers = _build_basic_headers(apikey)
 
         if extra_headers is not None:
             headers.update(extra_headers)
@@ -212,7 +212,7 @@ class HttpClientAsync(HttpClientBase):
         :return: Tuple of status_code & response text
         :rtype: HttpResponse
         """
-        headers = build_basic_headers(apikey)
+        headers = _build_basic_headers(apikey)
         if extra_headers is not None:
             headers.update(extra_headers)
         try:
@@ -247,21 +247,18 @@ class HttpClientAsync(HttpClientBase):
         :return: Tuple of status_code & response text
         :rtype: HttpResponse
         """
-        headers = build_basic_headers(apikey)
-
+        headers = _build_basic_headers(apikey)
         if extra_headers is not None:
             headers.update(extra_headers)
-
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    _build_url(server, path, self._urls),
-                    params=query,
-                    headers=headers,
-                    json=body,
-                    timeout=self._timeout
-                ) as response:
-                    body = await response.text()
-                    return HttpResponse(response.status, body, response.headers)
+            async with self._session.post(
+                _build_url(server, path, self._urls),
+                params=query,
+                headers=headers,
+                json=body,
+                timeout=self._timeout
+            ) as response:
+                body = await response.text()
+                return HttpResponse(response.status, body, response.headers)
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('aiohttp library is throwing exceptions') from exc
