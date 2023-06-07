@@ -4,16 +4,7 @@ import requests
 import urllib
 import abc
 
-try:
-    import aiohttp
-except ImportError:
-    def missing_asyncio_dependencies(*_, **__):
-        """Fail if missing dependencies are used."""
-        raise NotImplementedError(
-            'Missing aiohttp dependency. '
-            'Please use `pip install splitio_client[asyncio]` to install the sdk with asyncio support'
-        )
-    aiohttp = missing_asyncio_dependencies
+import splitio.util.load_asyncio
 
 SDK_URL = 'https://sdk.split.io/api'
 EVENTS_URL = 'https://events.split.io/api'
@@ -192,7 +183,7 @@ class HttpClientAsync(HttpClientBase):
         """
         self._timeout = timeout/1000 if timeout else None  # Convert ms to seconds.
         self._urls = _construct_urls(sdk_url, events_url, auth_url, telemetry_url)
-        self._session = aiohttp.ClientSession()
+        self._session = splitio.util.load_asyncio.aiohttp.ClientSession()
 
     async def get(self, server, path, apikey, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
@@ -222,7 +213,7 @@ class HttpClientAsync(HttpClientBase):
             ) as response:
                 body = await response.text()
                 return HttpResponse(response.status, body, response.headers)
-        except aiohttp.ClientError as exc:  # pylint: disable=broad-except
+        except splitio.util.aiohttp.ClientError as exc:  # pylint: disable=broad-except
             raise HttpClientException('aiohttp library is throwing exceptions') from exc
 
     async def post(self, server, path, apikey, body, query=None, extra_headers=None):  # pylint: disable=too-many-arguments

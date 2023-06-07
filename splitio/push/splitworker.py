@@ -1,12 +1,28 @@
 """Feature Flag changes processing worker."""
 import logging
 import threading
-
+import abc
+import pytest
+import splitio.util.load_asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
+class SplitWorkerBase(object, metaclass=abc.ABCMeta):
+    """HttpClient wrapper template."""
 
-class SplitWorker(object):
+    @abc.abstractmethod
+    def is_running(self):
+        """Return whether the working is running."""
+
+    @abc.abstractmethod
+    def start(self):
+        """Start worker."""
+
+    @abc.abstractmethod
+    def stop(self):
+        """Stop worker."""
+
+class SplitWorker(SplitWorkerBase):
     """Feature Flag Worker for processing updates."""
 
     _centinel = object()
@@ -64,3 +80,63 @@ class SplitWorker(object):
             return
         self._running = False
         self._feature_flag_queue.put(self._centinel)
+
+class SplitWorkerAsync(SplitWorkerBase):
+    """Split Worker for processing updates."""
+
+    _centinel = object()
+
+    def __init__(self, synchronize_split, split_queue):
+        """
+        Class constructor.
+
+        :param synchronize_split: handler to perform split synchronization on incoming event
+        :type synchronize_split: callable
+
+        :param split_queue: queue with split updates notifications
+        :type split_queue: queue
+        """
+        self._split_queue = split_queue
+        self._handler = synchronize_split
+        self._running = False
+        self._worker = None
+
+    def is_running(self):
+        """Return whether the working is running."""
+        return self._running
+
+    async def _run(self):
+        """Run worker handler."""
+        while self.is_running():
+            _LOGGER.error("_run")
+            event = await self._split_queue.get()
+            if not self.is_running():
+                break
+            if event == self._centinel:
+                continue
+            _LOGGER.debug('Processing split_update %d', event.change_number)
+            try:
+                _LOGGER.error(event.change_number)
+                await self._handler(event.change_number)
+            except Exception:  # pylint: disable=broad-except
+                _LOGGER.error('Exception raised in split synchronization')
+                _LOGGER.debug('Exception information: ', exc_info=True)
+
+    def start(self):
+        """Start worker."""
+        if self.is_running():
+            _LOGGER.debug('Worker is already running')
+            return
+        self._running = True
+
+        _LOGGER.debug('Starting Split Worker')
+        splitio.util.load_asyncio.asyncio.gather(self._run())
+
+    async def stop(self):
+        """Stop worker."""
+        _LOGGER.debug('Stopping Split Worker')
+        if not self.is_running():
+            _LOGGER.debug('Worker is not running')
+            return
+        self._running = False
+        await self._split_queue.put(self._centinel)
