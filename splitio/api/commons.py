@@ -4,34 +4,6 @@ from splitio.util.time import get_current_epoch_time_ms
 _CACHE_CONTROL = 'Cache-Control'
 _CACHE_CONTROL_NO_CACHE = 'no-cache'
 
-
-def headers_from_metadata(sdk_metadata, client_key=None):
-    """
-    Generate a dict with headers required by data-recording API endpoints.
-
-    :param sdk_metadata: SDK Metadata object, generated at sdk initialization time.
-    :type sdk_metadata: splitio.client.util.SdkMetadata
-
-    :param client_key: client key.
-    :type client_key: str
-
-    :return: A dictionary with headers.
-    :rtype: dict
-    """
-
-    metadata = {
-        'SplitSDKVersion': sdk_metadata.sdk_version,
-        'SplitSDKMachineIP': sdk_metadata.instance_ip,
-        'SplitSDKMachineName': sdk_metadata.instance_name
-    } if sdk_metadata.instance_ip != 'NA' and sdk_metadata.instance_ip != 'unknown' else {
-        'SplitSDKVersion': sdk_metadata.sdk_version,
-    }
-
-    if client_key is not None:
-        metadata['SplitSDKClientKey'] = client_key
-
-    return metadata
-
 def record_telemetry(status_code, elapsed, metric_name, telemetry_runtime_producer):
     """
     Record Telemetry info

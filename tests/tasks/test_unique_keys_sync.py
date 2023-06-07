@@ -16,7 +16,7 @@ class UniqueKeysSyncTests(object):
     def test_normal_operation(self, mocker):
         """Test that the task works properly under normal circumstances."""
         api = mocker.Mock(spec=TelemetryAPI)
-        api.record_unique_keys.return_value = HttpResponse(200, '')
+        api.record_unique_keys.return_value = HttpResponse(200, '', {})
 
         unique_keys_tracker = UniqueKeysTracker()
         unique_keys_tracker.track("key1", "split1")
