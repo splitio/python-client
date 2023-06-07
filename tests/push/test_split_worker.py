@@ -83,8 +83,9 @@ class SplitWorkerAsyncTests(object):
 
         await split_worker.stop()
         await splitio.util.load_asyncio.asyncio.sleep(.1)
+
         assert not split_worker.is_running()
-#        assert(not self._worker_running())
+        assert(not self._worker_running())
 
     def _worker_running(self):
         worker_running = False
@@ -110,4 +111,7 @@ class SplitWorkerAsyncTests(object):
         assert change_number_received == 123456789
 
         await split_worker.stop()
+        await splitio.util.load_asyncio.asyncio.sleep(.1)
+
         assert not split_worker.is_running()
+        assert(not self._worker_running())

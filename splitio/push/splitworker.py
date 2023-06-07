@@ -2,7 +2,7 @@
 import logging
 import threading
 import abc
-import pytest
+
 import splitio.util.load_asyncio
 
 _LOGGER = logging.getLogger(__name__)
