@@ -73,10 +73,10 @@ class SplitWorker(object):
                 if self._check_instant_ff_update(event):
                     try:
                         new_split = from_raw(json.loads(self._get_feature_flag_definition(event)))
-                        if new_split.status == Status.ARCHIVED:
-                            self._feature_flag_storage.remove(new_split.name)
-                        else:
+                        if new_split.status == Status.ACTIVE:
                             self._feature_flag_storage.put(new_split)
+                        else:
+                            self._feature_flag_storage.remove(new_split.name)
                         self._feature_flag_storage.set_change_number(event.change_number)
                         continue
                     except Exception as e:
