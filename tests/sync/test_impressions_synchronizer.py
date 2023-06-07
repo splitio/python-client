@@ -57,7 +57,7 @@ class ImpressionsSynchronizerTests(object):
 
         def run(x):
             run._called += 1
-            return HttpResponse(200, '')
+            return HttpResponse(200, '', {})
 
         api.flush_impressions.side_effect = run
         run._called = 0

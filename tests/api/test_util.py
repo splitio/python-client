@@ -3,7 +3,8 @@
 import pytest
 import unittest.mock as mock
 
-from splitio.api.commons import headers_from_metadata, record_telemetry
+from splitio.api import headers_from_metadata
+from splitio.api.commons import record_telemetry
 from splitio.client.util import SdkMetadata
 from splitio.engine.telemetry import TelemetryStorageProducer
 from splitio.storage.inmemmory import InMemoryTelemetryStorage

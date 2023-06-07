@@ -4,8 +4,8 @@ import json
 import logging
 import time
 
-from splitio.api import APIException
-from splitio.api.commons import headers_from_metadata, build_fetch, record_telemetry
+from splitio.api import APIException, headers_from_metadata
+from splitio.api.commons import build_fetch, record_telemetry
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.api.client import HttpClientException
 from splitio.models.telemetry import HTTPExceptionsAndLatencies
@@ -55,7 +55,7 @@ class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
             query, extra_headers = build_fetch(change_number, fetch_options, self._metadata)
             response = self._client.get(
                 'sdk',
-                '/segmentChanges/{segment_name}'.format(segment_name=segment_name),
+                'segmentChanges/{segment_name}'.format(segment_name=segment_name),
                 self._sdk_key,
                 extra_headers=extra_headers,
                 query=query,

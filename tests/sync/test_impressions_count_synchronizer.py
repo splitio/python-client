@@ -28,7 +28,7 @@ class ImpressionsCountSynchronizerTests(object):
 
         counter.pop_all.return_value = counters
         api = mocker.Mock(spec=ImpressionsAPI)
-        api.flush_counters.return_value = HttpResponse(200, '')
+        api.flush_counters.return_value = HttpResponse(200, '', {})
         impression_count_synchronizer = ImpressionsCountSynchronizer(api, counter)
         impression_count_synchronizer.synchronize_counters()
 

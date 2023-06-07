@@ -3,8 +3,8 @@
 import logging
 import json
 
-from splitio.api import APIException
-from splitio.api.commons import headers_from_metadata, record_telemetry
+from splitio.api import APIException, headers_from_metadata
+from splitio.api.commons import record_telemetry
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.api.client import HttpClientException
 from splitio.models.token import from_raw
@@ -43,7 +43,7 @@ class AuthAPI(object):  # pylint: disable=too-few-public-methods
         try:
             response = self._client.get(
                 'auth',
-                '/v2/auth',
+                'v2/auth',
                 self._sdk_key,
                 extra_headers=self._metadata,
             )
@@ -54,7 +54,7 @@ class AuthAPI(object):  # pylint: disable=too-few-public-methods
             else:
                 if (response.status_code >= 400 and response.status_code < 500):
                     self._telemetry_runtime_producer.record_auth_rejections()
-                raise APIException(response.body, response.status_code)
+                raise APIException(response.body, response.status_code, response.headers)
         except HttpClientException as exc:
             _LOGGER.error('Exception raised while authenticating')
             _LOGGER.debug('Exception information: ', exc_info=True)

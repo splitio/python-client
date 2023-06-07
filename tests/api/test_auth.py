@@ -23,7 +23,7 @@ class AuthAPITests(object):
         cfg = DEFAULT_CONFIG.copy()
         cfg.update({'IPAddressesEnabled': True, 'machineName': 'some_machine_name', 'machineIp': '123.123.123.123'})
         sdk_metadata = get_metadata(cfg)
-        httpclient.get.return_value = client.HttpResponse(200, payload)
+        httpclient.get.return_value = client.HttpResponse(200, payload, {})
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
@@ -37,7 +37,7 @@ class AuthAPITests(object):
         call_made = httpclient.get.mock_calls[0]
 
         # validate positional arguments
-        assert call_made[1] == ('auth', '/v2/auth', 'some_api_key')
+        assert call_made[1] == ('auth', 'v2/auth', 'some_api_key')
 
         # validate key-value args (headers)
         assert call_made[2]['extra_headers'] == {
@@ -64,7 +64,7 @@ class AuthAPITests(object):
         cfg = DEFAULT_CONFIG.copy()
         cfg.update({'IPAddressesEnabled': True, 'machineName': 'some_machine_name', 'machineIp': '123.123.123.123'})
         sdk_metadata = get_metadata(cfg)
-        httpclient.get.return_value = client.HttpResponse(401, payload)
+        httpclient.get.return_value = client.HttpResponse(401, payload, {})
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()

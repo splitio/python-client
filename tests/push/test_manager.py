@@ -2,7 +2,7 @@
 #pylint:disable=no-self-use,protected-access
 from threading import Thread
 from queue import Queue
-from splitio.api.auth import APIException
+from splitio.api import APIException
 
 from splitio.models.token import Token
 

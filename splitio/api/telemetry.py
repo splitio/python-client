@@ -1,9 +1,9 @@
 """Impressions API module."""
 import logging
 
-from splitio.api import APIException
+from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException
-from splitio.api.commons import headers_from_metadata, record_telemetry
+from splitio.api.commons import record_telemetry
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.models.telemetry import HTTPExceptionsAndLatencies
 
@@ -37,7 +37,7 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
         try:
             response = self._client.post(
                 'telemetry',
-                '/v1/keys/ss',
+                'v1/keys/ss',
                 self._sdk_key,
                 body=uniques,
                 extra_headers=self._metadata

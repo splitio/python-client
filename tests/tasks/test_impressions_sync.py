@@ -25,7 +25,7 @@ class ImpressionsSyncTests(object):
         ]
         storage.pop_many.return_value = impressions
         api = mocker.Mock(spec=ImpressionsAPI)
-        api.flush_impressions.return_value = HttpResponse(200, '')
+        api.flush_impressions.return_value = HttpResponse(200, '', {})
         impression_synchronizer = ImpressionSynchronizer(api, storage, 5)
         task = impressions_sync.ImpressionsSyncTask(
             impression_synchronizer.synchronize_impressions,
@@ -60,7 +60,7 @@ class ImpressionsCountSyncTests(object):
 
         counter.pop_all.return_value = counters
         api = mocker.Mock(spec=ImpressionsAPI)
-        api.flush_counters.return_value = HttpResponse(200, '')
+        api.flush_counters.return_value = HttpResponse(200, '', {})
         impressions_sync.ImpressionsCountSyncTask._PERIOD = 1
         impression_synchronizer = ImpressionsCountSynchronizer(api, counter)
         task = impressions_sync.ImpressionsCountSyncTask(

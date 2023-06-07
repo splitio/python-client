@@ -3,9 +3,9 @@
 import logging
 from itertools import groupby
 
-from splitio.api import APIException
+from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException
-from splitio.api.commons import headers_from_metadata, record_telemetry
+from splitio.api.commons import record_telemetry
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.engine.impressions import ImpressionsMode
 from splitio.models.telemetry import HTTPExceptionsAndLatencies
@@ -98,7 +98,7 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
         try:
             response = self._client.post(
                 'events',
-                '/testImpressions/bulk',
+                'testImpressions/bulk',
                 self._sdk_key,
                 body=bulk,
                 extra_headers=self._metadata,
@@ -125,7 +125,7 @@ class ImpressionsAPI(object):  # pylint: disable=too-few-public-methods
         try:
             response = self._client.post(
                 'events',
-                '/testImpressions/count',
+                'testImpressions/count',
                 self._sdk_key,
                 body=bulk,
                 extra_headers=self._metadata,

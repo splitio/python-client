@@ -15,12 +15,12 @@ class SegmentAPITests(object):
     def test_fetch_segment_changes(self, mocker):
         """Test segment changes fetching API call."""
         httpclient = mocker.Mock(spec=client.HttpClient)
-        httpclient.get.return_value = client.HttpResponse(200, '{"prop1": "value1"}')
+        httpclient.get.return_value = client.HttpResponse(200, '{"prop1": "value1"}', {})
         segment_api = segments.SegmentsAPI(httpclient, 'some_api_key', SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
 
         response = segment_api.fetch_segment('some_segment', 123, FetchOptions())
         assert response['prop1'] == 'value1'
-        assert httpclient.get.mock_calls == [mocker.call('sdk', '/segmentChanges/some_segment', 'some_api_key',
+        assert httpclient.get.mock_calls == [mocker.call('sdk', 'segmentChanges/some_segment', 'some_api_key',
                                                          extra_headers={
                                                              'SplitSDKVersion': '1.0',
                                                              'SplitSDKMachineIP': '1.2.3.4',
@@ -31,7 +31,7 @@ class SegmentAPITests(object):
         httpclient.reset_mock()
         response = segment_api.fetch_segment('some_segment', 123, FetchOptions(True))
         assert response['prop1'] == 'value1'
-        assert httpclient.get.mock_calls == [mocker.call('sdk', '/segmentChanges/some_segment', 'some_api_key',
+        assert httpclient.get.mock_calls == [mocker.call('sdk', 'segmentChanges/some_segment', 'some_api_key',
                                                          extra_headers={
                                                              'SplitSDKVersion': '1.0',
                                                              'SplitSDKMachineIP': '1.2.3.4',
@@ -43,7 +43,7 @@ class SegmentAPITests(object):
         httpclient.reset_mock()
         response = segment_api.fetch_segment('some_segment', 123, FetchOptions(True, 123))
         assert response['prop1'] == 'value1'
-        assert httpclient.get.mock_calls == [mocker.call('sdk', '/segmentChanges/some_segment', 'some_api_key',
+        assert httpclient.get.mock_calls == [mocker.call('sdk', 'segmentChanges/some_segment', 'some_api_key',
                                                          extra_headers={
                                                              'SplitSDKVersion': '1.0',
                                                              'SplitSDKMachineIP': '1.2.3.4',
@@ -64,7 +64,7 @@ class SegmentAPITests(object):
     @mock.patch('splitio.engine.telemetry.TelemetryRuntimeProducer.record_sync_latency')
     def test_segment_telemetry(self, mocker):
         httpclient = mocker.Mock(spec=client.HttpClient)
-        httpclient.get.return_value = client.HttpResponse(200, '{"prop1": "value1"}')
+        httpclient.get.return_value = client.HttpResponse(200, '{"prop1": "value1"}', {})
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
