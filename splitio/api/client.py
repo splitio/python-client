@@ -4,7 +4,7 @@ import requests
 import urllib
 import abc
 
-import splitio.util.load_asyncio
+from splitio.optional.loaders import aiohttp
 
 SDK_URL = 'https://sdk.split.io/api'
 EVENTS_URL = 'https://events.split.io/api'
@@ -183,7 +183,7 @@ class HttpClientAsync(HttpClientBase):
         """
         self._timeout = timeout/1000 if timeout else None  # Convert ms to seconds.
         self._urls = _construct_urls(sdk_url, events_url, auth_url, telemetry_url)
-        self._session = splitio.util.load_asyncio.aiohttp.ClientSession()
+        self._session = aiohttp.ClientSession()
 
     async def get(self, server, path, apikey, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
@@ -213,7 +213,7 @@ class HttpClientAsync(HttpClientBase):
             ) as response:
                 body = await response.text()
                 return HttpResponse(response.status, body, response.headers)
-        except splitio.util.aiohttp.ClientError as exc:  # pylint: disable=broad-except
+        except aiohttp.ClientError as exc:  # pylint: disable=broad-except
             raise HttpClientException('aiohttp library is throwing exceptions') from exc
 
     async def post(self, server, path, apikey, body, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
@@ -247,5 +247,5 @@ class HttpClientAsync(HttpClientBase):
             ) as response:
                 body = await response.text()
                 return HttpResponse(response.status, body, response.headers)
-        except Exception as exc:  # pylint: disable=broad-except
+        except aiohttp.ClientError as exc:  # pylint: disable=broad-except
             raise HttpClientException('aiohttp library is throwing exceptions') from exc

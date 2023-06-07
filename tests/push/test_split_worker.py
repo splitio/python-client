@@ -6,7 +6,7 @@ import pytest
 from splitio.api import APIException
 from splitio.push.splitworker import SplitWorker, SplitWorkerAsync
 from splitio.models.notification import SplitChangeNotification
-import splitio.util.load_asyncio
+from splitio.optional.loaders import asyncio
 
 change_number_received = None
 
@@ -65,7 +65,7 @@ class SplitWorkerTests(object):
 class SplitWorkerAsyncTests(object):
 
     async def test_on_error(self):
-        q = splitio.util.load_asyncio.asyncio.Queue()
+        q = asyncio.Queue()
 
         def handler_sync(change_number):
             raise APIException('some')
@@ -82,21 +82,21 @@ class SplitWorkerAsyncTests(object):
         assert(self._worker_running())
 
         await split_worker.stop()
-        await splitio.util.load_asyncio.asyncio.sleep(.1)
+        await asyncio.sleep(.1)
 
         assert not split_worker.is_running()
         assert(not self._worker_running())
 
     def _worker_running(self):
         worker_running = False
-        for task in splitio.util.load_asyncio.asyncio.Task.all_tasks():
+        for task in asyncio.Task.all_tasks():
             if task._coro.cr_code.co_name == '_run' and not task.done():
                 worker_running = True
                 break
         return worker_running
 
     async def test_handler(self):
-        q = splitio.util.load_asyncio.asyncio.Queue()
+        q = asyncio.Queue()
         split_worker = SplitWorkerAsync(handler_async, q)
 
         assert not split_worker.is_running()
@@ -106,12 +106,12 @@ class SplitWorkerAsyncTests(object):
 
         global change_number_received
         await q.put(SplitChangeNotification('some', 'SPLIT_UPDATE', 123456789))
-        await splitio.util.load_asyncio.asyncio.sleep(1)
+        await asyncio.sleep(1)
 
         assert change_number_received == 123456789
 
         await split_worker.stop()
-        await splitio.util.load_asyncio.asyncio.sleep(.1)
+        await asyncio.sleep(.1)
 
         assert not split_worker.is_running()
         assert(not self._worker_running())

@@ -3,7 +3,7 @@ import logging
 import threading
 import abc
 
-import splitio.util.load_asyncio
+from splitio.optional.loaders import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -99,7 +99,6 @@ class SplitWorkerAsync(SplitWorkerBase):
         self._split_queue = split_queue
         self._handler = synchronize_split
         self._running = False
-        self._worker = None
 
     def is_running(self):
         """Return whether the working is running."""
@@ -130,7 +129,7 @@ class SplitWorkerAsync(SplitWorkerBase):
         self._running = True
 
         _LOGGER.debug('Starting Split Worker')
-        splitio.util.load_asyncio.asyncio.gather(self._run())
+        asyncio.gather(self._run())
 
     async def stop(self):
         """Stop worker."""
