@@ -129,7 +129,7 @@ class SplitWorkerAsync(SplitWorkerBase):
         self._running = True
 
         _LOGGER.debug('Starting Split Worker')
-        asyncio.gather(self._run())
+        asyncio.get_event_loop().create_task(self._run())
 
     async def stop(self):
         """Stop worker."""
