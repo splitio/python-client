@@ -7,7 +7,7 @@ import base64
 import json
 from enum import Enum
 
-from splitio.models.splits import from_raw
+from splitio.models.splits import from_raw, Status
 from splitio.push.parser import UpdateType
 
 _LOGGER = logging.getLogger(__name__)
@@ -72,7 +72,11 @@ class SplitWorker(object):
             try:
                 if self._check_instant_ff_update(event):
                     try:
-                        self._feature_flag_storage.put(from_raw(json.loads(self._get_feature_flag_definition(event))))
+                        new_split = from_raw(json.loads(self._get_feature_flag_definition(event)))
+                        if new_split.status == Status.ACTIVE:
+                            self._feature_flag_storage.put(new_split)
+                        else:
+                            self._feature_flag_storage.remove(new_split.name)
                         self._feature_flag_storage.set_change_number(event.change_number)
                         continue
                     except Exception as e:
