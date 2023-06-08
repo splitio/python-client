@@ -3,8 +3,8 @@
 from queue import Queue
 
 from splitio.push.parser import UpdateType
-from splitio.push.splitworker import SplitWorker
-from splitio.push.segmentworker import SegmentWorker
+from splitio.push.workers import SplitWorker
+from splitio.push.workers import SegmentWorker
 
 
 class MessageProcessor(object):
