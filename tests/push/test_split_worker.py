@@ -4,7 +4,7 @@ import queue
 import pytest
 
 from splitio.api import APIException
-from splitio.push.splitworker import SplitWorker, SplitWorkerAsync
+from splitio.push.workers import SplitWorker, SplitWorkerAsync
 from splitio.models.notification import SplitChangeNotification
 from splitio.optional.loaders import asyncio
 
