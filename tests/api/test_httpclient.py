@@ -166,7 +166,7 @@ class HttpClientAsyncTests(object):
         response_mock = MockResponse('ok', 200, {})
         get_mock = mocker.Mock()
         get_mock.return_value = response_mock
-        mocker.patch('splitio.api.client.aiohttp.ClientSession.get', new=get_mock)
+        mocker.patch('splitio.optional.loaders.aiohttp.ClientSession.get', new=get_mock)
         httpclient = client.HttpClientAsync()
         response = await httpclient.get('sdk', 'test1', 'some_api_key', {'param1': 123}, {'h1': 'abc'})
         assert response.status_code == 200
@@ -197,7 +197,7 @@ class HttpClientAsyncTests(object):
         response_mock = MockResponse('ok', 200, {})
         get_mock = mocker.Mock()
         get_mock.return_value = response_mock
-        mocker.patch('splitio.api.client.aiohttp.ClientSession.get', new=get_mock)
+        mocker.patch('splitio.optional.loaders.aiohttp.ClientSession.get', new=get_mock)
         httpclient = client.HttpClientAsync(sdk_url='https://sdk.com', events_url='https://events.com')
         response = await httpclient.get('sdk', 'test1', 'some_api_key', {'param1': 123}, {'h1': 'abc'})
         call = mocker.call(
@@ -228,7 +228,7 @@ class HttpClientAsyncTests(object):
         response_mock = MockResponse('ok', 200, {})
         get_mock = mocker.Mock()
         get_mock.return_value = response_mock
-        mocker.patch('splitio.api.client.aiohttp.ClientSession.post', new=get_mock)
+        mocker.patch('splitio.optional.loaders.aiohttp.ClientSession.post', new=get_mock)
         httpclient = client.HttpClientAsync()
         response = await httpclient.post('sdk', 'test1', 'some_api_key', {'p1': 'a'}, {'param1': 123}, {'h1': 'abc'})
         call = mocker.call(
@@ -260,7 +260,7 @@ class HttpClientAsyncTests(object):
         response_mock = MockResponse('ok', 200, {})
         get_mock = mocker.Mock()
         get_mock.return_value = response_mock
-        mocker.patch('splitio.api.client.aiohttp.ClientSession.post', new=get_mock)
+        mocker.patch('splitio.optional.loaders.aiohttp.ClientSession.post', new=get_mock)
         httpclient = client.HttpClientAsync(sdk_url='https://sdk.com', events_url='https://events.com')
         response = await httpclient.post('sdk', 'test1', 'some_api_key', {'p1': 'a'}, {'param1': 123}, {'h1': 'abc'})
         call = mocker.call(
