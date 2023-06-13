@@ -3,12 +3,10 @@
 import time
 import threading
 import pytest
-from concurrent.futures import ProcessPoolExecutor
 
 from splitio.push.sse import SSEClient, SSEEvent, SSEClientAsync
-from splitio.optional.loaders import asyncio, aiohttp
+from splitio.optional.loaders import asyncio
 from tests.helpers.mockserver import SSEMockServer
-from tests.helpers.async_http_server import AsyncHTTPServer
 
 class SSEClientTests(object):
     """SSEClient test cases."""

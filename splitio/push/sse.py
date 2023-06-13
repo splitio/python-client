@@ -2,7 +2,6 @@
 import logging
 import socket
 import abc
-import pytest
 from collections import namedtuple
 from http.client import HTTPConnection, HTTPSConnection
 from urllib.parse import urlparse
