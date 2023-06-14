@@ -275,7 +275,3 @@ class SSEClientAsync(SSEClientBase):
         sock = self._session.connector._loop._ssock
         sock.shutdown(socket.SHUT_RDWR)
         await self._conn.close()
-        for task in asyncio.Task.all_tasks():
-            if not task.done():
-                if task._coro.cr_code.co_name == 'connect_split_sse_client':
-                    task.cancel()
