@@ -247,7 +247,7 @@ class SSEClientAsync(SSEClientBase):
             self._conn = aiohttp.connector.TCPConnector()
             async with aiohttp.client.ClientSession(
                 connector=self._conn,
-                headers={'accept': 'text/event-stream'},
+                headers=headers,
                 timeout=aiohttp.ClientTimeout(timeout)
                 ) as self._session:
                 reader = await self._session.request(
