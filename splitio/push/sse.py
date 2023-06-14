@@ -2,9 +2,11 @@
 import logging
 import socket
 import abc
+import urllib
 from collections import namedtuple
 from http.client import HTTPConnection, HTTPSConnection
 from urllib.parse import urlparse
+import pytest
 
 from splitio.optional.loaders import asyncio, aiohttp
 from splitio.api.client import HttpClientException
@@ -239,7 +241,7 @@ class SSEClientAsync(SSEClientBase):
         url = urlparse(url)
         headers = _DEFAULT_HEADERS.copy()
         headers.update(extra_headers if extra_headers is not None else {})
-        parsed_url =  url[0] + "://" + url[1] + url[2]
+        parsed_url =  urllib.parse.urljoin(url[0] + "://" + url[1], url[2])
         params=url[4]
         try:
             self._conn = aiohttp.connector.TCPConnector()
