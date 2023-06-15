@@ -1,8 +1,11 @@
 """Message processor tests."""
 from queue import Queue
-from splitio.push.processor import MessageProcessor
-from splitio.sync.synchronizer import Synchronizer
+import pytest
+
+from splitio.push.processor import MessageProcessor, MessageProcessorAsync
+from splitio.sync.synchronizer import Synchronizer, SynchronizerAsync
 from splitio.push.parser import SplitChangeUpdate, SegmentChangeUpdate, SplitKillUpdate
+from splitio.optional.loaders import asyncio
 
 
 class ProcessorTests(object):
@@ -56,3 +59,59 @@ class ProcessorTests(object):
     def test_todo(self):
         """Fix previous tests so that we validate WHICH queue the update is pushed into."""
         assert NotImplementedError("DO THAT")
+
+class ProcessorAsyncTests(object):
+    """Message processor test cases."""
+
+    @pytest.mark.asyncio
+    async def test_split_change(self, mocker):
+        """Test split change is properly handled."""
+        sync_mock = mocker.Mock(spec=Synchronizer)
+        self._update = None
+        async def put_mock(first, event):
+            self._update = event
+
+        mocker.patch('splitio.push.processor.asyncio.Queue.put', new=put_mock)
+        processor = MessageProcessorAsync(sync_mock)
+        update = SplitChangeUpdate('sarasa', 123, 123)
+        await processor.handle(update)
+        assert update == self._update
+
+    @pytest.mark.asyncio
+    async def test_split_kill(self, mocker):
+        """Test split kill is properly handled."""
+
+        self._killed_split = None
+        async def kill_mock(se, split_name, default_treatment, change_number):
+            self._killed_split = (split_name, default_treatment, change_number)
+
+        mocker.patch('splitio.sync.synchronizer.SynchronizerAsync.kill_split', new=kill_mock)
+        sync_mock = SynchronizerAsync()
+
+        self._update = None
+        async def put_mock(first, event):
+            self._update = event
+
+        mocker.patch('splitio.push.processor.asyncio.Queue.put', new=put_mock)
+        processor = MessageProcessorAsync(sync_mock)
+        update = SplitKillUpdate('sarasa', 123, 456, 'some_split', 'off')
+        await processor.handle(update)
+        assert update == self._update
+        assert ('some_split', 'off', 456) == self._killed_split
+
+    @pytest.mark.asyncio
+    async def test_segment_change(self, mocker):
+        """Test segment change is properly handled."""
+
+        sync_mock = SynchronizerAsync()
+        queue_mock = mocker.Mock(spec=asyncio.Queue)
+
+        self._update = None
+        async def put_mock(first, event):
+            self._update = event
+
+        mocker.patch('splitio.push.processor.asyncio.Queue.put', new=put_mock)
+        processor = MessageProcessorAsync(sync_mock)
+        update = SegmentChangeUpdate('sarasa', 123, 123, 'some_segment')
+        await processor.handle(update)
+        assert update == self._update
