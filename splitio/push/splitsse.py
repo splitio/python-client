@@ -194,6 +194,7 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         self._sse_first_event = None
         self._sse_connection_closed = None
         self._metadata = headers_from_metadata(sdk_metadata, client_key)
+        self._raw_event_first_call = False
 
     async def _raw_event_handler(self, event):
         """
@@ -202,6 +203,7 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         :param event: Incoming raw sse event.
         :type event: splitio.push.sse.SSEEvent
         """
+        self._raw_event_first_call = True
         if self._status == self._Status.CONNECTING:
             self._status = self._Status.CONNECTED if event.event != SSE_EVENT_ERROR \
                 else self._Status.ERRORED
@@ -212,7 +214,7 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         if event.data is not None:
             await self._callback(event)
 
-    def start(self, token):
+    async def start(self, token):
         """
         Open a connection to start listening for events.
 
@@ -239,10 +241,14 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
             finally:
                 self._status = self._Status.IDLE
                 self._sse_connection_closed.set()
+                self._raw_event_first_call = True
                 await self._on_disconnected()
 
         url = self._build_url(token, self._base_url)
         self._sse_client_task = asyncio.get_running_loop().create_task(connect_split_sse_client(url))
+
+        while not self._raw_event_first_call:
+            await asyncio.sleep(.1)
         return self._status == self._Status.CONNECTED
 
     async def stop(self, blocking=False, timeout=None):

@@ -160,9 +160,9 @@ class SplitSSEClientAsyncTests(object):
                       1, 2)
 
         server.publish({'id': '1'})  # send a non-error event early to unblock start
-        client.start(token)
+        assert await client.start(token)
         with pytest.raises(Exception):
-            client.start(token)
+            await client.start(token)
 
         server.publish({'id': '1', 'data': 'a', 'retry': '1', 'event': 'message'})
         server.publish({'id': '2', 'data': 'a', 'retry': '1', 'event': 'message'})
@@ -221,7 +221,7 @@ class SplitSSEClientAsyncTests(object):
                       1, 2)
 
         server.publish({'event': 'error'})  # send an error event early to unblock start
-        assert not client.start(token)
+        assert not await client.start(token)
 
         await asyncio.sleep(1)
 
