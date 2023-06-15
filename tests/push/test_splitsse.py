@@ -14,7 +14,7 @@ from tests.helpers.mockserver import SSEMockServer
 from splitio.client.util import SdkMetadata
 
 
-class SSEClientTests(object):
+class SplitSSEClientTests(object):
     """SSEClient test cases."""
 
     def test_split_sse_success(self):
@@ -125,7 +125,7 @@ class SSEClientTests(object):
         assert status['on_connect']
         assert status['on_disconnect']
 
-class SSEClientAsyncTests(object):
+class SplitSSEClientAsyncTests(object):
     """SSEClient test cases."""
 
     @pytest.mark.asyncio
@@ -224,7 +224,6 @@ class SSEClientAsyncTests(object):
         assert not client.start(token)
 
         await asyncio.sleep(1)
-        time.sleep(1)
 
         request = request_queue.get(1)
         assert request.path == '/event-stream?v=1.1&accessToken=some&channels=chan1,%5B?occupancy%3Dmetrics.publishers%5Dchan2'
