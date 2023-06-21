@@ -2,10 +2,11 @@
 import logging
 import socket
 import abc
-import pytest
+import urllib
 from collections import namedtuple
 from http.client import HTTPConnection, HTTPSConnection
 from urllib.parse import urlparse
+import pytest
 
 from splitio.optional.loaders import asyncio, aiohttp
 from splitio.api.client import HttpClientException
@@ -240,13 +241,13 @@ class SSEClientAsync(SSEClientBase):
         url = urlparse(url)
         headers = _DEFAULT_HEADERS.copy()
         headers.update(extra_headers if extra_headers is not None else {})
-        parsed_url =  url[0] + "://" + url[1] + url[2]
+        parsed_url =  urllib.parse.urljoin(url[0] + "://" + url[1], url[2])
         params=url[4]
         try:
             self._conn = aiohttp.connector.TCPConnector()
             async with aiohttp.client.ClientSession(
                 connector=self._conn,
-                headers={'accept': 'text/event-stream'},
+                headers=headers,
                 timeout=aiohttp.ClientTimeout(timeout)
                 ) as self._session:
                 reader = await self._session.request(
@@ -274,7 +275,3 @@ class SSEClientAsync(SSEClientBase):
         sock = self._session.connector._loop._ssock
         sock.shutdown(socket.SHUT_RDWR)
         await self._conn.close()
-        for task in asyncio.Task.all_tasks():
-            if not task.done():
-                if task._coro.cr_code.co_name == 'connect_split_sse_client':
-                    task.cancel()

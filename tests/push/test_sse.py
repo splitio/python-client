@@ -3,12 +3,10 @@
 import time
 import threading
 import pytest
-from concurrent.futures import ProcessPoolExecutor
 
 from splitio.push.sse import SSEClient, SSEEvent, SSEClientAsync
-from splitio.optional.loaders import asyncio, aiohttp
+from splitio.optional.loaders import asyncio
 from tests.helpers.mockserver import SSEMockServer
-from tests.helpers.async_http_server import AsyncHTTPServer
 
 class SSEClientTests(object):
     """SSEClient test cases."""
@@ -130,6 +128,7 @@ class SSEClientTests(object):
 class SSEClientAsyncTests(object):
     """SSEClient test cases."""
 
+#    @pytest.mark.asyncio
     async def test_sse_client_disconnects(self):
         """Test correct initialization. Client ends the connection."""
         server = SSEMockServer()
@@ -141,16 +140,18 @@ class SSEClientAsyncTests(object):
             events.append(event)
 
         client = SSEClientAsync(callback)
+
         async def connect_split_sse_client():
             await client.start('http://127.0.0.1:' + str(server.port()))
 
-        asyncio.gather(connect_split_sse_client())
+        self._client_task = asyncio.gather(connect_split_sse_client())
         server.publish({'id': '1'})
         server.publish({'id': '2', 'event': 'message', 'data': 'abc'})
         server.publish({'id': '3', 'event': 'message', 'data': 'def'})
         server.publish({'id': '4', 'event': 'message', 'data': 'ghi'})
         await asyncio.sleep(1)
         await client.shutdown()
+        self._client_task.cancel()
         await asyncio.sleep(1)
 
         assert events == [
@@ -214,7 +215,7 @@ class SSEClientAsyncTests(object):
             """SSE client runner thread."""
             await client.start('http://127.0.0.1:' + str(server.port()))
 
-        client_task = asyncio.get_event_loop().create_task(runner())
+        client_task = asyncio.gather(runner())
 
         server.publish({'id': '1'})
         server.publish({'id': '2', 'event': 'message', 'data': 'abc'})

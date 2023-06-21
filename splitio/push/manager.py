@@ -144,9 +144,15 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         """
         try:
             parsed = self._get_parsed_event(event)
+        except EventParsingException:
+            _LOGGER.error('error parsing event of type %s', event.event_type)
+            _LOGGER.debug(str(event), exc_info=True)
+            return
+
+        try:
             handle = self._event_handlers[parsed.event_type]
-        except (KeyError, EventParsingException):
-            _LOGGER.error('Parsing exception or no handler for message of type %s', parsed.event_type)
+        except KeyError:
+            _LOGGER.error('no handler for message of type %s', parsed.event_type)
             _LOGGER.debug(str(event), exc_info=True)
             return
 
