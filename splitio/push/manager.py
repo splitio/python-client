@@ -2,42 +2,21 @@
 
 import logging
 from threading import Timer
-
 import abc
 
 from splitio.api import APIException
-from splitio.util.time import get_current_epoch_time_ms
-from splitio.push.splitsse import SplitSSEClient
+from splitio.util.time import get_current_epoch_time_ms, TimerAsync
+from splitio.push.splitsse import SplitSSEClient, SplitSSEClientAsync
 from splitio.push.parser import parse_incoming_event, EventParsingException, EventType, \
     MessageType
-from splitio.push.processor import MessageProcessor
+from splitio.push.processor import MessageProcessor, MessageProcessorAsync
 from splitio.push.status_tracker import PushStatusTracker, Status
 from splitio.models.telemetry import StreamingEventTypes
-from splitio.optional.loaders import asyncio
 
 _TOKEN_REFRESH_GRACE_PERIOD = 10 * 60  # 10 minutes
 
 
 _LOGGER = logging.getLogger(__name__)
-
-def _get_parsed_event(event):
-    """
-    Parse an incoming event.
-
-    :param event: Incoming event
-    :type event: splitio.push.sse.SSEEvent
-
-    :returns: an event parsed to it's concrete type.
-    :rtype: BaseEvent
-    """
-    try:
-        parsed = parse_incoming_event(event)
-    except EventParsingException:
-        _LOGGER.error('error parsing event of type %s', event.event_type)
-        _LOGGER.debug(str(event), exc_info=True)
-        raise
-
-    return parsed
 
 class PushManagerBase(object, metaclass=abc.ABCMeta):
     """Worker template."""
@@ -53,6 +32,25 @@ class PushManagerBase(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def stop(self, blocking=False):
         """Stop the current ongoing connection."""
+
+    def _get_parsed_event(self, event):
+        """
+        Parse an incoming event.
+
+        :param event: Incoming event
+        :type event: splitio.push.sse.SSEEvent
+
+        :returns: an event parsed to it's concrete type.
+        :rtype: BaseEvent
+        """
+        try:
+            parsed = parse_incoming_event(event)
+        except EventParsingException:
+            _LOGGER.error('error parsing event of type %s', event.event_type)
+            _LOGGER.debug(str(event), exc_info=True)
+            raise
+
+        return parsed
 
 
 class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attributes
@@ -145,7 +143,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         :type event: splitio.push.sse.SSEEvent
         """
         try:
-            parsed = _get_parsed_event(event)
+            parsed = self._get_parsed_event(event)
             handle = self._event_handlers[parsed.event_type]
         except (KeyError, EventParsingException):
             _LOGGER.error('Parsing exception or no handler for message of type %s', parsed.event_type)
@@ -283,7 +281,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
 class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-attributes
     """Push notifications susbsytem manager."""
 
-    def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, sse_url=None, client_key=None):
+    def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None):
         """
         Class constructor.
 
@@ -307,8 +305,8 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         """
         self._auth_api = auth_api
         self._feedback_loop = feedback_loop
-        self._processor = MessageProcessor(synchronizer)
-        self._status_tracker = PushStatusTracker()
+        self._processor = MessageProcessorAsync(synchronizer)
+        self._status_tracker = PushStatusTracker(telemetry_runtime_producer)
         self._event_handlers = {
             EventType.MESSAGE: self._handle_message,
             EventType.ERROR: self._handle_error
@@ -321,10 +319,11 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         }
 
         kwargs = {} if sse_url is None else {'base_url': sse_url}
-        self._sse_client = SplitSSEClient(self._event_handler, sdk_metadata, self._handle_connection_ready,
+        self._sse_client = SplitSSEClientAsync(self._event_handler, sdk_metadata, self._handle_connection_ready,
                                           self._handle_connection_end, client_key, **kwargs)
         self._running = False
-        self._next_refresh = Timer(0, lambda: 0)
+        self._next_refresh = TimerAsync(0, lambda: 0)
+        self._telemetry_runtime_producer = telemetry_runtime_producer
 
     async def update_workers_status(self, enabled):
         """
@@ -368,8 +367,8 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         :type event: splitio.push.sse.SSEEvent
         """
         try:
-            parsed = _get_parsed_event(event)
-            handle = await self._event_handlers[parsed.event_type]
+            parsed = self._get_parsed_event(event)
+            handle = self._event_handlers[parsed.event_type]
         except (KeyError, EventParsingException):
             _LOGGER.error('Parsing exception or no handler for message of type %s', parsed.event_type)
             _LOGGER.debug(str(event), exc_info=True)
@@ -401,14 +400,16 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         if not token.push_enabled:
             await self._feedback_loop.put(Status.PUSH_NONRETRYABLE_ERROR)
             return
+        self._telemetry_runtime_producer.record_token_refreshes()
 
         _LOGGER.debug("auth token fetched. connecting to streaming.")
         self._status_tracker.reset()
         self._running = True
-        if self._sse_client.start(token):
+        if await self._sse_client.start(token):
             _LOGGER.debug("connected to streaming, scheduling next refresh")
             await self._setup_next_token_refresh(token)
             self._running = True
+            self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.CONNECTION_ESTABLISHED, 0,  get_current_epoch_time_ms()))
 
     async def _setup_next_token_refresh(self, token):
         """
@@ -419,10 +420,9 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         """
         if self._next_refresh is not None:
             self._next_refresh.cancel()
-        self._next_refresh = Timer((token.exp - token.iat) - _TOKEN_REFRESH_GRACE_PERIOD,
-                                   await self._token_refresh)
-        self._next_refresh.setName('TokenRefresh')
-        self._next_refresh.start()
+        self._next_refresh = TimerAsync((token.exp - token.iat) - _TOKEN_REFRESH_GRACE_PERIOD,
+                                   self._token_refresh)
+        self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.TOKEN_REFRESH, 1000 * token.exp,  get_current_epoch_time_ms()))
 
     async def _handle_message(self, event):
         """
@@ -432,7 +432,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         :type event: splitio.push.sse.parser.Update
         """
         try:
-            handle = await self._message_handlers[event.message_type]
+            handle = self._message_handlers[event.message_type]
         except KeyError:
             _LOGGER.error('no handler for message of type %s', event.message_type)
             _LOGGER.debug(str(event), exc_info=True)
