@@ -608,16 +608,6 @@ class RedisPipelineAdapterBase(object, metaclass=abc.ABCMeta):
     """
     Template decorator for Redis Pipeline.
     """
-    def __init__(self, decorated, prefix_helper):
-        """
-        Store the user prefix and the redis client instance.
-
-        :param decorated: Instance of redis cache client to decorate.
-        :param _prefix_helper: PrefixHelper utility
-        """
-        self._prefix_helper = prefix_helper
-        self._pipe = decorated.pipeline()
-
     @abc.abstractmethod
     def rpush(self, key, *values):
         """Mimic original redis function but using user custom prefix."""
