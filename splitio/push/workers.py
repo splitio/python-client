@@ -130,7 +130,7 @@ class SegmentWorkerAsync(WorkerBase):
         self._running = True
 
         _LOGGER.debug('Starting Segment Worker')
-        asyncio.get_event_loop().create_task(self._run())
+        asyncio.get_running_loop().create_task(self._run())
 
     async def stop(self):
         """Stop worker."""
@@ -248,7 +248,7 @@ class SplitWorkerAsync(WorkerBase):
         self._running = True
 
         _LOGGER.debug('Starting Split Worker')
-        asyncio.get_event_loop().create_task(self._run())
+        asyncio.get_running_loop().create_task(self._run())
 
     async def stop(self):
         """Stop worker."""
