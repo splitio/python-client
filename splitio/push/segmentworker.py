@@ -11,7 +11,7 @@ class SegmentWorker(object):
 
     _centinel = object()
 
-    def __init__(self, synchronize_segment, segment_queue, telemetry_runtime_producer):
+    def __init__(self, synchronize_segment, segment_queue):
         """
         Class constructor.
 
@@ -25,7 +25,6 @@ class SegmentWorker(object):
         self._handler = synchronize_segment
         self._running = False
         self._worker = None
-        self._telemetry_runtime_producer = telemetry_runtime_producer
 
     def is_running(self):
         """Return whether the working is running."""

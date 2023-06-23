@@ -131,6 +131,10 @@ class OperationMode(Enum):
     CONSUMER = 'consumer'
     PARTIAL_CONSUMER = 'partial_consumer'
 
+class UpdateFromSSE(Enum):
+    """Update from sse constants"""
+    SPLIT_UPDATE = 'sp'
+
 def get_latency_bucket_index(micros):
     """
     Find the bucket index for a measured latency.
@@ -482,7 +486,7 @@ class TelemetryCounters(object):
             self._auth_rejections = 0
             self._token_refreshes = 0
             self._session_length = 0
-            self._update_from_sse = 0
+            self._update_from_sse = {}
 
     def record_impressions_value(self, resource, value):
         """
@@ -520,17 +524,19 @@ class TelemetryCounters(object):
             else:
                 return
 
-    def record_update_from_sse(self):
+    def record_update_from_sse(self, event):
         """
-        Increament the update from sse resource by one.
+        Increment the update from sse resource by one.
 
         """
         with self._lock:
-            self._update_from_sse += 1
+            if event.value not in self._update_from_sse:
+                self._update_from_sse[event.value] = 0
+            self._update_from_sse[event.value] += 1
 
     def record_auth_rejections(self):
         """
-        Increament the auth rejection resource by one.
+        Increment the auth rejection resource by one.
 
         """
         with self._lock:
@@ -538,7 +544,7 @@ class TelemetryCounters(object):
 
     def record_token_refreshes(self):
         """
-        Increament the token refreshes resource by one.
+        Increment the token refreshes resource by one.
 
         """
         with self._lock:
@@ -613,16 +619,16 @@ class TelemetryCounters(object):
             self._token_refreshes = 0
             return token_refreshes
 
-    def pop_update_from_sse(self):
+    def pop_update_from_sse(self, event):
         """
         Pop update from sse
 
-        :return: token refreshes value
+        :return: update from sse value
         :rtype: int
         """
         with self._lock:
-            update_from_sse = self._update_from_sse
-            self._update_from_sse = 0
+            update_from_sse = self._update_from_sse[event.value]
+            self._update_from_sse[event.value] = 0
             return update_from_sse
 
 class StreamingEvent(object):

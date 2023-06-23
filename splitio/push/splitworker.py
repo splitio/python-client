@@ -8,7 +8,9 @@ import json
 from enum import Enum
 
 from splitio.models.splits import from_raw, Status
+from splitio.models.telemetry import UpdateFromSSE
 from splitio.push.parser import UpdateType
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -76,11 +78,11 @@ class SplitWorker(object):
                         new_split = from_raw(json.loads(self._get_feature_flag_definition(event)))
                         if new_split.status == Status.ACTIVE:
                             self._feature_flag_storage.put(new_split)
-                            self._telemetry_runtime_producer.record_update_from_sse()
                             _LOGGER.debug('Feature flag %s is updated', new_split.name)
                         else:
                             self._feature_flag_storage.remove(new_split.name)
                         self._feature_flag_storage.set_change_number(event.change_number)
+                        self._telemetry_runtime_producer.record_update_from_sse(UpdateFromSSE.SPLIT_UPDATE)
                         continue
                     except Exception as e:
                         _LOGGER.error('Exception raised in updating feature flag')

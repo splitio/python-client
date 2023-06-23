@@ -139,9 +139,9 @@ class TelemetryRuntimeProducer(object):
         """Record session length."""
         self._telemetry_storage.record_session_length(session)
 
-    def record_update_from_sse(self):
-        """Record session length."""
-        self._telemetry_storage.record_update_from_sse()
+    def record_update_from_sse(self, event):
+        """Record update from sse."""
+        self._telemetry_storage.record_update_from_sse(event)
 
 class TelemetryStorageConsumer(object):
     """Telemetry storage consumer class."""
@@ -275,9 +275,9 @@ class TelemetryRuntimeConsumer(object):
         """Get and reset streaming events."""
         return self._telemetry_storage.pop_streaming_events()
 
-    def pop_update_from_sse(self):
+    def pop_update_from_sse(self, event):
         """Get and reset update from sse."""
-        return self._telemetry_storage.pop_update_from_sse()
+        return self._telemetry_storage.pop_update_from_sse(event)
 
     def get_session_length(self):
         """Get session length"""
