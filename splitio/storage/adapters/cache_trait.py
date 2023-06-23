@@ -3,7 +3,7 @@
 import threading
 import time
 from functools import update_wrapper
-
+from splitio.optional.loaders import asyncio
 
 DEFAULT_MAX_AGE = 5
 DEFAULT_MAX_SIZE = 100
@@ -84,7 +84,7 @@ class LocalMemoryCache(object):  # pylint: disable=too-many-instance-attributes
             self._rollover()
             return node.value
 
-    def get_key(self, key):
+    async def get_key(self, key):
         """
         Fetch an item from the cache, return None if does not exist
 
@@ -94,7 +94,7 @@ class LocalMemoryCache(object):  # pylint: disable=too-many-instance-attributes
         :return: Cached/Fetched object
         :rtype: object
         """
-        with self._lock:
+        async with asyncio.Lock():
             node = self._data.get(key)
             if node is not None:
                 if self._is_expired(node):
@@ -104,7 +104,7 @@ class LocalMemoryCache(object):  # pylint: disable=too-many-instance-attributes
             node = self._bubble_up(node)
             return node.value
 
-    def add_key(self, key, value):
+    async def add_key(self, key, value):
         """
         Add an item from the cache.
 
@@ -114,7 +114,7 @@ class LocalMemoryCache(object):  # pylint: disable=too-many-instance-attributes
         :param value: key value
         :type value: str
         """
-        with self._lock:
+        async with asyncio.Lock():
             node = LocalMemoryCache._Node(key, value, time.time(), None, None)
             node = self._bubble_up(node)
             self._data[key] = node

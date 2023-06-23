@@ -289,12 +289,12 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         :rtype: splitio.models.splits.Split
         """
         try:
-            if self._enable_caching and self._cache.get_key(split_name) is not None:
-                raw = self._cache.get_key(split_name)
+            if self._enable_caching and await self._cache.get_key(split_name) is not None:
+                raw = await self._cache.get_key(split_name)
             else:
                 raw = await self._redis.get(self._get_key(split_name))
                 if self._enable_caching:
-                    self._cache.add_key(split_name, raw)
+                    await self._cache.add_key(split_name, raw)
                 _LOGGER.debug("Fetchting Split [%s] from redis" % split_name)
                 _LOGGER.debug(raw)
             return splits.from_raw(json.loads(raw)) if raw is not None else None
@@ -315,13 +315,13 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         """
         to_return = dict()
         try:
-            if self._enable_caching and self._cache.get_key(frozenset(split_names)) is not None:
-                raw_splits = self._cache.get_key(frozenset(split_names))
+            if self._enable_caching and await self._cache.get_key(frozenset(split_names)) is not None:
+                raw_splits = await self._cache.get_key(frozenset(split_names))
             else:
                 keys = [self._get_key(split_name) for split_name in split_names]
                 raw_splits = await self._redis.mget(keys)
                 if self._enable_caching:
-                    self._cache.add_key(frozenset(split_names), raw_splits)
+                    await self._cache.add_key(frozenset(split_names), raw_splits)
             for i in range(len(split_names)):
                 split = None
                 try:
@@ -346,12 +346,12 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         :rtype: bool
         """
         try:
-            if self._enable_caching and self._cache.get_key(traffic_type_name) is not None:
-                raw = self._cache.get_key(traffic_type_name)
+            if self._enable_caching and await self._cache.get_key(traffic_type_name) is not None:
+                raw = await self._cache.get_key(traffic_type_name)
             else:
                 raw = await self._redis.get(self._get_traffic_type_key(traffic_type_name))
                 if self._enable_caching:
-                    self._cache.add_key(traffic_type_name, raw)
+                    await self._cache.add_key(traffic_type_name, raw)
             count = json.loads(raw) if raw else 0
             return count > 0
         except RedisAdapterException:
