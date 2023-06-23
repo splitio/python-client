@@ -275,7 +275,6 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         """
         self._redis = redis_client
         self._enable_caching = enable_caching
-        self._max_age = max_age
         if enable_caching:
             self._cache = LocalMemoryCache(None, None, max_age)
 
