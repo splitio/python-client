@@ -563,6 +563,10 @@ class InMemoryTelemetryStorage(TelemetryStorage):
         """Record session length."""
         self._counters.record_session_length(session)
 
+    def record_update_from_sse(self):
+        """Record update from sse."""
+        self._counters.record_update_from_sse()
+
     def get_bur_time_outs(self):
         """Get block until ready timeout."""
         return self._tel_config.get_bur_time_outs()
@@ -631,6 +635,10 @@ class InMemoryTelemetryStorage(TelemetryStorage):
     def get_session_length(self):
         """Get session length"""
         return self._counters.get_session_length()
+
+    def pop_update_from_sse(self):
+        """Get and reset update from sse."""
+        return self._counters.pop_update_from_sse()
 
 class LocalhostTelemetryStorage():
     """Localhost telemetry storage."""

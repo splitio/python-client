@@ -482,6 +482,7 @@ class TelemetryCounters(object):
             self._auth_rejections = 0
             self._token_refreshes = 0
             self._session_length = 0
+            self._update_from_sse = 0
 
     def record_impressions_value(self, resource, value):
         """
@@ -518,6 +519,14 @@ class TelemetryCounters(object):
                 self._events_dropped += value
             else:
                 return
+
+    def record_update_from_sse(self):
+        """
+        Increament the update from sse resource by one.
+
+        """
+        with self._lock:
+            self._update_from_sse += 1
 
     def record_auth_rejections(self):
         """
@@ -603,6 +612,18 @@ class TelemetryCounters(object):
             token_refreshes = self._token_refreshes
             self._token_refreshes = 0
             return token_refreshes
+
+    def pop_update_from_sse(self):
+        """
+        Pop update from sse
+
+        :return: token refreshes value
+        :rtype: int
+        """
+        with self._lock:
+            update_from_sse = self._update_from_sse
+            self._update_from_sse = 0
+            return update_from_sse
 
 class StreamingEvent(object):
     """

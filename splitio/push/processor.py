@@ -9,7 +9,7 @@ from splitio.push.segmentworker import SegmentWorker
 class MessageProcessor(object):
     """Message processor class."""
 
-    def __init__(self, synchronizer):
+    def __init__(self, synchronizer, telemetry_runtime_producer):
         """
         Class constructor.
 
@@ -19,8 +19,8 @@ class MessageProcessor(object):
         self._feature_flag_queue = Queue()
         self._segments_queue = Queue()
         self._synchronizer = synchronizer
-        self._feature_flag_worker = SplitWorker(synchronizer.synchronize_splits, self._feature_flag_queue, synchronizer.split_sync.feature_flag_storage)
-        self._segments_worker = SegmentWorker(synchronizer.synchronize_segment, self._segments_queue)
+        self._feature_flag_worker = SplitWorker(synchronizer.synchronize_splits, self._feature_flag_queue, synchronizer.split_sync.feature_flag_storage, telemetry_runtime_producer)
+        self._segments_worker = SegmentWorker(synchronizer.synchronize_segment, self._segments_queue, telemetry_runtime_producer)
         self._handlers = {
             UpdateType.SPLIT_UPDATE: self._handle_feature_flag_update,
             UpdateType.SPLIT_KILL: self._handle_feature_flag_kill,
