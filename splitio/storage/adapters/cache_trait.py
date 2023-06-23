@@ -84,6 +84,42 @@ class LocalMemoryCache(object):  # pylint: disable=too-many-instance-attributes
             self._rollover()
             return node.value
 
+    def get_key(self, key):
+        """
+        Fetch an item from the cache, return None if does not exist
+
+        :param key: User supplied key
+        :type key: str/frozenset
+
+        :return: Cached/Fetched object
+        :rtype: object
+        """
+        with self._lock:
+            node = self._data.get(key)
+            if node is not None:
+                if self._is_expired(node):
+                    return None
+            if node is None:
+                return None
+            node = self._bubble_up(node)
+            return node.value
+
+    def add_key(self, key, value):
+        """
+        Add an item from the cache.
+
+        :param key: User supplied key
+        :type key: str/frozenset
+
+        :param value: key value
+        :type value: str
+        """
+        with self._lock:
+            node = LocalMemoryCache._Node(key, value, time.time(), None, None)
+            node = self._bubble_up(node)
+            self._data[key] = node
+            self._rollover()
+
     def remove_expired(self):
         """Remove expired elements."""
         with self._lock:
