@@ -52,6 +52,9 @@ class PushManagerBase(object, metaclass=abc.ABCMeta):
 
         return parsed
 
+    def _get_time_period(self, token):
+        return (token.exp - token.iat) - _TOKEN_REFRESH_GRACE_PERIOD
+
 
 class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attributes
     """Push notifications susbsytem manager."""
@@ -201,8 +204,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         """
         if self._next_refresh is not None:
             self._next_refresh.cancel()
-        self._next_refresh = Timer((token.exp - token.iat) - _TOKEN_REFRESH_GRACE_PERIOD,
-                                   self._token_refresh)
+        self._next_refresh = Timer(self._get_time_period(token), self._token_refresh)
         self._next_refresh.setName('TokenRefresh')
         self._next_refresh.start()
         self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.TOKEN_REFRESH, 1000 * token.exp,  get_current_epoch_time_ms()))
@@ -426,8 +428,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         """
         if self._next_refresh is not None:
             self._next_refresh.cancel()
-        self._next_refresh = TimerAsync((token.exp - token.iat) - _TOKEN_REFRESH_GRACE_PERIOD,
-                                   self._token_refresh)
+        self._next_refresh = TimerAsync(self._get_time_period(token), self._token_refresh)
         self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.TOKEN_REFRESH, 1000 * token.exp,  get_current_epoch_time_ms()))
 
     async def _handle_message(self, event):
