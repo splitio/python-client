@@ -256,6 +256,10 @@ class Synchronizer(BaseSynchronizer):
     def split_sync(self):
         return self._split_synchronizers.split_sync
 
+    @property
+    def segment_storage(self):
+        return self._split_synchronizers.segment_sync._segment_storage
+
     def _synchronize_segments(self):
         _LOGGER.debug('Starting segments synchronization')
         return self._split_synchronizers.segment_sync.synchronize_segments()

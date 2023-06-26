@@ -19,7 +19,7 @@ class MessageProcessor(object):
         self._feature_flag_queue = Queue()
         self._segments_queue = Queue()
         self._synchronizer = synchronizer
-        self._feature_flag_worker = SplitWorker(synchronizer.synchronize_splits, self._feature_flag_queue, synchronizer.split_sync.feature_flag_storage, telemetry_runtime_producer)
+        self._feature_flag_worker = SplitWorker(synchronizer.synchronize_splits, synchronizer.synchronize_segment, self._feature_flag_queue, synchronizer.split_sync.feature_flag_storage, synchronizer.segment_storage, telemetry_runtime_producer)
         self._segments_worker = SegmentWorker(synchronizer.synchronize_segment, self._segments_queue)
         self._handlers = {
             UpdateType.SPLIT_UPDATE: self._handle_feature_flag_update,
