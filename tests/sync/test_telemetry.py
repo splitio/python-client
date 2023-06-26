@@ -45,6 +45,7 @@ class TelemetrySubmitterTests(object):
         telemetry_storage._counters._auth_rejections = 1
         telemetry_storage._counters._token_refreshes = 3
         telemetry_storage._counters._session_length = 3
+        telemetry_storage._counters._update_from_sse['sp'] = 3
 
         telemetry_storage._method_exceptions._treatment =  10
         telemetry_storage._method_exceptions._treatments = 1
@@ -134,5 +135,6 @@ class TelemetrySubmitterTests(object):
             "spC": 1,
             "seC": 1,
             "skC": 0,
+            "ufs": {"sp": 3},
             "t": ['tag1']
         })

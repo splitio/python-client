@@ -8,7 +8,9 @@ import json
 from enum import Enum
 
 from splitio.models.splits import from_raw, Status
+from splitio.models.telemetry import UpdateFromSSE
 from splitio.push.parser import UpdateType
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,7 +26,7 @@ class SplitWorker(object):
 
     _centinel = object()
 
-    def __init__(self, synchronize_feature_flag, feature_flag_queue, feature_flag_storage):
+    def __init__(self, synchronize_feature_flag, feature_flag_queue, feature_flag_storage, telemetry_runtime_producer):
         """
         Class constructor.
 
@@ -44,6 +46,7 @@ class SplitWorker(object):
             CompressionMode.GZIP_COMPRESSION: lambda event: gzip.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8'),
             CompressionMode.ZLIB_COMPRESSION: lambda event: zlib.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8'),
         }
+        self._telemetry_runtime_producer = telemetry_runtime_producer
 
     def is_running(self):
         """Return whether the working is running."""
@@ -75,9 +78,11 @@ class SplitWorker(object):
                         new_split = from_raw(json.loads(self._get_feature_flag_definition(event)))
                         if new_split.status == Status.ACTIVE:
                             self._feature_flag_storage.put(new_split)
+                            _LOGGER.debug('Feature flag %s is updated', new_split.name)
                         else:
                             self._feature_flag_storage.remove(new_split.name)
                         self._feature_flag_storage.set_change_number(event.change_number)
+                        self._telemetry_runtime_producer.record_update_from_sse(UpdateFromSSE.SPLIT_UPDATE)
                         continue
                     except Exception as e:
                         _LOGGER.error('Exception raised in updating feature flag')

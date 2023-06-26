@@ -145,14 +145,13 @@ class PushManagerTests(object):
         processor_mock = mocker.Mock(spec=MessageProcessor)
         mocker.patch('splitio.push.manager.MessageProcessor', new=processor_mock)
 
-        telemetry_storage = InMemoryTelemetryStorage()
-        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
-        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock(), telemetry_runtime_producer)
+        telemetry_runtime_producer = mocker.Mock()
+        synchronizer = mocker.Mock()
+        manager = PushManager(mocker.Mock(), synchronizer, mocker.Mock(), mocker.Mock(), telemetry_runtime_producer)
         manager._event_handler(sse_event)
         assert parse_event_mock.mock_calls == [mocker.call(sse_event)]
         assert processor_mock.mock_calls == [
-            mocker.call(Any()),
+            mocker.call(synchronizer, telemetry_runtime_producer),
             mocker.call().handle(update_message)
         ]
 
@@ -167,11 +166,13 @@ class PushManagerTests(object):
         processor_mock = mocker.Mock(spec=MessageProcessor)
         mocker.patch('splitio.push.manager.MessageProcessor', new=processor_mock)
 
-        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
+        telemetry_runtime_producer = mocker.Mock()
+        synchronizer = mocker.Mock()
+        manager = PushManager(mocker.Mock(), synchronizer, mocker.Mock(), mocker.Mock(), telemetry_runtime_producer)
         manager._event_handler(sse_event)
         assert parse_event_mock.mock_calls == [mocker.call(sse_event)]
         assert processor_mock.mock_calls == [
-            mocker.call(Any()),
+            mocker.call(synchronizer, telemetry_runtime_producer),
             mocker.call().handle(update_message)
         ]
 
@@ -186,11 +187,13 @@ class PushManagerTests(object):
         processor_mock = mocker.Mock(spec=MessageProcessor)
         mocker.patch('splitio.push.manager.MessageProcessor', new=processor_mock)
 
-        manager = PushManager(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
+        telemetry_runtime_producer = mocker.Mock()
+        synchronizer = mocker.Mock()
+        manager = PushManager(mocker.Mock(), synchronizer, mocker.Mock(), mocker.Mock(), telemetry_runtime_producer)
         manager._event_handler(sse_event)
         assert parse_event_mock.mock_calls == [mocker.call(sse_event)]
         assert processor_mock.mock_calls == [
-            mocker.call(Any()),
+            mocker.call(synchronizer, telemetry_runtime_producer),
             mocker.call().handle(update_message)
         ]
 
