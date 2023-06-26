@@ -61,8 +61,7 @@ class InMemoryTelemetrySubmitter(object):
         merged_dict = {
             'spC': self._feature_flag_storage.get_splits_count(),
             'seC': self._segment_storage.get_segments_count(),
-            'skC': self._segment_storage.get_segments_keys_count(),
-            'ufs': {event.value: self._telemetry_runtime_consumer.pop_update_from_sse(event) for event in UpdateFromSSE}
+            'skC': self._segment_storage.get_segments_keys_count()
         }
         merged_dict.update(self._telemetry_runtime_consumer.pop_formatted_stats())
         merged_dict.update(self._telemetry_evaluation_consumer.pop_formatted_stats())

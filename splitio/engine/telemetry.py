@@ -6,7 +6,7 @@ import logging
 _LOGGER = logging.getLogger(__name__)
 
 from  splitio.storage.inmemmory import InMemoryTelemetryStorage
-from splitio.models.telemetry import CounterConstants
+from splitio.models.telemetry import CounterConstants, UpdateFromSSE
 
 class TelemetryStorageProducer(object):
     """Telemetry storage producer class."""
@@ -300,6 +300,7 @@ class TelemetryRuntimeConsumer(object):
             'iDr': self.get_impressions_stats(CounterConstants.IMPRESSIONS_DROPPED),
             'eQ': self.get_events_stats(CounterConstants.EVENTS_QUEUED),
             'eD': self.get_events_stats(CounterConstants.EVENTS_DROPPED),
+            'ufs': {event.value: self.pop_update_from_sse(event) for event in UpdateFromSSE},
             'lS': {'sp': last_synchronization['split'],
                       'se': last_synchronization['segment'],
                       'im': last_synchronization['impression'],
