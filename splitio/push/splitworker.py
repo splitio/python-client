@@ -89,7 +89,6 @@ class SplitWorker(object):
                 if self._check_instant_ff_update(event):
                     try:
                         new_split = from_raw(json.loads(self._get_feature_flag_definition(event)))
-                        _LOGGER.debug(new_split)
                         if new_split.status == Status.ACTIVE:
                             self._feature_flag_storage.put(new_split)
                             _LOGGER.debug('Feature flag %s is updated', new_split.name)
