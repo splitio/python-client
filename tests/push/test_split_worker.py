@@ -7,8 +7,7 @@ from splitio.api import APIException
 from splitio.push.splitworker import SplitWorker
 from splitio.push.parser import SplitChangeUpdate
 from splitio.engine.telemetry import TelemetryStorageProducer
-from splitio.storage.inmemmory import InMemoryTelemetryStorage
-
+from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemorySplitStorage, InMemorySegmentStorage
 change_number_received = None
 
 
@@ -22,14 +21,10 @@ class SplitWorkerTests(object):
 
     def test_on_error(self, mocker):
         q = queue.Queue()
-        telemetry_storage = InMemoryTelemetryStorage()
-        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
-
         def handler_sync(change_number):
             raise APIException('some')
 
-        split_worker = SplitWorker(handler_sync, q, mocker.Mock(), telemetry_runtime_producer)
+        split_worker = SplitWorker(handler_sync, mocker.Mock(), q, mocker.Mock(), mocker.Mock(), mocker.Mock())
         split_worker.start()
         assert split_worker.is_running()
 
@@ -46,10 +41,7 @@ class SplitWorkerTests(object):
 
     def test_handler(self, mocker):
         q = queue.Queue()
-        telemetry_storage = InMemoryTelemetryStorage()
-        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
-        split_worker = SplitWorker(handler_sync, q, mocker.Mock(), telemetry_runtime_producer)
+        split_worker = SplitWorker(handler_sync, mocker.Mock(), q, mocker.Mock(), mocker.Mock(), mocker.Mock())
 
         global change_number_received
         assert not split_worker.is_running()
@@ -101,7 +93,7 @@ class SplitWorkerTests(object):
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
-        split_worker = SplitWorker(handler_sync, q, mocker.Mock(), telemetry_runtime_producer)
+        split_worker = SplitWorker(handler_sync, mocker.Mock(), q, mocker.Mock(), mocker.Mock(), telemetry_runtime_producer)
         global change_number_received
         split_worker.start()
         def get_change_number():
@@ -148,10 +140,7 @@ class SplitWorkerTests(object):
 
     def test_edge_cases(self, mocker):
         q = queue.Queue()
-        telemetry_storage = InMemoryTelemetryStorage()
-        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
-        split_worker = SplitWorker(handler_sync, q, mocker.Mock(), telemetry_runtime_producer)
+        split_worker = SplitWorker(handler_sync, mocker.Mock(), q, mocker.Mock(), mocker.Mock(), mocker.Mock())
         global change_number_received
         split_worker.start()
 
@@ -191,3 +180,27 @@ class SplitWorkerTests(object):
         q.put(SplitChangeUpdate('some', 'SPLIT_UPDATE', 123456, 2345, None, 1))
         time.sleep(0.1)
         assert self._feature_flag == None
+
+    def test_fetch_segment(self, mocker):
+        q = queue.Queue()
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+
+        self.segment_name = None
+        def segment_handler_sync(segment_name, change_number):
+            self.segment_name = segment_name
+            return
+        split_worker = SplitWorker(handler_sync, segment_handler_sync, q, split_storage, segment_storage, mocker.Mock())
+        split_worker.start()
+
+        def get_change_number():
+            return 2345
+        split_worker._feature_flag_storage.get_change_number = get_change_number
+
+        def check_instant_ff_update(event):
+            return True
+        split_worker._check_instant_ff_update = check_instant_ff_update
+
+        q.put(SplitChangeUpdate('some', 'SPLIT_UPDATE', 1675095324253, 2345, 'eyJjaGFuZ2VOdW1iZXIiOiAxNjc1MDk1MzI0MjUzLCAidHJhZmZpY1R5cGVOYW1lIjogInVzZXIiLCAibmFtZSI6ICJiaWxhbF9zcGxpdCIsICJ0cmFmZmljQWxsb2NhdGlvbiI6IDEwMCwgInRyYWZmaWNBbGxvY2F0aW9uU2VlZCI6IC0xMzY0MTE5MjgyLCAic2VlZCI6IC02MDU5Mzg4NDMsICJzdGF0dXMiOiAiQUNUSVZFIiwgImtpbGxlZCI6IGZhbHNlLCAiZGVmYXVsdFRyZWF0bWVudCI6ICJvZmYiLCAiYWxnbyI6IDIsICJjb25kaXRpb25zIjogW3siY29uZGl0aW9uVHlwZSI6ICJST0xMT1VUIiwgIm1hdGNoZXJHcm91cCI6IHsiY29tYmluZXIiOiAiQU5EIiwgIm1hdGNoZXJzIjogW3sia2V5U2VsZWN0b3IiOiB7InRyYWZmaWNUeXBlIjogInVzZXIiLCAiYXR0cmlidXRlIjogbnVsbH0sICJtYXRjaGVyVHlwZSI6ICJJTl9TRUdNRU5UIiwgIm5lZ2F0ZSI6IGZhbHNlLCAidXNlckRlZmluZWRTZWdtZW50TWF0Y2hlckRhdGEiOiB7InNlZ21lbnROYW1lIjogImJpbGFsX3NlZ21lbnQifSwgIndoaXRlbGlzdE1hdGNoZXJEYXRhIjogbnVsbCwgInVuYXJ5TnVtZXJpY01hdGNoZXJEYXRhIjogbnVsbCwgImJldHdlZW5NYXRjaGVyRGF0YSI6IG51bGwsICJkZXBlbmRlbmN5TWF0Y2hlckRhdGEiOiBudWxsLCAiYm9vbGVhbk1hdGNoZXJEYXRhIjogbnVsbCwgInN0cmluZ01hdGNoZXJEYXRhIjogbnVsbH1dfSwgInBhcnRpdGlvbnMiOiBbeyJ0cmVhdG1lbnQiOiAib24iLCAic2l6ZSI6IDB9LCB7InRyZWF0bWVudCI6ICJvZmYiLCAic2l6ZSI6IDEwMH1dLCAibGFiZWwiOiAiaW4gc2VnbWVudCBiaWxhbF9zZWdtZW50In0sIHsiY29uZGl0aW9uVHlwZSI6ICJST0xMT1VUIiwgIm1hdGNoZXJHcm91cCI6IHsiY29tYmluZXIiOiAiQU5EIiwgIm1hdGNoZXJzIjogW3sia2V5U2VsZWN0b3IiOiB7InRyYWZmaWNUeXBlIjogInVzZXIiLCAiYXR0cmlidXRlIjogbnVsbH0sICJtYXRjaGVyVHlwZSI6ICJBTExfS0VZUyIsICJuZWdhdGUiOiBmYWxzZSwgInVzZXJEZWZpbmVkU2VnbWVudE1hdGNoZXJEYXRhIjogbnVsbCwgIndoaXRlbGlzdE1hdGNoZXJEYXRhIjogbnVsbCwgInVuYXJ5TnVtZXJpY01hdGNoZXJEYXRhIjogbnVsbCwgImJldHdlZW5NYXRjaGVyRGF0YSI6IG51bGwsICJkZXBlbmRlbmN5TWF0Y2hlckRhdGEiOiBudWxsLCAiYm9vbGVhbk1hdGNoZXJEYXRhIjogbnVsbCwgInN0cmluZ01hdGNoZXJEYXRhIjogbnVsbH1dfSwgInBhcnRpdGlvbnMiOiBbeyJ0cmVhdG1lbnQiOiAib24iLCAic2l6ZSI6IDUwfSwgeyJ0cmVhdG1lbnQiOiAib2ZmIiwgInNpemUiOiA1MH1dLCAibGFiZWwiOiAiZGVmYXVsdCBydWxlIn1dLCAiY29uZmlndXJhdGlvbnMiOiB7fX0=', 0))
+        time.sleep(0.1)
+        assert self.segment_name == "bilal_segment"

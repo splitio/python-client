@@ -26,21 +26,35 @@ class SplitWorker(object):
 
     _centinel = object()
 
-    def __init__(self, synchronize_feature_flag, feature_flag_queue, feature_flag_storage, telemetry_runtime_producer):
+    def __init__(self, synchronize_feature_flag, synchronize_segment, feature_flag_queue, feature_flag_storage, segment_storage, telemetry_runtime_producer):
         """
         Class constructor.
 
         :param synchronize_feature_flag: handler to perform feature flag synchronization on incoming event
         :type synchronize_feature_flag: callable
 
+        :param synchronize_segment: handler to perform segment synchronization on incoming event
+        :type synchronize_segment: function
+
         :param feature_flag_queue: queue with feature flag updates notifications
         :type feature_flag_queue: queue
+
+        :param feature_flag_storage: feature flag storage instance
+        :type feature_flag_storage: splitio.storage.inmemory.InMemorySplitStorage
+
+        :param segment_storage: segment storage instance
+        :type segment_storage: splitio.storage.inmemory.InMemorySegmentStorage
+
+        :param telemetry_runtime_producer: Telemetry runtime producer instance
+        :type telemetry_runtime_producer: splitio.engine.telemetry.TelemetryRuntimeProducer
         """
         self._feature_flag_queue = feature_flag_queue
         self._handler = synchronize_feature_flag
+        self._segment_handler = synchronize_segment
         self._running = False
         self._worker = None
         self._feature_flag_storage = feature_flag_storage
+        self._segment_storage = segment_storage
         self._compression_handlers = {
             CompressionMode.NO_COMPRESSION: lambda event: base64.b64decode(event.feature_flag_definition),
             CompressionMode.GZIP_COMPRESSION: lambda event: gzip.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8'),
@@ -62,7 +76,6 @@ class SplitWorker(object):
             return True
         return False
 
-
     def _run(self):
         """Run worker handler."""
         while self.is_running():
@@ -79,6 +92,10 @@ class SplitWorker(object):
                         if new_split.status == Status.ACTIVE:
                             self._feature_flag_storage.put(new_split)
                             _LOGGER.debug('Feature flag %s is updated', new_split.name)
+                            for segment_name in new_split.get_segment_names():
+                                if self._segment_storage.get(segment_name) is None:
+                                    _LOGGER.debug('Fetching new segment %s', segment_name)
+                                    self._segment_handler(segment_name, event.change_number)
                         else:
                             self._feature_flag_storage.remove(new_split.name)
                         self._feature_flag_storage.set_change_number(event.change_number)
