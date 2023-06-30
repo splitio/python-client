@@ -170,28 +170,17 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         """
         Construct a split sse client.
 
-        :param callback: fuction to call when an event is received.
-        :type callback: callable
-
         :param sdk_metadata: SDK version & machine name & IP.
         :type sdk_metadata: splitio.client.util.SdkMetadata
 
-        :param first_event_callback: function to call when the first event is received.
-        :type first_event_callback: callable
-
-        :param connection_closed_callback: funciton to call when the connection ends.
-        :type connection_closed_callback: callable
+        :param client_key: client key.
+        :type client_key: str
 
         :param base_url: scheme + :// + host
         :type base_url: str
-
-        :param client_key: client key.
-        :type client_key: str
         """
         self._base_url = base_url
         self.status = SplitSSEClient._Status.IDLE
-        self._sse_first_event = None
-        self._sse_connection_closed = None
         self._metadata = headers_from_metadata(sdk_metadata, client_key)
 
     async def start(self, token):
@@ -201,8 +190,8 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         :param token: (parsed) JWT
         :type token: splitio.models.token.Token
 
-        :returns: true if the connection was successful. False otherwise.
-        :rtype: bool
+        :returns: yield events received from SSEClientAsync object
+        :rtype: SSEEvent
         """
         if self.status != SplitSSEClient._Status.IDLE:
             raise Exception('SseClient already started.')
