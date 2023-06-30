@@ -1,7 +1,6 @@
 """Utilities."""
 from datetime import datetime
 import time
-from splitio.optional.loaders import asyncio
 
 EPOCH_DATETIME = datetime(1970, 1, 1)
 
