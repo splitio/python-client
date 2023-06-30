@@ -239,29 +239,34 @@ class PushManagerAsyncTests(object):
             return Token(True, 'abc', {}, 2000000, 1000000)
         api_mock.authenticate.side_effect = authenticate
 
-        sse_mock = mocker.Mock(spec=SplitSSEClientAsync)
-        sse_constructor_mock = mocker.Mock()
-        sse_constructor_mock.return_value = sse_mock
-        timer_mock = mocker.Mock()
-        mocker.patch('splitio.push.manager.TimerAsync', new=timer_mock)
-        mocker.patch('splitio.push.manager.SplitSSEClientAsync', new=sse_constructor_mock)
+        self.token = None
+        def timer_mock(se, token):
+            self.token = token
+            return (token.exp - token.iat) - _TOKEN_REFRESH_GRACE_PERIOD
+        mocker.patch('splitio.push.manager.PushManagerAsync._get_time_period', new=timer_mock)
+
+        async def sse_loop_mock(se, token):
+            yield SSEEvent('1', EventType.MESSAGE, '', '{}')
+            yield SSEEvent('1', EventType.MESSAGE, '', '{}')
+        mocker.patch('splitio.push.splitsse.SplitSSEClientAsync.start', new=sse_loop_mock)
+
         feedback_loop = asyncio.Queue()
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         manager = PushManagerAsync(api_mock, mocker.Mock(), feedback_loop, mocker.Mock(), telemetry_runtime_producer)
-
-        sse_mock.start.return_value = asyncio.gather(manager._handle_connection_ready())
-
         await manager.start()
+        await asyncio.sleep(1)
+
         assert await feedback_loop.get() == Status.PUSH_SUBSYSTEM_UP
-        assert timer_mock.mock_calls == [
-            mocker.call(0, Any()),
-            mocker.call().cancel(),
-            mocker.call(1000000 - _TOKEN_REFRESH_GRACE_PERIOD, manager._token_refresh)
-        ]
-        assert(telemetry_storage._streaming_events._streaming_events[0]._type == StreamingEventTypes.TOKEN_REFRESH.value)
-        assert(telemetry_storage._streaming_events._streaming_events[1]._type == StreamingEventTypes.CONNECTION_ESTABLISHED.value)
+        assert self.token.push_enabled == True
+        assert self.token.token == 'abc'
+        assert self.token.channels == {}
+        assert self.token.exp == 2000000
+        assert self.token.iat == 1000000
+
+        assert(telemetry_storage._streaming_events._streaming_events[1]._type == StreamingEventTypes.TOKEN_REFRESH.value)
+        assert(telemetry_storage._streaming_events._streaming_events[0]._type == StreamingEventTypes.CONNECTION_ESTABLISHED.value)
 
     @pytest.mark.asyncio
     async def test_connection_failure(self, mocker):
@@ -274,8 +279,6 @@ class PushManagerAsyncTests(object):
         sse_mock = mocker.Mock(spec=SplitSSEClientAsync)
         sse_constructor_mock = mocker.Mock()
         sse_constructor_mock.return_value = sse_mock
-        timer_mock = mocker.Mock()
-        mocker.patch('splitio.push.manager.TimerAsync', new=timer_mock)
         feedback_loop = asyncio.Queue()
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
@@ -286,7 +289,6 @@ class PushManagerAsyncTests(object):
 
         await manager.start()
         assert await feedback_loop.get() == Status.PUSH_RETRYABLE_ERROR
-        assert timer_mock.mock_calls == [mocker.call(0, Any())]
 
     @pytest.mark.asyncio
     async def test_push_disabled(self, mocker):
@@ -299,8 +301,6 @@ class PushManagerAsyncTests(object):
         sse_mock = mocker.Mock(spec=SplitSSEClientAsync)
         sse_constructor_mock = mocker.Mock()
         sse_constructor_mock.return_value = sse_mock
-        timer_mock = mocker.Mock()
-        mocker.patch('splitio.push.manager.TimerAsync', new=timer_mock)
         mocker.patch('splitio.push.manager.SplitSSEClientAsync', new=sse_constructor_mock)
         feedback_loop = asyncio.Queue()
         telemetry_storage = InMemoryTelemetryStorage()
@@ -309,7 +309,6 @@ class PushManagerAsyncTests(object):
         manager = PushManagerAsync(api_mock, mocker.Mock(), feedback_loop, mocker.Mock(), telemetry_runtime_producer)
         await manager.start()
         assert await feedback_loop.get() == Status.PUSH_NONRETRYABLE_ERROR
-        assert timer_mock.mock_calls == [mocker.call(0, Any())]
         assert sse_mock.mock_calls == []
 
     @pytest.mark.asyncio
@@ -321,8 +320,6 @@ class PushManagerAsyncTests(object):
         sse_mock = mocker.Mock(spec=SplitSSEClientAsync)
         sse_constructor_mock = mocker.Mock()
         sse_constructor_mock.return_value = sse_mock
-        timer_mock = mocker.Mock()
-        mocker.patch('splitio.push.manager.TimerAsync', new=timer_mock)
         mocker.patch('splitio.push.manager.SplitSSEClientAsync', new=sse_constructor_mock)
 
         feedback_loop = asyncio.Queue()
@@ -332,7 +329,6 @@ class PushManagerAsyncTests(object):
         manager = PushManagerAsync(api_mock, mocker.Mock(), feedback_loop, mocker.Mock(), telemetry_runtime_producer)
         await manager.start()
         assert await feedback_loop.get() == Status.PUSH_RETRYABLE_ERROR
-        assert timer_mock.mock_calls == [mocker.call(0, Any())]
         assert sse_mock.mock_calls == []
 
     @pytest.mark.asyncio

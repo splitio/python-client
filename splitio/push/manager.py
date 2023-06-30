@@ -4,9 +4,11 @@ import logging
 from threading import Timer
 import abc
 
+from splitio.optional.loaders import asyncio
 from splitio.api import APIException
 from splitio.util.time import get_current_epoch_time_ms, TimerAsync
 from splitio.push.splitsse import SplitSSEClient, SplitSSEClientAsync
+from splitio.push.sse import SSE_EVENT_ERROR
 from splitio.push.parser import parse_incoming_event, EventParsingException, EventType, \
     MessageType
 from splitio.push.processor import MessageProcessor, MessageProcessorAsync
@@ -327,10 +329,8 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         }
 
         kwargs = {} if sse_url is None else {'base_url': sse_url}
-        self._sse_client = SplitSSEClientAsync(self._event_handler, sdk_metadata, self._handle_connection_ready,
-                                          self._handle_connection_end, client_key, **kwargs)
+        self._sse_client = SplitSSEClientAsync(sdk_metadata, client_key, **kwargs)
         self._running = False
-        self._next_refresh = TimerAsync(0, lambda: 0)
         self._telemetry_runtime_producer = telemetry_runtime_producer
 
     async def update_workers_status(self, enabled):
@@ -348,7 +348,9 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             _LOGGER.warning('Push manager already has a connection running. Ignoring')
             return
 
-        await self._trigger_connection_flow()
+        self._token = await self._get_auth_token()
+        self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
+        self._token_task = asyncio.get_running_loop().create_task(self._token_refresh())
 
     async def stop(self, blocking=False):
         """
@@ -361,11 +363,14 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             _LOGGER.warning('Push manager does not have an open SSE connection. Ignoring')
             return
 
-        self._running = False
         await self._processor.update_workers_status(False)
         self._status_tracker.notify_sse_shutdown_expected()
-        self._next_refresh.cancel()
-        await self._sse_client.stop(blocking)
+        await self._sse_client.stop()
+        self._running_task.cancel()
+        self._running = False
+        await asyncio.sleep(1)
+        self._token_task.cancel()
+        await asyncio.sleep(1)
 
     async def _event_handler(self, event):
         """
@@ -391,12 +396,27 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
 
     async def _token_refresh(self):
         """Refresh auth token."""
-        _LOGGER.info("retriggering authentication flow.")
-        self.stop(True)
-        await self._trigger_connection_flow()
+        while self._running:
+            try:
+                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.TOKEN_REFRESH, 1000 * self._token.exp,  get_current_epoch_time_ms()))
+                await asyncio.sleep(self._get_time_period(self._token))
+                _LOGGER.info("retriggering authentication flow.")
+                await self._processor.update_workers_status(False)
+                self._status_tracker.notify_sse_shutdown_expected()
+                await self._sse_client.stop()
+                self._running_task.cancel()
+                self._running = False
 
-    async def _trigger_connection_flow(self):
-        """Authenticate and start a connection."""
+                self._token = await self._get_auth_token()
+                self._telemetry_runtime_producer.record_token_refreshes()
+                self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
+            except Exception as e:
+                _LOGGER.error("Exception renewing token authentication")
+                _LOGGER.debug(str(e))
+                raise
+
+    async def _get_auth_token(self):
+        """Get new auth token"""
         try:
             token = await self._auth_api.authenticate()
         except APIException:
@@ -408,28 +428,29 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         if not token.push_enabled:
             await self._feedback_loop.put(Status.PUSH_NONRETRYABLE_ERROR)
             return
-        self._telemetry_runtime_producer.record_token_refreshes()
 
         _LOGGER.debug("auth token fetched. connecting to streaming.")
+        return token
+
+    async def _trigger_connection_flow(self):
+        """Authenticate and start a connection."""
         self._status_tracker.reset()
         self._running = True
-        if await self._sse_client.start(token):
-            _LOGGER.debug("connected to streaming, scheduling next refresh")
-            await self._setup_next_token_refresh(token)
-            self._running = True
-            self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.CONNECTION_ESTABLISHED, 0,  get_current_epoch_time_ms()))
+        # awaiting first successful event
+        events_loop = self._sse_client.start(self._token)
+        first_event = await events_loop.__anext__()
+        if first_event.event == SSE_EVENT_ERROR:
+            raise(Exception("could not start SSE session"))
 
-    async def _setup_next_token_refresh(self, token):
-        """
-        Schedule next token refresh.
-
-        :param token: Last fetched token.
-        :type token: splitio.models.token.Token
-        """
-        if self._next_refresh is not None:
-            self._next_refresh.cancel()
-        self._next_refresh = TimerAsync(self._get_time_period(token), self._token_refresh)
-        self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.TOKEN_REFRESH, 1000 * token.exp,  get_current_epoch_time_ms()))
+        _LOGGER.debug("connected to streaming, scheduling next refresh")
+        await self._handle_connection_ready()
+        self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.CONNECTION_ESTABLISHED, 0,  get_current_epoch_time_ms()))
+        try:
+            while self._running:
+                event = await events_loop.__anext__()
+                await self._event_handler(event)
+        except StopAsyncIteration:
+            pass
 
     async def _handle_message(self, event):
         """
