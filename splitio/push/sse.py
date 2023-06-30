@@ -229,6 +229,7 @@ class SSEClientAsync(SSEClientBase):
                         elif line in _EVENT_SEPARATORS:
                             _LOGGER.debug("dispatching event: %s", event_builder.build())
                             yield event_builder.build()
+                            event_builder = EventBuilder()
                         else:
                             event_builder.process_line(line)
                 except asyncio.CancelledError:
