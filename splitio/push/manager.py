@@ -361,8 +361,6 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         except Exception as e:
             _LOGGER.error("Exception renewing token authentication")
             _LOGGER.debug(str(e))
-            return
-
 
     async def stop(self, blocking=False):
         """
