@@ -6,7 +6,7 @@ import abc
 
 from splitio.optional.loaders import asyncio
 from splitio.api import APIException
-from splitio.util.time import get_current_epoch_time_ms, TimerAsync
+from splitio.util.time import get_current_epoch_time_ms
 from splitio.push.splitsse import SplitSSEClient, SplitSSEClientAsync
 from splitio.push.sse import SSE_EVENT_ERROR
 from splitio.push.parser import parse_incoming_event, EventParsingException, EventType, \
@@ -76,6 +76,9 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
 
         :param sdk_metadata: SDK version & machine name & IP.
         :type sdk_metadata: splitio.client.util.SdkMetadata
+
+        :param telemetry_runtime_producer: Telemetry object to record runtime events
+        :type sdk_metadata: splitio.engine.telemetry.TelemetryRunTimeProducer
 
         :param sse_url: streaming base url.
         :type sse_url: str
@@ -307,6 +310,9 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         :param sdk_metadata: SDK version & machine name & IP.
         :type sdk_metadata: splitio.client.util.SdkMetadata
 
+        :param telemetry_runtime_producer: Telemetry object to record runtime events
+        :type sdk_metadata: splitio.engine.telemetry.TelemetryRunTimeProducer
+
         :param sse_url: streaming base url.
         :type sse_url: str
 
@@ -348,9 +354,15 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             _LOGGER.warning('Push manager already has a connection running. Ignoring')
             return
 
-        self._token = await self._get_auth_token()
-        self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
-        self._token_task = asyncio.get_running_loop().create_task(self._token_refresh())
+        try:
+            self._token = await self._get_auth_token()
+            self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
+            self._token_task = asyncio.get_running_loop().create_task(self._token_refresh())
+        except Exception as e:
+            _LOGGER.error("Exception renewing token authentication")
+            _LOGGER.debug(str(e))
+            return
+
 
     async def stop(self, blocking=False):
         """
@@ -368,9 +380,9 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         await self._sse_client.stop()
         self._running_task.cancel()
         self._running = False
-        await asyncio.sleep(1)
+        await asyncio.sleep(.2)
         self._token_task.cancel()
-        await asyncio.sleep(1)
+        await asyncio.sleep(.2)
 
     async def _event_handler(self, event):
         """
@@ -413,7 +425,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             except Exception as e:
                 _LOGGER.error("Exception renewing token authentication")
                 _LOGGER.debug(str(e))
-                raise
+                return
 
     async def _get_auth_token(self):
         """Get new auth token"""
@@ -423,11 +435,11 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             _LOGGER.error('error performing sse auth request.')
             _LOGGER.debug('stack trace: ', exc_info=True)
             await self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
-            return
+            raise
 
         if not token.push_enabled:
             await self._feedback_loop.put(Status.PUSH_NONRETRYABLE_ERROR)
-            return
+            raise Exception("Push is not enabled")
 
         _LOGGER.debug("auth token fetched. connecting to streaming.")
         return token
