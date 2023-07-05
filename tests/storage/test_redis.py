@@ -9,7 +9,7 @@ import pytest
 from splitio.client.util import get_metadata, SdkMetadata
 from splitio.optional.loaders import asyncio
 from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \
-    RedisSegmentStorage, RedisSplitStorage, RedisSplitStorageAsync, RedisTelemetryStorage
+    RedisSegmentStorage, RedisSegmentStorageAsync, RedisSplitStorage, RedisSplitStorageAsync, RedisTelemetryStorage
 from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterException, build
 from redis.asyncio.client import Redis as aioredis
 from splitio.storage.adapters import redis
@@ -478,6 +478,84 @@ class RedisSegmentStorageTests(object):
         assert adapter.sismember.mock_calls == [
             mocker.call('SPLITIO.segment.some_segment', 'some_key')
         ]
+
+class RedisSegmentStorageAsyncTests(object):
+    """Redis segment storage test cases."""
+
+    @pytest.mark.asyncio
+    async def test_fetch_segment(self, mocker):
+        """Test fetching a whole segment."""
+        redis_mock = await aioredis.from_url("redis://localhost")
+        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
+
+        self.key = None
+        async def smembers(key):
+            self.key = key
+            return set(["key1", "key2", "key3"])
+        adapter.smembers = smembers
+
+        self.key2 = None
+        async def get(key):
+            self.key2 = key
+            return '100'
+        adapter.get = get
+
+        from_raw = mocker.Mock()
+        mocker.patch('splitio.storage.redis.segments.from_raw', new=from_raw)
+
+        storage = RedisSegmentStorageAsync(adapter)
+        result = await storage.get('some_segment')
+        assert isinstance(result, Segment)
+        assert result.name == 'some_segment'
+        assert result.contains('key1')
+        assert result.contains('key2')
+        assert result.contains('key3')
+        assert result.change_number == 100
+        assert self.key ==  'SPLITIO.segment.some_segment'
+        assert self.key2 == 'SPLITIO.segment.some_segment.till'
+
+        # Assert that if segment doesn't exist, None is returned
+        from_raw.reset_mock()
+        async def smembers2(key):
+            self.key = key
+            return set()
+        adapter.smembers = smembers2
+        assert await storage.get('some_segment') is None
+
+    @pytest.mark.asyncio
+    async def test_fetch_change_number(self, mocker):
+        """Test fetching change number."""
+        redis_mock = await aioredis.from_url("redis://localhost")
+        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
+
+        self.key = None
+        async def get(key):
+            self.key = key
+            return '100'
+        adapter.get = get
+
+        storage = RedisSegmentStorageAsync(adapter)
+        result = await storage.get_change_number('some_segment')
+        assert result == 100
+        assert self.key == 'SPLITIO.segment.some_segment.till'
+
+    @pytest.mark.asyncio
+    async def test_segment_contains(self, mocker):
+        """Test segment contains functionality."""
+        redis_mock = await aioredis.from_url("redis://localhost")
+        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
+        storage = RedisSegmentStorageAsync(adapter)
+        self.key = None
+        self.segment = None
+        async def sismember(segment, key):
+            self.key = key
+            self.segment = segment
+            return True
+        adapter.sismember = sismember
+
+        assert await storage.segment_contains('some_segment', 'some_key') is True
+        assert self.segment == 'SPLITIO.segment.some_segment'
+        assert self.key == 'some_key'
 
 
 class RedisImpressionsStorageTests(object):  # pylint: disable=too-few-public-methods

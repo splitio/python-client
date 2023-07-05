@@ -411,20 +411,11 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         return to_return
 
 
-class RedisSegmentStorage(SegmentStorage):
-    """Redis based segment storage class."""
+class RedisSegmentStorageBase(SegmentStorage):
+    """Redis based segment storage base class."""
 
     _SEGMENTS_KEY = 'SPLITIO.segment.{segment_name}'
     _SEGMENTS_TILL_KEY = 'SPLITIO.segment.{segment_name}.till'
-
-    def __init__(self, redis_client):
-        """
-        Class constructor.
-
-        :param redis_client: Redis client or compliant interface.
-        :type redis_client: splitio.storage.adapters.redis.RedisAdapter
-        """
-        self._redis = redis_client
 
     def _get_till_key(self, segment_name):
         """
@@ -451,31 +442,12 @@ class RedisSegmentStorage(SegmentStorage):
         return self._SEGMENTS_KEY.format(segment_name=segment_name)
 
     def get(self, segment_name):
-        """
-        Retrieve a segment.
-
-        :param segment_name: Name of the segment to fetch.
-        :type segment_name: str
-
-        :return: Segment object is key exists. None otherwise.
-        :rtype: splitio.models.segments.Segment
-        """
-        try:
-            keys = (self._redis.smembers(self._get_key(segment_name)))
-            _LOGGER.debug("Fetchting Segment [%s] from redis" % segment_name)
-            _LOGGER.debug(keys)
-            till = self.get_change_number(segment_name)
-            if not keys or till is None:
-                return None
-            return segments.Segment(segment_name, keys, till)
-        except RedisAdapterException:
-            _LOGGER.error('Error fetching segment from storage')
-            _LOGGER.debug('Error: ', exc_info=True)
-            return None
+        """Retrieve a segment."""
+        pass
 
     def update(self, segment_name, to_add, to_remove, change_number=None):
         """
-        Store a split.
+        Store a segment.
 
         :param segment_name: Name of the segment to update.
         :type segment_name: str
@@ -495,14 +467,7 @@ class RedisSegmentStorage(SegmentStorage):
 
         :rtype: int
         """
-        try:
-            stored_value = self._redis.get(self._get_till_key(segment_name))
-            _LOGGER.debug("Fetchting Change Number for Segment [%s] from redis: " % stored_value)
-            return json.loads(stored_value) if stored_value is not None else None
-        except RedisAdapterException:
-            _LOGGER.error('Error fetching segment change number from storage')
-            _LOGGER.debug('Error: ', exc_info=True)
-            return None
+        pass
 
     def set_change_number(self, segment_name, new_change_number):
         """
@@ -536,14 +501,7 @@ class RedisSegmentStorage(SegmentStorage):
         :return: True if the segment contains the key. False otherwise.
         :rtype: bool
         """
-        try:
-            res = self._redis.sismember(self._get_key(segment_name), key)
-            _LOGGER.debug("Checking Segment [%s] contain key [%s] in redis: %s" % (segment_name, key, res))
-            return res
-        except RedisAdapterException:
-            _LOGGER.error('Error testing members in segment stored in redis')
-            _LOGGER.debug('Error: ', exc_info=True)
-            return None
+        pass
 
     def get_segments_count(self):
         """
@@ -561,6 +519,156 @@ class RedisSegmentStorage(SegmentStorage):
         :rtype: int
         """
         return 0
+
+
+class RedisSegmentStorage(RedisSegmentStorageBase):
+    """Redis based segment storage class."""
+
+    def __init__(self, redis_client):
+        """
+        Class constructor.
+
+        :param redis_client: Redis client or compliant interface.
+        :type redis_client: splitio.storage.adapters.redis.RedisAdapter
+        """
+        self._redis = redis_client
+
+    def get(self, segment_name):
+        """
+        Retrieve a segment.
+
+        :param segment_name: Name of the segment to fetch.
+        :type segment_name: str
+
+        :return: Segment object is key exists. None otherwise.
+        :rtype: splitio.models.segments.Segment
+        """
+        try:
+            keys = (self._redis.smembers(self._get_key(segment_name)))
+            _LOGGER.debug("Fetchting Segment [%s] from redis" % segment_name)
+            _LOGGER.debug(keys)
+            till = self.get_change_number(segment_name)
+            if not keys or till is None:
+                return None
+            return segments.Segment(segment_name, keys, till)
+        except RedisAdapterException:
+            _LOGGER.error('Error fetching segment from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+
+    def get_change_number(self, segment_name):
+        """
+        Retrieve latest change number for a segment.
+
+        :param segment_name: Name of the segment.
+        :type segment_name: str
+
+        :rtype: int
+        """
+        try:
+            stored_value = self._redis.get(self._get_till_key(segment_name))
+            _LOGGER.debug("Fetchting Change Number for Segment [%s] from redis: " % stored_value)
+            return json.loads(stored_value) if stored_value is not None else None
+        except RedisAdapterException:
+            _LOGGER.error('Error fetching segment change number from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+
+    def segment_contains(self, segment_name, key):
+        """
+        Check whether a specific key belongs to a segment in storage.
+
+        :param segment_name: Name of the segment to search in.
+        :type segment_name: str
+        :param key: Key to search for.
+        :type key: str
+
+        :return: True if the segment contains the key. False otherwise.
+        :rtype: bool
+        """
+        try:
+            res = self._redis.sismember(self._get_key(segment_name), key)
+            _LOGGER.debug("Checking Segment [%s] contain key [%s] in redis: %s" % (segment_name, key, res))
+            return res
+        except RedisAdapterException:
+            _LOGGER.error('Error testing members in segment stored in redis')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+
+
+class RedisSegmentStorageAsync(RedisSegmentStorageBase):
+    """Redis based segment storage async class."""
+
+    def __init__(self, redis_client):
+        """
+        Class constructor.
+
+        :param redis_client: Redis client or compliant interface.
+        :type redis_client: splitio.storage.adapters.redis.RedisAdapter
+        """
+        self._redis = redis_client
+
+    async def get(self, segment_name):
+        """
+        Retrieve a segment.
+
+        :param segment_name: Name of the segment to fetch.
+        :type segment_name: str
+
+        :return: Segment object is key exists. None otherwise.
+        :rtype: splitio.models.segments.Segment
+        """
+        try:
+            keys = (await self._redis.smembers(self._get_key(segment_name)))
+            _LOGGER.debug("Fetchting Segment [%s] from redis" % segment_name)
+            _LOGGER.debug(keys)
+            till = await self.get_change_number(segment_name)
+            if not keys or till is None:
+                return None
+            return segments.Segment(segment_name, keys, till)
+        except RedisAdapterException:
+            _LOGGER.error('Error fetching segment from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+
+    async def get_change_number(self, segment_name):
+        """
+        Retrieve latest change number for a segment.
+
+        :param segment_name: Name of the segment.
+        :type segment_name: str
+
+        :rtype: int
+        """
+        try:
+            stored_value = await self._redis.get(self._get_till_key(segment_name))
+            _LOGGER.debug("Fetchting Change Number for Segment [%s] from redis: " % stored_value)
+            return json.loads(stored_value) if stored_value is not None else None
+        except RedisAdapterException:
+            _LOGGER.error('Error fetching segment change number from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+
+    async def segment_contains(self, segment_name, key):
+        """
+        Check whether a specific key belongs to a segment in storage.
+
+        :param segment_name: Name of the segment to search in.
+        :type segment_name: str
+        :param key: Key to search for.
+        :type key: str
+
+        :return: True if the segment contains the key. False otherwise.
+        :rtype: bool
+        """
+        try:
+            res = await self._redis.sismember(self._get_key(segment_name), key)
+            _LOGGER.debug("Checking Segment [%s] contain key [%s] in redis: %s" % (segment_name, key, res))
+            return res
+        except RedisAdapterException:
+            _LOGGER.error('Error testing members in segment stored in redis')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
 
 class RedisImpressionsStorage(ImpressionStorage, ImpressionPipelinedStorage):
     """Redis based event storage class."""
