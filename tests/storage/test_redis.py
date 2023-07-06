@@ -6,10 +6,11 @@ import time
 import unittest.mock as mock
 import pytest
 
+from splitio.optional.loaders import asyncio
 from splitio.client.util import get_metadata, SdkMetadata
-from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \
+from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, RedisImpressionsStorageAsync, \
     RedisSegmentStorage, RedisSplitStorage, RedisTelemetryStorage
-from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterException, build
+from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterAsync, RedisAdapterException, build
 from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
 from splitio.models.events import Event, EventWrapper
@@ -306,6 +307,124 @@ class RedisImpressionsStorageTests(object):  # pylint: disable=too-few-public-me
         adapter = mocker.Mock(spec=RedisAdapter)
         metadata = get_metadata({})
         storage = RedisImpressionsStorage(adapter, metadata)
+
+        impressions = [
+            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654)
+        ]
+
+        to_validate = [json.dumps({
+            'm': {  # METADATA PORTION
+                's': metadata.sdk_version,
+                'n': metadata.instance_name,
+                'i': metadata.instance_ip,
+            },
+            'i': {  # IMPRESSION PORTION
+                'k': impression.matching_key,
+                'b': impression.bucketing_key,
+                'f': impression.feature_name,
+                't': impression.treatment,
+                'r': impression.label,
+                'c': impression.change_number,
+                'm': impression.time,
+            }
+        }) for impression in impressions]
+
+        storage.add_impressions_to_pipe(impressions, adapter)
+        assert adapter.rpush.mock_calls == [mocker.call('SPLITIO.impressions', *to_validate)]
+
+class RedisImpressionsStorageAsyncTests(object):  # pylint: disable=too-few-public-methods
+    """Redis Impressions async storage test cases."""
+
+    def test_wrap_impressions(self, mocker):
+        """Test wrap impressions."""
+        adapter = mocker.Mock(spec=RedisAdapterAsync)
+        metadata = get_metadata({})
+        storage = RedisImpressionsStorageAsync(adapter, metadata)
+
+        impressions = [
+            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654)
+        ]
+
+        to_validate = [json.dumps({
+            'm': {  # METADATA PORTION
+                's': metadata.sdk_version,
+                'n': metadata.instance_name,
+                'i': metadata.instance_ip,
+            },
+            'i': {  # IMPRESSION PORTION
+                'k': impression.matching_key,
+                'b': impression.bucketing_key,
+                'f': impression.feature_name,
+                't': impression.treatment,
+                'r': impression.label,
+                'c': impression.change_number,
+                'm': impression.time,
+            }
+        }) for impression in impressions]
+
+        assert storage._wrap_impressions(impressions) == to_validate
+
+    @pytest.mark.asyncio
+    async def test_add_impressions(self, mocker):
+        """Test that adding impressions to storage works."""
+        adapter = mocker.Mock(spec=RedisAdapterAsync)
+        metadata = get_metadata({})
+        storage = RedisImpressionsStorageAsync(adapter, metadata)
+
+        impressions = [
+            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654)
+        ]
+        self.key = None
+        self.imps = None
+        async def rpush(key, *imps):
+            self.key = key
+            self.imps = imps
+
+        adapter.rpush = rpush
+        assert await storage.put(impressions) is True
+
+        to_validate = [json.dumps({
+            'm': {  # METADATA PORTION
+                's': metadata.sdk_version,
+                'n': metadata.instance_name,
+                'i': metadata.instance_ip,
+            },
+            'i': {  # IMPRESSION PORTION
+                'k': impression.matching_key,
+                'b': impression.bucketing_key,
+                'f': impression.feature_name,
+                't': impression.treatment,
+                'r': impression.label,
+                'c': impression.change_number,
+                'm': impression.time,
+            }
+        }) for impression in impressions]
+
+        assert self.key == 'SPLITIO.impressions'
+        assert self.imps == tuple(to_validate)
+
+        # Assert that if an exception is thrown it's caught and False is returned
+        adapter.reset_mock()
+
+        async def rpush2(key, *imps):
+            raise RedisAdapterException('something')
+        adapter.rpush = rpush2
+        assert await storage.put(impressions) is False
+
+    def test_add_impressions_to_pipe(self, mocker):
+        """Test that adding impressions to storage works."""
+        adapter = mocker.Mock(spec=RedisAdapterAsync)
+        metadata = get_metadata({})
+        storage = RedisImpressionsStorageAsync(adapter, metadata)
 
         impressions = [
             Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),

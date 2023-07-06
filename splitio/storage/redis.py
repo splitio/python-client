@@ -385,23 +385,11 @@ class RedisSegmentStorage(SegmentStorage):
         """
         return 0
 
-class RedisImpressionsStorage(ImpressionStorage, ImpressionPipelinedStorage):
-    """Redis based event storage class."""
+class RedisImpressionsStorageBase(ImpressionStorage, ImpressionPipelinedStorage):
+    """Redis based event storage base class."""
 
     IMPRESSIONS_QUEUE_KEY = 'SPLITIO.impressions'
     IMPRESSIONS_KEY_DEFAULT_TTL = 3600
-
-    def __init__(self, redis_client, sdk_metadata):
-        """
-        Class constructor.
-
-        :param redis_client: Redis client or compliant interface.
-        :type redis_client: splitio.storage.adapters.redis.RedisAdapter
-        :param sdk_metadata: SDK & Machine information.
-        :type sdk_metadata: splitio.client.util.SdkMetadata
-        """
-        self._redis = redis_client
-        self._sdk_metadata = sdk_metadata
 
     def _wrap_impressions(self, impressions):
         """
@@ -444,8 +432,7 @@ class RedisImpressionsStorage(ImpressionStorage, ImpressionPipelinedStorage):
         :param inserted: added keys.
         :type inserted: int
         """
-        if total_keys == inserted:
-            self._redis.expire(self.IMPRESSIONS_QUEUE_KEY, self.IMPRESSIONS_KEY_DEFAULT_TTL)
+        pass
 
     def add_impressions_to_pipe(self, impressions, pipe):
         """
@@ -471,17 +458,7 @@ class RedisImpressionsStorage(ImpressionStorage, ImpressionPipelinedStorage):
         :return: Whether the impression has been added or not.
         :rtype: bool
         """
-        bulk_impressions = self._wrap_impressions(impressions)
-        try:
-            _LOGGER.debug("Adding Impressions to redis key %s" % (self.IMPRESSIONS_QUEUE_KEY))
-            _LOGGER.debug(bulk_impressions)
-            inserted = self._redis.rpush(self.IMPRESSIONS_QUEUE_KEY, *bulk_impressions)
-            self.expire_key(inserted, len(bulk_impressions))
-            return True
-        except RedisAdapterException:
-            _LOGGER.error('Something went wrong when trying to add impression to redis')
-            _LOGGER.error('Error: ', exc_info=True)
-            return False
+        pass
 
     def pop_many(self, count):
         """
@@ -497,6 +474,106 @@ class RedisImpressionsStorage(ImpressionStorage, ImpressionPipelinedStorage):
         Clear data.
         """
         raise NotImplementedError('Not supported for redis.')
+
+
+class RedisImpressionsStorage(RedisImpressionsStorageBase):
+    """Redis based event storage class."""
+
+    def __init__(self, redis_client, sdk_metadata):
+        """
+        Class constructor.
+
+        :param redis_client: Redis client or compliant interface.
+        :type redis_client: splitio.storage.adapters.redis.RedisAdapter
+        :param sdk_metadata: SDK & Machine information.
+        :type sdk_metadata: splitio.client.util.SdkMetadata
+        """
+        self._redis = redis_client
+        self._sdk_metadata = sdk_metadata
+
+    def expire_key(self, total_keys, inserted):
+        """
+        Set expire
+
+        :param total_keys: length of keys.
+        :type total_keys: int
+        :param inserted: added keys.
+        :type inserted: int
+        """
+        if total_keys == inserted:
+            self._redis.expire(self.IMPRESSIONS_QUEUE_KEY, self.IMPRESSIONS_KEY_DEFAULT_TTL)
+
+    def put(self, impressions):
+        """
+        Add an impression to the redis storage.
+
+        :param impressions: Impression to add to the queue.
+        :type impressions: splitio.models.impressions.Impression
+
+        :return: Whether the impression has been added or not.
+        :rtype: bool
+        """
+        bulk_impressions = self._wrap_impressions(impressions)
+        try:
+            _LOGGER.debug("Adding Impressions to redis key %s" % (self.IMPRESSIONS_QUEUE_KEY))
+            _LOGGER.debug(bulk_impressions)
+            inserted = self._redis.rpush(self.IMPRESSIONS_QUEUE_KEY, *bulk_impressions)
+            self.expire_key(inserted, len(bulk_impressions))
+            return True
+        except RedisAdapterException:
+            _LOGGER.error('Something went wrong when trying to add impression to redis')
+            _LOGGER.error('Error: ', exc_info=True)
+            return False
+
+
+class RedisImpressionsStorageAsync(RedisImpressionsStorageBase):
+    """Redis based event storage async class."""
+
+    def __init__(self, redis_client, sdk_metadata):
+        """
+        Class constructor.
+
+        :param redis_client: Redis client or compliant interface.
+        :type redis_client: splitio.storage.adapters.redis.RedisAdapter
+        :param sdk_metadata: SDK & Machine information.
+        :type sdk_metadata: splitio.client.util.SdkMetadata
+        """
+        self._redis = redis_client
+        self._sdk_metadata = sdk_metadata
+
+    async def expire_key(self, total_keys, inserted):
+        """
+        Set expire
+
+        :param total_keys: length of keys.
+        :type total_keys: int
+        :param inserted: added keys.
+        :type inserted: int
+        """
+        if total_keys == inserted:
+            await self._redis.expire(self.IMPRESSIONS_QUEUE_KEY, self.IMPRESSIONS_KEY_DEFAULT_TTL)
+
+    async def put(self, impressions):
+        """
+        Add an impression to the redis storage.
+
+        :param impressions: Impression to add to the queue.
+        :type impressions: splitio.models.impressions.Impression
+
+        :return: Whether the impression has been added or not.
+        :rtype: bool
+        """
+        bulk_impressions = self._wrap_impressions(impressions)
+        try:
+            _LOGGER.debug("Adding Impressions to redis key %s" % (self.IMPRESSIONS_QUEUE_KEY))
+            _LOGGER.debug(bulk_impressions)
+            inserted = await self._redis.rpush(self.IMPRESSIONS_QUEUE_KEY, *bulk_impressions)
+            await self.expire_key(inserted, len(bulk_impressions))
+            return True
+        except RedisAdapterException:
+            _LOGGER.error('Something went wrong when trying to add impression to redis')
+            _LOGGER.error('Error: ', exc_info=True)
+            return False
 
 
 class RedisEventsStorage(EventStorage):
