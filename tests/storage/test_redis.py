@@ -335,6 +335,27 @@ class RedisImpressionsStorageTests(object):  # pylint: disable=too-few-public-me
         storage.add_impressions_to_pipe(impressions, adapter)
         assert adapter.rpush.mock_calls == [mocker.call('SPLITIO.impressions', *to_validate)]
 
+    def test_expire_key(self, mocker):
+        adapter = mocker.Mock(spec=RedisAdapter)
+        metadata = get_metadata({})
+        storage = RedisImpressionsStorage(adapter, metadata)
+
+        self.key = None
+        self.ttl = None
+        def expire(key, ttl):
+            self.key = key
+            self.ttl = ttl
+        adapter.expire = expire
+
+        storage.expire_key(2, 2)
+        assert self.key == 'SPLITIO.impressions'
+        assert self.ttl == 3600
+
+        self.key = None
+        storage.expire_key(2, 1)
+        assert self.key == None
+
+
 class RedisImpressionsStorageAsyncTests(object):  # pylint: disable=too-few-public-methods
     """Redis Impressions async storage test cases."""
 
@@ -452,6 +473,28 @@ class RedisImpressionsStorageAsyncTests(object):  # pylint: disable=too-few-publ
 
         storage.add_impressions_to_pipe(impressions, adapter)
         assert adapter.rpush.mock_calls == [mocker.call('SPLITIO.impressions', *to_validate)]
+
+    @pytest.mark.asyncio
+    async def test_expire_key(self, mocker):
+        adapter = mocker.Mock(spec=RedisAdapterAsync)
+        metadata = get_metadata({})
+        storage = RedisImpressionsStorageAsync(adapter, metadata)
+
+        self.key = None
+        self.ttl = None
+        async def expire(key, ttl):
+            self.key = key
+            self.ttl = ttl
+        adapter.expire = expire
+
+        await storage.expire_key(2, 2)
+        assert self.key == 'SPLITIO.impressions'
+        assert self.ttl == 3600
+
+        self.key = None
+        await storage.expire_key(2, 1)
+        assert self.key == None
+
 
 
 class RedisEventsStorageTests(object):  # pylint: disable=too-few-public-methods
