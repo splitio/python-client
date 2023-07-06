@@ -3,7 +3,7 @@ from queue import Queue
 import pytest
 
 from splitio.push.processor import MessageProcessor, MessageProcessorAsync
-from splitio.sync.synchronizer import Synchronizer, SynchronizerAsync
+from splitio.sync.synchronizer import Synchronizer
 from splitio.push.parser import SplitChangeUpdate, SegmentChangeUpdate, SplitKillUpdate
 from splitio.optional.loaders import asyncio
 

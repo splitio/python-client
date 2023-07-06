@@ -400,6 +400,10 @@ class RedisEventsStorageTests(object):  # pylint: disable=too-few-public-methods
         assert self.key == 'SPLITIO.events'
         assert self.ttl == 3600
 
+        self.key = None
+        storage.expire_keys(2, 1)
+        assert self.key == None
+
 class RedisEventsStorageAsyncTests(object):  # pylint: disable=too-few-public-methods
     """Redis Impression async storage test cases."""
 
@@ -471,6 +475,10 @@ class RedisEventsStorageAsyncTests(object):  # pylint: disable=too-few-public-me
         await storage.expire_keys(2, 2)
         assert self.key == 'SPLITIO.events'
         assert self.ttl == 3600
+
+        self.key = None
+        await storage.expire_keys(2, 1)
+        assert self.key == None
 
 
 class RedisTelemetryStorageTests(object):
