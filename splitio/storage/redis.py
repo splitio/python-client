@@ -10,7 +10,7 @@ from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, Eve
     ImpressionPipelinedStorage, TelemetryStorage
 from splitio.storage.adapters.redis import RedisAdapterException
 from splitio.storage.adapters.cache_trait import decorate as add_cache, DEFAULT_MAX_AGE
-
+from splitio.optional.loaders import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 MAX_TAGS = 10
@@ -600,7 +600,7 @@ class RedisEventsStorage(EventStorage):
         if total_keys == inserted:
             self._redis.expire(self._EVENTS_KEY_TEMPLATE, self._EVENTS_KEY_DEFAULT_TTL)
 
-class RedisTelemetryStorage(TelemetryStorage):
+class RedisTelemetryStorageBase(TelemetryStorage):
     """Redis based telemetry storage class."""
 
     _TELEMETRY_CONFIG_KEY = 'SPLITIO.telemetry.init'
@@ -608,33 +608,13 @@ class RedisTelemetryStorage(TelemetryStorage):
     _TELEMETRY_EXCEPTIONS_KEY = 'SPLITIO.telemetry.exceptions'
     _TELEMETRY_KEY_DEFAULT_TTL = 3600
 
-    def __init__(self, redis_client, sdk_metadata):
-        """
-        Class constructor.
-
-        :param redis_client: Redis client or compliant interface.
-        :type redis_client: splitio.storage.adapters.redis.RedisAdapter
-        :param sdk_metadata: SDK & Machine information.
-        :type sdk_metadata: splitio.client.util.SdkMetadata
-        """
-        self._lock = threading.RLock()
-        self._reset_config_tags()
-        self._redis_client = redis_client
-        self._sdk_metadata = sdk_metadata
-        self._method_latencies = MethodLatencies()
-        self._method_exceptions = MethodExceptions()
-        self._tel_config = TelemetryConfig()
-        self._make_pipe = redis_client.pipeline
-
     def _reset_config_tags(self):
-        with self._lock:
-            self._config_tags = []
+        """Reset all config tags"""
+        pass
 
     def add_config_tag(self, tag):
         """Record tag string."""
-        with self._lock:
-            if len(self._config_tags) < MAX_TAGS:
-                self._config_tags.append(tag)
+        pass
 
     def record_config(self, config, extra_config):
         """
@@ -647,18 +627,13 @@ class RedisTelemetryStorage(TelemetryStorage):
 
     def pop_config_tags(self):
         """Get and reset tags."""
-        with self._lock:
-            tags = self._config_tags
-            self._reset_config_tags()
-            return tags
+        pass
 
     def push_config_stats(self):
         """push config stats to redis."""
-        _LOGGER.debug("Adding Config stats to redis key %s" % (self._TELEMETRY_CONFIG_KEY))
-        _LOGGER.debug(str(self._format_config_stats()))
-        self._redis_client.hset(self._TELEMETRY_CONFIG_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip, str(self._format_config_stats()))
+        pass
 
-    def _format_config_stats(self):
+    def _format_config_stats(self, tags):
         """format only selected config stats to json"""
         config_stats = self._tel_config.get_stats()
         return json.dumps({
@@ -666,7 +641,7 @@ class RedisTelemetryStorage(TelemetryStorage):
             'rF': config_stats['rF'],
             'sT': config_stats['sT'],
             'oM': config_stats['oM'],
-            't': self.pop_config_tags()
+            't': tags
         })
 
     def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
@@ -703,14 +678,7 @@ class RedisTelemetryStorage(TelemetryStorage):
         :param method: method name
         :type method: string
         """
-        _LOGGER.debug("Adding Excepction stats to redis key %s" % (self._TELEMETRY_EXCEPTIONS_KEY))
-        _LOGGER.debug(self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
-                    method.value)
-        pipe = self._make_pipe()
-        pipe.hincrby(self._TELEMETRY_EXCEPTIONS_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
-                    method.value, 1)
-        result = pipe.execute()
-        self.expire_keys(self._TELEMETRY_EXCEPTIONS_KEY, self._TELEMETRY_KEY_DEFAULT_TTL, 1, result[0])
+        pass
 
     def record_not_ready_usage(self):
         """
@@ -730,6 +698,94 @@ class RedisTelemetryStorage(TelemetryStorage):
         pass
 
     def expire_latency_keys(self, total_keys, inserted):
+        pass
+
+    def expire_keys(self, queue_key, key_default_ttl, total_keys, inserted):
+        """
+        Set expire
+
+        :param total_keys: length of keys.
+        :type total_keys: int
+        :param inserted: added keys.
+        :type inserted: int
+        """
+        pass
+
+
+class RedisTelemetryStorage(RedisTelemetryStorageBase):
+    """Redis based telemetry storage class."""
+
+    def __init__(self, redis_client, sdk_metadata):
+        """
+        Class constructor.
+
+        :param redis_client: Redis client or compliant interface.
+        :type redis_client: splitio.storage.adapters.redis.RedisAdapter
+        :param sdk_metadata: SDK & Machine information.
+        :type sdk_metadata: splitio.client.util.SdkMetadata
+        """
+        self._lock = threading.RLock()
+        self._reset_config_tags()
+        self._redis_client = redis_client
+        self._sdk_metadata = sdk_metadata
+        self._method_latencies = MethodLatencies()
+        self._method_exceptions = MethodExceptions()
+        self._tel_config = TelemetryConfig()
+        self._make_pipe = redis_client.pipeline
+
+    def _reset_config_tags(self):
+        """Reset all config tags"""
+        with self._lock:
+            self._config_tags = []
+
+    def add_config_tag(self, tag):
+        """Record tag string."""
+        with self._lock:
+            if len(self._config_tags) < MAX_TAGS:
+                self._config_tags.append(tag)
+
+    def pop_config_tags(self):
+        """Get and reset tags."""
+        with self._lock:
+            tags = self._config_tags
+            self._reset_config_tags()
+            return tags
+
+    def push_config_stats(self):
+        """push config stats to redis."""
+        _LOGGER.debug("Adding Config stats to redis key %s" % (self._TELEMETRY_CONFIG_KEY))
+        _LOGGER.debug(str(self._format_config_stats(self.pop_config_tags())))
+        self._redis_client.hset(self._TELEMETRY_CONFIG_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip, str(self._format_config_stats(self.pop_config_tags())))
+
+    def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
+        """Record active and redundant factories."""
+        self._tel_config.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+
+    def record_exception(self, method):
+        """
+        record an exception
+
+        :param method: method name
+        :type method: string
+        """
+        _LOGGER.debug("Adding Excepction stats to redis key %s" % (self._TELEMETRY_EXCEPTIONS_KEY))
+        _LOGGER.debug(self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
+                    method.value)
+        pipe = self._make_pipe()
+        pipe.hincrby(self._TELEMETRY_EXCEPTIONS_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
+                    method.value, 1)
+        result = pipe.execute()
+        self.expire_keys(self._TELEMETRY_EXCEPTIONS_KEY, self._TELEMETRY_KEY_DEFAULT_TTL, 1, result[0])
+
+    def expire_latency_keys(self, total_keys, inserted):
+        """
+        Expire lstency keys
+
+        :param total_keys: length of keys.
+        :type total_keys: int
+        :param inserted: added keys.
+        :type inserted: int
+        """
         self.expire_keys(self._TELEMETRY_LATENCIES_KEY, self._TELEMETRY_KEY_DEFAULT_TTL, total_keys, inserted)
 
     def expire_keys(self, queue_key, key_default_ttl, total_keys, inserted):
@@ -743,3 +799,93 @@ class RedisTelemetryStorage(TelemetryStorage):
         """
         if total_keys == inserted:
             self._redis_client.expire(queue_key, key_default_ttl)
+
+
+class RedisTelemetryStorageAsync(RedisTelemetryStorageBase):
+    """Redis based telemetry async storage class."""
+
+    async def create(redis_client, sdk_metadata):
+        """
+        Create instance and reset tags
+
+        :param redis_client: Redis client or compliant interface.
+        :type redis_client: splitio.storage.adapters.redis.RedisAdapter
+        :param sdk_metadata: SDK & Machine information.
+        :type sdk_metadata: splitio.client.util.SdkMetadata
+
+        :return: self instance.
+        :rtype: splitio.storage.redis.RedisTelemetryStorageAsync
+        """
+        self = RedisTelemetryStorageAsync()
+        self._lock = asyncio.Lock()
+        await self._reset_config_tags()
+        self._redis_client = redis_client
+        self._sdk_metadata = sdk_metadata
+        self._method_latencies = MethodLatencies() # to be changed to async version class
+        self._method_exceptions = MethodExceptions() # to be changed to async version class
+        self._tel_config = TelemetryConfig() # to be changed to async version class
+        self._make_pipe = redis_client.pipeline
+        return self
+
+    async def _reset_config_tags(self):
+        """Reset all config tags"""
+        async with self._lock:
+            self._config_tags = []
+
+    async def add_config_tag(self, tag):
+        """Record tag string."""
+        async with self._lock:
+            if len(self._config_tags) < MAX_TAGS:
+                self._config_tags.append(tag)
+
+    async def pop_config_tags(self):
+        """Get and reset tags."""
+        async with self._lock:
+            tags = self._config_tags
+        await self._reset_config_tags()
+        return tags
+
+    async def push_config_stats(self):
+        """push config stats to redis."""
+        _LOGGER.debug("Adding Config stats to redis key %s" % (self._TELEMETRY_CONFIG_KEY))
+        _LOGGER.debug(str(await self._format_config_stats(await self.pop_config_tags())))
+        await self._redis_client.hset(self._TELEMETRY_CONFIG_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip, str(await self._format_config_stats(await self.pop_config_tags())))
+
+    async def record_exception(self, method):
+        """
+        record an exception
+
+        :param method: method name
+        :type method: string
+        """
+        _LOGGER.debug("Adding Excepction stats to redis key %s" % (self._TELEMETRY_EXCEPTIONS_KEY))
+        _LOGGER.debug(self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
+                    method.value)
+        pipe = self._make_pipe()
+        pipe.hincrby(self._TELEMETRY_EXCEPTIONS_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
+                    method.value, 1)
+        result = await pipe.execute()
+        await self.expire_keys(self._TELEMETRY_EXCEPTIONS_KEY, self._TELEMETRY_KEY_DEFAULT_TTL, 1, result[0])
+
+    async def expire_latency_keys(self, total_keys, inserted):
+        """
+        Expire lstency keys
+
+        :param total_keys: length of keys.
+        :type total_keys: int
+        :param inserted: added keys.
+        :type inserted: int
+        """
+        await self.expire_keys(self._TELEMETRY_LATENCIES_KEY, self._TELEMETRY_KEY_DEFAULT_TTL, total_keys, inserted)
+
+    async def expire_keys(self, queue_key, key_default_ttl, total_keys, inserted):
+        """
+        Set expire
+
+        :param total_keys: length of keys.
+        :type total_keys: int
+        :param inserted: added keys.
+        :type inserted: int
+        """
+        if total_keys == inserted:
+            await self._redis_client.expire(queue_key, key_default_ttl)

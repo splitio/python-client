@@ -4,11 +4,12 @@
 import json
 import time
 import unittest.mock as mock
+import redis.asyncio as aioredis
 import pytest
 
 from splitio.client.util import get_metadata, SdkMetadata
 from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \
-    RedisSegmentStorage, RedisSplitStorage, RedisTelemetryStorage
+    RedisSegmentStorage, RedisSplitStorage, RedisTelemetryStorage, RedisTelemetryStorageAsync
 from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterException, build
 from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
@@ -485,3 +486,134 @@ class RedisTelemetryStorageTests(object):
         assert(not mocker.called)
         redis_telemetry.expire_keys('key', 12, 2, 2)
         assert(mocker.called)
+
+
+class RedisTelemetryStorageAsyncTests(object):
+    """Redis Telemetry storage test cases."""
+
+    @pytest.mark.asyncio
+    async def test_init(self, mocker):
+        redis_telemetry = await RedisTelemetryStorageAsync.create(mocker.Mock(), mocker.Mock())
+        assert(redis_telemetry._redis_client is not None)
+        assert(redis_telemetry._sdk_metadata is not None)
+        assert(isinstance(redis_telemetry._method_latencies, MethodLatencies))
+        assert(isinstance(redis_telemetry._method_exceptions, MethodExceptions))
+        assert(isinstance(redis_telemetry._tel_config, TelemetryConfig))
+        assert(redis_telemetry._make_pipe is not None)
+
+    @pytest.mark.asyncio
+    async def test_record_config(self, mocker):
+        redis_telemetry = await RedisTelemetryStorageAsync.create(mocker.Mock(), mocker.Mock())
+        self.called = False
+        def record_config(*args):
+            self.called = True
+        redis_telemetry._tel_config.record_config = record_config
+
+        redis_telemetry.record_config(mocker.Mock(), mocker.Mock())
+        assert(self.called)
+
+    @pytest.mark.asyncio
+    async def test_push_config_stats(self, mocker):
+        adapter = await aioredis.from_url("redis://localhost")
+        redis_telemetry = await RedisTelemetryStorageAsync.create(adapter, SdkMetadata('python-1.1.1', 'hostname', 'ip'))
+        self.key = None
+        self.hash = None
+        async def hset(key, hash, val):
+            self.key = key
+            self.hash = hash
+
+        adapter.hset = hset
+        async def format_config_stats(tags):
+            return ""
+        redis_telemetry._format_config_stats = format_config_stats
+        await redis_telemetry.push_config_stats()
+        assert self.key == 'SPLITIO.telemetry.init'
+        assert self.hash == 'python-1.1.1/hostname/ip'
+
+    @pytest.mark.asyncio
+    async def test_format_config_stats(self, mocker):
+        redis_telemetry = await RedisTelemetryStorageAsync.create(mocker.Mock(), mocker.Mock())
+        json_value = redis_telemetry._format_config_stats([])
+        stats = redis_telemetry._tel_config.get_stats()
+        assert(json_value == json.dumps({
+            'aF': stats['aF'],
+            'rF': stats['rF'],
+            'sT': stats['sT'],
+            'oM': stats['oM'],
+            't': await redis_telemetry.pop_config_tags()
+        }))
+
+    @pytest.mark.asyncio
+    async def test_record_active_and_redundant_factories(self, mocker):
+        redis_telemetry = await RedisTelemetryStorageAsync.create(mocker.Mock(), mocker.Mock())
+        active_factory_count = 1
+        redundant_factory_count = 2
+        redis_telemetry.record_active_and_redundant_factories(1, 2)
+        assert (redis_telemetry._tel_config._active_factory_count == active_factory_count)
+        assert (redis_telemetry._tel_config._redundant_factory_count == redundant_factory_count)
+
+    @pytest.mark.asyncio
+    async def test_add_latency_to_pipe(self, mocker):
+        adapter = build({})
+        metadata = SdkMetadata('python-1.1.1', 'hostname', 'ip')
+        redis_telemetry = await RedisTelemetryStorageAsync.create(adapter, metadata)
+        pipe = adapter._decorated.pipeline()
+
+        def _mocked_hincrby(*args, **kwargs):
+            assert(args[1] == RedisTelemetryStorageAsync._TELEMETRY_LATENCIES_KEY)
+            assert(args[2][-11:] == 'treatment/0')
+            assert(args[3] == 1)
+        # should increment bucket 0
+        with mock.patch('redis.client.Pipeline.hincrby', _mocked_hincrby):
+            redis_telemetry.add_latency_to_pipe(MethodExceptionsAndLatencies.TREATMENT, 0, pipe)
+
+        def _mocked_hincrby2(*args, **kwargs):
+            assert(args[1] == RedisTelemetryStorageAsync._TELEMETRY_LATENCIES_KEY)
+            assert(args[2][-11:] == 'treatment/3')
+            assert(args[3] == 1)
+        # should increment bucket 3
+        with mock.patch('redis.client.Pipeline.hincrby', _mocked_hincrby2):
+            redis_telemetry.add_latency_to_pipe(MethodExceptionsAndLatencies.TREATMENT, 3, pipe)
+
+    @pytest.mark.asyncio
+    async def test_record_exception(self, mocker):
+        async def _mocked_hincrby(*args, **kwargs):
+            assert(args[1] == RedisTelemetryStorageAsync._TELEMETRY_EXCEPTIONS_KEY)
+            assert(args[2] == 'python-1.1.1/hostname/ip/treatment')
+            assert(args[3] == 1)
+
+        adapter = build({})
+        metadata = SdkMetadata('python-1.1.1', 'hostname', 'ip')
+        redis_telemetry = await RedisTelemetryStorageAsync.create(adapter, metadata)
+        with mock.patch('redis.client.Pipeline.hincrby', _mocked_hincrby):
+            with mock.patch('redis.client.Pipeline.execute') as mock_method:
+                mock_method.return_value = [1]
+                redis_telemetry.record_exception(MethodExceptionsAndLatencies.TREATMENT)
+
+    @pytest.mark.asyncio
+    async def test_expire_latency_keys(self, mocker):
+        redis_telemetry = await RedisTelemetryStorageAsync.create(mocker.Mock(), mocker.Mock())
+        def _mocked_method(*args, **kwargs):
+            assert(args[1] == RedisTelemetryStorageAsync._TELEMETRY_LATENCIES_KEY)
+            assert(args[2] == RedisTelemetryStorageAsync._TELEMETRY_KEY_DEFAULT_TTL)
+            assert(args[3] == 1)
+            assert(args[4] == 2)
+
+        with mock.patch('splitio.storage.redis.RedisTelemetryStorage.expire_keys', _mocked_method):
+            await redis_telemetry.expire_latency_keys(1, 2)
+
+    @pytest.mark.asyncio
+    async def test_expire_keys(self, mocker):
+        adapter = await aioredis.from_url("redis://localhost")
+        metadata = SdkMetadata('python-1.1.1', 'hostname', 'ip')
+        redis_telemetry = await RedisTelemetryStorageAsync.create(adapter, metadata)
+        self.called = False
+        async def expire(*args):
+            self.called = True
+        adapter.expire = expire
+
+        await redis_telemetry.expire_keys('key', 12, 1, 2)
+        assert(not self.called)
+
+        await redis_telemetry.expire_keys('key', 12, 2, 2)
+        assert(self.called)
