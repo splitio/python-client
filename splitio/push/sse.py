@@ -2,7 +2,6 @@
 import logging
 import socket
 import abc
-import urllib
 from collections import namedtuple
 from http.client import HTTPConnection, HTTPSConnection
 from urllib.parse import urlparse
@@ -185,6 +184,7 @@ class SSEClientAsync(SSEClientBase):
         """
         self._conn = None
         self._shutdown_requested = False
+        self._parsed_url = url
         self._url, self._extra_headers = _get_request_parameters(url, extra_headers)
         self._timeout = timeout
         self._session = None
@@ -203,8 +203,6 @@ class SSEClientAsync(SSEClientBase):
         self._shutdown_requested = False
         headers = _DEFAULT_HEADERS.copy()
         headers.update(self._extra_headers if self._extra_headers is not None else {})
-        parsed_url =  urllib.parse.urljoin(self._url[0] + "://" + self._url[1], self._url[2])
-        params = self._url[4]
         try:
             self._conn = aiohttp.connector.TCPConnector()
             async with aiohttp.client.ClientSession(
@@ -214,8 +212,8 @@ class SSEClientAsync(SSEClientBase):
                 ) as self._session:
                 self._reader = await self._session.request(
                     "GET",
-                    parsed_url,
-                    params=params
+                    self._parsed_url,
+                    params=self._url.params
                 )
                 try:
                     event_builder = EventBuilder()
