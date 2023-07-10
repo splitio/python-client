@@ -20,6 +20,9 @@ _TOKEN_REFRESH_GRACE_PERIOD = 10 * 60  # 10 minutes
 
 _LOGGER = logging.getLogger(__name__)
 
+async def _anext(it):
+    return await it.__anext__()
+
 class PushManagerBase(object, metaclass=abc.ABCMeta):
     """Worker template."""
 
@@ -447,8 +450,8 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         self._status_tracker.reset()
         self._running = True
         # awaiting first successful event
-        events_loop = self._sse_client.start(self._token)
-        first_event = await events_loop.__anext__()
+        events_task = self._sse_client.start(self._token)
+        first_event = await _anext(events_task)
         if first_event.event == SSE_EVENT_ERROR:
             raise(Exception("could not start SSE session"))
 
@@ -457,7 +460,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.CONNECTION_ESTABLISHED, 0,  get_current_epoch_time_ms()))
         try:
             while self._running:
-                event = await events_loop.__anext__()
+                event = await _anext(events_task)
                 await self._event_handler(event)
         except StopAsyncIteration:
             pass
