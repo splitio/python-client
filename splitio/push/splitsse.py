@@ -3,6 +3,7 @@ import logging
 import threading
 from enum import Enum
 import abc
+import sys
 
 from splitio.push.sse import SSEClient, SSEClientAsync, SSE_EVENT_ERROR
 from splitio.util.threadutil import EventGroup
@@ -11,6 +12,8 @@ from splitio.api import headers_from_metadata
 
 _LOGGER = logging.getLogger(__name__)
 
+async def _anext(it):
+    return await it.__anext__()
 
 class SplitSSEClientBase(object, metaclass=abc.ABCMeta):
     """Split streaming endpoint SSE base client."""
@@ -182,6 +185,10 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         self._base_url = base_url
         self.status = SplitSSEClient._Status.IDLE
         self._metadata = headers_from_metadata(sdk_metadata, client_key)
+        if sys.version_info.major < 3 or sys.version_info.minor < 10:
+            global anext
+            anext = _anext
+
 
     async def start(self, token):
         """
@@ -200,8 +207,8 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         url = self._build_url(token)
         self._client = SSEClientAsync(url, extra_headers=self._metadata, timeout=self.KEEPALIVE_TIMEOUT)
         try:
-            sse_events_loop = self._client.start()
-            first_event = await sse_events_loop.__anext__()
+            sse_events_task = self._client.start()
+            first_event = await anext(sse_events_task)
             if first_event.event == SSE_EVENT_ERROR:
                 await self.stop()
                 return
@@ -209,7 +216,7 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
             _LOGGER.debug("Split SSE client started")
             yield first_event
             while self.status == SplitSSEClient._Status.CONNECTED:
-                event = await sse_events_loop.__anext__()
+                event = await anext(sse_events_task)
                 if event.data is not None:
                     yield event
         except StopAsyncIteration:
