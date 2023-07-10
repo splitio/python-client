@@ -7,6 +7,7 @@ from collections import Counter
 from splitio.models.segments import Segment
 from splitio.models.telemetry import HTTPErrors, HTTPLatencies, MethodExceptions, MethodLatencies, LastSynchronization, StreamingEvents, TelemetryConfig, TelemetryCounters, CounterConstants
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
+from splitio.optional.loaders import asyncio
 
 MAX_SIZE_BYTES = 5 * 1024 * 1024
 MAX_TAGS = 10
@@ -14,7 +15,142 @@ MAX_TAGS = 10
 _LOGGER = logging.getLogger(__name__)
 
 
-class InMemorySplitStorage(SplitStorage):
+class InMemorySplitStorageBase(SplitStorage):
+    """InMemory implementation of a split storage base."""
+
+    def get(self, split_name):
+        """
+        Retrieve a split.
+
+        :param split_name: Name of the feature to fetch.
+        :type split_name: str
+
+        :rtype: splitio.models.splits.Split
+        """
+        pass
+
+    def fetch_many(self, split_names):
+        """
+        Retrieve splits.
+
+        :param split_names: Names of the features to fetch.
+        :type split_name: list(str)
+
+        :return: A dict with split objects parsed from queue.
+        :rtype: dict(split_name, splitio.models.splits.Split)
+        """
+        pass
+
+    def put(self, split):
+        """
+        Store a split.
+
+        :param split: Split object.
+        :type split: splitio.models.split.Split
+        """
+        pass
+
+    def remove(self, split_name):
+        """
+        Remove a split from storage.
+
+        :param split_name: Name of the feature to remove.
+        :type split_name: str
+
+        :return: True if the split was found and removed. False otherwise.
+        :rtype: bool
+        """
+        pass
+
+    def get_change_number(self):
+        """
+        Retrieve latest split change number.
+
+        :rtype: int
+        """
+        pass
+
+    def set_change_number(self, new_change_number):
+        """
+        Set the latest change number.
+
+        :param new_change_number: New change number.
+        :type new_change_number: int
+        """
+        pass
+
+    def get_split_names(self):
+        """
+        Retrieve a list of all split names.
+
+        :return: List of split names.
+        :rtype: list(str)
+        """
+        pass
+
+    def get_all_splits(self):
+        """
+        Return all the splits.
+
+        :return: List of all the splits.
+        :rtype: list
+        """
+        pass
+
+    def get_splits_count(self):
+        """
+        Return splits count.
+
+        :rtype: int
+        """
+        pass
+
+    def is_valid_traffic_type(self, traffic_type_name):
+        """
+        Return whether the traffic type exists in at least one split in cache.
+
+        :param traffic_type_name: Traffic type to validate.
+        :type traffic_type_name: str
+
+        :return: True if the traffic type is valid. False otherwise.
+        :rtype: bool
+        """
+        pass
+
+    def kill_locally(self, split_name, default_treatment, change_number):
+        """
+        Local kill for split
+
+        :param split_name: name of the split to perform kill
+        :type split_name: str
+        :param default_treatment: name of the default treatment to return
+        :type default_treatment: str
+        :param change_number: change_number
+        :type change_number: int
+        """
+        pass
+
+    def _increase_traffic_type_count(self, traffic_type_name):
+        """
+        Increase by one the count for a specific traffic type name.
+
+        :param traffic_type_name: Traffic type to increase the count.
+        :type traffic_type_name: str
+        """
+        self._traffic_types.update([traffic_type_name])
+
+    def _decrease_traffic_type_count(self, traffic_type_name):
+        """
+        Decrease by one the count for a specific traffic type name.
+
+        :param traffic_type_name: Traffic type to decrease the count.
+        :type traffic_type_name: str
+        """
+        self._traffic_types.subtract([traffic_type_name])
+        self._traffic_types += Counter()
+
+
+class InMemorySplitStorage(InMemorySplitStorageBase):
     """InMemory implementation of a split storage."""
 
     def __init__(self):
@@ -162,24 +298,154 @@ class InMemorySplitStorage(SplitStorage):
             split.local_kill(default_treatment, change_number)
             self.put(split)
 
-    def _increase_traffic_type_count(self, traffic_type_name):
-        """
-        Increase by one the count for a specific traffic type name.
 
-        :param traffic_type_name: Traffic type to increase the count.
+class InMemorySplitStorageAsync(InMemorySplitStorageBase):
+    """InMemory implementation of a split async storage."""
+
+    def __init__(self):
+        """Constructor."""
+        self._lock = asyncio.Lock()
+        self._splits = {}
+        self._change_number = -1
+        self._traffic_types = Counter()
+
+    async def get(self, split_name):
+        """
+        Retrieve a split.
+
+        :param split_name: Name of the feature to fetch.
+        :type split_name: str
+
+        :rtype: splitio.models.splits.Split
+        """
+        async with self._lock:
+            return self._splits.get(split_name)
+
+    async def fetch_many(self, split_names):
+        """
+        Retrieve splits.
+
+        :param split_names: Names of the features to fetch.
+        :type split_name: list(str)
+
+        :return: A dict with split objects parsed from queue.
+        :rtype: dict(split_name, splitio.models.splits.Split)
+        """
+        return {split_name: await self.get(split_name) for split_name in split_names}
+
+    async def put(self, split):
+        """
+        Store a split.
+
+        :param split: Split object.
+        :type split: splitio.models.split.Split
+        """
+        async with self._lock:
+            if split.name in self._splits:
+                self._decrease_traffic_type_count(self._splits[split.name].traffic_type_name)
+            self._splits[split.name] = split
+            self._increase_traffic_type_count(split.traffic_type_name)
+
+    async def remove(self, split_name):
+        """
+        Remove a split from storage.
+
+        :param split_name: Name of the feature to remove.
+        :type split_name: str
+
+        :return: True if the split was found and removed. False otherwise.
+        :rtype: bool
+        """
+        async with self._lock:
+            split = self._splits.get(split_name)
+            if not split:
+                _LOGGER.warning("Tried to delete nonexistant split %s. Skipping", split_name)
+                return False
+
+            self._splits.pop(split_name)
+            self._decrease_traffic_type_count(split.traffic_type_name)
+            return True
+
+    async def get_change_number(self):
+        """
+        Retrieve latest split change number.
+
+        :rtype: int
+        """
+        async with self._lock:
+            return self._change_number
+
+    async def set_change_number(self, new_change_number):
+        """
+        Set the latest change number.
+
+        :param new_change_number: New change number.
+        :type new_change_number: int
+        """
+        async with self._lock:
+            self._change_number = new_change_number
+
+    async def get_split_names(self):
+        """
+        Retrieve a list of all split names.
+
+        :return: List of split names.
+        :rtype: list(str)
+        """
+        async with self._lock:
+            return list(self._splits.keys())
+
+    async def get_all_splits(self):
+        """
+        Return all the splits.
+
+        :return: List of all the splits.
+        :rtype: list
+        """
+        async with self._lock:
+            return list(self._splits.values())
+
+    async def get_splits_count(self):
+        """
+        Return splits count.
+
+        :rtype: int
+        """
+        async with self._lock:
+            return len(self._splits)
+
+    async def is_valid_traffic_type(self, traffic_type_name):
+        """
+        Return whether the traffic type exists in at least one split in cache.
+
+        :param traffic_type_name: Traffic type to validate.
         :type traffic_type_name: str
-        """
-        self._traffic_types.update([traffic_type_name])
 
-    def _decrease_traffic_type_count(self, traffic_type_name):
+        :return: True if the traffic type is valid. False otherwise.
+        :rtype: bool
         """
-        Decrease by one the count for a specific traffic type name.
+        async with self._lock:
+            return traffic_type_name in self._traffic_types
 
-        :param traffic_type_name: Traffic type to decrease the count.
-        :type traffic_type_name: str
+    async def kill_locally(self, split_name, default_treatment, change_number):
         """
-        self._traffic_types.subtract([traffic_type_name])
-        self._traffic_types += Counter()
+        Local kill for split
+
+        :param split_name: name of the split to perform kill
+        :type split_name: str
+        :param default_treatment: name of the default treatment to return
+        :type default_treatment: str
+        :param change_number: change_number
+        :type change_number: int
+        """
+        if await self.get_change_number() > change_number:
+            return
+        async with self._lock:
+            split = self._splits.get(split_name)
+            if not split:
+                return
+            split.local_kill(default_treatment, change_number)
+        await self.put(split)
 
 
 class InMemorySegmentStorage(SegmentStorage):
