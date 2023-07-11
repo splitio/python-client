@@ -7,6 +7,7 @@ from collections import Counter
 from splitio.models.segments import Segment
 from splitio.models.telemetry import HTTPErrors, HTTPLatencies, MethodExceptions, MethodLatencies, LastSynchronization, StreamingEvents, TelemetryConfig, TelemetryCounters, CounterConstants
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
+from splitio.optional.loaders import asyncio
 
 MAX_SIZE_BYTES = 5 * 1024 * 1024
 MAX_TAGS = 10
@@ -382,7 +383,44 @@ class InMemoryImpressionStorage(ImpressionStorage):
             self._impressions = queue.Queue(maxsize=self._queue_size)
 
 
-class InMemoryEventStorage(EventStorage):
+class InMemoryEventStorageBase(EventStorage):
+    """
+    In memory storage base class for events.
+    Supports adding and popping events.
+    """
+    def set_queue_full_hook(self, hook):
+        """
+        Set a hook to be called when the queue is full.
+
+        :param h: Hook to be called when the queue is full
+        """
+        if callable(hook):
+            self._queue_full_hook = hook
+
+    def put(self, events):
+        """
+        Add an event to storage.
+
+        :param event: Event to be added in the storage
+        """
+        pass
+
+    def pop_many(self, count):
+        """
+        Pop multiple items from the storage.
+
+        :param count: number of items to be retrieved and removed from the queue.
+        """
+        pass
+
+    def clear(self):
+        """
+        Clear data.
+        """
+        pass
+
+
+class InMemoryEventStorage(InMemoryEventStorageBase):
     """
     In memory storage for events.
 
@@ -401,15 +439,6 @@ class InMemoryEventStorage(EventStorage):
         self._queue_full_hook = None
         self._size = 0
         self._telemetry_runtime_producer = telemetry_runtime_producer
-
-    def set_queue_full_hook(self, hook):
-        """
-        Set a hook to be called when the queue is full.
-
-        :param h: Hook to be called when the queue is full
-        """
-        if callable(hook):
-            self._queue_full_hook = hook
 
     def put(self, events):
         """
@@ -461,6 +490,79 @@ class InMemoryEventStorage(EventStorage):
         """
         with self._lock:
             self._events = queue.Queue(maxsize=self._queue_size)
+
+
+class InMemoryEventStorageAsync(InMemoryEventStorageBase):
+    """
+    In memory async storage for events.
+    Supports adding and popping events.
+    """
+    def __init__(self, eventsQueueSize, telemetry_runtime_producer):
+        """
+        Construct an instance.
+
+        :param eventsQueueSize: How many events to queue before forcing a submission
+        """
+        self._queue_size = eventsQueueSize
+        self._lock = asyncio.Lock()
+        self._events = asyncio.Queue(maxsize=eventsQueueSize)
+        self._queue_full_hook = None
+        self._size = 0
+        self._telemetry_runtime_producer = telemetry_runtime_producer
+
+    async def put(self, events):
+        """
+        Add an event to storage.
+
+        :param event: Event to be added in the storage
+        """
+        events_stored = 0
+        try:
+            async with self._lock:
+                for event in events:
+                    if self._events.qsize() == self._queue_size:
+                        raise asyncio.QueueFull
+
+                    self._size += event.size
+                    if self._size >= MAX_SIZE_BYTES:
+                        await self._queue_full_hook()
+                        return False
+                    await self._events.put(event.event)
+                    events_stored += 1
+            self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_QUEUED, len(events))
+            return True
+        except asyncio.QueueFull:
+            self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_DROPPED, len(events) - events_stored)
+            self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_QUEUED, events_stored)
+            if self._queue_full_hook is not None and callable(self._queue_full_hook):
+                await self._queue_full_hook()
+            _LOGGER.warning(
+                'Events queue is full, failing to add more events. \n'
+                'Consider increasing parameter `eventsQueueSize` in configuration'
+            )
+            return False
+
+    async def pop_many(self, count):
+        """
+        Pop multiple items from the storage.
+
+        :param count: number of items to be retrieved and removed from the queue.
+        """
+        events = []
+        async with self._lock:
+            while not self._events.empty() and count > 0:
+                events.append(await self._events.get())
+                count -= 1
+        self._size = 0
+        return events
+
+    async def clear(self):
+        """
+        Clear data.
+        """
+        async with self._lock:
+            self._events = asyncio.Queue(maxsize=self._queue_size)
+
 
 class InMemoryTelemetryStorage(TelemetryStorage):
     """In-memory telemetry storage."""
