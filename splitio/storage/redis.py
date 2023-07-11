@@ -817,7 +817,6 @@ class RedisTelemetryStorageAsync(RedisTelemetryStorageBase):
         :rtype: splitio.storage.redis.RedisTelemetryStorageAsync
         """
         self = RedisTelemetryStorageAsync()
-        self._lock = asyncio.Lock()
         await self._reset_config_tags()
         self._redis_client = redis_client
         self._sdk_metadata = sdk_metadata
@@ -829,19 +828,16 @@ class RedisTelemetryStorageAsync(RedisTelemetryStorageBase):
 
     async def _reset_config_tags(self):
         """Reset all config tags"""
-        async with self._lock:
-            self._config_tags = []
+        self._config_tags = []
 
     async def add_config_tag(self, tag):
         """Record tag string."""
-        async with self._lock:
-            if len(self._config_tags) < MAX_TAGS:
-                self._config_tags.append(tag)
+        if len(self._config_tags) < MAX_TAGS:
+            self._config_tags.append(tag)
 
     async def pop_config_tags(self):
         """Get and reset tags."""
-        async with self._lock:
-            tags = self._config_tags
+        tags = self._config_tags
         await self._reset_config_tags()
         return tags
 
