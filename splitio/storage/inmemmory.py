@@ -3,10 +3,12 @@ import logging
 import threading
 import queue
 from collections import Counter
+import pytest
 
 from splitio.models.segments import Segment
 from splitio.models.telemetry import HTTPErrors, HTTPLatencies, MethodExceptions, MethodLatencies, LastSynchronization, StreamingEvents, TelemetryConfig, TelemetryCounters, CounterConstants
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
+from splitio.optional.loaders import asyncio
 
 MAX_SIZE_BYTES = 5 * 1024 * 1024
 MAX_TAGS = 10
@@ -310,7 +312,43 @@ class InMemorySegmentStorage(SegmentStorage):
             return total_count
 
 
-class InMemoryImpressionStorage(ImpressionStorage):
+class InMemoryImpressionStorageBase(ImpressionStorage):
+    """In memory implementation of an impressions base storage."""
+
+    def set_queue_full_hook(self, hook):
+        """
+        Set a hook to be called when the queue is full.
+
+        :param h: Hook to be called when the queue is full
+        """
+        if callable(hook):
+            self._queue_full_hook = hook
+
+    def put(self, impressions):
+        """
+        Put one or more impressions in storage.
+
+        :param impressions: List of one or more impressions to store.
+        :type impressions: list
+        """
+        pass
+
+    def pop_many(self, count):
+        """
+        Pop the oldest N impressions from storage.
+
+        :param count: Number of impressions to pop.
+        :type count: int
+        """
+        pass
+
+    def clear(self):
+        """
+        Clear data.
+        """
+        pass
+
+class InMemoryImpressionStorage(InMemoryImpressionStorageBase):
     """In memory implementation of an impressions storage."""
 
     def __init__(self, queue_size, telemetry_runtime_producer):
@@ -324,15 +362,6 @@ class InMemoryImpressionStorage(ImpressionStorage):
         self._lock = threading.Lock()
         self._queue_full_hook = None
         self._telemetry_runtime_producer = telemetry_runtime_producer
-
-    def set_queue_full_hook(self, hook):
-        """
-        Set a hook to be called when the queue is full.
-
-        :param h: Hook to be called when the queue is full
-        """
-        if callable(hook):
-            self._queue_full_hook = hook
 
     def put(self, impressions):
         """
@@ -380,6 +409,72 @@ class InMemoryImpressionStorage(ImpressionStorage):
         """
         with self._lock:
             self._impressions = queue.Queue(maxsize=self._queue_size)
+
+
+class InMemoryImpressionStorageAsync(InMemoryImpressionStorageBase):
+    """In memory implementation of an impressions async storage."""
+
+    def __init__(self, queue_size, telemetry_runtime_producer):
+        """
+        Construct an instance.
+
+        :param eventsQueueSize: How many events to queue before forcing a submission
+        """
+        self._queue_size = queue_size
+        self._impressions = asyncio.Queue(maxsize=queue_size)
+        self._lock = asyncio.Lock()
+        self._queue_full_hook = None
+        self._telemetry_runtime_producer = telemetry_runtime_producer
+
+    async def put(self, impressions):
+        """
+        Put one or more impressions in storage.
+
+        :param impressions: List of one or more impressions to store.
+        :type impressions: list
+        """
+        impressions_stored = 0
+        try:
+            async with self._lock:
+                for impression in impressions:
+                    if self._impressions.qsize() == self._queue_size:
+                        raise asyncio.QueueFull
+                    await self._impressions.put(impression)
+                    impressions_stored += 1
+                    _LOGGER.error(impressions_stored)
+            self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_QUEUED, len(impressions))
+            return True
+        except asyncio.QueueFull:
+            self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_DROPPED, len(impressions) - impressions_stored)
+            self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_QUEUED, impressions_stored)
+            if self._queue_full_hook is not None and callable(self._queue_full_hook):
+                await self._queue_full_hook()
+            _LOGGER.warning(
+                'Impression queue is full, failing to add more impressions. \n'
+                'Consider increasing parameter `impressionsQueueSize` in configuration'
+            )
+            return False
+
+    async def pop_many(self, count):
+        """
+        Pop the oldest N impressions from storage.
+
+        :param count: Number of impressions to pop.
+        :type count: int
+        """
+        impressions = []
+        async with self._lock:
+            while not self._impressions.empty() and count > 0:
+                impressions.append(await self._impressions.get())
+                count -= 1
+        return impressions
+
+    async def clear(self):
+        """
+        Clear data.
+        """
+        async with self._lock:
+            self._impressions = asyncio.Queue(maxsize=self._queue_size)
 
 
 class InMemoryEventStorage(EventStorage):
