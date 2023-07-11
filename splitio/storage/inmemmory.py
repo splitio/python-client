@@ -3,7 +3,6 @@ import logging
 import threading
 import queue
 from collections import Counter
-import pytest
 
 from splitio.models.segments import Segment
 from splitio.models.telemetry import HTTPErrors, HTTPLatencies, MethodExceptions, MethodLatencies, LastSynchronization, StreamingEvents, TelemetryConfig, TelemetryCounters, CounterConstants
