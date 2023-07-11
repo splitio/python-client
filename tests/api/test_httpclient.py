@@ -223,6 +223,7 @@ class HttpClientAsyncTests(object):
         assert get_mock.mock_calls == [call]
 
 
+    @pytest.mark.asyncio
     async def test_post(self, mocker):
         """Test HTTP POST verb requests."""
         response_mock = MockResponse('ok', 200, {})
@@ -255,6 +256,7 @@ class HttpClientAsyncTests(object):
         assert response.body == 'ok'
         assert get_mock.mock_calls == [call]
 
+    @pytest.mark.asyncio
     async def test_post_custom_urls(self, mocker):
         """Test HTTP GET verb requests."""
         response_mock = MockResponse('ok', 200, {})
