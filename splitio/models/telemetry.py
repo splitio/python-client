@@ -3,8 +3,10 @@ from bisect import bisect_left
 import threading
 import os
 from enum import Enum
+import abc
 
 from splitio.engine.impressions import ImpressionsMode
+from splitio.optional.loaders import asyncio
 
 BUCKETS = (
     1000, 1500, 2250, 3375, 5063,
@@ -145,7 +147,32 @@ def get_latency_bucket_index(micros):
 
     return bisect_left(BUCKETS, micros)
 
-class MethodLatencies(object):
+class MethodLatenciesBase(object, metaclass=abc.ABCMeta):
+    """
+    Method Latency base class
+
+    """
+    def _reset_all(self):
+        """Reset variables"""
+        self._treatment = [0] * MAX_LATENCY_BUCKET_COUNT
+        self._treatments = [0] * MAX_LATENCY_BUCKET_COUNT
+        self._treatment_with_config = [0] * MAX_LATENCY_BUCKET_COUNT
+        self._treatments_with_config = [0] * MAX_LATENCY_BUCKET_COUNT
+        self._track = [0] * MAX_LATENCY_BUCKET_COUNT
+
+    @abc.abstractmethod
+    def add_latency(self, method, latency):
+        """
+        Add Latency method
+        """
+
+    @abc.abstractmethod
+    def pop_all(self):
+        """
+        Pop all latencies
+        """
+
+class MethodLatencies(MethodLatenciesBase):
     """
     Method Latency class
 
@@ -154,15 +181,6 @@ class MethodLatencies(object):
         """Constructor"""
         self._lock = threading.RLock()
         self._reset_all()
-
-    def _reset_all(self):
-        """Reset variables"""
-        with self._lock:
-            self._treatment = [0] * MAX_LATENCY_BUCKET_COUNT
-            self._treatments = [0] * MAX_LATENCY_BUCKET_COUNT
-            self._treatment_with_config = [0] * MAX_LATENCY_BUCKET_COUNT
-            self._treatments_with_config = [0] * MAX_LATENCY_BUCKET_COUNT
-            self._track = [0] * MAX_LATENCY_BUCKET_COUNT
 
     def add_latency(self, method, latency):
         """
@@ -203,7 +221,89 @@ class MethodLatencies(object):
             self._reset_all()
             return latencies
 
-class HTTPLatencies(object):
+
+class MethodLatenciesAsync(MethodLatenciesBase):
+    """
+    Method async Latency class
+
+    """
+    async def create():
+        """Constructor"""
+        self = MethodLatenciesAsync()
+        self._lock = asyncio.Lock()
+        async with self._lock:
+            self._reset_all()
+        return self
+
+    async def add_latency(self, method, latency):
+        """
+        Add Latency method
+
+        :param method: passed method name
+        :type method: str
+        :param latency: amount of latency in microseconds
+        :type latency: int
+        """
+        latency_bucket = get_latency_bucket_index(latency)
+        async with self._lock:
+            if method == MethodExceptionsAndLatencies.TREATMENT:
+                self._treatment[latency_bucket] += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS:
+                self._treatments[latency_bucket] += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG:
+                self._treatment_with_config[latency_bucket] += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG:
+                self._treatments_with_config[latency_bucket] += 1
+            elif method == MethodExceptionsAndLatencies.TRACK:
+                self._track[latency_bucket] += 1
+            else:
+                return
+
+    async def pop_all(self):
+        """
+        Pop all latencies
+
+        :return: Dictonary of latencies
+        :rtype: dict
+        """
+        async with self._lock:
+            latencies = {MethodExceptionsAndLatencies.METHOD_LATENCIES.value: {MethodExceptionsAndLatencies.TREATMENT.value: self._treatment, MethodExceptionsAndLatencies.TREATMENTS.value: self._treatments,
+                            MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG.value: self._treatment_with_config, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG.value: self._treatments_with_config,
+                            MethodExceptionsAndLatencies.TRACK.value: self._track}
+                }
+            self._reset_all()
+            return latencies
+
+
+class HTTPLatenciesBase(object, metaclass=abc.ABCMeta):
+    """
+    HTTP Latency class
+
+    """
+    def _reset_all(self):
+        """Reset variables"""
+        self._split = [0] * MAX_LATENCY_BUCKET_COUNT
+        self._segment = [0] * MAX_LATENCY_BUCKET_COUNT
+        self._impression = [0] * MAX_LATENCY_BUCKET_COUNT
+        self._impression_count = [0] * MAX_LATENCY_BUCKET_COUNT
+        self._event = [0] * MAX_LATENCY_BUCKET_COUNT
+        self._telemetry = [0] * MAX_LATENCY_BUCKET_COUNT
+        self._token = [0] * MAX_LATENCY_BUCKET_COUNT
+
+    @abc.abstractmethod
+    def add_latency(self, resource, latency):
+        """
+        Add Latency method
+        """
+
+    @abc.abstractmethod
+    def pop_all(self):
+        """
+        Pop all latencies
+        """
+
+
+class HTTPLatencies(HTTPLatenciesBase):
     """
     HTTP Latency class
 
@@ -211,18 +311,8 @@ class HTTPLatencies(object):
     def __init__(self):
         """Constructor"""
         self._lock = threading.RLock()
-        self._reset_all()
-
-    def _reset_all(self):
-        """Reset variables"""
         with self._lock:
-            self._split = [0] * MAX_LATENCY_BUCKET_COUNT
-            self._segment = [0] * MAX_LATENCY_BUCKET_COUNT
-            self._impression = [0] * MAX_LATENCY_BUCKET_COUNT
-            self._impression_count = [0] * MAX_LATENCY_BUCKET_COUNT
-            self._event = [0] * MAX_LATENCY_BUCKET_COUNT
-            self._telemetry = [0] * MAX_LATENCY_BUCKET_COUNT
-            self._token = [0] * MAX_LATENCY_BUCKET_COUNT
+            self._reset_all()
 
     def add_latency(self, resource, latency):
         """
@@ -267,7 +357,91 @@ class HTTPLatencies(object):
             self._reset_all()
             return latencies
 
-class MethodExceptions(object):
+
+class HTTPLatenciesAsync(HTTPLatenciesBase):
+    """
+    HTTP Latency async class
+
+    """
+    async def create():
+        """Constructor"""
+        self = HTTPLatenciesAsync()
+        self._lock = asyncio.Lock()
+        async with self._lock:
+            self._reset_all()
+        return self
+
+    async def add_latency(self, resource, latency):
+        """
+        Add Latency method
+
+        :param resource: passed resource name
+        :type resource: str
+        :param latency: amount of latency in microseconds
+        :type latency: int
+        """
+        latency_bucket = get_latency_bucket_index(latency)
+        async with self._lock:
+            if resource == HTTPExceptionsAndLatencies.SPLIT:
+                self._split[latency_bucket] += 1
+            elif resource == HTTPExceptionsAndLatencies.SEGMENT:
+                self._segment[latency_bucket] += 1
+            elif resource == HTTPExceptionsAndLatencies.IMPRESSION:
+                self._impression[latency_bucket] += 1
+            elif resource == HTTPExceptionsAndLatencies.IMPRESSION_COUNT:
+                self._impression_count[latency_bucket] += 1
+            elif resource == HTTPExceptionsAndLatencies.EVENT:
+                self._event[latency_bucket] += 1
+            elif resource == HTTPExceptionsAndLatencies.TELEMETRY:
+                self._telemetry[latency_bucket] += 1
+            elif resource == HTTPExceptionsAndLatencies.TOKEN:
+                self._token[latency_bucket] += 1
+            else:
+                return
+
+    async def pop_all(self):
+        """
+        Pop all latencies
+
+        :return: Dictonary of latencies
+        :rtype: dict
+        """
+        async with self._lock:
+            latencies = {HTTPExceptionsAndLatencies.HTTP_LATENCIES.value: {HTTPExceptionsAndLatencies.SPLIT.value: self._split, HTTPExceptionsAndLatencies.SEGMENT.value: self._segment, HTTPExceptionsAndLatencies.IMPRESSION.value: self._impression,
+                                        HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value: self._impression_count, HTTPExceptionsAndLatencies.EVENT.value: self._event,
+                                        HTTPExceptionsAndLatencies.TELEMETRY.value: self._telemetry, HTTPExceptionsAndLatencies.TOKEN.value: self._token}
+                    }
+            self._reset_all()
+            return latencies
+
+
+class MethodExceptionsBase(object, metaclass=abc.ABCMeta):
+    """
+    Method exceptions base class
+
+    """
+    def _reset_all(self):
+        """Reset variables"""
+        self._treatment = 0
+        self._treatments = 0
+        self._treatment_with_config = 0
+        self._treatments_with_config = 0
+        self._track = 0
+
+    @abc.abstractmethod
+    def add_exception(self, method):
+        """
+        Add exceptions method
+        """
+
+    @abc.abstractmethod
+    def pop_all(self):
+        """
+        Pop all exceptions
+        """
+
+
+class MethodExceptions(MethodExceptionsBase):
     """
     Method exceptions class
 
@@ -275,16 +449,8 @@ class MethodExceptions(object):
     def __init__(self):
         """Constructor"""
         self._lock = threading.RLock()
-        self._reset_all()
-
-    def _reset_all(self):
-        """Reset variables"""
         with self._lock:
-            self._treatment = 0
-            self._treatments = 0
-            self._treatment_with_config = 0
-            self._treatments_with_config = 0
-            self._track = 0
+            self._reset_all()
 
     def add_exception(self, method):
         """
@@ -322,7 +488,85 @@ class MethodExceptions(object):
             self._reset_all()
             return exceptions
 
-class LastSynchronization(object):
+
+class MethodExceptionsAsync(MethodExceptionsBase):
+    """
+    Method async exceptions class
+
+    """
+    async def create():
+        """Constructor"""
+        self = MethodExceptionsAsync()
+        self._lock = asyncio.Lock()
+        async with self._lock:
+            self._reset_all()
+        return self
+
+    async def add_exception(self, method):
+        """
+        Add exceptions method
+
+        :param method: passed method name
+        :type method: str
+        """
+        async with self._lock:
+            if method == MethodExceptionsAndLatencies.TREATMENT:
+                self._treatment += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS:
+                self._treatments += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG:
+                self._treatment_with_config += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG:
+                self._treatments_with_config += 1
+            elif method == MethodExceptionsAndLatencies.TRACK:
+                self._track += 1
+            else:
+                return
+
+    async def pop_all(self):
+        """
+        Pop all exceptions
+
+        :return: Dictonary of exceptions
+        :rtype: dict
+        """
+        async with self._lock:
+            exceptions = {MethodExceptionsAndLatencies.METHOD_EXCEPTIONS.value: {MethodExceptionsAndLatencies.TREATMENT.value: self._treatment, MethodExceptionsAndLatencies.TREATMENTS.value: self._treatments,
+                                MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG.value: self._treatment_with_config, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG.value: self._treatments_with_config,
+                                MethodExceptionsAndLatencies.TRACK.value: self._track}
+                }
+            self._reset_all()
+            return exceptions
+
+
+class LastSynchronizationBase(object, metaclass=abc.ABCMeta):
+    """
+    Last Synchronization info base class
+
+    """
+    def _reset_all(self):
+        """Reset variables"""
+        self._split = 0
+        self._segment = 0
+        self._impression = 0
+        self._impression_count = 0
+        self._event = 0
+        self._telemetry = 0
+        self._token = 0
+
+    @abc.abstractmethod
+    def add_latency(self, resource, sync_time):
+        """
+        Add Latency method
+        """
+
+    @abc.abstractmethod
+    def get_all(self):
+        """
+        get all exceptions
+        """
+
+class LastSynchronization(LastSynchronizationBase):
     """
     Last Synchronization info class
 
@@ -330,18 +574,8 @@ class LastSynchronization(object):
     def __init__(self):
         """Constructor"""
         self._lock = threading.RLock()
-        self._reset_all()
-
-    def _reset_all(self):
-        """Reset variables"""
         with self._lock:
-            self._split = 0
-            self._segment = 0
-            self._impression = 0
-            self._impression_count = 0
-            self._event = 0
-            self._telemetry = 0
-            self._token = 0
+            self._reset_all()
 
     def add_latency(self, resource, sync_time):
         """
@@ -383,26 +617,99 @@ class LastSynchronization(object):
                                         HTTPExceptionsAndLatencies.TELEMETRY.value: self._telemetry, HTTPExceptionsAndLatencies.TOKEN.value: self._token}
                     }
 
-class HTTPErrors(object):
+
+class LastSynchronizationAsync(LastSynchronizationBase):
     """
-    Last Synchronization info class
+    Last Synchronization async info class
+
+    """
+    async def create():
+        """Constructor"""
+        self = LastSynchronizationAsync()
+        self._lock = asyncio.Lock()
+        async with self._lock:
+            self._reset_all()
+        return self
+
+    async def add_latency(self, resource, sync_time):
+        """
+        Add Latency method
+
+        :param resource: passed resource name
+        :type resource: str
+        :param sync_time: amount of last sync time
+        :type sync_time: int
+        """
+        async with self._lock:
+            if resource == HTTPExceptionsAndLatencies.SPLIT:
+                self._split = sync_time
+            elif resource == HTTPExceptionsAndLatencies.SEGMENT:
+                self._segment = sync_time
+            elif resource == HTTPExceptionsAndLatencies.IMPRESSION:
+                self._impression = sync_time
+            elif resource == HTTPExceptionsAndLatencies.IMPRESSION_COUNT:
+                self._impression_count = sync_time
+            elif resource == HTTPExceptionsAndLatencies.EVENT:
+                self._event = sync_time
+            elif resource == HTTPExceptionsAndLatencies.TELEMETRY:
+                self._telemetry = sync_time
+            elif resource == HTTPExceptionsAndLatencies.TOKEN:
+                self._token = sync_time
+            else:
+                return
+
+    async def get_all(self):
+        """
+        get all exceptions
+
+        :return: Dictonary of latencies
+        :rtype: dict
+        """
+        async with self._lock:
+            return {LastSynchronizationConstants.LAST_SYNCHRONIZATIONS.value: {HTTPExceptionsAndLatencies.SPLIT.value: self._split, HTTPExceptionsAndLatencies.SEGMENT.value: self._segment, HTTPExceptionsAndLatencies.IMPRESSION.value: self._impression,
+                                        HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value: self._impression_count, HTTPExceptionsAndLatencies.EVENT.value: self._event,
+                                        HTTPExceptionsAndLatencies.TELEMETRY.value: self._telemetry, HTTPExceptionsAndLatencies.TOKEN.value: self._token}
+                    }
+
+
+class HTTPErrorsBase(object, metaclass=abc.ABCMeta):
+    """
+    Http errors base class
+
+    """
+    def _reset_all(self):
+        """Reset variables"""
+        self._split = {}
+        self._segment = {}
+        self._impression = {}
+        self._impression_count = {}
+        self._event = {}
+        self._telemetry = {}
+        self._token = {}
+
+    @abc.abstractmethod
+    def add_error(self, resource, status):
+        """
+        Add Latency method
+        """
+
+    @abc.abstractmethod
+    def pop_all(self):
+        """
+        Pop all errors
+        """
+
+
+class HTTPErrors(HTTPErrorsBase):
+    """
+    Http errors class
 
     """
     def __init__(self):
         """Constructor"""
         self._lock = threading.RLock()
-        self._reset_all()
-
-    def _reset_all(self):
-        """Reset variables"""
         with self._lock:
-            self._split = {}
-            self._segment = {}
-            self._impression = {}
-            self._impression_count = {}
-            self._event = {}
-            self._telemetry = {}
-            self._token = {}
+            self._reset_all()
 
     def add_error(self, resource, status):
         """
@@ -461,27 +768,159 @@ class HTTPErrors(object):
             self._reset_all()
             return http_errors
 
-class TelemetryCounters(object):
+
+class HTTPErrorsAsync(HTTPErrorsBase):
     """
-    Method exceptions class
+    Http error async class
+
+    """
+    async def create():
+        """Constructor"""
+        self = HTTPErrorsAsync()
+        self._lock = asyncio.Lock()
+        async with self._lock:
+            self._reset_all()
+        return self
+
+    async def add_error(self, resource, status):
+        """
+        Add Latency method
+
+        :param resource: passed resource name
+        :type resource: str
+        :param status: http error code
+        :type status: str
+        """
+        status = str(status)
+        async with self._lock:
+            if resource == HTTPExceptionsAndLatencies.SPLIT:
+                if status not in self._split:
+                    self._split[status] = 0
+                self._split[status] += 1
+            elif resource == HTTPExceptionsAndLatencies.SEGMENT:
+                if status not in self._segment:
+                    self._segment[status] = 0
+                self._segment[status] += 1
+            elif resource == HTTPExceptionsAndLatencies.IMPRESSION:
+                if status not in self._impression:
+                    self._impression[status] = 0
+                self._impression[status] += 1
+            elif resource == HTTPExceptionsAndLatencies.IMPRESSION_COUNT:
+                if status not in self._impression_count:
+                    self._impression_count[status] = 0
+                self._impression_count[status] += 1
+            elif resource == HTTPExceptionsAndLatencies.EVENT:
+                if status not in self._event:
+                    self._event[status] = 0
+                self._event[status] += 1
+            elif resource == HTTPExceptionsAndLatencies.TELEMETRY:
+                if status not in self._telemetry:
+                    self._telemetry[status] = 0
+                self._telemetry[status] += 1
+            elif resource == HTTPExceptionsAndLatencies.TOKEN:
+                if status not in self._token:
+                    self._token[status] = 0
+                self._token[status] += 1
+            else:
+                return
+
+    async def pop_all(self):
+        """
+        Pop all errors
+
+        :return: Dictonary of exceptions
+        :rtype: dict
+        """
+        async with self._lock:
+            http_errors = {HTTPExceptionsAndLatencies.HTTP_ERRORS.value: {HTTPExceptionsAndLatencies.SPLIT.value: self._split, HTTPExceptionsAndLatencies.SEGMENT.value: self._segment, HTTPExceptionsAndLatencies.IMPRESSION.value: self._impression,
+                                        HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value: self._impression_count, HTTPExceptionsAndLatencies.EVENT.value: self._event,
+                                        HTTPExceptionsAndLatencies.TELEMETRY.value: self._telemetry, HTTPExceptionsAndLatencies.TOKEN.value: self._token}
+                    }
+            self._reset_all()
+            return http_errors
+
+
+class TelemetryCountersBase(object, metaclass=abc.ABCMeta):
+    """
+    Counters base class
+
+    """
+    def _reset_all(self):
+        """Reset variables"""
+        self._impressions_queued = 0
+        self._impressions_deduped = 0
+        self._impressions_dropped = 0
+        self._events_queued = 0
+        self._events_dropped = 0
+        self._auth_rejections = 0
+        self._token_refreshes = 0
+        self._session_length = 0
+
+    @abc.abstractmethod
+    def record_impressions_value(self, resource, value):
+        """
+        Append to the resource value
+        """
+
+    @abc.abstractmethod
+    def record_events_value(self, resource, value):
+        """
+        Append to the resource value
+        """
+
+    @abc.abstractmethod
+    def record_auth_rejections(self):
+        """
+        Increament the auth rejection resource by one.
+        """
+
+    @abc.abstractmethod
+    def record_token_refreshes(self):
+        """
+        Increament the token refreshes resource by one.
+        """
+
+    @abc.abstractmethod
+    def record_session_length(self, session):
+        """
+        Set the session length value
+        """
+
+    @abc.abstractmethod
+    def get_counter_stats(self, resource):
+        """
+        Get resource counter value
+        """
+
+    @abc.abstractmethod
+    def get_session_length(self):
+        """
+        Get session length
+        """
+
+    @abc.abstractmethod
+    def pop_auth_rejections(self):
+        """
+        Pop auth rejections
+        """
+
+    @abc.abstractmethod
+    def pop_token_refreshes(self):
+        """
+        Pop token refreshes
+        """
+
+
+class TelemetryCounters(TelemetryCountersBase):
+    """
+    Counters class
 
     """
     def __init__(self):
         """Constructor"""
         self._lock = threading.RLock()
-        self._reset_all()
-
-    def _reset_all(self):
-        """Reset variables"""
         with self._lock:
-            self._impressions_queued = 0
-            self._impressions_deduped = 0
-            self._impressions_dropped = 0
-            self._events_queued = 0
-            self._events_dropped = 0
-            self._auth_rejections = 0
-            self._token_refreshes = 0
-            self._session_length = 0
+            self._reset_all()
 
     def record_impressions_value(self, resource, value):
         """
@@ -604,6 +1043,141 @@ class TelemetryCounters(object):
             self._token_refreshes = 0
             return token_refreshes
 
+
+class TelemetryCountersAsync(TelemetryCountersBase):
+    """
+    Counters async class
+
+    """
+    async def create():
+        """Constructor"""
+        self = TelemetryCountersAsync()
+        self._lock = asyncio.Lock()
+        async with self._lock:
+            self._reset_all()
+        return self
+
+    async def record_impressions_value(self, resource, value):
+        """
+        Append to the resource value
+
+        :param resource: passed resource name
+        :type resource: str
+        :param value: value to be appended
+        :type value: int
+        """
+        async with self._lock:
+            if resource == CounterConstants.IMPRESSIONS_QUEUED:
+                self._impressions_queued += value
+            elif resource == CounterConstants.IMPRESSIONS_DEDUPED:
+                self._impressions_deduped += value
+            elif resource == CounterConstants.IMPRESSIONS_DROPPED:
+                self._impressions_dropped += value
+            else:
+                return
+
+    async def record_events_value(self, resource, value):
+        """
+        Append to the resource value
+
+        :param resource: passed resource name
+        :type resource: str
+        :param value: value to be appended
+        :type value: int
+        """
+        async with self._lock:
+            if resource == CounterConstants.EVENTS_QUEUED:
+                self._events_queued += value
+            elif resource == CounterConstants.EVENTS_DROPPED:
+                self._events_dropped += value
+            else:
+                return
+
+    async def record_auth_rejections(self):
+        """
+        Increament the auth rejection resource by one.
+
+        """
+        async with self._lock:
+            self._auth_rejections += 1
+
+    async def record_token_refreshes(self):
+        """
+        Increament the token refreshes resource by one.
+
+        """
+        async with self._lock:
+            self._token_refreshes += 1
+
+    async def record_session_length(self, session):
+        """
+        Set the session length value
+
+        :param session: value to be set
+        :type session: int
+        """
+        async with self._lock:
+            self._session_length = session
+
+    async def get_counter_stats(self, resource):
+        """
+        Get resource counter value
+
+        :param resource: passed resource name
+        :type resource: str
+
+        :return: resource value
+        :rtype: int
+        """
+        async with self._lock:
+            if resource == CounterConstants.IMPRESSIONS_QUEUED:
+                return self._impressions_queued
+            elif resource == CounterConstants.IMPRESSIONS_DEDUPED:
+                return self._impressions_deduped
+            elif resource == CounterConstants.IMPRESSIONS_DROPPED:
+                return self._impressions_dropped
+            elif resource == CounterConstants.EVENTS_QUEUED:
+                return self._events_queued
+            elif resource == CounterConstants.EVENTS_DROPPED:
+                return self._events_dropped
+            else:
+                return 0
+
+    async def get_session_length(self):
+        """
+        Get session length
+
+        :return: session length value
+        :rtype: int
+        """
+        async with self._lock:
+            return self._session_length
+
+    async def pop_auth_rejections(self):
+        """
+        Pop auth rejections
+
+        :return: auth rejections value
+        :rtype: int
+        """
+        async with self._lock:
+            auth_rejections = self._auth_rejections
+            self._auth_rejections = 0
+            return auth_rejections
+
+    async def pop_token_refreshes(self):
+        """
+        Pop token refreshes
+
+        :return: token refreshes value
+        :rtype: int
+        """
+        async with self._lock:
+            token_refreshes = self._token_refreshes
+            self._token_refreshes = 0
+            return token_refreshes
+
+
 class StreamingEvent(object):
     """
     Streaming event class
@@ -650,6 +1224,46 @@ class StreamingEvent(object):
         """
         return self._time
 
+class StreamingEventsAsync(object):
+    """
+    Streaming events async class
+
+    """
+    async def create():
+        """Constructor"""
+        self = StreamingEventsAsync()
+        self._lock = asyncio.Lock()
+        async with self._lock:
+            self._streaming_events = []
+        return self
+
+    async def record_streaming_event(self, streaming_event):
+        """
+        Record new streaming event
+
+        :param streaming_event: Streaming event dict:
+                {'type': string, 'data': string, 'time': string}
+        :type streaming_event: dict
+        """
+        if not StreamingEvent(streaming_event):
+            return
+        async with self._lock:
+            if len(self._streaming_events) < MAX_STREAMING_EVENTS:
+                self._streaming_events.append(StreamingEvent(streaming_event))
+
+    async def pop_streaming_events(self):
+        """
+        Get and reset streaming events
+
+        :return: streaming events dict
+        :rtype: dict
+        """
+        async with self._lock:
+            streaming_events = self._streaming_events
+            self._streaming_events = []
+            return {StreamingEventsConstant.STREAMING_EVENTS.value: [{'e': streaming_event.type, 'd': streaming_event.data,
+                                         't': streaming_event.time} for streaming_event in streaming_events]}
+
 class StreamingEvents(object):
     """
     Streaming events class
@@ -690,7 +1304,181 @@ class StreamingEvents(object):
             return {StreamingEventsConstant.STREAMING_EVENTS.value: [{'e': streaming_event.type, 'd': streaming_event.data,
                                          't': streaming_event.time} for streaming_event in streaming_events]}
 
-class TelemetryConfig(object):
+
+class TelemetryConfigBase(object, metaclass=abc.ABCMeta):
+    """
+    Telemetry init config base class
+
+    """
+    def _reset_all(self):
+        """Reset variables"""
+        self._block_until_ready_timeout = 0
+        self._not_ready = 0
+        self._time_until_ready = 0
+        self._operation_mode = None
+        self._storage_type = None
+        self._streaming_enabled = None
+        self._refresh_rate = {ConfigParams.SPLITS_REFRESH_RATE.value: 0, ConfigParams.SEGMENTS_REFRESH_RATE.value: 0,
+            ConfigParams.IMPRESSIONS_REFRESH_RATE.value: 0, ConfigParams.EVENTS_REFRESH_RATE.value: 0, ConfigParams.TELEMETRY_REFRESH_RATE.value: 0}
+        self._url_override = {ApiURLs.SDK_URL.value: False, ApiURLs.EVENTS_URL.value: False, ApiURLs.AUTH_URL.value: False,
+                                ApiURLs.STREAMING_URL.value: False, ApiURLs.TELEMETRY_URL.value: False}
+        self._impressions_queue_size = 0
+        self._events_queue_size = 0
+        self._impressions_mode = None
+        self._impression_listener = False
+        self._http_proxy = None
+        self._active_factory_count = 0
+        self._redundant_factory_count = 0
+
+    @abc.abstractmethod
+    def record_config(self, config, extra_config):
+        """
+        Record configurations.
+        """
+
+    @abc.abstractmethod
+    def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
+        """
+        Record active and redundant factories counts
+        """
+
+    @abc.abstractmethod
+    def record_ready_time(self, ready_time):
+        """
+        Record ready time.
+        """
+
+    @abc.abstractmethod
+    def record_bur_time_out(self):
+        """
+        Record block until ready timeout count
+        """
+
+    @abc.abstractmethod
+    def record_not_ready_usage(self):
+        """
+        record non-ready usage count
+        """
+
+    @abc.abstractmethod
+    def get_bur_time_outs(self):
+        """
+        Get block until ready timeout.
+        """
+
+    @abc.abstractmethod
+    def get_non_ready_usage(self):
+        """
+        Get non-ready usage.
+        """
+
+    @abc.abstractmethod
+    def get_stats(self):
+        """
+        Get config stats.
+        """
+
+    def _get_operation_mode(self, op_mode):
+        """
+        Get formatted operation mode
+
+        :param op_mode: config operation mode
+        :type config: str
+
+        :return: operation mode
+        :rtype: int
+        """
+        if op_mode == OperationMode.STANDALONE.value:
+            return 0
+        elif op_mode == OperationMode.CONSUMER.value:
+            return 1
+        else:
+            return 2
+
+    def _get_storage_type(self, op_mode, st_type):
+        """
+        Get storage type from operation mode
+
+        :param op_mode: config operation mode
+        :type config: str
+
+        :return: storage type
+        :rtype: str
+        """
+        if op_mode == OperationMode.STANDALONE.value:
+            return StorageType.MEMORY.value
+        elif st_type == StorageType.REDIS.value:
+            return StorageType.REDIS.value
+        else:
+            return StorageType.PLUGGABLE.value
+
+    def _get_refresh_rates(self, config):
+        """
+        Get refresh rates within config dict
+
+        :param config: config dict
+        :type config: dict
+
+        :return: refresh rates
+        :rtype: RefreshRates object
+        """
+        return {
+            ConfigParams.SPLITS_REFRESH_RATE.value: config[ConfigParams.SPLITS_REFRESH_RATE.value],
+            ConfigParams.SEGMENTS_REFRESH_RATE.value: config[ConfigParams.SEGMENTS_REFRESH_RATE.value],
+            ConfigParams.IMPRESSIONS_REFRESH_RATE.value: config[ConfigParams.IMPRESSIONS_REFRESH_RATE.value],
+            ConfigParams.EVENTS_REFRESH_RATE.value: config[ConfigParams.EVENTS_REFRESH_RATE.value],
+            ConfigParams.TELEMETRY_REFRESH_RATE.value: config[ConfigParams.TELEMETRY_REFRESH_RATE.value]
+        }
+
+    def _get_url_overrides(self, config):
+        """
+        Get URL override within the config dict.
+
+        :param config: config dict
+        :type config: dict
+
+        :return: URL overrides dict
+        :rtype: URLOverrides object
+        """
+        return  {
+            ApiURLs.SDK_URL.value: True if ApiURLs.SDK_URL.value in config else False,
+            ApiURLs.EVENTS_URL.value: True if ApiURLs.EVENTS_URL.value in config else False,
+            ApiURLs.AUTH_URL.value: True if ApiURLs.AUTH_URL.value in config else False,
+            ApiURLs.STREAMING_URL.value: True if ApiURLs.STREAMING_URL.value in config else False,
+            ApiURLs.TELEMETRY_URL.value: True if ApiURLs.TELEMETRY_URL.value in config else False
+        }
+
+    def _get_impressions_mode(self, imp_mode):
+        """
+        Get impressions mode from operation mode
+
+        :param op_mode: config operation mode
+        :type config: str
+
+        :return: impressions mode
+        :rtype: int
+        """
+        if imp_mode == ImpressionsMode.DEBUG.value:
+            return 1
+        elif imp_mode == ImpressionsMode.OPTIMIZED.value:
+            return 0
+        else:
+            return 2
+
+    def _check_if_proxy_detected(self):
+        """
+        Return boolean flag if network https proxy is detected
+
+        :return: https network proxy flag
+        :rtype: boolean
+        """
+        for x in os.environ:
+            if x.upper() == ExtraConfig.HTTPS_PROXY_ENV.value:
+                return True
+        return False
+
+
+class TelemetryConfig(TelemetryConfigBase):
     """
     Telemetry init config class
 
@@ -698,28 +1486,8 @@ class TelemetryConfig(object):
     def __init__(self):
         """Constructor"""
         self._lock = threading.RLock()
-        self._reset_all()
-
-    def _reset_all(self):
-        """Reset variables"""
         with self._lock:
-            self._block_until_ready_timeout = 0
-            self._not_ready = 0
-            self._time_until_ready = 0
-            self._operation_mode = None
-            self._storage_type = None
-            self._streaming_enabled = None
-            self._refresh_rate = {ConfigParams.SPLITS_REFRESH_RATE.value: 0, ConfigParams.SEGMENTS_REFRESH_RATE.value: 0,
-                ConfigParams.IMPRESSIONS_REFRESH_RATE.value: 0, ConfigParams.EVENTS_REFRESH_RATE.value: 0, ConfigParams.TELEMETRY_REFRESH_RATE.value: 0}
-            self._url_override = {ApiURLs.SDK_URL.value: False, ApiURLs.EVENTS_URL.value: False, ApiURLs.AUTH_URL.value: False,
-                                  ApiURLs.STREAMING_URL.value: False, ApiURLs.TELEMETRY_URL.value: False}
-            self._impressions_queue_size = 0
-            self._events_queue_size = 0
-            self._impressions_mode = None
-            self._impression_listener = False
-            self._http_proxy = None
-            self._active_factory_count = 0
-            self._redundant_factory_count = 0
+            self._reset_all()
 
     def record_config(self, config, extra_config):
         """
@@ -756,6 +1524,15 @@ class TelemetryConfig(object):
             self._http_proxy = self._check_if_proxy_detected()
 
     def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
+        """
+        Record active and redundant factories counts
+
+        :param active_factory_count: active factories count
+        :type active_factory_count: int
+
+        :param redundant_factory_count: redundant factories count
+        :type redundant_factory_count: int
+        """
         with self._lock:
             self._active_factory_count = active_factory_count
             self._redundant_factory_count = redundant_factory_count
@@ -841,107 +1618,144 @@ class TelemetryConfig(object):
                 'rF': self._redundant_factory_count
             }
 
-    def _get_operation_mode(self, op_mode):
+
+class TelemetryConfigAsync(TelemetryConfigBase):
+    """
+    Telemetry init config async class
+
+    """
+    async def create():
+        """Constructor"""
+        self = TelemetryConfigAsync()
+        self._lock = asyncio.Lock()
+        async with self._lock:
+            self._reset_all()
+        return self
+
+    async def record_config(self, config, extra_config):
         """
-        Get formatted operation mode
+        Record configurations.
 
-        :param op_mode: config operation mode
-        :type config: str
+        :param config: config dict: {
+            'operationMode': int, 'storageType': string, 'streamingEnabled': boolean,
+            'refreshRate' : {
+                'featuresRefreshRate': int,
+                'segmentsRefreshRate': int,
+                'impressionsRefreshRate': int,
+                'eventsPushRate': int,
+                'metricsRefreshRate': int
+            }
+            'urlOverride' : {
+                'sdk_url': boolean, 'events_url': boolean, 'auth_url': boolean,
+                'streaming_url': boolean, 'telemetry_url': boolean, }
+            },
+            'impressionsQueueSize': int, 'eventsQueueSize': int, 'impressionsMode': string,
+            'impressionsListener': boolean, 'activeFactoryCount': int, 'redundantFactoryCount': int
+        }
+        :type config: dict
+        """
+        async with self._lock:
+            self._operation_mode = self._get_operation_mode(config[ConfigParams.OPERATION_MODE.value])
+            self._storage_type = self._get_storage_type(config[ConfigParams.OPERATION_MODE.value], config[ConfigParams.STORAGE_TYPE.value])
+            self._streaming_enabled = config[ConfigParams.STREAMING_ENABLED.value]
+            self._refresh_rate = self._get_refresh_rates(config)
+            self._url_override = self._get_url_overrides(extra_config)
+            self._impressions_queue_size = config[ConfigParams.IMPRESSIONS_QUEUE_SIZE.value]
+            self._events_queue_size = config[ConfigParams.EVENTS_QUEUE_SIZE.value]
+            self._impressions_mode = self._get_impressions_mode(config[ConfigParams.IMPRESSIONS_MODE.value])
+            self._impression_listener = True if config[ConfigParams.IMPRESSIONS_LISTENER.value] is not None else False
+            self._http_proxy = self._check_if_proxy_detected()
 
-        :return: operation mode
+    async def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
+        """
+        Record active and redundant factories counts
+
+        :param active_factory_count: active factories count
+        :type active_factory_count: int
+
+        :param redundant_factory_count: redundant factories count
+        :type redundant_factory_count: int
+        """
+        async with self._lock:
+            self._active_factory_count = active_factory_count
+            self._redundant_factory_count = redundant_factory_count
+
+    async def record_ready_time(self, ready_time):
+        """
+        Record ready time.
+
+        :param ready_time: SDK ready time
+        :type ready_time: int
+        """
+        async with self._lock:
+            self._time_until_ready = ready_time
+
+    async def record_bur_time_out(self):
+        """
+        Record block until ready timeout count
+
+        """
+        async with self._lock:
+            self._block_until_ready_timeout += 1
+
+    async def record_not_ready_usage(self):
+        """
+        record non-ready usage count
+
+        """
+        async with self._lock:
+            self._not_ready += 1
+
+    async def get_bur_time_outs(self):
+        """
+        Get block until ready timeout.
+
+        :return: block until ready timeouts count
         :rtype: int
         """
-        with self._lock:
-            if op_mode == OperationMode.STANDALONE.value:
-                return 0
-            elif op_mode == OperationMode.CONSUMER.value:
-                return 1
-            else:
-                return 2
+        async with self._lock:
+            return self._block_until_ready_timeout
 
-    def _get_storage_type(self, op_mode, st_type):
+    async def get_non_ready_usage(self):
         """
-        Get storage type from operation mode
+        Get non-ready usage.
 
-        :param op_mode: config operation mode
-        :type config: str
-
-        :return: storage type
-        :rtype: str
+        :return: non-ready usage count
+        :rtype: int
         """
-        with self._lock:
-            if op_mode == OperationMode.STANDALONE.value:
-                return StorageType.MEMORY.value
-            elif st_type == StorageType.REDIS.value:
-                return StorageType.REDIS.value
-            else:
-                return StorageType.PLUGGABLE.value
+        async with self._lock:
+            return self._not_ready
 
-    def _get_refresh_rates(self, config):
+    async def get_stats(self):
         """
-        Get refresh rates within config dict
+        Get config stats.
 
-        :param config: config dict
-        :type config: dict
-
-        :return: refresh rates
-        :rtype: RefreshRates object
+        :return: dict of all config stats.
+        :rtype: dict
         """
-        with self._lock:
+        async with self._lock:
             return {
-                ConfigParams.SPLITS_REFRESH_RATE.value: config[ConfigParams.SPLITS_REFRESH_RATE.value],
-                ConfigParams.SEGMENTS_REFRESH_RATE.value: config[ConfigParams.SEGMENTS_REFRESH_RATE.value],
-                ConfigParams.IMPRESSIONS_REFRESH_RATE.value: config[ConfigParams.IMPRESSIONS_REFRESH_RATE.value],
-                ConfigParams.EVENTS_REFRESH_RATE.value: config[ConfigParams.EVENTS_REFRESH_RATE.value],
-                ConfigParams.TELEMETRY_REFRESH_RATE.value: config[ConfigParams.TELEMETRY_REFRESH_RATE.value]
+                'bT':  self._block_until_ready_timeout,
+                'nR': self._not_ready,
+                'tR': self._time_until_ready,
+                'oM': self._operation_mode,
+                'sT': self._storage_type,
+                'sE': self._streaming_enabled,
+                'rR': {'sp': self._refresh_rate[ConfigParams.SPLITS_REFRESH_RATE.value],
+                                'se': self._refresh_rate[ConfigParams.SEGMENTS_REFRESH_RATE.value],
+                                'im': self._refresh_rate[ConfigParams.IMPRESSIONS_REFRESH_RATE.value],
+                                'ev': self._refresh_rate[ConfigParams.EVENTS_REFRESH_RATE.value],
+                                'te': self._refresh_rate[ConfigParams.TELEMETRY_REFRESH_RATE.value]},
+                'uO': {'s': self._url_override[ApiURLs.SDK_URL.value],
+                                'e': self._url_override[ApiURLs.EVENTS_URL.value],
+                                'a': self._url_override[ApiURLs.AUTH_URL.value],
+                                'st': self._url_override[ApiURLs.STREAMING_URL.value],
+                                't': self._url_override[ApiURLs.TELEMETRY_URL.value]},
+                'iQ': self._impressions_queue_size,
+                'eQ': self._events_queue_size,
+                'iM': self._impressions_mode,
+                'iL': self._impression_listener,
+                'hp': self._http_proxy,
+                'aF': self._active_factory_count,
+                'rF': self._redundant_factory_count
             }
-
-    def _get_url_overrides(self, config):
-        """
-        Get URL override within the config dict.
-
-        :param config: config dict
-        :type config: dict
-
-        :return: URL overrides dict
-        :rtype: URLOverrides object
-        """
-        with self._lock:
-            return  {
-                ApiURLs.SDK_URL.value: True if ApiURLs.SDK_URL.value in config else False,
-                ApiURLs.EVENTS_URL.value: True if ApiURLs.EVENTS_URL.value in config else False,
-                ApiURLs.AUTH_URL.value: True if ApiURLs.AUTH_URL.value in config else False,
-                ApiURLs.STREAMING_URL.value: True if ApiURLs.STREAMING_URL.value in config else False,
-                ApiURLs.TELEMETRY_URL.value: True if ApiURLs.TELEMETRY_URL.value in config else False
-            }
-
-    def _get_impressions_mode(self, imp_mode):
-        """
-        Get impressions mode from operation mode
-
-        :param op_mode: config operation mode
-        :type config: str
-
-        :return: impressions mode
-        :rtype: int
-        """
-        with self._lock:
-            if imp_mode == ImpressionsMode.DEBUG.value:
-                return 1
-            elif imp_mode == ImpressionsMode.OPTIMIZED.value:
-                return 0
-            else:
-                return 2
-
-    def _check_if_proxy_detected(self):
-        """
-        Return boolean flag if network https proxy is detected
-
-        :return: https network proxy flag
-        :rtype: boolean
-        """
-        with self._lock:
-            for x in os.environ:
-                if x.upper() == ExtraConfig.HTTPS_PROXY_ENV.value:
-                    return True
-            return False
