@@ -180,7 +180,8 @@ class MethodLatencies(MethodLatenciesBase):
     def __init__(self):
         """Constructor"""
         self._lock = threading.RLock()
-        self._reset_all()
+        with self._lock:
+            self._reset_all()
 
     def add_latency(self, method, latency):
         """
@@ -1269,7 +1270,6 @@ class StreamingEvents(object):
     Streaming events class
 
     """
-
     def __init__(self):
         """Constructor"""
         self._lock = threading.RLock()
