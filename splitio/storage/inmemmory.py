@@ -5,8 +5,10 @@ import queue
 from collections import Counter
 
 from splitio.models.segments import Segment
-from splitio.models.telemetry import HTTPErrors, HTTPLatencies, MethodExceptions, MethodLatencies, LastSynchronization, StreamingEvents, TelemetryConfig, TelemetryCounters, CounterConstants
+from splitio.models.telemetry import HTTPErrors, HTTPLatencies, MethodExceptions, MethodLatencies, LastSynchronization, StreamingEvents, TelemetryConfig, TelemetryCounters, CounterConstants, \
+    HTTPErrorsAsync, HTTPLatenciesAsync, MethodExceptionsAsync, MethodLatenciesAsync, LastSynchronizationAsync, StreamingEventsAsync, TelemetryConfigAsync, TelemetryCountersAsync
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
+from splitio.optional.loaders import asyncio
 
 MAX_SIZE_BYTES = 5 * 1024 * 1024
 MAX_TAGS = 10
@@ -462,14 +464,158 @@ class InMemoryEventStorage(EventStorage):
         with self._lock:
             self._events = queue.Queue(maxsize=self._queue_size)
 
-class InMemoryTelemetryStorage(TelemetryStorage):
+class InMemoryTelemetryStorageBase(TelemetryStorage):
+    """In-memory telemetry storage base."""
+
+    def _reset_tags(self):
+        self._tags = []
+
+    def _reset_config_tags(self):
+        self._config_tags = []
+
+    def record_config(self, config, extra_config):
+        """Record configurations."""
+        pass
+
+    def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
+        """Record active and redundant factories."""
+        pass
+
+    def record_ready_time(self, ready_time):
+        """Record ready time."""
+        pass
+
+    def add_tag(self, tag):
+        """Record tag string."""
+        pass
+
+    def add_config_tag(self, tag):
+        """Record tag string."""
+        pass
+
+    def record_bur_time_out(self):
+        """Record block until ready timeout."""
+        pass
+
+    def record_not_ready_usage(self):
+        """record non-ready usage."""
+        pass
+
+    def record_latency(self, method, latency):
+        """Record method latency time."""
+        pass
+
+    def record_exception(self, method):
+        """Record method exception."""
+        pass
+
+    def record_impression_stats(self, data_type, count):
+        """Record impressions stats."""
+        pass
+
+    def record_event_stats(self, data_type, count):
+        """Record events stats."""
+        pass
+
+    def record_successful_sync(self, resource, time):
+        """Record successful sync."""
+        pass
+
+    def record_sync_error(self, resource, status):
+        """Record sync http error."""
+        pass
+
+    def record_sync_latency(self, resource, latency):
+        """Record latency time."""
+        pass
+
+    def record_auth_rejections(self):
+        """Record auth rejection."""
+        pass
+
+    def record_token_refreshes(self):
+        """Record sse token refresh."""
+        pass
+
+    def record_streaming_event(self, streaming_event):
+        """Record incoming streaming event."""
+        pass
+
+    def record_session_length(self, session):
+        """Record session length."""
+        pass
+
+    def get_bur_time_outs(self):
+        """Get block until ready timeout."""
+        pass
+
+    def get_non_ready_usage(self):
+        """Get non-ready usage."""
+        pass
+
+    def get_config_stats(self):
+        """Get all config info."""
+        pass
+
+    def pop_exceptions(self):
+        """Get and reset method exceptions."""
+        pass
+
+    def pop_tags(self):
+        """Get and reset tags."""
+        pass
+
+    def pop_config_tags(self):
+        """Get and reset tags."""
+        pass
+
+    def pop_latencies(self):
+        """Get and reset eval latencies."""
+        pass
+
+    def get_impressions_stats(self, type):
+        """Get impressions stats"""
+        pass
+
+    def get_events_stats(self, type):
+        """Get events stats"""
+        pass
+
+    def get_last_synchronization(self):
+        """Get last sync"""
+        pass
+
+    def pop_http_errors(self):
+        """Get and reset http errors."""
+        pass
+
+    def pop_http_latencies(self):
+        """Get and reset http latencies."""
+        pass
+
+    def pop_auth_rejections(self):
+        """Get and reset auth rejections."""
+        pass
+
+    def pop_token_refreshes(self):
+        """Get and reset token refreshes."""
+        pass
+
+    def pop_streaming_events(self):
+        """Get and reset streaming events"""
+        pass
+
+    def get_session_length(self):
+        """Get session length"""
+        pass
+
+
+class InMemoryTelemetryStorage(InMemoryTelemetryStorageBase):
     """In-memory telemetry storage."""
 
     def __init__(self):
         """Constructor"""
         self._lock = threading.RLock()
-        self._reset_tags()
-        self._reset_config_tags()
         self._method_exceptions = MethodExceptions()
         self._last_synchronization = LastSynchronization()
         self._counters = TelemetryCounters()
@@ -478,14 +624,9 @@ class InMemoryTelemetryStorage(TelemetryStorage):
         self._http_latencies = HTTPLatencies()
         self._streaming_events = StreamingEvents()
         self._tel_config = TelemetryConfig()
-
-    def _reset_tags(self):
         with self._lock:
-            self._tags = []
-
-    def _reset_config_tags(self):
-        with self._lock:
-            self._config_tags = []
+            self._reset_tags()
+            self._reset_config_tags()
 
     def record_config(self, config, extra_config):
         """Record configurations."""
@@ -631,6 +772,173 @@ class InMemoryTelemetryStorage(TelemetryStorage):
     def get_session_length(self):
         """Get session length"""
         return self._counters.get_session_length()
+
+
+class InMemoryTelemetryStorageAsync(InMemoryTelemetryStorageBase):
+    """In-memory telemetry async storage."""
+
+    async def create():
+        """Constructor"""
+        self = InMemoryTelemetryStorageAsync()
+        self._lock = asyncio.Lock()
+        self._method_exceptions = await MethodExceptionsAsync.create()
+        self._last_synchronization = await LastSynchronizationAsync.create()
+        self._counters = await TelemetryCountersAsync.create()
+        self._http_sync_errors = await HTTPErrorsAsync.create()
+        self._method_latencies = await MethodLatenciesAsync.create()
+        self._http_latencies = await HTTPLatenciesAsync.create()
+        self._streaming_events = await StreamingEventsAsync.create()
+        self._tel_config = await TelemetryConfigAsync.create()
+        async with self._lock:
+            self._reset_tags()
+            self._reset_config_tags()
+        return self
+
+    async def record_config(self, config, extra_config):
+        """Record configurations."""
+        await self._tel_config.record_config(config, extra_config)
+
+    async def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
+        """Record active and redundant factories."""
+        await self._tel_config.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+
+    async def record_ready_time(self, ready_time):
+        """Record ready time."""
+        await self._tel_config.record_ready_time(ready_time)
+
+    async def add_tag(self, tag):
+        """Record tag string."""
+        async with self._lock:
+            if len(self._tags) < MAX_TAGS:
+                self._tags.append(tag)
+
+    async def add_config_tag(self, tag):
+        """Record tag string."""
+        async with self._lock:
+            if len(self._config_tags) < MAX_TAGS:
+                self._config_tags.append(tag)
+
+    async def record_bur_time_out(self):
+        """Record block until ready timeout."""
+        await self._tel_config.record_bur_time_out()
+
+    async def record_not_ready_usage(self):
+        """record non-ready usage."""
+        await self._tel_config.record_not_ready_usage()
+
+    async def record_latency(self, method, latency):
+        """Record method latency time."""
+        await self._method_latencies.add_latency(method,latency)
+
+    async def record_exception(self, method):
+        """Record method exception."""
+        await self._method_exceptions.add_exception(method)
+
+    async def record_impression_stats(self, data_type, count):
+        """Record impressions stats."""
+        await self._counters.record_impressions_value(data_type, count)
+
+    async def record_event_stats(self, data_type, count):
+        """Record events stats."""
+        await self._counters.record_events_value(data_type, count)
+
+    async def record_successful_sync(self, resource, time):
+        """Record successful sync."""
+        await self._last_synchronization.add_latency(resource, time)
+
+    async def record_sync_error(self, resource, status):
+        """Record sync http error."""
+        await self._http_sync_errors.add_error(resource, status)
+
+    async def record_sync_latency(self, resource, latency):
+        """Record latency time."""
+        await self._http_latencies.add_latency(resource, latency)
+
+    async def record_auth_rejections(self):
+        """Record auth rejection."""
+        await self._counters.record_auth_rejections()
+
+    async def record_token_refreshes(self):
+        """Record sse token refresh."""
+        await self._counters.record_token_refreshes()
+
+    async def record_streaming_event(self, streaming_event):
+        """Record incoming streaming event."""
+        await self._streaming_events.record_streaming_event(streaming_event)
+
+    async def record_session_length(self, session):
+        """Record session length."""
+        await self._counters.record_session_length(session)
+
+    async def get_bur_time_outs(self):
+        """Get block until ready timeout."""
+        return await self._tel_config.get_bur_time_outs()
+
+    async def get_non_ready_usage(self):
+        """Get non-ready usage."""
+        return await self._tel_config.get_non_ready_usage()
+
+    async def get_config_stats(self):
+        """Get all config info."""
+        return await self._tel_config.get_stats()
+
+    async def pop_exceptions(self):
+        """Get and reset method exceptions."""
+        return await self._method_exceptions.pop_all()
+
+    async def pop_tags(self):
+        """Get and reset tags."""
+        async with self._lock:
+            tags = self._tags
+            self._reset_tags()
+            return tags
+
+    async def pop_config_tags(self):
+        """Get and reset tags."""
+        async with self._lock:
+            tags = self._config_tags
+            self._reset_config_tags()
+            return tags
+
+    async def pop_latencies(self):
+        """Get and reset eval latencies."""
+        return await self._method_latencies.pop_all()
+
+    async def get_impressions_stats(self, type):
+        """Get impressions stats"""
+        return await self._counters.get_counter_stats(type)
+
+    async def get_events_stats(self, type):
+        """Get events stats"""
+        return await self._counters.get_counter_stats(type)
+
+    async def get_last_synchronization(self):
+        """Get last sync"""
+        return await self._last_synchronization.get_all()
+
+    async def pop_http_errors(self):
+        """Get and reset http errors."""
+        return await self._http_sync_errors.pop_all()
+
+    async def pop_http_latencies(self):
+        """Get and reset http latencies."""
+        return await self._http_latencies.pop_all()
+
+    async def pop_auth_rejections(self):
+        """Get and reset auth rejections."""
+        return await self._counters.pop_auth_rejections()
+
+    async def pop_token_refreshes(self):
+        """Get and reset token refreshes."""
+        return await self._counters.pop_token_refreshes()
+
+    async def pop_streaming_events(self):
+        return await self._streaming_events.pop_streaming_events()
+
+    async def get_session_length(self):
+        """Get session length"""
+        return await self._counters.get_session_length()
+
 
 class LocalhostTelemetryStorage():
     """Localhost telemetry storage."""
