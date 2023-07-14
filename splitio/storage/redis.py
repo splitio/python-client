@@ -5,7 +5,7 @@ import threading
 
 from splitio.models.impressions import Impression
 from splitio.models import splits, segments
-from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, get_latency_bucket_index
+from splitio.models.telemetry import TelemetryConfig, get_latency_bucket_index, TelemetryConfigAsync
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, \
     ImpressionPipelinedStorage, TelemetryStorage
 from splitio.storage.adapters.redis import RedisAdapterException
@@ -623,7 +623,7 @@ class RedisTelemetryStorageBase(TelemetryStorage):
         :param congif: factory configuration parameters
         :type config: splitio.client.config
         """
-        self._tel_config.record_config(config, extra_config)
+        pass
 
     def pop_config_tags(self):
         """Get and reset tags."""
@@ -633,9 +633,8 @@ class RedisTelemetryStorageBase(TelemetryStorage):
         """push config stats to redis."""
         pass
 
-    def _format_config_stats(self, tags):
+    def _format_config_stats(self, config_stats, tags):
         """format only selected config stats to json"""
-        config_stats = self._tel_config.get_stats()
         return json.dumps({
             'aF': config_stats['aF'],
             'rF': config_stats['rF'],
@@ -646,7 +645,7 @@ class RedisTelemetryStorageBase(TelemetryStorage):
 
     def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
         """Record active and redundant factories."""
-        self._tel_config.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+        pass
 
     def add_latency_to_pipe(self, method, bucket, pipe):
         """
@@ -728,8 +727,6 @@ class RedisTelemetryStorage(RedisTelemetryStorageBase):
         self._reset_config_tags()
         self._redis_client = redis_client
         self._sdk_metadata = sdk_metadata
-        self._method_latencies = MethodLatencies()
-        self._method_exceptions = MethodExceptions()
         self._tel_config = TelemetryConfig()
         self._make_pipe = redis_client.pipeline
 
@@ -744,6 +741,15 @@ class RedisTelemetryStorage(RedisTelemetryStorageBase):
             if len(self._config_tags) < MAX_TAGS:
                 self._config_tags.append(tag)
 
+    def record_config(self, config, extra_config):
+        """
+        initilize telemetry objects
+
+        :param congif: factory configuration parameters
+        :type config: splitio.client.config
+        """
+        self._tel_config.record_config(config, extra_config)
+
     def pop_config_tags(self):
         """Get and reset tags."""
         with self._lock:
@@ -754,8 +760,8 @@ class RedisTelemetryStorage(RedisTelemetryStorageBase):
     def push_config_stats(self):
         """push config stats to redis."""
         _LOGGER.debug("Adding Config stats to redis key %s" % (self._TELEMETRY_CONFIG_KEY))
-        _LOGGER.debug(str(self._format_config_stats(self.pop_config_tags())))
-        self._redis_client.hset(self._TELEMETRY_CONFIG_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip, str(self._format_config_stats(self.pop_config_tags())))
+        _LOGGER.debug(str(self._format_config_stats(self._tel_config.get_stats(), self.pop_config_tags())))
+        self._redis_client.hset(self._TELEMETRY_CONFIG_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip, str(self._format_config_stats(self._tel_config.get_stats(), self.pop_config_tags())))
 
     def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
         """Record active and redundant factories."""
@@ -776,6 +782,10 @@ class RedisTelemetryStorage(RedisTelemetryStorageBase):
                     method.value, 1)
         result = pipe.execute()
         self.expire_keys(self._TELEMETRY_EXCEPTIONS_KEY, self._TELEMETRY_KEY_DEFAULT_TTL, 1, result[0])
+
+    def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
+        """Record active and redundant factories."""
+        self._tel_config.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
 
     def expire_latency_keys(self, total_keys, inserted):
         """
@@ -820,9 +830,7 @@ class RedisTelemetryStorageAsync(RedisTelemetryStorageBase):
         await self._reset_config_tags()
         self._redis_client = redis_client
         self._sdk_metadata = sdk_metadata
-        self._method_latencies = MethodLatencies() # to be changed to async version class
-        self._method_exceptions = MethodExceptions() # to be changed to async version class
-        self._tel_config = TelemetryConfig() # to be changed to async version class
+        self._tel_config = await TelemetryConfigAsync.create()
         self._make_pipe = redis_client.pipeline
         return self
 
@@ -835,6 +843,15 @@ class RedisTelemetryStorageAsync(RedisTelemetryStorageBase):
         if len(self._config_tags) < MAX_TAGS:
             self._config_tags.append(tag)
 
+    async def record_config(self, config, extra_config):
+        """
+        initilize telemetry objects
+
+        :param congif: factory configuration parameters
+        :type config: splitio.client.config
+        """
+        await self._tel_config.record_config(config, extra_config)
+
     async def pop_config_tags(self):
         """Get and reset tags."""
         tags = self._config_tags
@@ -844,8 +861,8 @@ class RedisTelemetryStorageAsync(RedisTelemetryStorageBase):
     async def push_config_stats(self):
         """push config stats to redis."""
         _LOGGER.debug("Adding Config stats to redis key %s" % (self._TELEMETRY_CONFIG_KEY))
-        _LOGGER.debug(str(await self._format_config_stats(await self.pop_config_tags())))
-        await self._redis_client.hset(self._TELEMETRY_CONFIG_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip, str(await self._format_config_stats(await self.pop_config_tags())))
+        _LOGGER.debug(str(await self._format_config_stats(await self._tel_config.get_stats(), await self.pop_config_tags())))
+        await self._redis_client.hset(self._TELEMETRY_CONFIG_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip, str(await self._format_config_stats(await self._tel_config.get_stats(), await self.pop_config_tags())))
 
     async def record_exception(self, method):
         """
@@ -862,6 +879,10 @@ class RedisTelemetryStorageAsync(RedisTelemetryStorageBase):
                     method.value, 1)
         result = await pipe.execute()
         await self.expire_keys(self._TELEMETRY_EXCEPTIONS_KEY, self._TELEMETRY_KEY_DEFAULT_TTL, 1, result[0])
+
+    async def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
+        """Record active and redundant factories."""
+        await self._tel_config.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
 
     async def expire_latency_keys(self, total_keys, inserted):
         """
