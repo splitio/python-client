@@ -61,15 +61,3 @@ class SplitAPITests(object):
             response = split_api.fetch_splits(123, FetchOptions())
             assert exc_info.type == APIException
             assert exc_info.value.message == 'some_message'
-
-    @mock.patch('splitio.engine.telemetry.TelemetryRuntimeProducer.record_sync_latency')
-    def test_split_telemetry(self, mocker):
-        httpclient = mocker.Mock(spec=client.HttpClient)
-        httpclient.get.return_value = client.HttpResponse(200, '{"prop1": "value1"}', {})
-        telemetry_storage = InMemoryTelemetryStorage()
-        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
-        split_api = splits.SplitsAPI(httpclient, 'some_api_key', SdkMetadata('1.0', 'some', '1.2.3.4'), telemetry_runtime_producer)
-
-        response = split_api.fetch_splits(123, FetchOptions())
-        assert(mocker.called)

@@ -27,7 +27,6 @@ class EventsAPITests(object):
         {'key': 'k4', 'trafficTypeName': 'user', 'eventTypeId': 'purchase', 'value': None, 'timestamp': 123456, 'properties': None},
     ]
 
-    @mock.patch('splitio.engine.telemetry.TelemetryRuntimeProducer.record_sync_latency')
     def test_post_events(self, mocker):
         """Test impressions posting API call."""
         httpclient = mocker.Mock(spec=client.HttpClient)
@@ -41,7 +40,6 @@ class EventsAPITests(object):
         events_api = events.EventsAPI(httpclient, 'some_api_key', sdk_metadata, telemetry_runtime_producer)
         response = events_api.flush_events(self.events)
 
-        assert(mocker.called)
         call_made = httpclient.post.mock_calls[0]
 
         # validate positional arguments

@@ -49,7 +49,6 @@ class ImpressionsAPITests(object):
         ]
     }
 
-    @mock.patch('splitio.engine.telemetry.TelemetryRuntimeProducer.record_sync_latency')
     def test_post_impressions(self, mocker):
         """Test impressions posting API call."""
         httpclient = mocker.Mock(spec=client.HttpClient)
@@ -63,7 +62,6 @@ class ImpressionsAPITests(object):
         impressions_api = impressions.ImpressionsAPI(httpclient, 'some_api_key', sdk_metadata, telemetry_runtime_producer)
         response = impressions_api.flush_impressions(self.impressions)
 
-        assert(mocker.called)
         call_made = httpclient.post.mock_calls[0]
 
         # validate positional arguments

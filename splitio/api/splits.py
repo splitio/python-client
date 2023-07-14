@@ -5,8 +5,7 @@ import json
 import time
 
 from splitio.api import APIException, headers_from_metadata
-from splitio.api.commons import build_fetch, record_telemetry
-from splitio.util.time import get_current_epoch_time_ms
+from splitio.api.commons import build_fetch
 from splitio.api.client import HttpClientException
 from splitio.models.telemetry import HTTPExceptionsAndLatencies
 
@@ -31,6 +30,7 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
         self._sdk_key = sdk_key
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
+        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.SPLIT, self._telemetry_runtime_producer)
 
     def fetch_splits(self, change_number, fetch_options):
         """
@@ -45,7 +45,6 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
         :return: Json representation of a splitChanges response.
         :rtype: dict
         """
-        start = get_current_epoch_time_ms()
         try:
             query, extra_headers = build_fetch(change_number, fetch_options, self._metadata)
             response = self._client.get(
@@ -55,7 +54,6 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
                 extra_headers=extra_headers,
                 query=query,
             )
-            record_telemetry(response.status_code, get_current_epoch_time_ms() - start, HTTPExceptionsAndLatencies.SPLIT, self._telemetry_runtime_producer)
             if 200 <= response.status_code < 300:
                 return json.loads(response.body)
             else:
