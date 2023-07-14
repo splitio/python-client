@@ -8,10 +8,11 @@ from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
 from splitio.models.events import Event, EventWrapper
 import splitio.models.telemetry as ModelTelemetry
-from splitio.engine.telemetry import TelemetryStorageProducer
+from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
-    InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, InMemoryImpressionStorageAsync
+    InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, InMemoryImpressionStorageAsync, InMemoryTelemetryStorageAsync
+
 
 
 class InMemorySplitStorageTests(object):
@@ -345,8 +346,8 @@ class InMemoryImpressionsStorageAsyncTests(object):
     @pytest.mark.asyncio
     async def test_push_pop_impressions(self, mocker):
         """Test pushing and retrieving impressions."""
-        telemetry_storage = InMemoryTelemetryStorage()
-        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         storage = InMemoryImpressionStorageAsync(100, telemetry_runtime_producer)
         await storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
@@ -387,7 +388,10 @@ class InMemoryImpressionsStorageAsyncTests(object):
     @pytest.mark.asyncio
     async def test_queue_full_hook(self, mocker):
         """Test queue_full_hook is executed when the queue is full."""
-        storage = InMemoryImpressionStorageAsync(100, mocker.Mock())
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        storage = InMemoryImpressionStorageAsync(100, telemetry_runtime_producer)
         self.hook_called = False
         async def queue_full_hook():
             self.hook_called = True
@@ -404,7 +408,10 @@ class InMemoryImpressionsStorageAsyncTests(object):
     @pytest.mark.asyncio
     async def test_clear(self, mocker):
         """Test clear method."""
-        storage = InMemoryImpressionStorageAsync(100, mocker.Mock())
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        storage = InMemoryImpressionStorageAsync(100, telemetry_runtime_producer)
         await storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
         assert storage._impressions.qsize() == 1
         await storage.clear()
@@ -413,8 +420,8 @@ class InMemoryImpressionsStorageAsyncTests(object):
     @pytest.mark.asyncio
     async def test_impressions_dropped(self, mocker):
         """Test pushing and retrieving impressions."""
-        telemetry_storage = InMemoryTelemetryStorage()
-        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         storage = InMemoryImpressionStorageAsync(2, telemetry_runtime_producer)
         await storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
