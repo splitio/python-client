@@ -411,7 +411,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         """Refresh auth token."""
         while self._running:
             try:
-                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.TOKEN_REFRESH, 1000 * self._token.exp,  get_current_epoch_time_ms()))
+                await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.TOKEN_REFRESH, 1000 * self._token.exp,  get_current_epoch_time_ms()))
                 await asyncio.sleep(self._get_time_period(self._token))
                 _LOGGER.info("retriggering authentication flow.")
                 await self._processor.update_workers_status(False)
@@ -421,7 +421,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
                 self._running = False
 
                 self._token = await self._get_auth_token()
-                self._telemetry_runtime_producer.record_token_refreshes()
+                await self._telemetry_runtime_producer.record_token_refreshes()
                 self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
             except Exception as e:
                 _LOGGER.error("Exception renewing token authentication")
@@ -457,7 +457,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
 
         _LOGGER.debug("connected to streaming, scheduling next refresh")
         await self._handle_connection_ready()
-        self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.CONNECTION_ESTABLISHED, 0,  get_current_epoch_time_ms()))
+        await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.CONNECTION_ESTABLISHED, 0,  get_current_epoch_time_ms()))
         try:
             while self._running:
                 event = await _anext(events_task)

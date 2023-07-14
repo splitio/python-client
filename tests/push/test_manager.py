@@ -14,8 +14,8 @@ from splitio.push.status_tracker import PushStatusTracker
 from splitio.push.manager import PushManager, PushManagerAsync, _TOKEN_REFRESH_GRACE_PERIOD
 from splitio.push.splitsse import SplitSSEClient, SplitSSEClientAsync
 from splitio.push.status_tracker import Status
-from splitio.engine.telemetry import TelemetryStorageProducer
-from splitio.storage.inmemmory import InMemoryTelemetryStorage
+from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
+from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
 from splitio.models.telemetry import StreamingEventTypes
 from splitio.optional.loaders import asyncio
 
@@ -251,8 +251,8 @@ class PushManagerAsyncTests(object):
         mocker.patch('splitio.push.splitsse.SplitSSEClientAsync.start', new=sse_loop_mock)
 
         feedback_loop = asyncio.Queue()
-        telemetry_storage = InMemoryTelemetryStorage()
-        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         manager = PushManagerAsync(api_mock, mocker.Mock(), feedback_loop, mocker.Mock(), telemetry_runtime_producer)
         await manager.start()
