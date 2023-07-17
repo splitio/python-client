@@ -419,7 +419,8 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
 
                 self._token = await self._get_auth_token()
                 await self._telemetry_runtime_producer.record_token_refreshes()
-                self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
+                await self._trigger_connection_flow()
+                self._running_task = asyncio.get_running_loop().create_task(self._read_and_handle_events())
             except Exception as e:
                 _LOGGER.error("Exception renewing token authentication")
                 _LOGGER.debug(str(e))
