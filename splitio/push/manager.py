@@ -294,6 +294,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         if feedback is not None:
             self._feedback_loop.put(feedback)
 
+
 class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-attributes
     """Push notifications susbsytem manager."""
 
@@ -358,9 +359,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             return
 
         try:
-            self._token = await self._get_auth_token()
             self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
-            self._token_task = asyncio.get_running_loop().create_task(self._token_refresh())
         except Exception as e:
             _LOGGER.error("Exception renewing token authentication")
             _LOGGER.debug(str(e))
@@ -407,21 +406,20 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
                           parsed.event_type)
             _LOGGER.debug(str(parsed), exc_info=True)
 
-    async def _token_refresh(self):
+    async def _token_refresh(self, current_token):
         """Refresh auth token."""
         while self._running:
             try:
-                await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.TOKEN_REFRESH, 1000 * self._token.exp,  get_current_epoch_time_ms()))
-                await asyncio.sleep(self._get_time_period(self._token))
-                _LOGGER.info("retriggering authentication flow.")
+                await asyncio.sleep(self._get_time_period(current_token))
+
+                # track proper metrics & stop everything
                 await self._processor.update_workers_status(False)
                 self._status_tracker.notify_sse_shutdown_expected()
                 await self._sse_client.stop()
                 self._running_task.cancel()
                 self._running = False
 
-                self._token = await self._get_auth_token()
-                await self._telemetry_runtime_producer.record_token_refreshes()
+                _LOGGER.info("retriggering authentication flow.")
                 self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
             except Exception as e:
                 _LOGGER.error("Exception renewing token authentication")
@@ -432,6 +430,9 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         """Get new auth token"""
         try:
             token = await self._auth_api.authenticate()
+            await self._telemetry_runtime_producer.record_token_refreshes()
+            await self._telemetry_runtime_producer.record_streaming_event(StreamingEventTypes.TOKEN_REFRESH, 1000 * token.exp,  get_current_epoch_time_ms())
+
         except APIException:
             _LOGGER.error('error performing sse auth request.')
             _LOGGER.debug('stack trace: ', exc_info=True)
@@ -449,15 +450,20 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         """Authenticate and start a connection."""
         self._status_tracker.reset()
         self._running = True
-        # awaiting first successful event
-        events_task = self._sse_client.start(self._token)
-        first_event = await _anext(events_task)
+
+        token = await self._get_auth_token()
+        events_source = self._sse_client.start(token)
+        first_event = await _anext(events_source)
         if first_event.event == SSE_EVENT_ERROR:
             raise(Exception("could not start SSE session"))
 
         _LOGGER.debug("connected to streaming, scheduling next refresh")
+        self._token_task = asyncio.get_running_loop().create_task(self._token_refresh(token))
         await self._handle_connection_ready()
         await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.CONNECTION_ESTABLISHED, 0,  get_current_epoch_time_ms()))
+        await self._consume_events(events_source)
+
+    async def _consume_events(self, events_task):
         try:
             while self._running:
                 event = await _anext(events_task)
