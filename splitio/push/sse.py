@@ -22,24 +22,6 @@ SSEEvent = namedtuple('SSEEvent', ['event_id', 'event', 'retry', 'data'])
 
 __ENDING_CHARS = set(['\n', ''])
 
-def _get_request_parameters(url, extra_headers):
-    """
-    Parse URL and headers
-
-    :param url: url to connect to
-    :type url: str
-
-    :param extra_headers: additional headers
-    :type extra_headers: dict[str, str]
-
-    :returns: processed URL and Headers
-    :rtype: str, dict
-    """
-    url = urlparse(url)
-    headers = _DEFAULT_HEADERS.copy()
-    headers.update(extra_headers if extra_headers is not None else {})
-    return url, headers
-
 class EventBuilder(object):
     """Event builder class."""
 
@@ -145,7 +127,7 @@ class SSEClient(SSEClientBase):
             raise RuntimeError('Client already started.')
 
         self._shutdown_requested = False
-        url, headers = _get_request_parameters(url, extra_headers)
+        url, headers = urlparse(url), get_headers(extra_headers)
         self._conn = (HTTPSConnection(url.hostname, url.port, timeout=timeout)
                       if url.scheme == 'https'
                       else HTTPConnection(url.hostname, port=url.port, timeout=timeout))
@@ -169,7 +151,7 @@ class SSEClient(SSEClientBase):
 class SSEClientAsync(SSEClientBase):
     """SSE Client implementation."""
 
-    def __init__(self, url, extra_headers=None, timeout=_DEFAULT_ASYNC_TIMEOUT):
+    def __init__(self, timeout=_DEFAULT_ASYNC_TIMEOUT):
         """
         Construct an SSE client.
 
@@ -184,12 +166,10 @@ class SSEClientAsync(SSEClientBase):
         """
         self._conn = None
         self._shutdown_requested = False
-        self._parsed_url = url
-        self._url, self._extra_headers = _get_request_parameters(url, extra_headers)
         self._timeout = timeout
         self._session = None
 
-    async def start(self):  # pylint:disable=protected-access
+    async def start(self, url, extra_headers=None):  # pylint:disable=protected-access
         """
         Connect and start listening for events.
 
@@ -201,20 +181,15 @@ class SSEClientAsync(SSEClientBase):
             raise RuntimeError('Client already started.')
 
         self._shutdown_requested = False
-        headers = _DEFAULT_HEADERS.copy()
-        headers.update(self._extra_headers if self._extra_headers is not None else {})
         try:
             self._conn = aiohttp.connector.TCPConnector()
             async with aiohttp.client.ClientSession(
                 connector=self._conn,
-                headers=headers,
+                headers=get_headers(extra_headers),
                 timeout=aiohttp.ClientTimeout(self._timeout)
                 ) as self._session:
-                self._reader = await self._session.request(
-                    "GET",
-                    self._parsed_url,
-                    params=self._url.params
-                )
+
+                self._reader = await self._session.request("GET", url)
                 try:
                     event_builder = EventBuilder()
                     while not self._shutdown_requested:
@@ -263,3 +238,21 @@ class SSEClientAsync(SSEClientBase):
                 await self._conn.close()
             except asyncio.CancelledError:
                 pass
+
+
+def get_headers(extra=None):
+    """
+    Return default headers with added custom ones if specified.
+
+    :param extra: additional headers
+    :type extra: dict[str, str]
+
+    :returns: processed Headers
+    :rtype: dict
+    """
+    headers = _DEFAULT_HEADERS.copy()
+    headers.update(extra if extra is not None else {})
+    return headers
+
+
+
