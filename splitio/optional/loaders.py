@@ -1,3 +1,4 @@
+import sys
 try:
     import asyncio
     import aiohttp
@@ -10,3 +11,10 @@ except ImportError:
         )
     aiohttp = missing_asyncio_dependencies
     asyncio = missing_asyncio_dependencies
+
+async def _anext(it):
+    return await it.__anext__()
+
+if sys.version_info.major < 3 or sys.version_info.minor < 10:
+    global anext
+    anext = _anext

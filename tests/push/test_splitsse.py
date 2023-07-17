@@ -156,7 +156,7 @@ class SSESplitClientAsyncTests(object):
         await client.stop()
 
         request = request_queue.get(1)
-        assert request.path == '/event-stream?v=1.1&accessToken=some&channels=chan1,%5B?occupancy%3Dmetrics.publishers%5Dchan2'
+        assert request.path == '/event-stream?v=1.1&accessToken=some&channels=chan1,%5B?occupancy=metrics.publishers%5Dchan2'
         assert request.headers['accept'] == 'text/event-stream'
         assert request.headers['SplitSDKVersion'] == '1.0'
         assert request.headers['SplitSDKMachineIP'] == '1.2.3.4'
@@ -196,7 +196,7 @@ class SSESplitClientAsyncTests(object):
         assert client.status == SplitSSEClient._Status.IDLE
 
         request = request_queue.get(1)
-        assert request.path == '/event-stream?v=1.1&accessToken=some&channels=chan1,%5B?occupancy%3Dmetrics.publishers%5Dchan2'
+        assert request.path == '/event-stream?v=1.1&accessToken=some&channels=chan1,%5B?occupancy=metrics.publishers%5Dchan2'
         assert request.headers['accept'] == 'text/event-stream'
         assert request.headers['SplitSDKVersion'] == '1.0'
         assert request.headers['SplitSDKMachineIP'] == '1.2.3.4'

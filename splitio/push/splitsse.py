@@ -8,12 +8,9 @@ import sys
 from splitio.push.sse import SSEClient, SSEClientAsync, SSE_EVENT_ERROR
 from splitio.util.threadutil import EventGroup
 from splitio.api import headers_from_metadata
-
+from splitio.optional.loaders import anext
 
 _LOGGER = logging.getLogger(__name__)
-
-async def _anext(it):
-    return await it.__anext__()
 
 class SplitSSEClientBase(object, metaclass=abc.ABCMeta):
     """Split streaming endpoint SSE base client."""
@@ -185,10 +182,7 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         self._base_url = base_url
         self.status = SplitSSEClient._Status.IDLE
         self._metadata = headers_from_metadata(sdk_metadata, client_key)
-        if sys.version_info.major < 3 or sys.version_info.minor < 10:
-            global anext
-            anext = _anext
-
+        self._client = SSEClientAsync(timeout=self.KEEPALIVE_TIMEOUT)
 
     async def start(self, token):
         """
@@ -205,9 +199,8 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
 
         self.status = SplitSSEClient._Status.CONNECTING
         url = self._build_url(token)
-        self._client = SSEClientAsync(url, extra_headers=self._metadata, timeout=self.KEEPALIVE_TIMEOUT)
         try:
-            sse_events_task = self._client.start()
+            sse_events_task = self._client.start(url, extra_headers=self._metadata)
             first_event = await anext(sse_events_task)
             if first_event.event == SSE_EVENT_ERROR:
                 await self.stop()
