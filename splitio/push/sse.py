@@ -2,11 +2,9 @@
 import logging
 import socket
 import abc
-import urllib
 from collections import namedtuple
 from http.client import HTTPConnection, HTTPSConnection
 from urllib.parse import urlparse
-import pytest
 
 from splitio.optional.loaders import asyncio, aiohttp
 from splitio.api.client import HttpClientException
@@ -23,24 +21,6 @@ SSEEvent = namedtuple('SSEEvent', ['event_id', 'event', 'retry', 'data'])
 
 
 __ENDING_CHARS = set(['\n', ''])
-
-def _get_request_parameters(url, extra_headers):
-    """
-    Parse URL and headers
-
-    :param url: url to connect to
-    :type url: str
-
-    :param extra_headers: additional headers
-    :type extra_headers: dict[str, str]
-
-    :returns: processed URL and Headers
-    :rtype: str, dict
-    """
-    url = urlparse(url)
-    headers = _DEFAULT_HEADERS.copy()
-    headers.update(extra_headers if extra_headers is not None else {})
-    return url, headers
 
 class EventBuilder(object):
     """Event builder class."""
@@ -147,7 +127,7 @@ class SSEClient(SSEClientBase):
             raise RuntimeError('Client already started.')
 
         self._shutdown_requested = False
-        url, headers = _get_request_parameters(url, extra_headers)
+        url, headers = urlparse(url), get_headers(extra_headers)
         self._conn = (HTTPSConnection(url.hostname, url.port, timeout=timeout)
                       if url.scheme == 'https'
                       else HTTPConnection(url.hostname, port=url.port, timeout=timeout))
@@ -171,55 +151,9 @@ class SSEClient(SSEClientBase):
 class SSEClientAsync(SSEClientBase):
     """SSE Client implementation."""
 
-    def __init__(self, callback):
+    def __init__(self, timeout=_DEFAULT_ASYNC_TIMEOUT):
         """
         Construct an SSE client.
-
-        :param callback: function to call when an event is received
-        :type callback: callable
-        """
-        self._conn = None
-        self._event_callback = callback
-        self._shutdown_requested = False
-
-    async def _read_events(self, response):
-        """
-        Read events from the supplied connection.
-
-        :returns: True if the connection was ended by us. False if it was closed by the serve.
-        :rtype: bool
-        """
-        try:
-            event_builder = EventBuilder()
-            while not self._shutdown_requested:
-                line = await response.readline()
-                if line is None or len(line) <= 0:  # connection ended
-                    break
-                elif line.startswith(b':'):  # comment. Skip
-                    _LOGGER.debug("skipping sse comment")
-                    continue
-                elif line in _EVENT_SEPARATORS:
-                    event = event_builder.build()
-                    _LOGGER.debug("dispatching event: %s", event)
-                    await self._event_callback(event)
-                    event_builder = EventBuilder()
-                else:
-                    event_builder.process_line(line)
-        except asyncio.CancelledError:
-           _LOGGER.debug("Cancellation request, proceeding to cancel.")
-           raise
-        except Exception:  # pylint:disable=broad-except
-            _LOGGER.debug('sse connection ended.')
-            _LOGGER.debug('stack trace: ', exc_info=True)
-        finally:
-            await self._conn.close()
-            self._conn = None  # clear so it can be started again
-
-        return self._shutdown_requested
-
-    async def start(self, url, extra_headers=None, timeout=_DEFAULT_ASYNC_TIMEOUT):  # pylint:disable=protected-access
-        """
-        Connect and start listening for events.
 
         :param url: url to connect to
         :type url: str
@@ -229,36 +163,63 @@ class SSEClientAsync(SSEClientBase):
 
         :param timeout: connection & read timeout
         :type timeout: float
+        """
+        self._conn = None
+        self._shutdown_requested = False
+        self._timeout = timeout
+        self._session = None
 
-        :returns: True if the connection was ended by us. False if it was closed by the serve.
-        :rtype: bool
+    async def start(self, url, extra_headers=None):  # pylint:disable=protected-access
+        """
+        Connect and start listening for events.
+
+        :returns: yield event when received
+        :rtype: SSEEvent
         """
         _LOGGER.debug("Async SSEClient Started")
         if self._conn is not None:
             raise RuntimeError('Client already started.')
 
         self._shutdown_requested = False
-        url = urlparse(url)
-        headers = _DEFAULT_HEADERS.copy()
-        headers.update(extra_headers if extra_headers is not None else {})
-        parsed_url =  urllib.parse.urljoin(url[0] + "://" + url[1], url[2])
-        params=url[4]
         try:
             self._conn = aiohttp.connector.TCPConnector()
             async with aiohttp.client.ClientSession(
                 connector=self._conn,
-                headers=headers,
-                timeout=aiohttp.ClientTimeout(timeout)
+                headers=get_headers(extra_headers),
+                timeout=aiohttp.ClientTimeout(self._timeout)
                 ) as self._session:
-                reader = await self._session.request(
-                    "GET",
-                    parsed_url,
-                    params=params
-                )
-                return await self._read_events(reader.content)
+
+                self._reader = await self._session.request("GET", url)
+                try:
+                    event_builder = EventBuilder()
+                    while not self._shutdown_requested:
+                        line = await self._reader.content.readline()
+                        if line is None or len(line) <= 0:  # connection ended
+                            raise Exception('connection ended')
+                        elif line.startswith(b':'):  # comment. Skip
+                            _LOGGER.debug("skipping sse comment")
+                            continue
+                        elif line in _EVENT_SEPARATORS:
+                            _LOGGER.debug("dispatching event: %s", event_builder.build())
+                            yield event_builder.build()
+                            event_builder = EventBuilder()
+                        else:
+                            event_builder.process_line(line)
+                except asyncio.CancelledError:
+                    _LOGGER.debug("Cancellation request, proceeding to cancel.")
+                    raise asyncio.CancelledError()
+                except Exception:  # pylint:disable=broad-except
+                    _LOGGER.debug('sse connection ended.')
+                    _LOGGER.debug('stack trace: ', exc_info=True)
+        except asyncio.CancelledError:
+            pass
         except aiohttp.ClientError as exc:  # pylint: disable=broad-except
-            _LOGGER.error(str(exc))
             raise HttpClientException('http client is throwing exceptions') from exc
+        finally:
+            await self._conn.close()
+            self._conn = None  # clear so it can be started again
+            _LOGGER.debug("Existing SSEClient")
+            return
 
     async def shutdown(self):
         """Shutdown the current connection."""
@@ -272,6 +233,26 @@ class SSEClientAsync(SSEClientBase):
             return
 
         self._shutdown_requested = True
-        sock = self._session.connector._loop._ssock
-        sock.shutdown(socket.SHUT_RDWR)
-        await self._conn.close()
+        if self._session is not None:
+            try:
+                await self._conn.close()
+            except asyncio.CancelledError:
+                pass
+
+
+def get_headers(extra=None):
+    """
+    Return default headers with added custom ones if specified.
+
+    :param extra: additional headers
+    :type extra: dict[str, str]
+
+    :returns: processed Headers
+    :rtype: dict
+    """
+    headers = _DEFAULT_HEADERS.copy()
+    headers.update(extra if extra is not None else {})
+    return headers
+
+
+

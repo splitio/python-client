@@ -4,16 +4,21 @@
 import json
 import time
 import unittest.mock as mock
+import redis.asyncio as aioredis
 import pytest
 
 from splitio.client.util import get_metadata, SdkMetadata
-from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \
-    RedisSegmentStorage, RedisSplitStorage, RedisEventsStorageAsync, RedisTelemetryStorage
 from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterAsync, RedisAdapterException, build
+from splitio.optional.loaders import asyncio
+from splitio.storage.redis import RedisEventsStorage, RedisEventsStorageAsync, RedisImpressionsStorage, RedisImpressionsStorageAsync, \
+    RedisSegmentStorage, RedisSegmentStorageAsync, RedisSplitStorage, RedisSplitStorageAsync, RedisTelemetryStorage, RedisTelemetryStorageAsync
+from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterException, build
+from redis.asyncio.client import Redis as aioredis
+from splitio.storage.adapters import redis
 from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
 from splitio.models.events import Event, EventWrapper
-from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MethodExceptionsAndLatencies
+from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MethodExceptionsAndLatencies, TelemetryConfigAsync
 
 
 class RedisSplitStorageTests(object):
@@ -223,6 +228,84 @@ class RedisSegmentStorageTests(object):
             mocker.call('SPLITIO.segment.some_segment', 'some_key')
         ]
 
+class RedisSegmentStorageAsyncTests(object):
+    """Redis segment storage test cases."""
+
+    @pytest.mark.asyncio
+    async def test_fetch_segment(self, mocker):
+        """Test fetching a whole segment."""
+        redis_mock = await aioredis.from_url("redis://localhost")
+        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
+
+        self.key = None
+        async def smembers(key):
+            self.key = key
+            return set(["key1", "key2", "key3"])
+        adapter.smembers = smembers
+
+        self.key2 = None
+        async def get(key):
+            self.key2 = key
+            return '100'
+        adapter.get = get
+
+        from_raw = mocker.Mock()
+        mocker.patch('splitio.storage.redis.segments.from_raw', new=from_raw)
+
+        storage = RedisSegmentStorageAsync(adapter)
+        result = await storage.get('some_segment')
+        assert isinstance(result, Segment)
+        assert result.name == 'some_segment'
+        assert result.contains('key1')
+        assert result.contains('key2')
+        assert result.contains('key3')
+        assert result.change_number == 100
+        assert self.key ==  'SPLITIO.segment.some_segment'
+        assert self.key2 == 'SPLITIO.segment.some_segment.till'
+
+        # Assert that if segment doesn't exist, None is returned
+        from_raw.reset_mock()
+        async def smembers2(key):
+            self.key = key
+            return set()
+        adapter.smembers = smembers2
+        assert await storage.get('some_segment') is None
+
+    @pytest.mark.asyncio
+    async def test_fetch_change_number(self, mocker):
+        """Test fetching change number."""
+        redis_mock = await aioredis.from_url("redis://localhost")
+        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
+
+        self.key = None
+        async def get(key):
+            self.key = key
+            return '100'
+        adapter.get = get
+
+        storage = RedisSegmentStorageAsync(adapter)
+        result = await storage.get_change_number('some_segment')
+        assert result == 100
+        assert self.key == 'SPLITIO.segment.some_segment.till'
+
+    @pytest.mark.asyncio
+    async def test_segment_contains(self, mocker):
+        """Test segment contains functionality."""
+        redis_mock = await aioredis.from_url("redis://localhost")
+        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
+        storage = RedisSegmentStorageAsync(adapter)
+        self.key = None
+        self.segment = None
+        async def sismember(segment, key):
+            self.key = key
+            self.segment = segment
+            return True
+        adapter.sismember = sismember
+
+        assert await storage.segment_contains('some_segment', 'some_key') is True
+        assert self.segment == 'SPLITIO.segment.some_segment'
+        assert self.key == 'some_key'
+
 
 class RedisImpressionsStorageTests(object):  # pylint: disable=too-few-public-methods
     """Redis Impressions storage test cases."""
@@ -333,6 +416,167 @@ class RedisImpressionsStorageTests(object):  # pylint: disable=too-few-public-me
 
         storage.add_impressions_to_pipe(impressions, adapter)
         assert adapter.rpush.mock_calls == [mocker.call('SPLITIO.impressions', *to_validate)]
+
+    def test_expire_key(self, mocker):
+        adapter = mocker.Mock(spec=RedisAdapter)
+        metadata = get_metadata({})
+        storage = RedisImpressionsStorage(adapter, metadata)
+
+        self.key = None
+        self.ttl = None
+        def expire(key, ttl):
+            self.key = key
+            self.ttl = ttl
+        adapter.expire = expire
+
+        storage.expire_key(2, 2)
+        assert self.key == 'SPLITIO.impressions'
+        assert self.ttl == 3600
+
+        self.key = None
+        storage.expire_key(2, 1)
+        assert self.key == None
+
+
+class RedisImpressionsStorageAsyncTests(object):  # pylint: disable=too-few-public-methods
+    """Redis Impressions async storage test cases."""
+
+    def test_wrap_impressions(self, mocker):
+        """Test wrap impressions."""
+        adapter = mocker.Mock(spec=RedisAdapterAsync)
+        metadata = get_metadata({})
+        storage = RedisImpressionsStorageAsync(adapter, metadata)
+
+        impressions = [
+            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654)
+        ]
+
+        to_validate = [json.dumps({
+            'm': {  # METADATA PORTION
+                's': metadata.sdk_version,
+                'n': metadata.instance_name,
+                'i': metadata.instance_ip,
+            },
+            'i': {  # IMPRESSION PORTION
+                'k': impression.matching_key,
+                'b': impression.bucketing_key,
+                'f': impression.feature_name,
+                't': impression.treatment,
+                'r': impression.label,
+                'c': impression.change_number,
+                'm': impression.time,
+            }
+        }) for impression in impressions]
+
+        assert storage._wrap_impressions(impressions) == to_validate
+
+    @pytest.mark.asyncio
+    async def test_add_impressions(self, mocker):
+        """Test that adding impressions to storage works."""
+        adapter = mocker.Mock(spec=RedisAdapterAsync)
+        metadata = get_metadata({})
+        storage = RedisImpressionsStorageAsync(adapter, metadata)
+
+        impressions = [
+            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654)
+        ]
+        self.key = None
+        self.imps = None
+        async def rpush(key, *imps):
+            self.key = key
+            self.imps = imps
+
+        adapter.rpush = rpush
+        assert await storage.put(impressions) is True
+
+        to_validate = [json.dumps({
+            'm': {  # METADATA PORTION
+                's': metadata.sdk_version,
+                'n': metadata.instance_name,
+                'i': metadata.instance_ip,
+            },
+            'i': {  # IMPRESSION PORTION
+                'k': impression.matching_key,
+                'b': impression.bucketing_key,
+                'f': impression.feature_name,
+                't': impression.treatment,
+                'r': impression.label,
+                'c': impression.change_number,
+                'm': impression.time,
+            }
+        }) for impression in impressions]
+
+        assert self.key == 'SPLITIO.impressions'
+        assert self.imps == tuple(to_validate)
+
+        # Assert that if an exception is thrown it's caught and False is returned
+        adapter.reset_mock()
+
+        async def rpush2(key, *imps):
+            raise RedisAdapterException('something')
+        adapter.rpush = rpush2
+        assert await storage.put(impressions) is False
+
+    def test_add_impressions_to_pipe(self, mocker):
+        """Test that adding impressions to storage works."""
+        adapter = mocker.Mock(spec=RedisAdapterAsync)
+        metadata = get_metadata({})
+        storage = RedisImpressionsStorageAsync(adapter, metadata)
+
+        impressions = [
+            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
+            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654)
+        ]
+
+        to_validate = [json.dumps({
+            'm': {  # METADATA PORTION
+                's': metadata.sdk_version,
+                'n': metadata.instance_name,
+                'i': metadata.instance_ip,
+            },
+            'i': {  # IMPRESSION PORTION
+                'k': impression.matching_key,
+                'b': impression.bucketing_key,
+                'f': impression.feature_name,
+                't': impression.treatment,
+                'r': impression.label,
+                'c': impression.change_number,
+                'm': impression.time,
+            }
+        }) for impression in impressions]
+
+        storage.add_impressions_to_pipe(impressions, adapter)
+        assert adapter.rpush.mock_calls == [mocker.call('SPLITIO.impressions', *to_validate)]
+
+    @pytest.mark.asyncio
+    async def test_expire_key(self, mocker):
+        adapter = mocker.Mock(spec=RedisAdapterAsync)
+        metadata = get_metadata({})
+        storage = RedisImpressionsStorageAsync(adapter, metadata)
+
+        self.key = None
+        self.ttl = None
+        async def expire(key, ttl):
+            self.key = key
+            self.ttl = ttl
+        adapter.expire = expire
+
+        await storage.expire_key(2, 2)
+        assert self.key == 'SPLITIO.impressions'
+        assert self.ttl == 3600
+
+        self.key = None
+        await storage.expire_key(2, 1)
+        assert self.key == None
+
 
 
 class RedisEventsStorageTests(object):  # pylint: disable=too-few-public-methods
@@ -582,3 +826,140 @@ class RedisTelemetryStorageTests(object):
         assert(not mocker.called)
         redis_telemetry.expire_keys('key', 12, 2, 2)
         assert(mocker.called)
+
+
+class RedisTelemetryStorageAsyncTests(object):
+    """Redis Telemetry storage test cases."""
+
+    @pytest.mark.asyncio
+    async def test_init(self, mocker):
+        redis_telemetry = await RedisTelemetryStorageAsync.create(mocker.Mock(), mocker.Mock())
+        assert(redis_telemetry._redis_client is not None)
+        assert(redis_telemetry._sdk_metadata is not None)
+        assert(isinstance(redis_telemetry._tel_config, TelemetryConfigAsync))
+        assert(redis_telemetry._make_pipe is not None)
+
+    @pytest.mark.asyncio
+    async def test_record_config(self, mocker):
+        redis_telemetry = await RedisTelemetryStorageAsync.create(mocker.Mock(), mocker.Mock())
+        self.called = False
+        async def record_config(*args):
+            self.called = True
+        redis_telemetry._tel_config.record_config = record_config
+
+        await redis_telemetry.record_config(mocker.Mock(), mocker.Mock())
+        assert(self.called)
+
+    @pytest.mark.asyncio
+    async def test_push_config_stats(self, mocker):
+        adapter = await aioredis.from_url("redis://localhost")
+        redis_telemetry = await RedisTelemetryStorageAsync.create(adapter, SdkMetadata('python-1.1.1', 'hostname', 'ip'))
+        self.key = None
+        self.hash = None
+        async def hset(key, hash, val):
+            self.key = key
+            self.hash = hash
+
+        adapter.hset = hset
+        async def format_config_stats(stats, tags):
+            return ""
+        redis_telemetry._format_config_stats = format_config_stats
+        await redis_telemetry.push_config_stats()
+        assert self.key == 'SPLITIO.telemetry.init'
+        assert self.hash == 'python-1.1.1/hostname/ip'
+
+    @pytest.mark.asyncio
+    async def test_format_config_stats(self, mocker):
+        redis_telemetry = await RedisTelemetryStorageAsync.create(mocker.Mock(), mocker.Mock())
+        json_value = redis_telemetry._format_config_stats({'aF': 0, 'rF': 0, 'sT': None, 'oM': None}, [])
+        stats = await redis_telemetry._tel_config.get_stats()
+        assert(json_value == json.dumps({
+            'aF': stats['aF'],
+            'rF': stats['rF'],
+            'sT': stats['sT'],
+            'oM': stats['oM'],
+            't': await redis_telemetry.pop_config_tags()
+        }))
+
+    @pytest.mark.asyncio
+    async def test_record_active_and_redundant_factories(self, mocker):
+        redis_telemetry = await RedisTelemetryStorageAsync.create(mocker.Mock(), mocker.Mock())
+        active_factory_count = 1
+        redundant_factory_count = 2
+        await redis_telemetry.record_active_and_redundant_factories(1, 2)
+        assert (redis_telemetry._tel_config._active_factory_count == active_factory_count)
+        assert (redis_telemetry._tel_config._redundant_factory_count == redundant_factory_count)
+
+    @pytest.mark.asyncio
+    async def test_add_latency_to_pipe(self, mocker):
+        adapter = build({})
+        metadata = SdkMetadata('python-1.1.1', 'hostname', 'ip')
+        redis_telemetry = await RedisTelemetryStorageAsync.create(adapter, metadata)
+        pipe = adapter._decorated.pipeline()
+
+        def _mocked_hincrby(*args, **kwargs):
+            assert(args[1] == RedisTelemetryStorageAsync._TELEMETRY_LATENCIES_KEY)
+            assert(args[2][-11:] == 'treatment/0')
+            assert(args[3] == 1)
+        # should increment bucket 0
+        with mock.patch('redis.client.Pipeline.hincrby', _mocked_hincrby):
+            redis_telemetry.add_latency_to_pipe(MethodExceptionsAndLatencies.TREATMENT, 0, pipe)
+
+        def _mocked_hincrby2(*args, **kwargs):
+            assert(args[1] == RedisTelemetryStorageAsync._TELEMETRY_LATENCIES_KEY)
+            assert(args[2][-11:] == 'treatment/3')
+            assert(args[3] == 1)
+        # should increment bucket 3
+        with mock.patch('redis.client.Pipeline.hincrby', _mocked_hincrby2):
+            redis_telemetry.add_latency_to_pipe(MethodExceptionsAndLatencies.TREATMENT, 3, pipe)
+
+    @pytest.mark.asyncio
+    async def test_record_exception(self, mocker):
+        self.called = False
+        def _mocked_hincrby(*args, **kwargs):
+            self.called = True
+            assert(args[1] == RedisTelemetryStorageAsync._TELEMETRY_EXCEPTIONS_KEY)
+            assert(args[2] == 'python-1.1.1/hostname/ip/treatment')
+            assert(args[3] == 1)
+
+        self.called2 = False
+        async def _mocked_execute(*args):
+            self.called2 = True
+            return [1]
+
+        adapter = await aioredis.from_url("redis://localhost")
+        metadata = SdkMetadata('python-1.1.1', 'hostname', 'ip')
+        redis_telemetry = await RedisTelemetryStorageAsync.create(adapter, metadata)
+        with mock.patch('redis.asyncio.client.Pipeline.hincrby', _mocked_hincrby):
+            with mock.patch('redis.asyncio.client.Pipeline.execute', _mocked_execute):
+                await redis_telemetry.record_exception(MethodExceptionsAndLatencies.TREATMENT)
+                assert self.called
+                assert self.called2
+
+    @pytest.mark.asyncio
+    async def test_expire_latency_keys(self, mocker):
+        redis_telemetry = await RedisTelemetryStorageAsync.create(mocker.Mock(), mocker.Mock())
+        def _mocked_method(*args, **kwargs):
+            assert(args[1] == RedisTelemetryStorageAsync._TELEMETRY_LATENCIES_KEY)
+            assert(args[2] == RedisTelemetryStorageAsync._TELEMETRY_KEY_DEFAULT_TTL)
+            assert(args[3] == 1)
+            assert(args[4] == 2)
+
+        with mock.patch('splitio.storage.redis.RedisTelemetryStorage.expire_keys', _mocked_method):
+            await redis_telemetry.expire_latency_keys(1, 2)
+
+    @pytest.mark.asyncio
+    async def test_expire_keys(self, mocker):
+        adapter = await aioredis.from_url("redis://localhost")
+        metadata = SdkMetadata('python-1.1.1', 'hostname', 'ip')
+        redis_telemetry = await RedisTelemetryStorageAsync.create(adapter, metadata)
+        self.called = False
+        async def expire(*args):
+            self.called = True
+        adapter.expire = expire
+
+        await redis_telemetry.expire_keys('key', 12, 1, 2)
+        assert(not self.called)
+
+        await redis_telemetry.expire_keys('key', 12, 2, 2)
+        assert(self.called)
