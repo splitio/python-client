@@ -21,8 +21,7 @@ INSTALL_REQUIRES = [
     'pyyaml>=5.4',
     'docopt>=0.6.2',
     'enum34;python_version<"3.4"',
-    'bloom-filter2>=2.0.0',
-    'pluggy>=1.0.0'
+    'bloom-filter2>=2.0.0'
 ]
 
 with open(path.join(path.abspath(path.dirname(__file__)), 'splitio', 'version.py')) as f:
