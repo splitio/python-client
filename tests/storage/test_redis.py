@@ -8,8 +8,9 @@ import redis.asyncio as aioredis
 import pytest
 
 from splitio.client.util import get_metadata, SdkMetadata
+from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterAsync, RedisAdapterException, build
 from splitio.optional.loaders import asyncio
-from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, RedisImpressionsStorageAsync, \
+from splitio.storage.redis import RedisEventsStorage, RedisEventsStorageAsync, RedisImpressionsStorage, RedisImpressionsStorageAsync, \
     RedisSegmentStorage, RedisSegmentStorageAsync, RedisSplitStorage, RedisSplitStorageAsync, RedisTelemetryStorage, RedisTelemetryStorageAsync
 from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterException, build
 from redis.asyncio.client import Redis as aioredis
@@ -626,6 +627,103 @@ class RedisEventsStorageTests(object):  # pylint: disable=too-few-public-methods
             raise RedisAdapterException('something')
         adapter.rpush.side_effect = _raise_exc
         assert storage.put(events) is False
+
+    def test_expire_keys(self, mocker):
+        adapter = mocker.Mock(spec=RedisAdapter)
+        metadata = get_metadata({})
+        storage = RedisEventsStorage(adapter, metadata)
+
+        self.key = None
+        self.ttl = None
+        def expire(key, ttl):
+            self.key = key
+            self.ttl = ttl
+        adapter.expire = expire
+
+        storage.expire_keys(2, 2)
+        assert self.key == 'SPLITIO.events'
+        assert self.ttl == 3600
+
+        self.key = None
+        storage.expire_keys(2, 1)
+        assert self.key == None
+
+class RedisEventsStorageAsyncTests(object):  # pylint: disable=too-few-public-methods
+    """Redis Impression async storage test cases."""
+
+    @pytest.mark.asyncio
+    async def test_add_events(self, mocker):
+        """Test that adding impressions to storage works."""
+        adapter = mocker.Mock(spec=RedisAdapterAsync)
+        metadata = get_metadata({})
+
+        storage = RedisEventsStorageAsync(adapter, metadata)
+
+        events = [
+            EventWrapper(event=Event('key1', 'user', 'purchase', 10, 123456, None),  size=32768),
+            EventWrapper(event=Event('key2', 'user', 'purchase', 10, 123456, None),  size=32768),
+            EventWrapper(event=Event('key3', 'user', 'purchase', 10, 123456, None),  size=32768),
+            EventWrapper(event=Event('key4', 'user', 'purchase', 10, 123456, None),  size=32768),
+        ]
+        self.key = None
+        self.events = None
+        async def rpush(key, *events):
+            self.key = key
+            self.events = events
+        adapter.rpush = rpush
+
+        assert await storage.put(events) is True
+
+        list_of_raw_events = [json.dumps({
+            'e': {  # EVENT PORTION
+                'key': e.event.key,
+                'trafficTypeName': e.event.traffic_type_name,
+                'eventTypeId': e.event.event_type_id,
+                'value': e.event.value,
+                'timestamp': e.event.timestamp,
+                'properties': e.event.properties,
+            },
+            'm': {  # METADATA PORTION
+                's': metadata.sdk_version,
+                'n': metadata.instance_name,
+                'i': metadata.instance_ip,
+            }
+        }) for e in events]
+
+        assert self.events == tuple(list_of_raw_events)
+        assert self.key == 'SPLITIO.events'
+        assert storage._wrap_events(events) == list_of_raw_events
+
+        # Assert that if an exception is thrown it's caught and False is returned
+        adapter.reset_mock()
+
+        async def rpush2(key, *events):
+            raise RedisAdapterException('something')
+        adapter.rpush = rpush2
+        assert await storage.put(events) is False
+
+
+    @pytest.mark.asyncio
+    async def test_expire_keys(self, mocker):
+        adapter = mocker.Mock(spec=RedisAdapterAsync)
+        metadata = get_metadata({})
+        storage = RedisEventsStorageAsync(adapter, metadata)
+
+        self.key = None
+        self.ttl = None
+        async def expire(key, ttl):
+            self.key = key
+            self.ttl = ttl
+        adapter.expire = expire
+
+        await storage.expire_keys(2, 2)
+        assert self.key == 'SPLITIO.events'
+        assert self.ttl == 3600
+
+        self.key = None
+        await storage.expire_keys(2, 1)
+        assert self.key == None
+
 
 class RedisTelemetryStorageTests(object):
     """Redis Telemetry storage test cases."""

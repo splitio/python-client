@@ -686,23 +686,11 @@ class RedisImpressionsStorageAsync(RedisImpressionsStorageBase):
             return False
 
 
-class RedisEventsStorage(EventStorage):
-    """Redis based event storage class."""
+class RedisEventsStorageBase(EventStorage):
+    """Redis based event storage base class."""
 
     _EVENTS_KEY_TEMPLATE = 'SPLITIO.events'
     _EVENTS_KEY_DEFAULT_TTL = 3600
-
-    def __init__(self, redis_client, sdk_metadata):
-        """
-        Class constructor.
-
-        :param redis_client: Redis client or compliant interface.
-        :type redis_client: splitio.storage.adapters.redis.RedisAdapter
-        :param sdk_metadata: SDK & Machine information.
-        :type sdk_metadata: splitio.client.util.SdkMetadata
-        """
-        self._redis = redis_client
-        self._sdk_metadata = sdk_metadata
 
     def add_events_to_pipe(self, events, pipe):
         """
@@ -748,17 +736,7 @@ class RedisEventsStorage(EventStorage):
         :return: Whether the event has been added or not.
         :rtype: bool
         """
-        key = self._EVENTS_KEY_TEMPLATE
-        to_store = self._wrap_events(events)
-        try:
-            _LOGGER.debug("Adding Events to redis key %s" % (key))
-            _LOGGER.debug(to_store)
-            self._redis.rpush(key, *to_store)
-            return True
-        except RedisAdapterException:
-            _LOGGER.error('Something went wrong when trying to add event to redis')
-            _LOGGER.debug('Error: ', exc_info=True)
-            return False
+        pass
 
     def pop_many(self, count):
         """
@@ -784,8 +762,107 @@ class RedisEventsStorage(EventStorage):
         :param inserted: added keys.
         :type inserted: int
         """
+        pass
+
+class RedisEventsStorage(RedisEventsStorageBase):
+    """Redis based event storage class."""
+
+    def __init__(self, redis_client, sdk_metadata):
+        """
+        Class constructor.
+
+        :param redis_client: Redis client or compliant interface.
+        :type redis_client: splitio.storage.adapters.redis.RedisAdapter
+        :param sdk_metadata: SDK & Machine information.
+        :type sdk_metadata: splitio.client.util.SdkMetadata
+        """
+        self._redis = redis_client
+        self._sdk_metadata = sdk_metadata
+
+    def put(self, events):
+        """
+        Add an event to the redis storage.
+
+        :param event: Event to add to the queue.
+        :type event: splitio.models.events.Event
+
+        :return: Whether the event has been added or not.
+        :rtype: bool
+        """
+        key = self._EVENTS_KEY_TEMPLATE
+        to_store = self._wrap_events(events)
+        try:
+            _LOGGER.debug("Adding Events to redis key %s" % (key))
+            _LOGGER.debug(to_store)
+            self._redis.rpush(key, *to_store)
+            return True
+        except RedisAdapterException:
+            _LOGGER.error('Something went wrong when trying to add event to redis')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return False
+
+    def expire_keys(self, total_keys, inserted):
+        """
+        Set expire
+
+        :param total_keys: length of keys.
+        :type total_keys: int
+        :param inserted: added keys.
+        :type inserted: int
+        """
         if total_keys == inserted:
             self._redis.expire(self._EVENTS_KEY_TEMPLATE, self._EVENTS_KEY_DEFAULT_TTL)
+
+
+class RedisEventsStorageAsync(RedisEventsStorageBase):
+    """Redis based event async storage class."""
+
+    def __init__(self, redis_client, sdk_metadata):
+        """
+        Class constructor.
+
+        :param redis_client: Redis client or compliant interface.
+        :type redis_client: splitio.storage.adapters.redis.RedisAdapter
+        :param sdk_metadata: SDK & Machine information.
+        :type sdk_metadata: splitio.client.util.SdkMetadata
+        """
+        self._redis = redis_client
+        self._sdk_metadata = sdk_metadata
+
+    async def put(self, events):
+        """
+        Add an event to the redis storage.
+
+        :param event: Event to add to the queue.
+        :type event: splitio.models.events.Event
+
+        :return: Whether the event has been added or not.
+        :rtype: bool
+        """
+        key = self._EVENTS_KEY_TEMPLATE
+        to_store = self._wrap_events(events)
+        try:
+            _LOGGER.debug("Adding Events to redis key %s" % (key))
+            _LOGGER.debug(to_store)
+            await self._redis.rpush(key, *to_store)
+            return True
+        except RedisAdapterException:
+            _LOGGER.error('Something went wrong when trying to add event to redis')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return False
+
+    async def expire_keys(self, total_keys, inserted):
+        """
+        Set expire
+
+        :param total_keys: length of keys.
+        :type total_keys: int
+        :param inserted: added keys.
+        :type inserted: int
+        """
+        if total_keys == inserted:
+            await self._redis.expire(self._EVENTS_KEY_TEMPLATE, self._EVENTS_KEY_DEFAULT_TTL)
+
 
 class RedisTelemetryStorageBase(TelemetryStorage):
     """Redis based telemetry storage class."""
