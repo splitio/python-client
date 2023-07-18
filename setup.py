@@ -14,6 +14,7 @@ TESTS_REQUIRES = [
     'tomli==1.2.3',
     'iniconfig==1.1.1',
     'attrs==22.1.0',
+    'pytest-runner==5.3.2'
 ]
 
 INSTALL_REQUIRES = [
