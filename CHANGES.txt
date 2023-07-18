@@ -1,4 +1,4 @@
-9.4.3 (Jul 18, 2023)
+9.5.0 (Jul 18, 2023)
 - Improved streaming architecture implementation to apply feature flag updates from the notification received which is now enhanced, improving efficiency and reliability of the whole update system.
 
 9.4.2 (May 15, 2023)
