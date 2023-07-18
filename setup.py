@@ -14,7 +14,6 @@ TESTS_REQUIRES = [
     'tomli==1.2.3',
     'iniconfig==1.1.1',
     'attrs==22.1.0',
-    'pluggy>=1.0.0'
 ]
 
 INSTALL_REQUIRES = [
@@ -23,6 +22,7 @@ INSTALL_REQUIRES = [
     'docopt>=0.6.2',
     'enum34;python_version<"3.4"',
     'bloom-filter2>=2.0.0',
+    'pluggy>=1.0.0'
 ]
 
 with open(path.join(path.abspath(path.dirname(__file__)), 'splitio', 'version.py')) as f:
