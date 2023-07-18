@@ -10,7 +10,7 @@ import pytest
 from splitio.client.util import get_metadata, SdkMetadata
 from splitio.optional.loaders import asyncio
 from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, RedisImpressionsStorageAsync, \
-    RedisSegmentStorage, RedisSplitStorage, RedisSplitStorageAsync, RedisTelemetryStorage, RedisTelemetryStorageAsync
+    RedisSegmentStorage, RedisSegmentStorageAsync, RedisSplitStorage, RedisSplitStorageAsync, RedisTelemetryStorage, RedisTelemetryStorageAsync
 from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterException, build
 from redis.asyncio.client import Redis as aioredis
 from splitio.storage.adapters import redis
@@ -176,259 +176,6 @@ class RedisSplitStorageTests(object):
         time.sleep(1)
         assert storage.is_valid_traffic_type('any') is False
 
-class RedisSplitStorageAsyncTests(object):
-    """Redis split storage test cases."""
-
-    @pytest.mark.asyncio
-    async def test_get_split(self, mocker):
-        """Test retrieving a split works."""
-        redis_mock = await aioredis.from_url("redis://localhost")
-        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
-
-        self.redis_ret = None
-        self.name = None
-        async def get(sel, name):
-            self.name = name
-            self.redis_ret = '{"name": "some_split"}'
-            return self.redis_ret
-        mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.get', new=get)
-
-        from_raw = mocker.Mock()
-        mocker.patch('splitio.storage.redis.splits.from_raw', new=from_raw)
-
-        storage = RedisSplitStorageAsync(adapter)
-        await storage.get('some_split')
-
-        assert self.name == 'SPLITIO.split.some_split'
-        assert self.redis_ret == '{"name": "some_split"}'
-
-        # Test that a missing split returns None and doesn't call from_raw
-        from_raw.reset_mock()
-        self.name = None
-        async def get2(sel, name):
-            self.name = name
-            return None
-        mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.get', new=get2)
-
-        result = await storage.get('some_split')
-        assert result is None
-        assert self.name == 'SPLITIO.split.some_split'
-        assert not from_raw.mock_calls
-
-    @pytest.mark.asyncio
-    async def test_get_split_with_cache(self, mocker):
-        """Test retrieving a split works."""
-        redis_mock = await aioredis.from_url("redis://localhost")
-        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
-
-        self.redis_ret = None
-        self.name = None
-        async def get(sel, name):
-            self.name = name
-            self.redis_ret = '{"name": "some_split"}'
-            return self.redis_ret
-        mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.get', new=get)
-
-        from_raw = mocker.Mock()
-        mocker.patch('splitio.storage.redis.splits.from_raw', new=from_raw)
-
-        storage = RedisSplitStorageAsync(adapter, True, 1)
-        await storage.get('some_split')
-        assert self.name == 'SPLITIO.split.some_split'
-        assert self.redis_ret == '{"name": "some_split"}'
-
-        # hit the cache:
-        self.name = None
-        await storage.get('some_split')
-        self.name = None
-        await storage.get('some_split')
-        self.name = None
-        await storage.get('some_split')
-        assert self.name == None
-
-        # Test that a missing split returns None and doesn't call from_raw
-        from_raw.reset_mock()
-        self.name = None
-        async def get2(sel, name):
-            self.name = name
-            return None
-        mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.get', new=get2)
-
-        # Still cached
-        result = await storage.get('some_split')
-        assert result is not None
-        assert self.name == None
-        await asyncio.sleep(1)  # wait for expiration
-        result = await storage.get('some_split')
-        assert self.name == 'SPLITIO.split.some_split'
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_get_splits_with_cache(self, mocker):
-        """Test retrieving a list of passed splits."""
-        redis_mock = await aioredis.from_url("redis://localhost")
-        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
-        storage = RedisSplitStorageAsync(adapter, True, 1)
-
-        self.redis_ret = None
-        self.name = None
-        async def mget(sel, name):
-            self.name = name
-            self.redis_ret = ['{"name": "split1"}', '{"name": "split2"}', None]
-            return self.redis_ret
-        mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.mget', new=mget)
-
-        from_raw = mocker.Mock()
-        mocker.patch('splitio.storage.redis.splits.from_raw', new=from_raw)
-
-        result = await storage.fetch_many(['split1', 'split2', 'split3'])
-        assert len(result) == 3
-
-        assert '{"name": "split1"}' in self.redis_ret
-        assert '{"name": "split2"}' in self.redis_ret
-
-        assert result['split1'] is not None
-        assert result['split2'] is not None
-        assert 'split3' in result
-
-        # fetch again
-        self.name = None
-        result = await storage.fetch_many(['split1', 'split2', 'split3'])
-        assert result['split1'] is not None
-        assert result['split2'] is not None
-        assert 'split3' in result
-        assert self.name == None
-
-        # wait for expire
-        await asyncio.sleep(1)
-        self.name = None
-        result = await storage.fetch_many(['split1', 'split2', 'split3'])
-        assert self.name == ['SPLITIO.split.split1', 'SPLITIO.split.split2', 'SPLITIO.split.split3']
-
-    @pytest.mark.asyncio
-    async def test_get_changenumber(self, mocker):
-        """Test fetching changenumber."""
-        redis_mock = await aioredis.from_url("redis://localhost")
-        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
-        storage = RedisSplitStorageAsync(adapter)
-
-        self.redis_ret = None
-        self.name = None
-        async def get(sel, name):
-            self.name = name
-            self.redis_ret = '-1'
-            return self.redis_ret
-        mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.get', new=get)
-
-        assert await storage.get_change_number() == -1
-        assert self.name == 'SPLITIO.splits.till'
-
-    @pytest.mark.asyncio
-    async def test_get_all_splits(self, mocker):
-        """Test fetching all splits."""
-        from_raw = mocker.Mock()
-        mocker.patch('splitio.storage.redis.splits.from_raw', new=from_raw)
-
-        redis_mock = await aioredis.from_url("redis://localhost")
-        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
-        storage = RedisSplitStorageAsync(adapter)
-
-        self.redis_ret = None
-        self.name = None
-        async def mget(sel, name):
-            self.name = name
-            self.redis_ret = ['{"name": "split1"}', '{"name": "split2"}', '{"name": "split3"}']
-            return self.redis_ret
-        mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.mget', new=mget)
-
-        self.key = None
-        self.keys_ret = None
-        async def keys(sel, key):
-            self.key = key
-            self.keys_ret = [
-            'SPLITIO.split.split1',
-            'SPLITIO.split.split2',
-            'SPLITIO.split.split3'
-            ]
-            return self.keys_ret
-        mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.keys', new=keys)
-
-        await storage.get_all_splits()
-
-        assert self.key == 'SPLITIO.split.*'
-        assert self.keys_ret == ['SPLITIO.split.split1', 'SPLITIO.split.split2', 'SPLITIO.split.split3']
-        assert len(from_raw.mock_calls) == 3
-        assert mocker.call({'name': 'split1'}) in from_raw.mock_calls
-        assert mocker.call({'name': 'split2'}) in from_raw.mock_calls
-        assert mocker.call({'name': 'split3'}) in from_raw.mock_calls
-
-    @pytest.mark.asyncio
-    async def test_get_split_names(self, mocker):
-        """Test getching split names."""
-        redis_mock = await aioredis.from_url("redis://localhost")
-        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
-        storage = RedisSplitStorageAsync(adapter)
-
-        self.key = None
-        self.keys_ret = None
-        async def keys(sel, key):
-            self.key = key
-            self.keys_ret = [
-            'SPLITIO.split.split1',
-            'SPLITIO.split.split2',
-            'SPLITIO.split.split3'
-            ]
-            return self.keys_ret
-        mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.keys', new=keys)
-
-        assert await storage.get_split_names() == ['split1', 'split2', 'split3']
-
-    @pytest.mark.asyncio
-    async def test_is_valid_traffic_type(self, mocker):
-        """Test that traffic type validation works."""
-        redis_mock = await aioredis.from_url("redis://localhost")
-        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
-        storage = RedisSplitStorageAsync(adapter)
-
-        async def get(sel, name):
-            return '1'
-        mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.get', new=get)
-        assert await storage.is_valid_traffic_type('any') is True
-
-        async def get2(sel, name):
-            return '0'
-        mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.get', new=get2)
-        assert await storage.is_valid_traffic_type('any') is False
-
-        async def get3(sel, name):
-            return None
-        mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.get', new=get3)
-        assert await storage.is_valid_traffic_type('any') is False
-
-    @pytest.mark.asyncio
-    async def test_is_valid_traffic_type_with_cache(self, mocker):
-        """Test that traffic type validation works."""
-        redis_mock = await aioredis.from_url("redis://localhost")
-        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
-        storage = RedisSplitStorageAsync(adapter, True, 1)
-
-        async def get(sel, name):
-            return '1'
-        mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.get', new=get)
-        assert await storage.is_valid_traffic_type('any') is True
-
-        async def get2(sel, name):
-            return '0'
-        mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.get', new=get2)
-        assert await storage.is_valid_traffic_type('any') is True
-        await asyncio.sleep(1)
-        assert await storage.is_valid_traffic_type('any') is False
-
-        async def get3(sel, name):
-            return None
-        mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.get', new=get3)
-        await asyncio.sleep(1)
-        assert await storage.is_valid_traffic_type('any') is False
 
 class RedisSegmentStorageTests(object):
     """Redis segment storage test cases."""
@@ -479,6 +226,84 @@ class RedisSegmentStorageTests(object):
         assert adapter.sismember.mock_calls == [
             mocker.call('SPLITIO.segment.some_segment', 'some_key')
         ]
+
+class RedisSegmentStorageAsyncTests(object):
+    """Redis segment storage test cases."""
+
+    @pytest.mark.asyncio
+    async def test_fetch_segment(self, mocker):
+        """Test fetching a whole segment."""
+        redis_mock = await aioredis.from_url("redis://localhost")
+        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
+
+        self.key = None
+        async def smembers(key):
+            self.key = key
+            return set(["key1", "key2", "key3"])
+        adapter.smembers = smembers
+
+        self.key2 = None
+        async def get(key):
+            self.key2 = key
+            return '100'
+        adapter.get = get
+
+        from_raw = mocker.Mock()
+        mocker.patch('splitio.storage.redis.segments.from_raw', new=from_raw)
+
+        storage = RedisSegmentStorageAsync(adapter)
+        result = await storage.get('some_segment')
+        assert isinstance(result, Segment)
+        assert result.name == 'some_segment'
+        assert result.contains('key1')
+        assert result.contains('key2')
+        assert result.contains('key3')
+        assert result.change_number == 100
+        assert self.key ==  'SPLITIO.segment.some_segment'
+        assert self.key2 == 'SPLITIO.segment.some_segment.till'
+
+        # Assert that if segment doesn't exist, None is returned
+        from_raw.reset_mock()
+        async def smembers2(key):
+            self.key = key
+            return set()
+        adapter.smembers = smembers2
+        assert await storage.get('some_segment') is None
+
+    @pytest.mark.asyncio
+    async def test_fetch_change_number(self, mocker):
+        """Test fetching change number."""
+        redis_mock = await aioredis.from_url("redis://localhost")
+        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
+
+        self.key = None
+        async def get(key):
+            self.key = key
+            return '100'
+        adapter.get = get
+
+        storage = RedisSegmentStorageAsync(adapter)
+        result = await storage.get_change_number('some_segment')
+        assert result == 100
+        assert self.key == 'SPLITIO.segment.some_segment.till'
+
+    @pytest.mark.asyncio
+    async def test_segment_contains(self, mocker):
+        """Test segment contains functionality."""
+        redis_mock = await aioredis.from_url("redis://localhost")
+        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
+        storage = RedisSegmentStorageAsync(adapter)
+        self.key = None
+        self.segment = None
+        async def sismember(segment, key):
+            self.key = key
+            self.segment = segment
+            return True
+        adapter.sismember = sismember
+
+        assert await storage.segment_contains('some_segment', 'some_key') is True
+        assert self.segment == 'SPLITIO.segment.some_segment'
+        assert self.key == 'some_key'
 
 
 class RedisImpressionsStorageTests(object):  # pylint: disable=too-few-public-methods
