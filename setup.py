@@ -44,7 +44,7 @@ setup(
         'uwsgi': ['uwsgi>=2.0.0'],
         'cpphash': ['mmh3cffi==0.2.1'],
     },
-    setup_requires=['pytest-runner==5.3.2'],
+    setup_requires=['pytest-runner', 'pluggy==1.0.0'],
     classifiers=[
         'Environment :: Console',
         'Intended Audience :: Developers',
