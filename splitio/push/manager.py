@@ -4,7 +4,7 @@ import logging
 from threading import Timer
 import abc
 
-from splitio.optional.loaders import asyncio
+from splitio.optional.loaders import asyncio, anext
 from splitio.api import APIException
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.push.splitsse import SplitSSEClient, SplitSSEClientAsync
@@ -17,11 +17,7 @@ from splitio.models.telemetry import StreamingEventTypes
 
 _TOKEN_REFRESH_GRACE_PERIOD = 10 * 60  # 10 minutes
 
-
 _LOGGER = logging.getLogger(__name__)
-
-async def _anext(it):
-    return await it.__anext__()
 
 class PushManagerBase(object, metaclass=abc.ABCMeta):
     """Worker template."""
@@ -455,6 +451,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         events_source = self._sse_client.start(token)
         first_event = await _anext(events_source)
         if first_event.event == SSE_EVENT_ERROR:
+            self._running = False
             raise(Exception("could not start SSE session"))
 
         _LOGGER.debug("connected to streaming, scheduling next refresh")
@@ -466,7 +463,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
     async def _consume_events(self, events_task):
         try:
             while self._running:
-                event = await _anext(events_task)
+                event = await anext(self._events_task)
                 await self._event_handler(event)
         except StopAsyncIteration:
             pass
