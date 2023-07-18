@@ -5,7 +5,7 @@ import pytest
 
 from splitio.models.telemetry import StorageType, OperationMode, MethodLatencies, MethodExceptions, \
     HTTPLatencies, HTTPErrors, LastSynchronization, TelemetryCounters, TelemetryConfig, \
-    StreamingEvent, StreamingEvents, get_latency_bucket_index
+    StreamingEvent, StreamingEvents, UpdateFromSSE
 
 import splitio.models.telemetry as ModelTelemetry
 
@@ -195,6 +195,7 @@ class TelemetryModelTests(object):
         assert(telemetry_counter._events_queued == 0)
         assert(telemetry_counter._auth_rejections == 0)
         assert(telemetry_counter._token_refreshes == 0)
+        assert(telemetry_counter._update_from_sse == {})
 
         telemetry_counter.record_session_length(20)
         assert(telemetry_counter.get_session_length() == 20)
@@ -219,6 +220,11 @@ class TelemetryModelTests(object):
         assert(telemetry_counter._events_queued == 30)
         telemetry_counter.record_events_value(ModelTelemetry.CounterConstants.EVENTS_DROPPED, 1)
         assert(telemetry_counter._events_dropped == 1)
+        telemetry_counter.record_update_from_sse(UpdateFromSSE.SPLIT_UPDATE)
+        assert(telemetry_counter._update_from_sse[UpdateFromSSE.SPLIT_UPDATE.value] == 1)
+        updates = telemetry_counter.pop_update_from_sse(UpdateFromSSE.SPLIT_UPDATE)
+        assert(telemetry_counter._update_from_sse[UpdateFromSSE.SPLIT_UPDATE.value] == 0)
+        assert(updates == 1)
 
     def test_streaming_event(self, mocker):
         streaming_event = StreamingEvent((ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED, 'split', 1234))

@@ -163,6 +163,13 @@ class TelemetryStorageProducerTests(object):
         telemetry_runtime_producer.record_token_refreshes()
         assert(mocker.called)
 
+    @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.record_update_from_sse')
+    def test_record_update_from_sse(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_runtime_producer = TelemetryRuntimeProducer(telemetry_storage)
+        telemetry_runtime_producer.record_update_from_sse('sp')
+        assert(mocker.called)
+
     def test_record_streaming_event(self, mocker):
         telemetry_storage = mocker.Mock()
         telemetry_runtime_producer = TelemetryRuntimeProducer(telemetry_storage)
@@ -289,6 +296,12 @@ class TelemetryStorageConsumerTests(object):
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
         telemetry_runtime_consumer.pop_auth_rejections()
+
+    @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.pop_update_from_sse')
+    def test_pop_auth_rejections(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+        telemetry_runtime_consumer.pop_update_from_sse('sp')
 
     @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.pop_token_refreshes')
     def test_pop_token_refreshes(self, mocker):
