@@ -2,11 +2,12 @@ import unittest.mock as mock
 import ast
 import json
 import pytest
+import redis.asyncio as aioredis
 
-from splitio.engine.impressions.adapters import InMemorySenderAdapter, RedisSenderAdapter, PluggableSenderAdapter
+from splitio.engine.impressions.adapters import InMemorySenderAdapter, RedisSenderAdapter, PluggableSenderAdapter, InMemorySenderAdapterAsync, RedisSenderAdapterAsync
 from splitio.engine.impressions import adapters
-from splitio.api.telemetry import TelemetryAPI
-from splitio.storage.adapters.redis import RedisAdapter
+from splitio.api.telemetry import TelemetryAPI, TelemetryAPIAsync
+from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterAsync
 from splitio.engine.impressions.manager import Counter
 from tests.storage.test_pluggable import StorageMockAdapter
 
@@ -42,6 +43,28 @@ class InMemorySenderAdapterTests(object):
         sender_adapter.record_unique_keys(uniques)
 
         assert(mocker.called)
+
+
+class InMemorySenderAdapterAsyncTests(object):
+    """In memory sender adapter test."""
+
+    @pytest.mark.asyncio
+    async def test_record_unique_keys(self, mocker):
+        """Test sending unique keys."""
+
+        uniques = {"feature1": set({'key1', 'key2', 'key3'}),
+                   "feature2": set({'key1', 'key2', 'key3'}),
+                   }
+        telemetry_api = TelemetryAPIAsync(mocker.Mock(), 'some_api_key', mocker.Mock(), mocker.Mock())
+        self.called = False
+        async def record_unique_keys(*args):
+            self.called = True
+
+        telemetry_api.record_unique_keys = record_unique_keys
+        sender_adapter = InMemorySenderAdapterAsync(telemetry_api)
+        await sender_adapter.record_unique_keys(uniques)
+        assert(self.called)
+
 
 class RedisSenderAdapterTests(object):
     """Redis sender adapter test."""
@@ -102,6 +125,74 @@ class RedisSenderAdapterTests(object):
         inserted = 100
         sender_adapter._expire_keys(mocker.Mock(), mocker.Mock(), total_keys, inserted)
         assert(mocker.called)
+
+
+class RedisSenderAdapterAsyncTests(object):
+    """Redis sender adapter test."""
+
+    @pytest.mark.asyncio
+    async def test_record_unique_keys(self, mocker):
+        """Test sending unique keys."""
+
+        uniques = {"feature1": set({'key1', 'key2', 'key3'}),
+                   "feature2": set({'key1', 'key2', 'key3'}),
+                   }
+        redis_client = RedisAdapterAsync(mocker.Mock(), mocker.Mock())
+        sender_adapter = RedisSenderAdapterAsync(redis_client)
+
+        self.called = False
+        async def rpush(*args):
+            self.called = True
+
+        redis_client.rpush = rpush
+        await sender_adapter.record_unique_keys(uniques)
+        assert(self.called)
+
+    @pytest.mark.asyncio
+    async def test_flush_counters(self, mocker):
+        """Test sending counters."""
+
+        counters = [
+            Counter.CountPerFeature('f1', 123, 2),
+            Counter.CountPerFeature('f2', 123, 123),
+        ]
+        redis_client = await aioredis.from_url("redis://localhost")
+        sender_adapter = RedisSenderAdapterAsync(redis_client)
+        self.called = False
+        def hincrby(*args):
+            self.called = True
+        self.called2 = False
+        async def execute(*args):
+            self.called2 = True
+            return [1]
+
+        with mock.patch('redis.asyncio.client.Pipeline.hincrby', hincrby):
+            with mock.patch('redis.asyncio.client.Pipeline.execute', execute):
+                await sender_adapter.flush_counters(counters)
+                assert(self.called)
+                assert(self.called2)
+
+    @pytest.mark.asyncio
+    async def test_expire_keys(self, mocker):
+        """Test set expire key."""
+
+        total_keys = 100
+        inserted = 10
+        redis_client = RedisAdapterAsync(mocker.Mock(), mocker.Mock())
+        sender_adapter = RedisSenderAdapterAsync(redis_client)
+        self.called = False
+        async def expire(*args):
+            self.called = True
+        redis_client.expire = expire
+
+        await sender_adapter._expire_keys(mocker.Mock(), mocker.Mock(), total_keys, inserted)
+        assert(not self.called)
+
+        total_keys = 100
+        inserted = 100
+        await sender_adapter._expire_keys(mocker.Mock(), mocker.Mock(), total_keys, inserted)
+        assert(self.called)
+
 
 class PluggableSenderAdapterTests(object):
     """Pluggable sender adapter test."""
