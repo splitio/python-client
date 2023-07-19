@@ -7,8 +7,8 @@ from splitio.optional.loaders import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
-class BaseUniqueKeysTracker(object, metaclass=abc.ABCMeta):
-    """Unique Keys Tracker interface."""
+class UniqueKeysTrackerBase(object, metaclass=abc.ABCMeta):
+    """Unique Keys Tracker base class."""
 
     @abc.abstractmethod
     def track(self, key, feature_flag_name):
@@ -40,7 +40,7 @@ class BaseUniqueKeysTracker(object, metaclass=abc.ABCMeta):
         self._cache[feature_flag_name].add(key)
 
 
-class UniqueKeysTracker(BaseUniqueKeysTracker):
+class UniqueKeysTracker(UniqueKeysTrackerBase):
     """Unique Keys Tracker class."""
 
     def __init__(self, cache_size=30000):
@@ -103,8 +103,8 @@ class UniqueKeysTracker(BaseUniqueKeysTracker):
             return temp_cach, temp_cache_size
 
 
-class UniqueKeysTrackerAsync(BaseUniqueKeysTracker):
-    """Unique Keys Tracker class."""
+class UniqueKeysTrackerAsync(UniqueKeysTrackerBase):
+    """Unique Keys Tracker async class."""
 
     def __init__(self, cache_size=30000):
         """
