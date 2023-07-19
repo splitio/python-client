@@ -2,16 +2,18 @@
 import logging
 import threading
 from enum import Enum
-from splitio.push.sse import SSEClient, SSE_EVENT_ERROR
+import abc
+import sys
+
+from splitio.push.sse import SSEClient, SSEClientAsync, SSE_EVENT_ERROR
 from splitio.util.threadutil import EventGroup
 from splitio.api import headers_from_metadata
-
+from splitio.optional.loaders import anext
 
 _LOGGER = logging.getLogger(__name__)
 
-
-class SplitSSEClient(object):  # pylint: disable=too-many-instance-attributes
-    """Split streaming endpoint SSE client."""
+class SplitSSEClientBase(object, metaclass=abc.ABCMeta):
+    """Split streaming endpoint SSE base client."""
 
     KEEPALIVE_TIMEOUT = 70
 
@@ -20,6 +22,50 @@ class SplitSSEClient(object):  # pylint: disable=too-many-instance-attributes
         CONNECTING = 1
         ERRORED = 2
         CONNECTED = 3
+
+    @staticmethod
+    def _format_channels(channels):
+        """
+        Format channels into a list from the raw object retrieved in the token.
+
+        :param channels: object as extracted from the JWT capabilities.
+        :type channels: dict[str,list[str]]
+
+        :returns: channels as a list of strings.
+        :rtype: list[str]
+        """
+        regular = [k for (k, v) in channels.items() if v == ['subscribe']]
+        occupancy = ['[?occupancy=metrics.publishers]' + k
+                     for (k, v) in channels.items()
+                     if 'channel-metadata:publishers' in v]
+        return regular + occupancy
+
+    def _build_url(self, token):
+        """
+        Build the url to connect to and return it as a string.
+
+        :param token: (parsed) JWT
+        :type token: splitio.models.token.Token
+
+        :returns: true if the connection was successful. False otherwise.
+        :rtype: bool
+        """
+        return '{base}/event-stream?v=1.1&accessToken={token}&channels={channels}'.format(
+            base=self._base_url,
+            token=token.token,
+            channels=','.join(self._format_channels(token.channels)))
+
+    @abc.abstractmethod
+    def start(self, token):
+        """Open a connection to start listening for events."""
+
+    @abc.abstractmethod
+    def stop(self, blocking=False, timeout=None):
+        """Abort the ongoing connection."""
+
+
+class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-attributes
+    """Split streaming endpoint SSE client."""
 
     def __init__(self, event_callback, sdk_metadata, first_event_callback=None,
                  connection_closed_callback=None, client_key=None,
@@ -72,38 +118,6 @@ class SplitSSEClient(object):  # pylint: disable=too-many-instance-attributes
         if event.data is not None:
             self._callback(event)
 
-    @staticmethod
-    def _format_channels(channels):
-        """
-        Format channels into a list from the raw object retrieved in the token.
-
-        :param channels: object as extracted from the JWT capabilities.
-        :type channels: dict[str,list[str]]
-
-        :returns: channels as a list of strings.
-        :rtype: list[str]
-        """
-        regular = [k for (k, v) in channels.items() if v == ['subscribe']]
-        occupancy = ['[?occupancy=metrics.publishers]' + k
-                     for (k, v) in channels.items()
-                     if 'channel-metadata:publishers' in v]
-        return regular + occupancy
-
-    def _build_url(self, token):
-        """
-        Build the url to connect to and return it as a string.
-
-        :param token: (parsed) JWT
-        :type token: splitio.models.token.Token
-
-        :returns: true if the connection was successful. False otherwise.
-        :rtype: bool
-        """
-        return '{base}/event-stream?v=1.1&accessToken={token}&channels={channels}'.format(
-            base=self._base_url,
-            token=token.token,
-            channels=','.join(self._format_channels(token.channels)))
-
     def start(self, token):
         """
         Open a connection to start listening for events.
@@ -148,3 +162,68 @@ class SplitSSEClient(object):  # pylint: disable=too-many-instance-attributes
         self._client.shutdown()
         if blocking:
             self._sse_connection_closed.wait(timeout)
+
+class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-instance-attributes
+    """Split streaming endpoint SSE client."""
+
+    def __init__(self, sdk_metadata, client_key=None, base_url='https://streaming.split.io'):
+        """
+        Construct a split sse client.
+
+        :param sdk_metadata: SDK version & machine name & IP.
+        :type sdk_metadata: splitio.client.util.SdkMetadata
+
+        :param client_key: client key.
+        :type client_key: str
+
+        :param base_url: scheme + :// + host
+        :type base_url: str
+        """
+        self._base_url = base_url
+        self.status = SplitSSEClient._Status.IDLE
+        self._metadata = headers_from_metadata(sdk_metadata, client_key)
+        self._client = SSEClientAsync(timeout=self.KEEPALIVE_TIMEOUT)
+
+    async def start(self, token):
+        """
+        Open a connection to start listening for events.
+
+        :param token: (parsed) JWT
+        :type token: splitio.models.token.Token
+
+        :returns: yield events received from SSEClientAsync object
+        :rtype: SSEEvent
+        """
+        if self.status != SplitSSEClient._Status.IDLE:
+            raise Exception('SseClient already started.')
+
+        self.status = SplitSSEClient._Status.CONNECTING
+        url = self._build_url(token)
+        try:
+            sse_events_task = self._client.start(url, extra_headers=self._metadata)
+            first_event = await anext(sse_events_task)
+            if first_event.event == SSE_EVENT_ERROR:
+                await self.stop()
+                return
+            self.status = SplitSSEClient._Status.CONNECTED
+            _LOGGER.debug("Split SSE client started")
+            yield first_event
+            while self.status == SplitSSEClient._Status.CONNECTED:
+                event = await anext(sse_events_task)
+                if event.data is not None:
+                    yield event
+        except StopAsyncIteration:
+            pass
+        except Exception:  # pylint:disable=broad-except
+            self.status = SplitSSEClient._Status.IDLE
+            _LOGGER.debug('sse connection ended.')
+            _LOGGER.debug('stack trace: ', exc_info=True)
+
+    async def stop(self, blocking=False, timeout=None):
+        """Abort the ongoing connection."""
+        _LOGGER.debug("stopping SplitSSE Client")
+        if self.status == SplitSSEClient._Status.IDLE:
+            _LOGGER.warning('sse already closed. ignoring')
+            return
+        await self._client.shutdown()
+        self.status = SplitSSEClient._Status.IDLE

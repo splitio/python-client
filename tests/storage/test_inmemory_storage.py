@@ -11,8 +11,7 @@ import splitio.models.telemetry as ModelTelemetry
 from splitio.engine.telemetry import TelemetryStorageProducer
 
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
-    InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, InMemorySegmentStorageAsync
-
+    InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, InMemorySegmentStorageAsync, InMemorySplitStorageAsync
 
 class InMemorySplitStorageTests(object):
     """In memory split storage test cases."""
@@ -197,6 +196,201 @@ class InMemorySplitStorageTests(object):
 
         storage.kill_locally('some_split', 'default_treatment', 3)
         assert storage.get('some_split').change_number == 3
+
+
+class InMemorySplitStorageAsyncTests(object):
+    """In memory split storage test cases."""
+
+    @pytest.mark.asyncio
+    async def test_storing_retrieving_splits(self, mocker):
+        """Test storing and retrieving splits works."""
+        storage = InMemorySplitStorageAsync()
+
+        split = mocker.Mock(spec=Split)
+        name_property = mocker.PropertyMock()
+        name_property.return_value = 'some_split'
+        type(split).name = name_property
+
+        await storage.put(split)
+        assert await storage.get('some_split') == split
+        assert await storage.get_split_names() == ['some_split']
+        assert await storage.get_all_splits() == [split]
+        assert await storage.get('nonexistant_split') is None
+
+        await storage.remove('some_split')
+        assert await storage.get('some_split') is None
+
+    @pytest.mark.asyncio
+    async def test_get_splits(self, mocker):
+        """Test retrieving a list of passed splits."""
+        split1 = mocker.Mock()
+        name1_prop = mocker.PropertyMock()
+        name1_prop.return_value = 'split1'
+        type(split1).name = name1_prop
+        split2 = mocker.Mock()
+        name2_prop = mocker.PropertyMock()
+        name2_prop.return_value = 'split2'
+        type(split2).name = name2_prop
+
+        storage = InMemorySplitStorageAsync()
+        await storage.put(split1)
+        await storage.put(split2)
+
+        splits = await storage.fetch_many(['split1', 'split2', 'split3'])
+        assert len(splits) == 3
+        assert splits['split1'].name == 'split1'
+        assert splits['split2'].name == 'split2'
+        assert 'split3' in splits
+
+    @pytest.mark.asyncio
+    async def test_store_get_changenumber(self):
+        """Test that storing and retrieving change numbers works."""
+        storage = InMemorySplitStorageAsync()
+        assert await storage.get_change_number() == -1
+        await storage.set_change_number(5)
+        assert await storage.get_change_number() == 5
+
+    @pytest.mark.asyncio
+    async def test_get_split_names(self, mocker):
+        """Test retrieving a list of all split names."""
+        split1 = mocker.Mock()
+        name1_prop = mocker.PropertyMock()
+        name1_prop.return_value = 'split1'
+        type(split1).name = name1_prop
+        split2 = mocker.Mock()
+        name2_prop = mocker.PropertyMock()
+        name2_prop.return_value = 'split2'
+        type(split2).name = name2_prop
+
+        storage = InMemorySplitStorageAsync()
+        await storage.put(split1)
+        await storage.put(split2)
+
+        assert set(await storage.get_split_names()) == set(['split1', 'split2'])
+
+    @pytest.mark.asyncio
+    async def test_get_all_splits(self, mocker):
+        """Test retrieving a list of all split names."""
+        split1 = mocker.Mock()
+        name1_prop = mocker.PropertyMock()
+        name1_prop.return_value = 'split1'
+        type(split1).name = name1_prop
+        split2 = mocker.Mock()
+        name2_prop = mocker.PropertyMock()
+        name2_prop.return_value = 'split2'
+        type(split2).name = name2_prop
+
+        storage = InMemorySplitStorageAsync()
+        await storage.put(split1)
+        await storage.put(split2)
+
+        all_splits = await storage.get_all_splits()
+        assert next(s for s in all_splits if s.name == 'split1')
+        assert next(s for s in all_splits if s.name == 'split2')
+
+    @pytest.mark.asyncio
+    async def test_is_valid_traffic_type(self, mocker):
+        """Test that traffic type validation works properly."""
+        split1 = mocker.Mock()
+        name1_prop = mocker.PropertyMock()
+        name1_prop.return_value = 'split1'
+        type(split1).name = name1_prop
+        split2 = mocker.Mock()
+        name2_prop = mocker.PropertyMock()
+        name2_prop.return_value = 'split2'
+        type(split2).name = name2_prop
+        split3 = mocker.Mock()
+        tt_user = mocker.PropertyMock()
+        tt_user.return_value = 'user'
+        tt_account = mocker.PropertyMock()
+        tt_account.return_value = 'account'
+        name3_prop = mocker.PropertyMock()
+        name3_prop.return_value = 'split3'
+        type(split3).name = name3_prop
+        type(split1).traffic_type_name = tt_user
+        type(split2).traffic_type_name = tt_account
+        type(split3).traffic_type_name = tt_user
+
+        storage = InMemorySplitStorageAsync()
+
+        await storage.put(split1)
+        assert await storage.is_valid_traffic_type('user') is True
+        assert await storage.is_valid_traffic_type('account') is False
+
+        await storage.put(split2)
+        assert await storage.is_valid_traffic_type('user') is True
+        assert await storage.is_valid_traffic_type('account') is True
+
+        await storage.put(split3)
+        assert await storage.is_valid_traffic_type('user') is True
+        assert await storage.is_valid_traffic_type('account') is True
+
+        await storage.remove('split1')
+        assert await storage.is_valid_traffic_type('user') is True
+        assert await storage.is_valid_traffic_type('account') is True
+
+        await storage.remove('split2')
+        assert await storage.is_valid_traffic_type('user') is True
+        assert await storage.is_valid_traffic_type('account') is False
+
+        await storage.remove('split3')
+        assert await storage.is_valid_traffic_type('user') is False
+        assert await storage.is_valid_traffic_type('account') is False
+
+    @pytest.mark.asyncio
+    async def test_traffic_type_inc_dec_logic(self, mocker):
+        """Test that adding/removing split, handles traffic types correctly."""
+        storage = InMemorySplitStorageAsync()
+
+        split1 = mocker.Mock()
+        name1_prop = mocker.PropertyMock()
+        name1_prop.return_value = 'split1'
+        type(split1).name = name1_prop
+
+        split2 = mocker.Mock()
+        name2_prop = mocker.PropertyMock()
+        name2_prop.return_value = 'split1'
+        type(split2).name = name2_prop
+
+        tt_user = mocker.PropertyMock()
+        tt_user.return_value = 'user'
+
+        tt_account = mocker.PropertyMock()
+        tt_account.return_value = 'account'
+
+        type(split1).traffic_type_name = tt_user
+        type(split2).traffic_type_name = tt_account
+
+        await storage.put(split1)
+        assert await storage.is_valid_traffic_type('user') is True
+        assert await storage.is_valid_traffic_type('account') is False
+
+        await storage.put(split2)
+        assert await storage.is_valid_traffic_type('user') is False
+        assert await storage.is_valid_traffic_type('account') is True
+
+    @pytest.mark.asyncio
+    async def test_kill_locally(self):
+        """Test kill local."""
+        storage = InMemorySplitStorageAsync()
+
+        split = Split('some_split', 123456789, False, 'some', 'traffic_type',
+                      'ACTIVE', 1)
+        await storage.put(split)
+        await storage.set_change_number(1)
+
+        await storage.kill_locally('test', 'default_treatment', 2)
+        assert await storage.get('test') is None
+
+        await storage.kill_locally('some_split', 'default_treatment', 0)
+        split = await storage.get('some_split')
+        assert split.change_number == 1
+        assert split.killed is False
+        assert split.default_treatment == 'some'
+
+        await storage.kill_locally('some_split', 'default_treatment', 3)
+        split = await storage.get('some_split')
+        assert split.change_number == 3
 
 
 class InMemorySegmentStorageTests(object):
