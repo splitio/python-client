@@ -1,31 +1,14 @@
 _UNIQUE_KEYS_MAX_BULK_SIZE = 5000
 
-class UniqueKeysSynchronizer(object):
-    """Unique Keys Synchronizer class."""
-
-    def __init__(self, impressions_sender_adapter, uniqe_keys_tracker):
-        """
-        Initialize Unique keys synchronizer instance
-
-        :param uniqe_keys_tracker: instance of uniqe keys tracker
-        :type uniqe_keys_tracker: splitio.engine.uniqur_key_tracker.UniqueKeysTracker
-        """
-        self._uniqe_keys_tracker = uniqe_keys_tracker
-        self._max_bulk_size = _UNIQUE_KEYS_MAX_BULK_SIZE
-        self._impressions_sender_adapter = impressions_sender_adapter
+class UniqueKeysSynchronizerBase(object):
+    """Unique Keys Synchronizer base class."""
 
     def send_all(self):
         """
         Flush the unique keys dictionary to split back end.
         Limit each post to the max_bulk_size value.
-
         """
-        cache, cache_size = self._uniqe_keys_tracker.get_cache_info_and_pop_all()
-        if cache_size <= self._max_bulk_size:
-            self._impressions_sender_adapter.record_unique_keys(cache)
-        else:
-            for bulk in self._split_cache_to_bulks(cache):
-                self._impressions_sender_adapter.record_unique_keys(bulk)
+        pass
 
     def _split_cache_to_bulks(self, cache):
         """
@@ -63,6 +46,63 @@ class UniqueKeysSynchronizer(object):
         for i in range(0, len(keys_list), self._max_bulk_size):
             yield keys_list[i:i + self._max_bulk_size]
 
+
+class UniqueKeysSynchronizer(UniqueKeysSynchronizerBase):
+    """Unique Keys Synchronizer class."""
+
+    def __init__(self, impressions_sender_adapter, uniqe_keys_tracker):
+        """
+        Initialize Unique keys synchronizer instance
+
+        :param uniqe_keys_tracker: instance of uniqe keys tracker
+        :type uniqe_keys_tracker: splitio.engine.uniqur_key_tracker.UniqueKeysTracker
+        """
+        self._uniqe_keys_tracker = uniqe_keys_tracker
+        self._max_bulk_size = _UNIQUE_KEYS_MAX_BULK_SIZE
+        self._impressions_sender_adapter = impressions_sender_adapter
+
+    def send_all(self):
+        """
+        Flush the unique keys dictionary to split back end.
+        Limit each post to the max_bulk_size value.
+
+        """
+        cache, cache_size = self._uniqe_keys_tracker.get_cache_info_and_pop_all()
+        if cache_size <= self._max_bulk_size:
+            self._impressions_sender_adapter.record_unique_keys(cache)
+        else:
+            for bulk in self._split_cache_to_bulks(cache):
+                self._impressions_sender_adapter.record_unique_keys(bulk)
+
+
+class UniqueKeysSynchronizerAsync(UniqueKeysSynchronizerBase):
+    """Unique Keys Synchronizer async class."""
+
+    def __init__(self, impressions_sender_adapter, uniqe_keys_tracker):
+        """
+        Initialize Unique keys synchronizer instance
+
+        :param uniqe_keys_tracker: instance of uniqe keys tracker
+        :type uniqe_keys_tracker: splitio.engine.uniqur_key_tracker.UniqueKeysTracker
+        """
+        self._uniqe_keys_tracker = uniqe_keys_tracker
+        self._max_bulk_size = _UNIQUE_KEYS_MAX_BULK_SIZE
+        self._impressions_sender_adapter = impressions_sender_adapter
+
+    async def send_all(self):
+        """
+        Flush the unique keys dictionary to split back end.
+        Limit each post to the max_bulk_size value.
+
+        """
+        cache, cache_size = await self._uniqe_keys_tracker.get_cache_info_and_pop_all()
+        if cache_size <= self._max_bulk_size:
+            await self._impressions_sender_adapter.record_unique_keys(cache)
+        else:
+            for bulk in self._split_cache_to_bulks(cache):
+                await self._impressions_sender_adapter.record_unique_keys(bulk)
+
+
 class ClearFilterSynchronizer(object):
     """Clear filter class."""
 
@@ -81,3 +121,22 @@ class ClearFilterSynchronizer(object):
 
         """
         self._unique_keys_tracker.clear_filter()
+
+class ClearFilterSynchronizerAsync(object):
+    """Clear filter async class."""
+
+    def __init__(self, unique_keys_tracker):
+        """
+        Initialize Unique keys synchronizer instance
+
+        :param uniqe_keys_tracker: instance of uniqe keys tracker
+        :type uniqe_keys_tracker: splitio.engine.uniqur_key_tracker.UniqueKeysTracker
+        """
+        self._unique_keys_tracker = unique_keys_tracker
+
+    async def clear_all(self):
+        """
+        Clear the bloom filter cache
+
+        """
+        await self._unique_keys_tracker.clear_filter()
