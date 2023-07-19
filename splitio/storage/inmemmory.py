@@ -576,6 +576,134 @@ class InMemorySegmentStorage(SegmentStorage):
             return total_count
 
 
+class InMemorySegmentStorageAsync(SegmentStorage):
+    """In-memory implementation of a segment async storage."""
+
+    def __init__(self):
+        """Constructor."""
+        self._segments = {}
+        self._change_numbers = {}
+        self._lock = asyncio.Lock()
+
+    async def get(self, segment_name):
+        """
+        Retrieve a segment.
+
+        :param segment_name: Name of the segment to fetch.
+        :type segment_name: str
+
+        :rtype: str
+        """
+        async with self._lock:
+            fetched = self._segments.get(segment_name)
+            if fetched is None:
+                _LOGGER.debug(
+                    "Tried to retrieve nonexistant segment %s. Skipping",
+                    segment_name
+                )
+            return fetched
+
+    async def put(self, segment):
+        """
+        Store a segment.
+
+        :param segment: Segment to store.
+        :type segment: splitio.models.segment.Segment
+        """
+        async with self._lock:
+            self._segments[segment.name] = segment
+
+    async def update(self, segment_name, to_add, to_remove, change_number=None):
+        """
+        Update a split. Create it if it doesn't exist.
+
+        :param segment_name: Name of the segment to update.
+        :type segment_name: str
+        :param to_add: Set of members to add to the segment.
+        :type to_add: set
+        :param to_remove: List of members to remove from the segment.
+        :type to_remove: Set
+        """
+        async with self._lock:
+            if segment_name not in self._segments:
+                self._segments[segment_name] = Segment(segment_name, to_add, change_number)
+                return
+
+            self._segments[segment_name].update(to_add, to_remove)
+            if change_number is not None:
+                self._segments[segment_name].change_number = change_number
+
+    async def get_change_number(self, segment_name):
+        """
+        Retrieve latest change number for a segment.
+
+        :param segment_name: Name of the segment.
+        :type segment_name: str
+
+        :rtype: int
+        """
+        async with self._lock:
+            if segment_name not in self._segments:
+                return None
+            return self._segments[segment_name].change_number
+
+    async def set_change_number(self, segment_name, new_change_number):
+        """
+        Set the latest change number.
+
+        :param segment_name: Name of the segment.
+        :type segment_name: str
+        :param new_change_number: New change number.
+        :type new_change_number: int
+        """
+        async with self._lock:
+            if segment_name not in self._segments:
+                return
+            self._segments[segment_name].change_number = new_change_number
+
+    async def segment_contains(self, segment_name, key):
+        """
+        Check whether a specific key belongs to a segment in storage.
+
+        :param segment_name: Name of the segment to search in.
+        :type segment_name: str
+        :param key: Key to search for.
+        :type key: str
+
+        :return: True if the segment contains the key. False otherwise.
+        :rtype: bool
+        """
+        async with self._lock:
+            if segment_name not in self._segments:
+                _LOGGER.warning(
+                    "Tried to query members for nonexistant segment %s. Returning False",
+                    segment_name
+                )
+                return False
+            return self._segments[segment_name].contains(key)
+
+    async def get_segments_count(self):
+        """
+        Retrieve segments count.
+
+        :rtype: int
+        """
+        async with self._lock:
+            return len(self._segments)
+
+    async def get_segments_keys_count(self):
+        """
+        Retrieve segments keys count.
+
+        :rtype: int
+        """
+        total_count = 0
+        async with self._lock:
+            for segment in self._segments:
+                total_count += len(self._segments[segment]._keys)
+            return total_count
+
+
 class InMemoryImpressionStorage(ImpressionStorage):
     """In memory implementation of an impressions storage."""
 

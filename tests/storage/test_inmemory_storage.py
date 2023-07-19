@@ -11,8 +11,7 @@ import splitio.models.telemetry as ModelTelemetry
 from splitio.engine.telemetry import TelemetryStorageProducer
 
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
-    InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, InMemorySplitStorageAsync
-
+    InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, InMemorySegmentStorageAsync, InMemorySplitStorageAsync
 
 class InMemorySplitStorageTests(object):
     """In memory split storage test cases."""
@@ -453,6 +452,71 @@ class InMemorySegmentStorageTests(object):
         assert not storage.segment_contains('some_segment', 'key2')
         assert not storage.segment_contains('some_segment', 'key3')
         assert storage.get_change_number('some_segment') == 456
+
+
+class InMemorySegmentStorageAsyncTests(object):
+    """In memory segment storage tests."""
+
+    @pytest.mark.asyncio
+    async def test_segment_storage_retrieval(self, mocker):
+        """Test storing and retrieving segments."""
+        storage = InMemorySegmentStorageAsync()
+        segment = mocker.Mock(spec=Segment)
+        name_property = mocker.PropertyMock()
+        name_property.return_value = 'some_segment'
+        type(segment).name = name_property
+
+        await storage.put(segment)
+        assert await storage.get('some_segment') == segment
+        assert await storage.get('nonexistant-segment') is None
+
+    @pytest.mark.asyncio
+    async def test_change_number(self, mocker):
+        """Test storing and retrieving segment changeNumber."""
+        storage = InMemorySegmentStorageAsync()
+        await storage.set_change_number('some_segment', 123)
+        # Change number is not updated if segment doesn't exist
+        assert await storage.get_change_number('some_segment') is None
+        assert await storage.get_change_number('nonexistant-segment') is None
+
+        # Change number is updated if segment does exist.
+        storage = InMemorySegmentStorageAsync()
+        segment = mocker.Mock(spec=Segment)
+        name_property = mocker.PropertyMock()
+        name_property.return_value = 'some_segment'
+        type(segment).name = name_property
+        await storage.put(segment)
+        await storage.set_change_number('some_segment', 123)
+        assert await storage.get_change_number('some_segment') == 123
+
+    @pytest.mark.asyncio
+    async def test_segment_contains(self, mocker):
+        """Test using storage to determine whether a key belongs to a segment."""
+        storage = InMemorySegmentStorageAsync()
+        segment = mocker.Mock(spec=Segment)
+        name_property = mocker.PropertyMock()
+        name_property.return_value = 'some_segment'
+        type(segment).name = name_property
+        await storage.put(segment)
+
+        await storage.segment_contains('some_segment', 'abc')
+        assert segment.contains.mock_calls[0] == mocker.call('abc')
+
+    @pytest.mark.asyncio
+    async def test_segment_update(self):
+        """Test updating a segment."""
+        storage = InMemorySegmentStorageAsync()
+        segment = Segment('some_segment', ['key1', 'key2', 'key3'], 123)
+        await storage.put(segment)
+        assert await storage.get('some_segment') == segment
+
+        await storage.update('some_segment', ['key4', 'key5'], ['key2', 'key3'], 456)
+        assert await storage.segment_contains('some_segment', 'key1')
+        assert await storage.segment_contains('some_segment', 'key4')
+        assert await storage.segment_contains('some_segment', 'key5')
+        assert not await storage.segment_contains('some_segment', 'key2')
+        assert not await storage.segment_contains('some_segment', 'key3')
+        assert await storage.get_change_number('some_segment') == 456
 
 
 class InMemoryImpressionsStorageTests(object):
