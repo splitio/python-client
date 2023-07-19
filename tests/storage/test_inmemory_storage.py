@@ -11,8 +11,7 @@ import splitio.models.telemetry as ModelTelemetry
 from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, InMemorySegmentStorageAsync, InMemorySplitStorageAsync, \
-    InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, InMemoryImpressionStorageAsync, InMemoryTelemetryStorageAsync
-
+    InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, InMemoryImpressionStorageAsync, InMemoryEventStorageAsync, InMemoryTelemetryStorageAsync
 
 class InMemorySplitStorageTests(object):
     """In memory split storage test cases."""
@@ -780,6 +779,125 @@ class InMemoryEventsStorageTests(object):
             size=1024,
         )])
         storage.put([EventWrapper(
+            event=Event('key1', 'user', 'purchase', 3.5, 123456, None),
+            size=1024,
+        )])
+        assert(telemetry_storage._counters._events_dropped == 1)
+        assert(telemetry_storage._counters._events_queued == 2)
+
+
+class InMemoryEventsStorageAsyncTests(object):
+    """InMemory events async storage test cases."""
+
+    @pytest.mark.asyncio
+    async def test_push_pop_events(self, mocker):
+        """Test pushing and retrieving events."""
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        storage = InMemoryEventStorageAsync(100, telemetry_runtime_producer)
+        await storage.put([EventWrapper(
+            event=Event('key1', 'user', 'purchase', 3.5, 123456, None),
+            size=1024,
+        )])
+        await storage.put([EventWrapper(
+            event=Event('key2', 'user', 'purchase', 3.5, 123456, None),
+            size=1024,
+        )])
+        await storage.put([EventWrapper(
+            event=Event('key3', 'user', 'purchase', 3.5, 123456, None),
+            size=1024,
+        )])
+
+        # Assert impressions are retrieved in the same order they are inserted.
+        assert await storage.pop_many(1) == [Event('key1', 'user', 'purchase', 3.5, 123456, None)]
+        assert await storage.pop_many(1) == [Event('key2', 'user', 'purchase', 3.5, 123456, None)]
+        assert await storage.pop_many(1) == [Event('key3', 'user', 'purchase', 3.5, 123456, None)]
+
+        # Assert inserting multiple impressions at once works and maintains order.
+        events = [
+            EventWrapper(
+                event=Event('key1', 'user', 'purchase', 3.5, 123456, None),
+                size=1024,
+            ),
+            EventWrapper(
+                event=Event('key2', 'user', 'purchase', 3.5, 123456, None),
+                size=1024,
+            ),
+            EventWrapper(
+                event=Event('key3', 'user', 'purchase', 3.5, 123456, None),
+                size=1024,
+            ),
+        ]
+        assert await storage.put(events)
+
+        # Assert events are retrieved in the same order they are inserted.
+        assert await storage.pop_many(1) == [Event('key1', 'user', 'purchase', 3.5, 123456, None)]
+        assert await storage.pop_many(1) == [Event('key2', 'user', 'purchase', 3.5, 123456, None)]
+        assert await storage.pop_many(1) == [Event('key3', 'user', 'purchase', 3.5, 123456, None)]
+
+    @pytest.mark.asyncio
+    async def test_queue_full_hook(self, mocker):
+        """Test queue_full_hook is executed when the queue is full."""
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        storage = InMemoryEventStorageAsync(100, telemetry_runtime_producer)
+        self.called = False
+        async def queue_full_hook():
+            self.called = True
+
+        storage.set_queue_full_hook(queue_full_hook)
+        events = [EventWrapper(event=Event('key%d' % i, 'user', 'purchase', 12.5, 321654, None), size=1024) for i in range(0, 101)]
+        await storage.put(events)
+        assert self.called == True
+
+    @pytest.mark.asyncio
+    async def test_queue_full_hook_properties(self, mocker):
+        """Test queue_full_hook is executed when the queue is full regarding properties."""
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        storage = InMemoryEventStorageAsync(200, telemetry_runtime_producer)
+        self.called = False
+        async def queue_full_hook():
+            self.called = True
+        storage.set_queue_full_hook(queue_full_hook)
+        events = [EventWrapper(event=Event('key%d' % i, 'user', 'purchase', 12.5, 1, None),  size=32768) for i in range(160)]
+        await storage.put(events)
+        assert self.called == True
+
+    @pytest.mark.asyncio
+    async def test_clear(self, mocker):
+        """Test clear method."""
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        storage = InMemoryEventStorageAsync(100, telemetry_runtime_producer)
+        await storage.put([EventWrapper(
+            event=Event('key1', 'user', 'purchase', 3.5, 123456, None),
+            size=1024,
+        )])
+
+        assert storage._events.qsize() == 1
+        await storage.clear()
+        assert storage._events.qsize() == 0
+
+    @pytest.mark.asyncio
+    async def test_event_telemetry(self, mocker):
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        storage = InMemoryEventStorageAsync(2, telemetry_runtime_producer)
+        await storage.put([EventWrapper(
+            event=Event('key1', 'user', 'purchase', 3.5, 123456, None),
+            size=1024,
+        )])
+        await storage.put([EventWrapper(
+            event=Event('key1', 'user', 'purchase', 3.5, 123456, None),
+            size=1024,
+        )])
+        await storage.put([EventWrapper(
             event=Event('key1', 'user', 'purchase', 3.5, 123456, None),
             size=1024,
         )])
