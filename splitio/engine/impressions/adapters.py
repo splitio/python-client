@@ -90,11 +90,11 @@ class InMemorySenderAdapterAsync(InMemorySenderAdapterBase):
 
 
 class RedisSenderAdapter(ImpressionsSenderAdapter):
-    """In Memory Impressions Sender Adapter class."""
+    """Redis Impressions Sender Adapter class."""
 
     def __init__(self, redis_client):
         """
-        Initialize In memory sender adapter instance
+        Initialize Redis sender adapter instance
 
         :param telemtry_http_client: instance of telemetry http api
         :type telemtry_http_client: splitio.api.telemetry.TelemetryAPI
@@ -155,11 +155,11 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
 
 
 class RedisSenderAdapterAsync(ImpressionsSenderAdapter):
-    """In Memory Impressions Sender Adapter async class."""
+    """In Redis Impressions Sender Adapter async class."""
 
     def __init__(self, redis_client):
         """
-        Initialize In memory sender adapter instance
+        Initialize Redis sender adapter instance
 
         :param telemtry_http_client: instance of telemetry http api
         :type telemtry_http_client: splitio.api.telemetry.TelemetryAPI
@@ -220,7 +220,7 @@ class RedisSenderAdapterAsync(ImpressionsSenderAdapter):
 
 
 class PluggableSenderAdapter(ImpressionsSenderAdapter):
-    """In Memory Impressions Sender Adapter class."""
+    """Pluggable Impressions Sender Adapter class."""
 
     def __init__(self, adapter_client, prefix=None):
         """
