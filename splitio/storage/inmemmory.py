@@ -442,7 +442,6 @@ class InMemoryImpressionStorageAsync(InMemoryImpressionStorageBase):
                         raise asyncio.QueueFull
                     await self._impressions.put(impression)
                     impressions_stored += 1
-                    _LOGGER.error(impressions_stored)
             await self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_QUEUED, len(impressions))
             return True
         except asyncio.QueueFull:
