@@ -14,6 +14,7 @@ from splitio.models import splits
 from splitio.util.backoff import Backoff
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.sync import util
+from splitio.optional.loaders import asyncio
 
 _LEGACY_COMMENT_LINE_RE = re.compile(r'^#.*$')
 _LEGACY_DEFINITION_LINE_RE = re.compile(r'^(?<![^#])(?P<feature>[\w_-]+)\s+(?P<treatment>[\w_-]+)$')
@@ -153,6 +154,135 @@ class SplitSynchronizer(object):
         :type change_number: int
         """
         self._split_storage.kill_locally(split_name, default_treatment, change_number)
+
+
+class SplitSynchronizerAsync(object):
+    """Feature Flag changes synchronizer async."""
+
+    def __init__(self, split_api, split_storage):
+        """
+        Class constructor.
+
+        :param split_api: Feature Flag API Client.
+        :type split_api: splitio.api.splits.SplitsAPI
+
+        :param split_storage: Feature Flag Storage.
+        :type split_storage: splitio.storage.InMemorySplitStorage
+        """
+        self._api = split_api
+        self._split_storage = split_storage
+        self._backoff = Backoff(
+                                _ON_DEMAND_FETCH_BACKOFF_BASE,
+                                _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
+
+    async def _fetch_until(self, fetch_options, till=None):
+        """
+        Hit endpoint, update storage and return when since==till.
+
+        :param fetch_options Fetch options for getting feature flag definitions.
+        :type fetch_options splitio.api.FetchOptions
+
+        :param till: Passed till from Streaming.
+        :type till: int
+
+        :return: last change number
+        :rtype: int
+        """
+        segment_list = set()
+        while True:  # Fetch until since==till
+            change_number = await self._split_storage.get_change_number()
+            if change_number is None:
+                change_number = -1
+            if till is not None and till < change_number:
+                # the passed till is less than change_number, no need to perform updates
+                return change_number, segment_list
+
+            try:
+                split_changes = await self._api.fetch_splits(change_number, fetch_options)
+            except APIException as exc:
+                _LOGGER.error('Exception raised while fetching feature flags')
+                _LOGGER.debug('Exception information: ', exc_info=True)
+                raise exc
+
+            for split in split_changes.get('splits', []):
+                if split['status'] == splits.Status.ACTIVE.value:
+                    parsed = splits.from_raw(split)
+                    await self._split_storage.put(parsed)
+                    segment_list.update(set(parsed.get_segment_names()))
+                else:
+                    await self._split_storage.remove(split['name'])
+            await self._split_storage.set_change_number(split_changes['till'])
+            if split_changes['till'] == split_changes['since']:
+                return split_changes['till'], segment_list
+
+    async def _attempt_split_sync(self, fetch_options, till=None):
+        """
+        Hit endpoint, update storage and return True if sync is complete.
+
+        :param fetch_options Fetch options for getting feature flag definitions.
+        :type fetch_options splitio.api.FetchOptions
+
+        :param till: Passed till from Streaming.
+        :type till: int
+
+        :return: Flags to check if it should perform bypass or operation ended
+        :rtype: bool, int, int
+        """
+        self._backoff.reset()
+        final_segment_list = set()
+        remaining_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES
+        while True:
+            remaining_attempts -= 1
+            change_number, segment_list = await self._fetch_until(fetch_options, till)
+            final_segment_list.update(segment_list)
+            if till is None or till <= change_number:
+                return True, remaining_attempts, change_number, final_segment_list
+            elif remaining_attempts <= 0:
+                return False, remaining_attempts, change_number, final_segment_list
+            how_long = self._backoff.get()
+            await asyncio.sleep(how_long)
+
+    async def synchronize_splits(self, till=None):
+        """
+        Hit endpoint, update storage and return True if sync is complete.
+
+        :param till: Passed till from Streaming.
+        :type till: int
+        """
+        final_segment_list = set()
+        fetch_options = FetchOptions(True)  # Set Cache-Control to no-cache
+        successful_sync, remaining_attempts, change_number, segment_list = await self._attempt_split_sync(fetch_options,
+                                                                                      till)
+        final_segment_list.update(segment_list)
+        attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
+        if successful_sync:  # succedeed sync
+            _LOGGER.debug('Refresh completed in %d attempts.', attempts)
+            return final_segment_list
+        with_cdn_bypass = FetchOptions(True, change_number)  # Set flag for bypassing CDN
+        without_cdn_successful_sync, remaining_attempts, change_number, segment_list = await self._attempt_split_sync(with_cdn_bypass, till)
+        final_segment_list.update(segment_list)
+        without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
+        if without_cdn_successful_sync:
+            _LOGGER.debug('Refresh completed bypassing the CDN in %d attempts.',
+                          without_cdn_attempts)
+            return final_segment_list
+        else:
+            _LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
+                          without_cdn_attempts)
+
+    async def kill_split(self, split_name, default_treatment, change_number):
+        """
+        Local kill for feature flag.
+
+        :param split_name: name of the feature flag to perform kill
+        :type split_name: str
+        :param default_treatment: name of the default treatment to return
+        :type default_treatment: str
+        :param change_number: change_number
+        :type change_number: int
+        """
+        await self._split_storage.kill_locally(split_name, default_treatment, change_number)
+
 
 class LocalhostMode(Enum):
     """types for localhost modes"""
