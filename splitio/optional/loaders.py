@@ -2,6 +2,7 @@ import sys
 try:
     import asyncio
     import aiohttp
+    import aiofiles
 except ImportError:
     def missing_asyncio_dependencies(*_, **__):
         """Fail if missing dependencies are used."""
