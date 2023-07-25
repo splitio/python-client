@@ -2,28 +2,14 @@
 import logging
 
 from splitio.tasks import BaseSynchronizationTask
-from splitio.tasks.util.asynctask import AsyncTask
+from splitio.tasks.util.asynctask import AsyncTask, AsyncTaskAsync
 
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class ImpressionsSyncTask(BaseSynchronizationTask):
+class ImpressionsSyncTaskBose(BaseSynchronizationTask):
     """Impressions synchronization task uses an asynctask.AsyncTask to send impressions."""
-
-    def __init__(self, synchronize_impressions, period):
-        """
-        Class constructor.
-
-        :param synchronize_impressions: sender
-        :type synchronize_impressions: func
-        :param period: How many seconds to wait between subsequent impressions pushes to the BE.
-        :type period: int
-
-        """
-        self._period = period
-        self._task = AsyncTask(synchronize_impressions, self._period,
-                               on_stop=synchronize_impressions)
 
     def start(self):
         """Start executing the impressions synchronization task."""
@@ -31,7 +17,7 @@ class ImpressionsSyncTask(BaseSynchronizationTask):
 
     def stop(self, event=None):
         """Stop executing the impressions synchronization task."""
-        self._task.stop(event)
+        pass
 
     def is_running(self):
         """
@@ -48,20 +34,54 @@ class ImpressionsSyncTask(BaseSynchronizationTask):
         self._task.force_execution()
 
 
-class ImpressionsCountSyncTask(BaseSynchronizationTask):
+class ImpressionsSyncTask(ImpressionsSyncTaskBose):
     """Impressions synchronization task uses an asynctask.AsyncTask to send impressions."""
 
-    _PERIOD = 1800  # 30 * 60 # 30 minutes
-
-    def __init__(self, synchronize_counters):
+    def __init__(self, synchronize_impressions, period):
         """
         Class constructor.
 
-        :param synchronize_counters: Handler
-        :type synchronize_counters: func
+        :param synchronize_impressions: sender
+        :type synchronize_impressions: func
+        :param period: How many seconds to wait between subsequent impressions pushes to the BE.
+        :type period: int
 
         """
-        self._task = AsyncTask(synchronize_counters, self._PERIOD, on_stop=synchronize_counters)
+        self._period = period
+        self._task = AsyncTask(synchronize_impressions, self._period,
+                               on_stop=synchronize_impressions)
+
+    def stop(self, event=None):
+        """Stop executing the impressions synchronization task."""
+        self._task.stop(event)
+
+
+class ImpressionsSyncTaskAsync(ImpressionsSyncTaskBose):
+    """Impressions synchronization task uses an asynctask.AsyncTask to send impressions."""
+
+    def __init__(self, synchronize_impressions, period):
+        """
+        Class constructor.
+
+        :param synchronize_impressions: sender
+        :type synchronize_impressions: func
+        :param period: How many seconds to wait between subsequent impressions pushes to the BE.
+        :type period: int
+
+        """
+        self._period = period
+        self._task = AsyncTaskAsync(synchronize_impressions, self._period,
+                               on_stop=synchronize_impressions)
+
+    async def stop(self, event=None):
+        """Stop executing the impressions synchronization task."""
+        await self._task.stop()
+
+
+class ImpressionsCountSyncTaskBase(BaseSynchronizationTask):
+    """Impressions synchronization task uses an asynctask.AsyncTask to send impressions."""
+
+    _PERIOD = 1800  # 30 * 60 # 30 minutes
 
     def start(self):
         """Start executing the impressions synchronization task."""
@@ -69,7 +89,7 @@ class ImpressionsCountSyncTask(BaseSynchronizationTask):
 
     def stop(self, event=None):
         """Stop executing the impressions synchronization task."""
-        self._task.stop(event)
+        pass
 
     def is_running(self):
         """
@@ -83,3 +103,39 @@ class ImpressionsCountSyncTask(BaseSynchronizationTask):
     def flush(self):
         """Flush impressions in storage."""
         self._task.force_execution()
+
+
+class ImpressionsCountSyncTask(ImpressionsCountSyncTaskBase):
+    """Impressions synchronization task uses an asynctask.AsyncTask to send impressions."""
+
+    def __init__(self, synchronize_counters):
+        """
+        Class constructor.
+
+        :param synchronize_counters: Handler
+        :type synchronize_counters: func
+
+        """
+        self._task = AsyncTask(synchronize_counters, self._PERIOD, on_stop=synchronize_counters)
+
+    def stop(self, event=None):
+        """Stop executing the impressions synchronization task."""
+        self._task.stop(event)
+
+
+class ImpressionsCountSyncTaskAsync(ImpressionsCountSyncTaskBase):
+    """Impressions synchronization task uses an asynctask.AsyncTask to send impressions."""
+
+    def __init__(self, synchronize_counters):
+        """
+        Class constructor.
+
+        :param synchronize_counters: Handler
+        :type synchronize_counters: func
+
+        """
+        self._task = AsyncTaskAsync(synchronize_counters, self._PERIOD, on_stop=synchronize_counters)
+
+    async def stop(self, event=None):
+        """Stop executing the impressions synchronization task."""
+        await self._task.stop()
