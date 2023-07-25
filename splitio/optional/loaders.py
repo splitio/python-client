@@ -12,6 +12,7 @@ except ImportError:
         )
     aiohttp = missing_asyncio_dependencies
     asyncio = missing_asyncio_dependencies
+    aiofiles = missing_asyncio_dependencies
 
 async def _anext(it):
     return await it.__anext__()
