@@ -6,9 +6,10 @@ from splitio.util.backoff import Backoff
 from splitio.api import APIException
 from splitio.api.commons import FetchOptions
 from splitio.storage import SplitStorage, SegmentStorage
-from splitio.storage.inmemmory import InMemorySegmentStorage, InMemorySplitStorage
-from splitio.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer
+from splitio.storage.inmemmory import InMemorySegmentStorage, InMemorySegmentStorageAsync, InMemorySplitStorage, InMemorySplitStorageAsync
+from splitio.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer, LocalSegmentSynchronizerAsync
 from splitio.models.segments import Segment
+from splitio.optional.loaders import aiofiles
 
 import pytest
 
@@ -356,3 +357,124 @@ class LocalSegmentsSynchronizerTests(object):
         segment3["till"] = 12
         segment2 = {"name": 'seg', "added": [], "removed": [], "since": 20, "till": 12}
         assert(segment_synchronizer._sanitize_segment(segment2) == segment3)
+
+
+class LocalSegmentsSynchronizerTests(object):
+    """Segments synchronizer test cases."""
+
+    @pytest.mark.asyncio
+    async def test_synchronize_segments_error(self, mocker):
+        """On error."""
+        split_storage = mocker.Mock(spec=SplitStorage)
+        async def get_segment_names():
+            return ['segmentA', 'segmentB', 'segmentC']
+        split_storage.get_segment_names = get_segment_names
+
+        storage = mocker.Mock(spec=SegmentStorage)
+        async def get_change_number():
+            return -1
+        storage.get_change_number = get_change_number
+
+        segments_synchronizer = LocalSegmentSynchronizerAsync('/,/,/invalid folder name/,/,/', split_storage, storage)
+        assert not await segments_synchronizer.synchronize_segments()
+
+    @pytest.mark.asyncio
+    async def test_synchronize_segments(self, mocker):
+        """Test the normal operation flow."""
+        split_storage = mocker.Mock(spec=InMemorySplitStorage)
+        async def get_segment_names():
+            return ['segmentA', 'segmentB', 'segmentC']
+        split_storage.get_segment_names = get_segment_names
+
+        storage = InMemorySegmentStorageAsync()
+
+        segment_a = {'name': 'segmentA', 'added': ['key1', 'key2', 'key3'], 'removed': [],
+                        'since': -1, 'till': 123}
+        segment_b = {'name': 'segmentB', 'added': ['key4', 'key5', 'key6'], 'removed': [],
+                        'since': -1, 'till': 123}
+        segment_c = {'name': 'segmentC', 'added': ['key7', 'key8', 'key9'], 'removed': [],
+                        'since': -1, 'till': 123}
+        blank = {'added': [], 'removed': [], 'since': 123, 'till': 123}
+
+        async def read_segment_from_json_file(*args, **kwargs):
+            if args[0] == 'segmentA':
+                return segment_a
+            if args[0] == 'segmentB':
+                return segment_b
+            if args[0] == 'segmentC':
+                return segment_c
+            return blank
+
+        segments_synchronizer = LocalSegmentSynchronizerAsync('segment_path', split_storage, storage)
+        segments_synchronizer._read_segment_from_json_file = read_segment_from_json_file
+        assert await segments_synchronizer.synchronize_segments()
+
+        segment = await storage.get('segmentA')
+        assert segment.name == 'segmentA'
+        assert segment.contains('key1')
+        assert segment.contains('key2')
+        assert segment.contains('key3')
+
+        segment = await storage.get('segmentB')
+        assert segment.name == 'segmentB'
+        assert segment.contains('key4')
+        assert segment.contains('key5')
+        assert segment.contains('key6')
+
+        segment = await storage.get('segmentC')
+        assert segment.name == 'segmentC'
+        assert segment.contains('key7')
+        assert segment.contains('key8')
+        assert segment.contains('key9')
+
+        # Should sync when changenumber is not changed
+        segment_a['added'] = ['key111']
+        await segments_synchronizer.synchronize_segments(['segmentA'])
+        segment = await storage.get('segmentA')
+        assert segment.contains('key111')
+
+        # Should not sync when changenumber below till
+        segment_a['till'] = 122
+        segment_a['added'] = ['key222']
+        await segments_synchronizer.synchronize_segments(['segmentA'])
+        segment = await storage.get('segmentA')
+        assert not segment.contains('key222')
+
+        # Should sync when changenumber above till
+        segment_a['till'] = 124
+        await segments_synchronizer.synchronize_segments(['segmentA'])
+        segment = await storage.get('segmentA')
+        assert segment.contains('key222')
+
+        # Should sync when till is default (-1)
+        segment_a['till'] = -1
+        segment_a['added'] = ['key33']
+        await segments_synchronizer.synchronize_segments(['segmentA'])
+        segment = await storage.get('segmentA')
+        assert segment.contains('key33')
+
+        # verify remove keys
+        segment_a['added'] = []
+        segment_a['removed'] = ['key111']
+        segment_a['till'] = 125
+        await segments_synchronizer.synchronize_segments(['segmentA'])
+        segment = await storage.get('segmentA')
+        assert not segment.contains('key111')
+
+    @pytest.mark.asyncio
+    async def test_reading_json(self, mocker):
+        """Test reading json file."""
+        async with aiofiles.open("./segmentA.json", "w") as f:
+            await f.write('{"name": "segmentA", "added": ["key1", "key2", "key3"], "removed": [],"since": -1, "till": 123}')
+        split_storage = mocker.Mock(spec=InMemorySplitStorageAsync)
+        storage = InMemorySegmentStorageAsync()
+        segments_synchronizer = LocalSegmentSynchronizerAsync('.', split_storage, storage)
+        assert await segments_synchronizer.synchronize_segments(['segmentA'])
+
+        segment = await storage.get('segmentA')
+        assert segment.name == 'segmentA'
+        assert segment.contains('key1')
+        assert segment.contains('key2')
+        assert segment.contains('key3')
+
+        os.remove("./segmentA.json")
