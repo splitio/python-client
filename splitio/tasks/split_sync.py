@@ -50,7 +50,7 @@ class SplitSynchronizationTask(SplitSynchronizationTaskBose):
 
 
 class SplitSynchronizationTaskAsync(SplitSynchronizationTaskBose):
-    """Split Synchronization task class."""
+    """Split Synchronization async task class."""
 
     def __init__(self, synchronize_splits, period):
         """
