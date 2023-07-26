@@ -10,7 +10,7 @@ from splitio.models import segments
 from splitio.util.backoff import Backoff
 from splitio.sync import util
 from splitio.optional.loaders import asyncio
-import pytest
+
 _LOGGER = logging.getLogger(__name__)
 
 
