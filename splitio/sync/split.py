@@ -653,7 +653,7 @@ class LocalSplitSynchronizer(LocalSplitSynchronizerBase):
 
 
 class LocalSplitSynchronizerAsync(LocalSplitSynchronizerBase):
-    """Localhost mode feature_flag synchronizer."""
+    """Localhost mode async feature_flag synchronizer."""
 
     def __init__(self, filename, feature_flag_storage, localhost_mode=LocalhostMode.LEGACY):
         """
