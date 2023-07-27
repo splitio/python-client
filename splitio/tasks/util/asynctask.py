@@ -2,7 +2,6 @@
 import threading
 import logging
 import queue
-import pytest
 from splitio.optional.loaders import asyncio
 
 __TASK_STOP__ = 0
@@ -246,8 +245,7 @@ class AsyncTaskAsync(object):  # pylint: disable=too-many-instance-attributes
             msg = None
             while self._running:
                 try:
-                    if self._messages.qsize() > 0:
-                        msg = await self._messages.get()
+                    msg = self._messages.get_nowait()
                     if msg == __TASK_STOP__:
                         _LOGGER.debug("Stop signal received. finishing task execution")
                         break

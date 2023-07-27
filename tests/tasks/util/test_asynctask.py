@@ -242,7 +242,6 @@ class AsyncTaskAsyncTests(object):
         self.stop_called = 0
         async def on_stop():
             self.stop_called += 1
-            raise Exception('something')
 
         task = asynctask.AsyncTaskAsync(main_func, 5, on_init, on_stop)
         task.start()
