@@ -8,7 +8,7 @@ from splitio.tasks.util.asynctask import AsyncTask, AsyncTaskAsync
 _LOGGER = logging.getLogger(__name__)
 
 
-class SplitSynchronizationTaskBose(BaseSynchronizationTask):
+class SplitSynchronizationTaskBase(BaseSynchronizationTask):
     """Split Synchronization task class."""
 
     def start(self):
@@ -29,7 +29,7 @@ class SplitSynchronizationTaskBose(BaseSynchronizationTask):
         return self._task.running()
 
 
-class SplitSynchronizationTask(SplitSynchronizationTaskBose):
+class SplitSynchronizationTask(SplitSynchronizationTaskBase):
     """Split Synchronization task class."""
 
     def __init__(self, synchronize_splits, period):
@@ -49,7 +49,7 @@ class SplitSynchronizationTask(SplitSynchronizationTaskBose):
         self._task.stop(event)
 
 
-class SplitSynchronizationTaskAsync(SplitSynchronizationTaskBose):
+class SplitSynchronizationTaskAsync(SplitSynchronizationTaskBase):
     """Split Synchronization async task class."""
 
     def __init__(self, synchronize_splits, period):
