@@ -8,7 +8,7 @@ from splitio.tasks.util.asynctask import AsyncTask, AsyncTaskAsync
 _LOGGER = logging.getLogger(__name__)
 
 
-class ImpressionsSyncTaskBose(BaseSynchronizationTask):
+class ImpressionsSyncTaskBase(BaseSynchronizationTask):
     """Impressions synchronization task uses an asynctask.AsyncTask to send impressions."""
 
     def start(self):
@@ -34,7 +34,7 @@ class ImpressionsSyncTaskBose(BaseSynchronizationTask):
         self._task.force_execution()
 
 
-class ImpressionsSyncTask(ImpressionsSyncTaskBose):
+class ImpressionsSyncTask(ImpressionsSyncTaskBase):
     """Impressions synchronization task uses an asynctask.AsyncTask to send impressions."""
 
     def __init__(self, synchronize_impressions, period):
@@ -56,7 +56,7 @@ class ImpressionsSyncTask(ImpressionsSyncTaskBose):
         self._task.stop(event)
 
 
-class ImpressionsSyncTaskAsync(ImpressionsSyncTaskBose):
+class ImpressionsSyncTaskAsync(ImpressionsSyncTaskBase):
     """Impressions synchronization task uses an asynctask.AsyncTask to send impressions."""
 
     def __init__(self, synchronize_impressions, period):
