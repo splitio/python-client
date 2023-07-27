@@ -345,7 +345,7 @@ class TelemetryInitConsumerAsync(object):
     async def get_config_stats(self):
         """Get config stats."""
         config_stats = await self._telemetry_storage.get_config_stats()
-        config_stats.update({'t': self.pop_config_tags()})
+        config_stats.update({'t': await self.pop_config_tags()})
         return config_stats
 
     async def get_config_stats_to_json(self):
@@ -427,9 +427,9 @@ class TelemetryEvaluationConsumerAsync(TelemetryEvaluationConsumerBase):
         :returns: formatted stats
         :rtype: Dict
         """
-        exceptions = await self.pop_exceptions()['methodExceptions']
-        latencies = await self.pop_latencies()['methodLatencies']
-        return self._to_json(exceptions, latencies)
+        exceptions = await self.pop_exceptions()
+        latencies = await self.pop_latencies()
+        return self._to_json(exceptions['methodExceptions'], latencies['methodLatencies'])
 
 
 class TelemetryRuntimeConsumerBase(object):
@@ -627,8 +627,8 @@ class TelemetryRuntimeConsumerAsync(TelemetryRuntimeConsumerBase):
         :rtype: Dict
         """
         last_synchronization = await self.get_last_synchronization()
-        http_errors = await self.pop_http_errors()['httpErrors']
-        http_latencies = await self.pop_http_latencies()['httpLatencies']
+        http_errors = await self.pop_http_errors()
+        http_latencies = await self.pop_http_latencies()
 
         return {
             'iQ': await self.get_impressions_stats(CounterConstants.IMPRESSIONS_QUEUED),
@@ -638,8 +638,8 @@ class TelemetryRuntimeConsumerAsync(TelemetryRuntimeConsumerBase):
             'eD': await self.get_events_stats(CounterConstants.EVENTS_DROPPED),
             'lS': self._last_synchronization_to_json(last_synchronization),
             't': await self.pop_tags(),
-            'hE': self._http_errors_to_json(http_errors),
-            'hL': self._http_latencies_to_json(http_latencies),
+            'hE': self._http_errors_to_json(http_errors['httpErrors']),
+            'hL': self._http_latencies_to_json(http_latencies['httpLatencies']),
             'aR': await self.pop_auth_rejections(),
             'tR': await self.pop_token_refreshes(),
             'sE': self._streaming_events_to_json(await self.pop_streaming_events()),
