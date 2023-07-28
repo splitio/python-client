@@ -5,6 +5,7 @@ import urllib
 import abc
 
 from splitio.optional.loaders import aiohttp
+from splitio.util.time import get_current_epoch_time_ms
 
 SDK_URL = 'https://sdk.split.io/api'
 EVENTS_URL = 'https://events.split.io/api'
@@ -73,6 +74,20 @@ class HttpClientBase(object, metaclass=abc.ABCMeta):
     def post(self, server, path, apikey):
         """http post request"""
 
+    def set_telemetry_data(self, metric_name, telemetry_runtime_producer):
+        """
+        Set the data needed for telemetry call
+
+        :param metric_name: metric name for telemetry
+        :type metric_name: str
+
+        :param telemetry_runtime_producer: telemetry recording instance
+        :type telemetry_runtime_producer: splitio.engine.telemetry.TelemetryRuntimeProducer
+        """
+        self._telemetry_runtime_producer = telemetry_runtime_producer
+        self._metric_name = metric_name
+
+
 class HttpClient(HttpClientBase):
     """HttpClient wrapper."""
 
@@ -116,6 +131,7 @@ class HttpClient(HttpClientBase):
         if extra_headers is not None:
             headers.update(extra_headers)
 
+        start = get_current_epoch_time_ms()
         try:
             response = requests.get(
                 _build_url(server, path, self._urls),
@@ -123,6 +139,7 @@ class HttpClient(HttpClientBase):
                 headers=headers,
                 timeout=self._timeout
             )
+            self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
             return HttpResponse(response.status_code, response.text, response.headers)
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('requests library is throwing exceptions') from exc
@@ -152,6 +169,7 @@ class HttpClient(HttpClientBase):
         if extra_headers is not None:
             headers.update(extra_headers)
 
+        start = get_current_epoch_time_ms()
         try:
             response = requests.post(
                 _build_url(server, path, self._urls),
@@ -160,9 +178,27 @@ class HttpClient(HttpClientBase):
                 headers=headers,
                 timeout=self._timeout
             )
+            self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
             return HttpResponse(response.status_code, response.text, response.headers)
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('requests library is throwing exceptions') from exc
+
+    def _record_telemetry(self, status_code, elapsed):
+        """
+        Record Telemetry info
+
+        :param status_code: http request status code
+        :type status_code: int
+
+        :param elapsed: response time elapsed.
+        :type status_code: int
+        """
+        self._telemetry_runtime_producer.record_sync_latency(self._metric_name, elapsed)
+        if 200 <= status_code < 300:
+            self._telemetry_runtime_producer.record_successful_sync(self._metric_name, get_current_epoch_time_ms())
+            return
+        self._telemetry_runtime_producer.record_sync_error(self._metric_name, status_code)
+
 
 class HttpClientAsync(HttpClientBase):
     """HttpClientAsync wrapper."""
@@ -204,6 +240,7 @@ class HttpClientAsync(HttpClientBase):
         headers = _build_basic_headers(apikey)
         if extra_headers is not None:
             headers.update(extra_headers)
+        start = get_current_epoch_time_ms()
         try:
             async with self._session.get(
                 _build_url(server, path, self._urls),
@@ -212,6 +249,7 @@ class HttpClientAsync(HttpClientBase):
                 timeout=self._timeout
             ) as response:
                 body = await response.text()
+                await self._record_telemetry(response.status, get_current_epoch_time_ms() - start)
                 return HttpResponse(response.status, body, response.headers)
         except aiohttp.ClientError as exc:  # pylint: disable=broad-except
             raise HttpClientException('aiohttp library is throwing exceptions') from exc
@@ -237,6 +275,7 @@ class HttpClientAsync(HttpClientBase):
         headers = _build_basic_headers(apikey)
         if extra_headers is not None:
             headers.update(extra_headers)
+        start = get_current_epoch_time_ms()
         try:
             async with self._session.post(
                 _build_url(server, path, self._urls),
@@ -246,6 +285,23 @@ class HttpClientAsync(HttpClientBase):
                 timeout=self._timeout
             ) as response:
                 body = await response.text()
+                await self._record_telemetry(response.status, get_current_epoch_time_ms() - start)
                 return HttpResponse(response.status, body, response.headers)
         except aiohttp.ClientError as exc:  # pylint: disable=broad-except
             raise HttpClientException('aiohttp library is throwing exceptions') from exc
+
+    async def _record_telemetry(self, status_code, elapsed):
+        """
+        Record Telemetry info
+
+        :param status_code: http request status code
+        :type status_code: int
+
+        :param elapsed: response time elapsed.
+        :type status_code: int
+        """
+        await self._telemetry_runtime_producer.record_sync_latency(self._metric_name, elapsed)
+        if 200 <= status_code < 300:
+            await self._telemetry_runtime_producer.record_successful_sync(self._metric_name, get_current_epoch_time_ms())
+            return
+        await self._telemetry_runtime_producer.record_sync_error(self._metric_name, status_code)
