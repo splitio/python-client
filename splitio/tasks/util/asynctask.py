@@ -8,7 +8,6 @@ __TASK_STOP__ = 0
 __TASK_FORCE_RUN__ = 1
 
 _LOGGER = logging.getLogger(__name__)
-_ASYNC_SLEEP_SECONDS = 0.3
 
 def _safe_run(func):
     """
@@ -242,7 +241,7 @@ class AsyncTaskAsync(object):  # pylint: disable=too-many-instance-attributes
                     self._running = False
                     return
             self._running = True
-            msg = None
+
             while self._running:
                 try:
                     msg = self._messages.get_nowait()
@@ -278,6 +277,7 @@ class AsyncTaskAsync(object):  # pylint: disable=too-many-instance-attributes
                 _LOGGER.error("An error occurred when executing the task's OnStop hook. ")
 
         self._running = False
+        self._completion_event.set()
 
     def start(self):
         """Start the async task."""
@@ -285,9 +285,10 @@ class AsyncTaskAsync(object):  # pylint: disable=too-many-instance-attributes
             _LOGGER.warning("Task is already running. Ignoring .start() call")
             return
         # Start execution
+        self._completion_event = asyncio.Event()
         self._task = asyncio.get_running_loop().create_task(self._execution_wrapper())
 
-    async def stop(self, event=None):
+    async def stop(self, wait_for_completion=False):
         """
         Send a signal to the thread in order to stop it. If the task is not running do nothing.
 
@@ -301,8 +302,9 @@ class AsyncTaskAsync(object):  # pylint: disable=too-many-instance-attributes
 
         # Queue is of infinite size, should not raise an exception
         self._messages.put_nowait(__TASK_STOP__)
-        while not self._task.done():
-            await asyncio.sleep(_ASYNC_SLEEP_SECONDS)
+
+        if wait_for_completion:
+            await self._completion_event.wait()
 
     def force_execution(self):
         """Force an execution of the task without waiting for the period to end."""
