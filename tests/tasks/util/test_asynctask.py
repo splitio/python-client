@@ -142,7 +142,7 @@ class AsyncTaskAsyncTests(object):
         task.start()
         await asyncio.sleep(1)
         assert task.running()
-        await task.stop()
+        await task.stop(True)
 
         assert 0 < self.main_called <= 2
         assert self.init_called == 1
@@ -170,7 +170,7 @@ class AsyncTaskAsyncTests(object):
         task.start()
         await asyncio.sleep(1)
         assert task.running()
-        await task.stop()
+        await task.stop(True)
 
         assert 9 <= self.main_called <= 10
         assert self.init_called == 1
@@ -197,7 +197,7 @@ class AsyncTaskAsyncTests(object):
         task.start()
         await asyncio.sleep(0.5)
         assert not task.running() # Since on_init fails, task never starts
-        await task.stop()
+        await task.stop(True)
 
         assert self.init_called == 1
         assert self.stop_called == 1
@@ -223,7 +223,7 @@ class AsyncTaskAsyncTests(object):
         task = asynctask.AsyncTaskAsync(main_func, 0.1, on_init, on_stop)
         task.start()
         await asyncio.sleep(1)
-        await task.stop()
+        await task.stop(True)
         assert 9 <= self.main_called <= 10
         assert self.init_called == 1
         assert self.stop_called == 1
@@ -249,7 +249,7 @@ class AsyncTaskAsyncTests(object):
         assert task.running()
         task.force_execution()
         task.force_execution()
-        await task.stop()
+        await task.stop(True)
 
         assert self.main_called == 3
         assert self.init_called == 1
