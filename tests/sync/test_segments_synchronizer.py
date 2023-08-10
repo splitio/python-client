@@ -202,17 +202,22 @@ class SegmentsSynchronizerAsyncTests(object):
         split_storage.get_segment_names = get_segment_names
 
         storage = mocker.Mock(spec=SegmentStorage)
-        async def get_change_number():
+        async def get_change_number(*args):
             return -1
         storage.get_change_number = get_change_number
 
+        async def put(*args):
+            pass
+        storage.put = put
+
         api = mocker.Mock()
-        async def run(x):
+        async def run(*args):
             raise APIException("something broke")
         api.fetch_segment = run
 
         segments_synchronizer = SegmentSynchronizerAsync(api, split_storage, storage)
         assert not await segments_synchronizer.synchronize_segments()
+        await segments_synchronizer.shutdown()
 
     @pytest.mark.asyncio
     async def test_synchronize_segments(self, mocker):
@@ -295,6 +300,8 @@ class SegmentsSynchronizerAsyncTests(object):
             assert segment.name in segments_to_validate
             segments_to_validate.remove(segment.name)
 
+        await segments_synchronizer.shutdown()
+
     @pytest.mark.asyncio
     async def test_synchronize_segment(self, mocker):
         """Test particular segment update."""
@@ -338,6 +345,8 @@ class SegmentsSynchronizerAsyncTests(object):
 
         assert (self.segment[0], self.change[0], self.options[0]) == ('segmentA', -1, FetchOptions(True))
         assert (self.segment[1], self.change[1], self.options[1]) == ('segmentA', 123, FetchOptions(True))
+
+        await segments_synchronizer.shutdown()
 
     @pytest.mark.asyncio
     async def test_synchronize_segment_cdn(self, mocker):
@@ -401,14 +410,18 @@ class SegmentsSynchronizerAsyncTests(object):
         await segments_synchronizer.synchronize_segment('segmentA', 12345)
         assert (self.segment[7], self.change[7], self.options[7]) == ('segmentA', 12345, FetchOptions(True, 1234))
         assert len(self.segment) == 8 # 2 ok + BACKOFF(2 since==till + 2 re-attempts) + CDN(2 since==till)
+        await segments_synchronizer.shutdown()
 
     @pytest.mark.asyncio
     async def test_recreate(self, mocker):
         """Test recreate logic."""
         segments_synchronizer = SegmentSynchronizerAsync(mocker.Mock(), mocker.Mock(), mocker.Mock())
         current_pool = segments_synchronizer._worker_pool
+        await segments_synchronizer.shutdown()
         segments_synchronizer.recreate()
+
         assert segments_synchronizer._worker_pool != current_pool
+        await segments_synchronizer.shutdown()
 
 
 class LocalSegmentsSynchronizerTests(object):

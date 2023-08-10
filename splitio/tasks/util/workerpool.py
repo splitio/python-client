@@ -7,8 +7,6 @@ import queue
 from splitio.optional.loaders import asyncio
 
 _LOGGER = logging.getLogger(__name__)
-_ASYNC_SLEEP_SECONDS = 0.3
-
 
 class WorkerPool(object):
     """Worker pool class to implement single producer/multiple consumer."""
@@ -141,6 +139,8 @@ class WorkerPool(object):
 class WorkerPoolAsync(object):
     """Worker pool async class to implement single producer/multiple consumer."""
 
+    _abort = object()
+
     def __init__(self, worker_count, worker_func):
         """
         Class constructor.
@@ -148,114 +148,85 @@ class WorkerPoolAsync(object):
         :param worker_count: Number of workers for the pool.
         :type worker_func: Function to be executed by the workers whenever a messages is fetched.
         """
+        self._semaphore = asyncio.Semaphore(worker_count)
+        self._queue = asyncio.Queue()
+        self._handler = worker_func
+        self._aborted = False
         self._failed = False
-        self._running = False
-        self._incoming = asyncio.Queue()
-        self._worker_count = worker_count
-        self._worker_func = worker_func
-        self.current_workers = []
 
+    async def _schedule_work(self):
+        """wrap the message handler execution."""
+        while True:
+            message = await self._queue.get()
+            if message == self._abort:
+                self._aborted = True
+                return
+            asyncio.get_running_loop().create_task(self._do_work(message))
+
+    async def _do_work(self, message):
+        """process a single message."""
+        try:
+            await self._semaphore.acquire() # wait until "there's a free worker"
+            if self._aborted: # check in case the pool was shutdown while we were waiting for a worker
+                return
+            await self._handler(message._message)
+        except Exception:
+            _LOGGER.error("Something went wrong when processing message %s", message)
+            _LOGGER.debug('Original traceback: ', exc_info=True)
+            self._failed = True
+        message._complete.set()
+        self._semaphore.release() # signal worker is idle
 
     def start(self):
         """Start the workers."""
-        self._running = True
-        self._worker_pool_task = asyncio.get_running_loop().create_task(self._wrapper())
+        self._task = asyncio.get_running_loop().create_task(self._schedule_work())
 
-    async def _safe_run(self, message):
-        """
-        Execute the user funcion for a given message without raising exceptions.
-
-        :param func: User defined function.
-        :type func: callable
-        :param message: Message fetched from the queue.
-        :param message: object
-
-        :return True if no everything goes well. False otherwise.
-        :rtype bool
-        """
-        try:
-            await self._worker_func(message)
-            return True
-        except Exception:  # pylint: disable=broad-except
-            _LOGGER.error("Something went wrong when processing message %s", message)
-            _LOGGER.error('Original traceback: ', exc_info=True)
-            return False
-
-    async def _wrapper(self):
-        """
-        Fetch message, execute tasks, and acknowledge results.
-
-        :param worker_number: # (id) of worker whose function will be executed.
-        :type worker_number: int
-        :param func: User defined function.
-        :type func: callable.
-        """
-        self.current_workers = []
-        while self._running:
-            try:
-                if len(self.current_workers) == self._worker_count or self._incoming.qsize() == 0:
-                    await asyncio.sleep(_ASYNC_SLEEP_SECONDS)
-                    self._check_and_clean_workers()
-                    continue
-                message = await self._incoming.get()
-                # For some reason message can be None in python2 implementation of queue.
-                # This method must be both ignored and acknowledged with .task_done()
-                # otherwise .join() will halt.
-                if message is None:
-                    _LOGGER.debug('spurious message received. acking and ignoring.')
-                    continue
-
-                # If the task is successfully executed, the ack is done AFTERWARDS,
-                # to avoid race conditions on SDK initialization.
-                _LOGGER.debug("processing message '%s'", message)
-                self.current_workers.append([asyncio.get_running_loop().create_task(self._safe_run(message)), message])
-
-                # check tasks status
-                self._check_and_clean_workers()
-            except queue.Empty:
-                # No message was fetched, just keep waiting.
-                pass
-
-    def _check_and_clean_workers(self):
-        found_running = False
-        for task in self.current_workers:
-            if task[0].done():
-                self.current_workers.remove(task)
-                if not task[0].result():
-                    self._failed = True
-                    _LOGGER.error(
-                        ("Something went wrong during the execution, "
-                        "removing message \"%s\" from queue.",
-                        task[1])
-                    )
-            else:
-                found_running = True
-        return found_running
-
-    async def submit_work(self, message):
+    async def submit_work(self, jobs):
         """
         Add a new message to the work-queue.
 
         :param message: New message to add.
         :type message: object.
         """
-        await self._incoming.put(message)
-        _LOGGER.debug('queued message %s for processing.', message)
+        self.jobs = jobs
+        if len(jobs) == 1:
+            wrapped = TaskCompletionWraper(jobs[0])
+            await self._queue.put(wrapped)
+            return wrapped
 
-    async def wait_for_completion(self):
-        """Block until the work queue is empty."""
-        _LOGGER.debug('waiting for all messages to be processed.')
-        if self._incoming.qsize() > 0:
-            await self._incoming.join()
-        _LOGGER.debug('all messages processed.')
-        old = self._failed
-        self._failed = False
-        self._running = False
-        return old
+        tasks = [TaskCompletionWraper(job) for job in jobs]
+        for w in tasks:
+            await self._queue.put(w)
+
+        return BatchCompletionWrapper(tasks)
 
     async def stop(self, event=None):
-        """Stop all worker nodes."""
-        await self.wait_for_completion()
-        while self._check_and_clean_workers():
-            await asyncio.sleep(_ASYNC_SLEEP_SECONDS)
-        self._worker_pool_task.cancel()
+        """abort all execution (except currently running handlers)."""
+        await self._queue.put(self._abort)
+
+    def pop_failed(self):
+        old = self._failed
+        self._failed = False
+        return old
+
+
+class TaskCompletionWraper:
+    """Task completion class"""
+    def __init__(self, message):
+        self._message = message
+        self._complete = asyncio.Event()
+
+    async def await_completion(self):
+        await self._complete.wait()
+
+    def _mark_as_complete(self):
+        self._complete.set()
+
+
+class BatchCompletionWrapper:
+    """Batch completion class"""
+    def __init__(self, tasks):
+        self._tasks = tasks
+
+    async def await_completion(self):
+        await asyncio.gather(*[task.await_completion() for task in self._tasks])
