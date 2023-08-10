@@ -94,11 +94,10 @@ class WorkerPoolAsyncTests(object):
             jobs.append(str(num))
 
         task = await wpool.submit_work(jobs)
-        await task.await_completion()
+        assert await task.await_completion()
         await wpool.stop()
         for num in range(0, 11):
             assert str(num) in calls
-        assert not wpool.pop_failed()
 
     @pytest.mark.asyncio
     async def test_fail_in_msg_doesnt_break(self):
@@ -115,11 +114,13 @@ class WorkerPoolAsyncTests(object):
         worker = Worker()
         wpool = workerpool.WorkerPoolAsync(50, worker.do_work)
         wpool.start()
+        jobs = []
         for num in range(0, 100):
-            await wpool.submit_work([str(num)])
-        await asyncio.sleep(1)
+            jobs.append(str(num))
+        task = await wpool.submit_work(jobs)
+
+        assert not await task.await_completion()
         await wpool.stop()
-        assert wpool.pop_failed()
 
         for num in range(0, 100):
             if num != 55:
@@ -145,6 +146,6 @@ class WorkerPoolAsyncTests(object):
         for num in range(0, 100):
             jobs.append(str(num))
         task = await wpool.submit_work(jobs)
-        await task.await_completion()
+        assert await task.await_completion()
         await wpool.stop()
         assert len(worker.worked) == 100

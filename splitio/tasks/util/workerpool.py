@@ -152,7 +152,6 @@ class WorkerPoolAsync(object):
         self._queue = asyncio.Queue()
         self._handler = worker_func
         self._aborted = False
-        self._failed = False
 
     async def _schedule_work(self):
         """wrap the message handler execution."""
@@ -173,7 +172,7 @@ class WorkerPoolAsync(object):
         except Exception:
             _LOGGER.error("Something went wrong when processing message %s", message)
             _LOGGER.debug('Original traceback: ', exc_info=True)
-            self._failed = True
+            message._failed = True
         message._complete.set()
         self._semaphore.release() # signal worker is idle
 
@@ -204,17 +203,13 @@ class WorkerPoolAsync(object):
         """abort all execution (except currently running handlers)."""
         await self._queue.put(self._abort)
 
-    def pop_failed(self):
-        old = self._failed
-        self._failed = False
-        return old
-
 
 class TaskCompletionWraper:
     """Task completion class"""
     def __init__(self, message):
         self._message = message
         self._complete = asyncio.Event()
+        self._failed = False
 
     async def await_completion(self):
         await self._complete.wait()
@@ -230,3 +225,7 @@ class BatchCompletionWrapper:
 
     async def await_completion(self):
         await asyncio.gather(*[task.await_completion() for task in self._tasks])
+        for task in self._tasks:
+            if task._failed:
+                return False
+        return True

@@ -360,8 +360,7 @@ class SegmentSynchronizerAsync(object):
         jobs = await self._worker_pool.submit_work(segment_names)
         if (dont_wait):
             return True
-        await jobs.await_completion()
-        return not self._worker_pool.pop_failed()
+        return await jobs.await_completion()
 
     async def segment_exist_in_storage(self, segment_name):
         """
