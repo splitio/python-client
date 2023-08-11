@@ -225,7 +225,4 @@ class BatchCompletionWrapper:
 
     async def await_completion(self):
         await asyncio.gather(*[task.await_completion() for task in self._tasks])
-        for task in self._tasks:
-            if task._failed:
-                return False
-        return True
+        return not any(task._failed for task in self._tasks)
