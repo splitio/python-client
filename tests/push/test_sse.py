@@ -3,6 +3,7 @@
 import time
 import threading
 import pytest
+from contextlib import suppress
 
 from splitio.push.sse import SSEClient, SSEEvent, SSEClientAsync
 from splitio.optional.loaders import asyncio
@@ -147,14 +148,17 @@ class SSEClientAsyncTests(object):
         event2 = await sse_events_loop.__anext__()
         event3 = await sse_events_loop.__anext__()
         event4 = await sse_events_loop.__anext__()
-        await client.shutdown()
+        temp_task = asyncio.get_running_loop().create_task(sse_events_loop.__anext__())
+        temp_task.cancel()
+        with suppress(asyncio.CancelledError, StopAsyncIteration):
+            await temp_task
         await asyncio.sleep(1)
 
         assert event1 == SSEEvent('1', None, None, None)
         assert event2 == SSEEvent('2', 'message', None, 'abc')
         assert event3 == SSEEvent('3', 'message', None, 'def')
         assert event4 == SSEEvent('4', 'message', None, 'ghi')
-        assert client._conn.closed
+        assert client._conn == None
 
         server.publish(server.GRACEFUL_REQUEST_END)
         server.stop()

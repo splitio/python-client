@@ -219,26 +219,11 @@ class SSEClientAsync(SSEClientBase):
             await self._conn.close()
             self._conn = None  # clear so it can be started again
             _LOGGER.debug("Existing SSEClient")
-            return
+        return
 
-    async def shutdown(self):
+    def shutdown(self):
         """Shutdown the current connection."""
-        _LOGGER.debug("Async SSEClient Shutdown")
-        if self._conn is None:
-            _LOGGER.warning("no sse connection has been started on this SSEClient instance. Ignoring")
-            return
-
-        if self._shutdown_requested:
-            _LOGGER.warning("shutdown already requested")
-            return
-
-        self._shutdown_requested = True
-        if self._session is not None:
-            try:
-                await self._conn.close()
-            except asyncio.CancelledError:
-                pass
-
+        pass
 
 def get_headers(extra=None):
     """
@@ -253,6 +238,3 @@ def get_headers(extra=None):
     headers = _DEFAULT_HEADERS.copy()
     headers.update(extra if extra is not None else {})
     return headers
-
-
-

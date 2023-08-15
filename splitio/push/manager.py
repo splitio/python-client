@@ -399,6 +399,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
     async def _token_refresh(self, current_token):
         """Refresh auth token."""
         await asyncio.sleep(self._get_time_period(current_token))
+        await self._stop_current_conn()
         self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
 
     async def _get_auth_token(self):
@@ -406,7 +407,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         try:
             token = await self._auth_api.authenticate()
             await self._telemetry_runtime_producer.record_token_refreshes()
-            await self._telemetry_runtime_producer.record_streaming_event(StreamingEventTypes.TOKEN_REFRESH, 1000 * token.exp,  get_current_epoch_time_ms())
+            await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.TOKEN_REFRESH, 1000 * token.exp,  get_current_epoch_time_ms()))
 
         except APIException:
             _LOGGER.error('error performing sse auth request.')
@@ -531,4 +532,5 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         self._status_tracker.notify_sse_shutdown_expected()
         await self._sse_client.stop()
         self._running_task.cancel()
+        await self._running_task
         self._running = False

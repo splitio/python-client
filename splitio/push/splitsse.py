@@ -3,12 +3,12 @@ import logging
 import threading
 from enum import Enum
 import abc
-import sys
+from contextlib import suppress
 
 from splitio.push.sse import SSEClient, SSEClientAsync, SSE_EVENT_ERROR
 from splitio.util.threadutil import EventGroup
 from splitio.api import headers_from_metadata
-from splitio.optional.loaders import anext
+from splitio.optional.loaders import anext, asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -200,8 +200,8 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         self.status = SplitSSEClient._Status.CONNECTING
         url = self._build_url(token)
         try:
-            sse_events_task = self._client.start(url, extra_headers=self._metadata)
-            first_event = await anext(sse_events_task)
+            self.sse_events_task = self._client.start(url, extra_headers=self._metadata)
+            first_event = await anext(self.sse_events_task)
             if first_event.event == SSE_EVENT_ERROR:
                 await self.stop()
                 return
@@ -209,7 +209,7 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
             _LOGGER.debug("Split SSE client started")
             yield first_event
             while self.status == SplitSSEClient._Status.CONNECTED:
-                event = await anext(sse_events_task)
+                event = await anext(self.sse_events_task)
                 if event.data is not None:
                     yield event
         except StopAsyncIteration:
@@ -225,5 +225,8 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         if self.status == SplitSSEClient._Status.IDLE:
             _LOGGER.warning('sse already closed. ignoring')
             return
-        await self._client.shutdown()
+        temp_task = asyncio.get_running_loop().create_task(anext(self.sse_events_task))
+        temp_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await temp_task
         self.status = SplitSSEClient._Status.IDLE
