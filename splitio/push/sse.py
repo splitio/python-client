@@ -1,7 +1,6 @@
 """Low-level SSE Client."""
 import logging
 import socket
-import abc
 from collections import namedtuple
 from http.client import HTTPConnection, HTTPSConnection
 from urllib.parse import urlparse
@@ -49,18 +48,7 @@ class EventBuilder(object):
         return SSEEvent(self._lines.get('id'), self._lines.get('event'),
                         self._lines.get('retry'), self._lines.get('data'))
 
-class SSEClientBase(object, metaclass=abc.ABCMeta):
-    """Worker template."""
-
-    @abc.abstractmethod
-    def start(self, url, extra_headers, timeout):  # pylint:disable=protected-access
-        """Connect and start listening for events."""
-
-    @abc.abstractmethod
-    def shutdown(self):
-        """Shutdown the current connection."""
-
-class SSEClient(SSEClientBase):
+class SSEClient(object):
     """SSE Client implementation."""
 
     def __init__(self, callback):
@@ -148,7 +136,7 @@ class SSEClient(SSEClientBase):
         self._shutdown_requested = True
         self._conn.sock.shutdown(socket.SHUT_RDWR)
 
-class SSEClientAsync(SSEClientBase):
+class SSEClientAsync(object):
     """SSE Client implementation."""
 
     def __init__(self, timeout=_DEFAULT_ASYNC_TIMEOUT):
@@ -220,10 +208,6 @@ class SSEClientAsync(SSEClientBase):
             self._conn = None  # clear so it can be started again
             _LOGGER.debug("Existing SSEClient")
         return
-
-    def shutdown(self):
-        """Shutdown the current connection."""
-        pass
 
 def get_headers(extra=None):
     """
