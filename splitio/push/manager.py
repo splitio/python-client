@@ -357,8 +357,8 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         try:
             self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
         except Exception as e:
-            _LOGGER.error("Exception renewing token authentication")
-            _LOGGER.debug(str(e))
+            _LOGGER.error("Exception initiatilizing streaming connection", str(e))
+            _LOGGER.debug("Trace: ", exc_info=True)
 
     async def stop(self, blocking=False):
         """
@@ -371,14 +371,8 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             _LOGGER.warning('Push manager does not have an open SSE connection. Ignoring')
             return
 
-        await self._processor.update_workers_status(False)
-        self._status_tracker.notify_sse_shutdown_expected()
-        await self._sse_client.stop()
-        self._running_task.cancel()
-        self._running = False
-        await asyncio.sleep(.2)
         self._token_task.cancel()
-        await asyncio.sleep(.2)
+        await self._stop_current_conn()
 
     async def _event_handler(self, event):
         """
@@ -404,23 +398,8 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
 
     async def _token_refresh(self, current_token):
         """Refresh auth token."""
-        while self._running:
-            try:
-                await asyncio.sleep(self._get_time_period(current_token))
-
-                # track proper metrics & stop everything
-                await self._processor.update_workers_status(False)
-                self._status_tracker.notify_sse_shutdown_expected()
-                await self._sse_client.stop()
-                self._running_task.cancel()
-                self._running = False
-
-                _LOGGER.info("retriggering authentication flow.")
-                self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
-            except Exception as e:
-                _LOGGER.error("Exception renewing token authentication")
-                _LOGGER.debug(str(e))
-                return
+        await asyncio.sleep(self._get_time_period(current_token))
+        self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
 
     async def _get_auth_token(self):
         """Get new auth token"""
@@ -447,26 +426,27 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         self._status_tracker.reset()
         self._running = True
 
-        token = await self._get_auth_token()
-        events_source = self._sse_client.start(token)
-        first_event = await _anext(events_source)
-        if first_event.event == SSE_EVENT_ERROR:
-            self._running = False
-            raise(Exception("could not start SSE session"))
-
-        _LOGGER.debug("connected to streaming, scheduling next refresh")
-        self._token_task = asyncio.get_running_loop().create_task(self._token_refresh(token))
-        await self._handle_connection_ready()
-        await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.CONNECTION_ESTABLISHED, 0,  get_current_epoch_time_ms()))
-        await self._consume_events(events_source)
-
-    async def _consume_events(self, events_task):
         try:
-            while self._running:
-                event = await anext(self._events_task)
-                await self._event_handler(event)
-        except StopAsyncIteration:
-            pass
+            token = await self._get_auth_token()
+            events_source = self._sse_client.start(token)
+            first_event = await anext(events_source)
+            if first_event.event == SSE_EVENT_ERROR:
+                raise(Exception("could not start SSE session"))
+
+            _LOGGER.debug("connected to streaming, scheduling next refresh")
+            self._token_task = asyncio.get_running_loop().create_task(self._token_refresh(token))
+            await self._handle_connection_ready()
+            await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.CONNECTION_ESTABLISHED, 0,  get_current_epoch_time_ms()))
+            await self._consume_events(events_source)
+        finally:
+            self._running = False
+
+    async def _consume_events(self, events_source):
+        while True:
+            try:
+                await self._event_handler(await anext(events_source))
+            except StopAsyncIteration:
+                return
 
     async def _handle_message(self, event):
         """
@@ -544,3 +524,11 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         feedback = self._status_tracker.handle_disconnect()
         if feedback is not None:
             await self._feedback_loop.put(feedback)
+
+    async def _stop_current_conn(self):
+        """Abort current streaming connection and stop it's associated workers."""
+        await self._processor.update_workers_status(False)
+        self._status_tracker.notify_sse_shutdown_expected()
+        await self._sse_client.stop()
+        self._running_task.cancel()
+        self._running = False
