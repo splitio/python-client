@@ -5,25 +5,26 @@ import unittest.mock as mock
 import time
 import pytest
 
+from splitio.optional.loaders import asyncio
 from splitio.api.auth import AuthAPI
 from splitio.api import auth, client, APIException
 from splitio.client.util import get_metadata
 from splitio.client.config import DEFAULT_CONFIG
-from splitio.tasks.split_sync import SplitSynchronizationTask
+from splitio.tasks.split_sync import SplitSynchronizationTask, SplitSynchronizationTaskAsync
 from splitio.tasks.segment_sync import SegmentSynchronizationTask
 from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask
 from splitio.tasks.events_sync import EventsSyncTask
-from splitio.engine.telemetry import TelemetryStorageProducer
-from splitio.storage.inmemmory import InMemoryTelemetryStorage
+from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
+from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
 from splitio.models.telemetry import SSESyncMode, StreamingEventTypes
 from splitio.push.manager import Status
 
-from splitio.sync.split import SplitSynchronizer
+from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync
 from splitio.sync.segment import SegmentSynchronizer
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.sync.event import EventSynchronizer
-from splitio.sync.synchronizer import Synchronizer, SplitTasks, SplitSynchronizers, RedisSynchronizer
-from splitio.sync.manager import Manager, RedisManager
+from splitio.sync.synchronizer import Synchronizer, SynchronizerAsync, SplitTasks, SplitSynchronizers, RedisSynchronizer
+from splitio.sync.manager import Manager, ManagerAsync, RedisManager
 
 from splitio.storage import SplitStorage
 
@@ -93,6 +94,97 @@ class SyncManagerTests(object):
         assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-2]._data == SSESyncMode.STREAMING.value)
         assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.SYNC_MODE_UPDATE.value)
         assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._data == SSESyncMode.POLLING.value)
+
+
+class SyncManagerAsyncTests(object):
+    """Synchronizer Manager tests."""
+
+    def test_error(self, mocker):
+        split_task = mocker.Mock(spec=SplitSynchronizationTask)
+        split_tasks = SplitTasks(split_task, mocker.Mock(), mocker.Mock(), mocker.Mock(),
+                                 mocker.Mock(), mocker.Mock())
+
+        storage = mocker.Mock(spec=SplitStorage)
+        api = mocker.Mock()
+
+        async def run(x):
+            raise APIException("something broke")
+        api.fetch_splits = run
+
+        async def get_change_number():
+            return -1
+        storage.get_change_number = get_change_number
+
+        split_sync = SplitSynchronizerAsync(api, storage)
+        synchronizers = SplitSynchronizers(split_sync, mocker.Mock(), mocker.Mock(),
+                                           mocker.Mock(), mocker.Mock(), mocker.Mock())
+
+        synchronizer = SynchronizerAsync(synchronizers, split_tasks)
+        manager = ManagerAsync(asyncio.Event(), synchronizer,  mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
+
+        manager._SYNC_ALL_ATTEMPTS = 1
+        manager.start(2)  # should not throw!
+
+    @pytest.mark.asyncio
+    async def test_start_streaming_false(self, mocker):
+        splits_ready_event = asyncio.Event()
+        synchronizer = mocker.Mock(spec=SynchronizerAsync)
+        self.sync_all_called = 0
+        async def sync_all(retry):
+            self.sync_all_called += 1
+        synchronizer.sync_all = sync_all
+
+        self.fetching_called = 0
+        def start_periodic_fetching():
+            self.fetching_called += 1
+        synchronizer.start_periodic_fetching = start_periodic_fetching
+
+        self.rcording_called = 0
+        def start_periodic_data_recording():
+            self.rcording_called += 1
+        synchronizer.start_periodic_data_recording = start_periodic_data_recording
+
+        manager = ManagerAsync(splits_ready_event, synchronizer, mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
+        try:
+            await manager.start()
+        except:
+            pass
+        await splits_ready_event.wait()
+        assert splits_ready_event.is_set()
+        assert self.sync_all_called == 1
+        assert self.fetching_called == 1
+        assert self.rcording_called == 1
+
+    @pytest.mark.asyncio
+    async def test_telemetry(self, mocker):
+        splits_ready_event = asyncio.Event()
+        synchronizer = mocker.Mock(spec=SynchronizerAsync)
+        async def sync_all(retry=1):
+            pass
+        synchronizer.sync_all = sync_all
+
+        async def stop_periodic_fetching():
+            pass
+        synchronizer.stop_periodic_fetching = stop_periodic_fetching
+
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        manager = ManagerAsync(splits_ready_event, synchronizer, mocker.Mock(), True, SdkMetadata('1.0', 'some', '1.2.3.4'), telemetry_runtime_producer)
+        try:
+            await manager.start()
+        except:
+            pass
+        await splits_ready_event.wait()
+
+        await manager._queue.put(Status.PUSH_SUBSYSTEM_UP)
+        await manager._queue.put(Status.PUSH_NONRETRYABLE_ERROR)
+        await asyncio.sleep(1)
+        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-2]._type == StreamingEventTypes.SYNC_MODE_UPDATE.value)
+        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-2]._data == SSESyncMode.STREAMING.value)
+        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.SYNC_MODE_UPDATE.value)
+        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._data == SSESyncMode.POLLING.value)
+
 
 class RedisSyncManagerTests(object):
     """Synchronizer Redis Manager tests."""
