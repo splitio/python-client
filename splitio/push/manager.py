@@ -34,25 +34,6 @@ class PushManagerBase(object, metaclass=abc.ABCMeta):
     def stop(self, blocking=False):
         """Stop the current ongoing connection."""
 
-    def _get_parsed_event(self, event):
-        """
-        Parse an incoming event.
-
-        :param event: Incoming event
-        :type event: splitio.push.sse.SSEEvent
-
-        :returns: an event parsed to it's concrete type.
-        :rtype: BaseEvent
-        """
-        try:
-            parsed = parse_incoming_event(event)
-        except EventParsingException:
-            _LOGGER.error('error parsing event of type %s', event.event_type)
-            _LOGGER.debug(str(event), exc_info=True)
-            raise
-
-        return parsed
-
     def _get_time_period(self, token):
         return (token.exp - token.iat) - _TOKEN_REFRESH_GRACE_PERIOD
 
@@ -150,7 +131,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         :type event: splitio.push.sse.SSEEvent
         """
         try:
-            parsed = self._get_parsed_event(event)
+            parsed = parse_incoming_event(event)
         except EventParsingException:
             _LOGGER.error('error parsing event of type %s', event.event_type)
             _LOGGER.debug(str(event), exc_info=True)
@@ -354,11 +335,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             _LOGGER.warning('Push manager already has a connection running. Ignoring')
             return
 
-        try:
-            self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
-        except Exception as e:
-            _LOGGER.error("Exception initiatilizing streaming connection", str(e))
-            _LOGGER.debug("Trace: ", exc_info=True)
+        self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
 
     async def stop(self, blocking=False):
         """
@@ -382,7 +359,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         :type event: splitio.push.sse.SSEEvent
         """
         try:
-            parsed = self._get_parsed_event(event)
+            parsed = parse_incoming_event(event)
             handle = self._event_handlers[parsed.event_type]
         except (KeyError, EventParsingException):
             _LOGGER.error('Parsing exception or no handler for message of type %s', parsed.event_type)
@@ -426,21 +403,19 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         """Authenticate and start a connection."""
         self._status_tracker.reset()
         self._running = True
+        token = await self._get_auth_token()
+        events_source = self._sse_client.start(token)
+        first_event = await anext(events_source)
+        if first_event.event == SSE_EVENT_ERROR:
+            await self._feedback_loop.put(Status.PUSH_NONRETRYABLE_ERROR)
+            raise(Exception("could not start SSE session"))
 
-        try:
-            token = await self._get_auth_token()
-            events_source = self._sse_client.start(token)
-            first_event = await anext(events_source)
-            if first_event.event == SSE_EVENT_ERROR:
-                raise(Exception("could not start SSE session"))
-
-            _LOGGER.debug("connected to streaming, scheduling next refresh")
-            self._token_task = asyncio.get_running_loop().create_task(self._token_refresh(token))
-            await self._handle_connection_ready()
-            await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.CONNECTION_ESTABLISHED, 0,  get_current_epoch_time_ms()))
-            await self._consume_events(events_source)
-        finally:
-            self._running = False
+        _LOGGER.debug("connected to streaming, scheduling next refresh")
+        self._token_task = asyncio.get_running_loop().create_task(self._token_refresh(token))
+        await self._handle_connection_ready()
+        await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.CONNECTION_ESTABLISHED, 0,  get_current_epoch_time_ms()))
+        await self._consume_events(events_source)
+        self._running = False
 
     async def _consume_events(self, events_source):
         while True:
