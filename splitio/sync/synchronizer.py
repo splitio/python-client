@@ -5,6 +5,7 @@ import logging
 import threading
 import time
 
+from splitio.optional.loaders import asyncio
 from splitio.api import APIException
 from splitio.util.backoff import Backoff
 from splitio.sync.split import _ON_DEMAND_FETCH_BACKOFF_BASE, _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES, _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT, LocalhostMode
@@ -404,7 +405,7 @@ class Synchronizer(BaseSynchronizer):
         self._split_synchronizers.split_sync.kill_split(split_name, default_treatment,
                                                         change_number)
 
-class RedisSynchronizer(BaseSynchronizer):
+class RedisSynchronizerBase(BaseSynchronizer):
     """Redis Synchronizer."""
 
     def __init__(self, split_synchronizers, split_tasks):
@@ -424,7 +425,6 @@ class RedisSynchronizer(BaseSynchronizer):
             self._tasks.append(split_tasks.unique_keys_task)
         if split_tasks.clear_filter_task is not None:
             self._tasks.append(split_tasks.clear_filter_task)
-        self._periodic_data_recording_tasks = []
 
     def sync_all(self):
         """
@@ -439,14 +439,67 @@ class RedisSynchronizer(BaseSynchronizer):
         :param blocking:flag to wait until tasks are stopped
         :type blocking: bool
         """
-        _LOGGER.debug('Shutting down tasks.')
-        self.stop_periodic_data_recording(blocking)
+        pass
 
     def start_periodic_data_recording(self):
         """Start recorders."""
         _LOGGER.debug('Starting periodic data recording')
         for task in self._tasks:
             task.start()
+
+    def stop_periodic_data_recording(self, blocking):
+        """
+        Stop recorders.
+
+        :param blocking: flag to wait until tasks are stopped
+        :type blocking: bool
+        """
+        pass
+
+    def kill_split(self, split_name, default_treatment, change_number):
+        """Kill a split locally."""
+        raise NotImplementedError()
+
+    def synchronize_splits(self, till):
+        """Synchronize all splits."""
+        raise NotImplementedError()
+
+    def synchronize_segment(self, segment_name, till):
+        """Synchronize particular segment."""
+        raise NotImplementedError()
+
+    def start_periodic_fetching(self):
+        """Start fetchers for splits and segments."""
+        raise NotImplementedError()
+
+    def stop_periodic_fetching(self):
+        """Stop fetchers for splits and segments."""
+        raise NotImplementedError()
+
+
+class RedisSynchronizer(RedisSynchronizerBase):
+    """Redis Synchronizer."""
+
+    def __init__(self, split_synchronizers, split_tasks):
+        """
+        Class constructor.
+
+        :param split_synchronizers: syncs for performing synchronization of segments and splits
+        :type split_synchronizers: splitio.sync.synchronizer.SplitSynchronizers
+        :param split_tasks: tasks for starting/stopping tasks
+        :type split_tasks: splitio.sync.synchronizer.SplitTasks
+        """
+        super().__init__(split_synchronizers, split_tasks)
+
+    def shutdown(self, blocking):
+        """
+        Stop tasks.
+
+        :param blocking:flag to wait until tasks are stopped
+        :type blocking: bool
+        """
+        _LOGGER.debug('Shutting down tasks.')
+        self.stop_periodic_data_recording(blocking)
 
     def stop_periodic_data_recording(self, blocking):
         """
@@ -468,25 +521,56 @@ class RedisSynchronizer(BaseSynchronizer):
             for task in self._tasks:
                 task.stop()
 
-    def kill_split(self, split_name, default_treatment, change_number):
-        """Kill a split locally."""
-        raise NotImplementedError()
 
-    def synchronize_splits(self, till):
-        """Synchronize all splits."""
-        raise NotImplementedError()
+class RedisSynchronizerAsync(RedisSynchronizerBase):
+    """Redis Synchronizer."""
 
-    def synchronize_segment(self, segment_name, till):
-        """Synchronize particular segment."""
-        raise NotImplementedError()
+    def __init__(self, split_synchronizers, split_tasks):
+        """
+        Class constructor.
 
-    def start_periodic_fetching(self):
-        """Start fetchers for splits and segments."""
-        raise NotImplementedError()
+        :param split_synchronizers: syncs for performing synchronization of segments and splits
+        :type split_synchronizers: splitio.sync.synchronizer.SplitSynchronizers
+        :param split_tasks: tasks for starting/stopping tasks
+        :type split_tasks: splitio.sync.synchronizer.SplitTasks
+        """
+        super().__init__(split_synchronizers, split_tasks)
+        self.stop_periodic_data_recording_task = None
 
-    def stop_periodic_fetching(self):
-        """Stop fetchers for splits and segments."""
-        raise NotImplementedError()
+    async def shutdown(self, blocking):
+        """
+        Stop tasks.
+
+        :param blocking:flag to wait until tasks are stopped
+        :type blocking: bool
+        """
+        _LOGGER.debug('Shutting down tasks.')
+        await self.stop_periodic_data_recording(blocking)
+
+    async def _stop_periodic_data_recording(self):
+        """
+        Stop recorders.
+
+        :param blocking: flag to wait until tasks are stopped
+        :type blocking: bool
+        """
+        for task in self._tasks:
+            await task.stop()
+
+    async def stop_periodic_data_recording(self, blocking):
+        """
+        Stop recorders.
+
+        :param blocking: flag to wait until tasks are stopped
+        :type blocking: bool
+        """
+        _LOGGER.debug('Stopping periodic data recording')
+        if blocking:
+            await self._stop_periodic_data_recording()
+            _LOGGER.debug('all tasks finished successfully.')
+        else:
+            self.stop_periodic_data_recording_task = asyncio.get_running_loop().create_task(self._stop_periodic_data_recording)
+
 
 class LocalhostSynchronizer(BaseSynchronizer):
     """LocalhostSynchronizer."""
