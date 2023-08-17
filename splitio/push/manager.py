@@ -367,7 +367,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         try:
             parsed = parse_incoming_event(event)
             handle = self._event_handlers[parsed.event_type]
-        except (KeyError, EventParsingException):
+        except Exception:
             _LOGGER.error('Parsing exception or no handler for message of type %s', parsed.event_type if parsed else 'unknown')
             _LOGGER.debug(str(event), exc_info=True)
             return
@@ -429,10 +429,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
                 return
 
             if first_event.data is not None:
-                try:
-                    await self._event_handler(first_event)
-                except:
-                    _LOGGER.error('ACA', exc_info=True)
+                await self._event_handler(first_event)
 
             _LOGGER.debug("connected to streaming, scheduling next refresh")
             self._token_task = asyncio.get_running_loop().create_task(self._token_refresh(token))
