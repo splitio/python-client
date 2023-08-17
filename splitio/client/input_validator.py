@@ -412,14 +412,6 @@ def validate_value(value):
     return value
 
 
-def _validate_manager_feature_flag_name(feature_flag_name):
-    if (not _check_not_null(feature_flag_name, 'feature_flag_name', 'split')) or \
-       (not _check_is_string(feature_flag_name, 'feature_flag_name', 'split')) or \
-       (not _check_string_not_empty(feature_flag_name, 'feature_flag_name', 'split')):
-        return False
-    return True
-
-
 def validate_manager_feature_flag_name(feature_flag_name, should_validate_existance, feature_flag_storage):
     """
     Check if feature flag name is valid for track.
@@ -429,7 +421,7 @@ def validate_manager_feature_flag_name(feature_flag_name, should_validate_exista
     :return: feature_flag_name
     :rtype: str|None
     """
-    if not _validate_manager_feature_flag_name(feature_flag_name):
+    if not _validate_feature_flag_name(feature_flag_name, 'split'):
         return None
 
     if should_validate_existance and feature_flag_storage.get(feature_flag_name) is None:
@@ -452,7 +444,7 @@ async def validate_manager_feature_flag_name_async(feature_flag_name, should_val
     :return: feature_flag_name
     :rtype: str|None
     """
-    if not _validate_manager_feature_flag_name(feature_flag_name):
+    if not _validate_feature_flag_name(feature_flag_name, 'split'):
         return None
 
     if should_validate_existance and await feature_flag_storage.get(feature_flag_name) is None:
