@@ -232,6 +232,14 @@ def validate_key(key, method_name):
     return matching_key_result, bucketing_key_result
 
 
+def _validate_feature_flag_name(feature_flag_name, method_name):
+    if (not _check_not_null(feature_flag_name, 'feature_flag_name', method_name)) or \
+       (not _check_is_string(feature_flag_name, 'feature_flag_name', method_name)) or \
+       (not _check_string_not_empty(feature_flag_name, 'feature_flag_name', method_name)):
+        return False
+    return True
+
+
 def validate_feature_flag_name(feature_flag_name, should_validate_existance, feature_flag_storage, method_name):
     """
     Check if feature flag name is valid for get_treatment.
@@ -241,12 +249,34 @@ def validate_feature_flag_name(feature_flag_name, should_validate_existance, fea
     :return: feature_flag_name
     :rtype: str|None
     """
-    if (not _check_not_null(feature_flag_name, 'feature_flag_name', method_name)) or \
-       (not _check_is_string(feature_flag_name, 'feature_flag_name', method_name)) or \
-       (not _check_string_not_empty(feature_flag_name, 'feature_flag_name', method_name)):
+    if not _validate_feature_flag_name(feature_flag_name, method_name):
         return None
 
     if should_validate_existance and feature_flag_storage.get(feature_flag_name) is None:
+        _LOGGER.warning(
+            "%s: you passed \"%s\" that does not exist in this environment, "
+            "please double check what Feature flags exist in the Split user interface.",
+            method_name,
+            feature_flag_name
+        )
+        return None
+
+    return _remove_empty_spaces(feature_flag_name, method_name)
+
+
+async def validate_feature_flag_name_async(feature_flag_name, should_validate_existance, feature_flag_storage, method_name):
+    """
+    Check if feature flag name is valid for get_treatment.
+
+    :param feature_flag_name: feature flag name to be checked
+    :type feature_flag_name: str
+    :return: feature_flag_name
+    :rtype: str|None
+    """
+    if not _validate_feature_flag_name(feature_flag_name, method_name):
+        return None
+
+    if should_validate_existance and await feature_flag_storage.get(feature_flag_name) is None:
         _LOGGER.warning(
             "%s: you passed \"%s\" that does not exist in this environment, "
             "please double check what Feature flags exist in the Split user interface.",
@@ -277,6 +307,21 @@ def validate_track_key(key):
     return key_str
 
 
+def _validate_traffic_type_value(traffic_type):
+    if (not _check_not_null(traffic_type, 'traffic_type', 'track')) or \
+       (not _check_is_string(traffic_type, 'traffic_type', 'track')) or \
+       (not _check_string_not_empty(traffic_type, 'traffic_type', 'track')):
+        return False
+    return True
+
+def _convert_traffic_type_case(traffic_type):
+    if not traffic_type.islower():
+        _LOGGER.warning('track: %s should be all lowercase - converting string to lowercase.',
+                        traffic_type)
+        return traffic_type.lower()
+    return traffic_type
+
+
 def validate_traffic_type(traffic_type, should_validate_existance, feature_flag_storage):
     """
     Check if traffic_type is valid for track.
@@ -290,16 +335,39 @@ def validate_traffic_type(traffic_type, should_validate_existance, feature_flag_
     :return: traffic_type
     :rtype: str|None
     """
-    if (not _check_not_null(traffic_type, 'traffic_type', 'track')) or \
-       (not _check_is_string(traffic_type, 'traffic_type', 'track')) or \
-       (not _check_string_not_empty(traffic_type, 'traffic_type', 'track')):
+    if not _validate_traffic_type_value(traffic_type):
         return None
-    if not traffic_type.islower():
-        _LOGGER.warning('track: %s should be all lowercase - converting string to lowercase.',
-                        traffic_type)
-        traffic_type = traffic_type.lower()
+    traffic_type = _convert_traffic_type_case(traffic_type)
 
     if should_validate_existance and not feature_flag_storage.is_valid_traffic_type(traffic_type):
+        _LOGGER.warning(
+            'track: Traffic Type %s does not have any corresponding Feature flags in this environment, '
+            'make sure you\'re tracking your events to a valid traffic type defined '
+            'in the Split user interface.',
+            traffic_type
+        )
+
+    return traffic_type
+
+
+async def validate_traffic_type_async(traffic_type, should_validate_existance, feature_flag_storage):
+    """
+    Check if traffic_type is valid for track.
+
+    :param traffic_type: traffic_type to be checked
+    :type traffic_type: str
+    :param should_validate_existance: Whether to check for existante in the feature flag storage.
+    :type should_validate_existance: bool
+    :param feature_flag_storage: Feature flag storage.
+    :param feature_flag_storage: splitio.storages.SplitStorage
+    :return: traffic_type
+    :rtype: str|None
+    """
+    if not _validate_traffic_type_value(traffic_type):
+        return None
+    traffic_type = _convert_traffic_type_case(traffic_type)
+
+    if should_validate_existance and not await feature_flag_storage.is_valid_traffic_type(traffic_type):
         _LOGGER.warning(
             'track: Traffic Type %s does not have any corresponding Feature flags in this environment, '
             'make sure you\'re tracking your events to a valid traffic type defined '
@@ -344,6 +412,14 @@ def validate_value(value):
     return value
 
 
+def _validate_manager_feature_flag_name(feature_flag_name):
+    if (not _check_not_null(feature_flag_name, 'feature_flag_name', 'split')) or \
+       (not _check_is_string(feature_flag_name, 'feature_flag_name', 'split')) or \
+       (not _check_string_not_empty(feature_flag_name, 'feature_flag_name', 'split')):
+        return False
+    return True
+
+
 def validate_manager_feature_flag_name(feature_flag_name, should_validate_existance, feature_flag_storage):
     """
     Check if feature flag name is valid for track.
@@ -353,9 +429,7 @@ def validate_manager_feature_flag_name(feature_flag_name, should_validate_exista
     :return: feature_flag_name
     :rtype: str|None
     """
-    if (not _check_not_null(feature_flag_name, 'feature_flag_name', 'split')) or \
-       (not _check_is_string(feature_flag_name, 'feature_flag_name', 'split')) or \
-       (not _check_string_not_empty(feature_flag_name, 'feature_flag_name', 'split')):
+    if not _validate_manager_feature_flag_name(feature_flag_name):
         return None
 
     if should_validate_existance and feature_flag_storage.get(feature_flag_name) is None:
@@ -367,6 +441,47 @@ def validate_manager_feature_flag_name(feature_flag_name, should_validate_exista
         return None
 
     return feature_flag_name
+
+
+async def validate_manager_feature_flag_name_async(feature_flag_name, should_validate_existance, feature_flag_storage):
+    """
+    Check if feature flag name is valid for track.
+
+    :param feature_flag_name: feature flag name to be checked
+    :type feature_flag_name: str
+    :return: feature_flag_name
+    :rtype: str|None
+    """
+    if not _validate_manager_feature_flag_name(feature_flag_name):
+        return None
+
+    if should_validate_existance and await feature_flag_storage.get(feature_flag_name) is None:
+        _LOGGER.warning(
+            "split: you passed \"%s\" that does not exist in this environment, "
+            "please double check what Feature flags exist in the Split user interface.",
+            feature_flag_name
+        )
+        return None
+
+    return feature_flag_name
+
+def _check_feature_flag_instance(feature_flags, method_name):
+    if feature_flags is None or not isinstance(feature_flags, list):
+        _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
+        return False
+    if not feature_flags:
+        _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
+        return False
+    return True
+
+
+def _get_filtered_feature_flag(feature_flags, method_name):
+    return set(
+        _remove_empty_spaces(feature_flag, method_name) for feature_flag in feature_flags
+        if feature_flag is not None and
+        _check_is_string(feature_flag, 'feature flag name', method_name) and
+        _check_string_not_empty(feature_flag, 'feature flag name', method_name)
+    )
 
 
 def validate_feature_flags_get_treatments(  # pylint: disable=invalid-name
@@ -383,18 +498,10 @@ def validate_feature_flags_get_treatments(  # pylint: disable=invalid-name
     :return: filtered_feature_flags
     :rtype: tuple
     """
-    if feature_flags is None or not isinstance(feature_flags, list):
-        _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
+    if not _check_feature_flag_instance(feature_flags, method_name):
         return None, None
-    if not feature_flags:
-        _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
-        return None, None
-    filtered_feature_flags = set(
-        _remove_empty_spaces(feature_flag, method_name) for feature_flag in feature_flags
-        if feature_flag is not None and
-        _check_is_string(feature_flag, 'feature flag name', method_name) and
-        _check_string_not_empty(feature_flag, 'feature flag name', method_name)
-    )
+
+    filtered_feature_flags = _get_filtered_feature_flag(feature_flags, method_name)
     if not filtered_feature_flags:
         _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
         return None, None
@@ -403,6 +510,42 @@ def validate_feature_flags_get_treatments(  # pylint: disable=invalid-name
         return filtered_feature_flags, []
 
     valid_missing_feature_flags = set(f for f in filtered_feature_flags if feature_flag_storage.get(f) is None)
+    for missing_feature_flag in valid_missing_feature_flags:
+        _LOGGER.warning(
+            "%s: you passed \"%s\" that does not exist in this environment, "
+            "please double check what Feature flags exist in the Split user interface.",
+            method_name,
+            missing_feature_flag
+        )
+    return filtered_feature_flags - valid_missing_feature_flags, valid_missing_feature_flags
+
+
+async def validate_feature_flags_get_treatments_async(  # pylint: disable=invalid-name
+    method_name,
+    feature_flags,
+    should_validate_existance=False,
+    feature_flag_storage=None
+):
+    """
+    Check if feature flags is valid for get_treatments.
+
+    :param feature_flags: array of feature flags
+    :type feature_flags: list
+    :return: filtered_feature_flags
+    :rtype: tuple
+    """
+    if not _check_feature_flag_instance(feature_flags, method_name):
+        return None, None
+
+    filtered_feature_flags = _get_filtered_feature_flag(feature_flags, method_name)
+    if not filtered_feature_flags:
+        _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
+        return None, None
+
+    if not should_validate_existance:
+        return filtered_feature_flags, []
+
+    valid_missing_feature_flags = set(f for f in filtered_feature_flags if await feature_flag_storage.get(f) is None)
     for missing_feature_flag in valid_missing_feature_flags:
         _LOGGER.warning(
             "%s: you passed \"%s\" that does not exist in this environment, "
