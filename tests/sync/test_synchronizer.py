@@ -2,15 +2,16 @@
 
 from turtle import clear
 import unittest.mock as mock
+import pytest
 
-from splitio.sync.synchronizer import Synchronizer, SplitTasks, SplitSynchronizers, LocalhostSynchronizer
-from splitio.tasks.split_sync import SplitSynchronizationTask
+from splitio.sync.synchronizer import Synchronizer, SplitTasks, SplitSynchronizers, LocalhostSynchronizer, LocalhostSynchronizerAsync
+from splitio.tasks.split_sync import SplitSynchronizationTask, SplitSynchronizationTaskAsync
 from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTask
-from splitio.tasks.segment_sync import SegmentSynchronizationTask
+from splitio.tasks.segment_sync import SegmentSynchronizationTask, SegmentSynchronizationTaskAsync
 from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask
 from splitio.tasks.events_sync import EventsSyncTask
-from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer, LocalhostMode
-from splitio.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer
+from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer, LocalhostMode, LocalSplitSynchronizerAsync
+from splitio.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer, LocalSegmentSynchronizerAsync
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.sync.event import EventSynchronizer
 from splitio.storage import SegmentStorage, SplitStorage
@@ -396,5 +397,69 @@ class LocalhostSynchronizerTests(object):
         assert(self.segment_task_start_called)
 
         local_synchronizer.stop_periodic_fetching()
+        assert(self.split_task_stop_called)
+        assert(self.segment_task_stop_called)
+
+
+class LocalhostSynchronizerAsyncTests(object):
+
+    @pytest.mark.asyncio
+    async def test_synchronize_splits(self, mocker):
+        split_sync = LocalSplitSynchronizerAsync(mocker.Mock(), mocker.Mock(), mocker.Mock())
+        segment_sync = LocalSegmentSynchronizerAsync(mocker.Mock(), mocker.Mock(), mocker.Mock())
+        synchronizers = SplitSynchronizers(split_sync, segment_sync, None, None, None)
+        local_synchronizer = LocalhostSynchronizerAsync(synchronizers, mocker.Mock(), mocker.Mock())
+
+        self.called = False
+        async def synchronize_segments(*args):
+            self.called = True
+        segment_sync.synchronize_segments = synchronize_segments
+
+        async def synchronize_splits(*args, **kwargs):
+            return ["segmentA", "segmentB"]
+        split_sync.synchronize_splits = synchronize_splits
+
+        async def segment_exist_in_storage(*args, **kwargs):
+            return False
+        segment_sync.segment_exist_in_storage = segment_exist_in_storage
+
+        assert(await local_synchronizer.synchronize_splits())
+        assert(self.called)
+
+    @pytest.mark.asyncio
+    async def test_start_and_stop_tasks(self, mocker):
+        synchronizers = SplitSynchronizers(
+            LocalSplitSynchronizerAsync(mocker.Mock(), mocker.Mock(), mocker.Mock()),
+            LocalSegmentSynchronizerAsync(mocker.Mock(), mocker.Mock(), mocker.Mock()), None, None, None)
+        split_task = SplitSynchronizationTaskAsync(synchronizers.split_sync.synchronize_splits, 30)
+        segment_task = SegmentSynchronizationTaskAsync(synchronizers.segment_sync.synchronize_segments, 30)
+        tasks = SplitTasks(split_task, segment_task, None, None, None,)
+
+        self.split_task_start_called = False
+        def split_task_start(*args, **kwargs):
+            self.split_task_start_called = True
+        split_task.start = split_task_start
+
+        self.segment_task_start_called = False
+        def segment_task_start(*args, **kwargs):
+            self.segment_task_start_called = True
+        segment_task.start = segment_task_start
+
+        self.split_task_stop_called = False
+        async def split_task_stop(*args, **kwargs):
+            self.split_task_stop_called = True
+        split_task.stop = split_task_stop
+
+        self.segment_task_stop_called = False
+        async def segment_task_stop(*args, **kwargs):
+            self.segment_task_stop_called = True
+        segment_task.stop = segment_task_stop
+
+        local_synchronizer = LocalhostSynchronizerAsync(synchronizers, tasks, LocalhostMode.JSON)
+        local_synchronizer.start_periodic_fetching()
+        assert(self.split_task_start_called)
+        assert(self.segment_task_start_called)
+
+        await local_synchronizer.stop_periodic_fetching()
         assert(self.split_task_stop_called)
         assert(self.segment_task_stop_called)
