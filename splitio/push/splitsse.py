@@ -183,7 +183,8 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         self.status = SplitSSEClient._Status.IDLE
         self._metadata = headers_from_metadata(sdk_metadata, client_key)
         self._client = SSEClientAsync(timeout=self.KEEPALIVE_TIMEOUT)
-        self.sse_events_task = None
+        self._event_source = None
+        self._event_source_ended = asyncio.Event()
 
     async def start(self, token):
         """
@@ -201,34 +202,32 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         self.status = SplitSSEClient._Status.CONNECTING
         url = self._build_url(token)
         try:
-            self.sse_events_task = self._client.start(url, extra_headers=self._metadata)
-            first_event = await anext(self.sse_events_task)
+            self._event_source_ended.clear()
+            self._event_source = self._client.start(url, extra_headers=self._metadata)
+            first_event = await anext(self._event_source)
             if first_event.event == SSE_EVENT_ERROR:
-                self.status = SplitSSEClient._Status.ERRORED
-                await self.stop()
-                yield event
+                return
+
+            yield first_event
             self.status = SplitSSEClient._Status.CONNECTED
             _LOGGER.debug("Split SSE client started")
-            yield first_event
-            while self.status == SplitSSEClient._Status.CONNECTED:
-                event = await anext(self.sse_events_task)
+            async for event in self._event_source:
                 if event.data is not None:
                     yield event
-        except StopAsyncIteration:
-            pass
         except Exception:  # pylint:disable=broad-except
+            _LOGGER.debug('stack trace: ', exc_info=True)
+        finally:
             self.status = SplitSSEClient._Status.IDLE
             _LOGGER.debug('sse connection ended.')
-            _LOGGER.debug('stack trace: ', exc_info=True)
+            self._event_source_ended.set()
 
-    async def stop(self, blocking=False, timeout=None):
+
+    async def stop(self):
         """Abort the ongoing connection."""
         _LOGGER.debug("stopping SplitSSE Client")
         if self.status == SplitSSEClient._Status.IDLE:
             _LOGGER.warning('sse already closed. ignoring')
             return
-        temp_task = asyncio.get_running_loop().create_task(anext(self.sse_events_task))
-        temp_task.cancel()
-        with suppress(asyncio.CancelledError):
-            await temp_task
-        self.status = SplitSSEClient._Status.IDLE
+
+        await self._client.shutdown()
+        await self._event_source_ended.wait()
