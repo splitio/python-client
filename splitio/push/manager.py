@@ -352,8 +352,8 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
 
         if self._token_task:
             self._token_task.cancel()
-        
-        stop_task = self._stop_current_conn()
+
+        stop_task = await self._stop_current_conn()
         if blocking:
             await stop_task
 
@@ -380,7 +380,11 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             _LOGGER.debug(str(parsed), exc_info=True)
 
     async def _token_refresh(self, current_token):
-        """Refresh auth token."""
+        """Refresh auth token.
+
+        :param current_token: token (parsed) JWT
+        :type current_token: splitio.models.token.Token
+        """
         await asyncio.sleep(self._get_time_period(current_token))
         await self._stop_current_conn()
         self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
@@ -389,8 +393,8 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         """Get new auth token"""
         try:
             token = await self._auth_api.authenticate()
-            #await self._telemetry_runtime_producer.record_token_refreshes()
-            #await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.TOKEN_REFRESH, 1000 * token.exp,  get_current_epoch_time_ms()))
+            await self._telemetry_runtime_producer.record_token_refreshes()
+            await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.TOKEN_REFRESH, 1000 * token.exp,  get_current_epoch_time_ms()))
 
         except APIException:
             _LOGGER.error('error performing sse auth request.')
@@ -408,9 +412,8 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
     async def _trigger_connection_flow(self):
         """Authenticate and start a connection."""
         self._status_tracker.reset()
-       
-        try:
 
+        try:
             try:
                 token = await self._get_auth_token()
             except Exception as e:
@@ -443,7 +446,6 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         finally:
             self._running = False
             self._done.set()
-
 
     async def _handle_message(self, event):
         """

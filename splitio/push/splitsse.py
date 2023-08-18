@@ -3,7 +3,6 @@ import logging
 import threading
 from enum import Enum
 import abc
-from contextlib import suppress
 
 from splitio.push.sse import SSEClient, SSEClientAsync, SSE_EVENT_ERROR
 from splitio.util.threadutil import EventGroup
@@ -215,12 +214,12 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
                 if event.data is not None:
                     yield event
         except Exception:  # pylint:disable=broad-except
+            _LOGGER.error('SplitSSE Client Exception')
             _LOGGER.debug('stack trace: ', exc_info=True)
         finally:
             self.status = SplitSSEClient._Status.IDLE
             _LOGGER.debug('sse connection ended.')
             self._event_source_ended.set()
-
 
     async def stop(self):
         """Abort the ongoing connection."""

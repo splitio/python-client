@@ -275,9 +275,8 @@ class PushManagerAsyncTests(object):
 
         await shutdown_task
         assert not manager._running
-
-        # assert(telemetry_storage._streaming_events._streaming_events[1]._type == StreamingEventTypes.TOKEN_REFRESH.value)
-        # assert(telemetry_storage._streaming_events._streaming_events[0]._type == StreamingEventTypes.CONNECTION_ESTABLISHED.value)
+        assert(telemetry_storage._streaming_events._streaming_events[0]._type == StreamingEventTypes.TOKEN_REFRESH.value)
+        assert(telemetry_storage._streaming_events._streaming_events[1]._type == StreamingEventTypes.CONNECTION_ESTABLISHED.value)
 
     @pytest.mark.asyncio
     async def test_connection_failure(self, mocker):
@@ -289,8 +288,8 @@ class PushManagerAsyncTests(object):
 
         sse_mock = mocker.Mock(spec=SplitSSEClientAsync)
         feedback_loop = asyncio.Queue()
-        telemetry_storage = InMemoryTelemetryStorage()
-        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         manager = PushManagerAsync(api_mock, mocker.Mock(), feedback_loop, mocker.Mock(), telemetry_runtime_producer)
         manager._sse_client = sse_mock
@@ -298,7 +297,6 @@ class PushManagerAsyncTests(object):
         async def coro():
             if False: yield '' # fit a never-called yield directive to force the func to be an async generator
             return
-
         sse_mock.start.return_value = coro()
 
         await manager.start()
