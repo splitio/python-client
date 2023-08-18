@@ -5,6 +5,8 @@ from collections import namedtuple
 from http.client import HTTPConnection, HTTPSConnection
 from urllib.parse import urlparse
 
+from aiohttp.client import ClientSession
+from aiohttp import ClientTimeout
 from splitio.optional.loaders import asyncio, aiohttp
 from splitio.api.client import HttpClientException
 
@@ -136,6 +138,7 @@ class SSEClient(object):
         self._shutdown_requested = True
         self._conn.sock.shutdown(socket.SHUT_RDWR)
 
+
 class SSEClientAsync(object):
     """SSE Client implementation."""
 
@@ -152,10 +155,9 @@ class SSEClientAsync(object):
         :param timeout: connection & read timeout
         :type timeout: float
         """
-        self._conn = None
-        self._shutdown_requested = False
         self._timeout = timeout
-        self._session = None
+        self._response = None
+        self._done = asyncio.Event()
 
     async def start(self, url, extra_headers=None):  # pylint:disable=protected-access
         """
@@ -165,27 +167,18 @@ class SSEClientAsync(object):
         :rtype: SSEEvent
         """
         _LOGGER.debug("Async SSEClient Started")
-        if self._conn is not None:
+        if self._response is not None:
             raise RuntimeError('Client already started.')
 
-        self._shutdown_requested = False
-        try:
-            self._conn = aiohttp.connector.TCPConnector()
-            async with aiohttp.client.ClientSession(
-                connector=self._conn,
-                headers=get_headers(extra_headers),
-                timeout=aiohttp.ClientTimeout(self._timeout)
-                ) as self._session:
-
-                self._reader = await self._session.request("GET", url)
-                try:
+        self._done.clear()
+        async with aiohttp.ClientSession() as sess:
+            try:
+                async with sess.get(url, headers=get_headers(extra_headers)) as response:
+                    self._response = response
                     event_builder = EventBuilder()
-                    while not self._shutdown_requested:
-                        line = await self._reader.content.readline()
-                        if line is None or len(line) <= 0:  # connection ended
-                            raise Exception('connection ended')
-                        elif line.startswith(b':'):  # comment. Skip
-                            _LOGGER.debug("skipping sse comment")
+                    async for line in response.content:
+                        if line.startswith(b':'):
+                            _LOGGER.debug("skipping emtpy line / comment")
                             continue
                         elif line in _EVENT_SEPARATORS:
                             _LOGGER.debug("dispatching event: %s", event_builder.build())
@@ -193,21 +186,33 @@ class SSEClientAsync(object):
                             event_builder = EventBuilder()
                         else:
                             event_builder.process_line(line)
-                except asyncio.CancelledError:
-                    _LOGGER.debug("Cancellation request, proceeding to cancel.")
-                    raise asyncio.CancelledError()
-                except Exception:  # pylint:disable=broad-except
+
+            except Exception as exc:  # pylint:disable=broad-except
+                if self._is_conn_closed_error(exc):
                     _LOGGER.debug('sse connection ended.')
-                    _LOGGER.debug('stack trace: ', exc_info=True)
-        except asyncio.CancelledError:
-            pass
-        except aiohttp.ClientError as exc:  # pylint: disable=broad-except
-            raise HttpClientException('http client is throwing exceptions') from exc
-        finally:
-            await self._conn.close()
-            self._conn = None  # clear so it can be started again
-            _LOGGER.debug("Existing SSEClient")
-        return
+                    return
+
+                _LOGGER.error('http client is throwing exceptions')
+                _LOGGER.error('stack trace: ', exc_info=True)
+
+            finally:
+                self._response = None
+                self._done.set()
+
+    async def shutdown(self):
+        """Close connection"""
+        if self._response:
+            self._response.close()
+        await self._done.wait()
+
+
+    @staticmethod
+    def _is_conn_closed_error(exc):
+        """Check if the ReadError is caused by the connection being closed."""
+        try:
+            return isinstance(exc.__context__.__context__, anyio.ClosedResourceError)
+        except:
+            return False
 
 def get_headers(extra=None):
     """
