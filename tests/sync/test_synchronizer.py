@@ -4,14 +4,14 @@ from turtle import clear
 import unittest.mock as mock
 import pytest
 
-from splitio.sync.synchronizer import Synchronizer, SynchronizerAsync, SplitTasks, SplitSynchronizers, LocalhostSynchronizer
+from splitio.sync.synchronizer import Synchronizer, SynchronizerAsync, SplitTasks, SplitSynchronizers, LocalhostSynchronizer, LocalhostSynchronizerAsync, RedisSynchronizer, RedisSynchronizerAsync
 from splitio.tasks.split_sync import SplitSynchronizationTask, SplitSynchronizationTaskAsync
 from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTask, UniqueKeysSyncTaskAsync, ClearFilterSyncTaskAsync
 from splitio.tasks.segment_sync import SegmentSynchronizationTask, SegmentSynchronizationTaskAsync
 from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask, ImpressionsCountSyncTaskAsync, ImpressionsSyncTaskAsync
 from splitio.tasks.events_sync import EventsSyncTask, EventsSyncTaskAsync
-from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync, LocalSplitSynchronizer, LocalhostMode
-from splitio.sync.segment import SegmentSynchronizer, SegmentSynchronizerAsync, LocalSegmentSynchronizer
+from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync, LocalSplitSynchronizer, LocalhostMode, LocalSplitSynchronizerAsync
+from splitio.sync.segment import SegmentSynchronizer, SegmentSynchronizerAsync, LocalSegmentSynchronizer, LocalSegmentSynchronizerAsync
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionSynchronizerAsync, ImpressionsCountSynchronizer, ImpressionsCountSynchronizerAsync
 from splitio.sync.event import EventSynchronizer, EventSynchronizerAsync
 from splitio.storage import SegmentStorage, SplitStorage
@@ -579,6 +579,96 @@ class SynchronizerAsyncTests(object):
         assert len(impression_task.start.mock_calls) == 1
         assert len(impression_count_task.start.mock_calls) == 1
         assert len(event_task.start.mock_calls) == 1
+
+        
+class RedisSynchronizerTests(object):
+    def test_start_periodic_data_recording(self, mocker):
+        impression_count_task = mocker.Mock(spec=ImpressionsCountSyncTask)
+        unique_keys_task = mocker.Mock(spec=UniqueKeysSyncTask)
+        clear_filter_task = mocker.Mock(spec=ClearFilterSyncTask)
+        split_tasks = SplitTasks(None, None, None, None,
+            impression_count_task,
+            None,
+            unique_keys_task,
+            clear_filter_task
+        )
+        synchronizer = RedisSynchronizer(mocker.Mock(spec=SplitSynchronizers), split_tasks)
+        synchronizer.start_periodic_data_recording()
+
+        assert len(impression_count_task.start.mock_calls) == 1
+        assert len(unique_keys_task.start.mock_calls) == 1
+        assert len(clear_filter_task.start.mock_calls) == 1
+
+    def test_stop_periodic_data_recording(self, mocker):
+
+        def stop_mock(event):
+            event.set()
+            return
+
+        impression_count_task = mocker.Mock(spec=ImpressionsCountSyncTask)
+        impression_count_task.stop.side_effect = stop_mock
+        unique_keys_task = mocker.Mock(spec=UniqueKeysSyncTask)
+        unique_keys_task.stop.side_effect = stop_mock
+        clear_filter_task = mocker.Mock(spec=ClearFilterSyncTask)
+        clear_filter_task.stop.side_effect = stop_mock
+
+        split_tasks = SplitTasks(None, None, None, None,
+            impression_count_task,
+            None,
+            unique_keys_task,
+            clear_filter_task
+        )
+        synchronizer = RedisSynchronizer(mocker.Mock(spec=SplitSynchronizers), split_tasks)
+        synchronizer.stop_periodic_data_recording(True)
+
+        assert len(impression_count_task.stop.mock_calls) == 1
+        assert len(unique_keys_task.stop.mock_calls) == 1
+        assert len(clear_filter_task.stop.mock_calls) == 1
+
+    def test_shutdown(self, mocker):
+
+        def stop_mock(event):
+            event.set()
+            return
+
+        impression_count_task = mocker.Mock(spec=ImpressionsCountSyncTask)
+        impression_count_task.stop.side_effect = stop_mock
+        unique_keys_task = mocker.Mock(spec=UniqueKeysSyncTask)
+        unique_keys_task.stop.side_effect = stop_mock
+        clear_filter_task = mocker.Mock(spec=ClearFilterSyncTask)
+        clear_filter_task.stop.side_effect = stop_mock
+
+        segment_sync = mocker.Mock(spec=SegmentSynchronizer)
+
+        split_tasks = SplitTasks(None, None, None, None,
+            impression_count_task,
+            None,
+            unique_keys_task,
+            clear_filter_task
+        )
+        synchronizer = RedisSynchronizer(mocker.Mock(spec=SplitSynchronizers), split_tasks)
+        synchronizer.shutdown(True)
+
+        assert len(impression_count_task.stop.mock_calls) == 1
+        assert len(unique_keys_task.stop.mock_calls) == 1
+        assert len(clear_filter_task.stop.mock_calls) == 1
+
+
+class RedisSynchronizerAsyncTests(object):
+    def test_start_periodic_data_recording(self, mocker):
+        impression_count_task = mocker.Mock(spec=ImpressionsCountSyncTaskAsync)
+        unique_keys_task = mocker.Mock(spec=UniqueKeysSyncTaskAsync)
+        clear_filter_task = mocker.Mock(spec=ClearFilterSyncTaskAsync)
+        split_tasks = SplitTasks(None, None, None, None,
+            impression_count_task,
+            None,
+            unique_keys_task,
+            clear_filter_task
+        )
+        synchronizer = RedisSynchronizerAsync(mocker.Mock(spec=SplitSynchronizers), split_tasks)
+        synchronizer.start_periodic_data_recording()
+
+        assert len(impression_count_task.start.mock_calls) == 1
         assert len(unique_keys_task.start.mock_calls) == 1
         assert len(clear_filter_task.start.mock_calls) == 1
 
@@ -761,6 +851,65 @@ class SynchronizerAsyncTests(object):
         await synchronizer._synchronize_segments()
         assert counts['segments'] == 1
 
+        impression_count_task = mocker.Mock(spec=ImpressionsCountSyncTaskAsync)
+        self.imp_count_calls = 0
+        async def imp_count_stop_mock():
+            self.imp_count_calls += 1
+        impression_count_task.stop = imp_count_stop_mock
+
+        unique_keys_task = mocker.Mock(spec=UniqueKeysSyncTaskAsync)
+        self.unique_keys_calls = 0
+        async def unique_keys_stop_mock():
+            self.unique_keys_calls += 1
+        unique_keys_task.stop = unique_keys_stop_mock
+
+        clear_filter_task = mocker.Mock(spec=ClearFilterSyncTaskAsync)
+        self.clear_filter_calls = 0
+        async def clear_filter_stop_mock():
+            self.clear_filter_calls += 1
+        clear_filter_task.stop = clear_filter_stop_mock
+
+        split_tasks = SplitTasks(None, None, None, None,
+            impression_count_task,
+            None,
+            unique_keys_task,
+            clear_filter_task
+        )
+        synchronizer = RedisSynchronizerAsync(mocker.Mock(spec=SplitSynchronizers), split_tasks)
+        await synchronizer.stop_periodic_data_recording(True)
+
+        assert self.imp_count_calls == 1
+        assert self.unique_keys_calls == 1
+        assert self.clear_filter_calls == 1
+
+    def test_shutdown(self, mocker):
+
+        def stop_mock(event):
+            event.set()
+            return
+
+        impression_count_task = mocker.Mock(spec=ImpressionsCountSyncTask)
+        impression_count_task.stop.side_effect = stop_mock
+        unique_keys_task = mocker.Mock(spec=UniqueKeysSyncTask)
+        unique_keys_task.stop.side_effect = stop_mock
+        clear_filter_task = mocker.Mock(spec=ClearFilterSyncTask)
+        clear_filter_task.stop.side_effect = stop_mock
+
+        segment_sync = mocker.Mock(spec=SegmentSynchronizer)
+
+        split_tasks = SplitTasks(None, None, None, None,
+            impression_count_task,
+            None,
+            unique_keys_task,
+            clear_filter_task
+        )
+        synchronizer = RedisSynchronizer(mocker.Mock(spec=SplitSynchronizers), split_tasks)
+        synchronizer.shutdown(True)
+
+        assert len(impression_count_task.stop.mock_calls) == 1
+        assert len(unique_keys_task.stop.mock_calls) == 1
+        assert len(clear_filter_task.stop.mock_calls) == 1
+
 
 class LocalhostSynchronizerTests(object):
 
@@ -816,5 +965,69 @@ class LocalhostSynchronizerTests(object):
         assert(self.segment_task_start_called)
 
         local_synchronizer.stop_periodic_fetching()
+        assert(self.split_task_stop_called)
+        assert(self.segment_task_stop_called)
+
+
+class LocalhostSynchronizerAsyncTests(object):
+
+    @pytest.mark.asyncio
+    async def test_synchronize_splits(self, mocker):
+        split_sync = LocalSplitSynchronizerAsync(mocker.Mock(), mocker.Mock(), mocker.Mock())
+        segment_sync = LocalSegmentSynchronizerAsync(mocker.Mock(), mocker.Mock(), mocker.Mock())
+        synchronizers = SplitSynchronizers(split_sync, segment_sync, None, None, None)
+        local_synchronizer = LocalhostSynchronizerAsync(synchronizers, mocker.Mock(), mocker.Mock())
+
+        self.called = False
+        async def synchronize_segments(*args):
+            self.called = True
+        segment_sync.synchronize_segments = synchronize_segments
+
+        async def synchronize_splits(*args, **kwargs):
+            return ["segmentA", "segmentB"]
+        split_sync.synchronize_splits = synchronize_splits
+
+        async def segment_exist_in_storage(*args, **kwargs):
+            return False
+        segment_sync.segment_exist_in_storage = segment_exist_in_storage
+
+        assert(await local_synchronizer.synchronize_splits())
+        assert(self.called)
+
+    @pytest.mark.asyncio
+    async def test_start_and_stop_tasks(self, mocker):
+        synchronizers = SplitSynchronizers(
+            LocalSplitSynchronizerAsync(mocker.Mock(), mocker.Mock(), mocker.Mock()),
+            LocalSegmentSynchronizerAsync(mocker.Mock(), mocker.Mock(), mocker.Mock()), None, None, None)
+        split_task = SplitSynchronizationTaskAsync(synchronizers.split_sync.synchronize_splits, 30)
+        segment_task = SegmentSynchronizationTaskAsync(synchronizers.segment_sync.synchronize_segments, 30)
+        tasks = SplitTasks(split_task, segment_task, None, None, None,)
+
+        self.split_task_start_called = False
+        def split_task_start(*args, **kwargs):
+            self.split_task_start_called = True
+        split_task.start = split_task_start
+
+        self.segment_task_start_called = False
+        def segment_task_start(*args, **kwargs):
+            self.segment_task_start_called = True
+        segment_task.start = segment_task_start
+
+        self.split_task_stop_called = False
+        async def split_task_stop(*args, **kwargs):
+            self.split_task_stop_called = True
+        split_task.stop = split_task_stop
+
+        self.segment_task_stop_called = False
+        async def segment_task_stop(*args, **kwargs):
+            self.segment_task_stop_called = True
+        segment_task.stop = segment_task_stop
+
+        local_synchronizer = LocalhostSynchronizerAsync(synchronizers, tasks, LocalhostMode.JSON)
+        local_synchronizer.start_periodic_fetching()
+        assert(self.split_task_start_called)
+        assert(self.segment_task_start_called)
+
+        await local_synchronizer.stop_periodic_fetching()
         assert(self.split_task_stop_called)
         assert(self.segment_task_stop_called)

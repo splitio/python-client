@@ -1,6 +1,6 @@
 """Configuration unit tests."""
 # pylint: disable=protected-access,no-self-use,line-too-long
-
+import pytest
 from splitio.client import config
 from splitio.engine.impressions.impressions import ImpressionsMode
 
@@ -66,5 +66,13 @@ class ConfigSanitizationTests(object):
         """Test sanitization."""
         configs = {}
         processed = config.sanitize('some', configs)
-
         assert processed['redisLocalCacheEnabled']  # check default is True
+
+        configs = {'parallelTasksRunMode': 'asyncio'}
+        processed = config.sanitize('some', configs)
+        assert processed['parallelTasksRunMode'] == 'asyncio'
+
+#        pytest.set_trace()
+        configs = {'parallelTasksRunMode': 'async'}
+        processed = config.sanitize('some', configs)
+        assert processed['parallelTasksRunMode'] == 'threading'

@@ -58,7 +58,8 @@ DEFAULT_CONFIG = {
     'dataSampling': DEFAULT_DATA_SAMPLING,
     'storageWrapper': None,
     'storagePrefix': None,
-    'storageType': None
+    'storageType': None,
+    'parallelTasksRunMode': 'threading',
 }
 
 
@@ -142,5 +143,9 @@ def sanitize(sdk_key, config):
     if processed['metricsRefreshRate'] < 60:
         _LOGGER.warning('metricRefreshRate parameter minimum value is 60 seconds, defaulting to 3600 seconds.')
         processed['metricsRefreshRate'] = 3600
+
+    if processed['parallelTasksRunMode'] not in ['threading', 'asyncio']:
+        _LOGGER.warning('parallelTasksRunMode parameter value must be either `threading` or `asyncio`, defaulting to `threading`.')
+        processed['parallelTasksRunMode'] = 'threading'
 
     return processed
