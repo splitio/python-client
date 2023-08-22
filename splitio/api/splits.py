@@ -56,6 +56,9 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
                 query=query,
             )
             record_telemetry(response.status_code, get_current_epoch_time_ms() - start, HTTPExceptionsAndLatencies.SPLIT, self._telemetry_runtime_producer)
+            if response.status_code == 414:
+                _LOGGER.error('Error fetching feature flags; the amount of flag sets provided are too big, causing uri length error.')
+
             if 200 <= response.status_code < 300:
                 return json.loads(response.body)
             else:
