@@ -250,5 +250,5 @@ def from_raw(raw_split):
         traffic_allocation=raw_split.get('trafficAllocation'),
         traffic_allocation_seed=raw_split.get('trafficAllocationSeed'),
         configurations=raw_split.get('configurations'),
-        sets=raw_split['sets']
+        sets=raw_split.get('sets')
     )
