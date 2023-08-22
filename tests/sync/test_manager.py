@@ -18,18 +18,14 @@ from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageP
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
 from splitio.models.telemetry import SSESyncMode, StreamingEventTypes
 from splitio.push.manager import Status
-
 from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync
 from splitio.sync.segment import SegmentSynchronizer
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
 from splitio.sync.event import EventSynchronizer
-from splitio.sync.synchronizer import Synchronizer, SynchronizerAsync, SplitTasks, SplitSynchronizers, RedisSynchronizer
-from splitio.sync.manager import Manager, ManagerAsync, RedisManager
-
+from splitio.sync.synchronizer import Synchronizer, SynchronizerAsync, SplitTasks, SplitSynchronizers, RedisSynchronizer, RedisSynchronizerAsync
+from splitio.sync.manager import Manager, ManagerAsync, RedisManager, RedisManagerAsync
 from splitio.storage import SplitStorage
-
 from splitio.api import APIException
-
 from splitio.client.util import SdkMetadata
 
 
@@ -213,3 +209,34 @@ class RedisSyncManagerTests(object):
 
         self.manager.stop(True)
         assert(mocker.called)
+
+
+class RedisSyncManagerAsyncTests(object):
+    """Synchronizer Redis Manager async tests."""
+
+    synchronizers = SplitSynchronizers(None, None, None, None, None, None, None, None)
+    tasks = SplitTasks(None, None, None, None, None, None, None, None)
+    synchronizer = RedisSynchronizerAsync(synchronizers, tasks)
+    manager = RedisManagerAsync(synchronizer)
+
+    @mock.patch('splitio.sync.synchronizer.RedisSynchronizerAsync.start_periodic_data_recording')
+    def test_recreate_and_start(self, mocker):
+        assert(isinstance(self.manager._synchronizer, RedisSynchronizerAsync))
+
+        self.manager.recreate()
+        assert(not mocker.called)
+
+        self.manager.start()
+        assert(mocker.called)
+
+    @pytest.mark.asyncio
+    async def test_recreate_and_stop(self, mocker):
+        self.called = False
+        async def shutdown(block):
+            self.called = True
+        self.manager._synchronizer.shutdown = shutdown
+        self.manager.recreate()
+        assert(not self.called)
+
+        await self.manager.stop(True)
+        assert(self.called)

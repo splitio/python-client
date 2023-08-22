@@ -255,8 +255,9 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
                 await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time_ms()))
                 return
 
-class RedisManager(object):  # pylint:disable=too-many-instance-attributes
-    """Manager Class."""
+
+class RedisManagerBase(object):  # pylint:disable=too-many-instance-attributes
+    """Manager base Class."""
 
     def __init__(self, synchronizer):  # pylint:disable=too-many-arguments
         """
@@ -286,6 +287,23 @@ class RedisManager(object):  # pylint:disable=too-many-instance-attributes
             _LOGGER.debug('Exception information: ', exc_info=True)
             raise
 
+
+class RedisManager(RedisManagerBase):  # pylint:disable=too-many-instance-attributes
+    """Manager Class."""
+
+    def __init__(self, synchronizer):  # pylint:disable=too-many-arguments
+        """
+        Construct Manager.
+
+        :param unique_keys_task: unique keys task instance
+        :type unique_keys_task: splitio.tasks.unique_keys_sync.UniqueKeysSyncTask
+
+        :param clear_filter_task: clear filter task instance
+        :type clear_filter_task: splitio.tasks.clear_filter_task.ClearFilterSynchronizer
+
+        """
+        super().__init__(synchronizer)
+
     def stop(self, blocking):
         """
         Stop manager logic.
@@ -295,3 +313,30 @@ class RedisManager(object):  # pylint:disable=too-many-instance-attributes
         """
         _LOGGER.info('Stopping manager tasks')
         self._synchronizer.shutdown(blocking)
+
+
+class RedisManagerAsync(RedisManagerBase):  # pylint:disable=too-many-instance-attributes
+    """Manager async Class."""
+
+    def __init__(self, synchronizer):  # pylint:disable=too-many-arguments
+        """
+        Construct Manager.
+
+        :param unique_keys_task: unique keys task instance
+        :type unique_keys_task: splitio.tasks.unique_keys_sync.UniqueKeysSyncTask
+
+        :param clear_filter_task: clear filter task instance
+        :type clear_filter_task: splitio.tasks.clear_filter_task.ClearFilterSynchronizer
+
+        """
+        super().__init__(synchronizer)
+
+    async def stop(self, blocking):
+        """
+        Stop manager logic.
+
+        :param blocking: flag to wait until tasks are stopped
+        :type blocking: bool
+        """
+        _LOGGER.info('Stopping manager tasks')
+        await self._synchronizer.shutdown(blocking)

@@ -140,20 +140,24 @@ class SSESplitClientAsyncTests(object):
         token = Token(True, 'some', {'chan1': ['subscribe'], 'chan2': ['subscribe', 'channel-metadata:publishers']},
                       1, 2)
 
+        events_source = client.start(token)
         server.publish({'id': '1'})  # send a non-error event early to unblock start
-
-        events_loop = client.start(token)
-        first_event = await events_loop.__anext__()
-        assert first_event.event != SSE_EVENT_ERROR
-
         server.publish({'id': '1', 'data': 'a', 'retry': '1', 'event': 'message'})
         server.publish({'id': '2', 'data': 'a', 'retry': '1', 'event': 'message'})
-        await asyncio.sleep(1)
 
-        event2 = await events_loop.__anext__()
-        event3 = await events_loop.__anext__()
+        first_event = await events_source.__anext__()
+        assert first_event.event != SSE_EVENT_ERROR
 
-        await client.stop()
+
+        event2 = await events_source.__anext__()
+        event3 = await events_source.__anext__()
+
+        # Since generators are meant to be iterated, we need to consume them all until StopIteration occurs
+        # to do this, connection must be closed in another coroutine, while the current one is still consuming events.
+        shutdown_task = asyncio.get_running_loop().create_task(client.stop())
+        with pytest.raises(StopAsyncIteration): await events_source.__anext__()
+        await shutdown_task
+
 
         request = request_queue.get(1)
         assert request.path == '/event-stream?v=1.1&accessToken=some&channels=chan1,%5B?occupancy=metrics.publishers%5Dchan2'
@@ -186,12 +190,11 @@ class SSESplitClientAsyncTests(object):
         token = Token(True, 'some', {'chan1': ['subscribe'], 'chan2': ['subscribe', 'channel-metadata:publishers']},
                       1, 2)
 
-        events_loop = client.start(token)
+        events_source = client.start(token)
         server.publish({'event': 'error'})  # send an error event early to unblock start
 
-        await asyncio.sleep(1)
-        with pytest.raises( StopAsyncIteration):
-            await events_loop.__anext__()
+
+        with pytest.raises(StopAsyncIteration): await events_source.__anext__()
 
         assert client.status == SplitSSEClient._Status.IDLE
 
