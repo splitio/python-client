@@ -125,5 +125,5 @@ def build_fetch(change_number, fetch_options, metadata):
     if fetch_options.change_number is not None:
         query['till'] = fetch_options.change_number
     if fetch_options.sets is not None:
-        query['sets'] = ','.join(fetch_options.sets)
+        query['sets'] = ','.join(sorted(fetch_options.sets))
     return query, extra_headers
