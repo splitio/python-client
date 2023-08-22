@@ -3,6 +3,7 @@
 import time
 import threading
 import pytest
+from contextlib import suppress
 
 from splitio.push.sse import SSEClient, SSEEvent, SSEClientAsync
 from splitio.optional.loaders import asyncio
@@ -135,26 +136,28 @@ class SSEClientAsyncTests(object):
         server.start()
         client = SSEClientAsync()
         sse_events_loop = client.start(f"http://127.0.0.1:{str(server.port())}?token=abc123$%^&(")
-        # sse_events_loop = client.start(f"http://127.0.0.1:{str(server.port())}")
 
         server.publish({'id': '1'})
         server.publish({'id': '2', 'event': 'message', 'data': 'abc'})
         server.publish({'id': '3', 'event': 'message', 'data': 'def'})
         server.publish({'id': '4', 'event': 'message', 'data': 'ghi'})
 
-        await asyncio.sleep(1)
         event1 = await sse_events_loop.__anext__()
         event2 = await sse_events_loop.__anext__()
         event3 = await sse_events_loop.__anext__()
         event4 = await sse_events_loop.__anext__()
-        await client.shutdown()
-        await asyncio.sleep(1)
+
+        # Since generators are meant to be iterated, we need to consume them all until StopIteration occurs
+        # to do this, connection must be closed in another coroutine, while the current one is still consuming events.
+        shutdown_task = asyncio.get_running_loop().create_task(client.shutdown())
+        with pytest.raises(StopAsyncIteration): await sse_events_loop.__anext__()
+        await shutdown_task
 
         assert event1 == SSEEvent('1', None, None, None)
         assert event2 == SSEEvent('2', 'message', None, 'abc')
         assert event3 == SSEEvent('3', 'message', None, 'def')
         assert event4 == SSEEvent('4', 'message', None, 'ghi')
-        assert client._conn.closed
+        assert client._response == None
 
         server.publish(server.GRACEFUL_REQUEST_END)
         server.stop()
@@ -172,25 +175,26 @@ class SSEClientAsyncTests(object):
         server.publish({'id': '3', 'event': 'message', 'data': 'def'})
         server.publish({'id': '4', 'event': 'message', 'data': 'ghi'})
 
-        await asyncio.sleep(1)
         event1 = await sse_events_loop.__anext__()
         event2 = await sse_events_loop.__anext__()
         event3 = await sse_events_loop.__anext__()
         event4 = await sse_events_loop.__anext__()
 
         server.publish(server.GRACEFUL_REQUEST_END)
-        try:
-            await sse_events_loop.__anext__()
-        except StopAsyncIteration:
-            pass
 
-        server.stop()
-        await asyncio.sleep(1)
+        # after the connection ends, any subsequent read sohould fail and iteration should stop
+        with pytest.raises(StopAsyncIteration): await sse_events_loop.__anext__()
+
         assert event1 == SSEEvent('1', None, None, None)
         assert event2 == SSEEvent('2', 'message', None, 'abc')
         assert event3 == SSEEvent('3', 'message', None, 'def')
         assert event4 == SSEEvent('4', 'message', None, 'ghi')
-        assert client._conn is None
+        assert client._response == None
+
+        server.stop()
+
+        await client._done.wait() # to ensure `start()` has finished
+        assert client._response is None
 
     @pytest.mark.asyncio
     async def test_sse_server_disconnects_abruptly(self):
@@ -205,23 +209,21 @@ class SSEClientAsyncTests(object):
         server.publish({'id': '3', 'event': 'message', 'data': 'def'})
         server.publish({'id': '4', 'event': 'message', 'data': 'ghi'})
 
-        await asyncio.sleep(1)
         event1 = await sse_events_loop.__anext__()
         event2 = await sse_events_loop.__anext__()
         event3 = await sse_events_loop.__anext__()
         event4 = await sse_events_loop.__anext__()
 
         server.publish(server.VIOLENT_REQUEST_END)
-        try:
-            await sse_events_loop.__anext__()
-        except StopAsyncIteration:
-            pass
+        with pytest.raises(StopAsyncIteration): await sse_events_loop.__anext__()
 
         server.stop()
 
-        await asyncio.sleep(1)
         assert event1 == SSEEvent('1', None, None, None)
         assert event2 == SSEEvent('2', 'message', None, 'abc')
         assert event3 == SSEEvent('3', 'message', None, 'def')
         assert event4 == SSEEvent('4', 'message', None, 'ghi')
-        assert client._conn is None
+
+        await client._done.wait() # to ensure `start()` has finished
+        assert client._response is None
+
