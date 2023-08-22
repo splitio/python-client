@@ -550,9 +550,6 @@ class RedisSynchronizerAsync(RedisSynchronizerBase):
     async def _stop_periodic_data_recording(self):
         """
         Stop recorders.
-
-        :param blocking: flag to wait until tasks are stopped
-        :type blocking: bool
         """
         for task in self._tasks:
             await task.stop()
