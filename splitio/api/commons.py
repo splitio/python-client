@@ -86,7 +86,7 @@ class FetchOptions(object):
 
     @property
     def sets(self):
-        """Return change number."""
+        """Return sets."""
         return self._sets
 
     def __eq__(self, other):
