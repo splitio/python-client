@@ -4,21 +4,51 @@ from turtle import clear
 import unittest.mock as mock
 import pytest
 
-from splitio.sync.synchronizer import Synchronizer, SplitTasks, SplitSynchronizers, LocalhostSynchronizer, LocalhostSynchronizerAsync, RedisSynchronizer, RedisSynchronizerAsync
+from splitio.sync.synchronizer import Synchronizer, SynchronizerAsync, SplitTasks, SplitSynchronizers, LocalhostSynchronizer, LocalhostSynchronizerAsync, RedisSynchronizer, RedisSynchronizerAsync
 from splitio.tasks.split_sync import SplitSynchronizationTask, SplitSynchronizationTaskAsync
 from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTask, UniqueKeysSyncTaskAsync, ClearFilterSyncTaskAsync
 from splitio.tasks.segment_sync import SegmentSynchronizationTask, SegmentSynchronizationTaskAsync
-from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask, ImpressionsCountSyncTaskAsync
-from splitio.tasks.events_sync import EventsSyncTask
-from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer, LocalhostMode, LocalSplitSynchronizerAsync
-from splitio.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer, LocalSegmentSynchronizerAsync
-from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
-from splitio.sync.event import EventSynchronizer
+from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask, ImpressionsCountSyncTaskAsync, ImpressionsSyncTaskAsync
+from splitio.tasks.events_sync import EventsSyncTask, EventsSyncTaskAsync
+from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync, LocalSplitSynchronizer, LocalhostMode, LocalSplitSynchronizerAsync
+from splitio.sync.segment import SegmentSynchronizer, SegmentSynchronizerAsync, LocalSegmentSynchronizer, LocalSegmentSynchronizerAsync
+from splitio.sync.impression import ImpressionSynchronizer, ImpressionSynchronizerAsync, ImpressionsCountSynchronizer, ImpressionsCountSynchronizerAsync
+from splitio.sync.event import EventSynchronizer, EventSynchronizerAsync
 from splitio.storage import SegmentStorage, SplitStorage
 from splitio.api import APIException
 from splitio.models.splits import Split
 from splitio.models.segments import Segment
-from splitio.storage.inmemmory import InMemorySegmentStorage, InMemorySplitStorage
+from splitio.storage.inmemmory import InMemorySegmentStorage, InMemorySplitStorage, InMemorySegmentStorageAsync, InMemorySplitStorageAsync
+
+splits = [{
+    'changeNumber': 123,
+    'trafficTypeName': 'user',
+    'name': 'some_name',
+    'trafficAllocation': 100,
+    'trafficAllocationSeed': 123456,
+    'seed': 321654,
+    'status': 'ACTIVE',
+    'killed': False,
+    'defaultTreatment': 'off',
+    'algo': 2,
+    'conditions': [{
+        'conditionType': 'WHITELIST',
+        'matcherGroup':{
+            'combiner': 'AND',
+            'matchers':[{
+                'matcherType': 'IN_SEGMENT',
+                'negate': False,
+                'userDefinedSegmentMatcherData': {
+                    'segmentName': 'segmentA'
+                }
+            }]
+        },
+        'partitions': [{
+            'size': 100,
+            'treatment': 'on'
+        }]
+    }]
+}]
 
 class SynchronizerTests(object):
     def test_sync_all_failed_splits(self, mocker):
@@ -59,40 +89,10 @@ class SynchronizerTests(object):
         sychronizer.sync_all(1)  # SyncAll should not throw!
         assert not sychronizer._synchronize_segments()
 
-    splits = [{
-        'changeNumber': 123,
-        'trafficTypeName': 'user',
-        'name': 'some_name',
-        'trafficAllocation': 100,
-        'trafficAllocationSeed': 123456,
-        'seed': 321654,
-        'status': 'ACTIVE',
-        'killed': False,
-        'defaultTreatment': 'off',
-        'algo': 2,
-        'conditions': [{
-            'conditionType': 'WHITELIST',
-            'matcherGroup':{
-                'combiner': 'AND',
-                'matchers':[{
-                    'matcherType': 'IN_SEGMENT',
-                    'negate': False,
-                    'userDefinedSegmentMatcherData': {
-                        'segmentName': 'segmentA'
-                    }
-                }]
-            },
-            'partitions': [{
-                'size': 100,
-                'treatment': 'on'
-            }]
-        }]
-    }]
-
     def test_synchronize_splits(self, mocker):
         split_storage = InMemorySplitStorage()
         split_api = mocker.Mock()
-        split_api.fetch_splits.return_value = {'splits': self.splits, 'since': 123,
+        split_api.fetch_splits.return_value = {'splits': splits, 'since': 123,
                                                'till': 123}
         split_sync = SplitSynchronizer(split_api, split_storage)
         segment_storage = InMemorySegmentStorage()
@@ -118,7 +118,7 @@ class SynchronizerTests(object):
     def test_synchronize_splits_calling_segment_sync_once(self, mocker):
         split_storage = InMemorySplitStorage()
         split_api = mocker.Mock()
-        split_api.fetch_splits.return_value = {'splits': self.splits, 'since': 123,
+        split_api.fetch_splits.return_value = {'splits': splits, 'since': 123,
                                                'till': 123}
         split_sync = SplitSynchronizer(split_api, split_storage)
         counts = {'segments': 0}
@@ -143,7 +143,7 @@ class SynchronizerTests(object):
         split_storage.get_change_number.return_value = 123
         split_storage.get_segment_names.return_value = ['segmentA']
         split_api = mocker.Mock()
-        split_api.fetch_splits.return_value = {'splits': self.splits, 'since': 123,
+        split_api.fetch_splits.return_value = {'splits': splits, 'since': 123,
                                                'till': 123}
         split_sync = SplitSynchronizer(split_api, split_storage)
 
@@ -343,6 +343,244 @@ class SynchronizerTests(object):
         assert counts['segments'] == 1
 
 
+class SynchronizerAsyncTests(object):
+
+    @pytest.mark.asyncio
+    async def test_sync_all_failed_splits(self, mocker):
+        api = mocker.Mock()
+        storage = mocker.Mock()
+
+        async def run(x, c):
+            raise APIException("something broke")
+        api.fetch_splits = run
+
+        async def get_change_number():
+            return 1234
+        storage.get_change_number = get_change_number
+
+        split_sync = SplitSynchronizerAsync(api, storage)
+        split_synchronizers = SplitSynchronizers(split_sync, mocker.Mock(), mocker.Mock(),
+                                                 mocker.Mock(), mocker.Mock())
+        sychronizer = SynchronizerAsync(split_synchronizers, mocker.Mock(spec=SplitTasks))
+
+        await sychronizer.synchronize_splits(None)  # APIExceptions are handled locally and should not be propagated!
+
+        # test forcing to have only one retry attempt and then exit
+        await sychronizer.sync_all(1)  # sync_all should not throw!
+
+    @pytest.mark.asyncio
+    async def test_sync_all_failed_segments(self, mocker):
+        api = mocker.Mock()
+        storage = mocker.Mock()
+        split_storage = mocker.Mock(spec=SplitStorage)
+        split_storage.get_segment_names.return_value = ['segmentA']
+        split_sync = mocker.Mock(spec=SplitSynchronizer)
+        split_sync.synchronize_splits.return_value = None
+
+        async def run(x, y):
+            raise APIException("something broke")
+        api.fetch_segment = run
+
+        async def get_segment_names():
+            return ['seg']
+        split_storage.get_segment_names = get_segment_names
+
+        segment_sync = SegmentSynchronizerAsync(api, split_storage, storage)
+        split_synchronizers = SplitSynchronizers(split_sync, segment_sync, mocker.Mock(),
+                                                 mocker.Mock(), mocker.Mock())
+        sychronizer = SynchronizerAsync(split_synchronizers, mocker.Mock(spec=SplitTasks))
+
+        await sychronizer.sync_all(1)  # SyncAll should not throw!
+        assert not await sychronizer._synchronize_segments()
+        await segment_sync.shutdown()
+
+    @pytest.mark.asyncio
+    async def test_synchronize_splits(self, mocker):
+        split_storage = InMemorySplitStorageAsync()
+        split_api = mocker.Mock()
+
+        async def fetch_splits(change, options):
+            return {'splits': splits, 'since': 123,
+                                               'till': 123}
+        split_api.fetch_splits = fetch_splits
+
+        split_sync = SplitSynchronizerAsync(split_api, split_storage)
+        segment_storage = InMemorySegmentStorageAsync()
+        segment_api = mocker.Mock()
+
+        async def get_change_number():
+            return 123
+        split_storage.get_change_number = get_change_number
+
+        async def fetch_segment(segment_name, change, options):
+            return {'name': 'segmentA', 'added': ['key1', 'key2',
+                                                  'key3'], 'removed': [], 'since': 123, 'till': 123}
+        segment_api.fetch_segment = fetch_segment
+
+        segment_sync = SegmentSynchronizerAsync(segment_api, split_storage, segment_storage)
+        split_synchronizers = SplitSynchronizers(split_sync, segment_sync, mocker.Mock(),
+                                                 mocker.Mock(), mocker.Mock())
+        synchronizer = SynchronizerAsync(split_synchronizers, mocker.Mock(spec=SplitTasks))
+
+        await synchronizer.synchronize_splits(123)
+
+        inserted_split = await split_storage.get('some_name')
+        assert isinstance(inserted_split, Split)
+        assert inserted_split.name == 'some_name'
+
+        await segment_sync._jobs.await_completion()
+        inserted_segment = await segment_storage.get('segmentA')
+        assert inserted_segment.name == 'segmentA'
+        assert inserted_segment.keys == {'key1', 'key2', 'key3'}
+
+    @pytest.mark.asyncio
+    async def test_synchronize_splits_calling_segment_sync_once(self, mocker):
+        split_storage = InMemorySplitStorageAsync()
+        async def get_change_number():
+            return 123
+        split_storage.get_change_number = get_change_number
+
+        split_api = mocker.Mock()
+        async def fetch_splits(change, options):
+            return {'splits': splits, 'since': 123,
+                                               'till': 123}
+        split_api.fetch_splits = fetch_splits
+
+        split_sync = SplitSynchronizerAsync(split_api, split_storage)
+        counts = {'segments': 0}
+
+        segment_sync = mocker.Mock()
+        async def sync_segments(*_):
+            """Sync Segments."""
+            counts['segments'] += 1
+            return True
+        segment_sync.synchronize_segments = sync_segments
+
+        async def segment_exist_in_storage(segment):
+            return False
+        segment_sync.segment_exist_in_storage = segment_exist_in_storage
+
+        split_synchronizers = SplitSynchronizers(split_sync, segment_sync, mocker.Mock(),
+                                                 mocker.Mock(), mocker.Mock())
+        synchronizer = SynchronizerAsync(split_synchronizers, mocker.Mock(spec=SplitTasks))
+        await synchronizer.synchronize_splits(123, True)
+
+        assert counts['segments'] == 1
+
+    @pytest.mark.asyncio
+    async def test_sync_all(self, mocker):
+        split_storage = InMemorySplitStorageAsync()
+        async def get_change_number():
+            return 123
+        split_storage.get_change_number = get_change_number
+
+        self.added_split = None
+        async def put(split):
+            self.added_split = split
+        split_storage.put = put
+
+        async def get_segment_names():
+            return ['segmentA']
+        split_storage.get_segment_names = get_segment_names
+
+        split_api = mocker.Mock()
+        async def fetch_splits(change, options):
+            return {'splits': splits, 'since': 123, 'till': 123}
+        split_api.fetch_splits = fetch_splits
+
+        split_sync = SplitSynchronizerAsync(split_api, split_storage)
+        segment_storage = InMemorySegmentStorageAsync()
+        async def get_change_number(segment):
+            return 123
+        segment_storage.get_change_number = get_change_number
+
+        self.inserted_segment = []
+        async def update(segment, added, removed, till):
+            self.inserted_segment.append(segment)
+            self.inserted_segment.append(added)
+            self.inserted_segment.append(removed)
+        segment_storage.update = update
+
+        segment_api = mocker.Mock()
+        async def fetch_segment(segment_name, change, options):
+            return {'name': 'segmentA', 'added': ['key1', 'key2', 'key3'],
+                    'removed': [], 'since': 123, 'till': 123}
+        segment_api.fetch_segment = fetch_segment
+
+        segment_sync = SegmentSynchronizerAsync(segment_api, split_storage, segment_storage)
+        split_synchronizers = SplitSynchronizers(split_sync, segment_sync, mocker.Mock(),
+                                                 mocker.Mock(), mocker.Mock())
+        synchronizer = SynchronizerAsync(split_synchronizers, mocker.Mock(spec=SplitTasks))
+        await synchronizer.sync_all()
+        await segment_sync._jobs.await_completion()
+
+        assert isinstance(self.added_split, Split)
+        assert self.added_split.name == 'some_name'
+
+        assert self.inserted_segment[0] == 'segmentA'
+        assert self.inserted_segment[1] == ['key1', 'key2', 'key3']
+        assert self.inserted_segment[2] == []
+
+    @pytest.mark.asyncio
+    def test_start_periodic_fetching(self, mocker):
+        split_task = mocker.Mock(spec=SplitSynchronizationTask)
+        segment_task = mocker.Mock(spec=SegmentSynchronizationTask)
+        split_tasks = SplitTasks(split_task, segment_task, mocker.Mock(), mocker.Mock(),
+                                 mocker.Mock())
+        synchronizer = SynchronizerAsync(mocker.Mock(spec=SplitSynchronizers), split_tasks)
+        synchronizer.start_periodic_fetching()
+
+        assert len(split_task.start.mock_calls) == 1
+        assert len(segment_task.start.mock_calls) == 1
+
+    @pytest.mark.asyncio
+    async def test_stop_periodic_fetching(self, mocker):
+        split_task = mocker.Mock(spec=SplitSynchronizationTaskAsync)
+        segment_task = mocker.Mock(spec=SegmentSynchronizationTaskAsync)
+        segment_sync = mocker.Mock(spec=SegmentSynchronizerAsync)
+        split_synchronizers = SplitSynchronizers(mocker.Mock(), segment_sync, mocker.Mock(),
+                                                 mocker.Mock(), mocker.Mock())
+        split_tasks = SplitTasks(split_task, segment_task, mocker.Mock(), mocker.Mock(),
+                                 mocker.Mock())
+        synchronizer = SynchronizerAsync(split_synchronizers, split_tasks)
+        self.split_task_stopped = 0
+        async def stop_split():
+            self.split_task_stopped += 1
+        split_task.stop = stop_split
+
+        self.segment_task_stopped = 0
+        async def stop_segment():
+            self.segment_task_stopped += 1
+        segment_task.stop = stop_segment
+
+        self.segment_sync_stopped = 0
+        async def shutdown():
+            self.segment_sync_stopped += 1
+        segment_sync.shutdown = shutdown
+
+        await synchronizer.stop_periodic_fetching()
+
+        assert self.split_task_stopped == 1
+        assert self.segment_task_stopped == 1
+        assert self.segment_sync_stopped == 0
+
+    @pytest.mark.asyncio
+    def test_start_periodic_data_recording(self, mocker):
+        impression_task = mocker.Mock(spec=ImpressionsSyncTaskAsync)
+        impression_count_task = mocker.Mock(spec=ImpressionsCountSyncTaskAsync)
+        event_task = mocker.Mock(spec=EventsSyncTaskAsync)
+        unique_keys_task = mocker.Mock(spec=UniqueKeysSyncTaskAsync)
+        clear_filter_task = mocker.Mock(spec=ClearFilterSyncTaskAsync)
+        split_tasks = SplitTasks(mocker.Mock(), mocker.Mock(), impression_task, event_task,
+                                 impression_count_task, unique_keys_task, clear_filter_task)
+        synchronizer = SynchronizerAsync(mocker.Mock(spec=SplitSynchronizers), split_tasks)
+        synchronizer.start_periodic_data_recording()
+
+        assert len(impression_task.start.mock_calls) == 1
+        assert len(impression_count_task.start.mock_calls) == 1
+        assert len(event_task.start.mock_calls) == 1
+
+        
 class RedisSynchronizerTests(object):
     def test_start_periodic_data_recording(self, mocker):
         impression_count_task = mocker.Mock(spec=ImpressionsCountSyncTask)
@@ -436,6 +674,183 @@ class RedisSynchronizerAsyncTests(object):
 
     @pytest.mark.asyncio
     async def test_stop_periodic_data_recording(self, mocker):
+        impression_task = mocker.Mock(spec=ImpressionsSyncTaskAsync)
+        self.stop_imp_calls = 0
+        async def stop_imp(arg=None):
+            self.stop_imp_calls += 1
+            return
+        impression_task.stop = stop_imp
+
+        impression_count_task = mocker.Mock(spec=ImpressionsCountSyncTaskAsync)
+        self.stop_imp_count_calls = 0
+        async def stop_imp_count(arg=None):
+            self.stop_imp_count_calls += 1
+            return
+        impression_count_task.stop = stop_imp_count
+
+        event_task = mocker.Mock(spec=EventsSyncTaskAsync)
+        self.stop_event_calls = 0
+        async def stop_event(arg=None):
+            self.stop_event_calls += 1
+            return
+        event_task.stop = stop_event
+
+        unique_keys_task = mocker.Mock(spec=UniqueKeysSyncTaskAsync)
+        self.stop_unique_keys_calls = 0
+        async def stop_unique_keys(arg=None):
+            self.stop_unique_keys_calls += 1
+            return
+        unique_keys_task.stop = stop_unique_keys
+
+        clear_filter_task = mocker.Mock(spec=ClearFilterSyncTaskAsync)
+        self.stop_clear_filter_calls = 0
+        async def stop_clear_filter(arg=None):
+            self.stop_clear_filter_calls += 1
+            return
+        clear_filter_task.stop = stop_clear_filter
+
+        split_tasks = SplitTasks(mocker.Mock(), mocker.Mock(), impression_task, event_task,
+                                 impression_count_task, unique_keys_task, clear_filter_task)
+        synchronizer = SynchronizerAsync(mocker.Mock(spec=SplitSynchronizers), split_tasks)
+        await synchronizer.stop_periodic_data_recording(True)
+
+        assert self.stop_imp_count_calls == 1
+        assert self.stop_imp_calls == 1
+        assert self.stop_event_calls == 1
+        assert self.stop_unique_keys_calls == 1
+        assert self.stop_clear_filter_calls == 1
+
+    @pytest.mark.asyncio
+    async def test_shutdown(self, mocker):
+        split_task = mocker.Mock(spec=SplitSynchronizationTask)
+        self.split_task_stopped = 0
+        async def stop_split():
+            self.split_task_stopped += 1
+        split_task.stop = stop_split
+
+        segment_task = mocker.Mock(spec=SegmentSynchronizationTask)
+        self.segment_task_stopped = 0
+        async def stop_segment():
+            self.segment_task_stopped += 1
+        segment_task.stop = stop_segment
+
+        impression_task = mocker.Mock(spec=ImpressionsSyncTaskAsync)
+        self.stop_imp_calls = 0
+        async def stop_imp(arg=None):
+            self.stop_imp_calls += 1
+            return
+        impression_task.stop = stop_imp
+
+        impression_count_task = mocker.Mock(spec=ImpressionsCountSyncTaskAsync)
+        self.stop_imp_count_calls = 0
+        async def stop_imp_count(arg=None):
+            self.stop_imp_count_calls += 1
+            return
+        impression_count_task.stop = stop_imp_count
+
+        event_task = mocker.Mock(spec=EventsSyncTaskAsync)
+        self.stop_event_calls = 0
+        async def stop_event(arg=None):
+            self.stop_event_calls += 1
+            return
+        event_task.stop = stop_event
+
+        unique_keys_task = mocker.Mock(spec=UniqueKeysSyncTaskAsync)
+        self.stop_unique_keys_calls = 0
+        async def stop_unique_keys(arg=None):
+            self.stop_unique_keys_calls += 1
+            return
+        unique_keys_task.stop = stop_unique_keys
+
+        clear_filter_task = mocker.Mock(spec=ClearFilterSyncTaskAsync)
+        self.stop_clear_filter_calls = 0
+        async def stop_clear_filter(arg=None):
+            self.stop_clear_filter_calls += 1
+            return
+        clear_filter_task.stop = stop_clear_filter
+
+        segment_sync = mocker.Mock(spec=SegmentSynchronizerAsync)
+        self.segment_sync_stopped = 0
+        async def shutdown():
+            self.segment_sync_stopped += 1
+        segment_sync.shutdown = shutdown
+
+        split_synchronizers = SplitSynchronizers(mocker.Mock(), segment_sync, mocker.Mock(),
+                                                 mocker.Mock(), mocker.Mock(), mocker.Mock())
+        split_tasks = SplitTasks(split_task, segment_task, impression_task, event_task,
+                                 impression_count_task, unique_keys_task, clear_filter_task)
+        synchronizer = SynchronizerAsync(split_synchronizers, split_tasks)
+        await synchronizer.shutdown(True)
+
+        assert self.split_task_stopped == 1
+        assert self.segment_task_stopped == 1
+        assert self.segment_sync_stopped == 1
+        assert self.stop_imp_count_calls == 1
+        assert self.stop_imp_calls == 1
+        assert self.stop_event_calls == 1
+        assert self.stop_unique_keys_calls == 1
+        assert self.stop_clear_filter_calls == 1
+
+    @pytest.mark.asyncio
+    async def test_sync_all_ok(self, mocker):
+        """Test that 3 attempts are done before failing."""
+        split_synchronizers = mocker.Mock(spec=SplitSynchronizers)
+        counts = {'splits': 0, 'segments': 0}
+
+        async def sync_splits(*_):
+            """Sync Splits."""
+            counts['splits'] += 1
+            return []
+
+        async def sync_segments(*_):
+            """Sync Segments."""
+            counts['segments'] += 1
+            return True
+
+        split_synchronizers.split_sync.synchronize_splits = sync_splits
+        split_synchronizers.segment_sync.synchronize_segments = sync_segments
+        split_tasks = mocker.Mock(spec=SplitTasks)
+        synchronizer = SynchronizerAsync(split_synchronizers, split_tasks)
+
+        await synchronizer.sync_all()
+        assert counts['splits'] == 1
+        assert counts['segments'] == 1
+
+    @pytest.mark.asyncio
+    async def test_sync_all_split_attempts(self, mocker):
+        """Test that 3 attempts are done before failing."""
+        split_synchronizers = mocker.Mock(spec=SplitSynchronizers)
+        counts = {'splits': 0, 'segments': 0}
+        async def sync_splits(*_):
+            """Sync Splits."""
+            counts['splits'] += 1
+            raise Exception('sarasa')
+
+        split_synchronizers.split_sync.synchronize_splits = sync_splits
+        split_tasks = mocker.Mock(spec=SplitTasks)
+        synchronizer = SynchronizerAsync(split_synchronizers, split_tasks)
+
+        await synchronizer.sync_all(2)
+        assert counts['splits'] == 3
+
+    @pytest.mark.asyncio
+    async def test_sync_all_segment_attempts(self, mocker):
+        """Test that segments don't trigger retries."""
+        split_synchronizers = mocker.Mock(spec=SplitSynchronizers)
+        counts = {'splits': 0, 'segments': 0}
+
+        async def sync_segments(*_):
+            """Sync Segments."""
+            counts['segments'] += 1
+            return False
+        split_synchronizers.segment_sync.synchronize_segments = sync_segments
+
+        split_tasks = mocker.Mock(spec=SplitTasks)
+        synchronizer = SynchronizerAsync(split_synchronizers, split_tasks)
+
+        await synchronizer._synchronize_segments()
+        assert counts['segments'] == 1
+
         impression_count_task = mocker.Mock(spec=ImpressionsCountSyncTaskAsync)
         self.imp_count_calls = 0
         async def imp_count_stop_mock():

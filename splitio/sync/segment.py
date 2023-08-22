@@ -358,10 +358,10 @@ class SegmentSynchronizerAsync(object):
         if segment_names is None:
             segment_names = await self._feature_flag_storage.get_segment_names()
 
-        jobs = await self._worker_pool.submit_work(segment_names)
+        self._jobs = await self._worker_pool.submit_work(segment_names)
         if (dont_wait):
             return True
-        return await jobs.await_completion()
+        return await self._jobs.await_completion()
 
     async def segment_exist_in_storage(self, segment_name):
         """
