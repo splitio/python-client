@@ -1,13 +1,11 @@
 """Low-level SSE Client."""
 import logging
 import socket
-import abc
 from collections import namedtuple
 from http.client import HTTPConnection, HTTPSConnection
 from urllib.parse import urlparse
 
-from splitio.optional.loaders import asyncio, aiohttp
-from splitio.api.client import HttpClientException
+from splitio.optional.loaders import asyncio, aiohttp, ClientConnectionError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,18 +47,7 @@ class EventBuilder(object):
         return SSEEvent(self._lines.get('id'), self._lines.get('event'),
                         self._lines.get('retry'), self._lines.get('data'))
 
-class SSEClientBase(object, metaclass=abc.ABCMeta):
-    """Worker template."""
-
-    @abc.abstractmethod
-    def start(self, url, extra_headers, timeout):  # pylint:disable=protected-access
-        """Connect and start listening for events."""
-
-    @abc.abstractmethod
-    def shutdown(self):
-        """Shutdown the current connection."""
-
-class SSEClient(SSEClientBase):
+class SSEClient(object):
     """SSE Client implementation."""
 
     def __init__(self, callback):
@@ -148,7 +135,8 @@ class SSEClient(SSEClientBase):
         self._shutdown_requested = True
         self._conn.sock.shutdown(socket.SHUT_RDWR)
 
-class SSEClientAsync(SSEClientBase):
+
+class SSEClientAsync(object):
     """SSE Client implementation."""
 
     def __init__(self, timeout=_DEFAULT_ASYNC_TIMEOUT):
@@ -164,10 +152,9 @@ class SSEClientAsync(SSEClientBase):
         :param timeout: connection & read timeout
         :type timeout: float
         """
-        self._conn = None
-        self._shutdown_requested = False
         self._timeout = timeout
-        self._session = None
+        self._response = None
+        self._done = asyncio.Event()
 
     async def start(self, url, extra_headers=None):  # pylint:disable=protected-access
         """
@@ -177,27 +164,18 @@ class SSEClientAsync(SSEClientBase):
         :rtype: SSEEvent
         """
         _LOGGER.debug("Async SSEClient Started")
-        if self._conn is not None:
+        if self._response is not None:
             raise RuntimeError('Client already started.')
 
-        self._shutdown_requested = False
-        try:
-            self._conn = aiohttp.connector.TCPConnector()
-            async with aiohttp.client.ClientSession(
-                connector=self._conn,
-                headers=get_headers(extra_headers),
-                timeout=aiohttp.ClientTimeout(self._timeout)
-                ) as self._session:
-
-                self._reader = await self._session.request("GET", url)
-                try:
+        self._done.clear()
+        async with aiohttp.ClientSession() as sess:
+            try:
+                async with sess.get(url, headers=get_headers(extra_headers)) as response:
+                    self._response = response
                     event_builder = EventBuilder()
-                    while not self._shutdown_requested:
-                        line = await self._reader.content.readline()
-                        if line is None or len(line) <= 0:  # connection ended
-                            raise Exception('connection ended')
-                        elif line.startswith(b':'):  # comment. Skip
-                            _LOGGER.debug("skipping sse comment")
+                    async for line in response.content:
+                        if line.startswith(b':'):
+                            _LOGGER.debug("skipping emtpy line / comment")
                             continue
                         elif line in _EVENT_SEPARATORS:
                             _LOGGER.debug("dispatching event: %s", event_builder.build())
@@ -205,39 +183,29 @@ class SSEClientAsync(SSEClientBase):
                             event_builder = EventBuilder()
                         else:
                             event_builder.process_line(line)
-                except asyncio.CancelledError:
-                    _LOGGER.debug("Cancellation request, proceeding to cancel.")
-                    raise asyncio.CancelledError()
-                except Exception:  # pylint:disable=broad-except
+
+            except Exception as exc:  # pylint:disable=broad-except
+                if self._is_conn_closed_error(exc):
                     _LOGGER.debug('sse connection ended.')
-                    _LOGGER.debug('stack trace: ', exc_info=True)
-        except asyncio.CancelledError:
-            pass
-        except aiohttp.ClientError as exc:  # pylint: disable=broad-except
-            raise HttpClientException('http client is throwing exceptions') from exc
-        finally:
-            await self._conn.close()
-            self._conn = None  # clear so it can be started again
-            _LOGGER.debug("Existing SSEClient")
-            return
+                    return
+
+                _LOGGER.error('http client is throwing exceptions')
+                _LOGGER.error('stack trace: ', exc_info=True)
+
+            finally:
+                self._response = None
+                self._done.set()
 
     async def shutdown(self):
-        """Shutdown the current connection."""
-        _LOGGER.debug("Async SSEClient Shutdown")
-        if self._conn is None:
-            _LOGGER.warning("no sse connection has been started on this SSEClient instance. Ignoring")
-            return
+        """Close connection"""
+        if self._response:
+            self._response.close()
+        await self._done.wait()
 
-        if self._shutdown_requested:
-            _LOGGER.warning("shutdown already requested")
-            return
-
-        self._shutdown_requested = True
-        if self._session is not None:
-            try:
-                await self._conn.close()
-            except asyncio.CancelledError:
-                pass
+    @staticmethod
+    def _is_conn_closed_error(exc):
+        """Check if the ReadError is caused by the connection being closed."""
+        return isinstance(exc, ClientConnectionError) and str(exc) == "Connection closed"
 
 
 def get_headers(extra=None):
@@ -253,6 +221,3 @@ def get_headers(extra=None):
     headers = _DEFAULT_HEADERS.copy()
     headers.update(extra if extra is not None else {})
     return headers
-
-
-
