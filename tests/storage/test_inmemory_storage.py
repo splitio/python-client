@@ -467,7 +467,8 @@ class InMemoryTelemetryStorageTests(object):
                 'iL': False,
                 'hp': None,
                 'aF': 0,
-                'rF': 0
+                'rF': 0,
+                'fS': 0
             })
         assert(storage._streaming_events.pop_streaming_events() == {'streamingEvents': []})
         assert(storage._tags == [])
@@ -492,6 +493,7 @@ class InMemoryTelemetryStorageTests(object):
                   }
         storage.record_config(config, {})
         storage.record_active_and_redundant_factories(1, 0)
+        storage.record_flag_sets(2)
         assert(storage._tel_config.get_stats() == {'oM': 0,
             'sT': storage._tel_config._get_storage_type(config['operationMode'], config['storageType']),
             'sE': config['streamingEnabled'],
@@ -506,7 +508,8 @@ class InMemoryTelemetryStorageTests(object):
             'tR': 0,
             'nR': 0,
             'aF': 1,
-            'rF': 0}
+            'rF': 0,
+            'fS': 2}
             )
 
     def test_record_counters(self):
