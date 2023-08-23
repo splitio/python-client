@@ -142,12 +142,9 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
 
     _CENTINEL_EVENT = object()
 
-    def __init__(self, ready_flag, synchronizer, auth_api, streaming_enabled, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None):  # pylint:disable=too-many-arguments
+    def __init__(self, synchronizer, auth_api, streaming_enabled, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None):  # pylint:disable=too-many-arguments
         """
         Construct Manager.
-
-        :param ready_flag: Flag to set when splits initial sync is complete.
-        :type ready_flag: threading.Event
 
         :param split_synchronizers: synchronizers for performing start/stop logic
         :type split_synchronizers: splitio.sync.synchronizer.Synchronizer

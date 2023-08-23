@@ -117,7 +117,7 @@ class SyncManagerAsyncTests(object):
                                            mocker.Mock(), mocker.Mock(), mocker.Mock())
 
         synchronizer = SynchronizerAsync(synchronizers, split_tasks)
-        manager = ManagerAsync(asyncio.Event(), synchronizer,  mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
+        manager = ManagerAsync(synchronizer,  mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
 
         manager._SYNC_ALL_ATTEMPTS = 1
         await manager.start(2)  # should not throw!
@@ -140,7 +140,7 @@ class SyncManagerAsyncTests(object):
             self.rcording_called += 1
         synchronizer.start_periodic_data_recording = start_periodic_data_recording
 
-        manager = ManagerAsync(mocker.Mock(), synchronizer, mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
+        manager = ManagerAsync(synchronizer, mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
         try:
             await manager.start()
         except:
@@ -163,7 +163,7 @@ class SyncManagerAsyncTests(object):
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
-        manager = ManagerAsync(mocker.Mock(), synchronizer, mocker.Mock(), True, SdkMetadata('1.0', 'some', '1.2.3.4'), telemetry_runtime_producer)
+        manager = ManagerAsync(synchronizer, mocker.Mock(), True, SdkMetadata('1.0', 'some', '1.2.3.4'), telemetry_runtime_producer)
         try:
             await manager.start()
         except:
