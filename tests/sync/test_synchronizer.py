@@ -433,6 +433,8 @@ class SynchronizerAsyncTests(object):
         assert inserted_segment.name == 'segmentA'
         assert inserted_segment.keys == {'key1', 'key2', 'key3'}
 
+        await segment_sync.shutdown()
+
     @pytest.mark.asyncio
     async def test_synchronize_splits_calling_segment_sync_once(self, mocker):
         split_storage = InMemorySplitStorageAsync()
@@ -522,7 +524,7 @@ class SynchronizerAsyncTests(object):
         assert self.inserted_segment[2] == []
 
     @pytest.mark.asyncio
-    def test_start_periodic_fetching(self, mocker):
+    async def test_start_periodic_fetching(self, mocker):
         split_task = mocker.Mock(spec=SplitSynchronizationTask)
         segment_task = mocker.Mock(spec=SegmentSynchronizationTask)
         split_tasks = SplitTasks(split_task, segment_task, mocker.Mock(), mocker.Mock(),
@@ -564,14 +566,13 @@ class SynchronizerAsyncTests(object):
         assert self.segment_task_stopped == 1
         assert self.segment_sync_stopped == 0
 
-    @pytest.mark.asyncio
     def test_start_periodic_data_recording(self, mocker):
         impression_task = mocker.Mock(spec=ImpressionsSyncTaskAsync)
         impression_count_task = mocker.Mock(spec=ImpressionsCountSyncTaskAsync)
         event_task = mocker.Mock(spec=EventsSyncTaskAsync)
         unique_keys_task = mocker.Mock(spec=UniqueKeysSyncTaskAsync)
         clear_filter_task = mocker.Mock(spec=ClearFilterSyncTaskAsync)
-        split_tasks = SplitTasks(mocker.Mock(), mocker.Mock(), impression_task, event_task,
+        split_tasks = SplitTasks(None, None, impression_task, event_task,
                                  impression_count_task, unique_keys_task, clear_filter_task)
         synchronizer = SynchronizerAsync(mocker.Mock(spec=SplitSynchronizers), split_tasks)
         synchronizer.start_periodic_data_recording()
@@ -580,7 +581,7 @@ class SynchronizerAsyncTests(object):
         assert len(impression_count_task.start.mock_calls) == 1
         assert len(event_task.start.mock_calls) == 1
 
-        
+
 class RedisSynchronizerTests(object):
     def test_start_periodic_data_recording(self, mocker):
         impression_count_task = mocker.Mock(spec=ImpressionsCountSyncTask)

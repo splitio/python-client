@@ -606,11 +606,10 @@ class SynchronizerAsync(SynchronizerInMemoryBase):
         :type blocking: bool
         """
         _LOGGER.debug('Stopping periodic data recording')
+        stop_periodic_data_recording_task = asyncio.get_running_loop().create_task(self._stop_periodic_data_recording())
         if blocking:
-            await self._stop_periodic_data_recording()
+            await stop_periodic_data_recording_task
             _LOGGER.debug('all tasks finished successfully.')
-        else:
-            self.stop_periodic_data_recording_task = asyncio.get_running_loop().create_task(self._stop_periodic_data_recording)
 
     async def _stop_periodic_data_recording(self):
         """

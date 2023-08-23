@@ -95,7 +95,8 @@ class SyncManagerTests(object):
 class SyncManagerAsyncTests(object):
     """Synchronizer Manager tests."""
 
-    def test_error(self, mocker):
+    @pytest.mark.asyncio
+    async def test_error(self, mocker):
         split_task = mocker.Mock(spec=SplitSynchronizationTask)
         split_tasks = SplitTasks(split_task, mocker.Mock(), mocker.Mock(), mocker.Mock(),
                                  mocker.Mock(), mocker.Mock())
@@ -119,11 +120,10 @@ class SyncManagerAsyncTests(object):
         manager = ManagerAsync(asyncio.Event(), synchronizer,  mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
 
         manager._SYNC_ALL_ATTEMPTS = 1
-        manager.start(2)  # should not throw!
+        await manager.start(2)  # should not throw!
 
     @pytest.mark.asyncio
     async def test_start_streaming_false(self, mocker):
-        splits_ready_event = asyncio.Event()
         synchronizer = mocker.Mock(spec=SynchronizerAsync)
         self.sync_all_called = 0
         async def sync_all(retry):
@@ -140,20 +140,17 @@ class SyncManagerAsyncTests(object):
             self.rcording_called += 1
         synchronizer.start_periodic_data_recording = start_periodic_data_recording
 
-        manager = ManagerAsync(splits_ready_event, synchronizer, mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
+        manager = ManagerAsync(mocker.Mock(), synchronizer, mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
         try:
             await manager.start()
         except:
             pass
-        await splits_ready_event.wait()
-        assert splits_ready_event.is_set()
         assert self.sync_all_called == 1
         assert self.fetching_called == 1
         assert self.rcording_called == 1
 
     @pytest.mark.asyncio
     async def test_telemetry(self, mocker):
-        splits_ready_event = asyncio.Event()
         synchronizer = mocker.Mock(spec=SynchronizerAsync)
         async def sync_all(retry=1):
             pass
@@ -166,12 +163,11 @@ class SyncManagerAsyncTests(object):
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
-        manager = ManagerAsync(splits_ready_event, synchronizer, mocker.Mock(), True, SdkMetadata('1.0', 'some', '1.2.3.4'), telemetry_runtime_producer)
+        manager = ManagerAsync(mocker.Mock(), synchronizer, mocker.Mock(), True, SdkMetadata('1.0', 'some', '1.2.3.4'), telemetry_runtime_producer)
         try:
             await manager.start()
         except:
             pass
-        await splits_ready_event.wait()
 
         await manager._queue.put(Status.PUSH_SUBSYSTEM_UP)
         await manager._queue.put(Status.PUSH_NONRETRYABLE_ERROR)

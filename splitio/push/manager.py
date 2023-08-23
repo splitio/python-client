@@ -331,7 +331,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         """
         await self._processor.update_workers_status(enabled)
 
-    async def start(self):
+    def start(self):
         """Start a new connection if not already running."""
         if self._running:
             _LOGGER.warning('Push manager already has a connection running. Ignoring')
