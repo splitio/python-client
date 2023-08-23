@@ -7,7 +7,7 @@ from splitio.tasks.util.asynctask import AsyncTask, AsyncTaskAsync
 _LOGGER = logging.getLogger(__name__)
 
 class TelemetrySyncTaskBase(BaseSynchronizationTask):
-    """Unique Keys synchronization task uses an asynctask.AsyncTask to send MTKs."""
+    """Telemetry synchronization task uses an asynctask.AsyncTask to send MTKs."""
 
     def start(self):
         """Start executing the telemetry synchronization task."""
@@ -32,8 +32,8 @@ class TelemetrySyncTaskBase(BaseSynchronizationTask):
         self._task.force_execution()
 
 
-class TelemetrySyncTask(BaseSynchronizationTask):
-    """Unique Keys synchronization task uses an asynctask.AsyncTask to send MTKs."""
+class TelemetrySyncTask(TelemetrySyncTaskBase):
+    """Unique Telemetry task uses an asynctask.AsyncTask to send MTKs."""
 
     def __init__(self, synchronize_telemetry, period):
         """
@@ -53,8 +53,8 @@ class TelemetrySyncTask(BaseSynchronizationTask):
         self._task.stop(event)
 
 
-class TelemetrySyncTaskAsync(BaseSynchronizationTask):
-    """Unique Keys synchronization task uses an asynctask.AsyncTask to send MTKs."""
+class TelemetrySyncTaskAsync(TelemetrySyncTaskBase):
+    """Telemetry synchronization task uses an asynctask.AsyncTask to send MTKs."""
 
     def __init__(self, synchronize_telemetry, period):
         """
