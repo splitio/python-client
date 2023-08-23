@@ -499,6 +499,10 @@ class InMemoryTelemetryStorage(TelemetryStorage):
         """Record ready time."""
         self._tel_config.record_ready_time(ready_time)
 
+    def record_flag_sets(self, flag_sets):
+        """Record flag sets."""
+        self._tel_config.record_flag_sets(flag_sets)
+
     def add_tag(self, tag):
         """Record tag string."""
         with self._lock:
@@ -566,6 +570,10 @@ class InMemoryTelemetryStorage(TelemetryStorage):
     def record_update_from_sse(self, event):
         """Record update from sse."""
         self._counters.record_update_from_sse(event)
+
+    def get_flag_sets(self):
+        """Get flag sets."""
+        self._tel_config.get_flag_sets()
 
     def get_bur_time_outs(self):
         """Get block until ready timeout."""
