@@ -60,6 +60,6 @@ class SegmentSynchronizationTaskAsync(SegmentSynchronizationTaskBase):
         """
         self._task = asynctask.AsyncTaskAsync(synchronize_segments, period, on_init=None)
 
-    async def stop(self, event=None):
+    async def stop(self):
         """Stop segment synchronization."""
-        await self._task.stop(event)
+        await self._task.stop(True)

@@ -75,7 +75,7 @@ class ImpressionsSyncTaskAsync(ImpressionsSyncTaskBase):
 
     async def stop(self, event=None):
         """Stop executing the impressions synchronization task."""
-        await self._task.stop()
+        await self._task.stop(True)
 
 
 class ImpressionsCountSyncTaskBase(BaseSynchronizationTask):
@@ -136,6 +136,6 @@ class ImpressionsCountSyncTaskAsync(ImpressionsCountSyncTaskBase):
         """
         self._task = AsyncTaskAsync(synchronize_counters, self._PERIOD, on_stop=synchronize_counters)
 
-    async def stop(self, event=None):
+    async def stop(self):
         """Stop executing the impressions synchronization task."""
-        await self._task.stop()
+        await self._task.stop(True)
