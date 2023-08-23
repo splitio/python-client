@@ -19,7 +19,7 @@ class SplitAPITests(object):
         httpclient.get.return_value = client.HttpResponse(200, '{"prop1": "value1"}')
         split_api = splits.SplitsAPI(httpclient, 'some_api_key', SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
 
-        response = split_api.fetch_splits(123, FetchOptions(False, None, ['set2', 'set1']))
+        response = split_api.fetch_splits(123, FetchOptions(False, None, 'set1,set2'))
         assert response['prop1'] == 'value1'
         assert httpclient.get.mock_calls == [mocker.call('sdk', '/splitChanges', 'some_api_key',
                                                          extra_headers={
@@ -42,7 +42,7 @@ class SplitAPITests(object):
                                                          query={'since': 123})]
 
         httpclient.reset_mock()
-        response = split_api.fetch_splits(123, FetchOptions(True, 123, ['set3']))
+        response = split_api.fetch_splits(123, FetchOptions(True, 123, 'set3'))
         assert response['prop1'] == 'value1'
         assert httpclient.get.mock_calls == [mocker.call('sdk', '/splitChanges', 'some_api_key',
                                                          extra_headers={
