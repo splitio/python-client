@@ -6,7 +6,6 @@ import pytest
 from splitio.models.telemetry import StorageType, OperationMode, MethodLatencies, MethodExceptions, \
     HTTPLatencies, HTTPErrors, LastSynchronization, TelemetryCounters, TelemetryConfig, \
     StreamingEvent, StreamingEvents, UpdateFromSSE
-
 import splitio.models.telemetry as ModelTelemetry
 
 class TelemetryModelTests(object):
@@ -88,7 +87,6 @@ class TelemetryModelTests(object):
         http_latencies = HTTPLatencies()
 
         for resource in ModelTelemetry.HTTPExceptionsAndLatencies:
-#            pytest.set_trace()
             if self._get_http_latency(resource, http_latencies) == None:
                 continue
             http_latencies.add_latency(resource, 50)
@@ -271,11 +269,15 @@ class TelemetryModelTests(object):
             'nR': 0,
             'bT': 0,
             'aF': 0,
-            'rF': 0}
+            'rF': 0,
+            'fS': 0}
             )
 
         telemetry_config.record_ready_time(10)
         assert(telemetry_config._time_until_ready == 10)
+
+        telemetry_config.record_flag_sets(5)
+        assert(telemetry_config._flag_sets == 5)
 
         [telemetry_config.record_bur_time_out() for i in range(2)]
         assert(telemetry_config.get_bur_time_outs() == 2)
