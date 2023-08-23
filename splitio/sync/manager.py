@@ -142,12 +142,9 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
 
     _CENTINEL_EVENT = object()
 
-    def __init__(self, ready_flag, synchronizer, auth_api, streaming_enabled, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None):  # pylint:disable=too-many-arguments
+    def __init__(self, synchronizer, auth_api, streaming_enabled, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None):  # pylint:disable=too-many-arguments
         """
         Construct Manager.
-
-        :param ready_flag: Flag to set when splits initial sync is complete.
-        :type ready_flag: threading.Event
 
         :param split_synchronizers: synchronizers for performing start/stop logic
         :type split_synchronizers: splitio.sync.synchronizer.Synchronizer
@@ -168,7 +165,6 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
         :type client_key: str
         """
         self._streaming_enabled = streaming_enabled
-        self._ready_flag = ready_flag
         self._synchronizer = synchronizer
         self._telemetry_runtime_producer = telemetry_runtime_producer
         if self._streaming_enabled:
@@ -178,15 +174,10 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
             self._push = PushManagerAsync(auth_api, synchronizer, self._queue, sdk_metadata, telemetry_runtime_producer, sse_url, client_key)
             self._push_status_handler_task = None
 
-    def recreate(self):
-        """Recreate poolers for forked processes."""
-        self._synchronizer._split_synchronizers._segment_sync.recreate()
-
     async def start(self, max_retry_attempts=_SYNC_ALL_NO_RETRIES):
         """Start the SDK synchronization tasks."""
         try:
             await self._synchronizer.sync_all(max_retry_attempts)
-            self._ready_flag.set()
             self._synchronizer.start_periodic_data_recording()
             if self._streaming_enabled:
                 self._push_status_handler_task = asyncio.get_running_loop().create_task(self._streaming_feedback_handler())

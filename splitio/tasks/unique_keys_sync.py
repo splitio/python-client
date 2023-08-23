@@ -71,9 +71,9 @@ class UniqueKeysSyncTaskAsync(UniqueKeysSyncTaskBase):
         self._task = AsyncTaskAsync(synchronize_unique_keys, period,
                                on_stop=synchronize_unique_keys)
 
-    async def stop(self, event=None):
+    async def stop(self):
         """Stop executing the unique keys synchronization task."""
-        await self._task.stop(event)
+        await self._task.stop(True)
 
 
 class ClearFilterSyncTaskBase(BaseSynchronizationTask):
@@ -123,6 +123,6 @@ class ClearFilterSyncTaskAsync(ClearFilterSyncTaskBase):
         self._task = AsyncTaskAsync(clear_filter, period,
                                on_stop=clear_filter)
 
-    async def stop(self, event=None):
+    async def stop(self):
         """Stop executing the unique keys synchronization task."""
-        await self._task.stop(event)
+        await self._task.stop(True)

@@ -218,7 +218,7 @@ class AsyncTaskAsync(object):  # pylint: disable=too-many-instance-attributes
         self._period = period
         self._messages = asyncio.Queue()
         self._running = False
-        self._completion_event = None
+        self._completion_event = asyncio.Event()
 
     async def _execution_wrapper(self):
         """
@@ -284,7 +284,7 @@ class AsyncTaskAsync(object):  # pylint: disable=too-many-instance-attributes
             _LOGGER.warning("Task is already running. Ignoring .start() call")
             return
         # Start execution
-        self._completion_event = asyncio.Event()
+        self._completion_event.clear()
         asyncio.get_running_loop().create_task(self._execution_wrapper())
 
     async def stop(self, wait_for_completion=False):

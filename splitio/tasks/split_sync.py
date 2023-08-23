@@ -66,4 +66,4 @@ class SplitSynchronizationTaskAsync(SplitSynchronizationTaskBase):
 
     async def stop(self, event=None):
         """Stop the task. Accept an optional event to set when the task has finished."""
-        await self._task.stop()
+        await self._task.stop(True)

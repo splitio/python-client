@@ -73,4 +73,4 @@ class EventsSyncTaskAsync(EventsSyncTaskBase):
 
     async def stop(self, event=None):
         """Stop executing the events synchronization task."""
-        await self._task.stop()
+        await self._task.stop(True)
