@@ -2,7 +2,6 @@
 import logging
 import threading
 import queue
-import bisect
 from collections import Counter
 
 from splitio.models.segments import Segment
