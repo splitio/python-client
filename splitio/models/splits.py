@@ -42,7 +42,7 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             traffic_allocation=None,
             traffic_allocation_seed=None,
             configurations=None,
-            sets=[]
+            sets=None
     ):
         """
         Class constructor.

@@ -9,7 +9,6 @@ from splitio.models.impressions import Impression
 from splitio.models.events import Event, EventWrapper
 import splitio.models.telemetry as ModelTelemetry
 from splitio.engine.telemetry import TelemetryStorageProducer
-
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
     InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage
 
@@ -25,6 +24,9 @@ class InMemorySplitStorageTests(object):
         name_property = mocker.PropertyMock()
         name_property.return_value = 'some_split'
         type(split).name = name_property
+        sets_property = mocker.PropertyMock()
+        sets_property.return_value = None
+        type(split).sets = sets_property
 
         storage.put(split)
         assert storage.get('some_split') == split
@@ -45,6 +47,10 @@ class InMemorySplitStorageTests(object):
         name2_prop = mocker.PropertyMock()
         name2_prop.return_value = 'split2'
         type(split2).name = name2_prop
+        sets_property = mocker.PropertyMock()
+        sets_property.return_value = None
+        type(split1).sets = sets_property
+        type(split2).sets = sets_property
 
         storage = InMemorySplitStorage()
         storage.put(split1)
@@ -73,6 +79,10 @@ class InMemorySplitStorageTests(object):
         name2_prop = mocker.PropertyMock()
         name2_prop.return_value = 'split2'
         type(split2).name = name2_prop
+        sets_property = mocker.PropertyMock()
+        sets_property.return_value = None
+        type(split1).sets = sets_property
+        type(split2).sets = sets_property
 
         storage = InMemorySplitStorage()
         storage.put(split1)
@@ -90,6 +100,10 @@ class InMemorySplitStorageTests(object):
         name2_prop = mocker.PropertyMock()
         name2_prop.return_value = 'split2'
         type(split2).name = name2_prop
+        sets_property = mocker.PropertyMock()
+        sets_property.return_value = None
+        type(split1).sets = sets_property
+        type(split2).sets = sets_property
 
         storage = InMemorySplitStorage()
         storage.put(split1)
@@ -120,6 +134,11 @@ class InMemorySplitStorageTests(object):
         type(split1).traffic_type_name = tt_user
         type(split2).traffic_type_name = tt_account
         type(split3).traffic_type_name = tt_user
+        sets_property = mocker.PropertyMock()
+        sets_property.return_value = None
+        type(split1).sets = sets_property
+        type(split2).sets = sets_property
+        type(split3).sets = sets_property
 
         storage = InMemorySplitStorage()
 
@@ -155,11 +174,14 @@ class InMemorySplitStorageTests(object):
         name1_prop = mocker.PropertyMock()
         name1_prop.return_value = 'split1'
         type(split1).name = name1_prop
-
         split2 = mocker.Mock()
         name2_prop = mocker.PropertyMock()
         name2_prop.return_value = 'split1'
         type(split2).name = name2_prop
+        sets_property = mocker.PropertyMock()
+        sets_property.return_value = None
+        type(split1).sets = sets_property
+        type(split2).sets = sets_property
 
         tt_user = mocker.PropertyMock()
         tt_user.return_value = 'user'
@@ -197,6 +219,37 @@ class InMemorySplitStorageTests(object):
 
         storage.kill_locally('some_split', 'default_treatment', 3)
         assert storage.get('some_split').change_number == 3
+
+    def test_flag_sets(self):
+        storage = InMemorySplitStorage()
+        assert storage._sets_feature_flag_map == {}
+
+        split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
+                      'ACTIVE', 1, sets=['set10', 'set02'])
+        storage.put(split1)
+        assert storage.get_feature_flags_by_set('set10') == ['split1']
+        assert storage.get_feature_flags_by_set('set02') == ['split1']
+
+        split2 = Split('split2', 123456789, False, 'some', 'traffic_type',
+                      'ACTIVE', 1, sets=['set05', 'set02'])
+        storage.put(split2)
+        assert storage.get_feature_flags_by_set('set05') == ['split2']
+        assert sorted(storage.get_feature_flags_by_set('set02')) == ['split1', 'split2']
+
+        storage.remove(split2.name)
+        assert 'set5' not in storage._sets_feature_flag_map
+        assert storage.get_feature_flags_by_set('set02') == ['split1']
+        assert storage.get_feature_flags_by_set('set05') == []
+
+        split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
+                      'ACTIVE', 1, sets=['set02'])
+        storage.put(split1)
+        assert 'set10' not in storage._sets_feature_flag_map
+        assert storage.get_feature_flags_by_set('set02') == ['split1']
+
+        storage.remove(split1.name)
+        assert storage._sets_feature_flag_map == {}
+        assert storage.get_feature_flags_by_set('set02') == []
 
 
 class InMemorySegmentStorageTests(object):

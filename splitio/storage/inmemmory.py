@@ -2,6 +2,7 @@
 import logging
 import threading
 import queue
+import bisect
 from collections import Counter
 
 from splitio.models.segments import Segment
@@ -23,6 +24,7 @@ class InMemorySplitStorage(SplitStorage):
         self._splits = {}
         self._change_number = -1
         self._traffic_types = Counter()
+        self._sets_feature_flag_map = {}
 
     def get(self, split_name):
         """
@@ -57,9 +59,15 @@ class InMemorySplitStorage(SplitStorage):
         """
         with self._lock:
             if split.name in self._splits:
+                self._remove_flag_sets(self._splits[split.name])
                 self._decrease_traffic_type_count(self._splits[split.name].traffic_type_name)
             self._splits[split.name] = split
             self._increase_traffic_type_count(split.traffic_type_name)
+            if split.sets is not None:
+                for flag_set in split.sets:
+                    if flag_set not in self._sets_feature_flag_map.keys():
+                        self._sets_feature_flag_map[flag_set] = set()
+                    self._sets_feature_flag_map[flag_set].add(split.name)
 
     def remove(self, split_name):
         """
@@ -79,11 +87,40 @@ class InMemorySplitStorage(SplitStorage):
 
             self._splits.pop(split_name)
             self._decrease_traffic_type_count(split.traffic_type_name)
+            self._remove_flag_sets(split)
             return True
+
+    def _remove_flag_sets(self, feature_flag):
+        """
+        Remove flag sets associated to a split
+
+        :param feature_flag: feature flag object
+        :type feature_flag: splitio.models.splits.Split
+        """
+        if feature_flag.sets is not None:
+            for flag_set in feature_flag.sets:
+                self._sets_feature_flag_map[flag_set].remove(feature_flag.name)
+                if len(self._sets_feature_flag_map[flag_set]) == 0:
+                    del self._sets_feature_flag_map[flag_set]
+
+    def get_feature_flags_by_set(self, set):
+        """
+        Get list of feature flag names associated to a set, if it does not exist will return empty list
+
+        :param set: flag set
+        :type set: str
+
+        :return: list of feature flag names
+        :rtype: list
+        """
+        with self._lock:
+            if set not in self._sets_feature_flag_map:
+                return []
+            return list(self._sets_feature_flag_map[set])
 
     def get_change_number(self):
         """
-        Retrieve latest split change number.
+        Retrieve latest feature flag change number.
 
         :rtype: int
         """
@@ -102,9 +139,9 @@ class InMemorySplitStorage(SplitStorage):
 
     def get_split_names(self):
         """
-        Retrieve a list of all split names.
+        Retrieve a list of all feature flag names.
 
-        :return: List of split names.
+        :return: List of feature flag names.
         :rtype: list(str)
         """
         with self._lock:
@@ -112,9 +149,9 @@ class InMemorySplitStorage(SplitStorage):
 
     def get_all_splits(self):
         """
-        Return all the splits.
+        Return all the feature flags.
 
-        :return: List of all the splits.
+        :return: List of all the feature flags.
         :rtype: list
         """
         with self._lock:
@@ -122,7 +159,7 @@ class InMemorySplitStorage(SplitStorage):
 
     def get_splits_count(self):
         """
-        Return splits count.
+        Return feature flags count.
 
         :rtype: int
         """
@@ -131,7 +168,7 @@ class InMemorySplitStorage(SplitStorage):
 
     def is_valid_traffic_type(self, traffic_type_name):
         """
-        Return whether the traffic type exists in at least one split in cache.
+        Return whether the traffic type exists in at least one feature flag in cache.
 
         :param traffic_type_name: Traffic type to validate.
         :type traffic_type_name: str
@@ -142,12 +179,12 @@ class InMemorySplitStorage(SplitStorage):
         with self._lock:
             return traffic_type_name in self._traffic_types
 
-    def kill_locally(self, split_name, default_treatment, change_number):
+    def kill_locally(self, feature_flag_name, default_treatment, change_number):
         """
-        Local kill for split
+        Local kill for feature flag
 
-        :param split_name: name of the split to perform kill
-        :type split_name: str
+        :param feature_flag_name: name of the feature flag to perform kill
+        :type feature_flag_name: str
         :param default_treatment: name of the default treatment to return
         :type default_treatment: str
         :param change_number: change_number
@@ -156,7 +193,7 @@ class InMemorySplitStorage(SplitStorage):
         with self._lock:
             if self.get_change_number() > change_number:
                 return
-            split = self._splits.get(split_name)
+            split = self._splits.get(feature_flag_name)
             if not split:
                 return
             split.local_kill(default_treatment, change_number)
