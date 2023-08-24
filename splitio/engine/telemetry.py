@@ -48,6 +48,10 @@ class TelemetryInitProducer(object):
         """Record ready time."""
         self._telemetry_storage.record_ready_time(ready_time)
 
+    def record_flag_sets(self, flag_sets):
+        """Record flag sets."""
+        self._telemetry_storage.record_flag_sets(flag_sets)
+
     def record_bur_time_out(self):
         """Record block until ready timeout."""
         self._telemetry_storage.record_bur_time_out()
