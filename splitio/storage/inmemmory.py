@@ -49,7 +49,22 @@ class InMemorySplitStorage(SplitStorage):
         """
         return {split_name: self.get(split_name) for split_name in split_names}
 
-    def put(self, split):
+    def update(self, to_add, to_delete, new_change_number):
+        """
+        Update feature flag strage.
+
+        :param to_add: List of feature flags to add
+        :type to_add: list[splitio.models.splits.Split]
+        :param to_delete: List of feature flags to delete
+        :type to_delete: list[str]
+        :param new_change_number: New change number.
+        :type new_change_number: int
+        """
+        [self._put(add_split) for add_split in to_add]
+        [self._remove(delete_split) for delete_split in to_delete]
+        self._set_change_number(new_change_number)
+
+    def _put(self, split):
         """
         Store a split.
 
@@ -68,7 +83,7 @@ class InMemorySplitStorage(SplitStorage):
                         self._sets_feature_flag_map[flag_set] = set()
                     self._sets_feature_flag_map[flag_set].add(split.name)
 
-    def remove(self, split_name):
+    def _remove(self, split_name):
         """
         Remove a split from storage.
 
@@ -126,7 +141,7 @@ class InMemorySplitStorage(SplitStorage):
         with self._lock:
             return self._change_number
 
-    def set_change_number(self, new_change_number):
+    def _set_change_number(self, new_change_number):
         """
         Set the latest change number.
 
@@ -196,7 +211,7 @@ class InMemorySplitStorage(SplitStorage):
             if not split:
                 return
             split.local_kill(default_treatment, change_number)
-            self.put(split)
+            self._put(split)
 
     def _increase_traffic_type_count(self, traffic_type_name):
         """

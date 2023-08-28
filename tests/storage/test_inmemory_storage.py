@@ -28,13 +28,14 @@ class InMemorySplitStorageTests(object):
         sets_property.return_value = None
         type(split).sets = sets_property
 
-        storage.put(split)
+        storage.update([split], [], 0)
+
         assert storage.get('some_split') == split
         assert storage.get_split_names() == ['some_split']
         assert storage.get_all_splits() == [split]
         assert storage.get('nonexistant_split') is None
 
-        storage.remove('some_split')
+        storage.update([], ['some_split'], 0)
         assert storage.get('some_split') is None
 
     def test_get_splits(self, mocker):
@@ -53,8 +54,7 @@ class InMemorySplitStorageTests(object):
         type(split2).sets = sets_property
 
         storage = InMemorySplitStorage()
-        storage.put(split1)
-        storage.put(split2)
+        storage.update([split1, split2], [], 0)
 
         splits = storage.fetch_many(['split1', 'split2', 'split3'])
         assert len(splits) == 3
@@ -66,7 +66,7 @@ class InMemorySplitStorageTests(object):
         """Test that storing and retrieving change numbers works."""
         storage = InMemorySplitStorage()
         assert storage.get_change_number() == -1
-        storage.set_change_number(5)
+        storage.update([], [], 5)
         assert storage.get_change_number() == 5
 
     def test_get_split_names(self, mocker):
@@ -85,8 +85,7 @@ class InMemorySplitStorageTests(object):
         type(split2).sets = sets_property
 
         storage = InMemorySplitStorage()
-        storage.put(split1)
-        storage.put(split2)
+        storage.update([split1, split2], [], 0)
 
         assert set(storage.get_split_names()) == set(['split1', 'split2'])
 
@@ -106,8 +105,7 @@ class InMemorySplitStorageTests(object):
         type(split2).sets = sets_property
 
         storage = InMemorySplitStorage()
-        storage.put(split1)
-        storage.put(split2)
+        storage.update([split1, split2], [], 0)
 
         all_splits = storage.get_all_splits()
         assert next(s for s in all_splits if s.name == 'split1')
@@ -142,27 +140,23 @@ class InMemorySplitStorageTests(object):
 
         storage = InMemorySplitStorage()
 
-        storage.put(split1)
+        storage.update([split1], [], 0)
         assert storage.is_valid_traffic_type('user') is True
         assert storage.is_valid_traffic_type('account') is False
 
-        storage.put(split2)
+        storage.update([split2, split3], [], 0)
         assert storage.is_valid_traffic_type('user') is True
         assert storage.is_valid_traffic_type('account') is True
 
-        storage.put(split3)
+        storage.update([], ['split1'], 0)
         assert storage.is_valid_traffic_type('user') is True
         assert storage.is_valid_traffic_type('account') is True
 
-        storage.remove('split1')
-        assert storage.is_valid_traffic_type('user') is True
-        assert storage.is_valid_traffic_type('account') is True
-
-        storage.remove('split2')
+        storage.update([], ['split2'], 0)
         assert storage.is_valid_traffic_type('user') is True
         assert storage.is_valid_traffic_type('account') is False
 
-        storage.remove('split3')
+        storage.update([], ['split3'], 0)
         assert storage.is_valid_traffic_type('user') is False
         assert storage.is_valid_traffic_type('account') is False
 
@@ -192,11 +186,11 @@ class InMemorySplitStorageTests(object):
         type(split1).traffic_type_name = tt_user
         type(split2).traffic_type_name = tt_account
 
-        storage.put(split1)
+        storage.update([split1], [], 0)
         assert storage.is_valid_traffic_type('user') is True
         assert storage.is_valid_traffic_type('account') is False
 
-        storage.put(split2)
+        storage.update([split2], [], 0)
         assert storage.is_valid_traffic_type('user') is False
         assert storage.is_valid_traffic_type('account') is True
 
@@ -206,8 +200,7 @@ class InMemorySplitStorageTests(object):
 
         split = Split('some_split', 123456789, False, 'some', 'traffic_type',
                       'ACTIVE', 1)
-        storage.put(split)
-        storage.set_change_number(1)
+        storage.update([split], [], 1)
 
         storage.kill_locally('test', 'default_treatment', 2)
         assert storage.get('test') is None
@@ -226,28 +219,28 @@ class InMemorySplitStorageTests(object):
 
         split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
                       'ACTIVE', 1, sets=['set10', 'set02'])
-        storage.put(split1)
+        split2 = Split('split2', 123456789, False, 'some', 'traffic_type',
+                      'ACTIVE', 1, sets=['set05', 'set02'])
+        storage.update([split1], [], 1)
         assert storage.get_feature_flags_by_set('set10') == ['split1']
         assert storage.get_feature_flags_by_set('set02') == ['split1']
 
-        split2 = Split('split2', 123456789, False, 'some', 'traffic_type',
-                      'ACTIVE', 1, sets=['set05', 'set02'])
-        storage.put(split2)
+        storage.update([split2], [], 1)
         assert storage.get_feature_flags_by_set('set05') == ['split2']
         assert sorted(storage.get_feature_flags_by_set('set02')) == ['split1', 'split2']
 
-        storage.remove(split2.name)
+        storage.update([], [split2.name], 1)
         assert 'set5' not in storage._sets_feature_flag_map
         assert storage.get_feature_flags_by_set('set02') == ['split1']
         assert storage.get_feature_flags_by_set('set05') == []
 
         split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
                       'ACTIVE', 1, sets=['set02'])
-        storage.put(split1)
+        storage.update([split1], [], 1)
         assert 'set10' not in storage._sets_feature_flag_map
         assert storage.get_feature_flags_by_set('set02') == ['split1']
 
-        storage.remove(split1.name)
+        storage.update([], [split1.name], 1)
         assert storage._sets_feature_flag_map == {}
         assert storage.get_feature_flags_by_set('set02') == []
 

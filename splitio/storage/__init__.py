@@ -30,25 +30,16 @@ class SplitStorage(object, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def put(self, split):
+    def update(self, to_add, to_delete, new_change_number):
         """
-        Store a split.
+        Update feature flag strage.
 
-        :param split: Split object to store
-        :type split_name: splitio.models.splits.Split
-        """
-        pass
-
-    @abc.abstractmethod
-    def remove(self, split_name):
-        """
-        Remove a split from storage.
-
-        :param split_name: Name of the feature to remove.
-        :type split_name: str
-
-        :return: True if the split was found and removed. False otherwise.
-        :rtype: bool
+        :param to_add: List of feature flags to add
+        :type to_add: list[splitio.models.splits.Split]
+        :param to_delete: List of feature flags to delete
+        :type to_delete: list[splitio.models.splits.Split]
+        :param new_change_number: New change number.
+        :type new_change_number: int
         """
         pass
 
@@ -58,16 +49,6 @@ class SplitStorage(object, metaclass=abc.ABCMeta):
         Retrieve latest split change number.
 
         :rtype: int
-        """
-        pass
-
-    @abc.abstractmethod
-    def set_change_number(self, new_change_number):
-        """
-        Set the latest change number.
-
-        :param new_change_number: New change number.
-        :type new_change_number: int
         """
         pass
 

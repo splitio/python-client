@@ -128,24 +128,16 @@ class RedisSplitStorage(SplitStorage):
             _LOGGER.debug('Error: ', exc_info=True)
             return False
 
-    def put(self, split):
+    def update(self, to_add, to_delete, new_change_number):
         """
-        Store a split.
+        Update feature flag strage.
 
-        :param split: Split object to store
-        :type split_name: splitio.models.splits.Split
-        """
-        raise NotImplementedError('Only redis-consumer mode is supported.')
-
-    def remove(self, split_name):
-        """
-        Remove a split from storage.
-
-        :param split_name: Name of the feature to remove.
-        :type split_name: str
-
-        :return: True if the split was found and removed. False otherwise.
-        :rtype: bool
+        :param to_add: List of feature flags to add
+        :type to_add: list[splitio.models.splits.Split]
+        :param to_delete: List of feature flags to delete
+        :type to_delete: list[splitio.models.splits.Split]
+        :param new_change_number: New change number.
+        :type new_change_number: int
         """
         raise NotImplementedError('Only redis-consumer mode is supported.')
 
@@ -163,15 +155,6 @@ class RedisSplitStorage(SplitStorage):
             _LOGGER.error('Error fetching split change number from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
-
-    def set_change_number(self, new_change_number):
-        """
-        Set the latest change number.
-
-        :param new_change_number: New change number.
-        :type new_change_number: int
-        """
-        raise NotImplementedError('Only redis-consumer mode is supported.')
 
     def get_split_names(self):
         """
