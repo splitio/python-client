@@ -26,7 +26,7 @@ class TelemetryStorageProducerTests(object):
             'streamingEnabled': True,
             'impressionsQueueSize': 100,
             'eventsQueueSize': 200,
-            'impressionsMode': 'DEBUG',''
+            'impressionsMode': 'DEBUG',
             'impressionListener': None,
             'featuresRefreshRate': 30,
             'segmentsRefreshRate': 30,
