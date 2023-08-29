@@ -57,7 +57,7 @@ def record_telemetry(status_code, elapsed, metric_name, telemetry_runtime_produc
 class FetchOptions(object):
     """Fetch Options object."""
 
-    def __init__(self, cache_control_headers=False, change_number=None):
+    def __init__(self, cache_control_headers=False, change_number=None, sets=None):
         """
         Class constructor.
 
@@ -66,9 +66,13 @@ class FetchOptions(object):
 
         :param change_number: ChangeNumber to use for bypassing CDN in request.
         :type change_number: int
+
+        :param sets: list of flag sets
+        :type sets: list
         """
         self._cache_control_headers = cache_control_headers
         self._change_number = change_number
+        self._sets = sets
 
     @property
     def cache_control_headers(self):
@@ -80,11 +84,18 @@ class FetchOptions(object):
         """Return change number."""
         return self._change_number
 
+    @property
+    def sets(self):
+        """Return sets."""
+        return self._sets
+
     def __eq__(self, other):
         """Match between other options."""
         if self._cache_control_headers != other._cache_control_headers:
             return False
         if self._change_number != other._change_number:
+            return False
+        if self._sets != other._sets:
             return False
         return True
 
@@ -113,4 +124,6 @@ def build_fetch(change_number, fetch_options, metadata):
         extra_headers[_CACHE_CONTROL] = _CACHE_CONTROL_NO_CACHE
     if fetch_options.change_number is not None:
         query['till'] = fetch_options.change_number
+    if fetch_options.sets is not None:
+        query['sets'] = fetch_options.sets
     return query, extra_headers
