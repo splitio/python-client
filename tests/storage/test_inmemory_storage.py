@@ -213,36 +213,88 @@ class InMemorySplitStorageTests(object):
         storage.kill_locally('some_split', 'default_treatment', 3)
         assert storage.get('some_split').change_number == 3
 
-    def test_flag_sets(self):
-        storage = InMemorySplitStorage()
-        assert storage._sets_feature_flag_map == {}
+    def test_flag_sets_with_config_sets(self):
+        storage = InMemorySplitStorage(['set10', 'set02', 'set05'])
+        assert storage.config_flag_sets_used == 3
+        assert storage._sets_feature_flag_map == {'set10': set(), 'set02': set(), 'set05': set()}
 
         split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
                       'ACTIVE', 1, sets=['set10', 'set02'])
         split2 = Split('split2', 123456789, False, 'some', 'traffic_type',
                       'ACTIVE', 1, sets=['set05', 'set02'])
+        split3 = Split('split3', 123456789, False, 'some', 'traffic_type',
+                      'ACTIVE', 1, sets=['set04', 'set05'])
         storage.update([split1], [], 1)
         assert storage.get_feature_flags_by_set('set10') == ['split1']
         assert storage.get_feature_flags_by_set('set02') == ['split1']
+        assert storage.is_flag_set_exist('set10')
+        assert storage.is_flag_set_exist('set02')
+        assert not storage.is_flag_set_exist('set03')
 
         storage.update([split2], [], 1)
         assert storage.get_feature_flags_by_set('set05') == ['split2']
         assert sorted(storage.get_feature_flags_by_set('set02')) == ['split1', 'split2']
+        assert storage.is_flag_set_exist('set05')
 
         storage.update([], [split2.name], 1)
-        assert 'set5' not in storage._sets_feature_flag_map
+        assert storage.is_flag_set_exist('set05')
         assert storage.get_feature_flags_by_set('set02') == ['split1']
         assert storage.get_feature_flags_by_set('set05') == []
 
         split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
                       'ACTIVE', 1, sets=['set02'])
         storage.update([split1], [], 1)
-        assert 'set10' not in storage._sets_feature_flag_map
+        assert storage.is_flag_set_exist('set10')
         assert storage.get_feature_flags_by_set('set02') == ['split1']
 
         storage.update([], [split1.name], 1)
-        assert storage._sets_feature_flag_map == {}
         assert storage.get_feature_flags_by_set('set02') == []
+        assert storage._sets_feature_flag_map == {'set10': set(), 'set02': set(), 'set05': set()}
+
+        storage.update([split3], [], 1)
+        assert storage.get_feature_flags_by_set('set05') == ['split3']
+        assert not storage.is_flag_set_exist('set04')
+
+    def test_flag_sets_withut_config_sets(self):
+        storage = InMemorySplitStorage()
+        assert storage._sets_feature_flag_map == {}
+        assert storage.config_flag_sets_used == 0
+
+        split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
+                      'ACTIVE', 1, sets=['set10', 'set02'])
+        split2 = Split('split2', 123456789, False, 'some', 'traffic_type',
+                      'ACTIVE', 1, sets=['set05', 'set02'])
+        split3 = Split('split3', 123456789, False, 'some', 'traffic_type',
+                      'ACTIVE', 1, sets=['set04', 'set05'])
+        storage.update([split1], [], 1)
+        assert storage.get_feature_flags_by_set('set10') == ['split1']
+        assert storage.get_feature_flags_by_set('set02') == ['split1']
+        assert storage.is_flag_set_exist('set10')
+        assert storage.is_flag_set_exist('set02')
+        assert not storage.is_flag_set_exist('set03')
+
+        storage.update([split2], [], 1)
+        assert storage.get_feature_flags_by_set('set05') == ['split2']
+        assert sorted(storage.get_feature_flags_by_set('set02')) == ['split1', 'split2']
+        assert storage.is_flag_set_exist('set05')
+
+        storage.update([], [split2.name], 1)
+        assert not storage.is_flag_set_exist('set05')
+        assert storage.get_feature_flags_by_set('set02') == ['split1']
+
+        split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
+                      'ACTIVE', 1, sets=['set02'])
+        storage.update([split1], [], 1)
+        assert not storage.is_flag_set_exist('set10')
+        assert storage.get_feature_flags_by_set('set02') == ['split1']
+
+        storage.update([], [split1.name], 1)
+        assert storage.get_feature_flags_by_set('set02') == []
+        assert storage._sets_feature_flag_map == {}
+
+        storage.update([split3], [], 1)
+        assert storage.get_feature_flags_by_set('set05') == ['split3']
+        assert storage.get_feature_flags_by_set('set04') == ['split3']
 
 
 class InMemorySegmentStorageTests(object):

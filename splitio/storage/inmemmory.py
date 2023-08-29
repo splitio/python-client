@@ -17,13 +17,16 @@ _LOGGER = logging.getLogger(__name__)
 class InMemorySplitStorage(SplitStorage):
     """InMemory implementation of a split storage."""
 
-    def __init__(self):
+    def __init__(self, flag_sets=[]):
         """Constructor."""
         self._lock = threading.RLock()
         self._splits = {}
         self._change_number = -1
         self._traffic_types = Counter()
         self._sets_feature_flag_map = {}
+        self.config_flag_sets_used = len(flag_sets)
+        for flag_set in flag_sets:
+            self._sets_feature_flag_map[flag_set] = set()
 
     def get(self, split_name):
         """
@@ -73,12 +76,14 @@ class InMemorySplitStorage(SplitStorage):
         """
         with self._lock:
             if split.name in self._splits:
-                self._remove_flag_sets(self._splits[split.name])
+                self._remove_from_flag_sets(self._splits[split.name])
                 self._decrease_traffic_type_count(self._splits[split.name].traffic_type_name)
             self._splits[split.name] = split
             self._increase_traffic_type_count(split.traffic_type_name)
             if split.sets is not None:
                 for flag_set in split.sets:
+                    if flag_set not in self._sets_feature_flag_map.keys() and self.config_flag_sets_used > 0:
+                        continue
                     if flag_set not in self._sets_feature_flag_map.keys():
                         self._sets_feature_flag_map[flag_set] = set()
                     self._sets_feature_flag_map[flag_set].add(split.name)
@@ -101,10 +106,10 @@ class InMemorySplitStorage(SplitStorage):
 
             self._splits.pop(split_name)
             self._decrease_traffic_type_count(split.traffic_type_name)
-            self._remove_flag_sets(split)
+            self._remove_from_flag_sets(split)
             return True
 
-    def _remove_flag_sets(self, feature_flag):
+    def _remove_from_flag_sets(self, feature_flag):
         """
         Remove flag sets associated to a split
 
@@ -114,7 +119,7 @@ class InMemorySplitStorage(SplitStorage):
         if feature_flag.sets is not None:
             for flag_set in feature_flag.sets:
                 self._sets_feature_flag_map[flag_set].remove(feature_flag.name)
-                if len(self._sets_feature_flag_map[flag_set]) == 0:
+                if len(self._sets_feature_flag_map[flag_set]) == 0 and self.config_flag_sets_used == 0:
                     del self._sets_feature_flag_map[flag_set]
 
     def get_feature_flags_by_set(self, set):
@@ -231,6 +236,20 @@ class InMemorySplitStorage(SplitStorage):
         """
         self._traffic_types.subtract([traffic_type_name])
         self._traffic_types += Counter()
+
+    def is_flag_set_exist(self, flag_set):
+        """
+        Return whether a flag set exists in at least one feature flag in cache.
+
+        :param flag_set: Flag set to validate.
+        :type flag_set: str
+
+        :return: True if the flag_set exist. False otherwise.
+        :rtype: bool
+        """
+        if flag_set in self._sets_feature_flag_map.keys():
+            return True
+        return False
 
 
 class InMemorySegmentStorage(SegmentStorage):

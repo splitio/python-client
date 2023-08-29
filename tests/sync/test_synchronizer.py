@@ -2,7 +2,7 @@
 
 from turtle import clear
 import unittest.mock as mock
-
+import pytest
 from splitio.sync.synchronizer import Synchronizer, SplitTasks, SplitSynchronizers, LocalhostSynchronizer
 from splitio.tasks.split_sync import SplitSynchronizationTask
 from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTask
@@ -37,6 +37,26 @@ class SynchronizerTests(object):
 
         # test forcing to have only one retry attempt and then exit
         sychronizer.sync_all(1)  # sync_all should not throw!
+
+    def test_sync_all_failed_splits_with_flagsets(self, mocker):
+        api = mocker.Mock()
+        storage = mocker.Mock()
+
+        def run(x, c):
+            raise APIException("something broke", 414)
+        api.fetch_splits.side_effect = run
+
+        split_sync = SplitSynchronizer(api, storage)
+        split_synchronizers = SplitSynchronizers(split_sync, mocker.Mock(), mocker.Mock(),
+                                                 mocker.Mock(), mocker.Mock())
+        synchronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
+
+        synchronizer.synchronize_splits(None)  # APIExceptions are handled locally and should not be propagated!
+
+        # test forcing to have only one retry attempt and then exit
+        synchronizer.sync_all(3)  # sync_all should not throw!
+        assert synchronizer._break_sync_all
+        assert synchronizer._backoff._attempt == 0
 
     def test_sync_all_failed_segments(self, mocker):
         api = mocker.Mock()
@@ -141,6 +161,7 @@ class SynchronizerTests(object):
         split_storage = mocker.Mock(spec=SplitStorage)
         split_storage.get_change_number.return_value = 123
         split_storage.get_segment_names.return_value = ['segmentA']
+        split_storage.config_flag_sets_used = 0
         split_api = mocker.Mock()
         split_api.fetch_splits.return_value = {'splits': self.splits, 'since': 123,
                                                'till': 123}
@@ -159,7 +180,7 @@ class SynchronizerTests(object):
         synchronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
         synchronizer.sync_all()
 
-        inserted_split = split_storage.put.mock_calls[0][1][0]
+        inserted_split = split_storage.update.mock_calls[0][1][0][0]
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
 
