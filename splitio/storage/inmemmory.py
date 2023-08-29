@@ -82,9 +82,9 @@ class InMemorySplitStorage(SplitStorage):
             self._increase_traffic_type_count(split.traffic_type_name)
             if split.sets is not None:
                 for flag_set in split.sets:
-                    if flag_set not in self._sets_feature_flag_map.keys() and self.config_flag_sets_used > 0:
-                        continue
                     if flag_set not in self._sets_feature_flag_map.keys():
+                        if self.config_flag_sets_used > 0:
+                            continue
                         self._sets_feature_flag_map[flag_set] = set()
                     self._sets_feature_flag_map[flag_set].add(split.name)
 
