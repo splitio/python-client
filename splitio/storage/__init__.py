@@ -32,7 +32,7 @@ class SplitStorage(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def update(self, to_add, to_delete, new_change_number):
         """
-        Update feature flag strage.
+        Update feature flag storage.
 
         :param to_add: List of feature flags to add
         :type to_add: list[splitio.models.splits.Split]
