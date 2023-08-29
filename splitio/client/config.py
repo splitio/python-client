@@ -1,13 +1,14 @@
 """Default settings for the Split.IO SDK Python client."""
 import os.path
 import logging
+import re
 
 from splitio.engine.impressions import ImpressionsMode
 
 
 _LOGGER = logging.getLogger(__name__)
 DEFAULT_DATA_SAMPLING = 1
-
+_FLAG_SETS_REGEX = '^[a-z0-9][_a-z0-9]{0,49}$'
 
 DEFAULT_CONFIG = {
     'operationMode': 'standalone',
@@ -58,9 +59,9 @@ DEFAULT_CONFIG = {
     'dataSampling': DEFAULT_DATA_SAMPLING,
     'storageWrapper': None,
     'storagePrefix': None,
-    'storageType': None
+    'storageType': None,
+    'FlagSets': None
 }
-
 
 def _parse_operation_mode(sdk_key, config):
     """
@@ -119,6 +120,34 @@ def _sanitize_impressions_mode(storage_type, mode, refresh_rate=None):
     return mode, refresh_rate
 
 
+def _sanitize_flag_sets(flag_sets):
+    """
+    Check supplied flag sets list
+
+    :param flag_set: list of flag sets
+    :type flag_set: list[str]
+
+    :returns: Sanitized and sorted flag sets
+    :rtype: list[str]
+    """
+    sanitized_flag_sets = set()
+    for flag_set in flag_sets:
+        if flag_set != flag_set.strip():
+            _LOGGER.warning("SDK config: Flag Set name %s has extra whitespace, trimming" % (flag_set))
+            flag_set = flag_set.strip()
+
+        if flag_set != flag_set.lower():
+            _LOGGER.warning("SDK config: Flag Set name %s should be all lowercase - converting string to lowercase" % (flag_set))
+            flag_set = flag_set.lower()
+
+        if re.search(_FLAG_SETS_REGEX, flag_set) is None or re.search(_FLAG_SETS_REGEX, flag_set).group() != flag_set:
+            _LOGGER.warning("SDK config: you passed %s, Flag Set must adhere to the regular expressions %s. This means a Flag Set must start with a letter, be in lowercase, alphanumeric and have a max length of 50 characteres. %s was discarded.", flag_set, _FLAG_SETS_REGEX, flag_set)
+            continue
+
+        sanitized_flag_sets.add(flag_set.strip())
+
+    return sorted(list(sanitized_flag_sets))
+
 def sanitize(sdk_key, config):
     """
     Look for inconsistencies or ill-formed configs and tune it accordingly.
@@ -142,5 +171,7 @@ def sanitize(sdk_key, config):
     if processed['metricsRefreshRate'] < 60:
         _LOGGER.warning('metricRefreshRate parameter minimum value is 60 seconds, defaulting to 3600 seconds.')
         processed['metricsRefreshRate'] = 3600
+
+    processed['FlagSets'] = _sanitize_flag_sets(processed['FlagSets']) if processed['FlagSets'] is not None else None
 
     return processed
