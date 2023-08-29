@@ -87,7 +87,21 @@ class PluggableSplitStorage(SplitStorage):
 #            _LOGGER.error('Error storing splits in storage')
 #            _LOGGER.debug('Error: ', exc_info=True)
 
-    def remove(self, split_name):
+    def update(self, to_add, to_delete, new_change_number):
+        """
+        Update feature flag storage.
+
+        :param to_add: List of feature flags to add
+        :type to_add: list[splitio.models.splits.Split]
+        :param to_delete: List of feature flags to delete
+        :type to_delete: list[splitio.models.splits.Split]
+        :param new_change_number: New change number.
+        :type new_change_number: int
+        """
+        pass
+
+    # TODO: To be added when producer mode is aupported
+#    def _remove(self, split_name):
         """
         Remove a split from storage.
 
@@ -97,8 +111,7 @@ class PluggableSplitStorage(SplitStorage):
         :return: True if the split was found and removed. False otherwise.
         :rtype: bool
         """
-        pass
-        # TODO: To be added when producer mode is aupported
+#        pass
 #        try:
 #            split = self.get(split_name)
 #            if not split:
@@ -125,15 +138,15 @@ class PluggableSplitStorage(SplitStorage):
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
-    def set_change_number(self, new_change_number):
+    # TODO: To be added when producer mode is aupported
+#    def _set_change_number(self, new_change_number):
         """
         Set the latest change number.
 
         :param new_change_number: New change number.
         :type new_change_number: int
         """
-        pass
-        # TODO: To be added when producer mode is aupported
+#        pass
 #        try:
 #            self._pluggable_adapter.set(self._split_till_prefix, new_change_number)
 #        except Exception:
@@ -280,15 +293,15 @@ class PluggableSplitStorage(SplitStorage):
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
-    def put(self, split):
+    # TODO: To be added when producer mode is aupported
+#    def _put(self, split):
         """
         Store a split.
 
         :param split: Split object.
         :type split: splitio.models.split.Split
         """
-        pass
-        # TODO: To be added when producer mode is aupported
+#        pass
 #        try:
 #            existing_split = self.get(split.name)
 #            self._pluggable_adapter.set(self._prefix.format(split_name=split.name), split.to_json())
