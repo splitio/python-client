@@ -80,16 +80,37 @@ class SplitSynchronizer(object):
                 _LOGGER.debug('Exception information: ', exc_info=True)
                 raise exc
 
+            to_add = []
+            to_delete = []
             for feature_flag in feature_flag_changes.get('splits', []):
-                if feature_flag['status'] == splits.Status.ACTIVE.value:
+                if (self._feature_flag_storage.config_flag_sets_used == 0 and feature_flag['status'] == splits.Status.ACTIVE.value) or \
+                (feature_flag['status'] == splits.Status.ACTIVE.value and self._check_flag_sets(feature_flag)):
                     parsed = splits.from_raw(feature_flag)
-                    self._feature_flag_storage.put(parsed)
+                    to_add.append(parsed)
                     segment_list.update(set(parsed.get_segment_names()))
                 else:
-                    self._feature_flag_storage.remove(feature_flag['name'])
-            self._feature_flag_storage.set_change_number(feature_flag_changes['till'])
+                    if self._feature_flag_storage.get(feature_flag['name']) is not None:
+                        to_delete.append(feature_flag['name'])
+
+            self._feature_flag_storage.update(to_add, to_delete, feature_flag_changes['till'])
             if feature_flag_changes['till'] == feature_flag_changes['since']:
                 return feature_flag_changes['till'], segment_list
+
+    def _check_flag_sets(self, feature_flag):
+        """
+        Check all flag sets in a feature flag, return True if any of sets exist in storage
+
+        :param feature_flag: Flag set to validate.
+        :type feature_flag: json
+
+        :return: True if any of its flag_set exist. False otherwise.
+        :rtype: bool
+        """
+        for flag_set in feature_flag['sets']:
+            if self._feature_flag_storage.is_flag_set_exist(flag_set):
+                return True
+        return False
+
 
     def _attempt_feature_flag_sync(self, fetch_options, till=None):
         """
@@ -347,11 +368,10 @@ class LocalSplitSynchronizer(object):
             fetched = self._read_feature_flags_from_legacy_file(self._filename)
         to_delete = [name for name in self._feature_flag_storage.get_split_names()
                      if name not in fetched.keys()]
-        for feature_flag in fetched.values():
-            self._feature_flag_storage.put(feature_flag)
+        to_add = []
+        [to_add.append(feature_flag) for feature_flag in fetched.values()]
 
-        for feature_flag in to_delete:
-            self._feature_flag_storage.remove(feature_flag)
+        self._feature_flag_storage.update(to_add, to_delete, 0)
 
         return []
 
@@ -371,16 +391,18 @@ class LocalSplitSynchronizer(object):
             self._current_json_sha = fecthed_sha
             if self._feature_flag_storage.get_change_number() > till and till != self._DEFAULT_FEATURE_FLAG_TILL:
                 return []
+            to_add = []
+            to_delete = []
             for feature_flag in fetched:
                 if feature_flag['status'] == splits.Status.ACTIVE.value:
                     parsed = splits.from_raw(feature_flag)
-                    self._feature_flag_storage.put(parsed)
+                    to_add.append(parsed)
                     _LOGGER.debug("feature flag %s is updated", parsed.name)
                     segment_list.update(set(parsed.get_segment_names()))
                 else:
-                    self._feature_flag_storage.remove(feature_flag['name'])
+                    to_delete.append(feature_flag['name'])
 
-                self._feature_flag_storage.set_change_number(till)
+                self._feature_flag_storage.update(to_add, to_delete, till)
             return segment_list
         except Exception as exc:
             raise ValueError("Error reading feature flags from json.") from exc

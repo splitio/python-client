@@ -251,6 +251,7 @@ class Synchronizer(BaseSynchronizer):
             self._periodic_data_recording_tasks.append(self._split_tasks.unique_keys_task)
         if self._split_tasks.clear_filter_task:
             self._periodic_data_recording_tasks.append(self._split_tasks.clear_filter_task)
+        self._break_sync_all = False
 
     @property
     def split_sync(self):
@@ -289,6 +290,7 @@ class Synchronizer(BaseSynchronizer):
         :returns: whether the synchronization was successful or not.
         :rtype: bool
         """
+        self._break_sync_all = False
         _LOGGER.debug('Starting feature flags synchronization')
         try:
             new_segments = []
@@ -304,7 +306,9 @@ class Synchronizer(BaseSynchronizer):
                 else:
                     _LOGGER.debug('Segment sync scheduled.')
             return True
-        except APIException:
+        except APIException as exc:
+            if exc._status_code is not None and exc._status_code == 414:
+                self._break_sync_all = True
             _LOGGER.error('Failed syncing feature flags')
             _LOGGER.debug('Error: ', exc_info=True)
             return False
@@ -334,7 +338,7 @@ class Synchronizer(BaseSynchronizer):
                 _LOGGER.debug('Error: ', exc_info=True)
                 if max_retry_attempts != _SYNC_ALL_NO_RETRIES:
                     retry_attempts += 1
-                    if retry_attempts > max_retry_attempts:
+                    if retry_attempts > max_retry_attempts or self._break_sync_all:
                         break
                 how_long = self._backoff.get()
                 time.sleep(how_long)
