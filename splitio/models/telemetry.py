@@ -82,6 +82,10 @@ class MethodExceptionsAndLatencies(Enum):
     TREATMENTS = 'treatments'
     TREATMENT_WITH_CONFIG = 'treatment_with_config'
     TREATMENTS_WITH_CONFIG = 'treatments_with_config'
+    TREATMENTS_BY_FLAG_SET = 'treatments_by_flag_set'
+    TREATMENTS_BY_FLAG_SETS = 'treatments_by_flag_sets'
+    TREATMENTS_WITH_CONFIG_BY_FLAG_SET = 'treatments_with_config_by_flag_set'
+    TREATMENTS_WITH_CONFIG_BY_FLAG_SETS = 'treatments_with_config_by_flag_sets'
     TRACK = 'track'
 
 class LastSynchronizationConstants(Enum):
@@ -166,6 +170,10 @@ class MethodLatencies(object):
             self._treatments = [0] * MAX_LATENCY_BUCKET_COUNT
             self._treatment_with_config = [0] * MAX_LATENCY_BUCKET_COUNT
             self._treatments_with_config = [0] * MAX_LATENCY_BUCKET_COUNT
+            self._treatments_by_flag_set = [0] * MAX_LATENCY_BUCKET_COUNT
+            self._treatments_by_flag_sets = [0] * MAX_LATENCY_BUCKET_COUNT
+            self._treatments_with_config_by_flag_set = [0] * MAX_LATENCY_BUCKET_COUNT
+            self._treatments_with_config_by_flag_sets = [0] * MAX_LATENCY_BUCKET_COUNT
             self._track = [0] * MAX_LATENCY_BUCKET_COUNT
 
     def add_latency(self, method, latency):
@@ -187,6 +195,14 @@ class MethodLatencies(object):
                 self._treatment_with_config[latency_bucket] += 1
             elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG:
                 self._treatments_with_config[latency_bucket] += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET:
+                self._treatments_by_flag_set[latency_bucket] += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS:
+                self._treatments_by_flag_sets[latency_bucket] += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET:
+                self._treatments_with_config_by_flag_set[latency_bucket] += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS:
+                self._treatments_with_config_by_flag_sets[latency_bucket] += 1
             elif method == MethodExceptionsAndLatencies.TRACK:
                 self._track[latency_bucket] += 1
             else:
@@ -200,10 +216,18 @@ class MethodLatencies(object):
         :rtype: dict
         """
         with self._lock:
-            latencies = {MethodExceptionsAndLatencies.METHOD_LATENCIES.value: {MethodExceptionsAndLatencies.TREATMENT.value: self._treatment, MethodExceptionsAndLatencies.TREATMENTS.value: self._treatments,
-                            MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG.value: self._treatment_with_config, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG.value: self._treatments_with_config,
-                            MethodExceptionsAndLatencies.TRACK.value: self._track}
+            latencies = {MethodExceptionsAndLatencies.METHOD_LATENCIES.value: {
+                MethodExceptionsAndLatencies.TREATMENT.value: self._treatment,
+                MethodExceptionsAndLatencies.TREATMENTS.value: self._treatments,
+                MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG.value: self._treatment_with_config,
+                MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG.value: self._treatments_with_config,
+                MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET.value: self._treatments_by_flag_set,
+                MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS.value: self._treatments_by_flag_sets,
+                MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET.value: self._treatments_with_config_by_flag_set,
+                MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS.value: self._treatments_with_config_by_flag_sets,
+                MethodExceptionsAndLatencies.TRACK.value: self._track
                 }
+            }
             self._reset_all()
             return latencies
 
@@ -288,6 +312,10 @@ class MethodExceptions(object):
             self._treatments = 0
             self._treatment_with_config = 0
             self._treatments_with_config = 0
+            self._treatments_by_flag_set = 0
+            self._treatments_by_flag_sets = 0
+            self._treatments_with_config_by_flag_set = 0
+            self._treatments_with_config_by_flag_sets = 0
             self._track = 0
 
     def add_exception(self, method):
@@ -306,6 +334,14 @@ class MethodExceptions(object):
                 self._treatment_with_config += 1
             elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG:
                 self._treatments_with_config += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET:
+                self._treatments_by_flag_set += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS:
+                self._treatments_by_flag_sets += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET:
+                self._treatments_with_config_by_flag_set += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS:
+                self._treatments_with_config_by_flag_sets += 1
             elif method == MethodExceptionsAndLatencies.TRACK:
                 self._track += 1
             else:
@@ -319,10 +355,18 @@ class MethodExceptions(object):
         :rtype: dict
         """
         with self._lock:
-            exceptions = {MethodExceptionsAndLatencies.METHOD_EXCEPTIONS.value: {MethodExceptionsAndLatencies.TREATMENT.value: self._treatment, MethodExceptionsAndLatencies.TREATMENTS.value: self._treatments,
-                                MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG.value: self._treatment_with_config, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG.value: self._treatments_with_config,
-                                MethodExceptionsAndLatencies.TRACK.value: self._track}
+            exceptions = {MethodExceptionsAndLatencies.METHOD_EXCEPTIONS.value: {
+                MethodExceptionsAndLatencies.TREATMENT.value: self._treatment,
+                MethodExceptionsAndLatencies.TREATMENTS.value: self._treatments,
+                MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG.value: self._treatment_with_config,
+                MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG.value: self._treatments_with_config,
+                MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET.value: self._treatments_by_flag_set,
+                MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS.value: self._treatments_by_flag_sets,
+                MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET.value: self._treatments_with_config_by_flag_set,
+                MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS.value: self._treatments_with_config_by_flag_sets,
+                MethodExceptionsAndLatencies.TRACK.value: self._track
                 }
+            }
             self._reset_all()
             return exceptions
 

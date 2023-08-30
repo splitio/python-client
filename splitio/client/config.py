@@ -120,7 +120,7 @@ def _sanitize_impressions_mode(storage_type, mode, refresh_rate=None):
     return mode, refresh_rate
 
 
-def _sanitize_flag_sets(flag_sets):
+def sanitize_flag_sets(flag_sets):
     """
     Check supplied flag sets list
 
@@ -130,8 +130,15 @@ def _sanitize_flag_sets(flag_sets):
     :returns: Sanitized and sorted flag sets
     :rtype: list[str]
     """
+    if not isinstance(flag_sets, list):
+        _LOGGER.warning("SDK config: FlagSets config parameters type should be list object, parameter is discarded")
+        return []
+
     sanitized_flag_sets = set()
     for flag_set in flag_sets:
+        if not isinstance(flag_set, str):
+            _LOGGER.warning("SDK config: Flag Set name %s should be str object, this flag set is discarded" % (flag_set))
+            continue
         if flag_set != flag_set.strip():
             _LOGGER.warning("SDK config: Flag Set name %s has extra whitespace, trimming" % (flag_set))
             flag_set = flag_set.strip()
