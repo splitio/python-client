@@ -323,8 +323,8 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
 
-        :return: The treatment for the key and feature flag
-        :rtype: str
+        :return: Dictionary with the result of all the feature flags provided
+        :rtype: dict
         """
         return self._get_treatments_by_flag_sets( key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET, attributes)
 
@@ -342,7 +342,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
 
-        :return: The treatment for the key and feature flag
+        :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
         return self._get_treatments_by_flag_sets( key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS, attributes)
@@ -361,8 +361,8 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
 
-        :return: The treatment for the key and feature flag
-        :rtype: str
+        :return: Dictionary with the result of all the feature flags provided
+        :rtype: dict
         """
         return self._get_treatments_by_flag_sets( key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET, attributes)
 
@@ -380,8 +380,8 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
 
-        :return: The treatment for the key and feature flag
-        :rtype: str
+        :return: Dictionary with the result of all the feature flags provided
+        :rtype: dict
         """
         return self._get_treatments_by_flag_sets( key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS, attributes)
 
@@ -401,8 +401,8 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
 
-        :return: The treatment for the key and feature flag
-        :rtype: str
+        :return: Dictionary with the result of all the feature flags provided
+        :rtype: dict
         """
         feature_flags_names = self._get_feature_flag_names_by_flag_sets(flag_sets)
         if feature_flags_names == []:
