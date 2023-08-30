@@ -6,7 +6,7 @@ from splitio.engine.splitters import Splitter
 from splitio.models.impressions import Impression, Label
 from splitio.models.events import Event, EventWrapper
 from splitio.models.telemetry import get_latency_bucket_index, MethodExceptionsAndLatencies
-from splitio.client import input_validator
+from splitio.client import input_validator, config
 from splitio.util.time import get_current_epoch_time_ms, utctime_ms
 
 _LOGGER = logging.getLogger(__name__)
@@ -308,6 +308,132 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         with_config = self._make_evaluations(key, feature_flags, attributes, 'get_treatments',
                                              MethodExceptionsAndLatencies.TREATMENTS)
         return {feature_flag: result[0] for (feature_flag, result) in with_config.items()}
+
+    def get_treatments_by_flag_set(self, key, flag_set, attributes=None):
+        """
+        Get treatments for feature flags that contain given flag set.
+
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param flag_set: flag set
+        :type flag_sets: str
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+
+        :return: The treatment for the key and feature flag
+        :rtype: str
+        """
+        return self._get_treatments_by_flag_sets( key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET, attributes)
+
+    def get_treatments_by_flag_sets(self, key, flag_sets, attributes=None):
+        """
+        Get treatments for feature flags that contain given flag sets.
+
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param flag_sets: list of flag sets
+        :type flag_sets: list
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+
+        :return: The treatment for the key and feature flag
+        :rtype: dict
+        """
+        return self._get_treatments_by_flag_sets( key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS, attributes)
+
+    def get_treatments_with_config_by_flag_set(self, key, flag_set, attributes=None):
+        """
+        Get treatments for feature flags that contain given flag set.
+
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param flag_set: flag set
+        :type flag_sets: str
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+
+        :return: The treatment for the key and feature flag
+        :rtype: str
+        """
+        return self._get_treatments_by_flag_sets( key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET, attributes)
+
+    def get_treatments_with_config_by_flag_sets(self, key, flag_sets, attributes=None):
+        """
+        Get treatments for feature flags that contain given flag set.
+
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param flag_set: flag set
+        :type flag_sets: str
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+
+        :return: The treatment for the key and feature flag
+        :rtype: str
+        """
+        return self._get_treatments_by_flag_sets( key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS, attributes)
+
+    def _get_treatments_by_flag_sets(self, key, flag_sets, method, attributes=None):
+        """
+        Get treatments for feature flags that contain given flag sets.
+
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param flag_sets: list of flag sets
+        :type flag_sets: list
+        :param method: Treatment by flag set method flavor
+        :type method: splitio.models.telemetry.MethodExceptionsAndLatencies
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+
+        :return: The treatment for the key and feature flag
+        :rtype: str
+        """
+        feature_flags_names = self._get_feature_flag_names_by_flag_sets(flag_sets)
+        if feature_flags_names == []:
+            _LOGGER.warning("No valid Flag set or no feature flags found for evaluating treatments")
+            return {}
+
+        if 'config' in method.value:
+            return self._make_evaluations(key, feature_flags_names, attributes, method.value,
+                                      method)
+
+        with_config = self._make_evaluations(key, feature_flags_names, attributes, method.value,
+                                             method)
+        return {feature_flag: result[0] for (feature_flag, result) in with_config.items()}
+
+
+    def _get_feature_flag_names_by_flag_sets(self, flag_sets):
+        """
+        Sanitize given flag sets and return list of feature flag names associated with them
+
+        :param flag_sets: list of flag sets
+        :type flag_sets: list
+
+        :return: list of feature flag names
+        :rtype: list
+        """
+        sanitized_flag_sets = config.sanitize_flag_sets(flag_sets)
+        feature_flags = []
+        [feature_flags.extend(self._split_storage.get_feature_flags_by_set(flag_set)) for flag_set in sanitized_flag_sets]
+        feature_flags_names = []
+        [feature_flags_names.append(feature_flag) for feature_flag in feature_flags]
+        return feature_flags_names
 
     def _build_impression(  # pylint: disable=too-many-arguments
             self,
