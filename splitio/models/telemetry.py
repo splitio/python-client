@@ -627,6 +627,8 @@ class TelemetryCounters(object):
         :rtype: int
         """
         with self._lock:
+            if self._update_from_sse.get(event.value) is None:
+                return 0
             update_from_sse = self._update_from_sse[event.value]
             self._update_from_sse[event.value] = 0
             return update_from_sse
