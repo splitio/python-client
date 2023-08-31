@@ -45,6 +45,7 @@ class TelemetryModelTests(object):
     def test_method_latencies(self, mocker):
         method_latencies = MethodLatencies()
 
+        method_latencies.pop_all() # should not raise exception
         for method in ModelTelemetry.MethodExceptionsAndLatencies:
             method_latencies.add_latency(method, 50)
             if method.value == 'treatment':
@@ -87,8 +88,8 @@ class TelemetryModelTests(object):
     def test_http_latencies(self, mocker):
         http_latencies = HTTPLatencies()
 
+        http_latencies.pop_all() # should not raise exception
         for resource in ModelTelemetry.HTTPExceptionsAndLatencies:
-#            pytest.set_trace()
             if self._get_http_latency(resource, http_latencies) == None:
                 continue
             http_latencies.add_latency(resource, 50)
@@ -141,6 +142,7 @@ class TelemetryModelTests(object):
     def test_method_exceptions(self, mocker):
         method_exception = MethodExceptions()
 
+        exceptions = method_exception.pop_all() # should not raise exception
         [method_exception.add_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT) for i in range(2)]
         method_exception.add_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS)
         method_exception.add_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG)
@@ -157,6 +159,7 @@ class TelemetryModelTests(object):
 
     def test_http_errors(self, mocker):
         http_error = HTTPErrors()
+        errors = http_error.pop_all() # should not raise exception
         [http_error.add_error(ModelTelemetry.HTTPExceptionsAndLatencies.SEGMENT, str(i)) for i in [500, 501, 502]]
         [http_error.add_error(ModelTelemetry.HTTPExceptionsAndLatencies.SPLIT, str(i)) for i in [400, 401, 402]]
         http_error.add_error(ModelTelemetry.HTTPExceptionsAndLatencies.IMPRESSION, '502')
@@ -177,6 +180,7 @@ class TelemetryModelTests(object):
 
     def test_last_synchronization(self, mocker):
         last_synchronization = LastSynchronization()
+        last_synchronization.get_all() # should not raise exception
         last_synchronization.add_latency(ModelTelemetry.HTTPExceptionsAndLatencies.SPLIT, 10)
         last_synchronization.add_latency(ModelTelemetry.HTTPExceptionsAndLatencies.IMPRESSION, 20)
         last_synchronization.add_latency(ModelTelemetry.HTTPExceptionsAndLatencies.SEGMENT, 40)
@@ -197,19 +201,27 @@ class TelemetryModelTests(object):
         assert(telemetry_counter._token_refreshes == 0)
         assert(telemetry_counter._update_from_sse == {})
 
+        assert(telemetry_counter.get_session_length() == 0)
         telemetry_counter.record_session_length(20)
         assert(telemetry_counter.get_session_length() == 20)
 
+        assert(telemetry_counter.pop_auth_rejections() == 0)
         [telemetry_counter.record_auth_rejections() for i in range(5)]
         auth_rejections = telemetry_counter.pop_auth_rejections()
         assert(telemetry_counter._auth_rejections == 0)
         assert(auth_rejections == 5)
 
+        assert(telemetry_counter.pop_token_refreshes() == 0)
         [telemetry_counter.record_token_refreshes() for i in range(3)]
         token_refreshes = telemetry_counter.pop_token_refreshes()
         assert(telemetry_counter._token_refreshes == 0)
         assert(token_refreshes == 3)
 
+        assert(telemetry_counter.get_counter_stats(ModelTelemetry.CounterConstants.IMPRESSIONS_QUEUED) == 0)
+        assert(telemetry_counter.get_counter_stats(ModelTelemetry.CounterConstants.IMPRESSIONS_DEDUPED) == 0)
+        assert(telemetry_counter.get_counter_stats(ModelTelemetry.CounterConstants.IMPRESSIONS_DROPPED) == 0)
+        assert(telemetry_counter.get_counter_stats(ModelTelemetry.CounterConstants.EVENTS_QUEUED) == 0)
+        assert(telemetry_counter.get_counter_stats(ModelTelemetry.CounterConstants.EVENTS_DROPPED) == 0)
         telemetry_counter.record_impressions_value(ModelTelemetry.CounterConstants.IMPRESSIONS_QUEUED, 10)
         assert(telemetry_counter._impressions_queued == 10)
         telemetry_counter.record_impressions_value(ModelTelemetry.CounterConstants.IMPRESSIONS_DEDUPED, 14)
@@ -220,6 +232,7 @@ class TelemetryModelTests(object):
         assert(telemetry_counter._events_queued == 30)
         telemetry_counter.record_events_value(ModelTelemetry.CounterConstants.EVENTS_DROPPED, 1)
         assert(telemetry_counter._events_dropped == 1)
+        assert(telemetry_counter.pop_update_from_sse(UpdateFromSSE.SPLIT_UPDATE) == 0)
         telemetry_counter.record_update_from_sse(UpdateFromSSE.SPLIT_UPDATE)
         assert(telemetry_counter._update_from_sse[UpdateFromSSE.SPLIT_UPDATE.value] == 1)
         updates = telemetry_counter.pop_update_from_sse(UpdateFromSSE.SPLIT_UPDATE)
@@ -234,6 +247,7 @@ class TelemetryModelTests(object):
 
     def test_streaming_events(self, mocker):
         streaming_events = StreamingEvents()
+        events = streaming_events.pop_streaming_events()  # should not raise exception
         streaming_events.record_streaming_event((ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED, 'split', 1234))
         streaming_events.record_streaming_event((ModelTelemetry.StreamingEventTypes.STREAMING_STATUS, 'split', 1234))
         events = streaming_events.pop_streaming_events()
@@ -243,6 +257,7 @@ class TelemetryModelTests(object):
 
     def test_telemetry_config(self):
         telemetry_config = TelemetryConfig()
+        stats = telemetry_config.get_stats() # should not raise exception
         config = {'operationMode': 'standalone',
                   'streamingEnabled': True,
                   'impressionsQueueSize': 100,
@@ -277,9 +292,11 @@ class TelemetryModelTests(object):
         telemetry_config.record_ready_time(10)
         assert(telemetry_config._time_until_ready == 10)
 
+        assert(telemetry_config.get_bur_time_outs() == 0)
         [telemetry_config.record_bur_time_out() for i in range(2)]
         assert(telemetry_config.get_bur_time_outs() == 2)
 
+        assert(telemetry_config.get_non_ready_usage() == 0)
         [telemetry_config.record_not_ready_usage() for i in range(5)]
         assert(telemetry_config.get_non_ready_usage() == 5)
 
