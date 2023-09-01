@@ -97,15 +97,15 @@ class RedisSplitStorage(SplitStorage):
         """
         Retrieve feature flags by flag set.
 
-        :param feature_flag_names: Names of the features to fetch.
-        :type feature_flag_name: list(str)
+        :param flag_set: Names of the flag set to fetch.
+        :type flag_set: str
 
-        :return: A dict with split objects parsed from redis.
-        :rtype: dict(split_name, splitio.models.splits.Split)
+        :return: Feature flag names that are tagged with the flag set
+        :rtype: listt(str)
         """
         try:
             if flag_set not in self._flag_sets and len(self._flag_sets) > 0:
-                _LOGGER.warning("Flag set %s used is not part of the configured flag set list, ignoring the request." % (flag_set))
+                _LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring the request." % (flag_set))
                 return []
 
             keys = list(self._redis.smembers(self._get_set_key(flag_set)))
