@@ -200,7 +200,7 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             list(set(part.treatment for cond in self.conditions for part in cond.partitions)),
             self.change_number,
             self._configurations if self._configurations is not None else {},
-            self._sets
+            self._sets if self._sets is not None else []
         )
 
     def local_kill(self, default_treatment, change_number):
