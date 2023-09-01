@@ -81,12 +81,19 @@ class ManagerTests(object):  # pylint: disable=too-few-public-methods
         assert manager.split_names() == ['some_name']
         split_view = manager.split('some_name')
         self._verify_split(split_view)
+        split2 = SplitTests.raw.copy()
+        split2['sets'] = None
+        split2['name'] = 'no_sets_split'
+        split_storage.update([splits.from_raw(split2)], [], 123)
+
+        split_view = manager.split('no_sets_split')
+        assert split_view.sets == []
 
     def _verify_split(self, split):
         assert split.name == 'some_name'
         assert split.traffic_type == 'user'
         assert split.killed == False
-        assert split.treatments == ['on', 'off']
+        assert sorted(split.treatments) == ['off', 'on']
         assert split.change_number == 123
         assert split.configs == {'on': '{"color": "blue", "size": 13}'}
         assert split.sets == ['set1', 'set2']
