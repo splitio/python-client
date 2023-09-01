@@ -172,17 +172,17 @@ class RedisSplitStorageTests(object):
         time.sleep(1)
         assert storage.is_valid_traffic_type('any') is False
 
+    @mock.patch('splitio.storage.adapters.redis.RedisPipelineAdapter.execute', return_value = [{'split1', 'split2'}])
     def test_flag_sets(self, mocker):
         """Test Flag sets scenarios."""
-        adapter = mocker.Mock(spec=RedisAdapter)
-        adapter.smembers.return_value = set({'split1', 'split2'})
+        adapter = build({})
         storage = RedisSplitStorage(adapter, True, 1)
         assert storage._flag_sets == []
-        assert sorted(storage.get_feature_flags_by_set('set1')) == ['split1', 'split2']
+        assert sorted(storage.get_feature_flags_by_sets(['set1', 'set2'])) == ['split1', 'split2']
 
         storage._flag_sets = ['set2', 'set3']
-        assert storage.get_feature_flags_by_set('set1') == []
-        assert sorted(storage.get_feature_flags_by_set('set2')) == ['split1', 'split2']
+        assert storage.get_feature_flags_by_sets(['set1']) == []
+        assert sorted(storage.get_feature_flags_by_sets(['set2'])) == ['split1', 'split2']
 
         storage2 = RedisSplitStorage(adapter, True, 1, ['set2', 'set3'])
         assert storage2._flag_sets == ['set2', 'set3']

@@ -122,7 +122,7 @@ class InMemorySplitStorage(SplitStorage):
                 if len(self._sets_feature_flag_map[flag_set]) == 0 and self.config_flag_sets_used == 0:
                     del self._sets_feature_flag_map[flag_set]
 
-    def get_feature_flags_by_set(self, set):
+    def get_feature_flags_by_sets(self, sets):
         """
         Get list of feature flag names associated to a set, if it does not exist will return empty list
 
@@ -133,9 +133,22 @@ class InMemorySplitStorage(SplitStorage):
         :rtype: list
         """
         with self._lock:
-            if set not in self._sets_feature_flag_map:
+            sets_to_fetch = []
+            for flag_set in sets:
+                if flag_set not in self._sets_feature_flag_map.keys():
+                    if self.config_flag_sets_used > 0:
+                        _LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring the request." % (flag_set))
+                        continue
+                    else:
+                        self._sets_feature_flag_map[flag_set] = set()
+                sets_to_fetch.append(flag_set)
+
+            if sets_to_fetch == []:
                 return []
-            return list(self._sets_feature_flag_map[set])
+
+            to_return = set()
+            [to_return.update(self._sets_feature_flag_map[flag_set]) for flag_set in sets_to_fetch]
+            return list(to_return)
 
     def get_change_number(self):
         """

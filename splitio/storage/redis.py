@@ -93,7 +93,7 @@ class RedisSplitStorage(SplitStorage):
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
-    def get_feature_flags_by_set(self, flag_set):
+    def get_feature_flags_by_sets(self, flag_sets):
         """
         Retrieve feature flags by flag set.
 
@@ -104,14 +104,25 @@ class RedisSplitStorage(SplitStorage):
         :rtype: listt(str)
         """
         try:
-            if flag_set not in self._flag_sets and len(self._flag_sets) > 0:
-                _LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring the request." % (flag_set))
+            sets_to_fetch = []
+            for flag_set in flag_sets:
+                if flag_set not in self._flag_sets and len(self._flag_sets) > 0:
+                    _LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring the request." % (flag_set))
+                    continue
+                sets_to_fetch.append(flag_set)
+
+            if sets_to_fetch == []:
                 return []
 
-            keys = list(self._redis.smembers(self._get_set_key(flag_set)))
-            _LOGGER.debug("Fetchting Feature flags by set [%s] from redis" % (flag_set))
-            _LOGGER.debug(keys)
-            return keys if keys is not None else []
+            keys = [self._get_set_key(feature_flag_name) for feature_flag_name in sets_to_fetch]
+            pipe = self._redis.pipeline()
+            [pipe.smembers(key) for key in keys]
+            result_sets = pipe.execute()
+            _LOGGER.debug("Fetchting Feature flags by set [%s] from redis" % (keys))
+            _LOGGER.debug(result_sets)
+            to_return = set()
+            [to_return.update(result_set) for result_set in result_sets]
+            return list(to_return)
         except RedisAdapterException:
             _LOGGER.error('Error fetching feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
