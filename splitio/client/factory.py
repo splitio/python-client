@@ -350,7 +350,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     }
 
     storages = {
-        'splits': InMemorySplitStorage(cfg['FlagSetsFilter'] if cfg['FlagSetsFilter'] is not None else []),
+        'splits': InMemorySplitStorage(cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
         'segments': InMemorySegmentStorage(),
         'impressions': InMemoryImpressionStorage(cfg['impressionsQueueSize'], telemetry_runtime_producer),
         'events': InMemoryEventStorage(cfg['eventsQueueSize'], telemetry_runtime_producer),
