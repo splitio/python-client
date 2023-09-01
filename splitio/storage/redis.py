@@ -32,6 +32,7 @@ class RedisSplitStorage(SplitStorage):
         """
         self._redis = redis_client
         self._flag_sets = flag_sets
+        self._pipe = self._redis.pipeline
         if enable_caching:
             self.get = add_cache(lambda *p, **_: p[0], max_age)(self.get)
             self.is_valid_traffic_type = add_cache(lambda *p, **_: p[0], max_age)(self.is_valid_traffic_type)  # pylint: disable=line-too-long
@@ -115,7 +116,7 @@ class RedisSplitStorage(SplitStorage):
                 return []
 
             keys = [self._get_set_key(feature_flag_name) for feature_flag_name in sets_to_fetch]
-            pipe = self._redis.pipeline()
+            pipe = self._pipe()
             [pipe.smembers(key) for key in keys]
             result_sets = pipe.execute()
             _LOGGER.debug("Fetchting Feature flags by set [%s] from redis" % (keys))
