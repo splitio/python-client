@@ -172,6 +172,20 @@ class RedisSplitStorageTests(object):
         time.sleep(1)
         assert storage.is_valid_traffic_type('any') is False
 
+    def test_flag_sets(self, mocker):
+        """Test Flag sets scenarios."""
+        adapter = mocker.Mock(spec=RedisAdapter)
+        adapter.smembers.return_value = set({'split1', 'split2'})
+        storage = RedisSplitStorage(adapter, True, 1)
+        assert storage._flag_sets == []
+        assert sorted(storage.get_feature_flags_by_set('set1')) == ['split1', 'split2']
+
+        storage._flag_sets = ['set2', 'set3']
+        assert storage.get_feature_flags_by_set('set1') == []
+        assert sorted(storage.get_feature_flags_by_set('set2')) == ['split1', 'split2']
+
+        storage2 = RedisSplitStorage(adapter, True, 1, ['set2', 'set3'])
+        assert storage2._flag_sets == ['set2', 'set3']
 
 class RedisSegmentStorageTests(object):
     """Redis segment storage test cases."""
