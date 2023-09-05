@@ -23,7 +23,7 @@ class RedisSplitStorage(SplitStorage):
     _TRAFFIC_TYPE_KEY = 'SPLITIO.trafficType.{traffic_type_name}'
     _SET_KEY = 'SPLITIO.set.{flag_set}'
 
-    def __init__(self, redis_client, enable_caching=False, max_age=DEFAULT_MAX_AGE, flag_sets=[]):
+    def __init__(self, redis_client, enable_caching=False, max_age=DEFAULT_MAX_AGE, config_flag_sets=[]):
         """
         Class constructor.
 
@@ -31,7 +31,7 @@ class RedisSplitStorage(SplitStorage):
         :type redis_client: splitio.storage.adapters.redis.RedisAdapter
         """
         self._redis = redis_client
-        self._flag_sets = flag_sets
+        self._config_flag_sets = config_flag_sets
         self._pipe = self._redis.pipeline
         if enable_caching:
             self.get = add_cache(lambda *p, **_: p[0], max_age)(self.get)
@@ -107,7 +107,7 @@ class RedisSplitStorage(SplitStorage):
         try:
             sets_to_fetch = []
             for flag_set in flag_sets:
-                if flag_set not in self._flag_sets and len(self._flag_sets) > 0:
+                if flag_set not in self._config_flag_sets and len(self._config_flag_sets) > 0:
                     _LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring the request." % (flag_set))
                     continue
                 sets_to_fetch.append(flag_set)

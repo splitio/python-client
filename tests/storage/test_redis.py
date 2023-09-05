@@ -177,15 +177,15 @@ class RedisSplitStorageTests(object):
         """Test Flag sets scenarios."""
         adapter = build({})
         storage = RedisSplitStorage(adapter, True, 1)
-        assert storage._flag_sets == []
+        assert storage._config_flag_sets == []
         assert sorted(storage.get_feature_flags_by_sets(['set1', 'set2'])) == ['split1', 'split2']
 
-        storage._flag_sets = ['set2', 'set3']
+        storage._config_flag_sets = ['set2', 'set3']
         assert storage.get_feature_flags_by_sets(['set1']) == []
         assert sorted(storage.get_feature_flags_by_sets(['set2'])) == ['split1', 'split2']
 
         storage2 = RedisSplitStorage(adapter, True, 1, ['set2', 'set3'])
-        assert storage2._flag_sets == ['set2', 'set3']
+        assert storage2._config_flag_sets == ['set2', 'set3']
 
 class RedisSegmentStorageTests(object):
     """Redis segment storage test cases."""
