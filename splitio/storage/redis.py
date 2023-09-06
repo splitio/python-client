@@ -122,7 +122,10 @@ class RedisSplitStorage(SplitStorage):
             _LOGGER.debug("Fetchting Feature flags by set [%s] from redis" % (keys))
             _LOGGER.debug(result_sets)
             to_return = set()
-            [to_return.update(result_set) for result_set in result_sets]
+            for result_set in result_sets:
+                if isinstance(result_set, set) and len(result_set) > 0:
+                    to_return.update(result_set)
+
             return list(to_return)
         except RedisAdapterException:
             _LOGGER.error('Error fetching feature flag from storage')
