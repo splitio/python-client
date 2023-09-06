@@ -115,7 +115,7 @@ class RedisSplitStorage(SplitStorage):
             if sets_to_fetch == []:
                 return []
 
-            keys = [self._get_set_key(feature_flag_name) for feature_flag_name in sets_to_fetch]
+            keys = [self._get_set_key(flag_set) for flag_set in sets_to_fetch]
             pipe = self._pipe()
             [pipe.smembers(key) for key in keys]
             result_sets = pipe.execute()
