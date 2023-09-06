@@ -1,6 +1,6 @@
 """Storage Helper tests."""
 
-from splitio.util.storage_helper import update_feature_flag_storage, get_valid_flag_sets
+from splitio.util.storage_helper import update_feature_flag_storage, get_valid_flag_sets, combine_valid_flag_sets
 from splitio.storage.inmemmory import InMemorySplitStorage
 from splitio.models import splits
 from tests.sync.test_splits_synchronizer import splits as split_sample
@@ -74,7 +74,7 @@ class StorageHelperTests(object):
         storage.config_flag_sets_used = 0
         assert update_feature_flag_storage(storage, [split], 123) == {'segment1'}
 
-    def test_get_valid_flag_sets(self, mocker):
+    def test_get_valid_flag_sets(self):
         flag_sets = ['set1', 'set2']
         config_flag_sets = []
         assert get_valid_flag_sets(flag_sets, config_flag_sets) == ['set1', 'set2']
@@ -93,3 +93,13 @@ class StorageHelperTests(object):
         flag_sets = []
         config_flag_sets = ['set1', 'set2']
         assert get_valid_flag_sets(flag_sets, config_flag_sets) == []
+
+    def test_combine_valid_flag_sets(self):
+        results_set = [{'set1', 'set2'}, {'set2', 'set3'}]
+        assert combine_valid_flag_sets(results_set) == {'set1', 'set2', 'set3'}
+
+        results_set = [{}, {'set2', 'set3'}]
+        assert combine_valid_flag_sets(results_set) == {'set2', 'set3'}
+
+        results_set = ['set1', {'set2', 'set3'}]
+        assert combine_valid_flag_sets(results_set) == {'set2', 'set3'}

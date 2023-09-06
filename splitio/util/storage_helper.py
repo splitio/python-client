@@ -71,3 +71,19 @@ def get_valid_flag_sets(flag_sets, config_flag_sets):
         sets_to_fetch.append(flag_set)
 
     return sets_to_fetch
+
+def combine_valid_flag_sets(result_sets):
+    """
+    Check each flag set in given array of sets, combine all flag sets in one unique set
+
+    :param result_sets: Flag sets set
+    :type flag_sets: list(set)
+
+    :return: flag sets set
+    :rtype: set
+    """
+    to_return = set()
+    for result_set in result_sets:
+        if isinstance(result_set, set) and len(result_set) > 0:
+            to_return.update(result_set)
+    return to_return

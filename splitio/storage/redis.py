@@ -10,7 +10,7 @@ from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, Eve
     ImpressionPipelinedStorage, TelemetryStorage
 from splitio.storage.adapters.redis import RedisAdapterException
 from splitio.storage.adapters.cache_trait import decorate as add_cache, DEFAULT_MAX_AGE
-from splitio.util.storage_helper import get_valid_flag_sets
+from splitio.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -124,12 +124,7 @@ class RedisSplitStorage(SplitStorage):
             result_sets = pipe.execute()
             _LOGGER.debug("Fetchting Feature flags by set [%s] from redis" % (keys))
             _LOGGER.debug(result_sets)
-            to_return = set()
-            for result_set in result_sets:
-                if isinstance(result_set, set) and len(result_set) > 0:
-                    to_return.update(result_set)
-
-            return list(to_return)
+            return list(combine_valid_flag_sets(result_sets))
         except RedisAdapterException:
             _LOGGER.error('Error fetching feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
