@@ -10,6 +10,7 @@ from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, Eve
     ImpressionPipelinedStorage, TelemetryStorage
 from splitio.storage.adapters.redis import RedisAdapterException
 from splitio.storage.adapters.cache_trait import decorate as add_cache, DEFAULT_MAX_AGE
+from splitio.util.storage_helper import get_valid_flag_sets
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -105,13 +106,15 @@ class RedisSplitStorage(SplitStorage):
         :rtype: listt(str)
         """
         try:
+            '''
             sets_to_fetch = []
             for flag_set in flag_sets:
                 if flag_set not in self._config_flag_sets and len(self._config_flag_sets) > 0:
                     _LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring the request." % (flag_set))
                     continue
                 sets_to_fetch.append(flag_set)
-
+            '''
+            sets_to_fetch = get_valid_flag_sets(flag_sets, self._config_flag_sets)
             if sets_to_fetch == []:
                 return []
 
