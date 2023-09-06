@@ -138,9 +138,9 @@ class PluggableSplitStorageTests(object):
                 prefix = 'myprefix.'
             else:
                 prefix = ''
-        assert(pluggable_split_storage._prefix == prefix + "SPLITIO.split.{split_name}")
+        assert(pluggable_split_storage._prefix == prefix + "SPLITIO.split.{feature_flag_name}")
         assert(pluggable_split_storage._traffic_type_prefix == prefix + "SPLITIO.trafficType.{traffic_type_name}")
-        assert(pluggable_split_storage._split_till_prefix == prefix + "SPLITIO.splits.till")
+        assert(pluggable_split_storage._feature_flag_till_prefix == prefix + "SPLITIO.splits.till")
 
     # TODO: To be added when producer mode is aupported
 #    def test_put_many(self):
@@ -163,10 +163,10 @@ class PluggableSplitStorageTests(object):
             pluggable_split_storage = PluggableSplitStorage(self.mock_adapter, prefix=sprefix)
 
             split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
-            split_name = splits_json['splitChange1_2']['splits'][0]['name']
+            feature_flag_name = splits_json['splitChange1_2']['splits'][0]['name']
 
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split_name), split1.to_json())
-            assert(pluggable_split_storage.get(split_name).to_json() ==  splits.from_raw(splits_json['splitChange1_2']['splits'][0]).to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=feature_flag_name), split1.to_json())
+            assert(pluggable_split_storage.get(feature_flag_name).to_json() ==  splits.from_raw(splits_json['splitChange1_2']['splits'][0]).to_json())
             assert(pluggable_split_storage.get('not_existing') == None)
 
     def test_fetch_many(self):
@@ -178,8 +178,8 @@ class PluggableSplitStorageTests(object):
             split2_temp['name'] = 'another_split'
             split2 = splits.from_raw(split2_temp)
 
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split1.name), split1.to_json())
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split2.name), split2.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split1.name), split1.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split2.name), split2.to_json())
             fetched = pluggable_split_storage.fetch_many([split1.name, split2.name])
             assert(fetched[split1.name].to_json() == split1.to_json())
             assert(fetched[split2.name].to_json() == split2.to_json())
@@ -217,8 +217,8 @@ class PluggableSplitStorageTests(object):
             split2_temp = splits_json['splitChange1_2']['splits'][0].copy()
             split2_temp['name'] = 'another_split'
             split2 = splits.from_raw(split2_temp)
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split1.name), split1.to_json())
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split2.name), split2.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split1.name), split1.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split2.name), split2.to_json())
             assert(pluggable_split_storage.get_split_names() == [split1.name, split2.name])
 
     def test_get_all(self):
@@ -230,8 +230,8 @@ class PluggableSplitStorageTests(object):
             split2_temp['name'] = 'another_split'
             split2 = splits.from_raw(split2_temp)
 
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split1.name), split1.to_json())
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split2.name), split2.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split1.name), split1.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split2.name), split2.to_json())
             all_splits = pluggable_split_storage.get_all()
             assert([all_splits[0].to_json(), all_splits[1].to_json()] == [split1.to_json(), split2.to_json()])
 
