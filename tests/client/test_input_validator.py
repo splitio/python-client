@@ -32,7 +32,6 @@ class ClientInputValidationTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {
@@ -46,7 +45,7 @@ class ClientInputValidationTests(object):
             impmanager,
             mocker.Mock(),
             telemetry_producer,
-            telemetry_consumer.get_telemetry_init_consumer(),
+            telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
 
@@ -105,31 +104,31 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatment('some_key', None) == CONTROL
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment', 'feature_name', 'feature_name')
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert client.get_treatment('some_key', 123) == CONTROL
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'feature_name', 'feature_name')
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert client.get_treatment('some_key', True) == CONTROL
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'feature_name', 'feature_name')
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert client.get_treatment('some_key', []) == CONTROL
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'feature_name', 'feature_name')
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert client.get_treatment('some_key', '') == CONTROL
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatment', 'feature_name', 'feature_name')
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatment', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
@@ -233,7 +232,7 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatment('matching_key', '  some_feature   ', None) == 'default_treatment'
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature_name \'%s\' has extra whitespace, trimming.', 'get_treatment', '  some_feature   ')
+            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatment', '  some_feature   ')
         ]
 
         _logger.reset_mock()
@@ -242,7 +241,7 @@ class ClientInputValidationTests(object):
         assert _logger.warning.mock_calls == [
             mocker.call(
                 "%s: you passed \"%s\" that does not exist in this environment, "
-                "please double check what Splits exist in the web console.",
+                "please double check what Feature flags exist in the Split user interface.",
                 'get_treatment',
                 'some_feature'
             )
@@ -267,7 +266,6 @@ class ClientInputValidationTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {
@@ -281,7 +279,7 @@ class ClientInputValidationTests(object):
             impmanager,
             mocker.Mock(),
             telemetry_producer,
-            telemetry_consumer.get_telemetry_init_consumer(),
+            telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
 
@@ -340,31 +338,31 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatment_with_config('some_key', None) == (CONTROL, None)
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_name', 'feature_name')
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert client.get_treatment_with_config('some_key', 123) == (CONTROL, None)
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_name', 'feature_name')
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert client.get_treatment_with_config('some_key', True) == (CONTROL, None)
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_name', 'feature_name')
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert client.get_treatment_with_config('some_key', []) == (CONTROL, None)
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_name', 'feature_name')
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert client.get_treatment_with_config('some_key', '') == (CONTROL, None)
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_name', 'feature_name')
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
@@ -468,7 +466,7 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatment_with_config('matching_key', '  some_feature   ', None) == ('default_treatment', '{"some": "property"}')
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature_name \'%s\' has extra whitespace, trimming.', 'get_treatment_with_config', '  some_feature   ')
+            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatment_with_config', '  some_feature   ')
         ]
 
         _logger.reset_mock()
@@ -477,7 +475,7 @@ class ClientInputValidationTests(object):
         assert _logger.warning.mock_calls == [
             mocker.call(
                 "%s: you passed \"%s\" that does not exist in this environment, "
-                "please double check what Splits exist in the web console.",
+                "please double check what Feature flags exist in the Split user interface.",
                 'get_treatment_with_config',
                 'some_feature'
             )
@@ -539,7 +537,6 @@ class ClientInputValidationTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         recorder = StandardRecorder(impmanager, events_storage_mock, ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {
@@ -556,7 +553,7 @@ class ClientInputValidationTests(object):
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
-        factory._apikey = 'some-test'
+        factory._sdk_key = 'some-test'
 
         client = Client(factory, recorder)
         client._event_storage = event_storage
@@ -724,21 +721,21 @@ class ClientInputValidationTests(object):
         assert client.track("some_key", "traffic_type", "event_type", None) is True
         assert _logger.error.mock_calls == []
         assert _logger.warning.mock_calls == [mocker.call(
-            'track: Traffic Type %s does not have any corresponding Splits in this environment, '
+            'track: Traffic Type %s does not have any corresponding Feature flags in this environment, '
             'make sure you\'re tracking your events to a valid traffic type defined '
-            'in the Split console.',
+            'in the Split user interface.',
             'traffic_type'
         )]
 
         # Test that it does not warn when in localhost mode.
-        factory._apikey = 'localhost'
+        factory._sdk_key = 'localhost'
         _logger.reset_mock()
         assert client.track("some_key", "traffic_type", "event_type", None) is True
         assert _logger.error.mock_calls == []
         assert _logger.warning.mock_calls == []
 
         # Test that it does not warn when not in localhost mode and not ready
-        factory._apikey = 'not-localhost'
+        factory._sdk_key = 'not-localhost'
         ready_property.return_value = False
         type(factory).ready = ready_property
         _logger.reset_mock()
@@ -814,7 +811,6 @@ class ClientInputValidationTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {
@@ -878,45 +874,45 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatments('some_key', None) == {}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments')
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments')
         ]
 
         _logger.reset_mock()
         assert client.get_treatments('some_key', True) == {}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments')
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments')
         ]
 
         _logger.reset_mock()
         assert client.get_treatments('some_key', 'some_string') == {}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments')
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments')
         ]
 
         _logger.reset_mock()
         assert client.get_treatments('some_key', []) == {}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments')
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments')
         ]
 
         _logger.reset_mock()
         assert client.get_treatments('some_key', [None, None]) == {}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments')
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments')
         ]
 
         _logger.reset_mock()
         assert client.get_treatments('some_key', [True]) == {}
-        assert mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments') in _logger.error.mock_calls
+        assert mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments') in _logger.error.mock_calls
 
         _logger.reset_mock()
         assert client.get_treatments('some_key', ['', '']) == {}
-        assert mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments') in _logger.error.mock_calls
+        assert mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments') in _logger.error.mock_calls
 
         _logger.reset_mock()
         assert client.get_treatments('some_key', ['some   ']) == {'some': 'default_treatment'}
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature_name \'%s\' has extra whitespace, trimming.', 'get_treatments', 'some   ')
+            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatments', 'some   ')
         ]
 
         _logger.reset_mock()
@@ -931,7 +927,7 @@ class ClientInputValidationTests(object):
         assert _logger.warning.mock_calls == [
             mocker.call(
                 "%s: you passed \"%s\" that does not exist in this environment, "
-                "please double check what Splits exist in the web console.",
+                "please double check what Feature flags exist in the Split user interface.",
                 'get_treatments',
                 'some_feature'
             )
@@ -955,7 +951,6 @@ class ClientInputValidationTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {
@@ -1020,45 +1015,45 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatments_with_config('some_key', None) == {}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments_with_config')
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config')
         ]
 
         _logger.reset_mock()
         assert client.get_treatments_with_config('some_key', True) == {}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments_with_config')
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config')
         ]
 
         _logger.reset_mock()
         assert client.get_treatments_with_config('some_key', 'some_string') == {}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments_with_config')
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config')
         ]
 
         _logger.reset_mock()
         assert client.get_treatments_with_config('some_key', []) == {}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments_with_config')
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config')
         ]
 
         _logger.reset_mock()
         assert client.get_treatments_with_config('some_key', [None, None]) == {}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments_with_config')
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config')
         ]
 
         _logger.reset_mock()
         assert client.get_treatments_with_config('some_key', [True]) == {}
-        assert mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments_with_config') in _logger.error.mock_calls
+        assert mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config') in _logger.error.mock_calls
 
         _logger.reset_mock()
         assert client.get_treatments_with_config('some_key', ['', '']) == {}
-        assert mocker.call('%s: feature_names must be a non-empty array.', 'get_treatments_with_config') in _logger.error.mock_calls
+        assert mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config') in _logger.error.mock_calls
 
         _logger.reset_mock()
         assert client.get_treatments_with_config('some_key', ['some_feature   ']) == {'some_feature': ('default_treatment', '{"some": "property"}')}
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature_name \'%s\' has extra whitespace, trimming.', 'get_treatments_with_config', 'some_feature   ')
+            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatments_with_config', 'some_feature   ')
         ]
 
         _logger.reset_mock()
@@ -1073,7 +1068,7 @@ class ClientInputValidationTests(object):
         assert _logger.warning.mock_calls == [
             mocker.call(
                 "%s: you passed \"%s\" that does not exist in this environment, "
-                "please double check what Splits exist in the web console.",
+                "please double check what Feature flags exist in the Split user interface.",
                 'get_treatments',
                 'some_feature'
             )
@@ -1091,7 +1086,6 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {
@@ -1115,25 +1109,25 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
 
         assert manager.split(None) is None
         assert _logger.error.mock_calls == [
-            mocker.call("%s: you passed a null %s, %s must be a non-empty string.", 'split', 'feature_name', 'feature_name')
+            mocker.call("%s: you passed a null %s, %s must be a non-empty string.", 'split', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert manager.split("") is None
         assert _logger.error.mock_calls == [
-            mocker.call("%s: you passed an empty %s, %s must be a non-empty string.", 'split', 'feature_name', 'feature_name')
+            mocker.call("%s: you passed an empty %s, %s must be a non-empty string.", 'split', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert manager.split(True) is None
         assert _logger.error.mock_calls == [
-            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'split', 'feature_name', 'feature_name')
+            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'split', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
         assert manager.split([]) is None
         assert _logger.error.mock_calls == [
-            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'split', 'feature_name', 'feature_name')
+            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'split', 'feature_flag_name', 'feature_flag_name')
         ]
 
         _logger.reset_mock()
@@ -1148,7 +1142,7 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
         assert split_mock.to_split_view.mock_calls == []
         assert _logger.warning.mock_calls == [mocker.call(
             "split: you passed \"%s\" that does not exist in this environment, "
-            "please double check what Splits exist in the web console.",
+            "please double check what Feature flags exist in the Split user interface.",
             'nonexistant-split'
         )]
 
@@ -1162,19 +1156,19 @@ class FactoryInputValidationTests(object):  #pylint: disable=too-few-public-meth
 
         assert get_factory(None) is None
         assert logger.error.mock_calls == [
-            mocker.call("%s: you passed a null %s, %s must be a non-empty string.", 'factory_instantiation', 'apikey', 'apikey')
+            mocker.call("%s: you passed a null %s, %s must be a non-empty string.", 'factory_instantiation', 'sdk_key', 'sdk_key')
         ]
 
         logger.reset_mock()
         assert get_factory('') is None
         assert logger.error.mock_calls == [
-            mocker.call("%s: you passed an empty %s, %s must be a non-empty string.", 'factory_instantiation', 'apikey', 'apikey')
+            mocker.call("%s: you passed an empty %s, %s must be a non-empty string.", 'factory_instantiation', 'sdk_key', 'sdk_key')
         ]
 
         logger.reset_mock()
         assert get_factory(True) is None
         assert logger.error.mock_calls == [
-            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'factory_instantiation', 'apikey', 'apikey')
+            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'factory_instantiation', 'sdk_key', 'sdk_key')
         ]
 
         logger.reset_mock()
@@ -1184,3 +1178,90 @@ class FactoryInputValidationTests(object):  #pylint: disable=too-few-public-meth
             pass
         assert logger.error.mock_calls == []
         f.destroy()
+
+class PluggableInputValidationTests(object):  #pylint: disable=too-few-public-methods
+    """Pluggable adapter instance validation test cases."""
+
+    class mock_adapter0():
+        def set(self, key, value):
+            print(key)
+
+    class mock_adapter1(object):
+        def set(self, key, value):
+            print(key)
+
+    class mock_adapter2(mock_adapter1):
+        def get(self, key):
+            print(key)
+
+        def get_items(self, key):
+            print(key)
+
+        def get_many(self, keys):
+            print(keys)
+
+        def push_items(self, key, *value):
+            print(key)
+
+        def delete(self, key):
+            print(key)
+
+        def increment(self, key, value):
+            print(key)
+
+        def decrement(self, key, value):
+            print(key)
+
+        def get_keys_by_prefix(self, prefix):
+            print(prefix)
+
+        def get_many(self, keys):
+            print(keys)
+
+        def add_items(self, key, added_items):
+            print(key)
+
+        def remove_items(self, key, removed_items):
+            print(key)
+
+        def item_contains(self, key, item):
+            print(key)
+
+        def get_items_count(self, key):
+            print(key)
+
+    class mock_adapter3(mock_adapter2):
+        def expire(self, key):
+            print(key)
+
+    class mock_adapter4(mock_adapter2):
+        def expire(self, key, value, till):
+            print(key)
+
+    def test_validate_pluggable_adapter(self):
+        # missing storageWrapper config parameter
+        assert(not input_validator.validate_pluggable_adapter({'storageType': 'pluggable'}))
+
+        # ignore if storage type is not pluggable
+        assert(input_validator.validate_pluggable_adapter({'storageType': 'memory'}))
+
+        # mock adapter is not derived from object class
+        assert(not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'pe': self.mock_adapter0()}))
+
+        # mock adapter missing many functions
+        assert(not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storageWrapper': self.mock_adapter1()}))
+
+        # mock adapter missing expire function
+        assert(not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storageWrapper': self.mock_adapter2()}))
+
+        # mock adapter expire function has incrrect args count
+        assert(not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storageWrapper': self.mock_adapter3()}))
+
+        # expected mock adapter should pass
+        assert(input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storageWrapper': self.mock_adapter4()}))
+
+        # using string type prefix should pass
+        assert(input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storagePrefix': 'myprefix', 'storageWrapper': self.mock_adapter4()}))
+
+        # using non-string type prefix should not pass
+        assert(not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storagePrefix': 'myprefix', 123: self.mock_adapter4()}))

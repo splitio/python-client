@@ -84,7 +84,7 @@ class SplitManager(object):
             _LOGGER.error("Client is not ready - no calls possible")
             return None
 
-        feature_name = input_validator.validate_manager_feature_name(
+        feature_name = input_validator.validate_manager_feature_flag_name(
             feature_name,
             self._factory.ready,
             self._storage

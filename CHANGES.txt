@@ -1,3 +1,23 @@
+9.5.1 (Sep 5, 2023)
+- Exclude tests from when building the package
+- Fixed exception when fetching telemetry stats if no SSE Feature flags update events are stored
+
+9.5.0 (Jul 18, 2023)
+- Improved streaming architecture implementation to apply feature flag updates from the notification received which is now enhanced, improving efficiency and reliability of the whole update system.
+
+9.4.2 (May 15, 2023)
+- Updated terminology on the SDKs codebase to be more aligned with current standard without causing a breaking change. The core change is the term split for feature flag on things like logs and code documentation comments.
+- Added detailed debug logging for redis adapter.
+- Fixed setting defaultTreatment to 'control' if it is missing in localhost JSON file.
+
+9.4.1 (Apr 18, 2023)
+- Fixed storing incorrect Telemetry method latency data
+
+9.4.0 (Mar 1, 2023)
+- Added support to use JSON files in localhost mode.
+- Updated default periodic telemetry post time to one hour.
+- Fixed unhandeled exception in push.manager.py class when SDK is connected to split proxy
+
 9.3.0 (Jan 30, 2023)
 - Updated SDK telemetry storage, metrics and updater to be more effective and send less often.
 - Removed deprecated threading.Thread.setDaemon() method.
@@ -95,7 +115,7 @@
 7.0.1 (Mar 8, 2019)
  - Updated Splits refreshing rate.
  - Replaced exception log level to error level.
- - Improved validation for apikey.
+ - Improved validation for sdkkey.
 
 7.0.0 (Feb 21, 2019)
  - BREAKING CHANGE: Stored Impressions in Queue.

@@ -7,7 +7,7 @@ import time
 
 from splitio.api import APIException
 from splitio.util.backoff import Backoff
-
+from splitio.sync.split import _ON_DEMAND_FETCH_BACKOFF_BASE, _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES, _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT, LocalhostMode
 
 _LOGGER = logging.getLogger(__name__)
 _SYNC_ALL_NO_RETRIES = -1
@@ -15,13 +15,13 @@ _SYNC_ALL_NO_RETRIES = -1
 class SplitSynchronizers(object):
     """SplitSynchronizers."""
 
-    def __init__(self, split_sync, segment_sync, impressions_sync, events_sync,  # pylint:disable=too-many-arguments
+    def __init__(self, feature_flag_sync, segment_sync, impressions_sync, events_sync,  # pylint:disable=too-many-arguments
                  impressions_count_sync, telemetry_sync=None, unique_keys_sync = None, clear_filter_sync = None):
         """
         Class constructor.
 
-        :param split_sync: sync for splits
-        :type split_sync: splitio.sync.split.SplitSynchronizer
+        :param feature_flag_sync: sync for feature_flags
+        :type feature_flag_sync: splitio.sync.split.SplitSynchronizer
         :param segment_sync: sync for segments
         :type segment_sync: splitio.sync.segment.SegmentSynchronizer
         :param impressions_sync: sync for impressions
@@ -31,7 +31,7 @@ class SplitSynchronizers(object):
         :param impressions_count_sync: sync for impression_counts
         :type impressions_count_sync: splitio.sync.impression.ImpressionsCountSynchronizer
         """
-        self._split_sync = split_sync
+        self._feature_flag_sync = feature_flag_sync
         self._segment_sync = segment_sync
         self._impressions_sync = impressions_sync
         self._events_sync = events_sync
@@ -43,7 +43,7 @@ class SplitSynchronizers(object):
     @property
     def split_sync(self):
         """Return split synchonizer."""
-        return self._split_sync
+        return self._feature_flag_sync
 
     @property
     def segment_sync(self):
@@ -83,13 +83,13 @@ class SplitSynchronizers(object):
 class SplitTasks(object):
     """SplitTasks."""
 
-    def __init__(self, split_task, segment_task, impressions_task, events_task,  # pylint:disable=too-many-arguments
+    def __init__(self, feature_flag_task, segment_task, impressions_task, events_task,  # pylint:disable=too-many-arguments
                  impressions_count_task, telemetry_task=None, unique_keys_task = None, clear_filter_task = None):
         """
         Class constructor.
 
-        :param split_task: sync for splits
-        :type split_task: splitio.tasks.split_sync.SplitSynchronizationTask
+        :param feature_flag_task: sync for feature flags
+        :type feature_flag_task: splitio.tasks.split_sync.SplitSynchronizationTask
         :param segment_task: sync for segments
         :type segment_task: splitio.tasks.segment_sync.SegmentSynchronizationTask
         :param impressions_task: sync for impressions
@@ -99,7 +99,7 @@ class SplitTasks(object):
         :param impressions_count_task: sync for impression_counts
         :type impressions_count_task: splitio.tasks.impressions_sync.ImpressionsCountSyncTask
         """
-        self._split_task = split_task
+        self._feature_flag_task = feature_flag_task
         self._segment_task = segment_task
         self._impressions_task = impressions_task
         self._events_task = events_task
@@ -110,8 +110,8 @@ class SplitTasks(object):
 
     @property
     def split_task(self):
-        """Return split sync task."""
-        return self._split_task
+        """Return feature flag sync task."""
+        return self._feature_flag_task
 
     @property
     def segment_task(self):
@@ -166,7 +166,7 @@ class BaseSynchronizer(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def synchronize_splits(self, till):
         """
-        Synchronize all splits.
+        Synchronize all feature flags.
 
         :param till: to fetch
         :type till: int
@@ -175,17 +175,17 @@ class BaseSynchronizer(object, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def sync_all(self):
-        """Synchronize all split data."""
+        """Synchronize all feature flag data."""
         pass
 
     @abc.abstractmethod
     def start_periodic_fetching(self):
-        """Start fetchers for splits and segments."""
+        """Start fetchers for feature flags and segments."""
         pass
 
     @abc.abstractmethod
     def stop_periodic_fetching(self):
-        """Stop fetchers for splits and segments."""
+        """Stop fetchers for feature flags and segments."""
         pass
 
     @abc.abstractmethod
@@ -199,12 +199,12 @@ class BaseSynchronizer(object, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def kill_split(self, split_name, default_treatment, change_number):
+    def kill_split(self, feature_flag_name, default_treatment, change_number):
         """
-        Kill a split locally.
+        Kill a feature flag locally.
 
-        :param split_name: name of the split to perform kill
-        :type split_name: str
+        :param feature_flag_name: name of the feature flag to perform kill
+        :type feature_flag_name: str
         :param default_treatment: name of the default treatment to return
         :type default_treatment: str
         :param change_number: change_number
@@ -226,21 +226,18 @@ class BaseSynchronizer(object, metaclass=abc.ABCMeta):
 class Synchronizer(BaseSynchronizer):
     """Synchronizer."""
 
-    _ON_DEMAND_FETCH_BACKOFF_BASE = 10  # backoff base starting at 10 seconds
-    _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT = 30  # don't sleep for more than 1 minute
-
     def __init__(self, split_synchronizers, split_tasks):
         """
         Class constructor.
 
-        :param split_synchronizers: syncs for performing synchronization of segments and splits
+        :param split_synchronizers: syncs for performing synchronization of segments and feature flags
         :type split_synchronizers: splitio.sync.synchronizer.SplitSynchronizers
         :param split_tasks: tasks for starting/stopping tasks
         :type split_tasks: splitio.sync.synchronizer.SplitTasks
         """
         self._backoff = Backoff(
-                                self._ON_DEMAND_FETCH_BACKOFF_BASE,
-                                self._ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
+                                _ON_DEMAND_FETCH_BACKOFF_BASE,
+                                _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
         self._split_synchronizers = split_synchronizers
         self._split_tasks = split_tasks
         self._periodic_data_recording_tasks = [
@@ -254,6 +251,14 @@ class Synchronizer(BaseSynchronizer):
             self._periodic_data_recording_tasks.append(self._split_tasks.unique_keys_task)
         if self._split_tasks.clear_filter_task:
             self._periodic_data_recording_tasks.append(self._split_tasks.clear_filter_task)
+
+    @property
+    def split_sync(self):
+        return self._split_synchronizers.split_sync
+
+    @property
+    def segment_storage(self):
+        return self._split_synchronizers.segment_sync._segment_storage
 
     def _synchronize_segments(self):
         _LOGGER.debug('Starting segments synchronization')
@@ -276,7 +281,7 @@ class Synchronizer(BaseSynchronizer):
 
     def synchronize_splits(self, till, sync_segments=True):
         """
-        Synchronize all splits.
+        Synchronize all feature flags.
 
         :param till: to fetch
         :type till: int
@@ -284,7 +289,7 @@ class Synchronizer(BaseSynchronizer):
         :returns: whether the synchronization was successful or not.
         :rtype: bool
         """
-        _LOGGER.debug('Starting splits synchronization')
+        _LOGGER.debug('Starting feature flags synchronization')
         try:
             new_segments = []
             for segment in self._split_synchronizers.split_sync.synchronize_splits(till):
@@ -300,14 +305,14 @@ class Synchronizer(BaseSynchronizer):
                     _LOGGER.debug('Segment sync scheduled.')
             return True
         except APIException:
-            _LOGGER.error('Failed syncing splits')
+            _LOGGER.error('Failed syncing feature flags')
             _LOGGER.debug('Error: ', exc_info=True)
             return False
 
     def sync_all(self, max_retry_attempts=_SYNC_ALL_NO_RETRIES):
         """
-        Synchronize all splits.
-        
+        Synchronize all feature flags.
+
         :param max_retry_attempts: apply max attempts if it set to absilute integer.
         :type max_retry_attempts: int
         """
@@ -317,7 +322,7 @@ class Synchronizer(BaseSynchronizer):
                 if not self.synchronize_splits(None, False):
                     raise Exception("split sync failed")
 
-                # Only retrying splits, since segments may trigger too many calls.
+                # Only retrying feature flags, since segments may trigger too many calls.
 
                 if not self._synchronize_segments():
                     _LOGGER.warning('Segments failed to synchronize.')
@@ -334,7 +339,7 @@ class Synchronizer(BaseSynchronizer):
                 how_long = self._backoff.get()
                 time.sleep(how_long)
 
-        _LOGGER.error("Could not correctly synchronize splits and segments after %d attempts.", retry_attempts)
+        _LOGGER.error("Could not correctly synchronize feature flags and segments after %d attempts.", retry_attempts)
 
     def _retry_block(self, max_retry_attempts, retry_attempts):
         return retry_attempts
@@ -352,13 +357,13 @@ class Synchronizer(BaseSynchronizer):
         self.stop_periodic_data_recording(blocking)
 
     def start_periodic_fetching(self):
-        """Start fetchers for splits and segments."""
+        """Start fetchers for feature flags and segments."""
         _LOGGER.debug('Starting periodic data fetching')
         self._split_tasks.split_task.start()
         self._split_tasks.segment_task.start()
 
     def stop_periodic_fetching(self):
-        """Stop fetchers for splits and segments."""
+        """Stop fetchers for feature flags and segments."""
         _LOGGER.debug('Stopping periodic fetching')
         self._split_tasks.split_task.stop()
         self._split_tasks.segment_task.stop()
@@ -393,18 +398,18 @@ class Synchronizer(BaseSynchronizer):
             for task in self._periodic_data_recording_tasks:
                 task.stop()
 
-    def kill_split(self, split_name, default_treatment, change_number):
+    def kill_split(self, feature_flag_name, default_treatment, change_number):
         """
-        Kill a split locally.
+        Kill a feature flag locally.
 
-        :param split_name: name of the split to perform kill
-        :type split_name: str
+        :param feature_flag_name: name of the feature flag to perform kill
+        :type feature_flag_name: str
         :param default_treatment: name of the default treatment to return
         :type default_treatment: str
         :param change_number: change_number
         :type change_number: int
         """
-        self._split_synchronizers.split_sync.kill_split(split_name, default_treatment,
+        self._split_synchronizers.split_sync.kill_split(feature_flag_name, default_treatment,
                                                         change_number)
 
 class RedisSynchronizer(BaseSynchronizer):
@@ -414,7 +419,7 @@ class RedisSynchronizer(BaseSynchronizer):
         """
         Class constructor.
 
-        :param split_synchronizers: syncs for performing synchronization of segments and splits
+        :param split_synchronizers: syncs for performing synchronization of segments and feature flags
         :type split_synchronizers: splitio.sync.synchronizer.SplitSynchronizers
         :param split_tasks: tasks for starting/stopping tasks
         :type split_tasks: splitio.sync.synchronizer.SplitTasks
@@ -471,12 +476,12 @@ class RedisSynchronizer(BaseSynchronizer):
             for task in self._tasks:
                 task.stop()
 
-    def kill_split(self, split_name, default_treatment, change_number):
-        """Kill a split locally."""
+    def kill_split(self, feature_flag_name, default_treatment, change_number):
+        """Kill a feature flag locally."""
         raise NotImplementedError()
 
     def synchronize_splits(self, till):
-        """Synchronize all splits."""
+        """Synchronize all feature flags."""
         raise NotImplementedError()
 
     def synchronize_segment(self, segment_name, till):
@@ -484,61 +489,97 @@ class RedisSynchronizer(BaseSynchronizer):
         raise NotImplementedError()
 
     def start_periodic_fetching(self):
-        """Start fetchers for splits and segments."""
+        """Start fetchers for feature flags and segments."""
         raise NotImplementedError()
 
     def stop_periodic_fetching(self):
-        """Stop fetchers for splits and segments."""
+        """Stop fetchers for feature flags and segments."""
         raise NotImplementedError()
 
 class LocalhostSynchronizer(BaseSynchronizer):
     """LocalhostSynchronizer."""
 
-    def __init__(self, split_synchronizers, split_tasks):
+    def __init__(self, split_synchronizers, split_tasks, localhost_mode):
         """
         Class constructor.
 
-        :param split_synchronizers: syncs for performing synchronization of segments and splits
+        :param split_synchronizers: syncs for performing synchronization of segments and feature flags
         :type split_synchronizers: splitio.sync.synchronizer.SplitSynchronizers
         :param split_tasks: tasks for starting/stopping tasks
         :type split_tasks: splitio.sync.synchronizer.SplitTasks
         """
         self._split_synchronizers = split_synchronizers
         self._split_tasks = split_tasks
+        self._localhost_mode = localhost_mode
+        self._backoff = Backoff(
+                                _ON_DEMAND_FETCH_BACKOFF_BASE,
+                                _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
 
-    def sync_all(self, max_retry_attempts=-1):
+    def sync_all(self, till=None):
         """
-        Synchronize all splits.
-        
-        :param max_retry_attempts: Not used, added for compatibility
+        Synchronize all feature flags.
         """
-        try:
-            self._split_synchronizers.split_sync.synchronize_splits(None)
-        except APIException as exc:
-            _LOGGER.error('Failed syncing splits')
-            raise APIException('Failed to sync splits') from exc
+        # TODO: to be removed when legacy and yaml use BUR
+        if self._localhost_mode != LocalhostMode.JSON:
+            return self.synchronize_splits()
+
+        self._backoff.reset()
+        remaining_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES
+        while remaining_attempts > 0:
+            remaining_attempts -= 1
+            try:
+                return self.synchronize_splits()
+            except APIException as exc:
+                _LOGGER.error('Failed syncing all')
+                _LOGGER.error(str(exc))
+
+            how_long = self._backoff.get()
+            time.sleep(how_long)
 
     def start_periodic_fetching(self):
-        """Start fetchers for splits and segments."""
-        _LOGGER.debug('Starting periodic data fetching')
-        self._split_tasks.split_task.start()
+        """Start fetchers for feature flags and segments."""
+        if self._split_tasks.split_task is not None:
+            _LOGGER.debug('Starting periodic data fetching')
+            self._split_tasks.split_task.start()
+        if self._split_tasks.segment_task is not None:
+            self._split_tasks.segment_task.start()
 
     def stop_periodic_fetching(self):
-        """Stop fetchers for splits and segments."""
-        _LOGGER.debug('Stopping periodic fetching')
-        self._split_tasks.split_task.stop()
+        """Stop fetchers for feature flags and segments."""
+        if self._split_tasks.split_task is not None:
+            _LOGGER.debug('Stopping periodic fetching')
+            self._split_tasks.split_task.stop()
+        if self._split_tasks.segment_task is not None:
+            self._split_tasks.segment_task.stop()
 
-    def kill_split(self, split_name, default_treatment, change_number):
-        """Kill a split locally."""
+    def kill_split(self, feature_flag_name, default_treatment, change_number):
+        """Kill a feature flag locally."""
         raise NotImplementedError()
 
-    def synchronize_splits(self, till):
-        """Synchronize all splits."""
-        raise NotImplementedError()
+    def synchronize_splits(self):
+        """Synchronize all feature flags."""
+        try:
+            new_segments = []
+            for segment in self._split_synchronizers.split_sync.synchronize_splits():
+                    if not self._split_synchronizers.segment_sync.segment_exist_in_storage(segment):
+                        new_segments.append(segment)
+            if len(new_segments) > 0:
+                _LOGGER.debug('Synching Segments: %s', ','.join(new_segments))
+                success = self._split_synchronizers.segment_sync.synchronize_segments(new_segments)
+                if not success:
+                    _LOGGER.error('Failed to schedule sync one or all segment(s) below.')
+                    _LOGGER.error(','.join(new_segments))
+                else:
+                    _LOGGER.debug('Segment sync scheduled.')
+            return True
+
+        except APIException as exc:
+            _LOGGER.error('Failed syncing feature flags')
+            raise APIException('Failed to sync feature flags') from exc
 
     def synchronize_segment(self, segment_name, till):
         """Synchronize particular segment."""
-        raise NotImplementedError()
+        pass
 
     def start_periodic_data_recording(self):
         """Start recorders."""
@@ -556,3 +597,69 @@ class LocalhostSynchronizer(BaseSynchronizer):
         :type blocking: bool
         """
         self.stop_periodic_fetching()
+
+
+class PluggableSynchronizer(BaseSynchronizer):
+    """Plugable Synchronizer."""
+
+    def synchronize_segment(self, segment_name, till):
+        """
+        Synchronize particular segment.
+
+        :param segment_name: segment associated
+        :type segment_name: str
+        :param till: to fetch
+        :type till: int
+        """
+        pass
+
+    def synchronize_splits(self, till):
+        """
+        Synchronize all feature flags.
+
+        :param till: to fetch
+        :type till: int
+        """
+        pass
+
+    def sync_all(self):
+        """Synchronize all feature flag data."""
+        pass
+
+    def start_periodic_fetching(self):
+        """Start fetchers for feature flags and segments."""
+        pass
+
+    def stop_periodic_fetching(self):
+        """Stop fetchers for feature flags and segments."""
+        pass
+
+    def start_periodic_data_recording(self):
+        """Start recorders."""
+        pass
+
+    def stop_periodic_data_recording(self, blocking):
+        """Stop recorders."""
+        pass
+
+    def kill_split(self, feature_flag_name, default_treatment, change_number):
+        """
+        Kill a feature_flag locally.
+
+        :param feature_flag_name: name of the feature flag to perform kill
+        :type feature_flag_name: str
+        :param default_treatment: name of the default treatment to return
+        :type default_treatment: str
+        :param change_number: change_number
+        :type change_number: int
+        """
+        pass
+
+    def shutdown(self, blocking):
+        """
+        Stop tasks.
+
+        :param blocking:flag to wait until tasks are stopped
+        :type blocking: bool
+        """
+        pass

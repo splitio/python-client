@@ -3,6 +3,7 @@ from numbers import Number
 import logging
 import re
 import math
+import inspect
 
 from splitio.api import APIException
 from splitio.api.commons import FetchOptions
@@ -191,7 +192,7 @@ def _remove_empty_spaces(value, operation):
     """
     strip_value = value.strip()
     if value != strip_value:
-        _LOGGER.warning("%s: feature_name '%s' has extra whitespace, trimming.", operation, value)
+        _LOGGER.warning("%s: feature flag name '%s' has extra whitespace, trimming.", operation, value)
     return strip_value
 
 
@@ -231,30 +232,30 @@ def validate_key(key, method_name):
     return matching_key_result, bucketing_key_result
 
 
-def validate_feature_name(feature_name, should_validate_existance, split_storage, method_name):
+def validate_feature_flag_name(feature_flag_name, should_validate_existance, feature_flag_storage, method_name):
     """
-    Check if feature_name is valid for get_treatment.
+    Check if feature flag name is valid for get_treatment.
 
-    :param feature_name: feature_name to be checked
-    :type feature_name: str
-    :return: feature_name
+    :param feature_flag_name: feature flag name to be checked
+    :type feature_flag_name: str
+    :return: feature_flag_name
     :rtype: str|None
     """
-    if (not _check_not_null(feature_name, 'feature_name', method_name)) or \
-       (not _check_is_string(feature_name, 'feature_name', method_name)) or \
-       (not _check_string_not_empty(feature_name, 'feature_name', method_name)):
+    if (not _check_not_null(feature_flag_name, 'feature_flag_name', method_name)) or \
+       (not _check_is_string(feature_flag_name, 'feature_flag_name', method_name)) or \
+       (not _check_string_not_empty(feature_flag_name, 'feature_flag_name', method_name)):
         return None
 
-    if should_validate_existance and split_storage.get(feature_name) is None:
+    if should_validate_existance and feature_flag_storage.get(feature_flag_name) is None:
         _LOGGER.warning(
             "%s: you passed \"%s\" that does not exist in this environment, "
-            "please double check what Splits exist in the web console.",
+            "please double check what Feature flags exist in the Split user interface.",
             method_name,
-            feature_name
+            feature_flag_name
         )
         return None
 
-    return _remove_empty_spaces(feature_name, method_name)
+    return _remove_empty_spaces(feature_flag_name, method_name)
 
 
 def validate_track_key(key):
@@ -276,16 +277,16 @@ def validate_track_key(key):
     return key_str
 
 
-def validate_traffic_type(traffic_type, should_validate_existance, split_storage):
+def validate_traffic_type(traffic_type, should_validate_existance, feature_flag_storage):
     """
     Check if traffic_type is valid for track.
 
     :param traffic_type: traffic_type to be checked
     :type traffic_type: str
-    :param should_validate_existance: Whether to check for existante in the split storage.
+    :param should_validate_existance: Whether to check for existante in the feature flag storage.
     :type should_validate_existance: bool
-    :param split_storage: Split storage.
-    :param split_storage: splitio.storages.SplitStorage
+    :param feature_flag_storage: Feature flag storage.
+    :param feature_flag_storage: splitio.storages.SplitStorage
     :return: traffic_type
     :rtype: str|None
     """
@@ -298,11 +299,11 @@ def validate_traffic_type(traffic_type, should_validate_existance, split_storage
                         traffic_type)
         traffic_type = traffic_type.lower()
 
-    if should_validate_existance and not split_storage.is_valid_traffic_type(traffic_type):
+    if should_validate_existance and not feature_flag_storage.is_valid_traffic_type(traffic_type):
         _LOGGER.warning(
-            'track: Traffic Type %s does not have any corresponding Splits in this environment, '
+            'track: Traffic Type %s does not have any corresponding Feature flags in this environment, '
             'make sure you\'re tracking your events to a valid traffic type defined '
-            'in the Split console.',
+            'in the Split user interface.',
             traffic_type
         )
 
@@ -343,85 +344,85 @@ def validate_value(value):
     return value
 
 
-def validate_manager_feature_name(feature_name, should_validate_existance, split_storage):
+def validate_manager_feature_flag_name(feature_flag_name, should_validate_existance, feature_flag_storage):
     """
-    Check if feature_name is valid for track.
+    Check if feature flag name is valid for track.
 
-    :param feature_name: feature_name to be checked
-    :type feature_name: str
-    :return: feature_name
+    :param feature_flag_name: feature flag name to be checked
+    :type feature_flag_name: str
+    :return: feature_flag_name
     :rtype: str|None
     """
-    if (not _check_not_null(feature_name, 'feature_name', 'split')) or \
-       (not _check_is_string(feature_name, 'feature_name', 'split')) or \
-       (not _check_string_not_empty(feature_name, 'feature_name', 'split')):
+    if (not _check_not_null(feature_flag_name, 'feature_flag_name', 'split')) or \
+       (not _check_is_string(feature_flag_name, 'feature_flag_name', 'split')) or \
+       (not _check_string_not_empty(feature_flag_name, 'feature_flag_name', 'split')):
         return None
 
-    if should_validate_existance and split_storage.get(feature_name) is None:
+    if should_validate_existance and feature_flag_storage.get(feature_flag_name) is None:
         _LOGGER.warning(
             "split: you passed \"%s\" that does not exist in this environment, "
-            "please double check what Splits exist in the web console.",
-            feature_name
+            "please double check what Feature flags exist in the Split user interface.",
+            feature_flag_name
         )
         return None
 
-    return feature_name
+    return feature_flag_name
 
 
-def validate_features_get_treatments(  # pylint: disable=invalid-name
+def validate_feature_flags_get_treatments(  # pylint: disable=invalid-name
     method_name,
-    features,
+    feature_flags,
     should_validate_existance=False,
-    split_storage=None
+    feature_flag_storage=None
 ):
     """
-    Check if features is valid for get_treatments.
+    Check if feature flags is valid for get_treatments.
 
-    :param features: array of features
-    :type features: list
-    :return: filtered_features
+    :param feature_flags: array of feature flags
+    :type feature_flags: list
+    :return: filtered_feature_flags
     :rtype: tuple
     """
-    if features is None or not isinstance(features, list):
-        _LOGGER.error("%s: feature_names must be a non-empty array.", method_name)
+    if feature_flags is None or not isinstance(feature_flags, list):
+        _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
         return None, None
-    if not features:
-        _LOGGER.error("%s: feature_names must be a non-empty array.", method_name)
+    if not feature_flags:
+        _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
         return None, None
-    filtered_features = set(
-        _remove_empty_spaces(feature, method_name) for feature in features
-        if feature is not None and
-        _check_is_string(feature, 'feature_name', method_name) and
-        _check_string_not_empty(feature, 'feature_name', method_name)
+    filtered_feature_flags = set(
+        _remove_empty_spaces(feature_flag, method_name) for feature_flag in feature_flags
+        if feature_flag is not None and
+        _check_is_string(feature_flag, 'feature flag name', method_name) and
+        _check_string_not_empty(feature_flag, 'feature flag name', method_name)
     )
-    if not filtered_features:
-        _LOGGER.error("%s: feature_names must be a non-empty array.", method_name)
+    if not filtered_feature_flags:
+        _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
         return None, None
 
     if not should_validate_existance:
-        return filtered_features, []
+        return filtered_feature_flags, []
 
-    valid_missing_features = set(f for f in filtered_features if split_storage.get(f) is None)
-    for missing_feature in valid_missing_features:
+    valid_missing_feature_flags = set(f for f in filtered_feature_flags if feature_flag_storage.get(f) is None)
+    for missing_feature_flag in valid_missing_feature_flags:
         _LOGGER.warning(
             "%s: you passed \"%s\" that does not exist in this environment, "
-            "please double check what Splits exist in the web console.",
+            "please double check what Feature flags exist in the Split user interface.",
             method_name,
-            missing_feature
+            missing_feature_flag
         )
-    return filtered_features - valid_missing_features, valid_missing_features
+    return filtered_feature_flags - valid_missing_feature_flags, valid_missing_feature_flags
 
 
-def generate_control_treatments(features, method_name):
+def generate_control_treatments(feature_flags, method_name):
     """
-    Generate valid features to control.
+    Generate valid feature flags to control.
 
-    :param features: array of features
-    :type features: list
+    :param feature_flags: array of feature flags
+    :type feature_flags: list
     :return: dict
     :rtype: dict|None
     """
-    return {feature: (CONTROL, None) for feature in validate_features_get_treatments(method_name, features)[0]}
+    return {feature_flag: (CONTROL, None) for feature_flag in validate_feature_flags_get_treatments(method_name, feature_flags)[0]}
 
 
 def validate_attributes(attributes, method_name):
@@ -448,20 +449,20 @@ class _ApiLogFilter(logging.Filter):  # pylint: disable=too-few-public-methods
         return record.name not in ('SegmentsAPI', 'HttpClient')
 
 
-def validate_factory_instantiation(apikey):
+def validate_factory_instantiation(sdk_key):
     """
     Check if the factory if being instantiated with the appropriate arguments.
 
-    :param apikey: str
-    :type apikey: str
+    :param sdk_key: str
+    :type sdk_key: str
     :return: bool
     :rtype: True|False
     """
-    if apikey == 'localhost':
+    if sdk_key == 'localhost':
         return True
-    if (not _check_not_null(apikey, 'apikey', 'factory_instantiation')) or \
-       (not _check_is_string(apikey, 'apikey', 'factory_instantiation')) or \
-       (not _check_string_not_empty(apikey, 'apikey', 'factory_instantiation')):
+    if (not _check_not_null(sdk_key, 'sdk_key', 'factory_instantiation')) or \
+       (not _check_is_string(sdk_key, 'sdk_key', 'factory_instantiation')) or \
+       (not _check_string_not_empty(sdk_key, 'sdk_key', 'factory_instantiation')):
         return False
     return True
 
@@ -517,3 +518,51 @@ def valid_properties(properties):
         _LOGGER.warning('Event has more than 300 properties. Some of them will be trimmed' +
                         ' when processed')
     return True, valid_properties if len(valid_properties) else None, size
+
+def validate_pluggable_adapter(config):
+    """
+    Check if pluggable adapter contains the expected method signature
+
+    :param config: config parameters
+    :type config: Dict
+
+    :return: True if no issue found otherwise False
+    :rtype: bool
+    """
+    if config.get('storageType') != 'pluggable':
+        return True
+
+    if config.get('storageWrapper') is None:
+        _LOGGER.error("Expecting pluggable storage `wrapper` in options, but no valid wrapper instance was provided.")
+        return False
+
+    if config.get('storagePrefix') is not None:
+        if not isinstance(config.get('storagePrefix'), str):
+            _LOGGER.error("Pluggable storage prefix should be string type only")
+            return False
+
+    pluggable_adapter = config.get('storageWrapper')
+    if not isinstance(pluggable_adapter, object):
+        _LOGGER.error("Pluggable storage instance is not inherted from object class")
+        return False
+
+    expected_methods = {'get': 1, 'get_items': 1, 'get_many': 1, 'set': 2, 'push_items': 2,
+                        'delete': 1, 'increment': 2, 'decrement': 2, 'get_keys_by_prefix': 1,
+                        'get_many': 1, 'add_items' : 2, 'remove_items': 2, 'item_contains': 2,
+                        'get_items_count': 1, 'expire': 2}
+    methods = inspect.getmembers(pluggable_adapter, predicate=inspect.ismethod)
+    for exp_method in expected_methods:
+        method_found = False
+        get_method_args = set()
+        for method in methods:
+            if exp_method == method[0]:
+                method_found = True
+                get_method_args = inspect.signature(method[1]).parameters
+                break
+        if not method_found:
+            _LOGGER.error("Pluggable adapter does not have required method: %s" % exp_method)
+            return False
+        if len(get_method_args) < expected_methods[exp_method]:
+            _LOGGER.error("Pluggable adapter method %s has less than required arguments count: %s : " % (exp_method, len(get_method_args)))
+            return False
+    return True

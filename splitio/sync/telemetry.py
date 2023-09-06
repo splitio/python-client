@@ -3,6 +3,7 @@ import abc
 
 from splitio.api.telemetry import TelemetryAPI
 from splitio.engine.telemetry import TelemetryStorageConsumer
+from splitio.models.telemetry import UpdateFromSSE
 
 class TelemetrySynchronizer(object):
     """Telemetry synchronizer class."""
@@ -33,13 +34,13 @@ class TelemetrySubmitter(object, metaclass=abc.ABCMeta):
 class InMemoryTelemetrySubmitter(object):
     """Telemetry sumbitter class."""
 
-    def __init__(self, telemetry_consumer, split_storage, segment_storage, telemetry_api):
+    def __init__(self, telemetry_consumer, feature_flag_storage, segment_storage, telemetry_api):
         """Initialize all producer classes."""
         self._telemetry_init_consumer = telemetry_consumer.get_telemetry_init_consumer()
         self._telemetry_evaluation_consumer = telemetry_consumer.get_telemetry_evaluation_consumer()
         self._telemetry_runtime_consumer = telemetry_consumer.get_telemetry_runtime_consumer()
         self._telemetry_api = telemetry_api
-        self._split_storage = split_storage
+        self._feature_flag_storage = feature_flag_storage
         self._segment_storage = segment_storage
 
     def synchronize_config(self):
@@ -58,7 +59,7 @@ class InMemoryTelemetrySubmitter(object):
         :rtype: Dict
         """
         merged_dict = {
-            'spC': self._split_storage.get_splits_count(),
+            'spC': self._feature_flag_storage.get_splits_count(),
             'seC': self._segment_storage.get_segments_count(),
             'skC': self._segment_storage.get_segments_keys_count()
         }
