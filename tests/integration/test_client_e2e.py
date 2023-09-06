@@ -34,6 +34,344 @@ from splitio.sync.synchronizer import PluggableSynchronizer
 from tests.integration import splits_json
 from tests.storage.test_pluggable import StorageMockAdapter
 
+def _validate_last_impressions(client, *to_validate):
+    """Validate the last N impressions are present disregarding the order."""
+    imp_storage = client._factory._get_storage('impressions')
+    impressions = imp_storage.pop_many(len(to_validate))
+    as_tup_set = set((i.feature_name, i.matching_key, i.treatment) for i in impressions)
+    assert as_tup_set == set(to_validate)
+
+def _validate_last_events(client, *to_validate):
+    """Validate the last N impressions are present disregarding the order."""
+    event_storage = client._factory._get_storage('events')
+    events = event_storage.pop_many(len(to_validate))
+    as_tup_set = set((i.key, i.traffic_type_name, i.event_type_id, i.value, str(i.properties)) for i in events)
+    assert as_tup_set == set(to_validate)
+
+def _get_treatment(factory):
+    """Test client.get_treatment()."""
+    try:
+        client = factory.client()
+    except:
+        pass
+
+    assert client.get_treatment('user1', 'sample_feature') == 'on'
+    _validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
+
+    assert client.get_treatment('invalidKey', 'sample_feature') == 'off'
+    _validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
+
+    assert client.get_treatment('invalidKey', 'invalid_feature') == 'control'
+    _validate_last_impressions(client)  # No impressions should be present
+
+    # testing a killed feature. No matter what the key, must return default treatment
+    assert client.get_treatment('invalidKey', 'killed_feature') == 'defTreatment'
+    _validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
+
+    # testing ALL matcher
+    assert client.get_treatment('invalidKey', 'all_feature') == 'on'
+    _validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
+
+    # testing WHITELIST matcher
+    assert client.get_treatment('whitelisted_user', 'whitelist_feature') == 'on'
+    _validate_last_impressions(client, ('whitelist_feature', 'whitelisted_user', 'on'))
+    assert client.get_treatment('unwhitelisted_user', 'whitelist_feature') == 'off'
+    _validate_last_impressions(client, ('whitelist_feature', 'unwhitelisted_user', 'off'))
+
+    #  testing INVALID matcher
+    assert client.get_treatment('some_user_key', 'invalid_matcher_feature') == 'control'
+    _validate_last_impressions(client)  # No impressions should be present
+
+    #  testing Dependency matcher
+    assert client.get_treatment('somekey', 'dependency_test') == 'off'
+    _validate_last_impressions(client, ('dependency_test', 'somekey', 'off'))
+
+    #  testing boolean matcher
+    assert client.get_treatment('True', 'boolean_test') == 'on'
+    _validate_last_impressions(client, ('boolean_test', 'True', 'on'))
+
+    #  testing regex matcher
+    assert client.get_treatment('abc4', 'regex_test') == 'on'
+    _validate_last_impressions(client, ('regex_test', 'abc4', 'on'))
+
+def _get_treatment_with_config(factory):
+    """Test client.get_treatment_with_config()."""
+    try:
+        client = factory.client()
+    except:
+        pass
+    result = client.get_treatment_with_config('user1', 'sample_feature')
+    assert result == ('on', '{"size":15,"test":20}')
+    _validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
+
+    result = client.get_treatment_with_config('invalidKey', 'sample_feature')
+    assert result == ('off', None)
+    _validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
+
+    result = client.get_treatment_with_config('invalidKey', 'invalid_feature')
+    assert result == ('control', None)
+    _validate_last_impressions(client)
+
+    # testing a killed feature. No matter what the key, must return default treatment
+    result = client.get_treatment_with_config('invalidKey', 'killed_feature')
+    assert ('defTreatment', '{"size":15,"defTreatment":true}') == result
+    _validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
+
+    # testing ALL matcher
+    result = client.get_treatment_with_config('invalidKey', 'all_feature')
+    assert result == ('on', None)
+    _validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
+
+def _get_treatments(factory):
+    """Test client.get_treatments()."""
+    try:
+        client = factory.client()
+    except:
+        pass
+    result = client.get_treatments('user1', ['sample_feature'])
+    assert len(result) == 1
+    assert result['sample_feature'] == 'on'
+    _validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
+
+    result = client.get_treatments('invalidKey', ['sample_feature'])
+    assert len(result) == 1
+    assert result['sample_feature'] == 'off'
+    _validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
+
+    result = client.get_treatments('invalidKey', ['invalid_feature'])
+    assert len(result) == 1
+    assert result['invalid_feature'] == 'control'
+    _validate_last_impressions(client)
+
+    # testing a killed feature. No matter what the key, must return default treatment
+    result = client.get_treatments('invalidKey', ['killed_feature'])
+    assert len(result) == 1
+    assert result['killed_feature'] == 'defTreatment'
+    _validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
+
+    # testing ALL matcher
+    result = client.get_treatments('invalidKey', ['all_feature'])
+    assert len(result) == 1
+    assert result['all_feature'] == 'on'
+    _validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
+
+def _get_treatments_with_config(factory):
+    """Test client.get_treatments_with_config()."""
+    try:
+        client = factory.client()
+    except:
+        pass
+
+    result = client.get_treatments_with_config('user1', ['sample_feature'])
+    assert len(result) == 1
+    assert result['sample_feature'] == ('on', '{"size":15,"test":20}')
+    _validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
+
+    result = client.get_treatments_with_config('invalidKey', ['sample_feature'])
+    assert len(result) == 1
+    assert result['sample_feature'] == ('off', None)
+    _validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
+
+    result = client.get_treatments_with_config('invalidKey', ['invalid_feature'])
+    assert len(result) == 1
+    assert result['invalid_feature'] == ('control', None)
+    _validate_last_impressions(client)
+
+    # testing a killed feature. No matter what the key, must return default treatment
+    result = client.get_treatments_with_config('invalidKey', ['killed_feature'])
+    assert len(result) == 1
+    assert result['killed_feature'] == ('defTreatment', '{"size":15,"defTreatment":true}')
+    _validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
+
+    # testing ALL matcher
+    result = client.get_treatments_with_config('invalidKey', ['all_feature'])
+    assert len(result) == 1
+    assert result['all_feature'] == ('on', None)
+    _validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
+
+    # testing multiple splitNames
+    result = client.get_treatments_with_config('invalidKey', [
+        'all_feature',
+        'killed_feature',
+        'invalid_feature',
+        'sample_feature'
+    ])
+    assert len(result) == 4
+    assert result['all_feature'] == ('on', None)
+    assert result['killed_feature'] == ('defTreatment', '{"size":15,"defTreatment":true}')
+    assert result['invalid_feature'] == ('control', None)
+    assert result['sample_feature'] == ('off', None)
+    _validate_last_impressions(
+        client,
+        ('all_feature', 'invalidKey', 'on'),
+        ('killed_feature', 'invalidKey', 'defTreatment'),
+        ('sample_feature', 'invalidKey', 'off'),
+    )
+
+def _get_treatments_by_flag_set(factory):
+    """Test client.get_treatments_by_flag_set()."""
+    try:
+        client = factory.client()
+    except:
+        pass
+    result = client.get_treatments_by_flag_set('user1', 'set1')
+    assert len(result) == 2
+    assert result == {'sample_feature': 'on', 'whitelist_feature': 'off'}
+    _validate_last_impressions(client, ('sample_feature', 'user1', 'on'), ('whitelist_feature', 'user1', 'off'))
+
+    result = client.get_treatments_by_flag_set('invalidKey', 'invalid_set')
+    assert len(result) == 0
+    assert result == {}
+
+    # testing a killed feature. No matter what the key, must return default treatment
+    result = client.get_treatments_by_flag_set('invalidKey', 'set3')
+    assert len(result) == 1
+    assert result['killed_feature'] == 'defTreatment'
+    _validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
+
+    # testing ALL matcher
+    result = client.get_treatments_by_flag_set('invalidKey', 'set4')
+    assert len(result) == 1
+    assert result['all_feature'] == 'on'
+    _validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
+
+def _get_treatments_by_flag_sets(factory):
+    """Test client.get_treatments_by_flag_sets()."""
+    try:
+        client = factory.client()
+    except:
+        pass
+    result = client.get_treatments_by_flag_sets('user1', ['set1'])
+    assert len(result) == 2
+    assert result == {'sample_feature': 'on', 'whitelist_feature': 'off'}
+    _validate_last_impressions(client, ('sample_feature', 'user1', 'on'), ('whitelist_feature', 'user1', 'off'))
+
+    result = client.get_treatments_by_flag_sets('invalidKey', ['invalid_set'])
+    assert len(result) == 0
+    assert result == {}
+
+    result = client.get_treatments_by_flag_sets('invalidKey', [])
+    assert len(result) == 0
+    assert result == {}
+
+    # testing a killed feature. No matter what the key, must return default treatment
+    result = client.get_treatments_by_flag_sets('invalidKey', ['set3'])
+    assert len(result) == 1
+    assert result['killed_feature'] == 'defTreatment'
+    _validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
+
+    # testing ALL matcher
+    result = client.get_treatments_by_flag_sets('user1', ['set4'])
+    assert len(result) == 1
+    assert result['all_feature'] == 'on'
+    _validate_last_impressions(client, ('all_feature', 'user1', 'on'))
+
+def _get_treatments_with_config_by_flag_set(factory):
+    """Test client.get_treatments_with_config_by_flag_set()."""
+    try:
+        client = factory.client()
+    except:
+        pass
+    result = client.get_treatments_with_config_by_flag_set('user1', 'set1')
+    assert len(result) == 2
+    assert result == {'sample_feature': ('on', '{"size":15,"test":20}'), 'whitelist_feature': ('off', None)}
+    _validate_last_impressions(client, ('sample_feature', 'user1', 'on'), ('whitelist_feature', 'user1', 'off'))
+
+    result = client.get_treatments_with_config_by_flag_set('invalidKey', 'invalid_set')
+    assert len(result) == 0
+    assert result == {}
+
+    # testing a killed feature. No matter what the key, must return default treatment
+    result = client.get_treatments_with_config_by_flag_set('invalidKey', 'set3')
+    assert len(result) == 1
+    assert result['killed_feature'] == ('defTreatment', '{"size":15,"defTreatment":true}')
+    _validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
+
+    # testing ALL matcher
+    result = client.get_treatments_with_config_by_flag_set('invalidKey', 'set4')
+    assert len(result) == 1
+    assert result['all_feature'] == ('on', None)
+    _validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
+
+def _get_treatments_with_config_by_flag_sets(factory):
+    """Test client.get_treatments_with_config_by_flag_sets()."""
+    try:
+        client = factory.client()
+    except:
+        pass
+    result = client.get_treatments_with_config_by_flag_sets('user1', ['set1'])
+    assert len(result) == 2
+    assert result == {'sample_feature': ('on', '{"size":15,"test":20}'), 'whitelist_feature': ('off', None)}
+    _validate_last_impressions(client, ('sample_feature', 'user1', 'on'), ('whitelist_feature', 'user1', 'off'))
+
+    result = client.get_treatments_with_config_by_flag_sets('invalidKey', ['invalid_set'])
+    assert len(result) == 0
+    assert result == {}
+
+    result = client.get_treatments_with_config_by_flag_sets('invalidKey', [])
+    assert len(result) == 0
+    assert result == {}
+
+    # testing a killed feature. No matter what the key, must return default treatment
+    result = client.get_treatments_with_config_by_flag_sets('invalidKey', ['set3'])
+    assert len(result) == 1
+    assert result['killed_feature'] == ('defTreatment', '{"size":15,"defTreatment":true}')
+    _validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
+
+    # testing ALL matcher
+    result = client.get_treatments_with_config_by_flag_sets('user1', ['set4'])
+    assert len(result) == 1
+    assert result['all_feature'] == ('on', None)
+    _validate_last_impressions(client, ('all_feature', 'user1', 'on'))
+
+def _track(factory):
+    """Test client.track()."""
+    try:
+        client = factory.client()
+    except:
+        pass
+    assert(client.track('user1', 'user', 'conversion', 1, {"prop1": "value1"}))
+    assert(not client.track(None, 'user', 'conversion'))
+    assert(not client.track('user1', None, 'conversion'))
+    assert(not client.track('user1', 'user', None))
+    _validate_last_events(
+        client,
+        ('user1', 'user', 'conversion', 1, "{'prop1': 'value1'}")
+    )
+
+def _manager_methods(factory):
+    """Test manager.split/splits."""
+    try:
+        manager = factory.manager()
+    except:
+        pass
+    result = manager.split('all_feature')
+    assert result.name == 'all_feature'
+    assert result.traffic_type is None
+    assert result.killed is False
+    assert len(result.treatments) == 2
+    assert result.change_number == 123
+    assert result.configs == {}
+
+    result = manager.split('killed_feature')
+    assert result.name == 'killed_feature'
+    assert result.traffic_type is None
+    assert result.killed is True
+    assert len(result.treatments) == 2
+    assert result.change_number == 123
+    assert result.configs['defTreatment'] == '{"size":15,"defTreatment":true}'
+    assert result.configs['off'] == '{"size":15,"test":20}'
+
+    result = manager.split('sample_feature')
+    assert result.name == 'sample_feature'
+    assert result.traffic_type is None
+    assert result.killed is False
+    assert len(result.treatments) == 2
+    assert result.change_number == 123
+    assert result.configs['on'] == '{"size":15,"test":20}'
+
+    assert len(manager.split_names()) == 7
+    assert len(manager.splits()) == 7
 
 class InMemoryIntegrationTests(object):
     """Inmemory storage-based integration tests."""
@@ -47,7 +385,7 @@ class InMemoryIntegrationTests(object):
         with open(split_fn, 'r') as flo:
             data = json.loads(flo.read())
         for split in data['splits']:
-            split_storage.put(splits.from_raw(split))
+            split_storage.update([splits.from_raw(split)], [], 0)
 
         segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
         with open(segment_fn, 'r') as flo:
@@ -61,7 +399,6 @@ class InMemoryIntegrationTests(object):
 
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-#        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
 
@@ -92,128 +429,18 @@ class InMemoryIntegrationTests(object):
         self.factory.destroy(event)
         event.wait()
 
-    def _validate_last_impressions(self, client, *to_validate):
-        """Validate the last N impressions are present disregarding the order."""
-        imp_storage = client._factory._get_storage('impressions')
-        impressions = imp_storage.pop_many(len(to_validate))
-        as_tup_set = set((i.feature_name, i.matching_key, i.treatment) for i in impressions)
-        assert as_tup_set == set(to_validate)
-
-    def _validate_last_events(self, client, *to_validate):
-        """Validate the last N impressions are present disregarding the order."""
-        event_storage = client._factory._get_storage('events')
-        events = event_storage.pop_many(len(to_validate))
-        as_tup_set = set((i.key, i.traffic_type_name, i.event_type_id, i.value, str(i.properties)) for i in events)
-        assert as_tup_set == set(to_validate)
-
     def test_get_treatment(self):
         """Test client.get_treatment()."""
-        try:
-            client = self.factory.client()
-        except:
-            pass
-
-        assert client.get_treatment('user1', 'sample_feature') == 'on'
-        self._validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
-
-        assert client.get_treatment('invalidKey', 'sample_feature') == 'off'
-        self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
-
-        assert client.get_treatment('invalidKey', 'invalid_feature') == 'control'
-        self._validate_last_impressions(client)  # No impressions should be present
-
-        # testing a killed feature. No matter what the key, must return default treatment
-        assert client.get_treatment('invalidKey', 'killed_feature') == 'defTreatment'
-        self._validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
-
-        # testing ALL matcher
-        assert client.get_treatment('invalidKey', 'all_feature') == 'on'
-        self._validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
-
-        # testing WHITELIST matcher
-        assert client.get_treatment('whitelisted_user', 'whitelist_feature') == 'on'
-        self._validate_last_impressions(client, ('whitelist_feature', 'whitelisted_user', 'on'))
-        assert client.get_treatment('unwhitelisted_user', 'whitelist_feature') == 'off'
-        self._validate_last_impressions(client, ('whitelist_feature', 'unwhitelisted_user', 'off'))
-
-        #  testing INVALID matcher
-        assert client.get_treatment('some_user_key', 'invalid_matcher_feature') == 'control'
-        self._validate_last_impressions(client)  # No impressions should be present
-
-        #  testing Dependency matcher
-        assert client.get_treatment('somekey', 'dependency_test') == 'off'
-        self._validate_last_impressions(client, ('dependency_test', 'somekey', 'off'))
-
-        #  testing boolean matcher
-        assert client.get_treatment('True', 'boolean_test') == 'on'
-        self._validate_last_impressions(client, ('boolean_test', 'True', 'on'))
-
-        #  testing regex matcher
-        assert client.get_treatment('abc4', 'regex_test') == 'on'
-        self._validate_last_impressions(client, ('regex_test', 'abc4', 'on'))
+        _get_treatment(self.factory)
 
     def test_get_treatment_with_config(self):
         """Test client.get_treatment_with_config()."""
-        try:
-            client = self.factory.client()
-        except:
-            pass
-        result = client.get_treatment_with_config('user1', 'sample_feature')
-        assert result == ('on', '{"size":15,"test":20}')
-        self._validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
-
-        result = client.get_treatment_with_config('invalidKey', 'sample_feature')
-        assert result == ('off', None)
-        self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
-
-        result = client.get_treatment_with_config('invalidKey', 'invalid_feature')
-        assert result == ('control', None)
-        self._validate_last_impressions(client)
-
-        # testing a killed feature. No matter what the key, must return default treatment
-        result = client.get_treatment_with_config('invalidKey', 'killed_feature')
-        assert ('defTreatment', '{"size":15,"defTreatment":true}') == result
-        self._validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
-
-        # testing ALL matcher
-        result = client.get_treatment_with_config('invalidKey', 'all_feature')
-        assert result == ('on', None)
-        self._validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
+        _get_treatment_with_config(self.factory)
 
     def test_get_treatments(self):
-        """Test client.get_treatments()."""
-        try:
-            client = self.factory.client()
-        except:
-            pass
-        result = client.get_treatments('user1', ['sample_feature'])
-        assert len(result) == 1
-        assert result['sample_feature'] == 'on'
-        self._validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
-
-        result = client.get_treatments('invalidKey', ['sample_feature'])
-        assert len(result) == 1
-        assert result['sample_feature'] == 'off'
-        self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
-
-        result = client.get_treatments('invalidKey', ['invalid_feature'])
-        assert len(result) == 1
-        assert result['invalid_feature'] == 'control'
-        self._validate_last_impressions(client)
-
-        # testing a killed feature. No matter what the key, must return default treatment
-        result = client.get_treatments('invalidKey', ['killed_feature'])
-        assert len(result) == 1
-        assert result['killed_feature'] == 'defTreatment'
-        self._validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
-
-        # testing ALL matcher
-        result = client.get_treatments('invalidKey', ['all_feature'])
-        assert len(result) == 1
-        assert result['all_feature'] == 'on'
-        self._validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
-
-        # testing multiple splitNames
+        _get_treatments(self.factory)
+            # testing multiple splitNames
+        client = self.factory.client()
         result = client.get_treatments('invalidKey', [
             'all_feature',
             'killed_feature',
@@ -225,7 +452,7 @@ class InMemoryIntegrationTests(object):
         assert result['killed_feature'] == 'defTreatment'
         assert result['invalid_feature'] == 'control'
         assert result['sample_feature'] == 'off'
-        self._validate_last_impressions(
+        _validate_last_impressions(
             client,
             ('all_feature', 'invalidKey', 'on'),
             ('killed_feature', 'invalidKey', 'defTreatment'),
@@ -234,105 +461,54 @@ class InMemoryIntegrationTests(object):
 
     def test_get_treatments_with_config(self):
         """Test client.get_treatments_with_config()."""
-        try:
-            client = self.factory.client()
-        except:
-            pass
+        _get_treatments_with_config(self.factory)
 
-        result = client.get_treatments_with_config('user1', ['sample_feature'])
-        assert len(result) == 1
-        assert result['sample_feature'] == ('on', '{"size":15,"test":20}')
-        self._validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
+    def test_get_treatments_by_flag_set(self):
+        """Test client.get_treatments_by_flag_set()."""
+        _get_treatments_by_flag_set(self.factory)
 
-        result = client.get_treatments_with_config('invalidKey', ['sample_feature'])
-        assert len(result) == 1
-        assert result['sample_feature'] == ('off', None)
-        self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
+    def test_get_treatments_by_flag_sets(self):
+        """Test client.get_treatments_by_flag_sets()."""
+        _get_treatments_by_flag_sets(self.factory)
+        client = self.factory.client()
+        result = client.get_treatments_by_flag_sets('user1', ['set1', 'set2', 'set4'])
+        assert len(result) == 3
+        assert result == {'sample_feature': 'on',
+                            'whitelist_feature': 'off',
+                            'all_feature': 'on'
+                            }
+        _validate_last_impressions(client, ('sample_feature', 'user1', 'on'),
+                                        ('whitelist_feature', 'user1', 'off'),
+                                        ('all_feature', 'user1', 'on')
+                                        )
 
-        result = client.get_treatments_with_config('invalidKey', ['invalid_feature'])
-        assert len(result) == 1
-        assert result['invalid_feature'] == ('control', None)
-        self._validate_last_impressions(client)
 
-        # testing a killed feature. No matter what the key, must return default treatment
-        result = client.get_treatments_with_config('invalidKey', ['killed_feature'])
-        assert len(result) == 1
-        assert result['killed_feature'] == ('defTreatment', '{"size":15,"defTreatment":true}')
-        self._validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
+    def test_get_treatments_with_config_by_flag_set(self):
+        """Test client.get_treatments_with_config_by_flag_set()."""
+        _get_treatments_with_config_by_flag_set(self.factory)
 
-        # testing ALL matcher
-        result = client.get_treatments_with_config('invalidKey', ['all_feature'])
-        assert len(result) == 1
-        assert result['all_feature'] == ('on', None)
-        self._validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
-
-        # testing multiple splitNames
-        result = client.get_treatments_with_config('invalidKey', [
-            'all_feature',
-            'killed_feature',
-            'invalid_feature',
-            'sample_feature'
-        ])
-        assert len(result) == 4
-        assert result['all_feature'] == ('on', None)
-        assert result['killed_feature'] == ('defTreatment', '{"size":15,"defTreatment":true}')
-        assert result['invalid_feature'] == ('control', None)
-        assert result['sample_feature'] == ('off', None)
-        self._validate_last_impressions(
-            client,
-            ('all_feature', 'invalidKey', 'on'),
-            ('killed_feature', 'invalidKey', 'defTreatment'),
-            ('sample_feature', 'invalidKey', 'off'),
-        )
+    def test_get_treatments_with_config_by_flag_sets(self):
+        """Test client.get_treatments_with_config_by_flag_sets()."""
+        _get_treatments_with_config_by_flag_sets(self.factory)
+        client = self.factory.client()
+        result = client.get_treatments_with_config_by_flag_sets('user1', ['set1', 'set2', 'set4'])
+        assert len(result) == 3
+        assert result == {'sample_feature': ('on', '{"size":15,"test":20}'),
+                            'whitelist_feature': ('off', None),
+                            'all_feature': ('on', None)
+                            }
+        _validate_last_impressions(client, ('sample_feature', 'user1', 'on'),
+                                        ('whitelist_feature', 'user1', 'off'),
+                                        ('all_feature', 'user1', 'on')
+                                        )
 
     def test_track(self):
         """Test client.track()."""
-        try:
-            client = self.factory.client()
-        except:
-            pass
-        assert(client.track('user1', 'user', 'conversion', 1, {"prop1": "value1"}))
-        assert(not client.track(None, 'user', 'conversion'))
-        assert(not client.track('user1', None, 'conversion'))
-        assert(not client.track('user1', 'user', None))
-        self._validate_last_events(
-            client,
-            ('user1', 'user', 'conversion', 1, "{'prop1': 'value1'}")
-        )
+        _track(self.factory)
 
     def test_manager_methods(self):
         """Test manager.split/splits."""
-        try:
-            manager = self.factory.manager()
-        except:
-            pass
-        result = manager.split('all_feature')
-        assert result.name == 'all_feature'
-        assert result.traffic_type is None
-        assert result.killed is False
-        assert len(result.treatments) == 2
-        assert result.change_number == 123
-        assert result.configs == {}
-
-        result = manager.split('killed_feature')
-        assert result.name == 'killed_feature'
-        assert result.traffic_type is None
-        assert result.killed is True
-        assert len(result.treatments) == 2
-        assert result.change_number == 123
-        assert result.configs['defTreatment'] == '{"size":15,"defTreatment":true}'
-        assert result.configs['off'] == '{"size":15,"test":20}'
-
-        result = manager.split('sample_feature')
-        assert result.name == 'sample_feature'
-        assert result.traffic_type is None
-        assert result.killed is False
-        assert len(result.treatments) == 2
-        assert result.change_number == 123
-        assert result.configs['on'] == '{"size":15,"test":20}'
-
-        assert len(manager.split_names()) == 7
-        assert len(manager.splits()) == 7
+        _manager_methods(self.factory)
 
 
 class InMemoryOptimizedIntegrationTests(object):
@@ -347,7 +523,7 @@ class InMemoryOptimizedIntegrationTests(object):
         with open(split_fn, 'r') as flo:
             data = json.loads(flo.read())
         for split in data['splits']:
-            split_storage.put(splits.from_raw(split))
+            split_storage.update([splits.from_raw(split)], [], 0)
 
         segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
         with open(segment_fn, 'r') as flo:
@@ -361,7 +537,6 @@ class InMemoryOptimizedIntegrationTests(object):
 
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
 
@@ -398,85 +573,13 @@ class InMemoryOptimizedIntegrationTests(object):
 
     def test_get_treatment(self):
         """Test client.get_treatment()."""
-        client = self.factory.client()
-
-        assert client.get_treatment('user1', 'sample_feature') == 'on'
-        self._validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
-        client.get_treatment('user1', 'sample_feature')
-        client.get_treatment('user1', 'sample_feature')
-        client.get_treatment('user1', 'sample_feature')
-
-        # Only one impression was added, and popped when validating, the rest were ignored
-        assert self.factory._storages['impressions']._impressions.qsize() == 0
-
-        assert client.get_treatment('invalidKey', 'sample_feature') == 'off'
-        self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
-
-        assert client.get_treatment('invalidKey', 'invalid_feature') == 'control'
-        self._validate_last_impressions(client)  # No impressions should be present
-
-        # testing a killed feature. No matter what the key, must return default treatment
-        assert client.get_treatment('invalidKey', 'killed_feature') == 'defTreatment'
-        self._validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
-
-        # testing ALL matcher
-        assert client.get_treatment('invalidKey', 'all_feature') == 'on'
-        self._validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
-
-        # testing WHITELIST matcher
-        assert client.get_treatment('whitelisted_user', 'whitelist_feature') == 'on'
-        self._validate_last_impressions(client, ('whitelist_feature', 'whitelisted_user', 'on'))
-        assert client.get_treatment('unwhitelisted_user', 'whitelist_feature') == 'off'
-        self._validate_last_impressions(client, ('whitelist_feature', 'unwhitelisted_user', 'off'))
-
-        #  testing INVALID matcher
-        assert client.get_treatment('some_user_key', 'invalid_matcher_feature') == 'control'
-        self._validate_last_impressions(client)  # No impressions should be present
-
-        #  testing Dependency matcher
-        assert client.get_treatment('somekey', 'dependency_test') == 'off'
-        self._validate_last_impressions(client, ('dependency_test', 'somekey', 'off'))
-
-        #  testing boolean matcher
-        assert client.get_treatment('True', 'boolean_test') == 'on'
-        self._validate_last_impressions(client, ('boolean_test', 'True', 'on'))
-
-        #  testing regex matcher
-        assert client.get_treatment('abc4', 'regex_test') == 'on'
-        self._validate_last_impressions(client, ('regex_test', 'abc4', 'on'))
+        _get_treatment(self.factory)
 
     def test_get_treatments(self):
         """Test client.get_treatments()."""
-        client = self.factory.client()
-
-        result = client.get_treatments('user1', ['sample_feature'])
-        assert len(result) == 1
-        assert result['sample_feature'] == 'on'
-        self._validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
-
-        result = client.get_treatments('invalidKey', ['sample_feature'])
-        assert len(result) == 1
-        assert result['sample_feature'] == 'off'
-        self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
-
-        result = client.get_treatments('invalidKey', ['invalid_feature'])
-        assert len(result) == 1
-        assert result['invalid_feature'] == 'control'
-        self._validate_last_impressions(client)
-
-        # testing a killed feature. No matter what the key, must return default treatment
-        result = client.get_treatments('invalidKey', ['killed_feature'])
-        assert len(result) == 1
-        assert result['killed_feature'] == 'defTreatment'
-        self._validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
-
-        # testing ALL matcher
-        result = client.get_treatments('invalidKey', ['all_feature'])
-        assert len(result) == 1
-        assert result['all_feature'] == 'on'
-        self._validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
-
+        _get_treatments(self.factory)
         # testing multiple splitNames
+        client = self.factory.client()
         result = client.get_treatments('invalidKey', [
             'all_feature',
             'killed_feature',
@@ -492,92 +595,48 @@ class InMemoryOptimizedIntegrationTests(object):
 
     def test_get_treatments_with_config(self):
         """Test client.get_treatments_with_config()."""
+        _get_treatment_with_config(self.factory)
+
+    def test_get_treatments_by_flag_set(self):
+        """Test client.get_treatments_by_flag_set()."""
+        _get_treatments_by_flag_set(self.factory)
+
+    def test_get_treatments_by_flag_sets(self):
+        """Test client.get_treatments_by_flag_sets()."""
+        _get_treatments_by_flag_sets(self.factory)
         client = self.factory.client()
-
-        result = client.get_treatments_with_config('user1', ['sample_feature'])
-        assert len(result) == 1
-        assert result['sample_feature'] == ('on', '{"size":15,"test":20}')
-        self._validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
-
-        result = client.get_treatments_with_config('invalidKey', ['sample_feature'])
-        assert len(result) == 1
-        assert result['sample_feature'] == ('off', None)
-        self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
-
-        result = client.get_treatments_with_config('invalidKey', ['invalid_feature'])
-        assert len(result) == 1
-        assert result['invalid_feature'] == ('control', None)
-        self._validate_last_impressions(client)
-
-        # testing a killed feature. No matter what the key, must return default treatment
-        result = client.get_treatments_with_config('invalidKey', ['killed_feature'])
-        assert len(result) == 1
-        assert result['killed_feature'] == ('defTreatment', '{"size":15,"defTreatment":true}')
-        self._validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
-
-        # testing ALL matcher
-        result = client.get_treatments_with_config('invalidKey', ['all_feature'])
-        assert len(result) == 1
-        assert result['all_feature'] == ('on', None)
-        self._validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
-
-        # testing multiple splitNames
-        result = client.get_treatments_with_config('invalidKey', [
-            'all_feature',
-            'killed_feature',
-            'invalid_feature',
-            'sample_feature'
-        ])
-        assert len(result) == 4
-
-        assert result['all_feature'] == ('on', None)
-        assert result['killed_feature'] == ('defTreatment', '{"size":15,"defTreatment":true}')
-        assert result['invalid_feature'] == ('control', None)
-        assert result['sample_feature'] == ('off', None)
+        result = client.get_treatments_by_flag_sets('user1', ['set1', 'set2', 'set4'])
+        assert len(result) == 3
+        assert result == {'sample_feature': 'on',
+                          'whitelist_feature': 'off',
+                          'all_feature': 'on'
+                          }
+        self._validate_last_impressions(client, )
         assert self.factory._storages['impressions']._impressions.qsize() == 0
+
+    def test_get_treatments_with_config_by_flag_set(self):
+        """Test client.get_treatments_with_config_by_flag_set()."""
+        _get_treatments_with_config_by_flag_set(self.factory)
+
+    def test_get_treatments_with_config_by_flag_sets(self):
+        """Test client.get_treatments_with_config_by_flag_sets()."""
+        _get_treatments_with_config_by_flag_sets(self.factory)
+        client = self.factory.client()
+        result = client.get_treatments_with_config_by_flag_sets('user1', ['set1', 'set2', 'set4'])
+        assert len(result) == 3
+        assert result == {'sample_feature': ('on', '{"size":15,"test":20}'),
+                          'whitelist_feature': ('off', None),
+                          'all_feature': ('on', None)
+                          }
+        self._validate_last_impressions(client, )
 
     def test_manager_methods(self):
         """Test manager.split/splits."""
-        manager = self.factory.manager()
-        result = manager.split('all_feature')
-        assert result.name == 'all_feature'
-        assert result.traffic_type is None
-        assert result.killed is False
-        assert len(result.treatments) == 2
-        assert result.change_number == 123
-        assert result.configs == {}
-
-        result = manager.split('killed_feature')
-        assert result.name == 'killed_feature'
-        assert result.traffic_type is None
-        assert result.killed is True
-        assert len(result.treatments) == 2
-        assert result.change_number == 123
-        assert result.configs['defTreatment'] == '{"size":15,"defTreatment":true}'
-        assert result.configs['off'] == '{"size":15,"test":20}'
-
-        result = manager.split('sample_feature')
-        assert result.name == 'sample_feature'
-        assert result.traffic_type is None
-        assert result.killed is False
-        assert len(result.treatments) == 2
-        assert result.change_number == 123
-        assert result.configs['on'] == '{"size":15,"test":20}'
-
-        assert len(manager.split_names()) == 7
-        assert len(manager.splits()) == 7
+        _manager_methods(self.factory)
 
     def test_track(self):
         """Test client.track()."""
-        client = self.factory.client()
-        assert(client.track('user1', 'user', 'conversion', 1, {"prop1": "value1"}))
-        assert(not client.track(None, 'user', 'conversion'))
-        assert(not client.track('user1', None, 'conversion'))
-        assert(not client.track('user1', 'user', None))
-        self._validate_last_events(
-            client,
-            ('user1', 'user', 'conversion', 1, "{'prop1': 'value1'}")
-        )
+        _track(self.factory)
 
 class RedisIntegrationTests(object):
     """Redis storage-based integration tests."""
@@ -610,7 +669,6 @@ class RedisIntegrationTests(object):
 
         telemetry_redis_storage = RedisTelemetryStorage(redis_client, metadata)
         telemetry_producer = TelemetryStorageProducer(telemetry_redis_storage)
-        telemetry_consumer = TelemetryStorageConsumer(telemetry_redis_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
 
         storages = {
@@ -927,7 +985,6 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
 
         telemetry_redis_storage = RedisTelemetryStorage(redis_client, metadata)
         telemetry_producer = TelemetryStorageProducer(telemetry_redis_storage)
-        telemetry_consumer = TelemetryStorageConsumer(telemetry_redis_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
 
@@ -1466,7 +1523,6 @@ class PluggableOptimizedIntegrationTests(object):
 
         telemetry_pluggable_storage = PluggableTelemetryStorage(self.pluggable_storage_adapter, metadata, 'myprefix')
         telemetry_producer = TelemetryStorageProducer(telemetry_pluggable_storage)
-        telemetry_consumer = TelemetryStorageConsumer(telemetry_pluggable_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
 
         storages = {
@@ -1802,7 +1858,6 @@ class PluggableNoneIntegrationTests(object):
         self.pluggable_storage_adapter.set(segment_storage._prefix.format(segment_name=data['name']), set(data['added']))
         self.pluggable_storage_adapter.set(segment_storage._segment_till_prefix.format(segment_name=data['name']), data['till'])
         self.client = self.factory.client()
-
 
     def _validate_last_events(self, client, *to_validate):
         """Validate the last N impressions are present disregarding the order."""
