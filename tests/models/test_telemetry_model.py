@@ -297,7 +297,8 @@ class TelemetryModelTests(object):
                   'impressionsRefreshRate': 60,
                   'eventsPushRate': 60,
                   'metricsRefreshRate': 10,
-                  'storageType': None
+                  'storageType': None,
+                  'flagSetsFilter': None
                 }
         telemetry_config.record_config(config, {})
         assert(telemetry_config.get_stats() == {'oM': 0,

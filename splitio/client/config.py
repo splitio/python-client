@@ -60,7 +60,7 @@ DEFAULT_CONFIG = {
     'storageWrapper': None,
     'storagePrefix': None,
     'storageType': None,
-    'FlagSetsFilter': None
+    'flagSetsFilter': None
 }
 
 def _parse_operation_mode(sdk_key, config):
@@ -179,6 +179,6 @@ def sanitize(sdk_key, config):
         _LOGGER.warning('metricRefreshRate parameter minimum value is 60 seconds, defaulting to 3600 seconds.')
         processed['metricsRefreshRate'] = 3600
 
-    processed['FlagSetsFilter'] = sanitize_flag_sets(processed['FlagSetsFilter']) if processed['FlagSetsFilter'] is not None else None
+    processed['flagSetsFilter'] = sanitize_flag_sets(processed['flagSetsFilter']) if processed['flagSetsFilter'] is not None else None
 
     return processed
