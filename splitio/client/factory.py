@@ -350,7 +350,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     }
 
     storages = {
-        'splits': InMemorySplitStorage(),
+        'splits': InMemorySplitStorage(cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
         'segments': InMemorySegmentStorage(),
         'impressions': InMemoryImpressionStorage(cfg['impressionsQueueSize'], telemetry_runtime_producer),
         'events': InMemoryEventStorage(cfg['eventsQueueSize'], telemetry_runtime_producer),
@@ -523,7 +523,7 @@ def _build_pluggable_factory(api_key, cfg):
     pluggable_adapter = cfg.get('storageWrapper')
     storage_prefix = cfg.get('storagePrefix')
     storages = {
-        'splits': PluggableSplitStorage(pluggable_adapter, storage_prefix),
+        'splits': PluggableSplitStorage(pluggable_adapter, storage_prefix, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
         'segments': PluggableSegmentStorage(pluggable_adapter, storage_prefix),
         'impressions': PluggableImpressionsStorage(pluggable_adapter, sdk_metadata, storage_prefix),
         'events': PluggableEventsStorage(pluggable_adapter, sdk_metadata, storage_prefix),

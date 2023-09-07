@@ -430,7 +430,12 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         """
         sanitized_flag_sets = config.sanitize_flag_sets(flag_sets)
         feature_flags = []
-        [feature_flags.extend(self._split_storage.get_feature_flags_by_set(flag_set)) for flag_set in sanitized_flag_sets]
+        for flag_set in sanitized_flag_sets:
+            feature_flags_by_set = self._split_storage.get_feature_flags_by_sets(flag_set)
+            if feature_flags_by_set is None:
+                _LOGGER.warning("Fetching feature flags for flag set %s encountered an error, skipping this flag set." % (flag_set))
+                continue
+            feature_flags.extend(feature_flags_by_set)
         feature_flags_names = []
         [feature_flags_names.append(feature_flag) for feature_flag in feature_flags]
         return feature_flags_names
