@@ -85,7 +85,10 @@ class StorageMockAdapter(object):
             returned_keys = []
             for key in self._keys:
                 if key in keys:
-                    returned_keys.append(self._keys[key])
+                    if isinstance(self._keys[key], list):
+                        returned_keys.extend(self._keys[key])
+                    else:
+                        returned_keys.append(self._keys[key])
             return returned_keys
 
     def add_items(self, key, added_items):
