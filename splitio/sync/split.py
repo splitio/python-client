@@ -13,6 +13,7 @@ from splitio.api.commons import FetchOptions
 from splitio.models import splits
 from splitio.util.backoff import Backoff
 from splitio.util.time import get_current_epoch_time_ms
+from splitio.util.storage_helper import update_feature_flag_storage
 from splitio.sync import util
 
 _LEGACY_COMMENT_LINE_RE = re.compile(r'^#.*$')
@@ -79,38 +80,11 @@ class SplitSynchronizer(object):
                 _LOGGER.error('Exception raised while fetching feature flags')
                 _LOGGER.debug('Exception information: ', exc_info=True)
                 raise exc
-
-            to_add = []
-            to_delete = []
-            for feature_flag in feature_flag_changes.get('splits', []):
-                if (self._feature_flag_storage.config_flag_sets_used == 0 and feature_flag['status'] == splits.Status.ACTIVE.value) or \
-                (feature_flag['status'] == splits.Status.ACTIVE.value and self._check_flag_sets(feature_flag)):
-                    parsed = splits.from_raw(feature_flag)
-                    to_add.append(parsed)
-                    segment_list.update(set(parsed.get_segment_names()))
-                else:
-                    if self._feature_flag_storage.get(feature_flag['name']) is not None:
-                        to_delete.append(feature_flag['name'])
-
-            self._feature_flag_storage.update(to_add, to_delete, feature_flag_changes['till'])
+            fetched_feature_flags = []
+            [fetched_feature_flags.append(splits.from_raw(feature_flag)) for feature_flag in feature_flag_changes.get('splits', [])]
+            segment_list = update_feature_flag_storage(self._feature_flag_storage, fetched_feature_flags, feature_flag_changes['till'])
             if feature_flag_changes['till'] == feature_flag_changes['since']:
                 return feature_flag_changes['till'], segment_list
-
-    def _check_flag_sets(self, feature_flag):
-        """
-        Check all flag sets in a feature flag, return True if any of sets exist in storage
-
-        :param feature_flag: Flag set to validate.
-        :type feature_flag: json
-
-        :return: True if any of its flag_set exist. False otherwise.
-        :rtype: bool
-        """
-        for flag_set in feature_flag['sets']:
-            if self._feature_flag_storage.is_flag_set_exist(flag_set):
-                return True
-        return False
-
 
     def _attempt_feature_flag_sync(self, fetch_options, till=None):
         """

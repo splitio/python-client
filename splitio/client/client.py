@@ -429,8 +429,11 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :rtype: list
         """
         sanitized_flag_sets = config.sanitize_flag_sets(flag_sets)
-        feature_flags_names = self._split_storage.get_feature_flags_by_sets(sanitized_flag_sets)
-        return feature_flags_names
+        feature_flags_by_set = self._split_storage.get_feature_flags_by_sets(sanitized_flag_sets)
+        if feature_flags_by_set is None:
+            _LOGGER.warning("Fetching feature flags for flag set %s encountered an error, skipping this flag set." % (flag_sets))
+            return []
+        return feature_flags_by_set
 
     def _build_impression(  # pylint: disable=too-many-arguments
             self,

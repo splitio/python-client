@@ -8,15 +8,16 @@ from splitio.models import splits, segments
 from splitio.models.impressions import Impression
 from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MAX_TAGS, get_latency_bucket_index
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
+from splitio.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
 
 _LOGGER = logging.getLogger(__name__)
 
 class PluggableSplitStorage(SplitStorage):
-    """InMemory implementation of a split storage."""
+    """InMemory implementation of feature flag storage."""
 
-    _SPLIT_NAME_LENGTH = 12
+    _FEATURE_FLAG_NAME_LENGTH = 19
 
-    def __init__(self, pluggable_adapter, prefix=None):
+    def __init__(self, pluggable_adapter, prefix=None, config_flag_sets=[]):
         """
         Class constructor.
 
@@ -26,48 +27,73 @@ class PluggableSplitStorage(SplitStorage):
         :type prefix: str
         """
         self._pluggable_adapter = pluggable_adapter
-        self._prefix = "SPLITIO.split.{split_name}"
+        self._config_flag_sets = config_flag_sets
+        self._prefix = "SPLITIO.split.{feature_flag_name}"
         self._traffic_type_prefix = "SPLITIO.trafficType.{traffic_type_name}"
-        self._split_till_prefix = "SPLITIO.splits.till"
+        self._feature_flag_till_prefix = "SPLITIO.splits.till"
+        self._feature_flag_set_prefix = 'SPLITIO.set.{flag_set}'
         if prefix is not None:
             self._prefix = prefix + "." + self._prefix
             self._traffic_type_prefix = prefix + "." + self._traffic_type_prefix
-            self._split_till_prefix = prefix + "." + self._split_till_prefix
+            self._feature_flag_till_prefix = prefix + "." + self._feature_flag_till_prefix
+            self._feature_flag_set_prefix = prefix + "." + self._feature_flag_till_prefix
 
-    def get(self, split_name):
+    def get(self, feature_flag_name):
         """
-        Retrieve a split.
+        Retrieve a feature flag.
 
-        :param split_name: Name of the feature to fetch.
-        :type split_name: str
+        :param feature_flag_name: Name of the feature to fetch.
+        :type feature_flag_name: str
 
         :rtype: splitio.models.splits.Split
         """
         try:
-            split = self._pluggable_adapter.get(self._prefix.format(split_name=split_name))
-            if not split:
+            feature_flag = self._pluggable_adapter.get(self._prefix.format(feature_flag_name=feature_flag_name))
+            if not feature_flag:
                 return None
-            return splits.from_raw(split)
+            return splits.from_raw(feature_flag)
         except Exception:
-            _LOGGER.error('Error getting split from storage')
+            _LOGGER.error('Error getting feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
-    def fetch_many(self, split_names):
+    def fetch_many(self, feature_flag_names):
         """
-        Retrieve splits.
+        Retrieve feature flags.
 
-        :param split_names: Names of the features to fetch.
-        :type split_name: list(str)
+        :param feature_flag_names: Names of the features to fetch.
+        :type feature_flag_name: list(str)
 
         :return: A dict with split objects parsed from queue.
         :rtype: dict(split_name, splitio.models.splits.Split)
         """
         try:
-            prefix_added = [self._prefix.format(split_name=split_name) for split_name in split_names]
-            return {split['name']: splits.from_raw(split) for split in self._pluggable_adapter.get_many(prefix_added)}
+            prefix_added = [self._prefix.format(feature_flag_name=feature_flag_name) for feature_flag_name in feature_flag_names]
+            return {feature_flag['name']: splits.from_raw(feature_flag) for feature_flag in self._pluggable_adapter.get_many(prefix_added)}
         except Exception:
-            _LOGGER.error('Error getting split from storage')
+            _LOGGER.error('Error getting feature flag from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+
+    def get_feature_flags_by_sets(self, flag_sets):
+        """
+        Retrieve feature flags by flag set.
+
+        :param flag_set: Names of the flag set to fetch.
+        :type flag_set: str
+
+        :return: Feature flag names that are tagged with the flag set
+        :rtype: listt(str)
+        """
+        try:
+            sets_to_fetch = get_valid_flag_sets(flag_sets, self._config_flag_sets)
+            if sets_to_fetch == []:
+                return []
+
+            keys = [self._feature_flag_set_prefix.format(flag_set=flag_set) for flag_set in sets_to_fetch]
+            return self._pluggable_adapter.get_many(keys)
+        except Exception:
+            _LOGGER.error('Error fetching feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
@@ -127,14 +153,14 @@ class PluggableSplitStorage(SplitStorage):
 
     def get_change_number(self):
         """
-        Retrieve latest split change number.
+        Retrieve latest feature flag change number.
 
         :rtype: int
         """
         try:
-            return self._pluggable_adapter.get(self._split_till_prefix)
+            return self._pluggable_adapter.get(self._feature_flag_till_prefix)
         except Exception:
-            _LOGGER.error('Error getting change number in split storage')
+            _LOGGER.error('Error getting change number in feature flag storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
@@ -156,35 +182,35 @@ class PluggableSplitStorage(SplitStorage):
 
     def get_split_names(self):
         """
-        Retrieve a list of all split names.
+        Retrieve a list of all feature flag names.
 
-        :return: List of split names.
+        :return: List of feature flag names.
         :rtype: list(str)
         """
         try:
-            return [split.name for split in self.get_all()]
+            return [feature_flag.name for feature_flag in self.get_all()]
         except Exception:
-            _LOGGER.error('Error getting split names from storage')
+            _LOGGER.error('Error getting feature flag names from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
     def get_all(self):
         """
-        Return all the splits.
+        Return all the feature flags.
 
-        :return: List of all the splits.
+        :return: List of all the feature flags.
         :rtype: list
         """
         try:
-            return [splits.from_raw(self._pluggable_adapter.get(key)) for key in self._pluggable_adapter.get_keys_by_prefix(self._prefix[:-self._SPLIT_NAME_LENGTH])]
+            return [splits.from_raw(self._pluggable_adapter.get(key)) for key in self._pluggable_adapter.get_keys_by_prefix(self._prefix[:-self._FEATURE_FLAG_NAME_LENGTH])]
         except Exception:
-            _LOGGER.error('Error getting split keys from storage')
+            _LOGGER.error('Error getting feature flag keys from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
     def traffic_type_exists(self, traffic_type_name):
         """
-        Return whether the traffic type exists in at least one split in cache.
+        Return whether the traffic type exists in at least one feature flag in cache.
 
         :param traffic_type_name: Traffic type to validate.
         :type traffic_type_name: str
@@ -195,7 +221,7 @@ class PluggableSplitStorage(SplitStorage):
         try:
             return self._pluggable_adapter.get(self._traffic_type_prefix.format(traffic_type_name=traffic_type_name)) != None
         except Exception:
-            _LOGGER.error('Error getting split info from storage')
+            _LOGGER.error('Error getting traffic type info from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
@@ -264,21 +290,21 @@ class PluggableSplitStorage(SplitStorage):
 
     def get_all_splits(self):
         """
-        Return all the splits.
+        Return all the feature flags.
 
-        :return: List of all the splits.
+        :return: List of all the feature flags.
         :rtype: list
         """
         try:
             return self.get_all()
         except Exception:
-            _LOGGER.error('Error fetching splits from storage')
+            _LOGGER.error('Error fetching feature flags from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
     def is_valid_traffic_type(self, traffic_type_name):
         """
-        Return whether the traffic type exists in at least one split in cache.
+        Return whether the traffic type exists in at least one feature flag in cache.
 
         :param traffic_type_name: Traffic type to validate.
         :type traffic_type_name: str
@@ -289,7 +315,7 @@ class PluggableSplitStorage(SplitStorage):
         try:
             return self.traffic_type_exists(traffic_type_name)
         except Exception:
-            _LOGGER.error('Error getting split info from storage')
+            _LOGGER.error('Error getting traffic type info from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 

@@ -13,9 +13,70 @@ MAX_TAGS = 10
 
 _LOGGER = logging.getLogger(__name__)
 
+class FlagSetsFilter(object):
+    """Config Flagsets Filter storage."""
+
+    def __init__(self, flag_sets=[]):
+        self.flag_sets = set(flag_sets)
+        self.should_filter = any(flag_sets)
+
+    def set_exist(self, flag_set):
+        if not self.should_filter:
+            return True
+        if not isinstance(flag_set, str) or flag_set == '':
+            return False
+
+        return any(self.flag_sets.intersection(set([flag_set])))
+
+    def intersect(self, flag_sets):
+        if not self.should_filter:
+            return True
+        if not isinstance(flag_sets, set) or len(flag_sets) == 0:
+            return False
+        return any(self.flag_sets.intersection(flag_sets))
+
+
+class FlagSets(object):
+    """InMemory Flagsets storage."""
+
+    def __init__(self, flag_sets=[]):
+        self._lock = threading.RLock()
+        self.sets_feature_flag_map = {}
+        for flag_set in flag_sets:
+            self.sets_feature_flag_map[flag_set] = set()
+
+    def flag_set_exist(self, flag_set):
+        with self._lock:
+            return flag_set in self.sets_feature_flag_map.keys()
+
+    def get_flag_set(self, flag_set):
+        with self._lock:
+            if self.flag_set_exist(flag_set):
+                return self.sets_feature_flag_map[flag_set]
+
+    def add_flag_set(self, flag_set):
+        with self._lock:
+            if not self.flag_set_exist(flag_set):
+                self.sets_feature_flag_map[flag_set] = set()
+
+    def remove_flag_set(self, flag_set):
+        with self._lock:
+            if self.flag_set_exist(flag_set):
+                del self.sets_feature_flag_map[flag_set]
+
+    def add_feature_flag_to_flag_set(self, flag_set, feature_flag):
+        with self._lock:
+            if self.flag_set_exist(flag_set):
+                self.sets_feature_flag_map[flag_set].add(feature_flag)
+
+    def remove_feature_flag_to_flag_set(self, flag_set, feature_flag):
+        with self._lock:
+            if self.flag_set_exist(flag_set):
+                self.sets_feature_flag_map[flag_set].remove(feature_flag)
+
 
 class InMemorySplitStorage(SplitStorage):
-    """InMemory implementation of a split storage."""
+    """InMemory implementation of a feature flag storage."""
 
     def __init__(self, flag_sets=[]):
         """Constructor."""
@@ -23,10 +84,8 @@ class InMemorySplitStorage(SplitStorage):
         self._splits = {}
         self._change_number = -1
         self._traffic_types = Counter()
-        self._sets_feature_flag_map = {}
-        self.config_flag_sets_used = len(flag_sets)
-        for flag_set in flag_sets:
-            self._sets_feature_flag_map[flag_set] = set()
+        self.flag_set = FlagSets(flag_sets)
+        self.flag_set_filter = FlagSetsFilter(flag_sets)
 
     def get(self, split_name):
         """
@@ -82,11 +141,11 @@ class InMemorySplitStorage(SplitStorage):
             self._increase_traffic_type_count(split.traffic_type_name)
             if split.sets is not None:
                 for flag_set in split.sets:
-                    if flag_set not in self._sets_feature_flag_map.keys():
-                        if self.config_flag_sets_used > 0:
+                    if not self.flag_set.flag_set_exist(flag_set):
+                        if self.flag_set_filter.should_filter:
                             continue
-                        self._sets_feature_flag_map[flag_set] = set()
-                    self._sets_feature_flag_map[flag_set].add(split.name)
+                        self.flag_set.add_flag_set(flag_set)
+                    self.flag_set.add_feature_flag_to_flag_set(flag_set, split.name)
 
     def _remove(self, split_name):
         """
@@ -118,9 +177,9 @@ class InMemorySplitStorage(SplitStorage):
         """
         if feature_flag.sets is not None:
             for flag_set in feature_flag.sets:
-                self._sets_feature_flag_map[flag_set].remove(feature_flag.name)
-                if len(self._sets_feature_flag_map[flag_set]) == 0 and self.config_flag_sets_used == 0:
-                    del self._sets_feature_flag_map[flag_set]
+                self.flag_set.remove_feature_flag_to_flag_set(flag_set, feature_flag.name)
+                if len(self.flag_set.get_flag_set(flag_set)) == 0 and not self.flag_set_filter.should_filter:
+                    self.flag_set.remove_flag_set(flag_set)
 
     def get_feature_flags_by_sets(self, sets):
         """
@@ -135,19 +194,13 @@ class InMemorySplitStorage(SplitStorage):
         with self._lock:
             sets_to_fetch = []
             for flag_set in sets:
-                if flag_set not in self._sets_feature_flag_map.keys():
-                    if self.config_flag_sets_used > 0:
-                        _LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring the request." % (flag_set))
-                        continue
-                    else:
-                        self._sets_feature_flag_map[flag_set] = set()
+                if not self.flag_set.flag_set_exist(flag_set):
+                    _LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring it." % (flag_set))
+                    continue
                 sets_to_fetch.append(flag_set)
 
-            if sets_to_fetch == []:
-                return []
-
             to_return = set()
-            [to_return.update(self._sets_feature_flag_map[flag_set]) for flag_set in sets_to_fetch]
+            [to_return.update(self.flag_set.get_flag_set(flag_set)) for flag_set in sets_to_fetch]
             return list(to_return)
 
     def get_change_number(self):
@@ -260,10 +313,7 @@ class InMemorySplitStorage(SplitStorage):
         :return: True if the flag_set exist. False otherwise.
         :rtype: bool
         """
-        if flag_set in self._sets_feature_flag_map.keys():
-            return True
-        return False
-
+        return self.flag_set.flag_set_exist(flag_set)
 
 class InMemorySegmentStorage(SegmentStorage):
     """In-memory implementation of a segment storage."""

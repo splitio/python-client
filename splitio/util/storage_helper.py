@@ -23,8 +23,7 @@ def update_feature_flag_storage(feature_flag_storage, feature_flags, change_numb
     to_add = []
     to_delete = []
     for feature_flag in feature_flags:
-        if (feature_flag_storage.config_flag_sets_used == 0 and feature_flag.status == splits.Status.ACTIVE) or \
-        (feature_flag.status == splits.Status.ACTIVE and _check_flag_sets(feature_flag_storage, feature_flag)):
+        if feature_flag_storage.flag_set_filter.intersect(feature_flag.sets) and feature_flag.status == splits.Status.ACTIVE:
             to_add.append(feature_flag)
             segment_list.update(set(feature_flag.get_segment_names()))
         else:
@@ -33,23 +32,6 @@ def update_feature_flag_storage(feature_flag_storage, feature_flags, change_numb
 
     feature_flag_storage.update(to_add, to_delete, change_number)
     return segment_list
-
-def _check_flag_sets(feature_flag_storage, feature_flag):
-    """
-    Check all flag sets in a feature flag, return True if any of sets exist in storage
-
-    :param feature_flag_storage: Feature flag storage instance
-    :type feature_flag_storage: splitio.storage.inmemory.InMemorySplitStorage
-    :param feature_flag: Feature flag instance to validate.
-    :type feature_flag: splitio.models.splits.Split
-
-    :return: True if any of its flag_set exist. False otherwise.
-    :rtype: bool
-    """
-    for flag_set in feature_flag.sets:
-        if feature_flag_storage.is_flag_set_exist(flag_set):
-            return True
-    return False
 
 def get_valid_flag_sets(flag_sets, config_flag_sets):
     """

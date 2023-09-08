@@ -10,7 +10,66 @@ from splitio.models.events import Event, EventWrapper
 import splitio.models.telemetry as ModelTelemetry
 from splitio.engine.telemetry import TelemetryStorageProducer
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
-    InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage
+    InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, FlagSets, FlagSetsFilter
+
+
+class FlagSetsFilterTests(object):
+    """Flag sets filter storage tests."""
+    def test_without_initial_set(self):
+        flag_set = FlagSets()
+        assert flag_set.sets_feature_flag_map == {}
+
+        flag_set.add_flag_set('set1')
+        assert flag_set.get_flag_set('set1') == set({})
+        assert flag_set.flag_set_exist('set1') == True
+        assert flag_set.flag_set_exist('set2') == False
+
+        flag_set.add_feature_flag_to_flag_set('set1', 'split1')
+        assert flag_set.get_flag_set('set1') == {'split1'}
+        flag_set.add_feature_flag_to_flag_set('set1', 'split2')
+        assert flag_set.get_flag_set('set1') == {'split1', 'split2'}
+        flag_set.remove_feature_flag_to_flag_set('set1', 'split1')
+        assert flag_set.get_flag_set('set1') == {'split2'}
+        flag_set.remove_flag_set('set2')
+        assert flag_set.sets_feature_flag_map == {'set1': set({'split2'})}
+        flag_set.remove_flag_set('set1')
+        assert flag_set.sets_feature_flag_map == {}
+        assert flag_set.flag_set_exist('set1') == False
+
+    def test_with_initial_set(self):
+        flag_set = FlagSets(['set1', 'set2'])
+        assert flag_set.sets_feature_flag_map == {'set1': set(), 'set2': set()}
+
+        flag_set.add_flag_set('set1')
+        assert flag_set.get_flag_set('set1') == set({})
+        assert flag_set.flag_set_exist('set1') == True
+        assert flag_set.flag_set_exist('set2') == True
+
+        flag_set.add_feature_flag_to_flag_set('set1', 'split1')
+        assert flag_set.get_flag_set('set1') == {'split1'}
+        flag_set.add_feature_flag_to_flag_set('set1', 'split2')
+        assert flag_set.get_flag_set('set1') == {'split1', 'split2'}
+        flag_set.remove_feature_flag_to_flag_set('set1', 'split1')
+        assert flag_set.get_flag_set('set1') == {'split2'}
+        flag_set.remove_flag_set('set2')
+        assert flag_set.sets_feature_flag_map == {'set1': set({'split2'})}
+        flag_set.remove_flag_set('set1')
+        assert flag_set.sets_feature_flag_map == {}
+        assert flag_set.flag_set_exist('set1') == False
+
+    def test_flag_set_filter(self):
+        flag_set_filter = FlagSetsFilter()
+        assert flag_set_filter.flag_sets == set()
+        assert not flag_set_filter.should_filter
+
+        flag_set_filter = FlagSetsFilter(['set1', 'set2'])
+        assert flag_set_filter.flag_sets == set({'set1', 'set2'})
+        assert flag_set_filter.should_filter
+        assert flag_set_filter.intersect(set({'set1', 'set2'}))
+        assert flag_set_filter.intersect(set({'set1', 'set2', 'set5'}))
+        assert not flag_set_filter.intersect(set({'set4'}))
+        assert not flag_set_filter.set_exist('set4')
+        assert flag_set_filter.set_exist('set1')
 
 
 class InMemorySplitStorageTests(object):
@@ -215,8 +274,10 @@ class InMemorySplitStorageTests(object):
 
     def test_flag_sets_with_config_sets(self):
         storage = InMemorySplitStorage(['set10', 'set02', 'set05'])
-        assert storage.config_flag_sets_used == 3
-        assert storage._sets_feature_flag_map == {'set10': set(), 'set02': set(), 'set05': set()}
+        assert storage.flag_set_filter.flag_sets == {'set10', 'set02', 'set05'}
+        assert storage.flag_set_filter.should_filter
+
+        assert storage.flag_set.sets_feature_flag_map == {'set10': set(), 'set02': set(), 'set05': set()}
 
         split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
                       'ACTIVE', 1, sets=['set10', 'set02'])
@@ -250,7 +311,7 @@ class InMemorySplitStorageTests(object):
 
         storage.update([], [split1.name], 1)
         assert storage.get_feature_flags_by_sets(['set02']) == []
-        assert storage._sets_feature_flag_map == {'set10': set(), 'set02': set(), 'set05': set()}
+        assert storage.flag_set.sets_feature_flag_map == {'set10': set(), 'set02': set(), 'set05': set()}
 
         storage.update([split3], [], 1)
         assert storage.get_feature_flags_by_sets(['set05']) == ['split3']
@@ -258,8 +319,10 @@ class InMemorySplitStorageTests(object):
 
     def test_flag_sets_withut_config_sets(self):
         storage = InMemorySplitStorage()
-        assert storage._sets_feature_flag_map == {}
-        assert storage.config_flag_sets_used == 0
+        assert storage.flag_set_filter.flag_sets == set({})
+        assert not storage.flag_set_filter.should_filter
+
+        assert storage.flag_set.sets_feature_flag_map == {}
 
         split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
                       'ACTIVE', 1, sets=['set10', 'set02'])
@@ -291,7 +354,7 @@ class InMemorySplitStorageTests(object):
 
         storage.update([], [split1.name], 1)
         assert storage.get_feature_flags_by_sets(['set02']) == []
-        assert storage._sets_feature_flag_map == {'set02': set()}
+        assert storage.flag_set.sets_feature_flag_map == {}
 
         storage.update([split3], [], 1)
         assert storage.get_feature_flags_by_sets(['set05']) == ['split3']
