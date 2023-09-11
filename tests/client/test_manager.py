@@ -96,4 +96,4 @@ class ManagerTests(object):  # pylint: disable=too-few-public-methods
         assert sorted(split.treatments) == ['off', 'on']
         assert split.change_number == 123
         assert split.configs == {'on': '{"color": "blue", "size": 13}'}
-        assert split.sets == ['set1', 'set2']
+        assert sorted(split.sets) == ['set1', 'set2']

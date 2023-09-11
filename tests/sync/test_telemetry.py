@@ -32,7 +32,7 @@ class TelemetrySubmitterTests(object):
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         split_storage = InMemorySplitStorage()
-        split_storage.put(Split('split1', 1234, 1, False, 'user', Status.ACTIVE, 123))
+        split_storage.update([Split('split1', 1234, 1, False, 'user', Status.ACTIVE, 123)], [], 123)
         segment_storage = InMemorySegmentStorage()
         segment_storage.put(Segment('segment1', [], 123))
         telemetry_submitter = InMemoryTelemetrySubmitter(telemetry_consumer, split_storage, segment_storage, api)

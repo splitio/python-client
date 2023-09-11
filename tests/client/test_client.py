@@ -353,14 +353,14 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
-        def get_feature_flags_by_set(flag_sets):
-            if flag_sets == 'set1':
+        def get_feature_flags_by_sets(flag_sets):
+            if flag_sets == ['set1']:
                 return ['f1', 'f2']
-            if flag_sets == 'set2':
+            if flag_sets == ['set2']:
                 return ['f3', 'f4']
-            if flag_sets == 'set3':
+            if flag_sets == ['set3']:
                 return ['some_feature']
-        split_storage.get_feature_flags_by_set = get_feature_flags_by_set
+        split_storage.get_feature_flags_by_sets = get_feature_flags_by_sets
 
         client = Client(factory, recorder, True)
         client._evaluator = mocker.Mock(spec=Evaluator)
@@ -440,18 +440,14 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
-        def get_feature_flags_by_set(flag_sets):
-            if flag_sets == 'set1':
-                return ['f1']
-            if flag_sets == 'set2':
-                return ['f2']
-            if flag_sets == 'set3':
+        def get_feature_flags_by_sets(flag_sets):
+            if flag_sets == ['set1', 'set2']:
+                return ['f1', 'f2']
+            if flag_sets == ['set3', 'set4']:
                 return ['f3', 'f4']
-            if flag_sets == 'set4':
-                return []
-            if flag_sets == 'set5':
+            if flag_sets == ['set5']:
                 return ['some_feature']
-        split_storage.get_feature_flags_by_set = get_feature_flags_by_set
+        split_storage.get_feature_flags_by_sets = get_feature_flags_by_sets
 
         client = Client(factory, recorder, True)
         client._evaluator = mocker.Mock(spec=Evaluator)
@@ -530,14 +526,14 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
-        def get_feature_flags_by_set(flag_sets):
-            if flag_sets == 'set1':
+        def get_feature_flags_by_sets(flag_sets):
+            if flag_sets == ['set1']:
                 return ['f1', 'f2']
-            if flag_sets == 'set2':
+            if flag_sets == ['set2']:
                 return ['f3', 'f4']
-            if flag_sets == 'set3':
+            if flag_sets == ['set3']:
                 return ['some_feature']
-        split_storage.get_feature_flags_by_set = get_feature_flags_by_set
+        split_storage.get_feature_flags_by_sets = get_feature_flags_by_sets
 
         client = Client(factory, recorder, True)
         client._evaluator = mocker.Mock(spec=Evaluator)
@@ -626,18 +622,14 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
-        def get_feature_flags_by_set(flag_sets):
-            if flag_sets == 'set1':
-                return ['f1']
-            if flag_sets == 'set2':
-                return ['f2']
-            if flag_sets == 'set3':
+        def get_feature_flags_by_sets(flag_sets):
+            if flag_sets == ['set1', 'set2']:
+                return ['f1', 'f2']
+            if flag_sets == ['set3', 'set4']:
                 return ['f3', 'f4']
-            if flag_sets == 'set4':
-                return []
-            if flag_sets == 'set5':
+            if flag_sets == ['set5']:
                 return ['some_feature']
-        split_storage.get_feature_flags_by_set = get_feature_flags_by_set
+        split_storage.get_feature_flags_by_sets = get_feature_flags_by_sets
 
         client = Client(factory, recorder, True)
         client._evaluator = mocker.Mock(spec=Evaluator)

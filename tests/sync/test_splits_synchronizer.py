@@ -80,7 +80,15 @@ class SplitsSynchronizerTests(object):
             return 123
         change_number_mock._calls = 0
         storage.get_change_number.side_effect = change_number_mock
-        storage.config_flag_sets_used = 0
+
+        class flag_set_filter():
+            def should_filter():
+                return False
+
+            def intersect(sets):
+                return True
+
+        storage.flag_set_filter = flag_set_filter
 
         api = mocker.Mock()
         def get_changes(*args, **kwargs):
@@ -167,7 +175,15 @@ class SplitsSynchronizerTests(object):
             return { 'splits': [], 'since': 12345, 'till': 12345 }
         get_changes.called = 0
         api.fetch_splits.side_effect = get_changes
-        storage.config_flag_sets_used = 0
+
+        class flag_set_filter():
+            def should_filter():
+                return False
+
+            def intersect(sets):
+                return True
+
+        storage.flag_set_filter = flag_set_filter
 
         split_synchronizer = SplitSynchronizer(api, storage)
         split_synchronizer._backoff = Backoff(1, 1)

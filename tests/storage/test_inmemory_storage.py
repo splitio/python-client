@@ -10,7 +10,66 @@ from splitio.models.events import Event, EventWrapper
 import splitio.models.telemetry as ModelTelemetry
 from splitio.engine.telemetry import TelemetryStorageProducer
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
-    InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage
+    InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, FlagSets, FlagSetsFilter
+
+
+class FlagSetsFilterTests(object):
+    """Flag sets filter storage tests."""
+    def test_without_initial_set(self):
+        flag_set = FlagSets()
+        assert flag_set.sets_feature_flag_map == {}
+
+        flag_set.add_flag_set('set1')
+        assert flag_set.get_flag_set('set1') == set({})
+        assert flag_set.flag_set_exist('set1') == True
+        assert flag_set.flag_set_exist('set2') == False
+
+        flag_set.add_feature_flag_to_flag_set('set1', 'split1')
+        assert flag_set.get_flag_set('set1') == {'split1'}
+        flag_set.add_feature_flag_to_flag_set('set1', 'split2')
+        assert flag_set.get_flag_set('set1') == {'split1', 'split2'}
+        flag_set.remove_feature_flag_to_flag_set('set1', 'split1')
+        assert flag_set.get_flag_set('set1') == {'split2'}
+        flag_set.remove_flag_set('set2')
+        assert flag_set.sets_feature_flag_map == {'set1': set({'split2'})}
+        flag_set.remove_flag_set('set1')
+        assert flag_set.sets_feature_flag_map == {}
+        assert flag_set.flag_set_exist('set1') == False
+
+    def test_with_initial_set(self):
+        flag_set = FlagSets(['set1', 'set2'])
+        assert flag_set.sets_feature_flag_map == {'set1': set(), 'set2': set()}
+
+        flag_set.add_flag_set('set1')
+        assert flag_set.get_flag_set('set1') == set({})
+        assert flag_set.flag_set_exist('set1') == True
+        assert flag_set.flag_set_exist('set2') == True
+
+        flag_set.add_feature_flag_to_flag_set('set1', 'split1')
+        assert flag_set.get_flag_set('set1') == {'split1'}
+        flag_set.add_feature_flag_to_flag_set('set1', 'split2')
+        assert flag_set.get_flag_set('set1') == {'split1', 'split2'}
+        flag_set.remove_feature_flag_to_flag_set('set1', 'split1')
+        assert flag_set.get_flag_set('set1') == {'split2'}
+        flag_set.remove_flag_set('set2')
+        assert flag_set.sets_feature_flag_map == {'set1': set({'split2'})}
+        flag_set.remove_flag_set('set1')
+        assert flag_set.sets_feature_flag_map == {}
+        assert flag_set.flag_set_exist('set1') == False
+
+    def test_flag_set_filter(self):
+        flag_set_filter = FlagSetsFilter()
+        assert flag_set_filter.flag_sets == set()
+        assert not flag_set_filter.should_filter
+
+        flag_set_filter = FlagSetsFilter(['set1', 'set2'])
+        assert flag_set_filter.flag_sets == set({'set1', 'set2'})
+        assert flag_set_filter.should_filter
+        assert flag_set_filter.intersect(set({'set1', 'set2'}))
+        assert flag_set_filter.intersect(set({'set1', 'set2', 'set5'}))
+        assert not flag_set_filter.intersect(set({'set4'}))
+        assert not flag_set_filter.set_exist('set4')
+        assert flag_set_filter.set_exist('set1')
 
 
 class InMemorySplitStorageTests(object):
@@ -215,8 +274,10 @@ class InMemorySplitStorageTests(object):
 
     def test_flag_sets_with_config_sets(self):
         storage = InMemorySplitStorage(['set10', 'set02', 'set05'])
-        assert storage.config_flag_sets_used == 3
-        assert storage._sets_feature_flag_map == {'set10': set(), 'set02': set(), 'set05': set()}
+        assert storage.flag_set_filter.flag_sets == {'set10', 'set02', 'set05'}
+        assert storage.flag_set_filter.should_filter
+
+        assert storage.flag_set.sets_feature_flag_map == {'set10': set(), 'set02': set(), 'set05': set()}
 
         split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
                       'ACTIVE', 1, sets=['set10', 'set02'])
@@ -225,40 +286,43 @@ class InMemorySplitStorageTests(object):
         split3 = Split('split3', 123456789, False, 'some', 'traffic_type',
                       'ACTIVE', 1, sets=['set04', 'set05'])
         storage.update([split1], [], 1)
-        assert storage.get_feature_flags_by_set('set10') == ['split1']
-        assert storage.get_feature_flags_by_set('set02') == ['split1']
+        assert storage.get_feature_flags_by_sets(['set10']) == ['split1']
+        assert storage.get_feature_flags_by_sets(['set02']) == ['split1']
+        assert storage.get_feature_flags_by_sets(['set02', 'set10']) == ['split1']
         assert storage.is_flag_set_exist('set10')
         assert storage.is_flag_set_exist('set02')
         assert not storage.is_flag_set_exist('set03')
 
         storage.update([split2], [], 1)
-        assert storage.get_feature_flags_by_set('set05') == ['split2']
-        assert sorted(storage.get_feature_flags_by_set('set02')) == ['split1', 'split2']
+        assert storage.get_feature_flags_by_sets(['set05']) == ['split2']
+        assert sorted(storage.get_feature_flags_by_sets(['set02', 'set05'])) == ['split1', 'split2']
         assert storage.is_flag_set_exist('set05')
 
         storage.update([], [split2.name], 1)
         assert storage.is_flag_set_exist('set05')
-        assert storage.get_feature_flags_by_set('set02') == ['split1']
-        assert storage.get_feature_flags_by_set('set05') == []
+        assert storage.get_feature_flags_by_sets(['set02']) == ['split1']
+        assert storage.get_feature_flags_by_sets(['set05']) == []
 
         split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
                       'ACTIVE', 1, sets=['set02'])
         storage.update([split1], [], 1)
         assert storage.is_flag_set_exist('set10')
-        assert storage.get_feature_flags_by_set('set02') == ['split1']
+        assert storage.get_feature_flags_by_sets(['set02']) == ['split1']
 
         storage.update([], [split1.name], 1)
-        assert storage.get_feature_flags_by_set('set02') == []
-        assert storage._sets_feature_flag_map == {'set10': set(), 'set02': set(), 'set05': set()}
+        assert storage.get_feature_flags_by_sets(['set02']) == []
+        assert storage.flag_set.sets_feature_flag_map == {'set10': set(), 'set02': set(), 'set05': set()}
 
         storage.update([split3], [], 1)
-        assert storage.get_feature_flags_by_set('set05') == ['split3']
+        assert storage.get_feature_flags_by_sets(['set05']) == ['split3']
         assert not storage.is_flag_set_exist('set04')
 
     def test_flag_sets_withut_config_sets(self):
         storage = InMemorySplitStorage()
-        assert storage._sets_feature_flag_map == {}
-        assert storage.config_flag_sets_used == 0
+        assert storage.flag_set_filter.flag_sets == set({})
+        assert not storage.flag_set_filter.should_filter
+
+        assert storage.flag_set.sets_feature_flag_map == {}
 
         split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
                       'ACTIVE', 1, sets=['set10', 'set02'])
@@ -267,34 +331,34 @@ class InMemorySplitStorageTests(object):
         split3 = Split('split3', 123456789, False, 'some', 'traffic_type',
                       'ACTIVE', 1, sets=['set04', 'set05'])
         storage.update([split1], [], 1)
-        assert storage.get_feature_flags_by_set('set10') == ['split1']
-        assert storage.get_feature_flags_by_set('set02') == ['split1']
+        assert storage.get_feature_flags_by_sets(['set10']) == ['split1']
+        assert storage.get_feature_flags_by_sets(['set02']) == ['split1']
         assert storage.is_flag_set_exist('set10')
         assert storage.is_flag_set_exist('set02')
         assert not storage.is_flag_set_exist('set03')
 
         storage.update([split2], [], 1)
-        assert storage.get_feature_flags_by_set('set05') == ['split2']
-        assert sorted(storage.get_feature_flags_by_set('set02')) == ['split1', 'split2']
+        assert storage.get_feature_flags_by_sets(['set05']) == ['split2']
+        assert sorted(storage.get_feature_flags_by_sets(['set02', 'set05'])) == ['split1', 'split2']
         assert storage.is_flag_set_exist('set05')
 
         storage.update([], [split2.name], 1)
         assert not storage.is_flag_set_exist('set05')
-        assert storage.get_feature_flags_by_set('set02') == ['split1']
+        assert storage.get_feature_flags_by_sets(['set02']) == ['split1']
 
         split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
                       'ACTIVE', 1, sets=['set02'])
         storage.update([split1], [], 1)
         assert not storage.is_flag_set_exist('set10')
-        assert storage.get_feature_flags_by_set('set02') == ['split1']
+        assert storage.get_feature_flags_by_sets(['set02']) == ['split1']
 
         storage.update([], [split1.name], 1)
-        assert storage.get_feature_flags_by_set('set02') == []
-        assert storage._sets_feature_flag_map == {}
+        assert storage.get_feature_flags_by_sets(['set02']) == []
+        assert storage.flag_set.sets_feature_flag_map == {}
 
         storage.update([split3], [], 1)
-        assert storage.get_feature_flags_by_set('set05') == ['split3']
-        assert storage.get_feature_flags_by_set('set04') == ['split3']
+        assert storage.get_feature_flags_by_sets(['set05']) == ['split3']
+        assert storage.get_feature_flags_by_sets(['set04', 'set05']) == ['split3']
 
 
 class InMemorySegmentStorageTests(object):
@@ -547,7 +611,7 @@ class InMemoryTelemetryStorageTests(object):
         assert(storage._counters._auth_rejections == 0)
         assert(storage._counters._token_refreshes == 0)
 
-        assert(storage._method_exceptions.pop_all() == {'methodExceptions': {'treatment': 0, 'treatments': 0, 'treatment_with_config': 0, 'treatments_with_config': 0, 'track': 0}})
+        assert(storage._method_exceptions.pop_all() == {'methodExceptions': {'treatment': 0, 'treatments': 0, 'treatment_with_config': 0, 'treatments_with_config': 0, 'treatments_by_flag_set': 0, 'treatments_by_flag_sets': 0, 'treatments_with_config_by_flag_set': 0, 'treatments_with_config_by_flag_sets': 0, 'track': 0}})
         assert(storage._last_synchronization.get_all() == {'lastSynchronizations': {'split': 0, 'segment': 0, 'impression': 0, 'impressionCount': 0, 'event': 0, 'telemetry': 0, 'token': 0}})
         assert(storage._http_sync_errors.pop_all() == {'httpErrors': {'split': {}, 'segment': {}, 'impression': {}, 'impressionCount': {}, 'event': {}, 'telemetry': {}, 'token': {}}})
         assert(storage._tel_config.get_stats() == {
@@ -571,7 +635,7 @@ class InMemoryTelemetryStorageTests(object):
         assert(storage._streaming_events.pop_streaming_events() == {'streamingEvents': []})
         assert(storage._tags == [])
 
-        assert(storage._method_latencies.pop_all() == {'methodLatencies': {'treatment': [0] * 23, 'treatments': [0] * 23, 'treatment_with_config': [0] * 23, 'treatments_with_config': [0] * 23, 'track': [0] * 23}})
+        assert(storage._method_latencies.pop_all() == {'methodLatencies': {'treatment': [0] * 23, 'treatments': [0] * 23, 'treatment_with_config': [0] * 23, 'treatments_with_config': [0] * 23, 'treatments_by_flag_set': [0] * 23, 'treatments_by_flag_sets': [0] * 23, 'treatments_with_config_by_flag_set': [0] * 23, 'treatments_with_config_by_flag_sets': [0] * 23, 'track': [0] * 23}})
         assert(storage._http_latencies.pop_all() == {'httpLatencies': {'split': [0] * 23, 'segment': [0] * 23, 'impression': [0] * 23, 'impressionCount': [0] * 23, 'event': [0] * 23, 'telemetry': [0] * 23, 'token': [0] * 23}})
 
     def test_record_config(self):
@@ -698,6 +762,14 @@ class InMemoryTelemetryStorageTests(object):
             return storage._method_latencies._treatment_with_config
         elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG:
             return storage._method_latencies._treatments_with_config
+        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET:
+            return storage._method_latencies._treatments_by_flag_set
+        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS:
+            return storage._method_latencies._treatments_by_flag_sets
+        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET:
+            return storage._method_latencies._treatments_with_config_by_flag_set
+        elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS:
+            return storage._method_latencies._treatments_with_config_by_flag_sets
         elif resource == ModelTelemetry.MethodExceptionsAndLatencies.TRACK:
             return storage._method_latencies._track
         else:
@@ -728,6 +800,10 @@ class InMemoryTelemetryStorageTests(object):
         storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS)
         storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG)
         [storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG) for i in range(5)]
+        [storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET) for i in range(3)]
+        [storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS) for i in range(10)]
+        [storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET)  for i in range(7)]
+        [storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS) for i in range(6)]
         [storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TRACK) for i in range(3)]
         exceptions = storage.pop_exceptions()
         assert(storage._method_exceptions._treatment == 0)
@@ -735,7 +811,7 @@ class InMemoryTelemetryStorageTests(object):
         assert(storage._method_exceptions._treatment_with_config == 0)
         assert(storage._method_exceptions._treatments_with_config == 0)
         assert(storage._method_exceptions._track == 0)
-        assert(exceptions == {'methodExceptions': {'treatment': 2, 'treatments': 1, 'treatment_with_config': 1, 'treatments_with_config': 5, 'track': 3}})
+        assert(exceptions == {'methodExceptions': {'treatment': 2, 'treatments': 1, 'treatment_with_config': 1, 'treatments_with_config': 5, 'treatments_by_flag_set': 3, 'treatments_by_flag_sets': 10, 'treatments_with_config_by_flag_set': 7, 'treatments_with_config_by_flag_sets': 6, 'track': 3}})
 
         storage.add_tag('tag1')
         storage.add_tag('tag2')
@@ -787,6 +863,10 @@ class InMemoryTelemetryStorageTests(object):
         [storage.record_latency(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS, i) for i in [7, 10, 14, 13]]
         [storage.record_latency(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG, i) for i in [200]]
         [storage.record_latency(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG, i) for i in [50, 40]]
+        [storage.record_latency(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET, i) for i in [15, 20]]
+        [storage.record_latency(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS, i) for i in [14, 25]]
+        [storage.record_latency(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET, i) for i in [100]]
+        [storage.record_latency(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS, i) for i in [50, 20]]
         [storage.record_latency(ModelTelemetry.MethodExceptionsAndLatencies.TRACK, i) for i in [1, 10, 100]]
         latencies = storage.pop_latencies()
 
@@ -795,8 +875,16 @@ class InMemoryTelemetryStorageTests(object):
         assert(storage._method_latencies._treatment_with_config == [0] * 23)
         assert(storage._method_latencies._treatments_with_config == [0] * 23)
         assert(storage._method_latencies._track == [0] * 23)
-        assert(latencies ==  {'methodLatencies': {'treatment': [4] + [0] * 22, 'treatments': [4] + [0] * 22,
-                              'treatment_with_config': [1] + [0] * 22, 'treatments_with_config': [2] + [0] * 22, 'track': [3] + [0] * 22}})
+        assert(latencies ==  {'methodLatencies': {
+                    'treatment': [4] + [0] * 22,
+                    'treatments': [4] + [0] * 22,
+                    'treatment_with_config': [1] + [0] * 22,
+                    'treatments_with_config': [2] + [0] * 22,
+                    'treatments_by_flag_set': [2] + [0] * 22,
+                    'treatments_by_flag_sets': [2] + [0] * 22,
+                    'treatments_with_config_by_flag_set': [1] + [0] * 22,
+                    'treatments_with_config_by_flag_sets': [2] + [0] * 22,
+                    'track': [3] + [0] * 22}})
 
         [storage.record_sync_latency(ModelTelemetry.HTTPExceptionsAndLatencies.SPLIT, i) for i in [50, 10, 20, 40]]
         [storage.record_sync_latency(ModelTelemetry.HTTPExceptionsAndLatencies.SEGMENT, i) for i in [70, 100, 40, 30]]

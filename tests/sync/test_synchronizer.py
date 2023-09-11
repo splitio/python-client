@@ -161,7 +161,14 @@ class SynchronizerTests(object):
         split_storage = mocker.Mock(spec=SplitStorage)
         split_storage.get_change_number.return_value = 123
         split_storage.get_segment_names.return_value = ['segmentA']
-        split_storage.config_flag_sets_used = 0
+        class flag_set_filter():
+            def should_filter():
+                return False
+
+            def intersect(sets):
+                return True
+
+        split_storage.flag_set_filter = flag_set_filter
         split_api = mocker.Mock()
         split_api.fetch_splits.return_value = {'splits': self.splits, 'since': 123,
                                                'till': 123}
