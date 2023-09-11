@@ -128,6 +128,17 @@ class SplitSynchronizer(object):
             how_long = self._backoff.get()
             time.sleep(how_long)
 
+    def _get_config_sets(self):
+        """
+        Get all filter flag sets cnverrted to string, if no filter flagsets exist return None
+
+        :return: string with flagsets
+        :rtype: str
+        """
+        if self._feature_flag_storage.flag_set_filter.flag_sets == set({}):
+            return None
+        return ','.join(self._feature_flag_storage.flag_set_filter.flag_sets)
+
     def synchronize_splits(self, till=None):
         """
         Hit endpoint, update storage and return True if sync is complete.
@@ -136,7 +147,7 @@ class SplitSynchronizer(object):
         :type till: int
         """
         final_segment_list = set()
-        fetch_options = FetchOptions(True)  # Set Cache-Control to no-cache
+        fetch_options = FetchOptions(True, sets=self._get_config_sets())  # Set Cache-Control to no-cache
         successful_sync, remaining_attempts, change_number, segment_list = self._attempt_feature_flag_sync(fetch_options,
                                                                                       till)
         final_segment_list.update(segment_list)
@@ -144,7 +155,7 @@ class SplitSynchronizer(object):
         if successful_sync:  # succedeed sync
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return final_segment_list
-        with_cdn_bypass = FetchOptions(True, change_number)  # Set flag for bypassing CDN
+        with_cdn_bypass = FetchOptions(True, change_number, sets=self._get_config_sets())  # Set flag for bypassing CDN
         without_cdn_successful_sync, remaining_attempts, change_number, segment_list = self._attempt_feature_flag_sync(with_cdn_bypass, till)
         final_segment_list.update(segment_list)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
