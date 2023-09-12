@@ -441,9 +441,9 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
         def get_feature_flags_by_sets(flag_sets):
-            if flag_sets == ['set1', 'set2']:
+            if sorted(flag_sets) == ['set1', 'set2']:
                 return ['f1', 'f2']
-            if flag_sets == ['set3', 'set4']:
+            if sorted(flag_sets) == ['set3', 'set4']:
                 return ['f3', 'f4']
             if flag_sets == ['set5']:
                 return ['some_feature']
@@ -465,6 +465,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         client._evaluator.evaluate_features = evaluate_features
         _logger = mocker.Mock()
         client._send_impression_to_listener = mocker.Mock()
+#        pytest.set_trace()
         assert client.get_treatments_by_flag_sets('key', ['set1', 'set2']) == {'f1': 'on', 'f2': 'on'}
 
         impressions_called = impmanager.process_impressions.mock_calls[0][1][0]
@@ -623,9 +624,9 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
         def get_feature_flags_by_sets(flag_sets):
-            if flag_sets == ['set1', 'set2']:
+            if sorted(flag_sets) == ['set1', 'set2']:
                 return ['f1', 'f2']
-            if flag_sets == ['set3', 'set4']:
+            if sorted(flag_sets) == ['set3', 'set4']:
                 return ['f3', 'f4']
             if flag_sets == ['set5']:
                 return ['some_feature']

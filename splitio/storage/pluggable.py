@@ -36,7 +36,7 @@ class PluggableSplitStorage(SplitStorage):
             self._prefix = prefix + "." + self._prefix
             self._traffic_type_prefix = prefix + "." + self._traffic_type_prefix
             self._feature_flag_till_prefix = prefix + "." + self._feature_flag_till_prefix
-            self._feature_flag_set_prefix = prefix + "." + self._feature_flag_till_prefix
+            self._feature_flag_set_prefix = prefix + "." + self._feature_flag_set_prefix
 
     def get(self, feature_flag_name):
         """
@@ -91,12 +91,13 @@ class PluggableSplitStorage(SplitStorage):
                 return []
 
             keys = [self._feature_flag_set_prefix.format(flag_set=flag_set) for flag_set in sets_to_fetch]
-            return self._pluggable_adapter.get_many(keys)
+            result_sets = []
+            [result_sets.append(set(key)) for key in self._pluggable_adapter.get_many(keys)]
+            return list(combine_valid_flag_sets(result_sets))
         except Exception:
             _LOGGER.error('Error fetching feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
-
 
     # TODO: To be added when producer mode is supported
 #    def put_many(self, splits, change_number):

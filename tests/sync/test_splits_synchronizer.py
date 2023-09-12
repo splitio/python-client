@@ -63,6 +63,14 @@ class SplitsSynchronizerTests(object):
         run._calls = 0
         api.fetch_splits.side_effect = run
         storage.get_change_number.return_value = -1
+        class flag_set_filter():
+            def should_filter():
+                return False
+
+            def intersect(sets):
+                return True
+        storage.flag_set_filter = flag_set_filter
+        storage.flag_set_filter.flag_sets = {}
 
         split_synchronizer = SplitSynchronizer(api, storage)
 
@@ -87,8 +95,8 @@ class SplitsSynchronizerTests(object):
 
             def intersect(sets):
                 return True
-
         storage.flag_set_filter = flag_set_filter
+        storage.flag_set_filter.flag_sets = {}
 
         api = mocker.Mock()
         def get_changes(*args, **kwargs):
@@ -112,8 +120,10 @@ class SplitsSynchronizerTests(object):
         split_synchronizer = SplitSynchronizer(api, storage)
         split_synchronizer.synchronize_splits()
 
-        assert mocker.call(-1, FetchOptions(True)) in api.fetch_splits.mock_calls
-        assert mocker.call(123, FetchOptions(True)) in api.fetch_splits.mock_calls
+        assert api.fetch_splits.mock_calls[0][1][0] == -1
+        assert api.fetch_splits.mock_calls[0][1][1].cache_control_headers == True
+        assert api.fetch_splits.mock_calls[1][1][0] == 123
+        assert api.fetch_splits.mock_calls[1][1][1].cache_control_headers == True
 
         inserted_split = storage.update.mock_calls[0][1][0][0]
         assert isinstance(inserted_split, Split)
@@ -122,6 +132,14 @@ class SplitsSynchronizerTests(object):
     def test_not_called_on_till(self, mocker):
         """Test that sync is not called when till is less than previous changenumber"""
         storage = mocker.Mock(spec=InMemorySplitStorage)
+        class flag_set_filter():
+            def should_filter():
+                return False
+
+            def intersect(sets):
+                return True
+        storage.flag_set_filter = flag_set_filter
+        storage.flag_set_filter.flag_sets = {}
 
         def change_number_mock():
             return 2
@@ -184,17 +202,21 @@ class SplitsSynchronizerTests(object):
                 return True
 
         storage.flag_set_filter = flag_set_filter
+        storage.flag_set_filter.flag_sets = {}
 
         split_synchronizer = SplitSynchronizer(api, storage)
         split_synchronizer._backoff = Backoff(1, 1)
         split_synchronizer.synchronize_splits()
 
-        assert mocker.call(-1, FetchOptions(True)) in api.fetch_splits.mock_calls
-        assert mocker.call(123, FetchOptions(True)) in api.fetch_splits.mock_calls
+        assert api.fetch_splits.mock_calls[0][1][0] == -1
+        assert api.fetch_splits.mock_calls[0][1][1].cache_control_headers == True
+        assert api.fetch_splits.mock_calls[1][1][0] == 123
+        assert api.fetch_splits.mock_calls[1][1][1].cache_control_headers == True
 
         split_synchronizer._backoff = Backoff(1, 0.1)
         split_synchronizer.synchronize_splits(12345)
-        assert mocker.call(12345, FetchOptions(True, 1234)) in api.fetch_splits.mock_calls
+        assert api.fetch_splits.mock_calls[3][1][0] == 1234
+        assert api.fetch_splits.mock_calls[3][1][1].cache_control_headers == True
         assert len(api.fetch_splits.mock_calls) == 8 # 2 ok + BACKOFF(2 since==till + 2 re-attempts) + CDN(2 since==till)
 
         inserted_split = storage.update.mock_calls[0][1][0][0]

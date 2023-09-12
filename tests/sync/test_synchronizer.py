@@ -23,6 +23,13 @@ class SynchronizerTests(object):
     def test_sync_all_failed_splits(self, mocker):
         api = mocker.Mock()
         storage = mocker.Mock()
+        class flag_set_filter():
+            def should_filter():
+                return False
+            def intersect(sets):
+                return True
+        storage.flag_set_filter = flag_set_filter
+        storage.flag_set_filter.flag_sets = {}
 
         def run(x, c):
             raise APIException("something broke")
@@ -41,6 +48,13 @@ class SynchronizerTests(object):
     def test_sync_all_failed_splits_with_flagsets(self, mocker):
         api = mocker.Mock()
         storage = mocker.Mock()
+        class flag_set_filter():
+            def should_filter():
+                return False
+            def intersect(sets):
+                return True
+        storage.flag_set_filter = flag_set_filter
+        storage.flag_set_filter.flag_sets = {}
 
         def run(x, c):
             raise APIException("something broke", 414)
@@ -164,11 +178,11 @@ class SynchronizerTests(object):
         class flag_set_filter():
             def should_filter():
                 return False
-
             def intersect(sets):
                 return True
-
         split_storage.flag_set_filter = flag_set_filter
+        split_storage.flag_set_filter.flag_sets = {}
+
         split_api = mocker.Mock()
         split_api.fetch_splits.return_value = {'splits': self.splits, 'since': 123,
                                                'till': 123}

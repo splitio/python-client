@@ -1179,7 +1179,6 @@ class PluggableIntegrationTests(object):
             if split.get('sets') is not None:
                 for flag_set in split.get('sets'):
                     self.pluggable_storage_adapter.push_items(split_storage._feature_flag_set_prefix.format(flag_set=flag_set), split['name'])
-
         self.pluggable_storage_adapter.set(split_storage._feature_flag_till_prefix, data['till'])
 
         segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
