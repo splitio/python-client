@@ -153,7 +153,7 @@ def sanitize_flag_sets(flag_sets):
 
         sanitized_flag_sets.add(flag_set.strip())
 
-    return sorted(list(sanitized_flag_sets))
+    return list(sanitized_flag_sets)
 
 def sanitize(sdk_key, config):
     """
@@ -179,6 +179,6 @@ def sanitize(sdk_key, config):
         _LOGGER.warning('metricRefreshRate parameter minimum value is 60 seconds, defaulting to 3600 seconds.')
         processed['metricsRefreshRate'] = 3600
 
-    processed['flagSetsFilter'] = sanitize_flag_sets(processed['flagSetsFilter']) if processed['flagSetsFilter'] is not None else None
+    processed['flagSetsFilter'] = sorted(sanitize_flag_sets(processed['flagSetsFilter'])) if processed['flagSetsFilter'] is not None else None
 
     return processed
