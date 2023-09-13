@@ -61,7 +61,7 @@ class Token(object):
 def decode_token(raw_token):
     """Decode token"""
     if not 'pushEnabled' in raw_token or not 'token' in raw_token:
-        return None, None, None
+        return False, None, None
     token = raw_token['token']
     push_enabled = raw_token['pushEnabled']
     if not push_enabled or len(token.strip()) == 0:
