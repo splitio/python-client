@@ -3,6 +3,7 @@
 import base64
 import json
 
+
 class Token(object):
     """Token object class."""
 
