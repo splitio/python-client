@@ -28,7 +28,6 @@ class PluggableSplitStorage(SplitStorage):
         :type prefix: str
         """
         self._pluggable_adapter = pluggable_adapter
-        self._config_flag_sets = config_flag_sets
         self._prefix = "SPLITIO.split.{feature_flag_name}"
         self._traffic_type_prefix = "SPLITIO.trafficType.{traffic_type_name}"
         self._feature_flag_till_prefix = "SPLITIO.splits.till"
@@ -81,8 +80,8 @@ class PluggableSplitStorage(SplitStorage):
         """
         Retrieve feature flags by flag set.
 
-        :param flag_set: Names of the flag set to fetch.
-        :type flag_set: str
+        :param flag_sets: List of flag sets to fetch.
+        :type flag_sets: list(str)
 
         :return: Feature flag names that are tagged with the flag set
         :rtype: listt(str)

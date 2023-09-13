@@ -22,7 +22,7 @@ class RedisSplitStorage(SplitStorage):
     _FEATURE_FLAG_KEY = 'SPLITIO.split.{feature_flag_name}'
     _FEATURE_FLAG_TILL_KEY = 'SPLITIO.splits.till'
     _TRAFFIC_TYPE_KEY = 'SPLITIO.trafficType.{traffic_type_name}'
-    _SET_KEY = 'SPLITIO.flagSet.{flag_set}'
+    _FLAG_SET_KEY = 'SPLITIO.flagSet.{flag_set}'
 
     def __init__(self, redis_client, enable_caching=False, max_age=DEFAULT_MAX_AGE, config_flag_sets=[]):
         """
@@ -63,7 +63,7 @@ class RedisSplitStorage(SplitStorage):
         """
         return self._TRAFFIC_TYPE_KEY.format(traffic_type_name=traffic_type_name)
 
-    def _get_set_key(self, flag_set):
+    def _get_flag_set_key(self, flag_set):
         """
         Use the provided flag set to build the appropriate redis key.
 
@@ -73,7 +73,7 @@ class RedisSplitStorage(SplitStorage):
         :return: Redis key.
         :rtype: str.
         """
-        return self._SET_KEY.format(flag_set=flag_set)
+        return self._FLAG_SET_KEY.format(flag_set=flag_set)
 
     def get(self, feature_flag_name):  # pylint: disable=method-hidden
         """
@@ -110,7 +110,7 @@ class RedisSplitStorage(SplitStorage):
             if sets_to_fetch == []:
                 return []
 
-            keys = [self._get_set_key(flag_set) for flag_set in sets_to_fetch]
+            keys = [self._get_flag_set_key(flag_set) for flag_set in sets_to_fetch]
             pipe = self._pipe()
             [pipe.smembers(key) for key in keys]
             result_sets = pipe.execute()
