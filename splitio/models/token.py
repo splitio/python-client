@@ -59,7 +59,15 @@ class Token(object):
 
 
 def decode_token(raw_token):
-    """Decode token"""
+    """
+    Parse a new token from a raw token response.
+
+    :param raw_token: Token parsed from auth response.
+    :type raw_token: dict
+
+    :return: New token model object
+    :rtype: splitio.models.token.Token
+    """
     if not 'pushEnabled' in raw_token or not 'token' in raw_token:
         return Token(False, None, None, None, None)
     token = raw_token['token']
@@ -71,19 +79,4 @@ def decode_token(raw_token):
 
     to_decode = token_parts[1]
     decoded_token = json.loads(base64.b64decode(to_decode + '='*(-len(to_decode) % 4)))
-#    return push_enabled, token, json.loads(decoded_payload)
     return Token(push_enabled, token, json.loads(decoded_token['x-ably-capability']), decoded_token['exp'], decoded_token['iat'])
-
-
-def from_raw(raw_token):
-    """
-    Parse a new token from a raw token response.
-
-    :param raw_token: Token parsed from auth response.
-    :type raw_token: dict
-
-    :return: New token model object
-    :rtype: splitio.models.token.Token
-    """
-#    push_enabled, token, decoded_token = decode_token(raw_token)
-    return decode_token(raw_token)

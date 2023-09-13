@@ -7,7 +7,7 @@ from splitio.api import APIException
 from splitio.api.commons import headers_from_metadata, record_telemetry
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.api.client import HttpClientException
-from splitio.models.token import from_raw
+from splitio.models.token import decode_token
 from splitio.models.telemetry import HTTPExceptionsAndLatencies
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ class AuthAPI(object):  # pylint: disable=too-few-public-methods
             record_telemetry(response.status_code, get_current_epoch_time_ms() - start, HTTPExceptionsAndLatencies.TOKEN, self._telemetry_runtime_producer)
             if 200 <= response.status_code < 300:
                 payload = json.loads(response.body)
-                return from_raw(payload)
+                return decode_token(payload)
             else:
                 if (response.status_code >= 400 and response.status_code < 500):
                     self._telemetry_runtime_producer.record_auth_rejections()

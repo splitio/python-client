@@ -8,9 +8,9 @@ class TokenTests(object):
     """Token model tests."""
     raw_false = {'pushEnabled': False}
 
-    def test_from_raw_false(self):
+    def test_decode_token_false(self):
         """Test token model parsing."""
-        parsed = token.from_raw(self.raw_false)
+        parsed = token.decode_token(self.raw_false)
         assert parsed.push_enabled == False
         assert parsed.iat == None
         assert parsed.channels == None
@@ -22,9 +22,9 @@ class TokenTests(object):
         'token': '',
     }
 
-    def test_from_raw_empty(self):
+    def test_decode_token_empty(self):
         """Test token model parsing."""
-        parsed = token.from_raw(self.raw_empty)
+        parsed = token.decode_token(self.raw_empty)
         assert parsed.push_enabled == False
         assert parsed.iat == None
         assert parsed.channels == None
@@ -36,9 +36,9 @@ class TokenTests(object):
         'token': 'eyJhbGciOiJIUzI1NiIsImtpZCI6IjVZOU05US45QnJtR0EiLCJ0eXAiOiJKV1QifQ.eyJ4LWFibHktY2FwYWJpbGl0eSI6IntcIk56TTJNREk1TXpjMF9NVGd5TlRnMU1UZ3dOZz09X3NlZ21lbnRzXCI6W1wic3Vic2NyaWJlXCJdLFwiTnpNMk1ESTVNemMwX01UZ3lOVGcxTVRnd05nPT1fc3BsaXRzXCI6W1wic3Vic2NyaWJlXCJdLFwiY29udHJvbF9wcmlcIjpbXCJzdWJzY3JpYmVcIixcImNoYW5uZWwtbWV0YWRhdGE6cHVibGlzaGVyc1wiXSxcImNvbnRyb2xfc2VjXCI6W1wic3Vic2NyaWJlXCIsXCJjaGFubmVsLW1ldGFkYXRhOnB1Ymxpc2hlcnNcIl19IiwieC1hYmx5LWNsaWVudElkIjoiY2xpZW50SWQiLCJleHAiOjE2MDIwODgxMjcsImlhdCI6MTYwMjA4NDUyN30.5_MjWonhs6yoFhw44hNJm3H7_YMjXpSW105DwjjppqE',
     }
 
-    def test_from_raw(self):
+    def test_decode_token(self):
         """Test token model parsing."""
-        parsed = token.from_raw(self.raw_ok)
+        parsed = token.decode_token(self.raw_ok)
         assert isinstance(parsed, token.Token)
         assert parsed.push_enabled == True
         assert parsed.iat == 1602084527
