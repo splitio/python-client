@@ -58,7 +58,7 @@ class Token(object):
         return self._iat
 
 
-def decode_token(raw_token):
+def from_raw(raw_token):
     """
     Parse a new token from a raw token response.
 
