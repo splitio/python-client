@@ -2,7 +2,7 @@
 
 import base64
 import json
-
+import pytest
 
 class Token(object):
     """Token object class."""
@@ -62,15 +62,14 @@ def decode_token(raw_token):
     """Decode token"""
     if not 'pushEnabled' in raw_token or not 'token' in raw_token:
         return None, None, None
-
     token = raw_token['token']
     push_enabled = raw_token['pushEnabled']
     if not push_enabled or len(token.strip()) == 0:
-        return None, None, None
+        return False, None, None
 
     token_parts = token.split('.')
     if len(token_parts) < 2:
-        return None, None, None
+        return False, None, None
 
     to_decode = token_parts[1]
     decoded_payload = base64.b64decode(to_decode + '='*(-len(to_decode) % 4))
@@ -88,4 +87,4 @@ def from_raw(raw_token):
     :rtype: splitio.models.token.Token
     """
     push_enabled, token, decoded_token = decode_token(raw_token)
-    return None if push_enabled is None else Token(push_enabled, token, json.loads(decoded_token['x-ably-capability']), decoded_token['exp'], decoded_token['iat'])
+    return Token(push_enabled, None, None, None, None) if not push_enabled else Token(push_enabled, token, json.loads(decoded_token['x-ably-capability']), decoded_token['exp'], decoded_token['iat'])

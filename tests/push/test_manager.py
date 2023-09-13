@@ -93,7 +93,7 @@ class PushManagerTests(object):
     def test_empty_auth_respnse(self, mocker):
         """Test the initial status is ok and reset() works as expected."""
         api_mock = mocker.Mock()
-        api_mock.authenticate.return_value = None
+        api_mock.authenticate.return_value = Token(False, None, None, None, None)
 
         sse_mock = mocker.Mock(spec=SplitSSEClient)
         sse_constructor_mock = mocker.Mock()
