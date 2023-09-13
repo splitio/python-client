@@ -73,8 +73,7 @@ class FlagSets(object):
         :rtype: list(str)
         """
         with self._lock:
-            if self.flag_set_exist(flag_set):
-                return self.sets_feature_flag_map[flag_set]
+            return self.sets_feature_flag_map.get(flag_set)
 
     def add_flag_set(self, flag_set):
         """

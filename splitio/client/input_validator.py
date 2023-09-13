@@ -80,7 +80,7 @@ def _check_string_not_empty(value, name, operation):
     return True
 
 
-def _check_string_matches(value, operation, pattern):
+def _check_string_matches(value, operation, pattern, name):
     """
     Check if value is adhere to a regular expression passed.
 
@@ -93,14 +93,14 @@ def _check_string_matches(value, operation, pattern):
     :return: The result of validation
     :rtype: True|False
     """
-    if not re.match(pattern, value):
+    if re.search(pattern, value) is None or re.search(pattern, value).group() != value:
         _LOGGER.error(
             '%s: you passed %s, event_type must ' +
             'adhere to the regular expression %s. ' +
-            'This means an event name must be alphanumeric, cannot be more ' +
+            'This means %s must be alphanumeric, cannot be more ' +
             'than 80 characters long, and can only include a dash, underscore, ' +
             'period, or colon as separators of alphanumeric characters.',
-            operation, value, pattern
+            operation, value, pattern, name
         )
         return False
     return True
@@ -323,7 +323,7 @@ def validate_event_type(event_type):
     if (not _check_not_null(event_type, 'event_type', 'track')) or \
        (not _check_is_string(event_type, 'event_type', 'track')) or \
        (not _check_string_not_empty(event_type, 'event_type', 'track')) or \
-       (not _check_string_matches(event_type, 'track', EVENT_TYPE_PATTERN)):
+       (not _check_string_matches(event_type, 'track', EVENT_TYPE_PATTERN, 'an event name')):
         return None
     return event_type
 
@@ -591,10 +591,9 @@ def validate_flag_sets(flag_sets, method_name):
         flag_set = _remove_empty_spaces(flag_set, 'flag set', method_name)
         flag_set = _convert_str_to_lower(flag_set, 'flag set', method_name)
 
-        if re.search(_FLAG_SETS_REGEX, flag_set) is None or re.search(_FLAG_SETS_REGEX, flag_set).group() != flag_set:
-            _LOGGER.warning("%s: you passed %s, flag set must adhere to the regular expressions %s. This means a flag set must start with a letter, be in lowercase, alphanumeric and have a max length of 50 characteres. %s was discarded.", flag_set, _FLAG_SETS_REGEX, flag_set)
+        if not _check_string_matches(flag_set, method_name, _FLAG_SETS_REGEX, 'a flag set'):
             continue
 
-        sanitized_flag_sets.add(flag_set.strip())
+        sanitized_flag_sets.add(flag_set)
 
     return sorted(list(sanitized_flag_sets))

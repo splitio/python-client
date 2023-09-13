@@ -666,10 +666,10 @@ class ClientInputValidationTests(object):
         assert _logger.error.mock_calls == [
             mocker.call("%s: you passed %s, event_type must adhere to the regular "
                         "expression %s. This means "
-                        "an event name must be alphanumeric, cannot be more than 80 "
+                        "%s must be alphanumeric, cannot be more than 80 "
                         "characters long, and can only include a dash, underscore, "
                         "period, or colon as separators of alphanumeric characters.",
-                        'track', '@@', '^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$')
+                        'track', '@@', '^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$', 'an event name')
         ]
 
         _logger.reset_mock()
@@ -1073,6 +1073,33 @@ class ClientInputValidationTests(object):
                 'some_feature'
             )
         ]
+
+    def test_flag_sets_validation(self):
+        """Test sanitization for flag sets."""
+        flag_sets = input_validator.validate_flag_sets([' set1', 'set2 ', 'set3'], 'method')
+        assert sorted(flag_sets) == ['set1', 'set2', 'set3']
+
+        flag_sets = input_validator.validate_flag_sets(['1set', '_set2'], 'method')
+        assert flag_sets == ['1set']
+
+        flag_sets = input_validator.validate_flag_sets(['Set1', 'SET2'], 'method')
+        assert sorted(flag_sets) == ['set1', 'set2']
+
+        flag_sets = input_validator.validate_flag_sets(['se\t1', 's/et2', 's*et3', 's!et4', 'se@t5', 'se#t5', 'se$t5', 'se^t5', 'se%t5', 'se&t5'], 'method')
+        assert flag_sets == []
+
+        flag_sets = input_validator.validate_flag_sets(['set4', 'set1', 'set3', 'set1'], 'method')
+        assert sorted(flag_sets) == ['set1', 'set3', 'set4']
+
+        flag_sets = input_validator.validate_flag_sets(['w' * 50, 's' * 51], 'method')
+        assert flag_sets == ['w' * 50]
+
+        flag_sets = input_validator.validate_flag_sets('set1', 'method')
+        assert flag_sets == []
+
+        flag_sets = input_validator.validate_flag_sets([12, 33], 'method')
+        assert flag_sets == []
+
 
 class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-methods
     """Manager input validation test cases."""
