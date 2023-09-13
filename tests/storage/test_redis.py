@@ -14,7 +14,7 @@ from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
 from splitio.models.events import Event, EventWrapper
 from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MethodExceptionsAndLatencies
-
+from splitio.models.flag_sets import FlagSetsFilter
 
 class RedisSplitStorageTests(object):
     """Redis split storage test cases."""
@@ -177,15 +177,15 @@ class RedisSplitStorageTests(object):
         """Test Flag sets scenarios."""
         adapter = build({})
         storage = RedisSplitStorage(adapter, True, 1)
-        assert storage._config_flag_sets == []
+        assert storage.flag_set_filter.flag_sets == set({})
         assert sorted(storage.get_feature_flags_by_sets(['set1', 'set2'])) == ['split1', 'split2']
 
-        storage._config_flag_sets = ['set2', 'set3']
+        storage.flag_set_filter = FlagSetsFilter(['set2', 'set3'])
         assert storage.get_feature_flags_by_sets(['set1']) == []
         assert sorted(storage.get_feature_flags_by_sets(['set2'])) == ['split1', 'split2']
 
         storage2 = RedisSplitStorage(adapter, True, 1, ['set2', 'set3'])
-        assert storage2._config_flag_sets == ['set2', 'set3']
+        assert storage2.flag_set_filter.flag_sets == set({'set2', 'set3'})
 
 class RedisSegmentStorageTests(object):
     """Redis segment storage test cases."""

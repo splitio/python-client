@@ -404,9 +404,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
-        feature_flags_names = self._get_feature_flag_names_by_flag_sets(flag_sets)
+        feature_flags_names = self._get_feature_flag_names_by_flag_sets(flag_sets, method)
         if feature_flags_names == []:
-            _LOGGER.warning("No valid Flag set or no feature flags found for evaluating treatments")
+            _LOGGER.warning("%s: No valid Flag set or no feature flags found for evaluating treatments" % (method))
             return {}
 
         if 'config' in method.value:
@@ -418,7 +418,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         return {feature_flag: result[0] for (feature_flag, result) in with_config.items()}
 
 
-    def _get_feature_flag_names_by_flag_sets(self, flag_sets):
+    def _get_feature_flag_names_by_flag_sets(self, flag_sets, method_name):
         """
         Sanitize given flag sets and return list of feature flag names associated with them
 
@@ -428,10 +428,10 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :return: list of feature flag names
         :rtype: list
         """
-        sanitized_flag_sets = config.sanitize_flag_sets(flag_sets)
+        sanitized_flag_sets = input_validator.validate_flag_sets(flag_sets, method_name)
         feature_flags_by_set = self._split_storage.get_feature_flags_by_sets(sanitized_flag_sets)
         if feature_flags_by_set is None:
-            _LOGGER.warning("Fetching feature flags for flag set %s encountered an error, skipping this flag set." % (flag_sets))
+            _LOGGER.warning("%s: Fetching feature flags for flag set %s encountered an error, skipping this flag set." % (method_name, flag_sets))
             return []
         return feature_flags_by_set
 

@@ -33,7 +33,7 @@ def update_feature_flag_storage(feature_flag_storage, feature_flags, change_numb
     feature_flag_storage.update(to_add, to_delete, change_number)
     return segment_list
 
-def get_valid_flag_sets(flag_sets, config_flag_sets):
+def get_valid_flag_sets(flag_sets, flag_set_filter):
     """
     Check each flag set in given array, return it if exist in a given config flag set array, if config array is empty return all
 
@@ -47,7 +47,7 @@ def get_valid_flag_sets(flag_sets, config_flag_sets):
     """
     sets_to_fetch = []
     for flag_set in flag_sets:
-        if flag_set not in config_flag_sets and len(config_flag_sets) > 0:
+        if not flag_set_filter.set_exist(flag_set) and flag_set_filter.should_filter:
             _LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring the request." % (flag_set))
             continue
         sets_to_fetch.append(flag_set)

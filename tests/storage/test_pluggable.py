@@ -1,18 +1,18 @@
 """Pluggable storage test module."""
 import json
 import threading
+import pytest
 
 from splitio.models.splits import Split
 from splitio.models import splits, segments
 from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
 from splitio.models.events import Event, EventWrapper
+from splitio.models.flag_sets import FlagSetsFilter
 from splitio.storage.pluggable import PluggableSplitStorage, PluggableSegmentStorage, PluggableImpressionsStorage, PluggableEventsStorage, PluggableTelemetryStorage
 from splitio.client.util import get_metadata, SdkMetadata
 from splitio.models.telemetry import MAX_TAGS, MethodExceptionsAndLatencies, OperationMode
-
 from tests.integration import splits_json
-import pytest
 
 class StorageMockAdapter(object):
     def __init__(self):
@@ -85,10 +85,7 @@ class StorageMockAdapter(object):
             returned_keys = []
             for key in self._keys:
                 if key in keys:
-                    if isinstance(self._keys[key], list):
-                        returned_keys.extend(self._keys[key])
-                    else:
-                        returned_keys.append(self._keys[key])
+                    returned_keys.append(self._keys[key])
             return returned_keys
 
     def add_items(self, key, added_items):
@@ -141,9 +138,10 @@ class PluggableSplitStorageTests(object):
                 prefix = 'myprefix.'
             else:
                 prefix = ''
-        assert(pluggable_split_storage._prefix == prefix + "SPLITIO.split.{split_name}")
+        assert(pluggable_split_storage._prefix == prefix + "SPLITIO.split.{feature_flag_name}")
         assert(pluggable_split_storage._traffic_type_prefix == prefix + "SPLITIO.trafficType.{traffic_type_name}")
-        assert(pluggable_split_storage._split_till_prefix == prefix + "SPLITIO.splits.till")
+        assert(pluggable_split_storage._flag_set_prefix == prefix + "SPLITIO.flagSet.{flag_set}")
+        assert(pluggable_split_storage._feature_flag_till_prefix == prefix + "SPLITIO.splits.till")
 
     # TODO: To be added when producer mode is aupported
 #    def test_put_many(self):
@@ -168,7 +166,7 @@ class PluggableSplitStorageTests(object):
             split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
             split_name = splits_json['splitChange1_2']['splits'][0]['name']
 
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split_name), split1.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split_name), split1.to_json())
             assert(pluggable_split_storage.get(split_name).to_json() ==  splits.from_raw(splits_json['splitChange1_2']['splits'][0]).to_json())
             assert(pluggable_split_storage.get('not_existing') == None)
 
@@ -181,8 +179,8 @@ class PluggableSplitStorageTests(object):
             split2_temp['name'] = 'another_split'
             split2 = splits.from_raw(split2_temp)
 
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split1.name), split1.to_json())
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split2.name), split2.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split1.name), split1.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split2.name), split2.to_json())
             fetched = pluggable_split_storage.fetch_many([split1.name, split2.name])
             assert(fetched[split1.name].to_json() == split1.to_json())
             assert(fetched[split2.name].to_json() == split2.to_json())
@@ -220,8 +218,8 @@ class PluggableSplitStorageTests(object):
             split2_temp = splits_json['splitChange1_2']['splits'][0].copy()
             split2_temp['name'] = 'another_split'
             split2 = splits.from_raw(split2_temp)
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split1.name), split1.to_json())
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split2.name), split2.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split1.name), split1.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split2.name), split2.to_json())
             assert(pluggable_split_storage.get_split_names() == [split1.name, split2.name])
 
     def test_get_all(self):
@@ -233,10 +231,25 @@ class PluggableSplitStorageTests(object):
             split2_temp['name'] = 'another_split'
             split2 = splits.from_raw(split2_temp)
 
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split1.name), split1.to_json())
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split2.name), split2.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split1.name), split1.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split2.name), split2.to_json())
             all_splits = pluggable_split_storage.get_all()
             assert([all_splits[0].to_json(), all_splits[1].to_json()] == [split1.to_json(), split2.to_json()])
+
+    def test_flag_sets(self, mocker):
+        """Test Flag sets scenarios."""
+        self.mock_adapter._keys = {'SPLITIO.flagSet.set1': ['split1'], 'SPLITIO.flagSet.set2': ['split1','split2']}
+        pluggable_split_storage = PluggableSplitStorage(self.mock_adapter)
+        assert pluggable_split_storage.flag_set_filter.flag_sets == set({})
+        assert sorted(pluggable_split_storage.get_feature_flags_by_sets(['set1', 'set2'])) == ['split1', 'split2']
+
+        pluggable_split_storage.flag_set_filter = FlagSetsFilter(['set2', 'set3'])
+        assert pluggable_split_storage.get_feature_flags_by_sets(['set1']) == []
+        assert sorted(pluggable_split_storage.get_feature_flags_by_sets(['set2'])) == ['split1', 'split2']
+
+        storage2 = PluggableSplitStorage(self.mock_adapter, None, ['set2', 'set3'])
+        assert storage2.flag_set_filter.flag_sets == set({'set2', 'set3'})
+
 
     # TODO: To be added when producer mode is aupported
 #    def test_kill_locally(self):

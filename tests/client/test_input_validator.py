@@ -55,7 +55,7 @@ class ClientInputValidationTests(object):
 
         assert client.get_treatment(None, 'some_feature') == CONTROL
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed a null key, key must be a non-empty string.', 'get_treatment')
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment', 'key', 'key')
         ]
 
         _logger.reset_mock()
@@ -139,7 +139,7 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatment(Key(None, 'bucketing_key'), 'some_feature') == CONTROL
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment', 'matching_key', 'matching_key')
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment', 'key', 'key')
         ]
 
         _logger.reset_mock()
@@ -188,7 +188,7 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatment(Key('matching_key', None), 'some_feature') == CONTROL
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment', 'bucketing_key', 'bucketing_key')
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment', 'key', 'key')
         ]
 
         _logger.reset_mock()
@@ -232,7 +232,7 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatment('matching_key', '  some_feature   ', None) == 'default_treatment'
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatment', '  some_feature   ')
+            mocker.call('%s: %s \'%s\' has extra whitespace, trimming.', 'get_treatment', 'feature flag name', '  some_feature   ')
         ]
 
         _logger.reset_mock()
@@ -289,7 +289,7 @@ class ClientInputValidationTests(object):
 
         assert client.get_treatment_with_config(None, 'some_feature') == (CONTROL, None)
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed a null key, key must be a non-empty string.', 'get_treatment_with_config')
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment_with_config', 'key', 'key')
         ]
 
         _logger.reset_mock()
@@ -373,7 +373,7 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatment_with_config(Key(None, 'bucketing_key'), 'some_feature') == (CONTROL, None)
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment_with_config', 'matching_key', 'matching_key')
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment_with_config', 'key', 'key')
         ]
 
         _logger.reset_mock()
@@ -422,7 +422,7 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatment_with_config(Key('matching_key', None), 'some_feature') == (CONTROL, None)
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment_with_config', 'bucketing_key', 'bucketing_key')
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment_with_config', 'key', 'key')
         ]
 
         _logger.reset_mock()
@@ -466,7 +466,7 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatment_with_config('matching_key', '  some_feature   ', None) == ('default_treatment', '{"some": "property"}')
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatment_with_config', '  some_feature   ')
+            mocker.call('%s: %s \'%s\' has extra whitespace, trimming.', 'get_treatment_with_config', 'feature flag name', '  some_feature   ')
         ]
 
         _logger.reset_mock()
@@ -629,7 +629,7 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.track("some_key", "TRAFFIC_type", "event_type", 1) is True
         assert _logger.warning.mock_calls == [
-            mocker.call("track: %s should be all lowercase - converting string to lowercase.", 'TRAFFIC_type')
+            mocker.call("track: traffic type 'TRAFFIC_type' should be all lowercase - converting string to lowercase")
         ]
 
         assert client.track("some_key", "traffic_type", None, 1) is False
@@ -837,7 +837,7 @@ class ClientInputValidationTests(object):
 
         assert client.get_treatments(None, ['some_feature']) == {'some_feature': CONTROL}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed a null key, key must be a non-empty string.', 'get_treatments')
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatments', 'key', 'key')
         ]
 
         _logger.reset_mock()
@@ -912,7 +912,7 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatments('some_key', ['some   ']) == {'some': 'default_treatment'}
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatments', 'some   ')
+            mocker.call('%s: %s \'%s\' has extra whitespace, trimming.', 'get_treatments', 'feature flag name', 'some   ')
         ]
 
         _logger.reset_mock()
@@ -978,7 +978,7 @@ class ClientInputValidationTests(object):
 
         assert client.get_treatments_with_config(None, ['some_feature']) == {'some_feature': (CONTROL, None)}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed a null key, key must be a non-empty string.', 'get_treatments_with_config')
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatments_with_config', 'key', 'key')
         ]
 
         _logger.reset_mock()
@@ -1053,7 +1053,7 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatments_with_config('some_key', ['some_feature   ']) == {'some_feature': ('default_treatment', '{"some": "property"}')}
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatments_with_config', 'some_feature   ')
+            mocker.call('%s: %s \'%s\' has extra whitespace, trimming.', 'get_treatments_with_config', 'feature flag name', 'some_feature   ')
         ]
 
         _logger.reset_mock()
@@ -1265,3 +1265,29 @@ class PluggableInputValidationTests(object):  #pylint: disable=too-few-public-me
 
         # using non-string type prefix should not pass
         assert(not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storagePrefix': 'myprefix', 123: self.mock_adapter4()}))
+
+    def test_sanitize_flag_sets(self):
+        """Test sanitization for flag sets."""
+        flag_sets = input_validator.validate_flag_sets([' set1', 'set2 ', 'set3'])
+        assert flag_sets == ['set1', 'set2', 'set3']
+
+        flag_sets = input_validator.validate_flag_sets(['1set', '_set2'])
+        assert flag_sets == ['1set']
+
+        flag_sets = input_validator.validate_flag_sets(['Set1', 'SET2'])
+        assert flag_sets == ['set1', 'set2']
+
+        flag_sets = input_validator.validate_flag_sets(['se\t1', 's/et2', 's*et3', 's!et4', 'se@t5', 'se#t5', 'se$t5', 'se^t5', 'se%t5', 'se&t5'])
+        assert flag_sets == []
+
+        flag_sets = input_validator.validate_flag_sets(['set4', 'set1', 'set3', 'set1'])
+        assert flag_sets == ['set1', 'set3', 'set4']
+
+        flag_sets = input_validator.validate_flag_sets(['w' * 50, 's' * 51])
+        assert flag_sets == ['w' * 50]
+
+        flag_sets = input_validator.validate_flag_sets('set1')
+        assert flag_sets == []
+
+        flag_sets = input_validator.validate_flag_sets([12, 33])
+        assert flag_sets == []

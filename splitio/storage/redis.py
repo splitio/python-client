@@ -6,12 +6,12 @@ import threading
 from splitio.models.impressions import Impression
 from splitio.models import splits, segments
 from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, get_latency_bucket_index
+from splitio.models.flag_sets import FlagSetsFilter
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, \
     ImpressionPipelinedStorage, TelemetryStorage
 from splitio.storage.adapters.redis import RedisAdapterException
 from splitio.storage.adapters.cache_trait import decorate as add_cache, DEFAULT_MAX_AGE
 from splitio.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
-
 
 _LOGGER = logging.getLogger(__name__)
 MAX_TAGS = 10
@@ -22,7 +22,7 @@ class RedisSplitStorage(SplitStorage):
     _FEATURE_FLAG_KEY = 'SPLITIO.split.{feature_flag_name}'
     _FEATURE_FLAG_TILL_KEY = 'SPLITIO.splits.till'
     _TRAFFIC_TYPE_KEY = 'SPLITIO.trafficType.{traffic_type_name}'
-    _SET_KEY = 'SPLITIO.set.{flag_set}'
+    _SET_KEY = 'SPLITIO.flagSet.{flag_set}'
 
     def __init__(self, redis_client, enable_caching=False, max_age=DEFAULT_MAX_AGE, config_flag_sets=[]):
         """
@@ -32,7 +32,7 @@ class RedisSplitStorage(SplitStorage):
         :type redis_client: splitio.storage.adapters.redis.RedisAdapter
         """
         self._redis = redis_client
-        self._config_flag_sets = config_flag_sets
+        self.flag_set_filter = FlagSetsFilter(config_flag_sets)
         self._pipe = self._redis.pipeline
         if enable_caching:
             self.get = add_cache(lambda *p, **_: p[0], max_age)(self.get)
@@ -106,7 +106,7 @@ class RedisSplitStorage(SplitStorage):
         :rtype: listt(str)
         """
         try:
-            sets_to_fetch = get_valid_flag_sets(flag_sets, self._config_flag_sets)
+            sets_to_fetch = get_valid_flag_sets(flag_sets, self.flag_set_filter)
             if sets_to_fetch == []:
                 return []
 
