@@ -2,7 +2,6 @@
 
 import base64
 import json
-import pytest
 
 class Token(object):
     """Token object class."""
