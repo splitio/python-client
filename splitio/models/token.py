@@ -64,11 +64,9 @@ def decode_token(raw_token):
         return False, None, None
     token = raw_token['token']
     push_enabled = raw_token['pushEnabled']
-    if not push_enabled or len(token.strip()) == 0:
-        return False, None, None
+    token_parts = token.strip().split('.')
 
-    token_parts = token.split('.')
-    if len(token_parts) < 2:
+    if not push_enabled or len(token_parts) < 2:
         return False, None, None
 
     to_decode = token_parts[1]
