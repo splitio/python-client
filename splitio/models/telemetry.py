@@ -27,7 +27,7 @@ class CounterConstants(Enum):
     EVENTS_QUEUED = 'eventsQueued'
     EVENTS_DROPPED = 'eventsDropped'
 
-class ConfigParams(Enum):
+class _ConfigParams(Enum):
     """Config parameters constants"""
     SPLITS_REFRESH_RATE = 'featuresRefreshRate'
     SEGMENTS_REFRESH_RATE = 'segmentsRefreshRate'
@@ -42,7 +42,7 @@ class ConfigParams(Enum):
     IMPRESSIONS_MODE = 'impressionsMode'
     IMPRESSIONS_LISTENER = 'impressionListener'
 
-class ExtraConfig(Enum):
+class _ExtraConfig(Enum):
     """Extra config constants"""
     ACTIVE_FACTORY_COUNT = 'activeFactoryCount'
     REDUNDANT_FACTORY_COUNT = 'redundantFactoryCount'
@@ -53,7 +53,7 @@ class ExtraConfig(Enum):
     HTTP_PROXY = 'httpProxy'
     HTTPS_PROXY_ENV = 'HTTPS_PROXY'
 
-class ApiURLs(Enum):
+class _ApiURLs(Enum):
     """Api URL constants"""
     SDK_URL = 'sdk_url'
     EVENTS_URL = 'events_url'
@@ -88,7 +88,7 @@ class MethodExceptionsAndLatencies(Enum):
     TREATMENTS_WITH_CONFIG_BY_FLAG_SETS = 'treatments_with_config_by_flag_sets'
     TRACK = 'track'
 
-class LastSynchronizationConstants(Enum):
+class _LastSynchronizationConstants(Enum):
     """Last sync constants"""
     LAST_SYNCHRONIZATIONS = 'lastSynchronizations'
 
@@ -108,7 +108,7 @@ class SSESyncMode(Enum):
     STREAMING = 0
     POLLING = 1
 
-class StreamingEventsConstant(Enum):
+class _StreamingEventsConstant(Enum):
     """Storage types constant"""
     STREAMING_EVENTS = 'streamingEvents'
 
@@ -426,7 +426,7 @@ class LastSynchronization(object):
         :rtype: dict
         """
         with self._lock:
-            return {LastSynchronizationConstants.LAST_SYNCHRONIZATIONS.value: {HTTPExceptionsAndLatencies.SPLIT.value: self._split, HTTPExceptionsAndLatencies.SEGMENT.value: self._segment, HTTPExceptionsAndLatencies.IMPRESSION.value: self._impression,
+            return {_LastSynchronizationConstants.LAST_SYNCHRONIZATIONS.value: {HTTPExceptionsAndLatencies.SPLIT.value: self._split, HTTPExceptionsAndLatencies.SEGMENT.value: self._segment, HTTPExceptionsAndLatencies.IMPRESSION.value: self._impression,
                                         HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value: self._impression_count, HTTPExceptionsAndLatencies.EVENT.value: self._event,
                                         HTTPExceptionsAndLatencies.TELEMETRY.value: self._telemetry, HTTPExceptionsAndLatencies.TOKEN.value: self._token}
                     }
@@ -760,7 +760,7 @@ class StreamingEvents(object):
         with self._lock:
             streaming_events = self._streaming_events
             self._streaming_events = []
-            return {StreamingEventsConstant.STREAMING_EVENTS.value: [{'e': streaming_event.type, 'd': streaming_event.data,
+            return {_StreamingEventsConstant.STREAMING_EVENTS.value: [{'e': streaming_event.type, 'd': streaming_event.data,
                                          't': streaming_event.time} for streaming_event in streaming_events]}
 
 class TelemetryConfig(object):
@@ -782,10 +782,10 @@ class TelemetryConfig(object):
             self._operation_mode = None
             self._storage_type = None
             self._streaming_enabled = None
-            self._refresh_rate = {ConfigParams.SPLITS_REFRESH_RATE.value: 0, ConfigParams.SEGMENTS_REFRESH_RATE.value: 0,
-                ConfigParams.IMPRESSIONS_REFRESH_RATE.value: 0, ConfigParams.EVENTS_REFRESH_RATE.value: 0, ConfigParams.TELEMETRY_REFRESH_RATE.value: 0}
-            self._url_override = {ApiURLs.SDK_URL.value: False, ApiURLs.EVENTS_URL.value: False, ApiURLs.AUTH_URL.value: False,
-                                  ApiURLs.STREAMING_URL.value: False, ApiURLs.TELEMETRY_URL.value: False}
+            self._refresh_rate = {_ConfigParams.SPLITS_REFRESH_RATE.value: 0, _ConfigParams.SEGMENTS_REFRESH_RATE.value: 0,
+                _ConfigParams.IMPRESSIONS_REFRESH_RATE.value: 0, _ConfigParams.EVENTS_REFRESH_RATE.value: 0, _ConfigParams.TELEMETRY_REFRESH_RATE.value: 0}
+            self._url_override = {_ApiURLs.SDK_URL.value: False, _ApiURLs.EVENTS_URL.value: False, _ApiURLs.AUTH_URL.value: False,
+                                  _ApiURLs.STREAMING_URL.value: False, _ApiURLs.TELEMETRY_URL.value: False}
             self._impressions_queue_size = 0
             self._events_queue_size = 0
             self._impressions_mode = None
@@ -818,15 +818,15 @@ class TelemetryConfig(object):
         :type config: dict
         """
         with self._lock:
-            self._operation_mode = self._get_operation_mode(config[ConfigParams.OPERATION_MODE.value])
-            self._storage_type = self._get_storage_type(config[ConfigParams.OPERATION_MODE.value], config[ConfigParams.STORAGE_TYPE.value])
-            self._streaming_enabled = config[ConfigParams.STREAMING_ENABLED.value]
+            self._operation_mode = self._get_operation_mode(config[_ConfigParams.OPERATION_MODE.value])
+            self._storage_type = self._get_storage_type(config[_ConfigParams.OPERATION_MODE.value], config[_ConfigParams.STORAGE_TYPE.value])
+            self._streaming_enabled = config[_ConfigParams.STREAMING_ENABLED.value]
             self._refresh_rate = self._get_refresh_rates(config)
             self._url_override = self._get_url_overrides(extra_config)
-            self._impressions_queue_size = config[ConfigParams.IMPRESSIONS_QUEUE_SIZE.value]
-            self._events_queue_size = config[ConfigParams.EVENTS_QUEUE_SIZE.value]
-            self._impressions_mode = self._get_impressions_mode(config[ConfigParams.IMPRESSIONS_MODE.value])
-            self._impression_listener = True if config[ConfigParams.IMPRESSIONS_LISTENER.value] is not None else False
+            self._impressions_queue_size = config[_ConfigParams.IMPRESSIONS_QUEUE_SIZE.value]
+            self._events_queue_size = config[_ConfigParams.EVENTS_QUEUE_SIZE.value]
+            self._impressions_mode = self._get_impressions_mode(config[_ConfigParams.IMPRESSIONS_MODE.value])
+            self._impression_listener = True if config[_ConfigParams.IMPRESSIONS_LISTENER.value] is not None else False
             self._http_proxy = self._check_if_proxy_detected()
 
     def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
@@ -913,16 +913,16 @@ class TelemetryConfig(object):
                 'oM': self._operation_mode,
                 'sT': self._storage_type,
                 'sE': self._streaming_enabled,
-                'rR': {'sp': self._refresh_rate[ConfigParams.SPLITS_REFRESH_RATE.value],
-                                'se': self._refresh_rate[ConfigParams.SEGMENTS_REFRESH_RATE.value],
-                                'im': self._refresh_rate[ConfigParams.IMPRESSIONS_REFRESH_RATE.value],
-                                'ev': self._refresh_rate[ConfigParams.EVENTS_REFRESH_RATE.value],
-                                'te': self._refresh_rate[ConfigParams.TELEMETRY_REFRESH_RATE.value]},
-                'uO': {'s': self._url_override[ApiURLs.SDK_URL.value],
-                                'e': self._url_override[ApiURLs.EVENTS_URL.value],
-                                'a': self._url_override[ApiURLs.AUTH_URL.value],
-                                'st': self._url_override[ApiURLs.STREAMING_URL.value],
-                                't': self._url_override[ApiURLs.TELEMETRY_URL.value]},
+                'rR': {'sp': self._refresh_rate[_ConfigParams.SPLITS_REFRESH_RATE.value],
+                                'se': self._refresh_rate[_ConfigParams.SEGMENTS_REFRESH_RATE.value],
+                                'im': self._refresh_rate[_ConfigParams.IMPRESSIONS_REFRESH_RATE.value],
+                                'ev': self._refresh_rate[_ConfigParams.EVENTS_REFRESH_RATE.value],
+                                'te': self._refresh_rate[_ConfigParams.TELEMETRY_REFRESH_RATE.value]},
+                'uO': {'s': self._url_override[_ApiURLs.SDK_URL.value],
+                                'e': self._url_override[_ApiURLs.EVENTS_URL.value],
+                                'a': self._url_override[_ApiURLs.AUTH_URL.value],
+                                'st': self._url_override[_ApiURLs.STREAMING_URL.value],
+                                't': self._url_override[_ApiURLs.TELEMETRY_URL.value]},
                 'iQ': self._impressions_queue_size,
                 'eQ': self._events_queue_size,
                 'iM': self._impressions_mode,
@@ -981,11 +981,11 @@ class TelemetryConfig(object):
         """
         with self._lock:
             return {
-                ConfigParams.SPLITS_REFRESH_RATE.value: config[ConfigParams.SPLITS_REFRESH_RATE.value],
-                ConfigParams.SEGMENTS_REFRESH_RATE.value: config[ConfigParams.SEGMENTS_REFRESH_RATE.value],
-                ConfigParams.IMPRESSIONS_REFRESH_RATE.value: config[ConfigParams.IMPRESSIONS_REFRESH_RATE.value],
-                ConfigParams.EVENTS_REFRESH_RATE.value: config[ConfigParams.EVENTS_REFRESH_RATE.value],
-                ConfigParams.TELEMETRY_REFRESH_RATE.value: config[ConfigParams.TELEMETRY_REFRESH_RATE.value]
+                _ConfigParams.SPLITS_REFRESH_RATE.value: config[_ConfigParams.SPLITS_REFRESH_RATE.value],
+                _ConfigParams.SEGMENTS_REFRESH_RATE.value: config[_ConfigParams.SEGMENTS_REFRESH_RATE.value],
+                _ConfigParams.IMPRESSIONS_REFRESH_RATE.value: config[_ConfigParams.IMPRESSIONS_REFRESH_RATE.value],
+                _ConfigParams.EVENTS_REFRESH_RATE.value: config[_ConfigParams.EVENTS_REFRESH_RATE.value],
+                _ConfigParams.TELEMETRY_REFRESH_RATE.value: config[_ConfigParams.TELEMETRY_REFRESH_RATE.value]
             }
 
     def _get_url_overrides(self, config):
@@ -1000,11 +1000,11 @@ class TelemetryConfig(object):
         """
         with self._lock:
             return  {
-                ApiURLs.SDK_URL.value: True if ApiURLs.SDK_URL.value in config else False,
-                ApiURLs.EVENTS_URL.value: True if ApiURLs.EVENTS_URL.value in config else False,
-                ApiURLs.AUTH_URL.value: True if ApiURLs.AUTH_URL.value in config else False,
-                ApiURLs.STREAMING_URL.value: True if ApiURLs.STREAMING_URL.value in config else False,
-                ApiURLs.TELEMETRY_URL.value: True if ApiURLs.TELEMETRY_URL.value in config else False
+                _ApiURLs.SDK_URL.value: True if _ApiURLs.SDK_URL.value in config else False,
+                _ApiURLs.EVENTS_URL.value: True if _ApiURLs.EVENTS_URL.value in config else False,
+                _ApiURLs.AUTH_URL.value: True if _ApiURLs.AUTH_URL.value in config else False,
+                _ApiURLs.STREAMING_URL.value: True if _ApiURLs.STREAMING_URL.value in config else False,
+                _ApiURLs.TELEMETRY_URL.value: True if _ApiURLs.TELEMETRY_URL.value in config else False
             }
 
     def _get_impressions_mode(self, imp_mode):
@@ -1034,6 +1034,6 @@ class TelemetryConfig(object):
         """
         with self._lock:
             for x in os.environ:
-                if x.upper() == ExtraConfig.HTTPS_PROXY_ENV.value:
+                if x.upper() == _ExtraConfig.HTTPS_PROXY_ENV.value:
                     return True
             return False
