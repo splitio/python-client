@@ -600,7 +600,7 @@ def _build_localhost_factory(cfg):
     telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
 
     storages = {
-        'splits': InMemorySplitStorage(),
+        'splits': InMemorySplitStorage(cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
         'segments': InMemorySegmentStorage(),  # not used, just to avoid possible future errors.
         'impressions': LocalhostImpressionsStorage(),
         'events': LocalhostEventsStorage(),

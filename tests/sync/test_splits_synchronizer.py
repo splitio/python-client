@@ -3,6 +3,7 @@
 import pytest
 import os
 import json
+import copy
 
 from splitio.util.backoff import Backoff
 from splitio.api import APIException
@@ -13,7 +14,7 @@ from splitio.models.splits import Split
 from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer, LocalhostMode
 from tests.integration import splits_json
 
-splits = [{
+splits_raw = [{
     'changeNumber': 123,
     'trafficTypeName': 'user',
     'name': 'some_name',
@@ -52,6 +53,8 @@ splits = [{
 
 class SplitsSynchronizerTests(object):
     """Split synchronizer test cases."""
+
+    splits = copy.deepcopy(splits_raw)
 
     def test_synchronize_splits_error(self, mocker):
         """Test that if fetching splits fails at some_point, the task will continue running."""
@@ -104,7 +107,7 @@ class SplitsSynchronizerTests(object):
 
             if get_changes.called == 1:
                 return {
-                    'splits': splits,
+                    'splits': self.splits,
                     'since': -1,
                     'till': 123
                 }
@@ -181,7 +184,7 @@ class SplitsSynchronizerTests(object):
         def get_changes(*args, **kwargs):
             get_changes.called += 1
             if get_changes.called == 1:
-                return { 'splits': splits, 'since': -1, 'till': 123 }
+                return { 'splits': self.splits, 'since': -1, 'till': 123 }
             elif get_changes.called == 2:
                 return { 'splits': [], 'since': 123, 'till': 123 }
             elif get_changes.called == 3:
@@ -227,12 +230,12 @@ class SplitsSynchronizerTests(object):
         """Test split sync with flag sets."""
         storage = InMemorySplitStorage(['set1', 'set2'])
 
-        split = splits[0].copy()
+        split = self.splits[0].copy()
         split['name'] = 'second'
-        splits1 = [splits[0].copy(), split]
-        splits2 = splits.copy()
-        splits3 = splits.copy()
-        splits4 = splits.copy()
+        splits1 = [self.splits[0].copy(), split]
+        splits2 = self.splits.copy()
+        splits3 = self.splits.copy()
+        splits4 = self.splits.copy()
         api = mocker.Mock()
         def get_changes(*args, **kwargs):
             get_changes.called += 1
@@ -268,12 +271,12 @@ class SplitsSynchronizerTests(object):
         """Test split sync with flag sets."""
         storage = InMemorySplitStorage()
 
-        split = splits[0].copy()
+        split = self.splits[0].copy()
         split['name'] = 'second'
-        splits1 = [splits[0].copy(), split]
-        splits2 = splits.copy()
-        splits3 = splits.copy()
-        splits4 = splits.copy()
+        splits1 = [self.splits[0].copy(), split]
+        splits2 = self.splits.copy()
+        splits3 = self.splits.copy()
+        splits4 = self.splits.copy()
         api = mocker.Mock()
         def get_changes(*args, **kwargs):
             get_changes.called += 1
@@ -308,6 +311,8 @@ class SplitsSynchronizerTests(object):
 class LocalSplitsSynchronizerTests(object):
     """Split synchronizer test cases."""
 
+    splits = copy.deepcopy(splits_raw)
+
     def test_synchronize_splits_error(self, mocker):
         """Test that if fetching splits fails at some_point, the task will continue running."""
         storage = mocker.Mock(spec=SplitStorage)
@@ -321,79 +326,126 @@ class LocalSplitsSynchronizerTests(object):
         storage = InMemorySplitStorage()
 
         till = 123
-        splits = [{
-           'changeNumber': 123,
-           'trafficTypeName': 'user',
-           'name': 'some_name',
-           'trafficAllocation': 100,
-           'trafficAllocationSeed': 123456,
-           'seed': 321654,
-           'status': 'ACTIVE',
-           'killed': False,
-           'defaultTreatment': 'off',
-           'algo': 2,
-           'conditions': [
-               {
-                   'partitions': [
-                       {'treatment': 'on', 'size': 50},
-                       {'treatment': 'off', 'size': 50}
-                   ],
-                   'contitionType': 'WHITELIST',
-                   'label': 'some_label',
-                   'matcherGroup': {
-                       'matchers': [
-                           {
-                               'matcherType': 'WHITELIST',
-                               'whitelistMatcherData': {
-                                   'whitelist': ['k1', 'k2', 'k3']
-                               },
-                               'negate': False,
-                           }
-                       ],
-                       'combiner': 'AND'
-                   }
-               }
-            ]
-        }]
-
         def read_feature_flags_from_json_file(*args, **kwargs):
-                return splits, till
+                return self.splits, till
 
         split_synchronizer = LocalSplitSynchronizer("split.json", storage, LocalhostMode.JSON)
         split_synchronizer._read_feature_flags_from_json_file = read_feature_flags_from_json_file
 
         split_synchronizer.synchronize_splits()
-        inserted_split = storage.get(splits[0]['name'])
+        inserted_split = storage.get(self.splits[0]['name'])
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
 
         # Should sync when changenumber is not changed
-        splits[0]['killed'] = True
+        self.splits[0]['killed'] = True
         split_synchronizer.synchronize_splits()
-        inserted_split = storage.get(splits[0]['name'])
+        inserted_split = storage.get(self.splits[0]['name'])
         assert inserted_split.killed
 
         # Should not sync when changenumber is less than stored
         till = 122
-        splits[0]['killed'] = False
+        self.splits[0]['killed'] = False
         split_synchronizer.synchronize_splits()
-        inserted_split = storage.get(splits[0]['name'])
+        inserted_split = storage.get(self.splits[0]['name'])
         assert inserted_split.killed
 
         # Should sync when changenumber is higher than stored
         till = 124
         split_synchronizer._current_json_sha = "-1"
         split_synchronizer.synchronize_splits()
-        inserted_split = storage.get(splits[0]['name'])
+        inserted_split = storage.get(self.splits[0]['name'])
         assert inserted_split.killed == False
 
         # Should sync when till is default (-1)
         till = -1
         split_synchronizer._current_json_sha = "-1"
-        splits[0]['killed'] = True
+        self.splits[0]['killed'] = True
         split_synchronizer.synchronize_splits()
-        inserted_split = storage.get(splits[0]['name'])
+        inserted_split = storage.get(self.splits[0]['name'])
         assert inserted_split.killed == True
+
+    def test_sync_flag_sets_with_config_sets(self, mocker):
+        """Test split sync with flag sets."""
+        storage = InMemorySplitStorage(['set1', 'set2'])
+
+        split = self.splits[0].copy()
+        split['name'] = 'second'
+        splits1 = [self.splits[0].copy(), split]
+        splits2 = self.splits.copy()
+        splits3 = self.splits.copy()
+        splits4 = self.splits.copy()
+
+        self.called = 0
+        def read_feature_flags_from_json_file(*args, **kwargs):
+            self.called += 1
+            if self.called == 1:
+                return splits1, 123
+            elif self.called == 2:
+                splits2[0]['sets'] = ['set3']
+                return splits2, 124
+            elif self.called == 3:
+                splits3[0]['sets'] = ['set1']
+                return splits3, 12434
+            splits4[0]['sets'] = ['set6']
+            splits4[0]['name'] = 'new_split'
+            return splits4, 12438
+
+        split_synchronizer = LocalSplitSynchronizer("split.json", storage, LocalhostMode.JSON)
+        split_synchronizer._read_feature_flags_from_json_file = read_feature_flags_from_json_file
+
+        split_synchronizer.synchronize_splits()
+        assert isinstance(storage.get('some_name'), Split)
+
+        split_synchronizer.synchronize_splits(124)
+        assert storage.get('some_name') == None
+
+        split_synchronizer.synchronize_splits(12434)
+        assert isinstance(storage.get('some_name'), Split)
+
+        split_synchronizer.synchronize_splits(12438)
+        assert storage.get('new_name') == None
+
+    def test_sync_flag_sets_without_config_sets(self, mocker):
+        """Test split sync with flag sets."""
+        storage = InMemorySplitStorage()
+
+        split = self.splits[0].copy()
+        split['name'] = 'second'
+        splits1 = [self.splits[0].copy(), split]
+        splits2 = self.splits.copy()
+        splits3 = self.splits.copy()
+        splits4 = self.splits.copy()
+
+        self.called = 0
+        def read_feature_flags_from_json_file(*args, **kwargs):
+            self.called += 1
+            if self.called == 1:
+                return splits1, 123
+            elif self.called == 2:
+                splits2[0]['sets'] = ['set3']
+                return splits2, 124
+            elif self.called == 3:
+                splits3[0]['sets'] = ['set1']
+                return splits3, 12434
+            splits4[0]['sets'] = ['set6']
+            splits4[0]['name'] = 'third_split'
+            return splits4, 12438
+
+        split_synchronizer = LocalSplitSynchronizer("split.json", storage, LocalhostMode.JSON)
+        split_synchronizer._read_feature_flags_from_json_file = read_feature_flags_from_json_file
+
+        split_synchronizer.synchronize_splits()
+        assert isinstance(storage.get('new_split'), Split)
+
+        split_synchronizer.synchronize_splits(124)
+        assert isinstance(storage.get('new_split'), Split)
+
+        split_synchronizer.synchronize_splits(12434)
+        assert isinstance(storage.get('new_split'), Split)
+
+        split_synchronizer.synchronize_splits(12438)
+        assert isinstance(storage.get('third_split'), Split)
 
     def test_reading_json(self, mocker):
         """Test reading json file."""
@@ -430,7 +482,8 @@ class LocalSplitsSynchronizerTests(object):
                        'combiner': 'AND'
                    }
                }
-            ]
+            ],
+            'sets': ['set1']
         }],
         "till":1675095324253,
         "since":-1,

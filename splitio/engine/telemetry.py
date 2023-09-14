@@ -222,17 +222,27 @@ class TelemetryEvaluationConsumer(object):
         exceptions = self.pop_exceptions()['methodExceptions']
         latencies = self.pop_latencies()['methodLatencies']
         return {
-            'mE': {'t': exceptions['treatment'],
-                      'ts': exceptions['treatments'],
-                      'tc': exceptions['treatment_with_config'],
-                      'tcs': exceptions['treatments_with_config'],
-                      'tr': exceptions['track']
+            'mE': {
+                't': exceptions['treatment'],
+                'ts': exceptions['treatments'],
+                'tc': exceptions['treatment_with_config'],
+                'tcs': exceptions['treatments_with_config'],
+                'tf': exceptions['treatments_by_flag_set'],
+                'tfs': exceptions['treatments_by_flag_sets'],
+                'tcf': exceptions['treatments_with_config_by_flag_set'],
+                'tcfs': exceptions['treatments_with_config_by_flag_sets'],
+                'tr': exceptions['track']
                },
-            'mL':  {'t': latencies['treatment'],
-                      'ts': latencies['treatments'],
-                      'tc': latencies['treatment_with_config'],
-                      'tcs': latencies['treatments_with_config'],
-                      'tr': latencies['track']
+            'mL':  {
+                't': latencies['treatment'],
+                'ts': latencies['treatments'],
+                'tc': latencies['treatment_with_config'],
+                'tcs': latencies['treatments_with_config'],
+                'tf': latencies['treatments_by_flag_set'],
+                'tfs': latencies['treatments_by_flag_sets'],
+                'tcf': latencies['treatments_with_config_by_flag_set'],
+                'tcfs': latencies['treatments_with_config_by_flag_sets'],
+                'tr': latencies['track']
                },
         }
 

@@ -1,6 +1,8 @@
 """Telemetry Worker tests."""
 import unittest.mock as mock
 import json
+import pytest
+
 from splitio.sync.telemetry import TelemetrySynchronizer, InMemoryTelemetrySubmitter
 from splitio.engine.telemetry import TelemetryEvaluationConsumer, TelemetryInitConsumer, TelemetryRuntimeConsumer, TelemetryStorageConsumer
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemorySegmentStorage, InMemorySplitStorage
@@ -51,6 +53,10 @@ class TelemetrySubmitterTests(object):
         telemetry_storage._method_exceptions._treatments = 1
         telemetry_storage._method_exceptions._treatment_with_config = 5
         telemetry_storage._method_exceptions._treatments_with_config = 1
+        telemetry_storage._method_exceptions._treatments_by_flag_set =  2
+        telemetry_storage._method_exceptions._treatments_by_flag_sets = 3
+        telemetry_storage._method_exceptions._treatments_with_config_by_flag_set = 4
+        telemetry_storage._method_exceptions._treatments_with_config_by_flag_sets = 6
         telemetry_storage._method_exceptions._track = 3
 
         telemetry_storage._last_synchronization._split = 5
@@ -76,6 +82,10 @@ class TelemetrySubmitterTests(object):
         telemetry_storage._method_latencies._treatments = [0] * 23
         telemetry_storage._method_latencies._treatment_with_config = [0] * 23
         telemetry_storage._method_latencies._treatments_with_config = [0] * 23
+        telemetry_storage._method_latencies._treatments_by_flag_set = [1] + [0] * 22
+        telemetry_storage._method_latencies._treatments_by_flag_sets = [0] * 23
+        telemetry_storage._method_latencies._treatments_with_config_by_flag_set = [1] + [0] * 22
+        telemetry_storage._method_latencies._treatments_with_config_by_flag_sets = [0] * 23
         telemetry_storage._method_latencies._track = [0] * 23
 
         telemetry_storage._http_latencies._split = [1] + [0] * 22
@@ -130,8 +140,8 @@ class TelemetrySubmitterTests(object):
             "tR": 3,
             "sE": [],
             "sL": 3,
-            "mE": {"t": 10, "ts": 1, "tc": 5, "tcs": 1, "tr": 3},
-            "mL": {"t": [1] + [0] * 22, "ts": [0] * 23, "tc": [0] * 23, "tcs": [0] * 23, "tr": [0] * 23},
+            "mE": {"t": 10, "ts": 1, "tc": 5, "tcs": 1, "tf": 2, "tfs": 3, "tcf": 4, "tcfs": 6, "tr": 3},
+            "mL": {"t": [1] + [0] * 22, "ts": [0] * 23, "tc": [0] * 23, "tcs": [0] * 23, "tf": [1] + [0] * 22, "tfs": [0] * 23, "tcf": [1] + [0] * 22, "tcfs": [0] * 23, "tr": [0] * 23},
             "spC": 1,
             "seC": 1,
             "skC": 0,

@@ -10,6 +10,7 @@ from enum import Enum
 
 from splitio.api import APIException
 from splitio.api.commons import FetchOptions
+from splitio.client.input_validator import validate_flag_sets
 from splitio.models import splits
 from splitio.util.backoff import Backoff
 from splitio.util.time import get_current_epoch_time_ms
@@ -376,20 +377,12 @@ class LocalSplitSynchronizer(object):
             self._current_json_sha = fecthed_sha
             if self._feature_flag_storage.get_change_number() > till and till != self._DEFAULT_FEATURE_FLAG_TILL:
                 return []
-            to_add = []
-            to_delete = []
-            for feature_flag in fetched:
-                if feature_flag['status'] == splits.Status.ACTIVE.value:
-                    parsed = splits.from_raw(feature_flag)
-                    to_add.append(parsed)
-                    _LOGGER.debug("feature flag %s is updated", parsed.name)
-                    segment_list.update(set(parsed.get_segment_names()))
-                else:
-                    to_delete.append(feature_flag['name'])
-
-                self._feature_flag_storage.update(to_add, to_delete, till)
+            fetched_feature_flags = []
+            [fetched_feature_flags.append(splits.from_raw(feature_flag)) for feature_flag in fetched]
+            segment_list = update_feature_flag_storage(self._feature_flag_storage, fetched_feature_flags, till)
             return segment_list
         except Exception as exc:
+            _LOGGER.debug(exc)
             raise ValueError("Error reading feature flags from json.") from exc
 
     def _read_feature_flags_from_json_file(self, filename):
@@ -441,7 +434,7 @@ class LocalSplitSynchronizer(object):
         if 'till' not in parsed or parsed['till'] is None or parsed['till'] < -1:
             parsed['till'] = -1
         if 'since' not in parsed or parsed['since'] is None or parsed['since'] < -1 or parsed['since'] > parsed['till']:
-            parsed['since'] = parsed['till']
+           parsed['since'] = parsed['till']
 
         return parsed
 
@@ -471,6 +464,11 @@ class LocalSplitSynchronizer(object):
                             ('algo', 2, 2, 2, None, None)]:
                 feature_flag = util._sanitize_object_element(feature_flag, 'split', element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=element[4], not_in_list=element[5])
             feature_flag = self._sanitize_condition(feature_flag)
+
+            if 'sets' not in feature_flag:
+                feature_flag['sets'] = []
+            feature_flag['sets'] = validate_flag_sets(feature_flag['sets'], 'Localhost Validator')
+
             sanitized_feature_flags.append(feature_flag)
         return sanitized_feature_flags
 
