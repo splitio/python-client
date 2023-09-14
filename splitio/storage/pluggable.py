@@ -7,6 +7,7 @@ import threading
 from splitio.models import splits, segments
 from splitio.models.impressions import Impression
 from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MAX_TAGS, get_latency_bucket_index
+from splitio.models.flag_sets import FlagSetsFilter
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
 from splitio.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
 
@@ -27,16 +28,16 @@ class PluggableSplitStorage(SplitStorage):
         :type prefix: str
         """
         self._pluggable_adapter = pluggable_adapter
-        self._config_flag_sets = config_flag_sets
         self._prefix = "SPLITIO.split.{feature_flag_name}"
         self._traffic_type_prefix = "SPLITIO.trafficType.{traffic_type_name}"
         self._feature_flag_till_prefix = "SPLITIO.splits.till"
-        self._feature_flag_set_prefix = 'SPLITIO.set.{flag_set}'
+        self._flag_set_prefix = 'SPLITIO.flagSet.{flag_set}'
+        self.flag_set_filter = FlagSetsFilter(config_flag_sets)
         if prefix is not None:
             self._prefix = prefix + "." + self._prefix
             self._traffic_type_prefix = prefix + "." + self._traffic_type_prefix
             self._feature_flag_till_prefix = prefix + "." + self._feature_flag_till_prefix
-            self._feature_flag_set_prefix = prefix + "." + self._feature_flag_set_prefix
+            self._flag_set_prefix = prefix + "." + self._flag_set_prefix
 
     def get(self, feature_flag_name):
         """
@@ -86,11 +87,11 @@ class PluggableSplitStorage(SplitStorage):
         :rtype: listt(str)
         """
         try:
-            sets_to_fetch = get_valid_flag_sets(flag_sets, self._config_flag_sets)
+            sets_to_fetch = get_valid_flag_sets(flag_sets, self.flag_set_filter)
             if sets_to_fetch == []:
                 return []
 
-            keys = [self._feature_flag_set_prefix.format(flag_set=flag_set) for flag_set in sets_to_fetch]
+            keys = [self._flag_set_prefix.format(flag_set=flag_set) for flag_set in sets_to_fetch]
             result_sets = []
             [result_sets.append(set(key)) for key in self._pluggable_adapter.get_many(keys)]
             return list(combine_valid_flag_sets(result_sets))

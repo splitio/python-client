@@ -6,6 +6,7 @@ from collections import Counter
 
 from splitio.models.segments import Segment
 from splitio.models.telemetry import HTTPErrors, HTTPLatencies, MethodExceptions, MethodLatencies, LastSynchronization, StreamingEvents, TelemetryConfig, TelemetryCounters, CounterConstants
+from splitio.models.flag_sets import FlagSets, FlagSetsFilter
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
 
 MAX_SIZE_BYTES = 5 * 1024 * 1024
@@ -13,9 +14,8 @@ MAX_TAGS = 10
 
 _LOGGER = logging.getLogger(__name__)
 
-
 class InMemorySplitStorage(SplitStorage):
-    """InMemory implementation of a split storage."""
+    """InMemory implementation of a feature flag storage."""
 
     def __init__(self, flag_sets=[]):
         """Constructor."""
@@ -23,10 +23,8 @@ class InMemorySplitStorage(SplitStorage):
         self._splits = {}
         self._change_number = -1
         self._traffic_types = Counter()
-        self._sets_feature_flag_map = {}
-        self.config_flag_sets_used = len(flag_sets)
-        for flag_set in flag_sets:
-            self._sets_feature_flag_map[flag_set] = set()
+        self.flag_set = FlagSets(flag_sets)
+        self.flag_set_filter = FlagSetsFilter(flag_sets)
 
     def get(self, split_name):
         """
@@ -82,11 +80,11 @@ class InMemorySplitStorage(SplitStorage):
             self._increase_traffic_type_count(split.traffic_type_name)
             if split.sets is not None:
                 for flag_set in split.sets:
-                    if flag_set not in self._sets_feature_flag_map.keys():
-                        if self.config_flag_sets_used > 0:
+                    if not self.flag_set.flag_set_exist(flag_set):
+                        if self.flag_set_filter.should_filter:
                             continue
-                        self._sets_feature_flag_map[flag_set] = set()
-                    self._sets_feature_flag_map[flag_set].add(split.name)
+                        self.flag_set.add_flag_set(flag_set)
+                    self.flag_set.add_feature_flag_to_flag_set(flag_set, split.name)
 
     def _remove(self, split_name):
         """
@@ -118,11 +116,11 @@ class InMemorySplitStorage(SplitStorage):
         """
         if feature_flag.sets is not None:
             for flag_set in feature_flag.sets:
-                self._sets_feature_flag_map[flag_set].remove(feature_flag.name)
-                if len(self._sets_feature_flag_map[flag_set]) == 0 and self.config_flag_sets_used == 0:
-                    del self._sets_feature_flag_map[flag_set]
+                self.flag_set.remove_feature_flag_to_flag_set(flag_set, feature_flag.name)
+                if len(self.flag_set.get_flag_set(flag_set)) == 0 and not self.flag_set_filter.should_filter:
+                    self.flag_set.remove_flag_set(flag_set)
 
-    def get_feature_flags_by_set(self, set):
+    def get_feature_flags_by_sets(self, sets):
         """
         Get list of feature flag names associated to a set, if it does not exist will return empty list
 
@@ -133,9 +131,16 @@ class InMemorySplitStorage(SplitStorage):
         :rtype: list
         """
         with self._lock:
-            if set not in self._sets_feature_flag_map:
-                return []
-            return list(self._sets_feature_flag_map[set])
+            sets_to_fetch = []
+            for flag_set in sets:
+                if not self.flag_set.flag_set_exist(flag_set):
+                    _LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring it." % (flag_set))
+                    continue
+                sets_to_fetch.append(flag_set)
+
+            to_return = set()
+            [to_return.update(self.flag_set.get_flag_set(flag_set)) for flag_set in sets_to_fetch]
+            return list(to_return)
 
     def get_change_number(self):
         """
@@ -247,10 +252,7 @@ class InMemorySplitStorage(SplitStorage):
         :return: True if the flag_set exist. False otherwise.
         :rtype: bool
         """
-        if flag_set in self._sets_feature_flag_map.keys():
-            return True
-        return False
-
+        return self.flag_set.flag_set_exist(flag_set)
 
 class InMemorySegmentStorage(SegmentStorage):
     """In-memory implementation of a segment storage."""

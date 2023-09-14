@@ -15,6 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 MAX_LENGTH = 250
 EVENT_TYPE_PATTERN = r'^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$'
 MAX_PROPERTIES_LENGTH_BYTES = 32768
+_FLAG_SETS_REGEX = '^[a-z0-9][_a-z0-9]{0,49}$'
 
 
 def _check_not_null(value, name, operation):
@@ -79,7 +80,7 @@ def _check_string_not_empty(value, name, operation):
     return True
 
 
-def _check_string_matches(value, operation, pattern):
+def _check_string_matches(value, operation, pattern, name):
     """
     Check if value is adhere to a regular expression passed.
 
@@ -92,14 +93,14 @@ def _check_string_matches(value, operation, pattern):
     :return: The result of validation
     :rtype: True|False
     """
-    if not re.match(pattern, value):
+    if re.search(pattern, value) is None or re.search(pattern, value).group() != value:
         _LOGGER.error(
             '%s: you passed %s, event_type must ' +
             'adhere to the regular expression %s. ' +
-            'This means an event name must be alphanumeric, cannot be more ' +
+            'This means %s must be alphanumeric, cannot be more ' +
             'than 80 characters long, and can only include a dash, underscore, ' +
             'period, or colon as separators of alphanumeric characters.',
-            operation, value, pattern
+            operation, value, pattern, name
         )
         return False
     return True
@@ -165,10 +166,7 @@ def _check_valid_object_key(key, name, operation):
     :return: The result of validation
     :rtype: str|None
     """
-    if key is None:
-        _LOGGER.error(
-            '%s: you passed a null %s, %s must be a non-empty string.',
-            operation, name, name)
+    if not _check_not_null(key, 'key', operation):
         return None
     if isinstance(key, str):
         if not _check_string_not_empty(key, name, operation):
@@ -179,7 +177,7 @@ def _check_valid_object_key(key, name, operation):
     return key_str
 
 
-def _remove_empty_spaces(value, operation):
+def _remove_empty_spaces(value, name, operation):
     """
     Check if an string has whitespaces.
 
@@ -192,8 +190,15 @@ def _remove_empty_spaces(value, operation):
     """
     strip_value = value.strip()
     if value != strip_value:
-        _LOGGER.warning("%s: feature flag name '%s' has extra whitespace, trimming.", operation, value)
+        _LOGGER.warning("%s: %s '%s' has extra whitespace, trimming.", operation, name, value)
     return strip_value
+
+
+def _convert_str_to_lower(value, name, operation):
+    lower_value = value.lower()
+    if value != lower_value:
+        _LOGGER.warning("%s: %s '%s' should be all lowercase - converting string to lowercase" % (operation, name, value))
+    return lower_value
 
 
 def validate_key(key, method_name):
@@ -211,8 +216,7 @@ def validate_key(key, method_name):
     """
     matching_key_result = None
     bucketing_key_result = None
-    if key is None:
-        _LOGGER.error('%s: you passed a null key, key must be a non-empty string.', method_name)
+    if not _check_not_null(key, 'key', method_name):
         return None, None
 
     if isinstance(key, Key):
@@ -255,7 +259,7 @@ def validate_feature_flag_name(feature_flag_name, should_validate_existance, fea
         )
         return None
 
-    return _remove_empty_spaces(feature_flag_name, method_name)
+    return _remove_empty_spaces(feature_flag_name, 'feature flag name', method_name)
 
 
 def validate_track_key(key):
@@ -294,10 +298,7 @@ def validate_traffic_type(traffic_type, should_validate_existance, feature_flag_
        (not _check_is_string(traffic_type, 'traffic_type', 'track')) or \
        (not _check_string_not_empty(traffic_type, 'traffic_type', 'track')):
         return None
-    if not traffic_type.islower():
-        _LOGGER.warning('track: %s should be all lowercase - converting string to lowercase.',
-                        traffic_type)
-        traffic_type = traffic_type.lower()
+    traffic_type = _convert_str_to_lower(traffic_type, 'traffic type', 'track')
 
     if should_validate_existance and not feature_flag_storage.is_valid_traffic_type(traffic_type):
         _LOGGER.warning(
@@ -322,7 +323,7 @@ def validate_event_type(event_type):
     if (not _check_not_null(event_type, 'event_type', 'track')) or \
        (not _check_is_string(event_type, 'event_type', 'track')) or \
        (not _check_string_not_empty(event_type, 'event_type', 'track')) or \
-       (not _check_string_matches(event_type, 'track', EVENT_TYPE_PATTERN)):
+       (not _check_string_matches(event_type, 'track', EVENT_TYPE_PATTERN, 'an event name')):
         return None
     return event_type
 
@@ -390,7 +391,7 @@ def validate_feature_flags_get_treatments(  # pylint: disable=invalid-name
         _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
         return None, None
     filtered_feature_flags = set(
-        _remove_empty_spaces(feature_flag, method_name) for feature_flag in feature_flags
+        _remove_empty_spaces(feature_flag, 'feature flag name', method_name) for feature_flag in feature_flags
         if feature_flag is not None and
         _check_is_string(feature_flag, 'feature flag name', method_name) and
         _check_string_not_empty(feature_flag, 'feature flag name', method_name)
@@ -566,3 +567,33 @@ def validate_pluggable_adapter(config):
             _LOGGER.error("Pluggable adapter method %s has less than required arguments count: %s : " % (exp_method, len(get_method_args)))
             return False
     return True
+
+def validate_flag_sets(flag_sets, method_name):
+    """
+    Validate flag sets list
+
+    :param flag_set: list of flag sets
+    :type flag_set: list[str]
+
+    :returns: Sanitized and sorted flag sets
+    :rtype: list[str]
+    """
+    if not isinstance(flag_sets, list):
+        _LOGGER.warning("%s: flag sets parameter type should be list object, parameter is discarded" % (method_name))
+        return []
+
+    sanitized_flag_sets = set()
+    for flag_set in flag_sets:
+        if not _check_not_null(flag_set, 'flag set', method_name):
+            continue
+        if not _check_is_string(flag_set, 'flag set', method_name):
+            continue
+        flag_set = _remove_empty_spaces(flag_set, 'flag set', method_name)
+        flag_set = _convert_str_to_lower(flag_set, 'flag set', method_name)
+
+        if not _check_string_matches(flag_set, method_name, _FLAG_SETS_REGEX, 'a flag set'):
+            continue
+
+        sanitized_flag_sets.add(flag_set)
+
+    return sorted(list(sanitized_flag_sets))

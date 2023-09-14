@@ -440,7 +440,7 @@ def _build_redis_factory(api_key, cfg):
     cache_enabled = cfg.get('redisLocalCacheEnabled', False)
     cache_ttl = cfg.get('redisLocalCacheTTL', 5)
     storages = {
-        'splits': RedisSplitStorage(redis_adapter, cache_enabled, cache_ttl),
+        'splits': RedisSplitStorage(redis_adapter, cache_enabled, cache_ttl, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
         'segments': RedisSegmentStorage(redis_adapter),
         'impressions': RedisImpressionsStorage(redis_adapter, sdk_metadata),
         'events': RedisEventsStorage(redis_adapter, sdk_metadata),

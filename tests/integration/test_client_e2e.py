@@ -733,7 +733,7 @@ class RedisIntegrationTests(object):
             redis_client.set(split_storage._get_key(split['name']), json.dumps(split))
             if split.get('sets') is not None:
                 for flag_set in split.get('sets'):
-                    redis_client.sadd(split_storage._get_set_key(flag_set), split['name'])
+                    redis_client.sadd(split_storage._get_flag_set_key(flag_set), split['name'])
         redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, data['till'])
 
         segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
@@ -1178,7 +1178,7 @@ class PluggableIntegrationTests(object):
             self.pluggable_storage_adapter.set(split_storage._prefix.format(feature_flag_name=split['name']), split)
             if split.get('sets') is not None:
                 for flag_set in split.get('sets'):
-                    self.pluggable_storage_adapter.push_items(split_storage._feature_flag_set_prefix.format(flag_set=flag_set), split['name'])
+                    self.pluggable_storage_adapter.push_items(split_storage._flag_set_prefix.format(flag_set=flag_set), split['name'])
         self.pluggable_storage_adapter.set(split_storage._feature_flag_till_prefix, data['till'])
 
         segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
@@ -1363,7 +1363,7 @@ class PluggableOptimizedIntegrationTests(object):
         for split in data['splits']:
             if split.get('sets') is not None:
                 for flag_set in split.get('sets'):
-                    self.pluggable_storage_adapter.push_items(split_storage._feature_flag_set_prefix.format(flag_set=flag_set), split['name'])
+                    self.pluggable_storage_adapter.push_items(split_storage._flag_set_prefix.format(flag_set=flag_set), split['name'])
             self.pluggable_storage_adapter.set(split_storage._prefix.format(feature_flag_name=split['name']), split)
         self.pluggable_storage_adapter.set(split_storage._feature_flag_till_prefix, data['till'])
 
@@ -1548,7 +1548,7 @@ class PluggableNoneIntegrationTests(object):
         for split in data['splits']:
             if split.get('sets') is not None:
                 for flag_set in split.get('sets'):
-                    self.pluggable_storage_adapter.push_items(split_storage._feature_flag_set_prefix.format(flag_set=flag_set), split['name'])
+                    self.pluggable_storage_adapter.push_items(split_storage._flag_set_prefix.format(flag_set=flag_set), split['name'])
             self.pluggable_storage_adapter.set(split_storage._prefix.format(feature_flag_name=split['name']), split)
         self.pluggable_storage_adapter.set(split_storage._feature_flag_till_prefix, data['till'])
 
