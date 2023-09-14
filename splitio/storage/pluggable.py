@@ -100,6 +100,29 @@ class PluggableSplitStorage(SplitStorage):
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
+    def get_feature_flags_by_sets(self, flag_sets):
+        """
+        Retrieve feature flags by flag set.
+
+        :param flag_set: Names of the flag set to fetch.
+        :type flag_set: str
+
+        :return: Feature flag names that are tagged with the flag set
+        :rtype: listt(str)
+        """
+        try:
+            sets_to_fetch = get_valid_flag_sets(flag_sets, self._config_flag_sets)
+            if sets_to_fetch == []:
+                return []
+
+            keys = [self._feature_flag_set_prefix.format(flag_set=flag_set) for flag_set in sets_to_fetch]
+            return self._pluggable_adapter.get_many(keys)
+        except Exception:
+            _LOGGER.error('Error fetching feature flag from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+
+
     # TODO: To be added when producer mode is supported
 #    def put_many(self, splits, change_number):
 #        """

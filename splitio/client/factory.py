@@ -523,7 +523,7 @@ def _build_pluggable_factory(api_key, cfg):
     pluggable_adapter = cfg.get('storageWrapper')
     storage_prefix = cfg.get('storagePrefix')
     storages = {
-        'splits': PluggableSplitStorage(pluggable_adapter, storage_prefix),
+        'splits': PluggableSplitStorage(pluggable_adapter, storage_prefix, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
         'segments': PluggableSegmentStorage(pluggable_adapter, storage_prefix),
         'impressions': PluggableImpressionsStorage(pluggable_adapter, sdk_metadata, storage_prefix),
         'events': PluggableEventsStorage(pluggable_adapter, sdk_metadata, storage_prefix),

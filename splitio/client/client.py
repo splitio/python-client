@@ -435,6 +435,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             return []
         return feature_flags_by_set
 
+
     def _build_impression(  # pylint: disable=too-many-arguments
             self,
             matching_key,

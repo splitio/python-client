@@ -69,3 +69,20 @@ def combine_valid_flag_sets(result_sets):
         if isinstance(result_set, set) and len(result_set) > 0:
             to_return.update(result_set)
     return to_return
+
+def _check_flag_sets(feature_flag_storage, feature_flag):
+    """
+    Check all flag sets in a feature flag, return True if any of sets exist in storage
+
+    :param feature_flag_storage: Feature flag storage instance
+    :type feature_flag_storage: splitio.storage.inmemory.InMemorySplitStorage
+    :param feature_flag: Feature flag instance to validate.
+    :type feature_flag: splitio.models.splits.Split
+
+    :return: True if any of its flag_set exist. False otherwise.
+    :rtype: bool
+    """
+    for flag_set in feature_flag.sets:
+        if feature_flag_storage.is_flag_set_exist(flag_set):
+            return True
+    return False
