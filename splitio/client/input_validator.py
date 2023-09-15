@@ -80,6 +80,7 @@ def _check_string_not_empty(value, name, operation):
     return True
 
 
+
 def _check_string_matches(value, operation, pattern, name, length):
     """
     Check if value is adhere to a regular expression passed.

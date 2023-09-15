@@ -41,7 +41,6 @@ class _ConfigParams(Enum):
     EVENTS_QUEUE_SIZE = 'eventsQueueSize'
     IMPRESSIONS_MODE = 'impressionsMode'
     IMPRESSIONS_LISTENER = 'impressionListener'
-    FLAG_SETS = 'flagSetsFilter'
 
 class _ExtraConfig(Enum):
     """Extra config constants"""
@@ -829,7 +828,6 @@ class TelemetryConfig(object):
             self._impressions_mode = self._get_impressions_mode(config[_ConfigParams.IMPRESSIONS_MODE.value])
             self._impression_listener = True if config[_ConfigParams.IMPRESSIONS_LISTENER.value] is not None else False
             self._http_proxy = self._check_if_proxy_detected()
-            self._flag_sets = len(config[_ConfigParams.FLAG_SETS.value]) if config[_ConfigParams.FLAG_SETS.value] is not None else 0
 
     def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
         with self._lock:

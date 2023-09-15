@@ -1,5 +1,6 @@
 """Base storage interfaces."""
 import abc
+import threading
 
 
 class SplitStorage(object, metaclass=abc.ABCMeta):
@@ -315,3 +316,42 @@ class TelemetryStorage(object, metaclass=abc.ABCMeta):
 
         """
         pass
+
+class FlagSetsFilter(object):
+    """Config Flagsets Filter storage."""
+
+    def __init__(self, flag_sets=[]):
+        """Constructor."""
+        self.flag_sets = set(flag_sets)
+        self.should_filter = any(flag_sets)
+
+    def set_exist(self, flag_set):
+        """
+        Check if a flagset exist in flagset filter
+
+        :param flag_set: set name
+        :type flag_set: str
+
+        :rtype: bool
+        """
+        if not self.should_filter:
+            return True
+        if not isinstance(flag_set, str) or flag_set == '':
+            return False
+
+        return any(self.flag_sets.intersection(set([flag_set])))
+
+    def intersect(self, flag_sets):
+        """
+        Check if a set exist in config flagset filter
+
+        :param flag_set: set of flagsets
+        :type flag_set: set
+
+        :rtype: bool
+        """
+        if not self.should_filter:
+            return True
+        if not isinstance(flag_sets, set) or len(flag_sets) == 0:
+            return False
+        return any(self.flag_sets.intersection(flag_sets))

@@ -6,7 +6,7 @@ import threading
 from splitio.models.impressions import Impression
 from splitio.models import splits, segments
 from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, get_latency_bucket_index
-from splitio.models.flag_sets import FlagSetsFilter
+from splitio.storage import FlagSetsFilter
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, \
     ImpressionPipelinedStorage, TelemetryStorage
 from splitio.storage.adapters.redis import RedisAdapterException

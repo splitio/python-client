@@ -183,7 +183,7 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             'algo': self.algo.value,
             'conditions': [c.to_json() for c in self.conditions],
             'configurations': self._configurations,
-            'sets': self._sets
+            'sets': list(self._sets)
         }
 
     def to_split_view(self):
@@ -200,7 +200,7 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             list(set(part.treatment for cond in self.conditions for part in cond.partitions)),
             self.change_number,
             self._configurations if self._configurations is not None else {},
-            self._sets if self._sets is not None else []
+            list(self._sets) if self._sets is not None else []
         )
 
     def local_kill(self, default_treatment, change_number):
@@ -250,5 +250,5 @@ def from_raw(raw_split):
         traffic_allocation=raw_split.get('trafficAllocation'),
         traffic_allocation_seed=raw_split.get('trafficAllocationSeed'),
         configurations=raw_split.get('configurations'),
-        sets=raw_split.get('sets')
+        sets=set(raw_split.get('sets')) if raw_split.get('sets') is not None else []
     )

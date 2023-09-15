@@ -465,6 +465,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         client._evaluator.evaluate_features = evaluate_features
         _logger = mocker.Mock()
         client._send_impression_to_listener = mocker.Mock()
+#        pytest.set_trace()
         assert client.get_treatments_by_flag_sets('key', ['set1', 'set2']) == {'f1': 'on', 'f2': 'on'}
 
         impressions_called = impmanager.process_impressions.mock_calls[0][1][0]

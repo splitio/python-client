@@ -8,7 +8,7 @@ from splitio.models import splits, segments
 from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
 from splitio.models.events import Event, EventWrapper
-from splitio.models.flag_sets import FlagSetsFilter
+from splitio.storage import FlagSetsFilter
 from splitio.storage.pluggable import PluggableSplitStorage, PluggableSegmentStorage, PluggableImpressionsStorage, PluggableEventsStorage, PluggableTelemetryStorage
 from splitio.client.util import get_metadata, SdkMetadata
 from splitio.models.telemetry import MAX_TAGS, MethodExceptionsAndLatencies, OperationMode
@@ -85,10 +85,7 @@ class StorageMockAdapter(object):
             returned_keys = []
             for key in self._keys:
                 if key in keys:
-                    if isinstance(self._keys[key], list):
-                        returned_keys.extend(self._keys[key])
-                    else:
-                        returned_keys.append(self._keys[key])
+                    returned_keys.append(self._keys[key])
             return returned_keys
 
     def add_items(self, key, added_items):
@@ -167,10 +164,10 @@ class PluggableSplitStorageTests(object):
             pluggable_split_storage = PluggableSplitStorage(self.mock_adapter, prefix=sprefix)
 
             split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
-            feature_flag_name = splits_json['splitChange1_2']['splits'][0]['name']
+            split_name = splits_json['splitChange1_2']['splits'][0]['name']
 
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=feature_flag_name), split1.to_json())
-            assert(pluggable_split_storage.get(feature_flag_name).to_json() ==  splits.from_raw(splits_json['splitChange1_2']['splits'][0]).to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split_name), split1.to_json())
+            assert(pluggable_split_storage.get(split_name).to_json() ==  splits.from_raw(splits_json['splitChange1_2']['splits'][0]).to_json())
             assert(pluggable_split_storage.get('not_existing') == None)
 
     def test_fetch_many(self):

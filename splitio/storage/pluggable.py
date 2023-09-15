@@ -7,7 +7,7 @@ import threading
 from splitio.models import splits, segments
 from splitio.models.impressions import Impression
 from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MAX_TAGS, get_latency_bucket_index
-from splitio.models.flag_sets import FlagSetsFilter
+from splitio.storage import FlagSetsFilter
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
 from splitio.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
 
@@ -111,17 +111,18 @@ class PluggableSplitStorage(SplitStorage):
         :rtype: listt(str)
         """
         try:
-            sets_to_fetch = get_valid_flag_sets(flag_sets, self._config_flag_sets)
+            sets_to_fetch = get_valid_flag_sets(flag_sets, self.flag_set_filter)
             if sets_to_fetch == []:
                 return []
 
-            keys = [self._feature_flag_set_prefix.format(flag_set=flag_set) for flag_set in sets_to_fetch]
-            return self._pluggable_adapter.get_many(keys)
+            keys = [self._flag_set_prefix.format(flag_set=flag_set) for flag_set in sets_to_fetch]
+            result_sets = []
+            [result_sets.append(set(key)) for key in self._pluggable_adapter.get_many(keys)]
+            return list(combine_valid_flag_sets(result_sets))
         except Exception:
             _LOGGER.error('Error fetching feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
-
 
     # TODO: To be added when producer mode is supported
 #    def put_many(self, splits, change_number):

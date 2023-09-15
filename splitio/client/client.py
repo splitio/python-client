@@ -431,10 +431,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         sanitized_flag_sets = input_validator.validate_flag_sets(flag_sets, method_name)
         feature_flags_by_set = self._split_storage.get_feature_flags_by_sets(sanitized_flag_sets)
         if feature_flags_by_set is None:
-            _LOGGER.warning("%s: Fetching feature flags for flag set %s encountered an error, skipping this flag set." % (method_name, flag_sets))
+            _LOGGER.warning("Fetching feature flags for flag set %s encountered an error, skipping this flag set." % (flag_sets))
             return []
         return feature_flags_by_set
-
 
     def _build_impression(  # pylint: disable=too-many-arguments
             self,
