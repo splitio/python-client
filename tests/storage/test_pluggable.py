@@ -8,7 +8,7 @@ from splitio.models import splits, segments
 from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
 from splitio.models.events import Event, EventWrapper
-from splitio.models.flag_sets import FlagSetsFilter
+from splitio.storage import FlagSetsFilter
 from splitio.storage.pluggable import PluggableSplitStorage, PluggableSegmentStorage, PluggableImpressionsStorage, PluggableEventsStorage, PluggableTelemetryStorage
 from splitio.client.util import get_metadata, SdkMetadata
 from splitio.models.telemetry import MAX_TAGS, MethodExceptionsAndLatencies, OperationMode

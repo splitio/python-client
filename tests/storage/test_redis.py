@@ -14,7 +14,7 @@ from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
 from splitio.models.events import Event, EventWrapper
 from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MethodExceptionsAndLatencies
-from splitio.models.flag_sets import FlagSetsFilter
+from splitio.storage import FlagSetsFilter
 
 class RedisSplitStorageTests(object):
     """Redis split storage test cases."""

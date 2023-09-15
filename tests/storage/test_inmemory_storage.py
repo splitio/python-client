@@ -8,9 +8,10 @@ from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
 from splitio.models.events import Event, EventWrapper
 import splitio.models.telemetry as ModelTelemetry
+from splitio.storage import FlagSetsFilter
 from splitio.engine.telemetry import TelemetryStorageProducer
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
-    InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, FlagSets, FlagSetsFilter
+    InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, FlagSets
 
 
 class FlagSetsFilterTests(object):
@@ -56,20 +57,6 @@ class FlagSetsFilterTests(object):
         flag_set.remove_flag_set('set1')
         assert flag_set.sets_feature_flag_map == {}
         assert flag_set.flag_set_exist('set1') == False
-
-    def test_flag_set_filter(self):
-        flag_set_filter = FlagSetsFilter()
-        assert flag_set_filter.flag_sets == set()
-        assert not flag_set_filter.should_filter
-
-        flag_set_filter = FlagSetsFilter(['set1', 'set2'])
-        assert flag_set_filter.flag_sets == set({'set1', 'set2'})
-        assert flag_set_filter.should_filter
-        assert flag_set_filter.intersect(set({'set1', 'set2'}))
-        assert flag_set_filter.intersect(set({'set1', 'set2', 'set5'}))
-        assert not flag_set_filter.intersect(set({'set4'}))
-        assert not flag_set_filter.set_exist('set4')
-        assert flag_set_filter.set_exist('set1')
 
 
 class InMemorySplitStorageTests(object):

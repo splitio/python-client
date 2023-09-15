@@ -4,7 +4,7 @@ import pytest
 from splitio.util.storage_helper import update_feature_flag_storage, get_valid_flag_sets, combine_valid_flag_sets
 from splitio.storage.inmemmory import InMemorySplitStorage
 from splitio.models import splits
-from splitio.models.flag_sets import FlagSetsFilter
+from splitio.storage import FlagSetsFilter
 from tests.sync.test_splits_synchronizer import splits_raw as split_sample
 
 class StorageHelperTests(object):
