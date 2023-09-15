@@ -339,6 +339,10 @@ class RedisPipelineAdapter(object):
         except RedisError as exc:
             raise RedisAdapterException('Error executing pipeline operation') from exc
 
+    def smembers(self, name):
+        """Mimic original redis function but using user custom prefix."""
+        self._pipe.smembers(self._prefix_helper.add_prefix(name))
+
 
 def _build_default_client(config):  # pylint: disable=too-many-locals
     """

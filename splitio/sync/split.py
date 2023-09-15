@@ -83,21 +83,6 @@ class SplitSynchronizer(object):
             fetched_feature_flags = []
             [fetched_feature_flags.append(splits.from_raw(feature_flag)) for feature_flag in feature_flag_changes.get('splits', [])]
             segment_list = update_feature_flag_storage(self._feature_flag_storage, fetched_feature_flags, feature_flag_changes['till'])
-            '''
-            to_add = []
-            to_delete = []
-            for feature_flag in feature_flag_changes.get('splits', []):
-                if (self._feature_flag_storage.config_flag_sets_used == 0 and feature_flag['status'] == splits.Status.ACTIVE.value) or \
-                (feature_flag['status'] == splits.Status.ACTIVE.value and self._check_flag_sets(feature_flag)):
-                    parsed = splits.from_raw(feature_flag)
-                    to_add.append(parsed)
-                    segment_list.update(set(parsed.get_segment_names()))
-                else:
-                    if self._feature_flag_storage.get(feature_flag['name']) is not None:
-                        to_delete.append(feature_flag['name'])
-
-            self._feature_flag_storage.update(to_add, to_delete, feature_flag_changes['till'])
-            '''
             if feature_flag_changes['till'] == feature_flag_changes['since']:
                 return feature_flag_changes['till'], segment_list
 

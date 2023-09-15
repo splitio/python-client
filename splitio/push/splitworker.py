@@ -90,14 +90,6 @@ class SplitWorker(object):
                     try:
                         new_feature_flag = from_raw(json.loads(self._get_feature_flag_definition(event)))
                         segment_list = update_feature_flag_storage(self._feature_flag_storage, [new_feature_flag], event.change_number)
-                        '''
-                        if new_split.status == Status.ACTIVE:
-                            self._feature_flag_storage.put(new_split)
-                            _LOGGER.debug('Feature flag %s is updated', new_split.name)
-                        else:
-                            self._feature_flag_storage.remove(new_split.name)
-                        self._feature_flag_storage.set_change_number(event.change_number)
-                        '''
                         for segment_name in segment_list:
                             if self._segment_storage.get(segment_name) is None:
                                 _LOGGER.debug('Fetching new segment %s', segment_name)

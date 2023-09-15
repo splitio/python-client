@@ -93,7 +93,7 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             self._algo = HashAlgorithm.LEGACY
 
         self._configurations = configurations
-        self._sets = sets
+        self._sets = set(sets) if sets is not None else set()
 
     @property
     def name(self):

@@ -7,6 +7,7 @@ import threading
 from splitio.models import splits, segments
 from splitio.models.impressions import Impression
 from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MAX_TAGS, get_latency_bucket_index
+from splitio.models.flag_sets import FlagSetsFilter
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
 from splitio.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
 
@@ -27,16 +28,16 @@ class PluggableSplitStorage(SplitStorage):
         :type prefix: str
         """
         self._pluggable_adapter = pluggable_adapter
-        self._config_flag_sets = config_flag_sets
         self._prefix = "SPLITIO.split.{feature_flag_name}"
         self._traffic_type_prefix = "SPLITIO.trafficType.{traffic_type_name}"
         self._feature_flag_till_prefix = "SPLITIO.splits.till"
-        self._feature_flag_set_prefix = 'SPLITIO.set.{flag_set}'
+        self._flag_set_prefix = 'SPLITIO.flagSet.{flag_set}'
+        self.flag_set_filter = FlagSetsFilter(config_flag_sets)
         if prefix is not None:
             self._prefix = prefix + "." + self._prefix
             self._traffic_type_prefix = prefix + "." + self._traffic_type_prefix
             self._feature_flag_till_prefix = prefix + "." + self._feature_flag_till_prefix
-            self._feature_flag_set_prefix = prefix + "." + self._feature_flag_till_prefix
+            self._flag_set_prefix = prefix + "." + self._flag_set_prefix
 
     def get(self, feature_flag_name):
         """
@@ -72,6 +73,30 @@ class PluggableSplitStorage(SplitStorage):
             return {feature_flag['name']: splits.from_raw(feature_flag) for feature_flag in self._pluggable_adapter.get_many(prefix_added)}
         except Exception:
             _LOGGER.error('Error getting feature flag from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+
+    def get_feature_flags_by_sets(self, flag_sets):
+        """
+        Retrieve feature flags by flag set.
+
+        :param flag_sets: List of flag sets to fetch.
+        :type flag_sets: list(str)
+
+        :return: Feature flag names that are tagged with the flag set
+        :rtype: listt(str)
+        """
+        try:
+            sets_to_fetch = get_valid_flag_sets(flag_sets, self.flag_set_filter)
+            if sets_to_fetch == []:
+                return []
+
+            keys = [self._flag_set_prefix.format(flag_set=flag_set) for flag_set in sets_to_fetch]
+            result_sets = []
+            [result_sets.append(set(key)) for key in self._pluggable_adapter.get_many(keys)]
+            return list(combine_valid_flag_sets(result_sets))
+        except Exception:
+            _LOGGER.error('Error fetching feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
