@@ -666,10 +666,10 @@ class ClientInputValidationTests(object):
         assert _logger.error.mock_calls == [
             mocker.call("%s: you passed %s, event_type must adhere to the regular "
                         "expression %s. This means "
-                        "%s must be alphanumeric, cannot be more than 80 "
+                        "%s must be alphanumeric, cannot be more than %s "
                         "characters long, and can only include a dash, underscore, "
                         "period, or colon as separators of alphanumeric characters.",
-                        'track', '@@', '^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$', 'an event name')
+                        'track', '@@', '^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$', 'an event name', 80)
         ]
 
         _logger.reset_mock()
@@ -1317,4 +1317,5 @@ class PluggableInputValidationTests(object):  #pylint: disable=too-few-public-me
         assert flag_sets == []
 
         flag_sets = input_validator.validate_flag_sets([12, 33], 'm')
+
         assert flag_sets == []

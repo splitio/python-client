@@ -80,6 +80,30 @@ class PluggableSplitStorage(SplitStorage):
         """
         Retrieve feature flags by flag set.
 
+        :param flag_sets: List of flag sets to fetch.
+        :type flag_sets: list(str)
+
+        :return: Feature flag names that are tagged with the flag set
+        :rtype: listt(str)
+        """
+        try:
+            sets_to_fetch = get_valid_flag_sets(flag_sets, self.flag_set_filter)
+            if sets_to_fetch == []:
+                return []
+
+            keys = [self._flag_set_prefix.format(flag_set=flag_set) for flag_set in sets_to_fetch]
+            result_sets = []
+            [result_sets.append(set(key)) for key in self._pluggable_adapter.get_many(keys)]
+            return list(combine_valid_flag_sets(result_sets))
+        except Exception:
+            _LOGGER.error('Error fetching feature flag from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+
+    def get_feature_flags_by_sets(self, flag_sets):
+        """
+        Retrieve feature flags by flag set.
+
         :param flag_set: Names of the flag set to fetch.
         :type flag_set: str
 

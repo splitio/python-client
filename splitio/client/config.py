@@ -9,7 +9,6 @@ from splitio.client.input_validator import validate_flag_sets
 
 _LOGGER = logging.getLogger(__name__)
 DEFAULT_DATA_SAMPLING = 1
-_FLAG_SETS_REGEX = '^[a-z0-9][_a-z0-9]{0,49}$'
 
 DEFAULT_CONFIG = {
     'operationMode': 'standalone',
@@ -119,7 +118,6 @@ def _sanitize_impressions_mode(storage_type, mode, refresh_rate=None):
         refresh_rate = max(60, refresh_rate) if refresh_rate is not None else 5 * 60
 
     return mode, refresh_rate
-
 
 def sanitize(sdk_key, config):
     """

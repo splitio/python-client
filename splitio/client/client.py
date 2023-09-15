@@ -406,7 +406,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         """
         feature_flags_names = self._get_feature_flag_names_by_flag_sets(flag_sets, method)
         if feature_flags_names == []:
-            _LOGGER.warning("No valid Flag set or no feature flags found for evaluating treatments")
+            _LOGGER.warning("%s: No valid Flag set or no feature flags found for evaluating treatments" % (method))
             return {}
 
         if 'config' in method.value:
