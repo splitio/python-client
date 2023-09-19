@@ -33,6 +33,7 @@ class SplitSynchronizationTests(object):
                 return True
         storage.flag_set_filter = flag_set_filter
         storage.flag_set_filter.flag_sets = {}
+        storage.flag_set_filter.sorted_flag_sets = []
 
         api = mocker.Mock()
         splits = [{
@@ -102,8 +103,6 @@ class SplitSynchronizationTests(object):
         assert api.fetch_splits.mock_calls[0][1][1].cache_control_headers == True
         assert api.fetch_splits.mock_calls[1][1][0] == 123
         assert api.fetch_splits.mock_calls[1][1][1].cache_control_headers == True
-#        assert mocker.call(-1, fetch_options) in api.fetch_splits.mock_calls
-#        assert mocker.call(123, fetch_options) in api.fetch_splits.mock_calls
 
         inserted_split = storage.update.mock_calls[0][1][0][0]
         assert isinstance(inserted_split, Split)

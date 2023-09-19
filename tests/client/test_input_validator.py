@@ -1296,19 +1296,19 @@ class PluggableInputValidationTests(object):  #pylint: disable=too-few-public-me
     def test_sanitize_flag_sets(self):
         """Test sanitization for flag sets."""
         flag_sets = input_validator.validate_flag_sets([' set1', 'set2 ', 'set3'], 'm')
-        assert flag_sets == ['set1', 'set2', 'set3']
+        assert sorted(flag_sets) == ['set1', 'set2', 'set3']
 
         flag_sets = input_validator.validate_flag_sets(['1set', '_set2'], 'm')
         assert flag_sets == ['1set']
 
         flag_sets = input_validator.validate_flag_sets(['Set1', 'SET2'], 'm')
-        assert flag_sets == ['set1', 'set2']
+        assert sorted(flag_sets) == ['set1', 'set2']
 
         flag_sets = input_validator.validate_flag_sets(['se\t1', 's/et2', 's*et3', 's!et4', 'se@t5', 'se#t5', 'se$t5', 'se^t5', 'se%t5', 'se&t5'], 'm')
         assert flag_sets == []
 
         flag_sets = input_validator.validate_flag_sets(['set4', 'set1', 'set3', 'set1'], 'm')
-        assert flag_sets == ['set1', 'set3', 'set4']
+        assert sorted(flag_sets) == ['set1', 'set3', 'set4']
 
         flag_sets = input_validator.validate_flag_sets(['w' * 50, 's' * 51], 'm')
         assert flag_sets == ['w' * 50]

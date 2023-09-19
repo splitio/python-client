@@ -30,6 +30,7 @@ class SynchronizerTests(object):
                 return True
         storage.flag_set_filter = flag_set_filter
         storage.flag_set_filter.flag_sets = {}
+        storage.flag_set_filter.sorted_flag_sets = []
 
         def run(x, c):
             raise APIException("something broke")
@@ -55,6 +56,7 @@ class SynchronizerTests(object):
                 return True
         storage.flag_set_filter = flag_set_filter
         storage.flag_set_filter.flag_sets = {}
+        storage.flag_set_filter.sorted_flag_sets = []
 
         def run(x, c):
             raise APIException("something broke", 414)
@@ -182,6 +184,7 @@ class SynchronizerTests(object):
                 return True
         split_storage.flag_set_filter = flag_set_filter
         split_storage.flag_set_filter.flag_sets = {}
+        split_storage.flag_set_filter.sorted_flag_sets = []
 
         split_api = mocker.Mock()
         split_api.fetch_splits.return_value = {'splits': self.splits, 'since': 123,

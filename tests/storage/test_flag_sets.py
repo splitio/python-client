@@ -58,3 +58,6 @@ class FlagSetsFilterTests(object):
         assert not flag_set_filter.intersect(set({'set4'}))
         assert not flag_set_filter.set_exist('set4')
         assert flag_set_filter.set_exist('set1')
+
+        flag_set_filter = FlagSetsFilter(['set5', 'set2', 'set6', 'set1'])
+        assert flag_set_filter.sorted_flag_sets == ['set1', 'set2', 'set5', 'set6']

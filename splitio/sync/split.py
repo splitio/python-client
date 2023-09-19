@@ -123,7 +123,7 @@ class SplitSynchronizer(object):
         """
         if self._feature_flag_storage.flag_set_filter.flag_sets == set({}):
             return None
-        return ','.join(self._feature_flag_storage.flag_set_filter.flag_sets)
+        return ','.join(self._feature_flag_storage.flag_set_filter.sorted_flag_sets)
 
     def synchronize_splits(self, till=None):
         """
