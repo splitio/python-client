@@ -432,7 +432,9 @@ class RedisTelemetryStorageTests(object):
             'rF': stats['rF'],
             'sT': stats['sT'],
             'oM': stats['oM'],
-            't': redis_telemetry.pop_config_tags()
+            'fsT': redis_telemetry._tel_config.get_flag_sets(),
+            'fsI': redis_telemetry._tel_config.get_invalid_flag_sets(),
+            't': redis_telemetry.pop_config_tags(),
         }))
 
     def test_record_active_and_redundant_factories(self, mocker):

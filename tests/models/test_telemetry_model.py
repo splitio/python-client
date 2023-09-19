@@ -316,7 +316,8 @@ class TelemetryModelTests(object):
             'bT': 0,
             'aF': 0,
             'rF': 0,
-            'fS': 0}
+            'fsT': 0,
+            'fsI': 0}
             )
 
         telemetry_config.record_ready_time(10)
@@ -330,6 +331,9 @@ class TelemetryModelTests(object):
 
         [telemetry_config.record_not_ready_usage() for i in range(5)]
         assert(telemetry_config.get_non_ready_usage() == 5)
+
+        telemetry_config.record_invalid_flag_sets(2)
+        assert(telemetry_config._flag_sets_invalid == 2)
 
         os.environ["https_proxy"] = "some_host_ip"
         assert(telemetry_config._check_if_proxy_detected() == True)

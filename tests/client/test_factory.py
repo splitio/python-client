@@ -29,6 +29,26 @@ from tests.storage.test_pluggable import StorageMockAdapter
 class SplitFactoryTests(object):
     """Split factory test cases."""
 
+    def test_flag_sets_counts(self):
+        factory = get_factory("none", config={
+            'flagSetsFilter': ['set1', 'set2', 'set3']
+        })
+
+        assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets == 3
+        assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets_invalid == 0
+
+        factory = get_factory("none", config={
+            'flagSetsFilter': ['s#et1', 'set2', 'set3']
+        })
+        assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets == 3
+        assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets_invalid == 1
+
+        factory = get_factory("none", config={
+            'flagSetsFilter': ['s#et1', 22, 'set3']
+        })
+        assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets == 3
+        assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets_invalid == 2
+
     def test_inmemory_client_creation_streaming_false(self, mocker):
         """Test that a client with in-memory storage is created correctly."""
 

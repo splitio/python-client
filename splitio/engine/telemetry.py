@@ -52,6 +52,10 @@ class TelemetryInitProducer(object):
         """Record flag sets."""
         self._telemetry_storage.record_flag_sets(flag_sets)
 
+    def record_invalid_flag_sets(self, flag_sets):
+        """Record invalid flag sets."""
+        self._telemetry_storage.record_invalid_flag_sets(flag_sets)
+
     def record_bur_time_out(self):
         """Record block until ready timeout."""
         self._telemetry_storage.record_bur_time_out()
