@@ -240,7 +240,7 @@ def _validate_feature_flag_name(feature_flag_name, method_name):
     return True
 
 
-def validate_feature_flag_name(feature_flag_name, should_validate_existance, feature_flag_storage, method_name):
+def validate_feature_flag_name(feature_flag_name, should_validate_existance, feature_flag, method_name):
     """
     Check if feature flag name is valid for get_treatment.
 
@@ -252,7 +252,7 @@ def validate_feature_flag_name(feature_flag_name, should_validate_existance, fea
     if not _validate_feature_flag_name(feature_flag_name, method_name):
         return None
 
-    if should_validate_existance and feature_flag_storage.get(feature_flag_name) is None:
+    if should_validate_existance and feature_flag is None:
         _LOGGER.warning(
             "%s: you passed \"%s\" that does not exist in this environment, "
             "please double check what Feature flags exist in the Split user interface.",

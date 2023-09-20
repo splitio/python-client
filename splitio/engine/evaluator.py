@@ -121,7 +121,7 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
         """
         return {
             feature_flag.name: self._evaluate_treatment(feature_flag, matching_key,
-                                              bucketing_key, condition_matchers)
+                                              bucketing_key, condition_matchers[feature_flag.name])
             for (feature_flag) in feature_flags
         }
 
