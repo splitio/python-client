@@ -14,7 +14,7 @@ from splitio.models.events import Event, EventWrapper
 from splitio.storage import EventStorage, ImpressionStorage, SegmentStorage, SplitStorage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
     InMemoryImpressionStorage, InMemoryTelemetryStorage, InMemorySplitStorageAsync, \
-    InMemoryImpressionStorageAsync, InMemorySegmentStorageAsync, InMemoryTelemetryStorageAsync
+    InMemoryImpressionStorageAsync, InMemorySegmentStorageAsync, InMemoryTelemetryStorageAsync, InMemoryEventStorageAsync
 from splitio.models.splits import Split, Status, from_raw
 from splitio.engine.impressions.impressions import Manager as ImpressionManager
 from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
@@ -308,7 +308,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
     @pytest.mark.asyncio
     async def test_get_treatment_async(self, mocker):
-        """Test get_treatment execution paths."""
+        """Test get_treatment_async execution paths."""
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         split_storage = InMemorySplitStorageAsync()
@@ -316,6 +316,9 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
+        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
+        await split_storage.put(from_raw(splits_json['splitChange1_1']['splits'][0]))
 
         destroyed_property = mocker.PropertyMock()
         destroyed_property.return_value = False
@@ -323,8 +326,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
-        recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -338,7 +339,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock(),
         )
-        await split_storage.put(from_raw(splits_json['splitChange1_1']['splits'][0]))
         client = Client(factory, recorder, True)
         client._evaluator = mocker.Mock(spec=Evaluator)
         client._evaluator.evaluate_feature.return_value = {
@@ -369,6 +369,225 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert await client.get_treatment_async('some_key', 'SPLIT_2') == 'control'
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', 'exception', -1, None, 1000)]
 
+    @pytest.mark.asyncio
+    async def test_get_treatment_with_config_async(self, mocker):
+        """Test get_treatment execution paths."""
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
+        event_storage = mocker.Mock(spec=EventStorage)
+        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
+        await split_storage.put(from_raw(splits_json['splitChange1_1']['splits'][0]))
+
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+
+        factory = SplitFactory(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            mocker.Mock(),
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+
+        client = Client(factory, recorder, True)
+        client._evaluator = mocker.Mock(spec=Evaluator)
+        client._evaluator.evaluate_feature.return_value = {
+            'treatment': 'on',
+            'configurations': '{"some_config": True}',
+            'impression': {
+                'label': 'some_label',
+                'change_number': 123
+            }
+        }
+        _logger = mocker.Mock()
+        client._send_impression_to_listener = mocker.Mock()
+        assert await client.get_treatment_with_config_async(
+            'some_key',
+            'SPLIT_2'
+        ) == ('on', '{"some_config": True}')
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000)]
+        assert _logger.mock_calls == []
+
+        # Test with client not ready
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = False
+        type(factory).ready = ready_property
+        assert await client.get_treatment_with_config_async('some_key', 'SPLIT_2', {'some_attribute': 1}) == ('control', None)
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+
+        # Test with exception:
+        ready_property.return_value = True
+
+        def _raise(*_):
+            raise Exception('something')
+        client._evaluator.evaluate_feature.side_effect = _raise
+        assert await client.get_treatment_with_config_async('some_key', 'SPLIT_2') == ('control', None)
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', 'exception', -1, None, 1000)]
+
+    @pytest.mark.asyncio
+    async def test_get_treatments_async(self, mocker):
+        """Test get_treatment execution paths."""
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
+        event_storage = mocker.Mock(spec=EventStorage)
+        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
+        await split_storage.put(from_raw(splits_json['splitChange1_1']['splits'][0]))
+        await split_storage.put(from_raw(splits_json['splitChange1_1']['splits'][1]))
+
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+
+        factory = SplitFactory(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            mocker.Mock(),
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+
+        client = Client(factory, recorder, True)
+        client._evaluator = mocker.Mock(spec=Evaluator)
+        evaluation = {
+            'treatment': 'on',
+            'configurations': '{"color": "red"}',
+            'impression': {
+                'label': 'some_label',
+                'change_number': 123
+            }
+        }
+        client._evaluator.evaluate_features.return_value = {
+            'SPLIT_2': evaluation,
+            'SPLIT_1': evaluation
+        }
+        _logger = mocker.Mock()
+        client._send_impression_to_listener = mocker.Mock()
+        assert await client.get_treatments_async('key', ['SPLIT_2', 'SPLIT_1']) == {'SPLIT_2': 'on', 'SPLIT_1': 'on'}
+
+        impressions_called = await impression_storage.pop_many(100)
+        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000) in impressions_called
+        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000) in impressions_called
+        assert _logger.mock_calls == []
+
+        # Test with client not ready
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = False
+        type(factory).ready = ready_property
+        assert await client.get_treatments_async('some_key', ['SPLIT_2'], {'some_attribute': 1}) == {'SPLIT_2': 'control'}
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+
+        # Test with exception:
+        ready_property.return_value = True
+
+        def _raise(*_):
+            raise Exception('something')
+        client._evaluator.evaluate_features.side_effect = _raise
+        assert await client.get_treatments_async('key', ['SPLIT_2', 'SPLIT_1']) == {'SPLIT_2': 'control', 'SPLIT_1': 'control'}
+
+    @pytest.mark.asyncio
+    async def test_get_treatments_with_config(self, mocker):
+        """Test get_treatment execution paths."""
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
+        event_storage = mocker.Mock(spec=EventStorage)
+        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
+        await split_storage.put(from_raw(splits_json['splitChange1_1']['splits'][0]))
+        await split_storage.put(from_raw(splits_json['splitChange1_1']['splits'][1]))
+
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+        factory = SplitFactory(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            mocker.Mock(),
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+
+        client = Client(factory, recorder, True)
+        client._evaluator = mocker.Mock(spec=Evaluator)
+        evaluation = {
+            'treatment': 'on',
+            'configurations': '{"color": "red"}',
+            'impression': {
+                'label': 'some_label',
+                'change_number': 123
+            }
+        }
+        client._evaluator.evaluate_features.return_value = {
+            'SPLIT_1': evaluation,
+            'SPLIT_2': evaluation
+        }
+        _logger = mocker.Mock()
+        assert await client.get_treatments_with_config_async('key', ['SPLIT_1', 'SPLIT_2']) == {
+            'SPLIT_1': ('on', '{"color": "red"}'),
+            'SPLIT_2': ('on', '{"color": "red"}')
+        }
+
+        impressions_called = await impression_storage.pop_many(100)
+        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000) in impressions_called
+        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000) in impressions_called
+        assert _logger.mock_calls == []
+
+        # Test with client not ready
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = False
+        type(factory).ready = ready_property
+        assert await client.get_treatments_with_config_async('some_key', ['SPLIT_1'], {'some_attribute': 1}) == {'SPLIT_1': ('control', None)}
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+
+        # Test with exception:
+        ready_property.return_value = True
+
+        def _raise(*_):
+            raise Exception('something')
+        client._evaluator.evaluate_features.side_effect = _raise
+        assert await client.get_treatments_with_config_async('key', ['SPLIT_1', 'SPLIT_2']) == {
+            'SPLIT_1': ('control', None),
+            'SPLIT_2': ('control', None)
+        }
+
     @mock.patch('splitio.client.factory.SplitFactory.destroy')
     def test_destroy(self, mocker):
         """Test that destroy/destroyed calls are forwarded to the factory."""
@@ -379,7 +598,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
-        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
@@ -441,6 +659,50 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             )
         ]) in event_storage.put.mock_calls
 
+    @pytest.mark.asyncio
+    async def test_track_async(self, mocker):
+        """Test that destroy/destroyed calls are forwarded to the factory."""
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = mocker.Mock(spec=SegmentStorage)
+        impression_storage = mocker.Mock(spec=ImpressionStorage)
+        event_storage = mocker.Mock(spec=EventStorage)
+        self.events = []
+        async def put(event):
+            self.events.append(event)
+            return True
+        event_storage.put = put
+
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
+        factory = SplitFactory(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            mocker.Mock(),
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+
+        destroyed_mock = mocker.PropertyMock()
+        destroyed_mock.return_value = False
+        factory._apikey = 'test'
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+
+        client = Client(factory, recorder, True)
+#        pytest.set_trace()
+        assert await client.track_async('key', 'user', 'purchase', 12) is True
+        assert self.events[0] == [EventWrapper(
+                event=Event('key', 'user', 'purchase', 12, 1000, None),
+                size=1024
+            )]
+
     def test_evaluations_before_running_post_fork(self, mocker):
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
@@ -498,6 +760,65 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert _logger.error.mock_calls == expected_msg
         _logger.reset_mock()
 
+    @pytest.mark.asyncio
+    async def test_evaluations_before_running_post_fork_async(self, mocker):
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
+        event_storage = mocker.Mock(spec=EventStorage)
+        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
+        await split_storage.put(from_raw(splits_json['splitChange1_1']['splits'][0]))
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        factory = SplitFactory(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': impression_storage,
+            'events': mocker.Mock()},
+            mocker.Mock(),
+            recorder,
+            mocker.Mock(),
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock(),
+            True
+        )
+
+        expected_msg = [
+            mocker.call('Client is not ready - no calls possible')
+        ]
+
+        client = Client(factory, mocker.Mock())
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.client._LOGGER', new=_logger)
+
+        assert await client.get_treatment_async('some_key', 'SPLIT_2') == CONTROL
+        assert _logger.error.mock_calls == expected_msg
+        _logger.reset_mock()
+
+        assert await client.get_treatment_with_config_async('some_key', 'SPLIT_2') == (CONTROL, None)
+        assert _logger.error.mock_calls == expected_msg
+        _logger.reset_mock()
+
+        assert await client.track_async("some_key", "traffic_type", "event_type", None) is False
+        assert _logger.error.mock_calls == expected_msg
+        _logger.reset_mock()
+
+        assert await client.get_treatments_async(None, ['SPLIT_2']) == {'SPLIT_2': CONTROL}
+        assert _logger.error.mock_calls == expected_msg
+        _logger.reset_mock()
+
+        assert await client.get_treatments_with_config_async('some_key', ['SPLIT_2']) == {'SPLIT_2': (CONTROL, None)}
+        assert _logger.error.mock_calls == expected_msg
+        _logger.reset_mock()
+
     @mock.patch('splitio.client.client.Client.ready', side_effect=None)
     def test_telemetry_not_ready(self, mocker):
         telemetry_storage = InMemoryTelemetryStorage()
@@ -529,10 +850,44 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         client.track('key', 'tt', 'ev')
         assert(telemetry_storage._tel_config._not_ready == 2)
 
+    @pytest.mark.asyncio
+    async def test_telemetry_not_ready_async(self, mocker):
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
+        event_storage = InMemoryEventStorageAsync(10, telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
+        await split_storage.put(from_raw(splits_json['splitChange1_1']['splits'][0]))
+        factory = SplitFactory('localhost',
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': impression_storage,
+            'events': mocker.Mock()},
+            mocker.Mock(),
+            recorder,
+            mocker.Mock(),
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = False
+        type(factory).ready = ready_property
+        client = Client(factory, recorder)
+        assert await client.get_treatment_async('some_key', 'SPLIT_2') == CONTROL
+        assert(telemetry_storage._tel_config._not_ready == 1)
+        await client.track_async('key', 'tt', 'ev')
+        assert(telemetry_storage._tel_config._not_ready == 2)
+
     @mock.patch('splitio.client.client.Client._evaluate_if_ready', side_effect=Exception())
     def test_telemetry_record_treatment_exception(self, mocker):
         split_storage = InMemorySplitStorage()
-        split_storage.put(Split('split1', 1234, 1, False, 'user', Status.ACTIVE, 123))
+        split_storage.put(from_raw(splits_json['splitChange1_1']['splits'][0]))
         segment_storage = mocker.Mock(spec=SegmentStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
@@ -559,58 +914,89 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = True
+        type(factory).ready = ready_property
         client = Client(factory, recorder, True)
         try:
-            client.get_treatment('key', 'split1')
+            client.get_treatment('key', 'SPLIT_2')
         except:
             pass
         assert(telemetry_storage._method_exceptions._treatment == 1)
-
         try:
-            client.get_treatment_with_config('key', 'split1')
+            client.get_treatment_with_config('key', 'SPLIT_2')
         except:
             pass
         assert(telemetry_storage._method_exceptions._treatment_with_config == 1)
 
-    @mock.patch('splitio.client.client.Client._evaluate_features_if_ready', side_effect=Exception())
-    def test_telemetry_record_treatments_exception(self, mocker):
-        split_storage = InMemorySplitStorage()
-        split_storage.put(Split('split1', 1234, 1, False, 'user', Status.ACTIVE, 123))
-        segment_storage = mocker.Mock(spec=SegmentStorage)
-        impression_storage = mocker.Mock(spec=ImpressionStorage)
-        event_storage = mocker.Mock(spec=EventStorage)
-        destroyed_property = mocker.PropertyMock()
-        destroyed_property.return_value = False
-
-        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
-        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
-
-        impmanager = mocker.Mock(spec=ImpressionManager)
-        telemetry_storage = InMemoryTelemetryStorage()
-        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
-        factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            impmanager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
-        client = Client(factory, recorder, True)
+        def exc(*_):
+            raise Exception("something")
+        client._evaluate_features_if_ready = exc
         try:
-            client.get_treatments('key', ['split1'])
+            client.get_treatments('key', ['SPLIT_2'])
         except:
             pass
         assert(telemetry_storage._method_exceptions._treatments == 1)
 
         try:
-            client.get_treatments_with_config('key', ['split1'])
+            client.get_treatments_with_config('key', ['SPLIT_2'])
+        except:
+            pass
+        assert(telemetry_storage._method_exceptions._treatments_with_config == 1)
+
+    @pytest.mark.asyncio
+    async def test_telemetry_record_treatment_exception_async(self, mocker):
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
+        event_storage = InMemoryEventStorageAsync(10, telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
+        await split_storage.put(from_raw(splits_json['splitChange1_1']['splits'][0]))
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+
+        factory = SplitFactory(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        client = Client(factory, recorder, True)
+        def _raise(*_):
+            raise Exception('something')
+        client._evaluate_if_ready = _raise
+        try:
+            await client.get_treatment_async('key', 'SPLIT_2')
+        except:
+            pass
+        assert(telemetry_storage._method_exceptions._treatment == 1)
+        try:
+            await client.get_treatment_with_config_async('key', 'SPLIT_2')
+        except:
+            pass
+        assert(telemetry_storage._method_exceptions._treatment_with_config == 1)
+        client._evaluate_features_if_ready = _raise
+        try:
+            await client.get_treatments_async('key', ['SPLIT_2'])
+        except:
+            pass
+        assert(telemetry_storage._method_exceptions._treatments == 1)
+        try:
+            await client.get_treatments_with_config_async('key', ['SPLIT_2'])
         except:
             pass
         assert(telemetry_storage._method_exceptions._treatments_with_config == 1)
@@ -657,6 +1043,49 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         client.track('key', 'tt', 'ev')
         assert(telemetry_storage._method_latencies._track[0] == 1)
 
+    @pytest.mark.asyncio
+    async def test_telemetry_method_latency_async(self, mocker):
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
+        event_storage = InMemoryEventStorageAsync(10, telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
+        await split_storage.put(from_raw(splits_json['splitChange1_1']['splits'][0]))
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+
+        factory = SplitFactory(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        client = Client(factory, recorder, True)
+        assert await client.get_treatment_async('key', 'SPLIT_2') == 'on'
+        assert(telemetry_storage._method_latencies._treatment[0] == 1)
+        await client.get_treatment_with_config_async('key', 'SPLIT_2')
+        assert(telemetry_storage._method_latencies._treatment_with_config[0] == 1)
+        await client.get_treatments_async('key', ['SPLIT_2'])
+        assert(telemetry_storage._method_latencies._treatments[0] == 1)
+        await client.get_treatments_with_config_async('key', ['SPLIT_2'])
+        assert(telemetry_storage._method_latencies._treatments_with_config[0] == 1)
+        await client.track_async('key', 'tt', 'ev')
+        assert(telemetry_storage._method_latencies._track[0] == 1)
+
     @mock.patch('splitio.recorder.recorder.StandardRecorder.record_track_stats', side_effect=Exception())
     def test_telemetry_track_exception(self, mocker):
         split_storage = mocker.Mock(spec=SplitStorage)
@@ -672,7 +1101,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
@@ -690,6 +1118,46 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         client = Client(factory, recorder, True)
         try:
             client.track('key', 'tt', 'ev')
+        except:
+            pass
+        assert(telemetry_storage._method_exceptions._track == 1)
+
+    @pytest.mark.asyncio
+    async def test_telemetry_track_exception(self, mocker):
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = mocker.Mock(spec=SegmentStorage)
+        impression_storage = mocker.Mock(spec=ImpressionStorage)
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        event_storage = InMemoryEventStorageAsync(10, telemetry_producer.get_telemetry_runtime_producer())
+        recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
+        factory = SplitFactory(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        async def exc(*_):
+            raise Exception("something")
+        recorder.record_track_stats = exc
+
+        client = Client(factory, recorder, True)
+        try:
+            await client.track_async('key', 'tt', 'ev')
         except:
             pass
         assert(telemetry_storage._method_exceptions._track == 1)

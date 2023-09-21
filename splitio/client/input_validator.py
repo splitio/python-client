@@ -478,7 +478,7 @@ def _get_filtered_feature_flag(feature_flags, method_name):
 
 def validate_feature_flags_get_treatments(  # pylint: disable=invalid-name
     method_name,
-    feature_flags,
+    feature_flag_names,
     should_validate_existance=False,
     feature_flag_storage=None
 ):
@@ -490,18 +490,23 @@ def validate_feature_flags_get_treatments(  # pylint: disable=invalid-name
     :return: filtered_feature_flags
     :rtype: tuple
     """
-    if not _check_feature_flag_instance(feature_flags, method_name):
+    if not _check_feature_flag_instance(feature_flag_names, method_name):
         return None, None
 
-    filtered_feature_flags = _get_filtered_feature_flag(feature_flags, method_name)
+    filtered_feature_flags = _get_filtered_feature_flag(feature_flag_names, method_name)
     if not filtered_feature_flags:
         _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
         return None, None
 
-    if not should_validate_existance:
-        return filtered_feature_flags, []
-
-    valid_missing_feature_flags = set(f for f in filtered_feature_flags if feature_flag_storage.get(f) is None)
+    valid_missing_feature_flags = set()
+    valid_feature_flags = []
+    for ff in filtered_feature_flags:
+        ff = _remove_empty_spaces(ff, method_name)
+        feature_flag = feature_flag_storage.get(ff)
+        if feature_flag is None:
+            valid_missing_feature_flags.add(ff)
+            continue
+        valid_feature_flags.append(feature_flag)
     for missing_feature_flag in valid_missing_feature_flags:
         _LOGGER.warning(
             "%s: you passed \"%s\" that does not exist in this environment, "
@@ -509,12 +514,11 @@ def validate_feature_flags_get_treatments(  # pylint: disable=invalid-name
             method_name,
             missing_feature_flag
         )
-    return filtered_feature_flags - valid_missing_feature_flags, valid_missing_feature_flags
-
+    return valid_feature_flags, list(valid_missing_feature_flags)
 
 async def validate_feature_flags_get_treatments_async(  # pylint: disable=invalid-name
     method_name,
-    feature_flags,
+    feature_flag_names,
     should_validate_existance=False,
     feature_flag_storage=None
 ):
@@ -526,18 +530,23 @@ async def validate_feature_flags_get_treatments_async(  # pylint: disable=invali
     :return: filtered_feature_flags
     :rtype: tuple
     """
-    if not _check_feature_flag_instance(feature_flags, method_name):
+    if not _check_feature_flag_instance(feature_flag_names, method_name):
         return None, None
 
-    filtered_feature_flags = _get_filtered_feature_flag(feature_flags, method_name)
+    filtered_feature_flags = _get_filtered_feature_flag(feature_flag_names, method_name)
     if not filtered_feature_flags:
         _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
         return None, None
 
-    if not should_validate_existance:
-        return filtered_feature_flags, []
-
-    valid_missing_feature_flags = set(f for f in filtered_feature_flags if await feature_flag_storage.get(f) is None)
+    valid_missing_feature_flags = set()
+    valid_feature_flags = []
+    for ff in filtered_feature_flags:
+        ff = _remove_empty_spaces(ff, method_name)
+        feature_flag = await feature_flag_storage.get(ff)
+        if feature_flag is None:
+            valid_missing_feature_flags.add(ff)
+            continue
+        valid_feature_flags.append(feature_flag)
     for missing_feature_flag in valid_missing_feature_flags:
         _LOGGER.warning(
             "%s: you passed \"%s\" that does not exist in this environment, "
@@ -545,7 +554,7 @@ async def validate_feature_flags_get_treatments_async(  # pylint: disable=invali
             method_name,
             missing_feature_flag
         )
-    return filtered_feature_flags - valid_missing_feature_flags, valid_missing_feature_flags
+    return valid_feature_flags, list(valid_missing_feature_flags)
 
 
 def generate_control_treatments(feature_flags, method_name):
@@ -557,7 +566,7 @@ def generate_control_treatments(feature_flags, method_name):
     :return: dict
     :rtype: dict|None
     """
-    return {feature_flag: (CONTROL, None) for feature_flag in validate_feature_flags_get_treatments(method_name, feature_flags)[0]}
+    return {feature_flag: (CONTROL, None) for feature_flag in feature_flags}
 
 
 def validate_attributes(attributes, method_name):

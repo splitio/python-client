@@ -133,22 +133,12 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         if input_validator.validate_attributes(attributes, method.value) is False:
             return input_validator.generate_control_treatments(feature_flags, method.value), None, None, False
 
-        feature_flag_names, missing = input_validator.validate_feature_flags_get_treatments(
-            method.value,
-            feature_flag_names,
-            self.ready,
-            self._factory._get_storage('splits')  # pylint: disable=protected-access
-        )
-        if feature_flag_names is None:
-            return {}
-
+        treatments = {}
         bulk_impressions = []
-        treatments = {name: (CONTROL, None) for name in missing}
-
         try:
             evaluations = self._evaluate_features_if_ready(matching_key, bucketing_key,
                                                            list(feature_flag_names), feature_flags, condition_matchers)
-
+            exception_flag = False
             for feature_flag_name in feature_flag_names:
                 try:
                     result = evaluations[feature_flag_name]
@@ -168,9 +158,10 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                                   'feature flag %s returning CONTROL.' % (method.value, feature_flag_name))
                     treatments[feature_flag_name] = CONTROL, None
                     _LOGGER.debug('Error: ', exc_info=True)
+                    exception_flag = True
                     continue
 
-            return treatments, bulk_impressions, start, False
+            return treatments, bulk_impressions, start, exception_flag
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error getting treatment for feature flags')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -374,18 +365,19 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             return input_validator.generate_control_treatments(feature_flag_names, method.value)
 
         if not self.ready:
+            _LOGGER.error("Client is not ready - no calls possible")
             self._telemetry_init_producer.record_not_ready_usage()
 
-        feature_flags = []
-        for feature_flag_name in feature_flag_names:
-            feature_flag = self._split_storage.get(feature_flag_name)
-            if input_validator.validate_feature_flag_name(
-                feature_flag_name,
-                self.ready,
-                feature_flag,
-                method) == None:
-                continue
-            feature_flags.append(feature_flag)
+        feature_flags, missing = input_validator.validate_feature_flags_get_treatments(
+            method.value,
+            feature_flag_names,
+            self.ready,
+            self._factory._get_storage('splits')  # pylint: disable=protected-access
+        )
+        if feature_flags is None:
+            return input_validator.generate_control_treatments(feature_flag_names, method.value)
+
+        missing_treatments = {name: (CONTROL, None) for name in missing}
 
         matching_key, bucketing_key = input_validator.validate_key(key, method.value)
         if matching_key is None and bucketing_key is None:
@@ -417,6 +409,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         if exception_flag:
             self._telemetry_evaluation_producer.record_exception(method)
 
+        with_config.update(missing_treatments)
         return with_config
 
     async def _get_condition_matchers_async(self, feature_flag, bucketing_key, matching_key, segment_matchers, attributes=None):
@@ -552,7 +545,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
-        with_config = await self._get_treatments_async(key, feature_flag_names, attributes, MethodExceptionsAndLatencies.TREATMENTS)
+        with_config = await self._get_treatments_async(key, feature_flag_names, MethodExceptionsAndLatencies.TREATMENTS, attributes)
         return {feature_flag: result[0] for (feature_flag, result) in with_config.items()}
 
     async def get_treatments_with_config_async(self, key, feature_flag_names, attributes=None):
@@ -571,21 +564,31 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
-        return await self._get_treatments_async(key, feature_flag_names, attributes, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG)
+        return await self._get_treatments_async(key, feature_flag_names, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG, attributes)
 
     async def _get_treatments_async(self, key, feature_flag_names, method, attributes=None):
-        if not self.ready:
-            await self._telemetry_init_producer.record_not_ready_usage()
-            return {
-                feature_flag_name: {
-                    'treatment': CONTROL,
-                    'configurations': None,
-                    'impression': {'label': Label.NOT_READY, 'change_number': None}
-                }
-                for feature_flag_name in feature_flag_names
-            }
+        if self.destroyed:
+            _LOGGER.error("Client has already been destroyed - no calls possible")
+            return input_validator.generate_control_treatments(feature_flag_names, method.value)
+        if self._factory._waiting_fork():
+            _LOGGER.error("Client is not ready - no calls possible")
+            return input_validator.generate_control_treatments(feature_flag_names, method.value)
 
-        feature_flags =  await self._split_storage.fetch_many(feature_flag_names)
+        if not self.ready:
+            _LOGGER.error("Client is not ready - no calls possible")
+            await self._telemetry_init_producer.record_not_ready_usage()
+
+        feature_flags, missing = await input_validator.validate_feature_flags_get_treatments_async(
+            method.value,
+            feature_flag_names,
+            self.ready,
+            self._factory._get_storage('splits')  # pylint: disable=protected-access
+        )
+        if feature_flags is None:
+            return input_validator.generate_control_treatments(feature_flag_names, method.value)
+
+        missing_treatments = {name: (CONTROL, None) for name in missing}
+
         matching_key, bucketing_key = input_validator.validate_key(key, method.value)
         if matching_key is None and bucketing_key is None:
             return input_validator.generate_control_treatments(feature_flag_names, method.value)
@@ -593,12 +596,12 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         if bucketing_key is None:
             bucketing_key = matching_key
 
-        condition_matchers = []
+        condition_matchers = {}
         for feature_flag in feature_flags:
             segment_matchers = await self._get_segment_matchers_async(feature_flag, matching_key)
-            condition_matchers.append(await self._get_condition_matchers_async(feature_flag, bucketing_key, matching_key, segment_matchers, attributes))
+            condition_matchers[feature_flag.name] = await self._get_condition_matchers_async(feature_flag, bucketing_key, matching_key, segment_matchers, attributes)
 
-        with_config, impressions, start, exception_flag = await self._make_evaluations(key, feature_flag_names, feature_flags, condition_matchers, attributes, method)
+        with_config, impressions, start, exception_flag = self._make_evaluations(key, feature_flag_names, feature_flags, condition_matchers, attributes, method)
 
         try:
             if impressions:
@@ -616,6 +619,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         if exception_flag:
             await self._telemetry_evaluation_producer.record_exception(method)
 
+        with_config.update(missing_treatments)
         return with_config
 
     def _build_impression(  # pylint: disable=too-many-arguments
@@ -695,6 +699,12 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             self._telemetry_init_producer.record_not_ready_usage()
 
         start = get_current_epoch_time_ms()
+        should_validate_existance = self.ready and self._factory._sdk_key != 'localhost'  # pylint: disable=protected-access
+        traffic_type = input_validator.validate_traffic_type(
+            traffic_type,
+            should_validate_existance,
+            self._factory._get_storage('splits'),  # pylint: disable=protected-access
+        )
         is_valid, event, size = self._validate_track(key, traffic_type, event_type, value, properties)
         if not is_valid:
             return False
@@ -734,6 +744,12 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             await self._telemetry_init_producer.record_not_ready_usage()
 
         start = get_current_epoch_time_ms()
+        should_validate_existance = self.ready and self._factory._sdk_key != 'localhost'  # pylint: disable=protected-access
+        traffic_type = await input_validator.validate_traffic_type_async(
+            traffic_type,
+            should_validate_existance,
+            self._factory._get_storage('splits'),  # pylint: disable=protected-access
+        )
         is_valid, event, size = self._validate_track(key, traffic_type, event_type, value, properties)
         if not is_valid:
             return False
@@ -760,13 +776,6 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
         key = input_validator.validate_track_key(key)
         event_type = input_validator.validate_event_type(event_type)
-        should_validate_existance = self.ready and self._factory._sdk_key != 'localhost'  # pylint: disable=protected-access
-        traffic_type = input_validator.validate_traffic_type(
-            traffic_type,
-            should_validate_existance,
-            self._factory._get_storage('splits'),  # pylint: disable=protected-access
-        )
-
         value = input_validator.validate_value(value)
         valid, properties, size = input_validator.valid_properties(properties)
 
