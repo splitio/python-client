@@ -85,13 +85,31 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             condition_matchers
         )
 
-    def _make_evaluation(self, key, feature_flag_name, attributes, method_name, feature_flag, condition_matchers, storage_change_number):
+    def _make_evaluation(self, key, feature_flag_name, attributes, method, feature_flag, condition_matchers, storage_change_number):
+        """
+        Evaluate treatment for given feature flag
+
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param feature_flag_name: The name of the feature flag for which to get the treatment
+        :type feature_flag_name: str
+        :param method: The method calling this function
+        :type method: splitio.models.telemetry.MethodExceptionsAndLatencies
+        :param feature_flag: Feature flag Split object
+        :type feature_flag: splitio.models.splits.Split
+        :param condition_matchers: A dictionary representing all matchers for the current feature flag
+        :type condition_matchers: dict
+        :param storage_change_number: the change number for the Feature flag storage.
+        :type storage_change_number: int
+        :return: The treatment and config for the key and feature flag, impressions created, start time and exception flag
+        :rtype: tuple(str, str, splitio.models.impressions.Impression, int, bool)
+        """
         try:
             start = get_current_epoch_time_ms()
-            matching_key, bucketing_key = input_validator.validate_key(key, method_name)
+            matching_key, bucketing_key = input_validator.validate_key(key, method.value)
             if (matching_key is None and bucketing_key is None) \
                     or feature_flag_name is None \
-                    or not input_validator.validate_attributes(attributes, method_name):
+                    or not input_validator.validate_attributes(attributes, method.value):
                 return CONTROL, None, None, None, False
 
             result = self._evaluate_if_ready(matching_key, bucketing_key, feature_flag_name, feature_flag, condition_matchers)
@@ -127,6 +145,26 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             return CONTROL, None, None, None, False
 
     def _make_evaluations(self, key, feature_flag_names, feature_flags, condition_matchers, attributes, method):
+        """
+        Evaluate treatments for given feature flags
+
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param feature_flag_names: Array of feature flag names for which to get the treatment
+        :type feature_flag_names: list(str)
+        :param feature_flags: Array of feature flags Split objects
+        :type feature_flag: list(splitio.models.splits.Split)
+        :param condition_matchers: dictionary representing all matchers for each current feature flag
+        :type condition_matchers: dict
+        :param storage_change_number: the change number for the Feature flag storage.
+        :type storage_change_number: int
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :param method: The method calling this function
+        :type method: splitio.models.telemetry.MethodExceptionsAndLatencies
+        :return: The treatments and configs for the key and feature flags, impressions created, start time and exception flag
+        :rtype: tuple(dict, splitio.models.impressions.Impression, int, bool)
+        """
         start = get_current_epoch_time_ms()
 
         matching_key, bucketing_key = input_validator.validate_key(key, method.value)
@@ -168,6 +206,22 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         return input_validator.generate_control_treatments(list(feature_flag_names), method.value), None, start, True
 
     def _evaluate_features_if_ready(self, matching_key, bucketing_key, feature_flag_names, feature_flags, condition_matchers):
+        """
+        Evaluate treatments for given feature flags
+
+        :param matching_key: Matching key for which to get the treatment
+        :type matching_key: str
+        :param bucketing_key: Bucketing key for which to get the treatment
+        :type bucketing_key: str
+        :param feature_flag_names: Array of feature flag names for which to get the treatment
+        :type feature_flag_names: list(str)
+        :param feature_flags: Array of feature flags Split objects
+        :type feature_flag: list(splitio.models.splits.Split)
+        :param condition_matchers: dictionary representing all matchers for each current feature flag
+        :type condition_matchers: dict
+        :return: The treatments, configs and impressions generated for the key and feature flags
+        :rtype: dict
+        """
         if not self.ready:
             return {
                 feature_flag_name: {
@@ -211,8 +265,8 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
         :param key: The key for which to get the treatment
         :type key: str
-        :param feature: The name of the feature flag for which to get the treatment
-        :type feature: str
+        :param feature_flag_name: The name of the feature flag for which to get the treatment
+        :type feature_flag_name: str
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
         :return: The treatment for the key and feature flag
@@ -222,6 +276,20 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         return treatment
 
     def _get_treatment(self, key, feature_flag_name, method, attributes=None):
+        """
+        Validate key, feature flag name and object, and get the treatment and config with an optional dictionary of attributes.
+
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param feature_flag_name: The name of the feature flag for which to get the treatment
+        :type feature_flag_name: str
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :param method: The method calling this function
+        :type method: splitio.models.telemetry.MethodExceptionsAndLatencies
+        :return: The treatment and config for the key and feature flag
+        :rtype: dict
+        """
         if self.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible")
             return CONTROL, None
@@ -245,7 +313,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
         segment_matchers = self._get_segment_matchers(feature_flag, matching_key)
         condition_matchers = self._get_condition_matchers(feature_flag, bucketing_key, matching_key, segment_matchers, attributes)
-        treatment, config, impression, start, exception_flag = self._make_evaluation(key, feature_flag_name, attributes, method.value,
+        treatment, config, impression, start, exception_flag = self._make_evaluation(key, feature_flag_name, attributes, method,
                                              feature_flag, condition_matchers, self._split_storage.get_change_number())
         if impression is not None:
             self._record_stats([(impression, attributes)], start, method)
@@ -256,7 +324,21 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         return treatment, config
 
     def _get_condition_matchers(self, feature_flag, bucketing_key, matching_key, segment_matchers, attributes=None):
-        # Fetching matchers which might access segment_storage
+        """
+        Calculate and store all condition matchers for given feature flag.
+        If there are dependent Feature Flag(s), the function will do recursive calls until all matchers are resolved.
+
+        :param feature_flag: Feature flag Split objects
+        :type feature_flag: splitio.models.splits.Split
+        :param bucketing_key: Bucketing key for which to get the treatment
+        :type bucketing_key: str
+        :param matching_key: Matching key for which to get the treatment
+        :type matching_key: str
+        :param segment_matchers: Segment matchers for the feature flag
+        :type segment_matchers: dict
+        :return: dictionary representing all matchers for each current feature flag
+        :type: dict
+        """
         roll_out = False
         context = {
             'segment_matchers': segment_matchers,
@@ -293,6 +375,17 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         return condition_matchers
 
     def _get_segment_matchers(self, feature_flag, matching_key):
+        """
+        Get all segments matchers for given feature flag.
+        If there are dependent Feature Flag(s), the function will do recursive calls until all matchers are resolved.
+
+        :param feature_flag: Feature flag Split objects
+        :type feature_flag: splitio.models.splits.Split
+        :param matching_key: Matching key for which to get the treatment
+        :type matching_key: str
+        :return: Segment matchers for the feature flag
+        :type: dict
+        """
         segment_matchers = {}
         for segment in self._get_segment_names(feature_flag):
             for condition in feature_flag.conditions:
@@ -357,6 +450,20 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         return {feature_flag: result[0] for (feature_flag, result) in with_config.items()}
 
     def _get_treatments(self, key, feature_flag_names, method, attributes=None):
+        """
+        Validate key, feature flag names and objects, and get the treatments and configs with an optional dictionary of attributes.
+
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param feature_flag_names: Array of feature flag names for which to get the treatments
+        :type feature_flag_names: list(str)
+        :param method: The method calling this function
+        :type method: splitio.models.telemetry.MethodExceptionsAndLatencies
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :return: The treatments and configs for the key and feature flags
+        :rtype: dict
+        """
         if self.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible")
             return input_validator.generate_control_treatments(feature_flag_names, method.value)
@@ -413,7 +520,21 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         return with_config
 
     async def _get_condition_matchers_async(self, feature_flag, bucketing_key, matching_key, segment_matchers, attributes=None):
-        # Fetching matchers which might access segment_storage
+        """
+        Calculate and store all condition matchers for given feature flag for async calls
+        If there are dependent Feature Flag(s), the function will do recursive calls until all matchers are resolved.
+
+        :param feature_flag: Feature flag Split objects
+        :type feature_flag: splitio.models.splits.Split
+        :param bucketing_key: Bucketing key for which to get the treatment
+        :type bucketing_key: str
+        :param matching_key: Matching key for which to get the treatment
+        :type matching_key: str
+        :param segment_matchers: Segment matchers for the feature flag
+        :type segment_matchers: dict
+        :return: dictionary representing all matchers for each current feature flag
+        :type: dict
+        """
         roll_out = False
         context = {
             'segment_matchers': segment_matchers,
@@ -450,6 +571,17 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         return condition_matchers
 
     async def _get_segment_matchers_async(self, feature_flag, matching_key):
+        """
+        Get all segments matchers for given feature flag for async calls
+        If there are dependent Feature Flag(s), the function will do recursive calls until all matchers are resolved.
+
+        :param feature_flag: Feature flag Split objects
+        :type feature_flag: splitio.models.splits.Split
+        :param matching_key: Matching key for which to get the treatment
+        :type matching_key: str
+        :return: Segment matchers for the feature flag
+        :type: dict
+        """
         segment_matchers = {}
         for segment in self._get_segment_names(feature_flag):
             for condition in feature_flag.conditions:
@@ -460,7 +592,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
     async def get_treatment_async(self, key, feature_flag_name, attributes=None):
         """
-        Get the treatment for a feature and key, with an optional dictionary of attributes.
+        Get the treatment for a feature and key, with an optional dictionary of attributes, for async calls
 
         This method never raises an exception. If there's a problem, the appropriate log message
         will be generated and the method will return the CONTROL treatment.
@@ -479,7 +611,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
     async def get_treatment_with_config_async(self, key, feature_flag_name, attributes=None):
         """
-        Get the treatment for a feature and key, with an optional dictionary of attributes.
+        Get the treatment for a feature and key, with an optional dictionary of attributes, for async calls
 
         This method never raises an exception. If there's a problem, the appropriate log message
         will be generated and the method will return the CONTROL treatment.
@@ -496,6 +628,20 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         return await self._get_treatment_async(key, feature_flag_name, MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG, attributes)
 
     async def _get_treatment_async(self, key, feature_flag_name, method, attributes=None):
+        """
+        Validate key, feature flag name and object, and get the treatment and config with an optional dictionary of attributes, for async calls
+
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param feature_flag_name: The name of the feature flag for which to get the treatment
+        :type feature_flag_name: str
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :param method: The method calling this function
+        :type method: splitio.models.telemetry.MethodExceptionsAndLatencies
+        :return: The treatment and config for the key and feature flag
+        :rtype: dict
+        """
         if self.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible")
             return CONTROL, None
@@ -519,7 +665,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
         segment_matchers = await self._get_segment_matchers_async(feature_flag, matching_key)
         condition_matchers = await self._get_condition_matchers_async(feature_flag, bucketing_key, matching_key, segment_matchers, attributes)
-        treatment, config, impression, start, exception_flag = self._make_evaluation(key, feature_flag_name, attributes, method.value,
+        treatment, config, impression, start, exception_flag = self._make_evaluation(key, feature_flag_name, attributes, method,
                                              feature_flag, condition_matchers, await self._split_storage.get_change_number())
         if impression is not None:
             await self._record_stats_async([(impression, attributes)], start, method)
@@ -531,7 +677,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
     async def get_treatments_async(self, key, feature_flag_names, attributes=None):
         """
-        Evaluate multiple feature flags and return a dictionary with all the feature flag/treatments.
+        Evaluate multiple feature flags and return a dictionary with all the feature flag/treatments, for async calls
 
         Get the treatments for a list of feature flags considering a key, with an optional dictionary of
         attributes. This method never raises an exception. If there's a problem, the appropriate
@@ -550,7 +696,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
     async def get_treatments_with_config_async(self, key, feature_flag_names, attributes=None):
         """
-        Evaluate multiple feature flags and return a dict with feature flag -> (treatment, config).
+        Evaluate multiple feature flags and return a dict with feature flag -> (treatment, config), for async calls
 
         Get the treatments for a list of feature flags considering a key, with an optional dictionary of
         attributes. This method never raises an exception. If there's a problem, the appropriate
@@ -567,6 +713,20 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         return await self._get_treatments_async(key, feature_flag_names, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG, attributes)
 
     async def _get_treatments_async(self, key, feature_flag_names, method, attributes=None):
+        """
+        Validate key, feature flag names and objects, and get the treatments and configs with an optional dictionary of attributes, for async calls
+
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param feature_flag_names: Array of feature flag names for which to get the treatments
+        :type feature_flag_names: list(str)
+        :param method: The method calling this function
+        :type method: splitio.models.telemetry.MethodExceptionsAndLatencies
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :return: The treatments and configs for the key and feature flags
+        :rtype: dict
+        """
         if self.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible")
             return input_validator.generate_control_treatments(feature_flag_names, method.value)
@@ -661,7 +821,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
     async def _record_stats_async(self, impressions, start, operation):
         """
-        Record impressions.
+        Record impressions for async calls
 
         :param impressions: Generated impressions
         :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
@@ -723,7 +883,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
     async def track_async(self, key, traffic_type, event_type, value=None, properties=None):
         """
-        Track an event.
+        Track an event for async calls
 
         :param key: user key associated to the event
         :type key: str
@@ -767,6 +927,23 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             return False
 
     def _validate_track(self, key, traffic_type, event_type, value=None, properties=None):
+        """
+        Validate track call parameters
+
+        :param key: user key associated to the event
+        :type key: str
+        :param traffic_type: traffic type name
+        :type traffic_type: str
+        :param event_type: event type name
+        :type event_type: str
+        :param value: (Optional) value associated to the event
+        :type value: Number
+        :param properties: (Optional) properties associated to the event
+        :type properties: dict
+
+        :return: validation, event created and its properties size.
+        :rtype: tuple(bool, splitio.models.events.Event, int)
+        """
         if self.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible")
             return False, None, None
