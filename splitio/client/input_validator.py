@@ -479,7 +479,6 @@ def _get_filtered_feature_flag(feature_flags, method_name):
 def validate_feature_flags_get_treatments(  # pylint: disable=invalid-name
     method_name,
     feature_flag_names,
-    should_validate_existance=False,
     feature_flag_storage=None
 ):
     """
@@ -519,7 +518,6 @@ def validate_feature_flags_get_treatments(  # pylint: disable=invalid-name
 async def validate_feature_flags_get_treatments_async(  # pylint: disable=invalid-name
     method_name,
     feature_flag_names,
-    should_validate_existance=False,
     feature_flag_storage=None
 ):
     """

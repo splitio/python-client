@@ -478,7 +478,6 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         feature_flags, missing = input_validator.validate_feature_flags_get_treatments(
             method.value,
             feature_flag_names,
-            self.ready,
             self._factory._get_storage('splits')  # pylint: disable=protected-access
         )
         if feature_flags is None:
@@ -741,7 +740,6 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         feature_flags, missing = await input_validator.validate_feature_flags_get_treatments_async(
             method.value,
             feature_flag_names,
-            self.ready,
             self._factory._get_storage('splits')  # pylint: disable=protected-access
         )
         if feature_flags is None:
