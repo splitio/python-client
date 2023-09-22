@@ -2,7 +2,6 @@
 import abc
 import threading
 
-
 class SplitStorage(object, metaclass=abc.ABCMeta):
     """Split storage interface implemented as an abstract class."""
 
@@ -324,6 +323,7 @@ class FlagSetsFilter(object):
         """Constructor."""
         self.flag_sets = set(flag_sets)
         self.should_filter = any(flag_sets)
+        self.sorted_flag_sets = sorted(flag_sets)
 
     def set_exist(self, flag_set):
         """

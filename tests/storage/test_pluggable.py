@@ -767,5 +767,7 @@ class PluggableTelemetryStorageTests(object):
                     }, {}
             )
             pluggable_telemetry_storage.record_active_and_redundant_factories(2, 1)
+            pluggable_telemetry_storage.record_flag_sets(3)
+            pluggable_telemetry_storage.record_invalid_flag_sets(1)
             pluggable_telemetry_storage.push_config_stats()
-            assert(self.mock_adapter._keys[pluggable_telemetry_storage._telemetry_config_key + "::" + pluggable_telemetry_storage._sdk_metadata] == '{"aF": 2, "rF": 1, "sT": "memory", "oM": 0, "t": []}')
+            assert(self.mock_adapter._keys[pluggable_telemetry_storage._telemetry_config_key + "::" + pluggable_telemetry_storage._sdk_metadata] == '{"aF": 2, "rF": 1, "sT": "memory", "oM": 0, "t": [], "fsT": 3, "fsI": 1}')

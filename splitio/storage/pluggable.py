@@ -806,6 +806,14 @@ class PluggableTelemetryStorage(TelemetryStorage):
         """
         self._tel_config.record_config(config, extra_config)
 
+    def record_flag_sets(self, flag_sets):
+            """Record flag sets."""
+            self._tel_config.record_flag_sets(flag_sets)
+
+    def record_invalid_flag_sets(self, flag_sets):
+        """Record invalid flag sets."""
+        self._tel_config.record_invalid_flag_sets(flag_sets)
+
     def pop_config_tags(self):
         """Get and reset configs."""
         with self._lock:
@@ -825,7 +833,9 @@ class PluggableTelemetryStorage(TelemetryStorage):
             'rF': config_stats['rF'],
             'sT': config_stats['sT'],
             'oM': config_stats['oM'],
-            't': self.pop_config_tags()
+            't': self.pop_config_tags(),
+            'fsT': self._tel_config.get_flag_sets(),
+            'fsI': self._tel_config.get_invalid_flag_sets()
         })
 
     def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):

@@ -658,6 +658,10 @@ class InMemoryTelemetryStorage(TelemetryStorage):
         """Record flag sets."""
         self._tel_config.record_flag_sets(flag_sets)
 
+    def record_invalid_flag_sets(self, flag_sets):
+        """Record invalid flag sets."""
+        self._tel_config.record_invalid_flag_sets(flag_sets)
+
     def add_tag(self, tag):
         """Record tag string."""
         with self._lock:
@@ -729,6 +733,10 @@ class InMemoryTelemetryStorage(TelemetryStorage):
     def get_flag_sets(self):
         """Get flag sets."""
         self._tel_config.get_flag_sets()
+
+    def get_invalid_flag_sets(self):
+        """Get invalid flag sets."""
+        self._tel_config.get_invalid_flag_sets()
 
     def get_bur_time_outs(self):
         """Get block until ready timeout."""

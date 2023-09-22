@@ -794,6 +794,7 @@ class TelemetryConfig(object):
             self._active_factory_count = 0
             self._redundant_factory_count = 0
             self._flag_sets = 0
+            self._flag_sets_invalid = 0
 
     def record_config(self, config, extra_config):
         """
@@ -844,6 +845,16 @@ class TelemetryConfig(object):
         with self._lock:
             self._flag_sets = flag_sets
 
+    def record_invalid_flag_sets(self, flag_sets):
+        """
+        Record invalid flag sets
+
+        :param flag_sets: flag sets count
+        :type flag_sets: int
+        """
+        with self._lock:
+            self._flag_sets_invalid = flag_sets
+
     def record_ready_time(self, ready_time):
         """
         Record ready time.
@@ -877,6 +888,14 @@ class TelemetryConfig(object):
         """
         with self._lock:
             return self._flag_sets
+
+    def get_invalid_flag_sets(self):
+        """
+        Get invalid flag sets
+
+        """
+        with self._lock:
+            return self._flag_sets_invalid
 
     def get_bur_time_outs(self):
         """
@@ -930,7 +949,8 @@ class TelemetryConfig(object):
                 'hp': self._http_proxy,
                 'aF': self._active_factory_count,
                 'rF': self._redundant_factory_count,
-                'fS': self._flag_sets
+                'fsT': self._flag_sets,
+                'fsI': self._flag_sets_invalid
             }
 
     def _get_operation_mode(self, op_mode):

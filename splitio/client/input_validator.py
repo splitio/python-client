@@ -597,4 +597,4 @@ def validate_flag_sets(flag_sets, method_name):
 
         sanitized_flag_sets.add(flag_set)
 
-    return sorted(list(sanitized_flag_sets))
+    return list(sanitized_flag_sets)

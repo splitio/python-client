@@ -37,7 +37,8 @@ class TelemetryStorageProducerTests(object):
         }
         telemetry_init_producer.record_config(config, {})
         telemetry_init_producer.record_active_and_redundant_factories(1, 0)
-        telemetry_init_producer.record_flag_sets(2)
+        telemetry_init_producer.record_flag_sets(5)
+        telemetry_init_producer.record_invalid_flag_sets(2)
 
         assert(telemetry_storage._tel_config.get_stats() == {'oM': 0,
             'sT': telemetry_storage._tel_config._get_storage_type(config['operationMode'], config['storageType']),
@@ -54,7 +55,8 @@ class TelemetryStorageProducerTests(object):
             'nR': 0,
             'aF': 1,
             'rF': 0,
-            'fS': 2}
+            'fsT': 5,
+            'fsI': 2}
             )
 
     def test_record_ready_time(self, mocker):

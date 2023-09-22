@@ -74,6 +74,7 @@ class SplitsSynchronizerTests(object):
                 return True
         storage.flag_set_filter = flag_set_filter
         storage.flag_set_filter.flag_sets = {}
+        storage.flag_set_filter.sorted_flag_sets = []
 
         split_synchronizer = SplitSynchronizer(api, storage)
 
@@ -100,6 +101,7 @@ class SplitsSynchronizerTests(object):
                 return True
         storage.flag_set_filter = flag_set_filter
         storage.flag_set_filter.flag_sets = {}
+        storage.flag_set_filter.sorted_flag_sets = []
 
         api = mocker.Mock()
         def get_changes(*args, **kwargs):
@@ -143,6 +145,7 @@ class SplitsSynchronizerTests(object):
                 return True
         storage.flag_set_filter = flag_set_filter
         storage.flag_set_filter.flag_sets = {}
+        storage.flag_set_filter.sorted_flag_sets = []
 
         def change_number_mock():
             return 2
@@ -206,6 +209,7 @@ class SplitsSynchronizerTests(object):
 
         storage.flag_set_filter = flag_set_filter
         storage.flag_set_filter.flag_sets = {}
+        storage.flag_set_filter.sorted_flag_sets = []
 
         split_synchronizer = SplitSynchronizer(api, storage)
         split_synchronizer._backoff = Backoff(1, 1)

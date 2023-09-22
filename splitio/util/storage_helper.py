@@ -70,27 +70,6 @@ def combine_valid_flag_sets(result_sets):
             to_return.update(result_set)
     return to_return
 
-def _check_flag_sets(feature_flag_storage, feature_flag):
-    """
-    Check each flag set in given array, return it if exist in a given config flag set array, if config array is empty return all
-
-    :param flag_sets: Flag sets array
-    :type flag_sets: list(str)
-    :param config_flag_sets: Config flag sets array
-    :type config_flag_sets: list(str)
-
-    :return: array of flag sets
-    :rtype: list(str)
-    """
-    sets_to_fetch = []
-    for flag_set in flag_sets:
-        if not flag_set_filter.set_exist(flag_set) and flag_set_filter.should_filter:
-            _LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring the request." % (flag_set))
-            continue
-        sets_to_fetch.append(flag_set)
-
-    return sets_to_fetch
-
 def combine_valid_flag_sets(result_sets):
     """
     Check each flag set in given array of sets, combine all flag sets in one unique set
