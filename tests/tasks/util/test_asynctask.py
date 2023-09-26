@@ -251,7 +251,7 @@ class AsyncTaskAsyncTests(object):
         task.force_execution()
         await task.stop(True)
 
-        assert self.main_called == 3
+        assert self.main_called == 2
         assert self.init_called == 1
         assert self.stop_called == 1
         assert not task.running()

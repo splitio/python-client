@@ -244,7 +244,7 @@ class AsyncTaskAsync(object):  # pylint: disable=too-many-instance-attributes
 
             while self._running:
                 try:
-                    msg = self._messages.get_nowait()
+                    msg = await asyncio.wait_for(self._messages.get(), timeout=self._period)
                     if msg == __TASK_STOP__:
                         _LOGGER.debug("Stop signal received. finishing task execution")
                         break
@@ -260,11 +260,7 @@ class AsyncTaskAsync(object):  # pylint: disable=too-many-instance-attributes
                     pass
                 except asyncio.CancelledError:
                     break
-
-                try:
-                    self._sleep_task = asyncio.get_running_loop().create_task(asyncio.sleep(self._period))
-                    await self._sleep_task
-                except asyncio.CancelledError:
+                except asyncio.TimeoutError:
                     pass
 
                 if not await _safe_run_async(self._main):
@@ -305,9 +301,6 @@ class AsyncTaskAsync(object):  # pylint: disable=too-many-instance-attributes
         """
         if not self._running:
             return
-
-        if self._sleep_task is not None:
-            self._sleep_task.cancel()
 
         # Queue is of infinite size, should not raise an exception
         self._messages.put_nowait(__TASK_STOP__)
