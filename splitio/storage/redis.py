@@ -314,7 +314,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         :param redis_client: Redis client or compliant interface.
         :type redis_client: splitio.storage.adapters.redis.RedisAdapter
         """
-        self._redis = redis_client
+        self.redis = redis_client
         self._enable_caching = enable_caching
         if enable_caching:
             self._cache = LocalMemoryCache(None, None, max_age)
@@ -337,7 +337,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
             if self._enable_caching and await self._cache.get_key(split_name) is not None:
                 raw = await self._cache.get_key(split_name)
             else:
-                raw = await self._redis.get(self._get_key(split_name))
+                raw = await self.redis.get(self._get_key(split_name))
                 if self._enable_caching:
                     await self._cache.add_key(split_name, raw)
                 _LOGGER.debug("Fetchting Split [%s] from redis" % split_name)
@@ -390,7 +390,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
             if self._enable_caching and await self._cache.get_key(traffic_type_name) is not None:
                 raw = await self._cache.get_key(traffic_type_name)
             else:
-                raw = await self._redis.get(self._get_traffic_type_key(traffic_type_name))
+                raw = await self.redis.get(self._get_traffic_type_key(traffic_type_name))
                 if self._enable_caching:
                     await self._cache.add_key(traffic_type_name, raw)
             count = json.loads(raw) if raw else 0
@@ -406,7 +406,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         :rtype: int
         """
         try:
-            stored_value = await self._redis.get(self._SPLIT_TILL_KEY)
+            stored_value = await self.redis.get(self._SPLIT_TILL_KEY)
             return json.loads(stored_value) if stored_value is not None else None
         except RedisAdapterException:
             _LOGGER.error('Error fetching split change number from storage')
@@ -420,7 +420,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         :rtype: list(str)
         """
         try:
-            keys = await self._redis.keys(self._get_key('*'))
+            keys = await self.redis.keys(self._get_key('*'))
             return [key.replace(self._get_key(''), '') for key in keys]
         except RedisAdapterException:
             _LOGGER.error('Error fetching split names from storage')
@@ -433,10 +433,10 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         :return: List of all splits in cache.
         :rtype: list(splitio.models.splits.Split)
         """
-        keys = await self._redis.keys(self._get_key('*'))
+        keys = await self.redis.keys(self._get_key('*'))
         to_return = []
         try:
-            raw_splits = await self._redis.mget(keys)
+            raw_splits = await self.redis.mget(keys)
             for raw in raw_splits:
                 try:
                     to_return.append(splits.from_raw(json.loads(raw)))

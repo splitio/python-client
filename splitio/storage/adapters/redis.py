@@ -604,6 +604,10 @@ class RedisAdapterAsync(RedisAdapterBase):  # pylint: disable=too-many-public-me
         except RedisError as exc:
             raise RedisAdapterException('Error executing ttl operation') from exc
 
+    async def close(self):
+        await self._decorated.close()
+        await self._decorated.connection_pool.disconnect()
+
 class RedisPipelineAdapterBase(object, metaclass=abc.ABCMeta):
     """
     Template decorator for Redis Pipeline.

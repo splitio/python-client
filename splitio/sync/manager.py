@@ -254,12 +254,8 @@ class RedisManagerBase(object):  # pylint:disable=too-many-instance-attributes
         """
         Construct Manager.
 
-        :param unique_keys_task: unique keys task instance
-        :type unique_keys_task: splitio.tasks.unique_keys_sync.UniqueKeysSyncTask
-
-        :param clear_filter_task: clear filter task instance
-        :type clear_filter_task: splitio.tasks.clear_filter_task.ClearFilterSynchronizer
-
+        :param synchronizer: synchronizers for performing start/stop logic
+        :type synchronizer: splitio.sync.synchronizer.Synchronizer
         """
         self._ready_flag = True
         self._synchronizer = synchronizer
@@ -286,12 +282,8 @@ class RedisManager(RedisManagerBase):  # pylint:disable=too-many-instance-attrib
         """
         Construct Manager.
 
-        :param unique_keys_task: unique keys task instance
-        :type unique_keys_task: splitio.tasks.unique_keys_sync.UniqueKeysSyncTask
-
-        :param clear_filter_task: clear filter task instance
-        :type clear_filter_task: splitio.tasks.clear_filter_task.ClearFilterSynchronizer
-
+        :param synchronizer: synchronizers for performing start/stop logic
+        :type synchronizer: splitio.sync.synchronizer.Synchronizer
         """
         super().__init__(synchronizer)
 
@@ -313,12 +305,8 @@ class RedisManagerAsync(RedisManagerBase):  # pylint:disable=too-many-instance-a
         """
         Construct Manager.
 
-        :param unique_keys_task: unique keys task instance
-        :type unique_keys_task: splitio.tasks.unique_keys_sync.UniqueKeysSyncTask
-
-        :param clear_filter_task: clear filter task instance
-        :type clear_filter_task: splitio.tasks.clear_filter_task.ClearFilterSynchronizer
-
+        :param synchronizer: synchronizers for performing start/stop logic
+        :type synchronizer: splitio.sync.synchronizer.Synchronizer
         """
         super().__init__(synchronizer)
 

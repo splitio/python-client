@@ -321,6 +321,9 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
             _LOGGER.info('Factory destroy called, stopping tasks.')
             if self._sync_manager is not None:
                 await self._sync_manager.stop(True)
+                if isinstance(self._sync_manager, RedisManagerAsync):
+                    await self._get_storage('splits').redis.close()
+
         except Exception as e:
             _LOGGER.error('Exception destroying factory.')
             _LOGGER.debug(str(e))
