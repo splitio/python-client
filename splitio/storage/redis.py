@@ -1288,6 +1288,14 @@ class RedisTelemetryStorage(RedisTelemetryStorageBase):
         if total_keys == inserted:
             self._redis_client.expire(queue_key, key_default_ttl)
 
+    def record_bur_time_out(self):
+        """record BUR timeouts"""
+        pass
+
+    def record_ready_time(self, ready_time):
+        """Record ready time."""
+        pass
+
 
 class RedisTelemetryStorageAsync(RedisTelemetryStorageBase):
     """Redis based telemetry async storage class."""
@@ -1330,6 +1338,14 @@ class RedisTelemetryStorageAsync(RedisTelemetryStorageBase):
         """
         await self._tel_config.record_config(config, extra_config)
 
+    async def record_bur_time_out(self):
+        """record BUR timeouts"""
+        pass
+
+    async def record_ready_time(self, ready_time):
+        """Record ready time."""
+        pass
+
     async def pop_config_tags(self):
         """Get and reset tags."""
         tags = self._config_tags
@@ -1339,8 +1355,9 @@ class RedisTelemetryStorageAsync(RedisTelemetryStorageBase):
     async def push_config_stats(self):
         """push config stats to redis."""
         _LOGGER.debug("Adding Config stats to redis key %s" % (self._TELEMETRY_CONFIG_KEY))
-        _LOGGER.debug(str(await self._format_config_stats(await self._tel_config.get_stats(), await self.pop_config_tags())))
-        await self._redis_client.hset(self._TELEMETRY_CONFIG_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip, str(await self._format_config_stats(await self._tel_config.get_stats(), await self.pop_config_tags())))
+        stats = str(self._format_config_stats(await self._tel_config.get_stats(), await self.pop_config_tags()))
+        _LOGGER.debug(stats)
+        await self._redis_client.hset(self._TELEMETRY_CONFIG_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip, stats)
 
     async def record_exception(self, method):
         """

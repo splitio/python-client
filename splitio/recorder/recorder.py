@@ -267,7 +267,7 @@ class PipelinedRecorderAsync(StatsRecorder):
             pipe = self._make_pipe()
             self._impression_storage.add_impressions_to_pipe(impressions, pipe)
             if method_name is not None:
-                await self._telemetry_redis_storage.add_latency_to_pipe(operation, latency, pipe)
+                self._telemetry_redis_storage.add_latency_to_pipe(operation, latency, pipe)
             result = await pipe.execute()
             if len(result) == 2:
                 await self._impression_storage.expire_key(result[0], len(impressions))
@@ -286,7 +286,7 @@ class PipelinedRecorderAsync(StatsRecorder):
         try:
             pipe = self._make_pipe()
             self._event_sotrage.add_events_to_pipe(event, pipe)
-            await self._telemetry_redis_storage.add_latency_to_pipe(MethodExceptionsAndLatencies.TRACK, latency, pipe)
+            self._telemetry_redis_storage.add_latency_to_pipe(MethodExceptionsAndLatencies.TRACK, latency, pipe)
             result = await pipe.execute()
             if len(result) == 2:
                 await self._event_sotrage.expire_keys(result[0], len(event))

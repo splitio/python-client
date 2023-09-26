@@ -679,17 +679,17 @@ class RedisPipelineAdapterAsync(RedisPipelineAdapterBase):
         self._prefix_helper = prefix_helper
         self._pipe = decorated.pipeline()
 
-    async def rpush(self, key, *values):
+    def rpush(self, key, *values):
         """Mimic original redis function but using user custom prefix."""
-        await self._pipe.rpush(self._prefix_helper.add_prefix(key), *values)
+        self._pipe.rpush(self._prefix_helper.add_prefix(key), *values)
 
-    async def incr(self, name, amount=1):
+    def incr(self, name, amount=1):
         """Mimic original redis function but using user custom prefix."""
-        await self._pipe.incr(self._prefix_helper.add_prefix(name), amount)
+        self._pipe.incr(self._prefix_helper.add_prefix(name), amount)
 
-    async def hincrby(self, name, key, amount=1):
+    def hincrby(self, name, key, amount=1):
         """Mimic original redis function but using user custom prefix."""
-        await self._pipe.hincrby(self._prefix_helper.add_prefix(name), key, amount)
+        self._pipe.hincrby(self._prefix_helper.add_prefix(name), key, amount)
 
     async def execute(self):
         """Mimic original redis function but using user custom prefix."""
@@ -790,19 +790,22 @@ async def _build_default_client_async(config):  # pylint: disable=too-many-local
     max_connections = config.get('redisMaxConnections', None)
     prefix = config.get('redisPrefix')
 
-    redis = await aioredis.from_url(
+    pool = aioredis.ConnectionPool.from_url(
         "redis://" + host + ":" + str(port),
         db=database,
         password=password,
-        timeout=socket_timeout,
+#        timeout=socket_timeout,
+#        errors=errors,
+        max_connections=max_connections
+    )
+    redis = aioredis.Redis(
+        connection_pool=pool,
         socket_connect_timeout=socket_connect_timeout,
         socket_keepalive=socket_keepalive,
         socket_keepalive_options=socket_keepalive_options,
-        connection_pool=connection_pool,
         unix_socket_path=unix_socket_path,
         encoding=encoding,
         encoding_errors=encoding_errors,
-        errors=errors,
         decode_responses=decode_responses,
         retry_on_timeout=retry_on_timeout,
         ssl=ssl,
@@ -810,7 +813,7 @@ async def _build_default_client_async(config):  # pylint: disable=too-many-local
         ssl_certfile=ssl_certfile,
         ssl_cert_reqs=ssl_cert_reqs,
         ssl_ca_certs=ssl_ca_certs,
-        max_connections=max_connections
+
     )
     return RedisAdapterAsync(redis, prefix=prefix)
 

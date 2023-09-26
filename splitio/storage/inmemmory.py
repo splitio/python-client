@@ -448,6 +448,14 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
             split.local_kill(default_treatment, change_number)
         await self.put(split)
 
+    async def get_segment_names(self):
+        """
+        Return a set of all segments referenced by splits in storage.
+
+        :return: Set of all segment names.
+        :rtype: set(string)
+        """
+        return set([name for spl in await self.get_all_splits() for name in spl.get_segment_names()])
 
 class InMemorySegmentStorage(SegmentStorage):
     """In-memory implementation of a segment storage."""
@@ -576,7 +584,7 @@ class InMemorySegmentStorage(SegmentStorage):
                 total_count += len(self._segments[segment]._keys)
             return total_count
 
-          
+
 class InMemorySegmentStorageAsync(SegmentStorage):
     """In-memory implementation of a segment async storage."""
 
@@ -868,7 +876,7 @@ class InMemoryImpressionStorageAsync(InMemoryImpressionStorageBase):
         async with self._lock:
             self._impressions = asyncio.Queue(maxsize=self._queue_size)
 
- 
+
 class InMemoryEventStorageBase(EventStorage):
     """
     In memory storage base class for events.
@@ -977,7 +985,7 @@ class InMemoryEventStorage(InMemoryEventStorageBase):
         with self._lock:
             self._events = queue.Queue(maxsize=self._queue_size)
 
-            
+
 class InMemoryEventStorageAsync(InMemoryEventStorageBase):
     """
     In memory async storage for events.

@@ -3,6 +3,7 @@ from collections import namedtuple
 import requests
 import urllib
 import abc
+import logging
 
 from splitio.optional.loaders import aiohttp
 from splitio.util.time import get_current_epoch_time_ms
@@ -11,6 +12,8 @@ SDK_URL = 'https://sdk.split.io/api'
 EVENTS_URL = 'https://events.split.io/api'
 AUTH_URL = 'https://auth.split.io/api'
 TELEMETRY_URL = 'https://telemetry.split.io/api'
+
+_LOGGER = logging.getLogger(__name__)
 
 
 HttpResponse = namedtuple('HttpResponse', ['status_code', 'body', 'headers'])
@@ -242,6 +245,9 @@ class HttpClientAsync(HttpClientBase):
             headers.update(extra_headers)
         start = get_current_epoch_time_ms()
         try:
+            _LOGGER.debug("GET request: %s", _build_url(server, path, self._urls))
+            _LOGGER.debug("query params: %s", query)
+            _LOGGER.debug("headers: %s", headers)
             async with self._session.get(
                 _build_url(server, path, self._urls),
                 params=query,
@@ -249,6 +255,8 @@ class HttpClientAsync(HttpClientBase):
                 timeout=self._timeout
             ) as response:
                 body = await response.text()
+                _LOGGER.debug("Response:")
+                _LOGGER.debug(body)
                 await self._record_telemetry(response.status, get_current_epoch_time_ms() - start)
                 return HttpResponse(response.status, body, response.headers)
         except aiohttp.ClientError as exc:  # pylint: disable=broad-except
@@ -277,6 +285,11 @@ class HttpClientAsync(HttpClientBase):
             headers.update(extra_headers)
         start = get_current_epoch_time_ms()
         try:
+            _LOGGER.debug("POST request: %s", _build_url(server, path, self._urls))
+            _LOGGER.debug("query params: %s", query)
+            _LOGGER.debug("headers: %s", headers)
+            _LOGGER.debug("payload: ")
+            _LOGGER.debug(body)
             async with self._session.post(
                 _build_url(server, path, self._urls),
                 params=query,
@@ -285,6 +298,8 @@ class HttpClientAsync(HttpClientBase):
                 timeout=self._timeout
             ) as response:
                 body = await response.text()
+                _LOGGER.debug("Response:")
+                _LOGGER.debug(body)
                 await self._record_telemetry(response.status, get_current_epoch_time_ms() - start)
                 return HttpResponse(response.status, body, response.headers)
         except aiohttp.ClientError as exc:  # pylint: disable=broad-except
