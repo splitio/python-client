@@ -41,3 +41,34 @@ class LocalhostEventsStorage(EventStorage):
     def clear(self, *_, **__):  # pylint: disable=arguments-differ
         """Accept any arguments and do nothing."""
         pass
+
+class LocalhostImpressionsStorageAsync(ImpressionStorage):
+    """Impression storage that doesn't cache anything."""
+
+    async def put(self, *_, **__):  # pylint: disable=arguments-differ
+        """Accept any arguments and do nothing."""
+        pass
+
+    async def pop_many(self, *_, **__):  # pylint: disable=arguments-differ
+        """Accept any arguments and do nothing."""
+        pass
+
+    async def clear(self, *_, **__):  # pylint: disable=arguments-differ
+        """Accept any arguments and do nothing."""
+        pass
+
+
+class LocalhostEventsStorageAsync(EventStorage):
+    """Impression storage that doesn't cache anything."""
+
+    async def put(self, *_, **__):  # pylint: disable=arguments-differ
+        """Accept any arguments and do nothing."""
+        pass
+
+    async def pop_many(self, *_, **__):  # pylint: disable=arguments-differ
+        """Accept any arguments and do nothing."""
+        pass
+
+    async def clear(self, *_, **__):  # pylint: disable=arguments-differ
+        """Accept any arguments and do nothing."""
+        pass

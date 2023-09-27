@@ -21,7 +21,7 @@ from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageC
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
     InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, LocalhostTelemetryStorage, \
     InMemorySplitStorageAsync, InMemorySegmentStorageAsync, InMemoryImpressionStorageAsync, \
-    InMemoryEventStorageAsync, InMemoryTelemetryStorageAsync
+    InMemoryEventStorageAsync, InMemoryTelemetryStorageAsync, LocalhostTelemetryStorageAsync
 from splitio.storage.adapters import redis
 from splitio.storage.redis import RedisSplitStorage, RedisSegmentStorage, RedisImpressionsStorage, \
     RedisEventsStorage, RedisTelemetryStorage, RedisSplitStorageAsync, RedisEventsStorageAsync,\
@@ -51,16 +51,17 @@ from splitio.tasks.telemetry_sync import TelemetrySyncTask, TelemetrySyncTaskAsy
 # Synchronizer
 from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, \
     LocalhostSynchronizer, RedisSynchronizer, PluggableSynchronizer,\
-    SynchronizerAsync, RedisSynchronizerAsync
+    SynchronizerAsync, RedisSynchronizerAsync, LocalhostSynchronizerAsync
 from splitio.sync.manager import Manager, RedisManager, ManagerAsync, RedisManagerAsync
 from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer, LocalhostMode,\
-    SplitSynchronizerAsync
-from splitio.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer, SegmentSynchronizerAsync
+    SplitSynchronizerAsync, LocalSplitSynchronizerAsync
+from splitio.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer, SegmentSynchronizerAsync,\
+    LocalSegmentSynchronizerAsync
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer, \
     ImpressionsCountSynchronizerAsync, ImpressionSynchronizerAsync
 from splitio.sync.event import EventSynchronizer, EventSynchronizerAsync
 from splitio.sync.telemetry import TelemetrySynchronizer, InMemoryTelemetrySubmitter, \
-    LocalhostTelemetrySubmitter, RedisTelemetrySubmitter, \
+    LocalhostTelemetrySubmitter, RedisTelemetrySubmitter, LocalhostTelemetrySubmitterAsync, \
     InMemoryTelemetrySubmitterAsync, TelemetrySynchronizerAsync, RedisTelemetrySubmitterAsync
 
 
@@ -68,7 +69,8 @@ from splitio.sync.telemetry import TelemetrySynchronizer, InMemoryTelemetrySubmi
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder, StandardRecorderAsync, PipelinedRecorderAsync
 
 # Localhost stuff
-from splitio.client.localhost import LocalhostEventsStorage, LocalhostImpressionsStorage
+from splitio.client.localhost import LocalhostEventsStorage, LocalhostImpressionsStorage, \
+    LocalhostImpressionsStorageAsync, LocalhostEventsStorageAsync
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -188,7 +190,11 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         await self._telemetry_init_producer.record_ready_time(get_current_epoch_time_ms() - self._ready_time)
         redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
         await self._telemetry_init_producer.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
-        await self._telemetry_submitter.synchronize_config()
+        try:
+            await self._telemetry_submitter.synchronize_config()
+        except Exception as e:
+            _LOGGER.error("Failed to post Telemetry config")
+            _LOGGER.debug(str(e))
         self._status = Status.READY
         self._sdk_ready_flag.set()
 
@@ -321,8 +327,12 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
             _LOGGER.info('Factory destroy called, stopping tasks.')
             if self._sync_manager is not None:
                 await self._sync_manager.stop(True)
+
                 if isinstance(self._sync_manager, RedisManagerAsync):
                     await self._get_storage('splits').redis.close()
+
+                if isinstance(self._sync_manager, ManagerAsync) and isinstance(self._telemetry_submitter, InMemoryTelemetrySubmitterAsync):
+                    await self._telemetry_submitter._telemetry_api._client.close_session()
 
         except Exception as e:
             _LOGGER.error('Exception destroying factory.')
@@ -1009,6 +1019,75 @@ def _build_localhost_factory(cfg):
         telemetry_submitter=LocalhostTelemetrySubmitter(),
     )
 
+async def _build_localhost_factory_async(cfg):
+    """Build and return a localhost async factory for testing/development purposes."""
+    telemetry_storage = LocalhostTelemetryStorageAsync()
+    telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+    telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+    telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
+
+    storages = {
+        'splits': InMemorySplitStorageAsync(),
+        'segments': InMemorySegmentStorageAsync(),  # not used, just to avoid possible future errors.
+        'impressions': LocalhostImpressionsStorageAsync(),
+        'events': LocalhostEventsStorageAsync(),
+    }
+    localhost_mode = LocalhostMode.JSON if cfg['splitFile'][-5:].lower() == '.json' else LocalhostMode.LEGACY
+    synchronizers = SplitSynchronizers(
+        LocalSplitSynchronizerAsync(cfg['splitFile'],
+                               storages['splits'],
+                               localhost_mode),
+        LocalSegmentSynchronizerAsync(cfg['segmentDirectory'], storages['splits'], storages['segments']),
+        None, None, None,
+    )
+
+    feature_flag_sync_task = None
+    segment_sync_task = None
+    if cfg['localhostRefreshEnabled'] and localhost_mode == LocalhostMode.JSON:
+        feature_flag_sync_task = SplitSynchronizationTaskAsync(
+            synchronizers.split_sync.synchronize_splits,
+            cfg['featuresRefreshRate'],
+        )
+        segment_sync_task = SegmentSynchronizationTaskAsync(
+            synchronizers.segment_sync.synchronize_segments,
+            cfg['segmentsRefreshRate'],
+        )
+    tasks = SplitTasks(
+        feature_flag_sync_task,
+        segment_sync_task,
+        None, None, None,
+    )
+
+    sdk_metadata = util.get_metadata(cfg)
+    synchronizer = LocalhostSynchronizerAsync(synchronizers, tasks, localhost_mode)
+    manager = ManagerAsync(synchronizer, None, False, sdk_metadata, telemetry_runtime_producer)
+
+# TODO: BUR is only applied for Localhost JSON mode, in future legacy and yaml will also use BUR
+    manager_start_task = None
+    if localhost_mode == LocalhostMode.JSON:
+        manager_start_task = asyncio.get_running_loop().create_task(manager.start())
+    else:
+        await manager.start()
+
+    recorder = StandardRecorderAsync(
+        ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer),
+        storages['events'],
+        storages['impressions'],
+        telemetry_evaluation_producer
+    )
+    return SplitFactory(
+        'localhost',
+        storages,
+        False,
+        recorder,
+        manager,
+        None,
+        telemetry_producer=telemetry_producer,
+        telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+        telemetry_submitter=LocalhostTelemetrySubmitterAsync(),
+        manager_start_task=manager_start_task
+    )
+
 def get_factory(api_key, **kwargs):
     """Build and return the appropriate factory."""
     _INSTANTIATED_FACTORIES_LOCK.acquire()
@@ -1078,7 +1157,7 @@ async def get_factory_async(api_key, **kwargs):
     config = sanitize_config(api_key, kwargs.get('config', {}))
 
     if config['operationMode'] == 'localhost':
-        split_factory =  _build_localhost_factory(config)
+        split_factory =  await _build_localhost_factory_async(config)
     elif config['storageType'] == 'redis':
         split_factory = await _build_redis_factory_async(api_key, config)
     elif config['storageType'] == 'pluggable':

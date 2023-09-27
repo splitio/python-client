@@ -1541,3 +1541,140 @@ class LocalhostTelemetryStorage():
 
     def __getattr__(self, _):
         return self.do_nothing
+
+class LocalhostTelemetryStorageAsync():
+    """Localhost telemetry storage."""
+
+    async def record_ready_time(self, ready_time):
+        pass
+
+    async def record_config(self, config, extra_config):
+        """Record configurations."""
+        pass
+
+    async def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
+        """Record active and redundant factories."""
+        pass
+
+    async def add_tag(self, tag):
+        """Record tag string."""
+        pass
+
+    async def add_config_tag(self, tag):
+        """Record tag string."""
+        pass
+
+    async def record_bur_time_out(self):
+        """Record block until ready timeout."""
+        pass
+
+    async def record_not_ready_usage(self):
+        """record non-ready usage."""
+        pass
+
+    async def record_latency(self, method, latency):
+        """Record method latency time."""
+        pass
+
+    async def record_exception(self, method):
+        """Record method exception."""
+        pass
+
+    async def record_impression_stats(self, data_type, count):
+        """Record impressions stats."""
+        pass
+
+    async def record_event_stats(self, data_type, count):
+        """Record events stats."""
+        pass
+
+    async def record_successful_sync(self, resource, time):
+        """Record successful sync."""
+        pass
+
+    async def record_sync_error(self, resource, status):
+        """Record sync http error."""
+        pass
+
+    async def record_sync_latency(self, resource, latency):
+        """Record latency time."""
+        pass
+
+    async def record_auth_rejections(self):
+        """Record auth rejection."""
+        pass
+
+    async def record_token_refreshes(self):
+        """Record sse token refresh."""
+        pass
+
+    async def record_streaming_event(self, streaming_event):
+        """Record incoming streaming event."""
+        pass
+
+    async def record_session_length(self, session):
+        """Record session length."""
+        pass
+
+    async def get_bur_time_outs(self):
+        """Get block until ready timeout."""
+        pass
+
+    async def get_non_ready_usage(self):
+        """Get non-ready usage."""
+        pass
+
+    async def get_config_stats(self):
+        """Get all config info."""
+        pass
+
+    async def pop_exceptions(self):
+        """Get and reset method exceptions."""
+        pass
+
+    async def pop_tags(self):
+        """Get and reset tags."""
+        pass
+
+    async def pop_config_tags(self):
+        """Get and reset tags."""
+        pass
+
+    async def pop_latencies(self):
+        """Get and reset eval latencies."""
+        pass
+
+    async def get_impressions_stats(self, type):
+        """Get impressions stats"""
+        pass
+
+    async def get_events_stats(self, type):
+        """Get events stats"""
+        pass
+
+    async def get_last_synchronization(self):
+        """Get last sync"""
+        pass
+
+    async def pop_http_errors(self):
+        """Get and reset http errors."""
+        pass
+
+    async def pop_http_latencies(self):
+        """Get and reset http latencies."""
+        pass
+
+    async def pop_auth_rejections(self):
+        """Get and reset auth rejections."""
+        pass
+
+    async def pop_token_refreshes(self):
+        """Get and reset token refreshes."""
+        pass
+
+    async def pop_streaming_events(self):
+        pass
+
+    async def get_session_length(self):
+        """Get session length"""
+        pass
