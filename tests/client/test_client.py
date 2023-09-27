@@ -340,6 +340,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             mocker.Mock(),
         )
         client = Client(factory, recorder, True)
+        client._parallel_task_async = True
         client._evaluator = mocker.Mock(spec=Evaluator)
         client._evaluator.evaluate_feature.return_value = {
             'treatment': 'on',
@@ -404,6 +405,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         client = Client(factory, recorder, True)
+        client._parallel_task_async = True
         client._evaluator = mocker.Mock(spec=Evaluator)
         client._evaluator.evaluate_feature.return_value = {
             'treatment': 'on',
@@ -474,6 +476,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         client = Client(factory, recorder, True)
+        client._parallel_task_async = True
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -546,6 +549,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         client = Client(factory, recorder, True)
+        client._parallel_task_async = True
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -696,7 +700,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
 
         client = Client(factory, recorder, True)
-#        pytest.set_trace()
+        client._parallel_task_async = True
         assert await client.track_async('key', 'user', 'purchase', 12) is True
         assert self.events[0] == [EventWrapper(
                 event=Event('key', 'user', 'purchase', 12, 1000, None),
@@ -796,6 +800,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         ]
 
         client = Client(factory, mocker.Mock())
+        client._parallel_task_async = True
         _logger = mocker.Mock()
         mocker.patch('splitio.client.client._LOGGER', new=_logger)
 
@@ -879,6 +884,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         ready_property.return_value = False
         type(factory).ready = ready_property
         client = Client(factory, recorder)
+        client._parallel_task_async = True
         assert await client.get_treatment_async('some_key', 'SPLIT_2') == CONTROL
         assert(telemetry_storage._tel_config._not_ready == 1)
         await client.track_async('key', 'tt', 'ev')
@@ -976,6 +982,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             mocker.Mock()
         )
         client = Client(factory, recorder, True)
+        client._parallel_task_async = True
         def _raise(*_):
             raise Exception('something')
         client._evaluate_if_ready = _raise
@@ -1075,6 +1082,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             mocker.Mock()
         )
         client = Client(factory, recorder, True)
+        client._parallel_task_async = True
         assert await client.get_treatment_async('key', 'SPLIT_2') == 'on'
         assert(telemetry_storage._method_latencies._treatment[0] == 1)
         await client.get_treatment_with_config_async('key', 'SPLIT_2')
@@ -1123,7 +1131,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert(telemetry_storage._method_exceptions._track == 1)
 
     @pytest.mark.asyncio
-    async def test_telemetry_track_exception(self, mocker):
+    async def test_telemetry_track_exception_async(self, mocker):
         split_storage = InMemorySplitStorageAsync()
         segment_storage = mocker.Mock(spec=SegmentStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
@@ -1156,6 +1164,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         recorder.record_track_stats = exc
 
         client = Client(factory, recorder, True)
+        client._parallel_task_async = True
         try:
             await client.track_async('key', 'tt', 'ev')
         except:

@@ -9,6 +9,7 @@ from splitio.models.events import Event, EventWrapper
 from splitio.models.telemetry import get_latency_bucket_index, MethodExceptionsAndLatencies
 from splitio.client import input_validator
 from splitio.util.time import get_current_epoch_time_ms, utctime_ms
+from splitio.sync.manager import ManagerAsync, RedisManagerAsync
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,6 +45,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         self._telemetry_init_producer = self._factory._telemetry_init_producer
         self._evaluator_data_collector = EvaluationDataCollector(self._feature_flag_storage, self._segment_storage,
                                                                  self._splitter, self._evaluator)
+        self._parallel_task_async = True if isinstance(self._factory._sync_manager, ManagerAsync) or isinstance(self._factory._sync_manager, RedisManagerAsync) else False
 
     def destroy(self):
         """
@@ -291,6 +293,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :return: The treatment and config for the key and feature flag
         :rtype: dict
         """
+        if self._parallel_task_async:
+            _LOGGER.error("Factory was initialized in asyncio mode, please use the asyncio methods for fetching treatment")
+            return CONTROL, None
         if self.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible")
             return CONTROL, None
@@ -375,6 +380,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :return: The treatments and configs for the key and feature flags
         :rtype: dict
         """
+        if self._parallel_task_async:
+            _LOGGER.error("Factory was initialized in asyncio mode, please use the asyncio methods for fetching treatments")
+            return input_validator.generate_control_treatments(feature_flag_names, method.value)
         if self.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible")
             return input_validator.generate_control_treatments(feature_flag_names, method.value)
@@ -404,10 +412,12 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             bucketing_key = matching_key
 
         condition_matchers = {}
+        valid_feature_flag_names = []
         for feature_flag in feature_flags:
+            valid_feature_flag_names.append(feature_flag.name)
             condition_matchers[feature_flag.name] = self._evaluator_data_collector.get_condition_matchers(feature_flag, bucketing_key, matching_key, attributes)
 
-        evaluation_results = self._make_evaluations(key, feature_flag_names, feature_flags, condition_matchers, attributes, method)
+        evaluation_results = self._make_evaluations(key, valid_feature_flag_names, feature_flags, condition_matchers, attributes, method)
 
         try:
             if evaluation_results.impression:
@@ -480,6 +490,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :return: The treatment and config for the key and feature flag
         :rtype: dict
         """
+        if not self._parallel_task_async:
+            _LOGGER.error("Factory was not initialized in asyncio mode, please use the threading method for fetching treatment")
+            return CONTROL, None
         if self.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible")
             return CONTROL, None
@@ -564,6 +577,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :return: The treatments and configs for the key and feature flags
         :rtype: dict
         """
+        if not self._parallel_task_async:
+            _LOGGER.error("Factory was not initialized in asyncio mode, please use the threading methods for fetching treatments")
+            return input_validator.generate_control_treatments(feature_flag_names, method.value)
         if self.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible")
             return input_validator.generate_control_treatments(feature_flag_names, method.value)
@@ -593,10 +609,12 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             bucketing_key = matching_key
 
         condition_matchers = {}
+        valid_feature_flag_names = []
         for feature_flag in feature_flags:
+            valid_feature_flag_names.append(feature_flag.name)
             condition_matchers[feature_flag.name] = await self._evaluator_data_collector.get_condition_matchers_async(feature_flag, bucketing_key, matching_key, attributes)
 
-        evaluation_results = self._make_evaluations(key, feature_flag_names, feature_flags, condition_matchers, attributes, method)
+        evaluation_results = self._make_evaluations(key, valid_feature_flag_names, feature_flags, condition_matchers, attributes, method)
 
         try:
             if evaluation_results.impression:
@@ -689,6 +707,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :return: Whether the event was created or not.
         :rtype: bool
         """
+        if self._parallel_task_async:
+            _LOGGER.error("Factory was initialized in asyncio mode, please use the track_async method.")
+            return False
         if not self.ready:
             _LOGGER.warning("track: the SDK is not ready, results may be incorrect. Make sure to wait for SDK readiness before using this method")
             self._telemetry_init_producer.record_not_ready_usage()
@@ -734,6 +755,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :return: Whether the event was created or not.
         :rtype: bool
         """
+        if not self._parallel_task_async:
+            _LOGGER.error("Factory was not initialized in asyncio mode, please use the track method.")
+            return False
         if not self.ready:
             _LOGGER.warning("track: the SDK is not ready, results may be incorrect. Make sure to wait for SDK readiness before using this method")
             await self._telemetry_init_producer.record_not_ready_usage()
