@@ -1,19 +1,18 @@
 """A module for Split.io SDK API clients."""
 import logging
+from collections import namedtuple
 
-from splitio.engine.evaluator import Evaluator, CONTROL
+from splitio.engine.evaluator import Evaluator, CONTROL, EvaluationDataCollector
 from splitio.engine.splitters import Splitter
 from splitio.models.impressions import Impression, Label
 from splitio.models.events import Event, EventWrapper
 from splitio.models.telemetry import get_latency_bucket_index, MethodExceptionsAndLatencies
-from splitio.models.grammar import matchers
-from splitio.models.grammar.condition import ConditionType
-from splitio.models.grammar.matchers.misc import DependencyMatcher
 from splitio.client import input_validator
 from splitio.util.time import get_current_epoch_time_ms, utctime_ms
 
 _LOGGER = logging.getLogger(__name__)
 
+EvaluationResult = namedtuple('EvaluationResult', ['treatment_with_config', 'impression', 'start_time', 'exception_flag'])
 
 class Client(object):  # pylint: disable=too-many-instance-attributes
     """Entry point for the split sdk."""
@@ -37,12 +36,14 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         self._labels_enabled = labels_enabled
         self._recorder = recorder
         self._splitter = Splitter()
-        self._split_storage = factory._get_storage('splits')  # pylint: disable=protected-access
+        self._feature_flag_storage = factory._get_storage('splits')  # pylint: disable=protected-access
         self._segment_storage = factory._get_storage('segments')  # pylint: disable=protected-access
         self._events_storage = factory._get_storage('events')  # pylint: disable=protected-access
         self._evaluator = Evaluator(self._splitter)
         self._telemetry_evaluation_producer = self._factory._telemetry_evaluation_producer
         self._telemetry_init_producer = self._factory._telemetry_init_producer
+        self._evaluator_data_collector = EvaluationDataCollector(self._feature_flag_storage, self._segment_storage,
+                                                                 self._splitter, self._evaluator)
 
     def destroy(self):
         """
@@ -102,7 +103,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         :param storage_change_number: the change number for the Feature flag storage.
         :type storage_change_number: int
         :return: The treatment and config for the key and feature flag, impressions created, start time and exception flag
-        :rtype: tuple(str, str, splitio.models.impressions.Impression, int, bool)
+        :rtype: EvaluationResult
         """
         try:
             start = get_current_epoch_time_ms()
@@ -110,7 +111,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             if (matching_key is None and bucketing_key is None) \
                     or feature_flag_name is None \
                     or not input_validator.validate_attributes(attributes, method.value):
-                return CONTROL, None, None, None, False
+                return EvaluationResult((CONTROL, None), None, None, False)
 
             result = self._evaluate_if_ready(matching_key, bucketing_key, feature_flag_name, feature_flag, condition_matchers)
 
@@ -123,7 +124,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                 bucketing_key,
                 utctime_ms(),
             )
-            return result['treatment'], result['configurations'], impression, start, False
+            return EvaluationResult((result['treatment'], result['configurations']), impression, start, False)
         except Exception as e:  # pylint: disable=broad-except
             _LOGGER.error('Error getting treatment for feature flag')
             _LOGGER.error(str(e))
@@ -138,11 +139,11 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                     bucketing_key,
                     utctime_ms(),
                 )
-                return CONTROL, None, impression, start, True
+                return EvaluationResult((CONTROL, None), impression, start, True)
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.error('Error reporting impression into get_treatment exception block')
                 _LOGGER.debug('Error: ', exc_info=True)
-            return CONTROL, None, None, None, False
+            return EvaluationResult((CONTROL, None), None, None, False)
 
     def _make_evaluations(self, key, feature_flag_names, feature_flags, condition_matchers, attributes, method):
         """
@@ -169,7 +170,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
         matching_key, bucketing_key = input_validator.validate_key(key, method.value)
         if input_validator.validate_attributes(attributes, method.value) is False:
-            return input_validator.generate_control_treatments(feature_flags, method.value), None, None, False
+            return EvaluationResult(input_validator.generate_control_treatments(feature_flags, method.value), None, None, False)
 
         treatments = {}
         bulk_impressions = []
@@ -199,11 +200,11 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                     exception_flag = True
                     continue
 
-            return treatments, bulk_impressions, start, exception_flag
+            return EvaluationResult(treatments, bulk_impressions, start, exception_flag)
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error getting treatment for feature flags')
             _LOGGER.debug('Error: ', exc_info=True)
-        return input_validator.generate_control_treatments(list(feature_flag_names), method.value), None, start, True
+        return EvaluationResult(input_validator.generate_control_treatments(list(feature_flag_names), method.value), None, start, True)
 
     def _evaluate_features_if_ready(self, matching_key, bucketing_key, feature_flag_names, feature_flags, condition_matchers):
         """
@@ -299,7 +300,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         if not self.ready:
             self._telemetry_init_producer.record_not_ready_usage()
 
-        feature_flag =  self._split_storage.get(feature_flag_name)
+        feature_flag =  self._feature_flag_storage.get(feature_flag_name)
         if input_validator.validate_feature_flag_name(
             feature_flag_name,
             self.ready,
@@ -311,106 +312,16 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         if bucketing_key is None:
             bucketing_key = matching_key
 
-        segment_matchers = self._get_segment_matchers(feature_flag, matching_key)
-        condition_matchers = self._get_condition_matchers(feature_flag, bucketing_key, matching_key, segment_matchers, attributes)
-        treatment, config, impression, start, exception_flag = self._make_evaluation(key, feature_flag_name, attributes, method,
-                                             feature_flag, condition_matchers, self._split_storage.get_change_number())
-        if impression is not None:
-            self._record_stats([(impression, attributes)], start, method)
+        condition_matchers = self._evaluator_data_collector.get_condition_matchers(feature_flag, bucketing_key, matching_key, attributes)
+        evaluation_result = self._make_evaluation(key, feature_flag_name, attributes, method,
+                                             feature_flag, condition_matchers, self._feature_flag_storage.get_change_number())
+        if evaluation_result.impression is not None:
+            self._record_stats([(evaluation_result.impression, attributes)], evaluation_result.start_time, method)
 
-        if exception_flag:
+        if evaluation_result.exception_flag:
             self._telemetry_evaluation_producer.record_exception(method)
 
-        return treatment, config
-
-    def _get_condition_matchers(self, feature_flag, bucketing_key, matching_key, segment_matchers, attributes=None):
-        """
-        Calculate and store all condition matchers for given feature flag.
-        If there are dependent Feature Flag(s), the function will do recursive calls until all matchers are resolved.
-
-        :param feature_flag: Feature flag Split objects
-        :type feature_flag: splitio.models.splits.Split
-        :param bucketing_key: Bucketing key for which to get the treatment
-        :type bucketing_key: str
-        :param matching_key: Matching key for which to get the treatment
-        :type matching_key: str
-        :param segment_matchers: Segment matchers for the feature flag
-        :type segment_matchers: dict
-        :return: dictionary representing all matchers for each current feature flag
-        :type: dict
-        """
-        roll_out = False
-        context = {
-            'segment_matchers': segment_matchers,
-            'evaluator': self._evaluator,
-            'bucketing_key': bucketing_key,
-        }
-        condition_matchers = []
-        for condition in feature_flag.conditions:
-            if (not roll_out and
-                    condition.condition_type == ConditionType.ROLLOUT):
-                if feature_flag.traffic_allocation < 100:
-                    bucket = self._splitter.get_bucket(
-                        bucketing_key,
-                        feature_flag.traffic_allocation_seed,
-                        feature_flag.algo
-                    )
-                    if bucket > feature_flag.traffic_allocation:
-                        return feature_flag.default_treatment, Label.NOT_IN_SPLIT
-                roll_out = True
-            dependent_feature_flags = []
-            for matcher in condition.matchers:
-                if isinstance(matcher, DependencyMatcher):
-                    dependent_feature_flag = self._split_storage.get(matcher.to_json()['dependencyMatcherData']['split'])
-                    depenedent_segment_matchers = self._get_segment_matchers(dependent_feature_flag, matching_key)
-                    dependent_feature_flags.append((dependent_feature_flag,
-                                                   self._get_condition_matchers(dependent_feature_flag, bucketing_key, matching_key, depenedent_segment_matchers, attributes)))
-            context['dependent_splits'] = dependent_feature_flags
-            condition_matchers.append((condition.matches(
-                matching_key,
-                attributes=attributes,
-                context=context
-            ), condition))
-
-        return condition_matchers
-
-    def _get_segment_matchers(self, feature_flag, matching_key):
-        """
-        Get all segments matchers for given feature flag.
-        If there are dependent Feature Flag(s), the function will do recursive calls until all matchers are resolved.
-
-        :param feature_flag: Feature flag Split objects
-        :type feature_flag: splitio.models.splits.Split
-        :param matching_key: Matching key for which to get the treatment
-        :type matching_key: str
-        :return: Segment matchers for the feature flag
-        :type: dict
-        """
-        segment_matchers = {}
-        for segment in self._get_segment_names(feature_flag):
-            for condition in feature_flag.conditions:
-                for matcher in condition.matchers:
-                    if isinstance(matcher, matchers.UserDefinedSegmentMatcher):
-                        segment_matchers[segment] = self._segment_storage.segment_contains(segment, matching_key)
-        return segment_matchers
-
-    def _get_segment_names(self, feature_flag):
-        """
-        Fetch segment names for all IN_SEGMENT matchers.
-
-        :return: List of segment names
-        :rtype: list(str)
-        """
-        segment_names = []
-        if feature_flag is None:
-            return []
-        for condition in feature_flag.conditions:
-            matcher_list = condition.matchers
-            for matcher in matcher_list:
-                if isinstance(matcher, matchers.UserDefinedSegmentMatcher):
-                    segment_names.append(matcher._segment_name)
-
-        return segment_names
+        return evaluation_result.treatment_with_config[0], evaluation_result.treatment_with_config[1]
 
     def get_treatments_with_config(self, key, feature_flag_names, attributes=None):
         """
@@ -494,16 +405,15 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
         condition_matchers = {}
         for feature_flag in feature_flags:
-            segment_matchers = self._get_segment_matchers(feature_flag, matching_key)
-            condition_matchers[feature_flag.name] = self._get_condition_matchers(feature_flag, bucketing_key, matching_key, segment_matchers, attributes)
+            condition_matchers[feature_flag.name] = self._evaluator_data_collector.get_condition_matchers(feature_flag, bucketing_key, matching_key, attributes)
 
-        with_config, impressions, start, exception_flag = self._make_evaluations(key, feature_flag_names, feature_flags, condition_matchers, attributes, method)
+        evaluation_results = self._make_evaluations(key, feature_flag_names, feature_flags, condition_matchers, attributes, method)
 
         try:
-            if impressions:
+            if evaluation_results.impression:
                 self._record_stats(
-                    [(i, attributes) for i in impressions],
-                    start,
+                    [(i, attributes) for i in evaluation_results.impression],
+                    evaluation_results.start_time,
                     method
                 )
         except Exception:  # pylint: disable=broad-except
@@ -512,82 +422,11 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             _LOGGER.debug('Error: ', exc_info=True)
             self._telemetry_evaluation_producer.record_exception(method)
 
-        if exception_flag:
+        if evaluation_results.exception_flag:
             self._telemetry_evaluation_producer.record_exception(method)
 
-        with_config.update(missing_treatments)
-        return with_config
-
-    async def _get_condition_matchers_async(self, feature_flag, bucketing_key, matching_key, segment_matchers, attributes=None):
-        """
-        Calculate and store all condition matchers for given feature flag for async calls
-        If there are dependent Feature Flag(s), the function will do recursive calls until all matchers are resolved.
-
-        :param feature_flag: Feature flag Split objects
-        :type feature_flag: splitio.models.splits.Split
-        :param bucketing_key: Bucketing key for which to get the treatment
-        :type bucketing_key: str
-        :param matching_key: Matching key for which to get the treatment
-        :type matching_key: str
-        :param segment_matchers: Segment matchers for the feature flag
-        :type segment_matchers: dict
-        :return: dictionary representing all matchers for each current feature flag
-        :type: dict
-        """
-        roll_out = False
-        context = {
-            'segment_matchers': segment_matchers,
-            'evaluator': self._evaluator,
-            'bucketing_key': bucketing_key,
-        }
-        condition_matchers = []
-        for condition in feature_flag.conditions:
-            if (not roll_out and
-                    condition.condition_type == ConditionType.ROLLOUT):
-                if feature_flag.traffic_allocation < 100:
-                    bucket = self._splitter.get_bucket(
-                        bucketing_key,
-                        feature_flag.traffic_allocation_seed,
-                        feature_flag.algo
-                    )
-                    if bucket > feature_flag.traffic_allocation:
-                        return feature_flag.default_treatment, Label.NOT_IN_SPLIT
-                roll_out = True
-            dependent_splits = []
-            for matcher in condition.matchers:
-                if isinstance(matcher, DependencyMatcher):
-                    dependent_split = await self._split_storage.get(matcher.to_json()['dependencyMatcherData']['split'])
-                    depenedent_segment_matchers = await self._get_segment_matchers_async(dependent_split, matching_key)
-                    dependent_splits.append((dependent_split,
-                                                   await self._get_condition_matchers_async(dependent_split, bucketing_key, matching_key, depenedent_segment_matchers, attributes)))
-            context['dependent_splits'] = dependent_splits
-            condition_matchers.append((condition.matches(
-                matching_key,
-                attributes=attributes,
-                context=context
-            ), condition))
-
-        return condition_matchers
-
-    async def _get_segment_matchers_async(self, feature_flag, matching_key):
-        """
-        Get all segments matchers for given feature flag for async calls
-        If there are dependent Feature Flag(s), the function will do recursive calls until all matchers are resolved.
-
-        :param feature_flag: Feature flag Split objects
-        :type feature_flag: splitio.models.splits.Split
-        :param matching_key: Matching key for which to get the treatment
-        :type matching_key: str
-        :return: Segment matchers for the feature flag
-        :type: dict
-        """
-        segment_matchers = {}
-        for segment in self._get_segment_names(feature_flag):
-            for condition in feature_flag.conditions:
-                for matcher in condition.matchers:
-                    if isinstance(matcher, matchers.UserDefinedSegmentMatcher):
-                        segment_matchers[segment] = await self._segment_storage.segment_contains(segment, matching_key)
-        return segment_matchers
+        evaluation_results.treatment_with_config.update(missing_treatments)
+        return evaluation_results.treatment_with_config
 
     async def get_treatment_async(self, key, feature_flag_name, attributes=None):
         """
@@ -650,7 +489,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         if not self.ready:
             await self._telemetry_init_producer.record_not_ready_usage()
 
-        feature_flag =  await self._split_storage.get(feature_flag_name)
+        feature_flag =  await self._feature_flag_storage.get(feature_flag_name)
         if input_validator.validate_feature_flag_name(
             feature_flag_name,
             self.ready,
@@ -662,17 +501,16 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         if bucketing_key is None:
             bucketing_key = matching_key
 
-        segment_matchers = await self._get_segment_matchers_async(feature_flag, matching_key)
-        condition_matchers = await self._get_condition_matchers_async(feature_flag, bucketing_key, matching_key, segment_matchers, attributes)
-        treatment, config, impression, start, exception_flag = self._make_evaluation(key, feature_flag_name, attributes, method,
-                                             feature_flag, condition_matchers, await self._split_storage.get_change_number())
-        if impression is not None:
-            await self._record_stats_async([(impression, attributes)], start, method)
+        condition_matchers = await self._evaluator_data_collector.get_condition_matchers_async(feature_flag, bucketing_key, matching_key, attributes)
+        evaluation_result = self._make_evaluation(key, feature_flag_name, attributes, method,
+                                             feature_flag, condition_matchers, await self._feature_flag_storage.get_change_number())
+        if evaluation_result.impression is not None:
+            await self._record_stats_async([(evaluation_result.impression, attributes)], evaluation_result.start_time, method)
 
-        if exception_flag:
+        if evaluation_result.exception_flag:
             await self._telemetry_evaluation_producer.record_exception(method)
 
-        return treatment, config
+        return evaluation_result.treatment_with_config[0], evaluation_result.treatment_with_config[1]
 
     async def get_treatments_async(self, key, feature_flag_names, attributes=None):
         """
@@ -756,16 +594,15 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
         condition_matchers = {}
         for feature_flag in feature_flags:
-            segment_matchers = await self._get_segment_matchers_async(feature_flag, matching_key)
-            condition_matchers[feature_flag.name] = await self._get_condition_matchers_async(feature_flag, bucketing_key, matching_key, segment_matchers, attributes)
+            condition_matchers[feature_flag.name] = await self._evaluator_data_collector.get_condition_matchers_async(feature_flag, bucketing_key, matching_key, attributes)
 
-        with_config, impressions, start, exception_flag = self._make_evaluations(key, feature_flag_names, feature_flags, condition_matchers, attributes, method)
+        evaluation_results = self._make_evaluations(key, feature_flag_names, feature_flags, condition_matchers, attributes, method)
 
         try:
-            if impressions:
+            if evaluation_results.impression:
                 await self._record_stats_async(
-                    [(i, attributes) for i in impressions],
-                    start,
+                    [(i, attributes) for i in evaluation_results.impression],
+                    evaluation_results.start_time,
                     method
                 )
         except Exception:  # pylint: disable=broad-except
@@ -774,11 +611,11 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             _LOGGER.debug('Error: ', exc_info=True)
             await self._telemetry_evaluation_producer.record_exception(method)
 
-        if exception_flag:
+        if evaluation_results.exception_flag:
             await self._telemetry_evaluation_producer.record_exception(method)
 
-        with_config.update(missing_treatments)
-        return with_config
+        evaluation_results.treatment_with_config.update(missing_treatments)
+        return evaluation_results.treatment_with_config
 
     def _build_impression(  # pylint: disable=too-many-arguments
             self,
