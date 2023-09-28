@@ -421,7 +421,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         """
         try:
             keys = await self.redis.keys(self._get_key('*'))
-            return [key.replace(self._get_key(''), '') for key in keys]
+            return [str(key).replace(self._get_key(''), '') for key in keys]
         except RedisAdapterException:
             _LOGGER.error('Error fetching split names from storage')
             _LOGGER.debug('Error: ', exc_info=True)
