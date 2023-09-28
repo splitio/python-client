@@ -1652,3 +1652,7 @@ class PluggableTelemetryStorageAsync(PluggableTelemetryStorageBase):
     async def record_ready_time(self, ready_time):
         """Record ready time."""
         pass
+
+    async def record_not_ready_usage(self):
+        """Not implemented"""
+        pass

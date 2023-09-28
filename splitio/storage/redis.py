@@ -362,7 +362,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
                 raw_splits = await self._cache.get_key(frozenset(split_names))
             else:
                 keys = [self._get_key(split_name) for split_name in split_names]
-                raw_splits = await self._redis.mget(keys)
+                raw_splits = await self.redis.mget(keys)
                 if self._enable_caching:
                     await self._cache.add_key(frozenset(split_names), raw_splits)
             for i in range(len(split_names)):
@@ -421,7 +421,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         """
         try:
             keys = await self.redis.keys(self._get_key('*'))
-            return [str(key).replace(self._get_key(''), '') for key in keys]
+            return [key.decode('utf-8').replace(self._get_key(''), '') for key in keys]
         except RedisAdapterException:
             _LOGGER.error('Error fetching split names from storage')
             _LOGGER.debug('Error: ', exc_info=True)

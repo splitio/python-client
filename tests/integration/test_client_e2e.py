@@ -10,7 +10,7 @@ from redis import StrictRedis
 
 from splitio.optional.loaders import asyncio
 from splitio.exceptions import TimeoutException
-from splitio.client.factory import get_factory, SplitFactory
+from splitio.client.factory import get_factory, SplitFactory, get_factory_async
 from splitio.client.util import SdkMetadata
 from splitio.storage.inmemmory import InMemoryEventStorage, InMemoryImpressionStorage, \
     InMemorySegmentStorage, InMemorySplitStorage, InMemoryTelemetryStorage, InMemorySplitStorageAsync,\
@@ -36,8 +36,8 @@ from splitio.client.config import DEFAULT_CONFIG
 from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, RedisSynchronizer, SynchronizerAsync,\
 RedisSynchronizerAsync
 from splitio.sync.manager import Manager, RedisManager, ManagerAsync, RedisManagerAsync
-from splitio.sync.synchronizer import PluggableSynchronizer
-from splitio.sync.telemetry import RedisTelemetrySubmitter
+from splitio.sync.synchronizer import PluggableSynchronizer, PluggableSynchronizerAsync
+from splitio.sync.telemetry import RedisTelemetrySubmitter, RedisTelemetrySubmitterAsync
 
 from tests.integration import splits_json
 from tests.storage.test_pluggable import StorageMockAdapter, StorageMockAdapterAsync
@@ -2883,3 +2883,855 @@ class RedisWithCacheIntegrationAsyncTests(RedisIntegrationAsyncTests):
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     telemetry_submitter=telemetry_submitter
                                     )  # pylint:disable=attribute-defined-outside-init
+
+
+class LocalhostIntegrationAsyncTests(object):  # pylint: disable=too-few-public-methods
+    """Client & Manager integration tests."""
+
+    @pytest.mark.asyncio
+    async def test_localhost_json_e2e(self):
+        """Instantiate a client with a JSON file and issue get_treatment() calls."""
+        self._update_temp_file(splits_json['splitChange2_1'])
+        filename = os.path.join(os.path.dirname(__file__), 'files', 'split_changes_temp.json')
+        self.factory = await get_factory_async('localhost', config={'splitFile': filename})
+        await self.factory.block_until_ready_async(1)
+        client = self.factory.client()
+
+        # Tests 2
+        assert await self.factory.manager().split_names() == ["SPLIT_1"]
+        assert await client.get_treatment_async("key", "SPLIT_1") == 'off'
+
+        # Tests 1
+        await self.factory._storages['splits'].remove('SPLIT_1')
+        await self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._feature_flag_storage.set_change_number(-1)
+        self._update_temp_file(splits_json['splitChange1_1'])
+        await self._synchronize_now()
+
+        assert sorted(await self.factory.manager_async().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert await client.get_treatment_async("key", "SPLIT_1", None) == 'off'
+        assert await client.get_treatment_async("key", "SPLIT_2", None) == 'on'
+
+        self._update_temp_file(splits_json['splitChange1_2'])
+        await self._synchronize_now()
+
+        assert sorted(await self.factory.manager_async().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert await client.get_treatment_async("key", "SPLIT_1", None) == 'off'
+        assert await client.get_treatment_async("key", "SPLIT_2", None) == 'off'
+
+        self._update_temp_file(splits_json['splitChange1_3'])
+        await self._synchronize_now()
+
+        assert await self.factory.manager_async().split_names() == ["SPLIT_2"]
+        assert await client.get_treatment_async("key", "SPLIT_1", None) == 'control'
+        assert await client.get_treatment_async("key", "SPLIT_2", None) == 'on'
+
+        # Tests 3
+        await self.factory._storages['splits'].remove('SPLIT_1')
+        await self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._feature_flag_storage.set_change_number(-1)
+        self._update_temp_file(splits_json['splitChange3_1'])
+        await self._synchronize_now()
+
+        assert await self.factory.manager_async().split_names() == ["SPLIT_2"]
+        assert await client.get_treatment_async("key", "SPLIT_2", None) == 'on'
+
+        self._update_temp_file(splits_json['splitChange3_2'])
+        await self._synchronize_now()
+
+        assert await self.factory.manager_async().split_names() == ["SPLIT_2"]
+        assert await client.get_treatment_async("key", "SPLIT_2", None) == 'off'
+
+        # Tests 4
+        await self.factory._storages['splits'].remove('SPLIT_2')
+        await self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._feature_flag_storage.set_change_number(-1)
+        self._update_temp_file(splits_json['splitChange4_1'])
+        await self._synchronize_now()
+
+        assert sorted(await self.factory.manager_async().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert await client.get_treatment_async("key", "SPLIT_1", None) == 'off'
+        assert await client.get_treatment_async("key", "SPLIT_2", None) == 'on'
+
+        self._update_temp_file(splits_json['splitChange4_2'])
+        await self._synchronize_now()
+
+        assert sorted(await self.factory.manager_async().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert await client.get_treatment_async("key", "SPLIT_1", None) == 'off'
+        assert await client.get_treatment_async("key", "SPLIT_2", None) == 'off'
+
+        self._update_temp_file(splits_json['splitChange4_3'])
+        await self._synchronize_now()
+
+        assert await self.factory.manager_async().split_names() == ["SPLIT_2"]
+        assert await client.get_treatment_async("key", "SPLIT_1", None) == 'control'
+        assert await client.get_treatment_async("key", "SPLIT_2", None) == 'on'
+
+        # Tests 5
+        await self.factory._storages['splits'].remove('SPLIT_1')
+        await self.factory._storages['splits'].remove('SPLIT_2')
+        await self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._feature_flag_storage.set_change_number(-1)
+        self._update_temp_file(splits_json['splitChange5_1'])
+        await self._synchronize_now()
+
+        assert await self.factory.manager_async().split_names() == ["SPLIT_2"]
+        assert await client.get_treatment_async("key", "SPLIT_2", None) == 'on'
+
+        self._update_temp_file(splits_json['splitChange5_2'])
+        await self._synchronize_now()
+
+        assert await self.factory.manager_async().split_names() == ["SPLIT_2"]
+        assert await client.get_treatment_async("key", "SPLIT_2", None) == 'on'
+
+        # Tests 6
+        await self.factory._storages['splits'].remove('SPLIT_2')
+        await self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._feature_flag_storage.set_change_number(-1)
+        self._update_temp_file(splits_json['splitChange6_1'])
+        await self._synchronize_now()
+
+        assert sorted(await self.factory.manager_async().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert await client.get_treatment_async("key", "SPLIT_1", None) == 'off'
+        assert await client.get_treatment_async("key", "SPLIT_2", None) == 'on'
+
+        self._update_temp_file(splits_json['splitChange6_2'])
+        await self._synchronize_now()
+
+        assert sorted(await self.factory.manager_async().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert await client.get_treatment_async("key", "SPLIT_1", None) == 'off'
+        assert await client.get_treatment_async("key", "SPLIT_2", None) == 'off'
+
+        self._update_temp_file(splits_json['splitChange6_3'])
+        await self._synchronize_now()
+
+        assert await self.factory.manager_async().split_names() == ["SPLIT_2"]
+        assert await client.get_treatment_async("key", "SPLIT_1", None) == 'control'
+        assert await client.get_treatment_async("key", "SPLIT_2", None) == 'on'
+
+    def _update_temp_file(self, json_body):
+        f = open(os.path.join(os.path.dirname(__file__), 'files','split_changes_temp.json'), 'w')
+        f.write(json.dumps(json_body))
+        f.close()
+
+    async def _synchronize_now(self):
+        filename = os.path.join(os.path.dirname(__file__), 'files', 'split_changes_temp.json')
+        self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._filename = filename
+        await self.factory._sync_manager._synchronizer._split_synchronizers._split_sync.synchronize_splits()
+
+    @pytest.mark.asyncio
+    async def test_incorrect_file_e2e(self):
+        """Test initialize factory with a incorrect file name."""
+        # TODO: secontion below is removed when legacu use BUR
+        # legacy and yaml
+        exception_raised = False
+        factory = None
+        try:
+            factory = await get_factory_async('localhost', config={'splitFile': 'filename'})
+        except Exception as e:
+            exception_raised = True
+
+        assert(exception_raised)
+
+        # json using BUR
+        factory = await get_factory_async('localhost', config={'splitFile': 'filename.json'})
+        exception_raised = False
+        try:
+            await factory.block_until_ready_async(1)
+        except Exception as e:
+            exception_raised = True
+
+        assert(exception_raised)
+
+        await factory.destroy_async()
+
+
+    @pytest.mark.asyncio
+    async def test_localhost_e2e(self):
+        """Instantiate a client with a YAML file and issue get_treatment() calls."""
+        filename = os.path.join(os.path.dirname(__file__), 'files', 'file2.yaml')
+        factory = await get_factory_async('localhost', config={'splitFile': filename})
+        await factory.block_until_ready_async()
+        client = factory.client()
+        assert await client.get_treatment_with_config_async('key', 'my_feature') == ('on', '{"desc" : "this applies only to ON treatment"}')
+        assert await client.get_treatment_with_config_async('only_key', 'my_feature') == (
+            'off', '{"desc" : "this applies only to OFF and only for only_key. The rest will receive ON"}'
+        )
+        assert await client.get_treatment_with_config_async('another_key', 'my_feature') == ('control', None)
+        assert await client.get_treatment_with_config_async('key2', 'other_feature') == ('on', None)
+        assert await client.get_treatment_with_config_async('key3', 'other_feature') == ('on', None)
+        assert await client.get_treatment_with_config_async('some_key', 'other_feature_2') == ('on', None)
+        assert await client.get_treatment_with_config_async('key_whitelist', 'other_feature_3') == ('on', None)
+        assert await client.get_treatment_with_config_async('any_other_key', 'other_feature_3') == ('off', None)
+
+        manager = factory.manager_async()
+        split = await manager.split('my_feature')
+        assert split.configs == {
+            'on': '{"desc" : "this applies only to ON treatment"}',
+            'off': '{"desc" : "this applies only to OFF and only for only_key. The rest will receive ON"}'
+        }
+        split = await manager.split('other_feature')
+        assert split.configs == {}
+        split = await manager.split('other_feature_2')
+        assert split.configs == {}
+        split = await manager.split('other_feature_3')
+        assert split.configs == {}
+        await factory.destroy_async()
+
+
+class PluggableIntegrationAsyncTests(object):
+    """Pluggable storage-based integration tests."""
+    def setup_method(self):
+        self.setup_task = asyncio.get_event_loop().create_task(self._setup_method())
+
+    async def _setup_method(self):
+        """Prepare storages with test data."""
+        metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
+        self.pluggable_storage_adapter = StorageMockAdapterAsync()
+        split_storage = PluggableSplitStorageAsync(self.pluggable_storage_adapter, 'myprefix')
+        segment_storage = PluggableSegmentStorageAsync(self.pluggable_storage_adapter, 'myprefix')
+
+        telemetry_pluggable_storage = await PluggableTelemetryStorageAsync.create(self.pluggable_storage_adapter, metadata, 'myprefix')
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_pluggable_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        telemetry_submitter = RedisTelemetrySubmitterAsync(telemetry_pluggable_storage)
+
+        storages = {
+            'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': PluggableImpressionsStorageAsync(self.pluggable_storage_adapter, metadata),
+            'events': PluggableEventsStorageAsync(self.pluggable_storage_adapter, metadata),
+            'telemetry': telemetry_pluggable_storage
+        }
+
+        impmanager = ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer) # no listener
+        recorder = StandardRecorderAsync(impmanager, storages['events'],
+                                    storages['impressions'],
+                                    telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_runtime_producer)
+
+        self.factory = SplitFactory('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    RedisManagerAsync(PluggableSynchronizerAsync()),
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    telemetry_submitter=telemetry_submitter
+                                    )  # pylint:disable=attribute-defined-outside-init
+
+        # Adding data to storage
+        split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
+        with open(split_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        for split in data['splits']:
+            await self.pluggable_storage_adapter.set(split_storage._prefix.format(split_name=split['name']), split)
+        await self.pluggable_storage_adapter.set(split_storage._split_till_prefix, data['till'])
+
+        segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
+        with open(segment_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        await self.pluggable_storage_adapter.set(segment_storage._prefix.format(segment_name=data['name']), set(data['added']))
+        await self.pluggable_storage_adapter.set(segment_storage._segment_till_prefix.format(segment_name=data['name']), data['till'])
+
+        segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentHumanBeignsChanges.json')
+        with open(segment_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        await self.pluggable_storage_adapter.set(segment_storage._prefix.format(segment_name=data['name']), set(data['added']))
+        await self.pluggable_storage_adapter.set(segment_storage._segment_till_prefix.format(segment_name=data['name']), data['till'])
+        await self.factory.block_until_ready_async(1)
+
+    async def _validate_last_events(self, client, *to_validate):
+        """Validate the last N impressions are present disregarding the order."""
+        event_storage = client._factory._get_storage('events')
+        events_raw = []
+        stored_events = await self.pluggable_storage_adapter.pop_items(event_storage._events_queue_key)
+        if stored_events is not None:
+            events_raw = [json.loads(im) for im in stored_events]
+
+        as_tup_set = set(
+            (i['e']['key'], i['e']['trafficTypeName'], i['e']['eventTypeId'], i['e']['value'], str(i['e']['properties']))
+            for i in events_raw
+        )
+        assert as_tup_set == set(to_validate)
+        await self._teardown_method()
+
+    async def _validate_last_impressions(self, client, *to_validate):
+        """Validate the last N impressions are present disregarding the order."""
+        imp_storage = client._factory._get_storage('impressions')
+        impressions_raw = []
+        stored_impressions = await self.pluggable_storage_adapter.pop_items(imp_storage._impressions_queue_key)
+        if stored_impressions is not None:
+            impressions_raw = [json.loads(im) for im in stored_impressions]
+        as_tup_set = set(
+            (i['i']['f'], i['i']['k'], i['i']['t'])
+            for i in impressions_raw
+        )
+
+        assert as_tup_set == set(to_validate)
+        await self._teardown_method()
+
+    @pytest.mark.asyncio
+    async def test_get_treatment(self):
+        """Test client.get_treatment()."""
+        await self.setup_task
+        client = self.factory.client()
+        assert await client.get_treatment_async('user1', 'sample_feature') == 'on'
+        await self._validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
+
+        assert await client.get_treatment_async('invalidKey', 'sample_feature') == 'off'
+        await self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
+
+        assert await client.get_treatment_async('invalidKey', 'invalid_feature') == 'control'
+        await self._validate_last_impressions(client)
+
+        # testing a killed feature. No matter what the key, must return default treatment
+        assert await client.get_treatment_async('invalidKey', 'killed_feature') == 'defTreatment'
+        await self._validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
+
+        # testing ALL matcher
+        assert await client.get_treatment_async('invalidKey', 'all_feature') == 'on'
+        await self._validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
+
+        # testing WHITELIST matcher
+        assert await client.get_treatment_async('whitelisted_user', 'whitelist_feature') == 'on'
+        await self._validate_last_impressions(client, ('whitelist_feature', 'whitelisted_user', 'on'))
+        assert await client.get_treatment_async('unwhitelisted_user', 'whitelist_feature') == 'off'
+        await self._validate_last_impressions(client, ('whitelist_feature', 'unwhitelisted_user', 'off'))
+
+        #  testing INVALID matcher
+        assert await client.get_treatment_async('some_user_key', 'invalid_matcher_feature') == 'control'
+        await self._validate_last_impressions(client)
+
+        #  testing Dependency matcher
+        assert await client.get_treatment_async('somekey', 'dependency_test') == 'off'
+        await self._validate_last_impressions(client, ('dependency_test', 'somekey', 'off'))
+
+        #  testing boolean matcher
+        assert await client.get_treatment_async('True', 'boolean_test') == 'on'
+        await self._validate_last_impressions(client, ('boolean_test', 'True', 'on'))
+
+        #  testing regex matcher
+        assert await client.get_treatment_async('abc4', 'regex_test') == 'on'
+        await self._validate_last_impressions(client, ('regex_test', 'abc4', 'on'))
+        await self._teardown_method()
+
+    @pytest.mark.asyncio
+    async def test_get_treatment_with_config(self):
+        """Test client.get_treatment_with_config()."""
+        await self.setup_task
+        client = self.factory.client()
+
+        result = await client.get_treatment_with_config_async('user1', 'sample_feature')
+        assert result == ('on', '{"size":15,"test":20}')
+        await self._validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
+
+        result = await client.get_treatment_with_config_async('invalidKey', 'sample_feature')
+        assert result == ('off', None)
+        await self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
+
+        result = await client.get_treatment_with_config_async('invalidKey', 'invalid_feature')
+        assert result == ('control', None)
+        await self._validate_last_impressions(client)
+
+        # testing a killed feature. No matter what the key, must return default treatment
+        result = await client.get_treatment_with_config_async('invalidKey', 'killed_feature')
+        assert ('defTreatment', '{"size":15,"defTreatment":true}') == result
+        await self._validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
+
+        # testing ALL matcher
+        result = await client.get_treatment_with_config_async('invalidKey', 'all_feature')
+        assert result == ('on', None)
+        await self._validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
+        await self._teardown_method()
+
+    @pytest.mark.asyncio
+    async def test_get_treatments(self):
+        """Test client.get_treatments()."""
+        await self.setup_task
+        client = self.factory.client()
+
+        result = await client.get_treatments_async('user1', ['sample_feature'])
+        assert len(result) == 1
+        assert result['sample_feature'] == 'on'
+        await self._validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
+
+        result = await client.get_treatments_async('invalidKey', ['sample_feature'])
+        assert len(result) == 1
+        assert result['sample_feature'] == 'off'
+        await self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
+
+        result = await client.get_treatments_async('invalidKey', ['invalid_feature'])
+        assert len(result) == 1
+        assert result['invalid_feature'] == 'control'
+        await self._validate_last_impressions(client)
+
+        # testing a killed feature. No matter what the key, must return default treatment
+        result = await client.get_treatments_async('invalidKey', ['killed_feature'])
+        assert len(result) == 1
+        assert result['killed_feature'] == 'defTreatment'
+        await self._validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
+
+        # testing ALL matcher
+        result = await client.get_treatments_async('invalidKey', ['all_feature'])
+        assert len(result) == 1
+        assert result['all_feature'] == 'on'
+        await self._validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
+
+        # testing multiple splitNames
+        result = await client.get_treatments_async('invalidKey', [
+            'all_feature',
+            'killed_feature',
+            'invalid_feature',
+            'sample_feature'
+        ])
+        assert len(result) == 4
+        assert result['all_feature'] == 'on'
+        assert result['killed_feature'] == 'defTreatment'
+        assert result['invalid_feature'] == 'control'
+        assert result['sample_feature'] == 'off'
+        await self._validate_last_impressions(
+            client,
+            ('all_feature', 'invalidKey', 'on'),
+            ('killed_feature', 'invalidKey', 'defTreatment'),
+            ('sample_feature', 'invalidKey', 'off')
+        )
+        await self._teardown_method()
+
+    @pytest.mark.asyncio
+    async def test_get_treatments_with_config(self):
+        """Test client.get_treatments_with_config()."""
+        await self.setup_task
+        client = self.factory.client()
+
+        result = await client.get_treatments_with_config_async('user1', ['sample_feature'])
+        assert len(result) == 1
+        assert result['sample_feature'] == ('on', '{"size":15,"test":20}')
+        await self._validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
+
+        result = await client.get_treatments_with_config_async('invalidKey', ['sample_feature'])
+        assert len(result) == 1
+        assert result['sample_feature'] == ('off', None)
+        await self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
+
+        result = await client.get_treatments_with_config_async('invalidKey', ['invalid_feature'])
+        assert len(result) == 1
+        assert result['invalid_feature'] == ('control', None)
+        await self._validate_last_impressions(client)
+
+        # testing a killed feature. No matter what the key, must return default treatment
+        result = await client.get_treatments_with_config_async('invalidKey', ['killed_feature'])
+        assert len(result) == 1
+        assert result['killed_feature'] == ('defTreatment', '{"size":15,"defTreatment":true}')
+        await self._validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
+
+        # testing ALL matcher
+        result = await client.get_treatments_with_config_async('invalidKey', ['all_feature'])
+        assert len(result) == 1
+        assert result['all_feature'] == ('on', None)
+        await self._validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
+
+        # testing multiple splitNames
+        result = await client.get_treatments_with_config_async('invalidKey', [
+            'all_feature',
+            'killed_feature',
+            'invalid_feature',
+            'sample_feature'
+        ])
+        assert len(result) == 4
+        assert result['all_feature'] == ('on', None)
+        assert result['killed_feature'] == ('defTreatment', '{"size":15,"defTreatment":true}')
+        assert result['invalid_feature'] == ('control', None)
+        assert result['sample_feature'] == ('off', None)
+        await self._validate_last_impressions(
+            client,
+            ('all_feature', 'invalidKey', 'on'),
+            ('killed_feature', 'invalidKey', 'defTreatment'),
+            ('sample_feature', 'invalidKey', 'off'),
+        )
+        await self._teardown_method()
+
+    @pytest.mark.asyncio
+    async def test_track(self):
+        """Test client.track()."""
+        await self.setup_task
+        client = self.factory.client()
+        assert(await client.track_async('user1', 'user', 'conversion', 1, {"prop1": "value1"}))
+        assert(not await client.track_async(None, 'user', 'conversion'))
+        assert(not await client.track_async('user1', None, 'conversion'))
+        assert(not await client.track_async('user1', 'user', None))
+        await self._validate_last_events(
+            client,
+            ('user1', 'user', 'conversion', 1, "{'prop1': 'value1'}")
+        )
+
+    @pytest.mark.asyncio
+    async def test_manager_methods(self):
+        """Test manager.split/splits."""
+        await self.setup_task
+        try:
+            manager = self.factory.manager_async()
+        except:
+            pass
+        result = await manager.split('all_feature')
+        assert result.name == 'all_feature'
+        assert result.traffic_type is None
+        assert result.killed is False
+        assert len(result.treatments) == 2
+        assert result.change_number == 123
+        assert result.configs == {}
+
+        result = await manager.split('killed_feature')
+        assert result.name == 'killed_feature'
+        assert result.traffic_type is None
+        assert result.killed is True
+        assert len(result.treatments) == 2
+        assert result.change_number == 123
+        assert result.configs['defTreatment'] == '{"size":15,"defTreatment":true}'
+        assert result.configs['off'] == '{"size":15,"test":20}'
+
+        result = await manager.split('sample_feature')
+        assert result.name == 'sample_feature'
+        assert result.traffic_type is None
+        assert result.killed is False
+        assert len(result.treatments) == 2
+        assert result.change_number == 123
+        assert result.configs['on'] == '{"size":15,"test":20}'
+
+        assert len(await manager.split_names()) == 7
+        assert len(await manager.splits()) == 7
+
+        await self._teardown_method()
+
+    async def _teardown_method(self):
+        """Clear pluggable cache."""
+        keys_to_delete = [
+            "SPLITIO.segment.human_beigns",
+            "SPLITIO.segment.employees.till",
+            "SPLITIO.split.sample_feature",
+            "SPLITIO.splits.till",
+            "SPLITIO.split.killed_feature",
+            "SPLITIO.split.all_feature",
+            "SPLITIO.split.whitelist_feature",
+            "SPLITIO.segment.employees",
+            "SPLITIO.split.regex_test",
+            "SPLITIO.segment.human_beigns.till",
+            "SPLITIO.split.boolean_test",
+            "SPLITIO.split.dependency_test"
+        ]
+
+        for key in keys_to_delete:
+            await self.pluggable_storage_adapter.delete(key)
+
+
+class PluggableOptimizedIntegrationAsyncTests(object):
+    """Pluggable storage-based optimized integration tests."""
+    def setup_method(self):
+        self.setup_task = asyncio.get_event_loop().create_task(self._setup_method())
+
+    async def _setup_method(self):
+        """Prepare storages with test data."""
+        metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
+        self.pluggable_storage_adapter = StorageMockAdapterAsync()
+        split_storage = PluggableSplitStorageAsync(self.pluggable_storage_adapter)
+        segment_storage = PluggableSegmentStorageAsync(self.pluggable_storage_adapter)
+
+        telemetry_pluggable_storage = await PluggableTelemetryStorageAsync.create(self.pluggable_storage_adapter, metadata)
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_pluggable_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        telemetry_submitter = RedisTelemetrySubmitterAsync(telemetry_pluggable_storage)
+
+        storages = {
+            'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': PluggableImpressionsStorageAsync(self.pluggable_storage_adapter, metadata),
+            'events': PluggableEventsStorageAsync(self.pluggable_storage_adapter, metadata),
+            'telemetry': telemetry_pluggable_storage
+        }
+
+        impmanager = ImpressionsManager(StrategyOptimizedMode(Counter()), telemetry_runtime_producer) # no listener
+        recorder = StandardRecorderAsync(impmanager, storages['events'],
+                                    storages['impressions'],
+                                    telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_runtime_producer)
+
+        self.factory = SplitFactory('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    RedisManagerAsync(PluggableSynchronizerAsync()),
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    telemetry_submitter=telemetry_submitter
+                                    )  # pylint:disable=attribute-defined-outside-init
+
+        # Adding data to storage
+        split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
+        with open(split_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        for split in data['splits']:
+            await self.pluggable_storage_adapter.set(split_storage._prefix.format(split_name=split['name']), split)
+        await self.pluggable_storage_adapter.set(split_storage._split_till_prefix, data['till'])
+
+        segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
+        with open(segment_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        await self.pluggable_storage_adapter.set(segment_storage._prefix.format(segment_name=data['name']), set(data['added']))
+        await self.pluggable_storage_adapter.set(segment_storage._segment_till_prefix.format(segment_name=data['name']), data['till'])
+
+        segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentHumanBeignsChanges.json')
+        with open(segment_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        await self.pluggable_storage_adapter.set(segment_storage._prefix.format(segment_name=data['name']), set(data['added']))
+        await self.pluggable_storage_adapter.set(segment_storage._segment_till_prefix.format(segment_name=data['name']), data['till'])
+        await self.factory.block_until_ready_async(1)
+
+    async def _validate_last_events(self, client, *to_validate):
+        """Validate the last N impressions are present disregarding the order."""
+        event_storage = client._factory._get_storage('events')
+        events_raw = []
+        stored_events = await self.pluggable_storage_adapter.pop_items(event_storage._events_queue_key)
+        if stored_events is not None:
+            events_raw = [json.loads(im) for im in stored_events]
+
+        as_tup_set = set(
+            (i['e']['key'], i['e']['trafficTypeName'], i['e']['eventTypeId'], i['e']['value'], str(i['e']['properties']))
+            for i in events_raw
+        )
+        assert as_tup_set == set(to_validate)
+
+    async def _validate_last_impressions(self, client, *to_validate):
+        """Validate the last N impressions are present disregarding the order."""
+        imp_storage = client._factory._get_storage('impressions')
+        impressions_raw = []
+        stored_impressions = await self.pluggable_storage_adapter.pop_items(imp_storage._impressions_queue_key)
+        if stored_impressions is not None:
+            impressions_raw = [json.loads(im) for im in stored_impressions]
+        as_tup_set = set(
+            (i['i']['f'], i['i']['k'], i['i']['t'])
+            for i in impressions_raw
+        )
+
+        assert as_tup_set == set(to_validate)
+
+    @pytest.mark.asyncio
+    async def test_get_treatment_async(self):
+        """Test client.get_treatment()."""
+        await self.setup_task
+        client = self.factory.client()
+        client._parallel_task_async = True
+
+        assert await client.get_treatment_async('user1', 'sample_feature') == 'on'
+        await self._validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
+        await client.get_treatment_async('user1', 'sample_feature')
+        await client.get_treatment_async('user1', 'sample_feature')
+        await client.get_treatment_async('user1', 'sample_feature')
+
+        # Only one impression was added, and popped when validating, the rest were ignored
+        assert self.factory._storages['impressions']._pluggable_adapter._keys.get('SPLITIO.impressions') == None
+
+        assert await client.get_treatment_async('invalidKey', 'sample_feature') == 'off'
+        await self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
+
+        assert await client.get_treatment_async('invalidKey', 'invalid_feature') == 'control'
+        await self._validate_last_impressions(client)  # No impressions should be present
+
+        # testing a killed feature. No matter what the key, must return default treatment
+        assert await client.get_treatment_async('invalidKey', 'killed_feature') == 'defTreatment'
+        await self._validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
+
+        # testing ALL matcher
+        assert await client.get_treatment_async('invalidKey', 'all_feature') == 'on'
+        await self._validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
+
+        # testing WHITELIST matcher
+        assert await client.get_treatment_async('whitelisted_user', 'whitelist_feature') == 'on'
+        await self._validate_last_impressions(client, ('whitelist_feature', 'whitelisted_user', 'on'))
+        assert await client.get_treatment_async('unwhitelisted_user', 'whitelist_feature') == 'off'
+        await self._validate_last_impressions(client, ('whitelist_feature', 'unwhitelisted_user', 'off'))
+
+        #  testing INVALID matcher
+        assert await client.get_treatment_async('some_user_key', 'invalid_matcher_feature') == 'control'
+        await self._validate_last_impressions(client)  # No impressions should be present
+
+        #  testing Dependency matcher
+        assert await client.get_treatment_async('somekey', 'dependency_test') == 'off'
+        await self._validate_last_impressions(client, ('dependency_test', 'somekey', 'off'))
+
+        #  testing boolean matcher
+        assert await client.get_treatment_async('True', 'boolean_test') == 'on'
+        await self._validate_last_impressions(client, ('boolean_test', 'True', 'on'))
+
+        #  testing regex matcher
+        assert await client.get_treatment_async('abc4', 'regex_test') == 'on'
+        await self._validate_last_impressions(client, ('regex_test', 'abc4', 'on'))
+        await self.factory.destroy_async()
+        await self._teardown_method()
+
+    @pytest.mark.asyncio
+    async def test_get_treatments_async(self):
+        """Test client.get_treatments()."""
+        await self.setup_task
+        client = self.factory.client()
+        client._parallel_task_async = True
+
+        result = await client.get_treatments_async('user1', ['sample_feature'])
+        assert len(result) == 1
+        assert result['sample_feature'] == 'on'
+        await self._validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
+
+        result = await client.get_treatments_async('invalidKey', ['sample_feature'])
+        assert len(result) == 1
+        assert result['sample_feature'] == 'off'
+        await self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
+
+        result = await client.get_treatments_async('invalidKey', ['invalid_feature'])
+        assert len(result) == 1
+        assert result['invalid_feature'] == 'control'
+        await self._validate_last_impressions(client)
+
+        # testing a killed feature. No matter what the key, must return default treatment
+        result = await client.get_treatments_async('invalidKey', ['killed_feature'])
+        assert len(result) == 1
+        assert result['killed_feature'] == 'defTreatment'
+        await self._validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
+
+        # testing ALL matcher
+        result = await client.get_treatments_async('invalidKey', ['all_feature'])
+        assert len(result) == 1
+        assert result['all_feature'] == 'on'
+        await self._validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
+
+        # testing multiple splitNames
+        result = await client.get_treatments_async('invalidKey', [
+            'all_feature',
+            'killed_feature',
+            'invalid_feature',
+            'sample_feature'
+        ])
+        assert len(result) == 4
+        assert result['all_feature'] == 'on'
+        assert result['killed_feature'] == 'defTreatment'
+        assert result['invalid_feature'] == 'control'
+        assert result['sample_feature'] == 'off'
+        assert self.factory._storages['impressions']._pluggable_adapter._keys.get('SPLITIO.impressions') == None
+        await self.factory.destroy_async()
+        await self._teardown_method()
+
+    @pytest.mark.asyncio
+    async def test_get_treatments_with_config_async(self):
+        """Test client.get_treatments_with_config()."""
+        await self.setup_task
+        client = self.factory.client()
+        client._parallel_task_async = True
+
+        result = await client.get_treatments_with_config_async('user1', ['sample_feature'])
+        assert len(result) == 1
+        assert result['sample_feature'] == ('on', '{"size":15,"test":20}')
+        await self._validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
+
+        result = await client.get_treatments_with_config_async('invalidKey', ['sample_feature'])
+        assert len(result) == 1
+        assert result['sample_feature'] == ('off', None)
+        await self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
+
+        result = await client.get_treatments_with_config_async('invalidKey', ['invalid_feature'])
+        assert len(result) == 1
+        assert result['invalid_feature'] == ('control', None)
+        await self._validate_last_impressions(client)
+
+        # testing a killed feature. No matter what the key, must return default treatment
+        result = await client.get_treatments_with_config_async('invalidKey', ['killed_feature'])
+        assert len(result) == 1
+        assert result['killed_feature'] == ('defTreatment', '{"size":15,"defTreatment":true}')
+        await self._validate_last_impressions(client, ('killed_feature', 'invalidKey', 'defTreatment'))
+
+        # testing ALL matcher
+        result = await client.get_treatments_with_config_async('invalidKey', ['all_feature'])
+        assert len(result) == 1
+        assert result['all_feature'] == ('on', None)
+        await self._validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
+
+        # testing multiple splitNames
+        result = await client.get_treatments_with_config_async('invalidKey', [
+            'all_feature',
+            'killed_feature',
+            'invalid_feature',
+            'sample_feature'
+        ])
+        assert len(result) == 4
+
+        assert result['all_feature'] == ('on', None)
+        assert result['killed_feature'] == ('defTreatment', '{"size":15,"defTreatment":true}')
+        assert result['invalid_feature'] == ('control', None)
+        assert result['sample_feature'] == ('off', None)
+        assert self.factory._storages['impressions']._pluggable_adapter._keys.get('SPLITIO.impressions') == None
+        await self.factory.destroy_async()
+        await self._teardown_method()
+
+    @pytest.mark.asyncio
+    async def test_manager_methods(self):
+        """Test manager.split/splits."""
+        await self.setup_task
+        manager = self.factory.manager_async()
+        result = await manager.split('all_feature')
+        assert result.name == 'all_feature'
+        assert result.traffic_type is None
+        assert result.killed is False
+        assert len(result.treatments) == 2
+        assert result.change_number == 123
+        assert result.configs == {}
+
+        result = await manager.split('killed_feature')
+        assert result.name == 'killed_feature'
+        assert result.traffic_type is None
+        assert result.killed is True
+        assert len(result.treatments) == 2
+        assert result.change_number == 123
+        assert result.configs['defTreatment'] == '{"size":15,"defTreatment":true}'
+        assert result.configs['off'] == '{"size":15,"test":20}'
+
+        result = await manager.split('sample_feature')
+        assert result.name == 'sample_feature'
+        assert result.traffic_type is None
+        assert result.killed is False
+        assert len(result.treatments) == 2
+        assert result.change_number == 123
+        assert result.configs['on'] == '{"size":15,"test":20}'
+
+        assert len(await manager.split_names()) == 7
+        assert len(await manager.splits()) == 7
+        await self.factory.destroy_async()
+        await self._teardown_method()
+
+    @pytest.mark.asyncio
+    async def test_track_async(self):
+        """Test client.track()."""
+        await self.setup_task
+        client = self.factory.client()
+        assert(await client.track_async('user1', 'user', 'conversion', 1, {"prop1": "value1"}))
+        assert(not await client.track_async(None, 'user', 'conversion'))
+        assert(not await client.track_async('user1', None, 'conversion'))
+        assert(not await client.track_async('user1', 'user', None))
+        await self._validate_last_events(
+            client,
+            ('user1', 'user', 'conversion', 1, "{'prop1': 'value1'}")
+        )
+        await self.factory.destroy_async()
+        await self._teardown_method()
+
+
+    async def _teardown_method(self):
+        """Clear pluggable cache."""
+        keys_to_delete = [
+            "SPLITIO.segment.human_beigns",
+            "SPLITIO.segment.employees.till",
+            "SPLITIO.split.sample_feature",
+            "SPLITIO.splits.till",
+            "SPLITIO.split.killed_feature",
+            "SPLITIO.split.all_feature",
+            "SPLITIO.split.whitelist_feature",
+            "SPLITIO.segment.employees",
+            "SPLITIO.split.regex_test",
+            "SPLITIO.segment.human_beigns.till",
+            "SPLITIO.split.boolean_test",
+            "SPLITIO.split.dependency_test"
+        ]
+
+        for key in keys_to_delete:
+            await self.pluggable_storage_adapter.delete(key)

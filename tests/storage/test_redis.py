@@ -376,9 +376,9 @@ class RedisSplitStorageAsyncTests(object):
         async def keys(sel, key):
             self.key = key
             self.keys_ret = [
-            'SPLITIO.split.split1',
-            'SPLITIO.split.split2',
-            'SPLITIO.split.split3'
+            b'SPLITIO.split.split1',
+            b'SPLITIO.split.split2',
+            b'SPLITIO.split.split3'
             ]
             return self.keys_ret
         mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.keys', new=keys)
