@@ -226,7 +226,6 @@ class SplitWorkerAsync(WorkerBase):
     async def _run(self):
         """Run worker handler."""
         while self.is_running():
-            _LOGGER.error("_run")
             event = await self._split_queue.get()
             if not self.is_running():
                 break

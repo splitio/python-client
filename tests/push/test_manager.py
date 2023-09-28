@@ -263,7 +263,7 @@ class PushManagerAsyncTests(object):
             await asyncio.sleep(1)
             await manager.stop(True)
 
-        await manager.start()
+        manager.start()
         shutdown_task = asyncio.get_running_loop().create_task(deferred_shutdown())
 
         assert await feedback_loop.get() == Status.PUSH_SUBSYSTEM_UP
@@ -299,7 +299,7 @@ class PushManagerAsyncTests(object):
             return
         sse_mock.start.return_value = coro()
 
-        await manager.start()
+        manager.start()
         assert await feedback_loop.get() == Status.PUSH_RETRYABLE_ERROR
 
         await manager.stop(True)
@@ -323,7 +323,7 @@ class PushManagerAsyncTests(object):
         manager = PushManagerAsync(api_mock, mocker.Mock(), feedback_loop, mocker.Mock(), telemetry_runtime_producer)
         manager._sse_client = sse_mock
 
-        await manager.start()
+        manager.start()
         assert await feedback_loop.get() == Status.PUSH_NONRETRYABLE_ERROR
         assert sse_mock.mock_calls == []
 
@@ -344,7 +344,7 @@ class PushManagerAsyncTests(object):
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         manager = PushManagerAsync(api_mock, mocker.Mock(), feedback_loop, mocker.Mock(), telemetry_runtime_producer)
         manager._sse_client = sse_mock
-        await manager.start()
+        manager.start()
         assert await feedback_loop.get() == Status.PUSH_RETRYABLE_ERROR
         assert sse_mock.mock_calls == []
 
@@ -427,7 +427,7 @@ class PushManagerAsyncTests(object):
         mocker.patch('splitio.push.manager.parse_incoming_event', new=parse_event_mock)
 
         status_tracker_mock = mocker.Mock(spec=PushStatusTracker)
-        mocker.patch('splitio.push.manager.PushStatusTracker', new=status_tracker_mock)
+        mocker.patch('splitio.push.manager.PushStatusTrackerAsync', new=status_tracker_mock)
 
         manager = PushManagerAsync(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
         await manager._event_handler(sse_event)
@@ -444,7 +444,7 @@ class PushManagerAsyncTests(object):
         mocker.patch('splitio.push.manager.parse_incoming_event', new=parse_event_mock)
 
         status_tracker_mock = mocker.Mock(spec=PushStatusTracker)
-        mocker.patch('splitio.push.manager.PushStatusTracker', new=status_tracker_mock)
+        mocker.patch('splitio.push.manager.PushStatusTrackerAsync', new=status_tracker_mock)
 
         manager = PushManagerAsync(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
         await manager._event_handler(sse_event)

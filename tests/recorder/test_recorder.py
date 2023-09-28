@@ -21,7 +21,7 @@ class StandardRecorderTests(object):
             Impression('k1', 'f2', 'on', 'l1', 123, None, None)
         ]
         impmanager = mocker.Mock(spec=ImpressionsManager)
-        impmanager.process_impressions.return_value = impressions
+        impmanager.process_impressions.return_value = impressions, 0
         event = mocker.Mock(spec=EventStorage)
         impression = mocker.Mock(spec=ImpressionStorage)
         telemetry_storage = mocker.Mock(spec=InMemoryTelemetryStorage)
@@ -32,7 +32,7 @@ class StandardRecorderTests(object):
 
         telemetry_storage.record_latency.side_effect = record_latency
 
-        recorder = StandardRecorder(impmanager, event, impression, telemetry_producer.get_telemetry_evaluation_producer())
+        recorder = StandardRecorder(impmanager, event, impression, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         recorder.record_treatment_stats(impressions, 1, MethodExceptionsAndLatencies.TREATMENT, 'get_treatment')
 
         assert recorder._impression_storage.put.mock_calls[0][1][0] == impressions
@@ -46,7 +46,7 @@ class StandardRecorderTests(object):
         ]
         redis = mocker.Mock(spec=RedisAdapter)
         impmanager = mocker.Mock(spec=ImpressionsManager)
-        impmanager.process_impressions.return_value = impressions
+        impmanager.process_impressions.return_value = impressions, 0
         event = mocker.Mock(spec=RedisEventsStorage)
         impression = mocker.Mock(spec=RedisImpressionsStorage)
         recorder = PipelinedRecorder(redis, impmanager, event, impression, mocker.Mock())
@@ -63,7 +63,7 @@ class StandardRecorderTests(object):
         ]
         redis = mocker.Mock(spec=RedisAdapter)
         impmanager = mocker.Mock(spec=ImpressionsManager)
-        impmanager.process_impressions.return_value = impressions
+        impmanager.process_impressions.return_value = impressions, 0
         event = mocker.Mock(spec=EventStorage)
         impression = mocker.Mock(spec=ImpressionStorage)
         recorder = PipelinedRecorder(redis, impmanager, event, impression, 0.5, mocker.Mock())
@@ -89,7 +89,7 @@ class StandardRecorderAsyncTests(object):
             Impression('k1', 'f2', 'on', 'l1', 123, None, None)
         ]
         impmanager = mocker.Mock(spec=ImpressionsManager)
-        impmanager.process_impressions.return_value = impressions
+        impmanager.process_impressions.return_value = impressions, 0
         event = mocker.Mock(spec=InMemoryEventStorageAsync)
         impression = mocker.Mock(spec=InMemoryImpressionStorageAsync)
         telemetry_storage = mocker.Mock(spec=InMemoryTelemetryStorage)
@@ -100,7 +100,7 @@ class StandardRecorderAsyncTests(object):
 
         telemetry_storage.record_latency.side_effect = record_latency
 
-        recorder = StandardRecorderAsync(impmanager, event, impression, telemetry_producer.get_telemetry_evaluation_producer())
+        recorder = StandardRecorderAsync(impmanager, event, impression, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         await recorder.record_treatment_stats(impressions, 1, MethodExceptionsAndLatencies.TREATMENT, 'get_treatment')
 
         assert recorder._impression_storage.put.mock_calls[0][1][0] == impressions
@@ -115,7 +115,7 @@ class StandardRecorderAsyncTests(object):
         ]
         redis = mocker.Mock(spec=RedisAdapterAsync)
         impmanager = mocker.Mock(spec=ImpressionsManager)
-        impmanager.process_impressions.return_value = impressions
+        impmanager.process_impressions.return_value = impressions, 0
         event = mocker.Mock(spec=RedisEventsStorageAsync)
         impression = mocker.Mock(spec=RedisImpressionsStorageAsync)
         recorder = PipelinedRecorderAsync(redis, impmanager, event, impression, mocker.Mock())
@@ -132,7 +132,7 @@ class StandardRecorderAsyncTests(object):
         ]
         redis = mocker.Mock(spec=RedisAdapterAsync)
         impmanager = mocker.Mock(spec=ImpressionsManager)
-        impmanager.process_impressions.return_value = impressions
+        impmanager.process_impressions.return_value = impressions, 0
         event = mocker.Mock(spec=RedisEventsStorageAsync)
         impression = mocker.Mock(spec=RedisImpressionsStorageAsync)
         recorder = PipelinedRecorderAsync(redis, impmanager, event, impression, 0.5, mocker.Mock())
