@@ -7,7 +7,7 @@ from enum import Enum
 from splitio.optional.loaders import asyncio
 from splitio.client.client import Client
 from splitio.client import input_validator
-from splitio.client.manager import SplitManager
+from splitio.client.manager import SplitManager, SplitManagerAsync
 from splitio.client.config import sanitize as sanitize_config, DEFAULT_DATA_SAMPLING
 from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper
@@ -227,6 +227,15 @@ class SplitFactory(object):  # pylint: disable=too-many-instance-attributes
         Creating one a fast operation and safe to be used anywhere.
         """
         return SplitManager(self)
+
+    def manager_async(self):
+        """
+        Return a new manager.
+
+        This manager is only a set of references to structures hold by the factory.
+        Creating one a fast operation and safe to be used anywhere.
+        """
+        return SplitManagerAsync(self)
 
     def block_until_ready(self, timeout=None):
         """
@@ -498,7 +507,8 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         imp_manager,
         storages['events'],
         storages['impressions'],
-        telemetry_evaluation_producer
+        telemetry_evaluation_producer,
+        telemetry_runtime_producer
     )
 
     telemetry_init_producer.record_config(cfg, extra_cfg)
@@ -619,7 +629,8 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
         imp_manager,
         storages['events'],
         storages['impressions'],
-        telemetry_evaluation_producer
+        telemetry_evaluation_producer,
+        telemetry_runtime_producer
     )
 
     await telemetry_init_producer.record_config(cfg, extra_cfg)
@@ -848,7 +859,8 @@ def _build_pluggable_factory(api_key, cfg):
         imp_manager,
         storages['events'],
         storages['impressions'],
-        storages['telemetry']
+        telemetry_producer.get_telemetry_evaluation_producer(),
+        telemetry_runtime_producer
     )
 
     # Using same class as redis for consumer mode only
@@ -925,7 +937,8 @@ async def _build_pluggable_factory_async(api_key, cfg):
         imp_manager,
         storages['events'],
         storages['impressions'],
-        storages['telemetry']
+        telemetry_producer.get_telemetry_evaluation_producer(),
+        telemetry_runtime_producer
     )
 
     # Using same class as redis for consumer mode only
@@ -1005,7 +1018,8 @@ def _build_localhost_factory(cfg):
         ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer),
         storages['events'],
         storages['impressions'],
-        telemetry_evaluation_producer
+        telemetry_evaluation_producer,
+        telemetry_runtime_producer
     )
     return SplitFactory(
         'localhost',
@@ -1073,7 +1087,8 @@ async def _build_localhost_factory_async(cfg):
         ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer),
         storages['events'],
         storages['impressions'],
-        telemetry_evaluation_producer
+        telemetry_evaluation_producer,
+        telemetry_runtime_producer
     )
     return SplitFactory(
         'localhost',

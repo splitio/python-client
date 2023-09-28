@@ -4,6 +4,7 @@ import requests
 import urllib
 import abc
 import logging
+import json
 
 from splitio.optional.loaders import aiohttp
 from splitio.util.time import get_current_epoch_time_ms
@@ -256,6 +257,7 @@ class HttpClientAsync(HttpClientBase):
             ) as response:
                 body = await response.text()
                 _LOGGER.debug("Response:")
+                _LOGGER.debug(response)
                 _LOGGER.debug(body)
                 await self._record_telemetry(response.status, get_current_epoch_time_ms() - start)
                 return HttpResponse(response.status, body, response.headers)
@@ -285,20 +287,22 @@ class HttpClientAsync(HttpClientBase):
             headers.update(extra_headers)
         start = get_current_epoch_time_ms()
         try:
+            headers['Accept-Encoding'] = 'gzip'
             _LOGGER.debug("POST request: %s", _build_url(server, path, self._urls))
             _LOGGER.debug("query params: %s", query)
             _LOGGER.debug("headers: %s", headers)
             _LOGGER.debug("payload: ")
-            _LOGGER.debug(body)
+            _LOGGER.debug(str(json.dumps(body)).encode('utf-8'))
             async with self._session.post(
                 _build_url(server, path, self._urls),
                 params=query,
                 headers=headers,
-                json=body,
+                data=str(json.dumps(body)).encode('utf-8'),
                 timeout=self._timeout
             ) as response:
                 body = await response.text()
                 _LOGGER.debug("Response:")
+                _LOGGER.debug(response)
                 _LOGGER.debug(body)
                 await self._record_telemetry(response.status, get_current_epoch_time_ms() - start)
                 return HttpResponse(response.status, body, response.headers)
@@ -320,3 +324,7 @@ class HttpClientAsync(HttpClientBase):
             await self._telemetry_runtime_producer.record_successful_sync(self._metric_name, get_current_epoch_time_ms())
             return
         await self._telemetry_runtime_producer.record_sync_error(self._metric_name, status_code)
+
+    async def close_session(self):
+        if not self._session.closed:
+            await self._session.close()
