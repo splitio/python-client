@@ -798,9 +798,11 @@ async def _build_default_client_async(config):  # pylint: disable=too-many-local
         "redis://" + host + ":" + str(port),
         db=database,
         password=password,
-#        timeout=socket_timeout,
+#        create_connection_timeout=socket_timeout,
 #        errors=errors,
-        max_connections=max_connections
+        max_connections=max_connections,
+        encoding=encoding,
+        decode_responses=decode_responses,
     )
     redis = aioredis.Redis(
         connection_pool=pool,
@@ -808,9 +810,7 @@ async def _build_default_client_async(config):  # pylint: disable=too-many-local
         socket_keepalive=socket_keepalive,
         socket_keepalive_options=socket_keepalive_options,
         unix_socket_path=unix_socket_path,
-        encoding=encoding,
         encoding_errors=encoding_errors,
-        decode_responses=decode_responses,
         retry_on_timeout=retry_on_timeout,
         ssl=ssl,
         ssl_keyfile=ssl_keyfile,
