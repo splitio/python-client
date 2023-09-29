@@ -577,7 +577,7 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
 
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
     clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy = set_classes('MEMORY', cfg['impressionsMode'], apis, 'asyncio')
+    imp_strategy = set_classes('MEMORY', cfg['impressionsMode'], apis, parallel_tasks_mode='asyncio')
 
     imp_manager = ImpressionsManager(
         imp_strategy, telemetry_runtime_producer,
@@ -755,7 +755,7 @@ async def _build_redis_factory_async(api_key, cfg):
 
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
     clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy = set_classes('REDIS', cfg['impressionsMode'], redis_adapter, 'asyncio')
+    imp_strategy = set_classes('REDIS', cfg['impressionsMode'], redis_adapter, parallel_tasks_mode='asyncio')
 
     imp_manager = ImpressionsManager(
         imp_strategy,
@@ -909,7 +909,7 @@ async def _build_pluggable_factory_async(api_key, cfg):
 
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
     clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy = set_classes('PLUGGABLE', cfg['impressionsMode'], pluggable_adapter, storage_prefix, 'asyncio')
+    imp_strategy = set_classes('PLUGGABLE', cfg['impressionsMode'], pluggable_adapter, storage_prefix, parallel_tasks_mode='asyncio')
 
     imp_manager = ImpressionsManager(
         imp_strategy,

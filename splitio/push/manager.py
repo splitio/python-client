@@ -353,7 +353,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         if self._token_task:
             self._token_task.cancel()
 
-        stop_task = await self._stop_current_conn()
+        stop_task = asyncio.get_running_loop().create_task(self._stop_current_conn())
         if blocking:
             await stop_task
 
