@@ -1,13 +1,15 @@
 """Split evaluator module."""
 import logging
+from collections import namedtuple
+
 from splitio.models.impressions import Label
 from splitio.models.grammar import matchers
 from splitio.models.grammar.condition import ConditionType
 from splitio.models.grammar.matchers.misc import DependencyMatcher
-
+from splitio.engine import FeatureNotFoundException
 
 CONTROL = 'control'
-
+EvaluationDataContext = namedtuple('EvaluationDataContext', ['feature_flag', 'condition_matchers'])
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -185,8 +187,9 @@ class EvaluationDataCollector(object):
         self._segment_storage = segment_storage
         self._splitter = splitter
         self._evaluator = evaluator
+        self.feature_flag = None
 
-    def get_condition_matchers(self, feature_flag, bucketing_key, matching_key, attributes=None):
+    def get_condition_matchers(self, feature_flag_name, bucketing_key, matching_key, attributes=None):
         """
         Calculate and store all condition matchers for given feature flag.
         If there are dependent Feature Flag(s), the function will do recursive calls until all matchers are resolved.
@@ -200,8 +203,12 @@ class EvaluationDataCollector(object):
         :return: dictionary representing all matchers for each current feature flag
         :type: dict
         """
+        feature_flag =  self._feature_flag_storage.get(feature_flag_name)
+        if feature_flag is None:
+            raise FeatureNotFoundException(feature_flag_name)
+
         segment_matchers = self._get_segment_matchers(feature_flag, matching_key)
-        return self._get_condition_matchers(feature_flag, bucketing_key, matching_key, segment_matchers, attributes)
+        return EvaluationDataContext(feature_flag, self._get_condition_matchers(feature_flag, bucketing_key, matching_key, segment_matchers, attributes))
 
     def _get_condition_matchers(self, feature_flag, bucketing_key, matching_key, segment_matchers, attributes=None):
         """
@@ -223,7 +230,7 @@ class EvaluationDataCollector(object):
         context = {
             'segment_matchers': segment_matchers,
             'evaluator': self._evaluator,
-            'bucketing_key': bucketing_key,
+            'bucketing_key': bucketing_key
         }
         condition_matchers = []
         for condition in feature_flag.conditions:
@@ -292,7 +299,7 @@ class EvaluationDataCollector(object):
 
         return segment_names
 
-    async def get_condition_matchers_async(self, feature_flag, bucketing_key, matching_key, attributes=None):
+    async def get_condition_matchers_async(self, feature_flag_name, bucketing_key, matching_key, attributes=None):
         """
         Calculate and store all condition matchers for given feature flag.
         If there are dependent Feature Flag(s), the function will do recursive calls until all matchers are resolved.
@@ -306,8 +313,12 @@ class EvaluationDataCollector(object):
         :return: dictionary representing all matchers for each current feature flag
         :type: dict
         """
+        feature_flag =  await self._feature_flag_storage.get(feature_flag_name)
+        if feature_flag is None:
+            raise FeatureNotFoundException(feature_flag_name)
+
         segment_matchers = await self._get_segment_matchers_async(feature_flag, matching_key)
-        return await self._get_condition_matchers_async(feature_flag, bucketing_key, matching_key, segment_matchers, attributes)
+        return EvaluationDataContext(feature_flag, await self._get_condition_matchers_async(feature_flag, bucketing_key, matching_key, segment_matchers, attributes))
 
     async def _get_condition_matchers_async(self, feature_flag, bucketing_key, matching_key, segment_matchers, attributes=None):
         """

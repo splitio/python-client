@@ -10,6 +10,7 @@ from splitio.models.telemetry import get_latency_bucket_index, MethodExceptionsA
 from splitio.client import input_validator
 from splitio.util.time import get_current_epoch_time_ms, utctime_ms
 from splitio.sync.manager import ManagerAsync, RedisManagerAsync
+from splitio.engine import FeatureNotFoundException
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -305,11 +306,8 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         if not self.ready:
             self._telemetry_init_producer.record_not_ready_usage()
 
-        feature_flag =  self._feature_flag_storage.get(feature_flag_name)
         if input_validator.validate_feature_flag_name(
             feature_flag_name,
-            self.ready,
-            feature_flag,
             method) == None:
             return CONTROL, None
 
@@ -317,9 +315,20 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         if bucketing_key is None:
             bucketing_key = matching_key
 
-        condition_matchers = self._evaluator_data_collector.get_condition_matchers(feature_flag, bucketing_key, matching_key, attributes)
+        try:
+
+            evaluation_data_context = self._evaluator_data_collector.get_condition_matchers(feature_flag_name, bucketing_key, matching_key, attributes)
+        except FeatureNotFoundException:
+            _LOGGER.warning(
+                "%s: you passed \"%s\" that does not exist in this environment, "
+                "please double check what Feature flags exist in the Split user interface.",
+                method,
+                feature_flag_name
+            )
+            return CONTROL, None
+
         evaluation_result = self._make_evaluation(key, feature_flag_name, attributes, method,
-                                             feature_flag, condition_matchers, self._feature_flag_storage.get_change_number())
+                                            evaluation_data_context.feature_flag , evaluation_data_context.condition_matchers, self._feature_flag_storage.get_change_number())
         if evaluation_result.impression is not None:
             self._record_stats([(evaluation_result.impression, attributes)], evaluation_result.start_time, method)
 
@@ -394,15 +403,12 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             _LOGGER.error("Client is not ready - no calls possible")
             self._telemetry_init_producer.record_not_ready_usage()
 
-        feature_flags, missing = input_validator.validate_feature_flags_get_treatments(
+        valid_feature_flag_names = input_validator.validate_feature_flags_get_treatments(
             method.value,
             feature_flag_names,
-            self._factory._get_storage('splits')  # pylint: disable=protected-access
         )
-        if feature_flags is None:
+        if valid_feature_flag_names is None:
             return input_validator.generate_control_treatments(feature_flag_names, method.value)
-
-        missing_treatments = {name: (CONTROL, None) for name in missing}
 
         matching_key, bucketing_key = input_validator.validate_key(key, method.value)
         if matching_key is None and bucketing_key is None:
@@ -412,11 +418,25 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             bucketing_key = matching_key
 
         condition_matchers = {}
-        valid_feature_flag_names = []
-        for feature_flag in feature_flags:
-            valid_feature_flag_names.append(feature_flag.name)
-            condition_matchers[feature_flag.name] = self._evaluator_data_collector.get_condition_matchers(feature_flag, bucketing_key, matching_key, attributes)
+        feature_flags = []
+        missing = []
+        for feature_flag_name in valid_feature_flag_names:
+            try:
+                evaluation_data_conext = self._evaluator_data_collector.get_condition_matchers(feature_flag_name, bucketing_key, matching_key, attributes)
+                condition_matchers[feature_flag_name] = evaluation_data_conext.condition_matchers
+                feature_flags.append(evaluation_data_conext.feature_flag)
+            except FeatureNotFoundException:
+                _LOGGER.warning(
+                    "%s: you passed \"%s\" that does not exist in this environment, "
+                    "please double check what Feature flags exist in the Split user interface.",
+                    method,
+                    feature_flag_name
+                )
+                missing.append(feature_flag_name)
 
+        valid_feature_flag_names = []
+        [valid_feature_flag_names.append(feature_flag.name) for feature_flag in feature_flags]
+        missing_treatments = {name: (CONTROL, None) for name in missing}
         evaluation_results = self._make_evaluations(key, valid_feature_flag_names, feature_flags, condition_matchers, attributes, method)
 
         try:
@@ -502,11 +522,8 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         if not self.ready:
             await self._telemetry_init_producer.record_not_ready_usage()
 
-        feature_flag =  await self._feature_flag_storage.get(feature_flag_name)
         if input_validator.validate_feature_flag_name(
             feature_flag_name,
-            self.ready,
-            feature_flag,
             method) == None:
             return CONTROL, None
 
@@ -514,9 +531,20 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         if bucketing_key is None:
             bucketing_key = matching_key
 
-        condition_matchers = await self._evaluator_data_collector.get_condition_matchers_async(feature_flag, bucketing_key, matching_key, attributes)
+        try:
+
+            evaluation_data_context = await self._evaluator_data_collector.get_condition_matchers_async(feature_flag_name, bucketing_key, matching_key, attributes)
+        except FeatureNotFoundException:
+            _LOGGER.warning(
+                "%s: you passed \"%s\" that does not exist in this environment, "
+                "please double check what Feature flags exist in the Split user interface.",
+                method,
+                feature_flag_name
+            )
+            return CONTROL, None
+
         evaluation_result = self._make_evaluation(key, feature_flag_name, attributes, method,
-                                             feature_flag, condition_matchers, await self._feature_flag_storage.get_change_number())
+                                             evaluation_data_context.feature_flag, evaluation_data_context.condition_matchers, await self._feature_flag_storage.get_change_number())
         if evaluation_result.impression is not None:
             await self._record_stats_async([(evaluation_result.impression, attributes)], evaluation_result.start_time, method)
 
@@ -591,15 +619,13 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             _LOGGER.error("Client is not ready - no calls possible")
             await self._telemetry_init_producer.record_not_ready_usage()
 
-        feature_flags, missing = await input_validator.validate_feature_flags_get_treatments_async(
+        valid_feature_flag_names = input_validator.validate_feature_flags_get_treatments(
             method.value,
-            feature_flag_names,
-            self._factory._get_storage('splits')  # pylint: disable=protected-access
+            feature_flag_names
         )
-        if feature_flags is None:
-            return input_validator.generate_control_treatments(feature_flag_names, method.value)
 
-        missing_treatments = {name: (CONTROL, None) for name in missing}
+        if valid_feature_flag_names is None:
+            return input_validator.generate_control_treatments(feature_flag_names, method.value)
 
         matching_key, bucketing_key = input_validator.validate_key(key, method.value)
         if matching_key is None and bucketing_key is None:
@@ -609,10 +635,25 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             bucketing_key = matching_key
 
         condition_matchers = {}
+        feature_flags = []
+        missing = []
+        for feature_flag_name in valid_feature_flag_names:
+            try:
+                evaluation_data_context = await self._evaluator_data_collector.get_condition_matchers_async(feature_flag_name, bucketing_key, matching_key, attributes)
+                condition_matchers[feature_flag_name] = evaluation_data_context.condition_matchers
+                feature_flags.append(evaluation_data_context.feature_flag)
+            except FeatureNotFoundException:
+                _LOGGER.warning(
+                    "%s: you passed \"%s\" that does not exist in this environment, "
+                    "please double check what Feature flags exist in the Split user interface.",
+                    method,
+                    feature_flag_name
+                )
+                missing.append(feature_flag_name)
+
         valid_feature_flag_names = []
-        for feature_flag in feature_flags:
-            valid_feature_flag_names.append(feature_flag.name)
-            condition_matchers[feature_flag.name] = await self._evaluator_data_collector.get_condition_matchers_async(feature_flag, bucketing_key, matching_key, attributes)
+        [valid_feature_flag_names.append(feature_flag.name) for feature_flag in feature_flags]
+        missing_treatments = {name: (CONTROL, None) for name in missing}
 
         evaluation_results = self._make_evaluations(key, valid_feature_flag_names, feature_flags, condition_matchers, attributes, method)
 
