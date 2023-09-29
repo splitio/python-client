@@ -59,7 +59,7 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
         try:
             response = self._client.post(
                 'telemetry',
-                '/v1/metrics/config',
+                'v1/metrics/config',
                 self._sdk_key,
                 body=configs,
                 extra_headers=self._metadata,
@@ -83,7 +83,7 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
         try:
             response = self._client.post(
                 'telemetry',
-                '/v1/metrics/usage',
+                'v1/metrics/usage',
                 self._sdk_key,
                 body=stats,
                 extra_headers=self._metadata,
@@ -150,7 +150,7 @@ class TelemetryAPIAsync(object):  # pylint: disable=too-few-public-methods
         try:
             response = await self._client.post(
                 'telemetry',
-                '/v1/metrics/config',
+                'v1/metrics/config',
                 self._sdk_key,
                 body=configs,
                 extra_headers=self._metadata,
@@ -174,7 +174,7 @@ class TelemetryAPIAsync(object):  # pylint: disable=too-few-public-methods
         try:
             response = await self._client.post(
                 'telemetry',
-                '/v1/metrics/usage',
+                'v1/metrics/usage',
                 self._sdk_key,
                 body=stats,
                 extra_headers=self._metadata,
