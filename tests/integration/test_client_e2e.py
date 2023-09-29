@@ -2161,6 +2161,7 @@ class InMemoryIntegrationAsyncTests(object):
             client = self.factory.client()
         except:
             pass
+        client._parallel_task_async = True
         assert(await client.track_async('user1', 'user', 'conversion', 1, {"prop1": "value1"}))
         assert(not await client.track_async(None, 'user', 'conversion'))
         assert(not await client.track_async('user1', None, 'conversion'))
@@ -2469,6 +2470,8 @@ class InMemoryOptimizedIntegrationAsyncTests(object):
         """Test client.track()."""
         await self.setup_task
         client = self.factory.client()
+        client._parallel_task_async = True
+
         assert(await client.track_async('user1', 'user', 'conversion', 1, {"prop1": "value1"}))
         assert(not await client.track_async(None, 'user', 'conversion'))
         assert(not await client.track_async('user1', None, 'conversion'))
