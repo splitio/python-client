@@ -1656,3 +1656,7 @@ class PluggableTelemetryStorageAsync(PluggableTelemetryStorageBase):
     async def record_not_ready_usage(self):
         """Not implemented"""
         pass
+
+    async def record_impression_stats(self, data_type, count):
+        """Not implemented"""
+        pass
