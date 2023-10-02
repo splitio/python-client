@@ -67,12 +67,3 @@ class ConfigSanitizationTests(object):
         configs = {}
         processed = config.sanitize('some', configs)
         assert processed['redisLocalCacheEnabled']  # check default is True
-
-        configs = {'parallelTasksRunMode': 'asyncio'}
-        processed = config.sanitize('some', configs)
-        assert processed['parallelTasksRunMode'] == 'asyncio'
-
-#        pytest.set_trace()
-        configs = {'parallelTasksRunMode': 'async'}
-        processed = config.sanitize('some', configs)
-        assert processed['parallelTasksRunMode'] == 'threading'

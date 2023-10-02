@@ -2,17 +2,18 @@
 import logging
 import pytest
 
-from splitio.client.factory import SplitFactory, get_factory
-from splitio.client.client import CONTROL, Client, _LOGGER as _logger
-from splitio.client.manager import SplitManager
+from splitio.client.factory import SplitFactory, get_factory, SplitFactoryAsync, get_factory_async
+from splitio.client.client import CONTROL, Client, _LOGGER as _logger, ClientAsync
+from splitio.client.manager import SplitManager, SplitManagerAsync
 from splitio.client.key import Key
 from splitio.storage import SplitStorage, EventStorage, ImpressionStorage, SegmentStorage
-from splitio.storage.inmemmory import InMemoryTelemetryStorage
+from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
 from splitio.models.splits import Split
 from splitio.client import input_validator
-from splitio.recorder.recorder import StandardRecorder
-from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageConsumer
+from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
+from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.engine.impressions.impressions import Manager as ImpressionManager
+from splitio.engine.evaluator import EvaluationDataContext
 
 class ClientInputValidationTests(object):
     """Input validation test cases."""
@@ -32,7 +33,8 @@ class ClientInputValidationTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer())
+        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
             {
                 'splits': storage_mock,
@@ -237,6 +239,7 @@ class ClientInputValidationTests(object):
 
         _logger.reset_mock()
         storage_mock.get.return_value = None
+        mocker.patch('splitio.client.client._LOGGER', new=_logger)
         assert client.get_treatment('matching_key', 'some_feature', None) == CONTROL
         assert _logger.warning.mock_calls == [
             mocker.call(
@@ -266,7 +269,8 @@ class ClientInputValidationTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer())
+        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
             {
                 'splits': storage_mock,
@@ -471,6 +475,7 @@ class ClientInputValidationTests(object):
 
         _logger.reset_mock()
         storage_mock.get.return_value = None
+        mocker.patch('splitio.client.client._LOGGER', new=_logger)
         assert client.get_treatment_with_config('matching_key', 'some_feature', None) == (CONTROL, None)
         assert _logger.warning.mock_calls == [
             mocker.call(
@@ -537,7 +542,8 @@ class ClientInputValidationTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        recorder = StandardRecorder(impmanager, events_storage_mock, ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer())
+        recorder = StandardRecorder(impmanager, events_storage_mock, ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
             {
                 'splits': split_storage_mock,
@@ -807,11 +813,11 @@ class ClientInputValidationTests(object):
             'some_feature': split_mock,
             'some': split_mock,
         }
-
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer())
+        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
             {
                 'splits': storage_mock,
@@ -853,6 +859,7 @@ class ClientInputValidationTests(object):
             mocker.call('%s: %s too long - must be %s characters or less.', 'get_treatments', 'key', 250)
         ]
 
+        split_mock.name = 'some_feature'
         _logger.reset_mock()
         assert client.get_treatments(12345, ['some_feature']) == {'some_feature': 'default_treatment'}
         assert _logger.warning.mock_calls == [
@@ -910,9 +917,9 @@ class ClientInputValidationTests(object):
         assert mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments') in _logger.error.mock_calls
 
         _logger.reset_mock()
-        assert client.get_treatments('some_key', ['some   ']) == {'some': 'default_treatment'}
+        assert client.get_treatments('some_key', ['some_feature   ']) == {'some_feature': 'default_treatment'}
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatments', 'some   ')
+            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatments', 'some_feature   ')
         ]
 
         _logger.reset_mock()
@@ -923,6 +930,7 @@ class ClientInputValidationTests(object):
         ready_mock = mocker.PropertyMock()
         ready_mock.return_value = True
         type(factory).ready = ready_mock
+        mocker.patch('splitio.client.client._LOGGER', new=_logger)
         assert client.get_treatments('matching_key', ['some_feature'], None) == {'some_feature': CONTROL}
         assert _logger.warning.mock_calls == [
             mocker.call(
@@ -951,7 +959,8 @@ class ClientInputValidationTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer())
+        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
             {
                 'splits': storage_mock,
@@ -967,6 +976,7 @@ class ClientInputValidationTests(object):
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
+        split_mock.name = 'some_feature'
 
         def _configs(treatment):
             return '{"some": "property"}' if treatment == 'default_treatment' else None
@@ -993,6 +1003,11 @@ class ClientInputValidationTests(object):
         assert _logger.error.mock_calls == [
             mocker.call('%s: %s too long - must be %s characters or less.', 'get_treatments_with_config', 'key', 250)
         ]
+
+        def get_condition_matchers(*_):
+            return EvaluationDataContext(split_mock, {})
+        old_get_condition_matchers = client._evaluator_data_collector.get_condition_matchers
+        client._evaluator_data_collector.get_condition_matchers = get_condition_matchers
 
         _logger.reset_mock()
         assert client.get_treatments_with_config(12345, ['some_feature']) == {'some_feature': ('default_treatment', '{"some": "property"}')}
@@ -1064,6 +1079,8 @@ class ClientInputValidationTests(object):
         ready_mock = mocker.PropertyMock()
         ready_mock.return_value = True
         type(factory).ready = ready_mock
+        mocker.patch('splitio.client.client._LOGGER', new=_logger)
+        client._evaluator_data_collector.get_condition_matchers = old_get_condition_matchers
         assert client.get_treatments('matching_key', ['some_feature'], None) == {'some_feature': CONTROL}
         assert _logger.warning.mock_calls == [
             mocker.call(
@@ -1073,6 +1090,1116 @@ class ClientInputValidationTests(object):
                 'some_feature'
             )
         ]
+
+
+class ClientInputValidationAsyncTests(object):
+    """Input validation test cases."""
+
+    @pytest.mark.asyncio
+    async def test_get_treatment(self, mocker):
+        """Test get_treatment validation."""
+        split_mock = mocker.Mock(spec=Split)
+        default_treatment_mock = mocker.PropertyMock()
+        default_treatment_mock.return_value = 'default_treatment'
+        type(split_mock).default_treatment = default_treatment_mock
+        conditions_mock = mocker.PropertyMock()
+        conditions_mock.return_value = []
+        type(split_mock).conditions = conditions_mock
+        storage_mock = mocker.Mock(spec=SplitStorage)
+        async def get(*_):
+            return split_mock
+        storage_mock.get = get
+
+        async def get_change_number(*_):
+            return 1
+        storage_mock.get_change_number = get_change_number
+
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
+        factory = SplitFactoryAsync(mocker.Mock(),
+            {
+                'splits': storage_mock,
+                'segments': mocker.Mock(spec=SegmentStorage),
+                'impressions': mocker.Mock(spec=ImpressionStorage),
+                'events': mocker.Mock(spec=EventStorage),
+            },
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+
+        client = ClientAsync(factory, mocker.Mock())
+
+        async def record_treatment_stats(*_):
+            pass
+        client._recorder.record_treatment_stats = record_treatment_stats
+
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
+
+        assert await client.get_treatment(None, 'some_feature') == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed a null key, key must be a non-empty string.', 'get_treatment')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment('', 'some_feature') == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatment', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        key = ''.join('a' for _ in range(0, 255))
+        assert await client.get_treatment(key, 'some_feature') == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: %s too long - must be %s characters or less.', 'get_treatment', 'key', 250)
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment(12345, 'some_feature') == 'default_treatment'
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s %s is not of type string, converting.', 'get_treatment', 'key', 12345)
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment(float('nan'), 'some_feature') == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment(float('inf'), 'some_feature') == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment(True, 'some_feature') == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment([], 'some_feature') == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment('some_key', None) == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment', 'feature_flag_name', 'feature_flag_name')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment('some_key', 123) == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'feature_flag_name', 'feature_flag_name')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment('some_key', True) == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'feature_flag_name', 'feature_flag_name')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment('some_key', []) == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'feature_flag_name', 'feature_flag_name')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment('some_key', '') == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatment', 'feature_flag_name', 'feature_flag_name')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment('some_key', 'some_feature') == 'default_treatment'
+        assert _logger.error.mock_calls == []
+        assert _logger.warning.mock_calls == []
+
+        _logger.reset_mock()
+        assert await client.get_treatment(Key(None, 'bucketing_key'), 'some_feature') == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment', 'matching_key', 'matching_key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment(Key('', 'bucketing_key'), 'some_feature') == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatment', 'matching_key', 'matching_key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment(Key(float('nan'), 'bucketing_key'), 'some_feature') == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'matching_key', 'matching_key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment(Key(float('inf'), 'bucketing_key'), 'some_feature') == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'matching_key', 'matching_key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment(Key(True, 'bucketing_key'), 'some_feature') == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'matching_key', 'matching_key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment(Key([], 'bucketing_key'), 'some_feature') == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'matching_key', 'matching_key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment(Key(12345, 'bucketing_key'), 'some_feature') == 'default_treatment'
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s %s is not of type string, converting.', 'get_treatment', 'matching_key', 12345)
+        ]
+
+        _logger.reset_mock()
+        key = ''.join('a' for _ in range(0, 255))
+        assert await client.get_treatment(Key(key, 'bucketing_key'), 'some_feature') == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: %s too long - must be %s characters or less.', 'get_treatment', 'matching_key', 250)
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment(Key('matching_key', None), 'some_feature') == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment', 'bucketing_key', 'bucketing_key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment(Key('matching_key', True), 'some_feature') == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'bucketing_key', 'bucketing_key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment(Key('matching_key', []), 'some_feature') == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment', 'bucketing_key', 'bucketing_key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment(Key('matching_key', ''), 'some_feature') == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatment', 'bucketing_key', 'bucketing_key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment(Key('matching_key', 12345), 'some_feature') == 'default_treatment'
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s %s is not of type string, converting.', 'get_treatment', 'bucketing_key', 12345)
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment('matching_key', 'some_feature', True) == CONTROL
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: attributes must be of type dictionary.', 'get_treatment')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment('matching_key', 'some_feature', {'test': 'test'}) == 'default_treatment'
+        assert _logger.error.mock_calls == []
+
+        _logger.reset_mock()
+        assert await client.get_treatment('matching_key', 'some_feature', None) == 'default_treatment'
+        assert _logger.error.mock_calls == []
+
+        _logger.reset_mock()
+        assert await client.get_treatment('matching_key', '  some_feature   ', None) == 'default_treatment'
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatment', '  some_feature   ')
+        ]
+
+        _logger.reset_mock()
+        async def get(*_):
+            return None
+        storage_mock.get = get
+
+        mocker.patch('splitio.client.client._LOGGER', new=_logger)
+        assert await client.get_treatment('matching_key', 'some_feature', None) == CONTROL
+        assert _logger.warning.mock_calls == [
+            mocker.call(
+                "%s: you passed \"%s\" that does not exist in this environment, "
+                "please double check what Feature flags exist in the Split user interface.",
+                'get_treatment',
+                'some_feature'
+            )
+        ]
+
+    @pytest.mark.asyncio
+    async def test_get_treatment_with_config(self, mocker):
+        """Test get_treatment validation."""
+        split_mock = mocker.Mock(spec=Split)
+        default_treatment_mock = mocker.PropertyMock()
+        default_treatment_mock.return_value = 'default_treatment'
+        type(split_mock).default_treatment = default_treatment_mock
+        conditions_mock = mocker.PropertyMock()
+        conditions_mock.return_value = []
+        type(split_mock).conditions = conditions_mock
+
+        def _configs(treatment):
+            return '{"some": "property"}' if treatment == 'default_treatment' else None
+        split_mock.get_configurations_for.side_effect = _configs
+        storage_mock = mocker.Mock(spec=SplitStorage)
+        async def get(*_):
+            return split_mock
+        storage_mock.get = get
+
+        async def get_change_number(*_):
+            return 1
+        storage_mock.get_change_number = get_change_number
+
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
+        factory = SplitFactoryAsync(mocker.Mock(),
+            {
+                'splits': storage_mock,
+                'segments': mocker.Mock(spec=SegmentStorage),
+                'impressions': mocker.Mock(spec=ImpressionStorage),
+                'events': mocker.Mock(spec=EventStorage),
+            },
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+
+        client = ClientAsync(factory, mocker.Mock())
+        async def record_treatment_stats(*_):
+            pass
+        client._recorder.record_treatment_stats = record_treatment_stats
+
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
+
+        assert await client.get_treatment_with_config(None, 'some_feature') == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed a null key, key must be a non-empty string.', 'get_treatment_with_config')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config('', 'some_feature') == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatment_with_config', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        key = ''.join('a' for _ in range(0, 255))
+        assert await client.get_treatment_with_config(key, 'some_feature') == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: %s too long - must be %s characters or less.', 'get_treatment_with_config', 'key', 250)
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config(12345, 'some_feature') == ('default_treatment', '{"some": "property"}')
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s %s is not of type string, converting.', 'get_treatment_with_config', 'key', 12345)
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config(float('nan'), 'some_feature') == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config(float('inf'), 'some_feature') == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config(True, 'some_feature') == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config([], 'some_feature') == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config('some_key', None) == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_flag_name', 'feature_flag_name')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config('some_key', 123) == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_flag_name', 'feature_flag_name')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config('some_key', True) == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_flag_name', 'feature_flag_name')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config('some_key', []) == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_flag_name', 'feature_flag_name')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config('some_key', '') == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatment_with_config', 'feature_flag_name', 'feature_flag_name')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config('some_key', 'some_feature') == ('default_treatment', '{"some": "property"}')
+        assert _logger.error.mock_calls == []
+        assert _logger.warning.mock_calls == []
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config(Key(None, 'bucketing_key'), 'some_feature') == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment_with_config', 'matching_key', 'matching_key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config(Key('', 'bucketing_key'), 'some_feature') == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatment_with_config', 'matching_key', 'matching_key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config(Key(float('nan'), 'bucketing_key'), 'some_feature') == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'matching_key', 'matching_key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config(Key(float('inf'), 'bucketing_key'), 'some_feature') == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'matching_key', 'matching_key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config(Key(True, 'bucketing_key'), 'some_feature') == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'matching_key', 'matching_key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config(Key([], 'bucketing_key'), 'some_feature') == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'matching_key', 'matching_key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config(Key(12345, 'bucketing_key'), 'some_feature') == ('default_treatment', '{"some": "property"}')
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s %s is not of type string, converting.', 'get_treatment_with_config', 'matching_key', 12345)
+        ]
+
+        _logger.reset_mock()
+        key = ''.join('a' for _ in range(0, 255))
+        assert await client.get_treatment_with_config(Key(key, 'bucketing_key'), 'some_feature') == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: %s too long - must be %s characters or less.', 'get_treatment_with_config', 'matching_key', 250)
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config(Key('matching_key', None), 'some_feature') == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment_with_config', 'bucketing_key', 'bucketing_key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config(Key('matching_key', True), 'some_feature') == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'bucketing_key', 'bucketing_key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config(Key('matching_key', []), 'some_feature') == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatment_with_config', 'bucketing_key', 'bucketing_key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config(Key('matching_key', ''), 'some_feature') == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatment_with_config', 'bucketing_key', 'bucketing_key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config(Key('matching_key', 12345), 'some_feature') == ('default_treatment', '{"some": "property"}')
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s %s is not of type string, converting.', 'get_treatment_with_config', 'bucketing_key', 12345)
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config('matching_key', 'some_feature', True) == (CONTROL, None)
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: attributes must be of type dictionary.', 'get_treatment_with_config')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config('matching_key', 'some_feature', {'test': 'test'}) == ('default_treatment', '{"some": "property"}')
+        assert _logger.error.mock_calls == []
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config('matching_key', 'some_feature', None) == ('default_treatment', '{"some": "property"}')
+        assert _logger.error.mock_calls == []
+
+        _logger.reset_mock()
+        assert await client.get_treatment_with_config('matching_key', '  some_feature   ', None) == ('default_treatment', '{"some": "property"}')
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatment_with_config', '  some_feature   ')
+        ]
+
+        _logger.reset_mock()
+        async def get(*_):
+            return None
+        storage_mock.get = get
+
+        mocker.patch('splitio.client.client._LOGGER', new=_logger)
+        assert await client.get_treatment_with_config('matching_key', 'some_feature', None) == (CONTROL, None)
+        assert _logger.warning.mock_calls == [
+            mocker.call(
+                "%s: you passed \"%s\" that does not exist in this environment, "
+                "please double check what Feature flags exist in the Split user interface.",
+                'get_treatment_with_config',
+                'some_feature'
+            )
+        ]
+
+    @pytest.mark.asyncio
+    async def test_track(self, mocker):
+        """Test track method()."""
+        events_storage_mock = mocker.Mock(spec=EventStorage)
+        async def put(*_):
+            return True
+        events_storage_mock.put = put
+
+        event_storage = mocker.Mock(spec=EventStorage)
+        event_storage.put = put
+        split_storage_mock = mocker.Mock(spec=SplitStorage)
+        split_storage_mock.is_valid_traffic_type = put
+
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        recorder = StandardRecorderAsync(impmanager, events_storage_mock, ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
+        factory = SplitFactoryAsync(mocker.Mock(),
+            {
+                'splits': split_storage_mock,
+                'segments': mocker.Mock(spec=SegmentStorage),
+                'impressions': mocker.Mock(spec=ImpressionStorage),
+                'events': events_storage_mock,
+            },
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        factory._sdk_key = 'some-test'
+
+        client = ClientAsync(factory, recorder)
+        client._event_storage = event_storage
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
+
+        assert await client.track(None, "traffic_type", "event_type", 1) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed a null %s, %s must be a non-empty string.", 'track', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.track("", "traffic_type", "event_type", 1) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed an empty %s, %s must be a non-empty string.", 'track', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.track(12345, "traffic_type", "event_type", 1) is True
+        assert _logger.warning.mock_calls == [
+            mocker.call("%s: %s %s is not of type string, converting.", 'track', 'key', 12345)
+        ]
+
+        _logger.reset_mock()
+        assert await client.track(True, "traffic_type", "event_type", 1) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'track', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.track([], "traffic_type", "event_type", 1) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'track', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        key = ''.join('a' for _ in range(0, 255))
+        assert await client.track(key, "traffic_type", "event_type", 1) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: %s too long - must be %s characters or less.", 'track', 'key', 250)
+        ]
+
+        _logger.reset_mock()
+        assert await client.track("some_key", None, "event_type", 1) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed a null %s, %s must be a non-empty string.", 'track', 'traffic_type', 'traffic_type')
+        ]
+
+        _logger.reset_mock()
+        assert await client.track("some_key", "", "event_type", 1) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed an empty %s, %s must be a non-empty string.", 'track', 'traffic_type', 'traffic_type')
+        ]
+
+        _logger.reset_mock()
+        assert await client.track("some_key", 12345, "event_type", 1) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'track', 'traffic_type', 'traffic_type')
+        ]
+
+        _logger.reset_mock()
+        assert await client.track("some_key", True, "event_type", 1) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'track', 'traffic_type', 'traffic_type')
+        ]
+
+        _logger.reset_mock()
+        assert await client.track("some_key", [], "event_type", 1) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'track', 'traffic_type', 'traffic_type')
+        ]
+
+        _logger.reset_mock()
+        assert await client.track("some_key", "TRAFFIC_type", "event_type", 1) is True
+        assert _logger.warning.mock_calls == [
+            mocker.call("track: %s should be all lowercase - converting string to lowercase.", 'TRAFFIC_type')
+        ]
+
+        assert await client.track("some_key", "traffic_type", None, 1) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed a null %s, %s must be a non-empty string.", 'track', 'event_type', 'event_type')
+        ]
+
+        _logger.reset_mock()
+        assert await client.track("some_key", "traffic_type", "", 1) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed an empty %s, %s must be a non-empty string.", 'track', 'event_type', 'event_type')
+        ]
+
+        _logger.reset_mock()
+        assert await client.track("some_key", "traffic_type", True, 1) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'track', 'event_type', 'event_type')
+        ]
+
+        _logger.reset_mock()
+        assert await client.track("some_key", "traffic_type", [], 1) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'track', 'event_type', 'event_type')
+        ]
+
+        _logger.reset_mock()
+        assert await client.track("some_key", "traffic_type", 12345, 1) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'track', 'event_type', 'event_type')
+        ]
+
+        _logger.reset_mock()
+        assert await client.track("some_key", "traffic_type", "@@", 1) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed %s, event_type must adhere to the regular "
+                        "expression %s. This means "
+                        "an event name must be alphanumeric, cannot be more than 80 "
+                        "characters long, and can only include a dash, underscore, "
+                        "period, or colon as separators of alphanumeric characters.",
+                        'track', '@@', '^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$')
+        ]
+
+        _logger.reset_mock()
+        assert await client.track("some_key", "traffic_type", "event_type", None) is True
+        assert _logger.error.mock_calls == []
+
+        _logger.reset_mock()
+        assert await client.track("some_key", "traffic_type", "event_type", 1) is True
+        assert _logger.error.mock_calls == []
+
+        _logger.reset_mock()
+        assert await client.track("some_key", "traffic_type", "event_type", 1.23) is True
+        assert _logger.error.mock_calls == []
+
+        _logger.reset_mock()
+        assert await client.track("some_key", "traffic_type", "event_type", "test") is False
+        assert _logger.error.mock_calls == [
+            mocker.call("track: value must be a number.")
+        ]
+
+        _logger.reset_mock()
+        assert await client.track("some_key", "traffic_type", "event_type", True) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("track: value must be a number.")
+        ]
+
+        _logger.reset_mock()
+        assert await client.track("some_key", "traffic_type", "event_type", []) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("track: value must be a number.")
+        ]
+
+        # Test traffic type existance
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = True
+        type(factory).ready = ready_property
+
+        # Test that it doesn't warn if tt is cached, not in localhost mode and sdk is ready
+        _logger.reset_mock()
+        assert await client.track("some_key", "traffic_type", "event_type", None) is True
+        assert _logger.error.mock_calls == []
+        assert _logger.warning.mock_calls == []
+
+        # Test that it does warn if tt is cached, not in localhost mode and sdk is ready
+        async def is_valid_traffic_type(*_):
+            return False
+        split_storage_mock.is_valid_traffic_type = is_valid_traffic_type
+
+        _logger.reset_mock()
+        assert await client.track("some_key", "traffic_type", "event_type", None) is True
+        assert _logger.error.mock_calls == []
+        assert _logger.warning.mock_calls == [mocker.call(
+            'track: Traffic Type %s does not have any corresponding Feature flags in this environment, '
+            'make sure you\'re tracking your events to a valid traffic type defined '
+            'in the Split user interface.',
+            'traffic_type'
+        )]
+
+        # Test that it does not warn when in localhost mode.
+        factory._sdk_key = 'localhost'
+        _logger.reset_mock()
+        assert await client.track("some_key", "traffic_type", "event_type", None) is True
+        assert _logger.error.mock_calls == []
+        assert _logger.warning.mock_calls == []
+
+        # Test that it does not warn when not in localhost mode and not ready
+        factory._sdk_key = 'not-localhost'
+        ready_property.return_value = False
+        type(factory).ready = ready_property
+        _logger.reset_mock()
+        assert await client.track("some_key", "traffic_type", "event_type", None) is True
+        assert _logger.error.mock_calls == []
+        assert _logger.warning.mock_calls == []
+
+        # Test track with invalid properties
+        _logger.reset_mock()
+        assert await client.track("some_key", "traffic_type", "event_type", 1, []) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("track: properties must be of type dictionary.")
+        ]
+
+        # Test track with invalid properties
+        _logger.reset_mock()
+        assert await client.track("some_key", "traffic_type", "event_type", 1, True) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("track: properties must be of type dictionary.")
+        ]
+
+        # Test track with properties
+        props1 = {
+            "test1": "test",
+            "test2": 1,
+            "test3": True,
+            "test4": None,
+            "test5": [],
+            2: "t",
+        }
+        _logger.reset_mock()
+        assert await client.track("some_key", "traffic_type", "event_type", 1, props1) is True
+        assert _logger.warning.mock_calls == [
+            mocker.call("Property %s is of invalid type. Setting value to None", [])
+        ]
+
+        # Test track with more than 300 properties
+        props2 = dict()
+        for i in range(301):
+            props2[str(i)] = i
+        _logger.reset_mock()
+        assert await client.track("some_key", "traffic_type", "event_type", 1, props2) is True
+        assert _logger.warning.mock_calls == [
+            mocker.call("Event has more than 300 properties. Some of them will be trimmed when processed")
+        ]
+
+        # Test track with properties higher than 32kb
+        _logger.reset_mock()
+        props3 = dict()
+        for i in range(100, 210):
+            props3["prop" + str(i)] = "a" * 300
+        assert await client.track("some_key", "traffic_type", "event_type", 1, props3) is False
+        assert _logger.error.mock_calls == [
+            mocker.call("The maximum size allowed for the properties is 32768 bytes. Current one is 32952 bytes. Event not queued")
+        ]
+
+    @pytest.mark.asyncio
+    async def test_get_treatments(self, mocker):
+        """Test getTreatments() method."""
+        split_mock = mocker.Mock(spec=Split)
+        default_treatment_mock = mocker.PropertyMock()
+        default_treatment_mock.return_value = 'default_treatment'
+        type(split_mock).default_treatment = default_treatment_mock
+        conditions_mock = mocker.PropertyMock()
+        conditions_mock.return_value = []
+        type(split_mock).conditions = conditions_mock
+        storage_mock = mocker.Mock(spec=SplitStorage)
+        async def get(*_):
+            return split_mock
+        storage_mock.get = get
+        async def get_change_number(*_):
+            return 1
+        storage_mock.get_change_number = get_change_number
+        async def fetch_many(*_):
+            return {
+            'some_feature': split_mock,
+            'some': split_mock,
+        }
+        storage_mock.fetch_many = fetch_many
+
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
+        factory = SplitFactoryAsync(mocker.Mock(),
+            {
+                'splits': storage_mock,
+                'segments': mocker.Mock(spec=SegmentStorage),
+                'impressions': mocker.Mock(spec=ImpressionStorage),
+                'events': mocker.Mock(spec=EventStorage),
+            },
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+
+        client = ClientAsync(factory, recorder)
+        async def record_treatment_stats(*_):
+            pass
+        client._recorder.record_treatment_stats = record_treatment_stats
+
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
+
+        assert await client.get_treatments(None, ['some_feature']) == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed a null key, key must be a non-empty string.', 'get_treatments')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments("", ['some_feature']) == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatments', 'key', 'key')
+        ]
+
+        key = ''.join('a' for _ in range(0, 255))
+        _logger.reset_mock()
+        assert await client.get_treatments(key, ['some_feature']) == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: %s too long - must be %s characters or less.', 'get_treatments', 'key', 250)
+        ]
+
+        split_mock.name = 'some_feature'
+        _logger.reset_mock()
+        assert await client.get_treatments(12345, ['some_feature']) == {'some_feature': 'default_treatment'}
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s %s is not of type string, converting.', 'get_treatments', 'key', 12345)
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments(True, ['some_feature']) == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatments', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments([], ['some_feature']) == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatments', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments('some_key', None) == {}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments('some_key', True) == {}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments('some_key', 'some_string') == {}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments('some_key', []) == {}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments('some_key', [None, None]) == {}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments('some_key', [True]) == {}
+        assert mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments') in _logger.error.mock_calls
+
+        _logger.reset_mock()
+        assert await client.get_treatments('some_key', ['', '']) == {}
+        assert mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments') in _logger.error.mock_calls
+
+        _logger.reset_mock()
+        assert await client.get_treatments('some_key', ['some_feature   ']) == {'some_feature': 'default_treatment'}
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatments', 'some_feature   ')
+        ]
+
+        _logger.reset_mock()
+        async def fetch_many(*_):
+            return {
+            'some_feature': None
+        }
+        storage_mock.fetch_many = fetch_many
+
+        async def get(*_):
+            return None
+        storage_mock.get = get
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+        mocker.patch('splitio.client.client._LOGGER', new=_logger)
+        assert await client.get_treatments('matching_key', ['some_feature'], None) == {'some_feature': CONTROL}
+        assert _logger.warning.mock_calls == [
+            mocker.call(
+                "%s: you passed \"%s\" that does not exist in this environment, "
+                "please double check what Feature flags exist in the Split user interface.",
+                'get_treatments',
+                'some_feature'
+            )
+        ]
+
+    @pytest.mark.asyncio
+    async def test_get_treatments_with_config(self, mocker):
+        """Test getTreatments() method."""
+        split_mock = mocker.Mock(spec=Split)
+        default_treatment_mock = mocker.PropertyMock()
+        default_treatment_mock.return_value = 'default_treatment'
+        type(split_mock).default_treatment = default_treatment_mock
+        conditions_mock = mocker.PropertyMock()
+        conditions_mock.return_value = []
+        type(split_mock).conditions = conditions_mock
+
+        storage_mock = mocker.Mock(spec=SplitStorage)
+        async def get(*_):
+            return split_mock
+        storage_mock.get = get
+        async def get_change_number(*_):
+            return 1
+        storage_mock.get_change_number = get_change_number
+        async def fetch_many(*_):
+            return {
+            'some_feature': split_mock
+        }
+        storage_mock.fetch_many = fetch_many
+
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
+        factory = SplitFactoryAsync(mocker.Mock(),
+            {
+                'splits': storage_mock,
+                'segments': mocker.Mock(spec=SegmentStorage),
+                'impressions': mocker.Mock(spec=ImpressionStorage),
+                'events': mocker.Mock(spec=EventStorage),
+            },
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        split_mock.name = 'some_feature'
+
+        def _configs(treatment):
+            return '{"some": "property"}' if treatment == 'default_treatment' else None
+        split_mock.get_configurations_for.side_effect = _configs
+
+        client = ClientAsync(factory, mocker.Mock())
+        async def record_treatment_stats(*_):
+            pass
+        client._recorder.record_treatment_stats = record_treatment_stats
+
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
+
+        assert await client.get_treatments_with_config(None, ['some_feature']) == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed a null key, key must be a non-empty string.', 'get_treatments_with_config')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config("", ['some_feature']) == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatments_with_config', 'key', 'key')
+        ]
+
+        key = ''.join('a' for _ in range(0, 255))
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config(key, ['some_feature']) == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: %s too long - must be %s characters or less.', 'get_treatments_with_config', 'key', 250)
+        ]
+
+        async def get_condition_matchers(*_):
+            return EvaluationDataContext(split_mock, {})
+        old_get_condition_matchers = client._evaluator_data_collector.get_condition_matchers
+        client._evaluator_data_collector.get_condition_matchers = get_condition_matchers
+
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config(12345, ['some_feature']) == {'some_feature': ('default_treatment', '{"some": "property"}')}
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s %s is not of type string, converting.', 'get_treatments_with_config', 'key', 12345)
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config(True, ['some_feature']) == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatments_with_config', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config([], ['some_feature']) == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatments_with_config', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config('some_key', None) == {}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config('some_key', True) == {}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config('some_key', 'some_string') == {}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config('some_key', []) == {}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config('some_key', [None, None]) == {}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config('some_key', [True]) == {}
+        assert mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config') in _logger.error.mock_calls
+
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config('some_key', ['', '']) == {}
+        assert mocker.call('%s: feature flag names must be a non-empty array.', 'get_treatments_with_config') in _logger.error.mock_calls
+
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config('some_key', ['some_feature   ']) == {'some_feature': ('default_treatment', '{"some": "property"}')}
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatments_with_config', 'some_feature   ')
+        ]
+
+        _logger.reset_mock()
+        async def fetch_many(*_):
+            return {
+            'some_feature': None
+        }
+        storage_mock.fetch_many = fetch_many
+        async def get(*_):
+            return None
+        storage_mock.get = get
+
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+        mocker.patch('splitio.client.client._LOGGER', new=_logger)
+        client._evaluator_data_collector.get_condition_matchers = old_get_condition_matchers
+        assert await client.get_treatments('matching_key', ['some_feature'], None) == {'some_feature': CONTROL}
+        assert _logger.warning.mock_calls == [
+            mocker.call(
+                "%s: you passed \"%s\" that does not exist in this environment, "
+                "please double check what Feature flags exist in the Split user interface.",
+                'get_treatments',
+                'some_feature'
+            )
+        ]
+
 
 class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-methods
     """Manager input validation test cases."""
@@ -1086,7 +2213,8 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer())
+        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
             {
                 'splits': storage_mock,
@@ -1146,6 +2274,85 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
             'nonexistant-split'
         )]
 
+class ManagerInputValidationAsyncTests(object):  #pylint: disable=too-few-public-methods
+    """Manager input validation test cases."""
+
+    @pytest.mark.asyncio
+    async def test_split_(self, mocker):
+        """Test split input validation."""
+        storage_mock = mocker.Mock(spec=SplitStorage)
+        split_mock = mocker.Mock(spec=Split)
+        async def get(*_):
+            return split_mock
+        storage_mock.get = get
+
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
+        factory = SplitFactoryAsync(mocker.Mock(),
+            {
+                'splits': storage_mock,
+                'segments': mocker.Mock(spec=SegmentStorage),
+                'impressions': mocker.Mock(spec=ImpressionStorage),
+                'events': mocker.Mock(spec=EventStorage),
+            },
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+
+        manager = SplitManagerAsync(factory)
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
+
+        assert await manager.split(None) is None
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed a null %s, %s must be a non-empty string.", 'split', 'feature_flag_name', 'feature_flag_name')
+        ]
+
+        _logger.reset_mock()
+        assert await manager.split("") is None
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed an empty %s, %s must be a non-empty string.", 'split', 'feature_flag_name', 'feature_flag_name')
+        ]
+
+        _logger.reset_mock()
+        assert await manager.split(True) is None
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'split', 'feature_flag_name', 'feature_flag_name')
+        ]
+
+        _logger.reset_mock()
+        assert await manager.split([]) is None
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'split', 'feature_flag_name', 'feature_flag_name')
+        ]
+
+        _logger.reset_mock()
+        await manager.split('some_split')
+        assert split_mock.to_split_view.mock_calls == [mocker.call()]
+        assert _logger.error.mock_calls == []
+
+        _logger.reset_mock()
+        split_mock.reset_mock()
+        async def get(*_):
+            return None
+        storage_mock.get = get
+
+        await manager.split('nonexistant-split')
+        assert split_mock.to_split_view.mock_calls == []
+        assert _logger.warning.mock_calls == [mocker.call(
+            "split: you passed \"%s\" that does not exist in this environment, "
+            "please double check what Feature flags exist in the Split user interface.",
+            'nonexistant-split'
+        )]
+
 class FactoryInputValidationTests(object):  #pylint: disable=too-few-public-methods
     """Factory instantiation input validation test cases."""
 
@@ -1178,6 +2385,41 @@ class FactoryInputValidationTests(object):  #pylint: disable=too-few-public-meth
             pass
         assert logger.error.mock_calls == []
         f.destroy()
+
+
+class FactoryInputValidationAsyncTests(object):  #pylint: disable=too-few-public-methods
+    """Factory instantiation input validation test cases."""
+
+    @pytest.mark.asyncio
+    async def test_input_validation_factory(self, mocker):
+        """Test the input validators for factory instantiation."""
+        logger = mocker.Mock(spec=logging.Logger)
+        mocker.patch('splitio.client.input_validator._LOGGER', new=logger)
+
+        assert await get_factory_async(None) is None
+        assert logger.error.mock_calls == [
+            mocker.call("%s: you passed a null %s, %s must be a non-empty string.", 'factory_instantiation', 'sdk_key', 'sdk_key')
+        ]
+
+        logger.reset_mock()
+        assert await get_factory_async('') is None
+        assert logger.error.mock_calls == [
+            mocker.call("%s: you passed an empty %s, %s must be a non-empty string.", 'factory_instantiation', 'sdk_key', 'sdk_key')
+        ]
+
+        logger.reset_mock()
+        assert await get_factory_async(True) is None
+        assert logger.error.mock_calls == [
+            mocker.call("%s: you passed an invalid %s, %s must be a non-empty string.", 'factory_instantiation', 'sdk_key', 'sdk_key')
+        ]
+
+        logger.reset_mock()
+        try:
+            f = await get_factory_async(True, config={'redisHost': 'localhost'})
+        except:
+            pass
+        assert logger.error.mock_calls == []
+        await f.destroy()
 
 class PluggableInputValidationTests(object):  #pylint: disable=too-few-public-methods
     """Pluggable adapter instance validation test cases."""

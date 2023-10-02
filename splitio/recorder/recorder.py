@@ -5,6 +5,7 @@ import random
 
 from splitio.client.config import DEFAULT_DATA_SAMPLING
 from splitio.models.telemetry import MethodExceptionsAndLatencies
+from splitio.models import telemetry
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ class StatsRecorder(object, metaclass=abc.ABCMeta):
 class StandardRecorder(StatsRecorder):
     """StandardRecorder class."""
 
-    def __init__(self, impressions_manager, event_storage, impression_storage, telemetry_evaluation_producer):
+    def __init__(self, impressions_manager, event_storage, impression_storage, telemetry_evaluation_producer, telemetry_runtime_producer):
         """
         Class constructor.
 
@@ -55,6 +56,7 @@ class StandardRecorder(StatsRecorder):
         self._event_sotrage = event_storage
         self._impression_storage = impression_storage
         self._telemetry_evaluation_producer = telemetry_evaluation_producer
+        self._telemetry_runtime_producer = telemetry_runtime_producer
 
     def record_treatment_stats(self, impressions, latency, operation, method_name):
         """
@@ -70,7 +72,9 @@ class StandardRecorder(StatsRecorder):
         try:
             if method_name is not None:
                 self._telemetry_evaluation_producer.record_latency(operation, latency)
-            impressions = self._impressions_manager.process_impressions(impressions)
+            impressions, deduped = self._impressions_manager.process_impressions(impressions)
+            if deduped > 0:
+                self._telemetry_runtime_producer.record_impression_stats(telemetry.CounterConstants.IMPRESSIONS_DEDUPED, deduped)
             self._impression_storage.put(impressions)
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error recording impressions')
@@ -90,7 +94,7 @@ class StandardRecorder(StatsRecorder):
 class StandardRecorderAsync(StatsRecorder):
     """StandardRecorder async class."""
 
-    def __init__(self, impressions_manager, event_storage, impression_storage, telemetry_evaluation_producer):
+    def __init__(self, impressions_manager, event_storage, impression_storage, telemetry_evaluation_producer, telemetry_runtime_producer):
         """
         Class constructor.
 
@@ -105,6 +109,7 @@ class StandardRecorderAsync(StatsRecorder):
         self._event_sotrage = event_storage
         self._impression_storage = impression_storage
         self._telemetry_evaluation_producer = telemetry_evaluation_producer
+        self._telemetry_runtime_producer = telemetry_runtime_producer
 
     async def record_treatment_stats(self, impressions, latency, operation, method_name):
         """
@@ -120,7 +125,10 @@ class StandardRecorderAsync(StatsRecorder):
         try:
             if method_name is not None:
                 await self._telemetry_evaluation_producer.record_latency(operation, latency)
-            impressions = self._impressions_manager.process_impressions(impressions)
+            impressions, deduped = self._impressions_manager.process_impressions(impressions)
+            if deduped > 0:
+                await self._telemetry_runtime_producer.record_impression_stats(telemetry.CounterConstants.IMPRESSIONS_DEDUPED, deduped)
+
             await self._impression_storage.put(impressions)
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error recording impressions')
@@ -179,7 +187,7 @@ class PipelinedRecorder(StatsRecorder):
                 rnumber = random.uniform(0, 1)
                 if self._data_sampling < rnumber:
                     return
-            impressions = self._impressions_manager.process_impressions(impressions)
+            impressions, deduped = self._impressions_manager.process_impressions(impressions)
             if not impressions:
                 return
 
@@ -260,7 +268,7 @@ class PipelinedRecorderAsync(StatsRecorder):
                 rnumber = random.uniform(0, 1)
                 if self._data_sampling < rnumber:
                     return
-            impressions = self._impressions_manager.process_impressions(impressions)
+            impressions, deduped = self._impressions_manager.process_impressions(impressions)
             if not impressions:
                 return
 

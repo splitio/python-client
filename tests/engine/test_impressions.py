@@ -113,26 +113,28 @@ class ImpressionManagerTests(object):
         assert isinstance(manager._strategy, StrategyOptimizedMode)
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
             (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)
         ])
 
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
+        assert deduped == 0
 
         # Tracking the same impression a ms later should be empty
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
         ])
         assert imps == []
-        assert(telemetry_storage._counters._impressions_deduped == 1)
+        assert deduped == 1
 
         # Tracking an impression with a different key makes it to the queue
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)
         ])
         assert imps == [Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
+        assert deduped == 0
 
         # Advance the perceived clock one hour
         old_utc = utc_now  # save it to compare captured impressions
@@ -141,12 +143,13 @@ class ImpressionManagerTests(object):
         mocker.patch('splitio.engine.impressions.strategies.utctime_ms', return_value=utc_time_mock())
 
         # Track the same impressions but "one hour later"
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
             (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
         ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1)]
+        assert deduped == 0
 
         assert len(manager._strategy._observer._cache._data) == 3  # distinct impressions seen
         assert len(manager._strategy._counter._data) == 2  # 2 distinct features. 1 seen in 2 different timeframes
@@ -157,17 +160,19 @@ class ImpressionManagerTests(object):
         ])
 
         # Test counting only from the second impression
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k3', 'f3', 'on', 'l1', 123, None, utc_now-1), None)
         ])
         assert set(manager._strategy._counter.pop_all()) == set([])
+        assert deduped == 0
 
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k3', 'f3', 'on', 'l1', 123, None, utc_now-1), None)
         ])
         assert set(manager._strategy._counter.pop_all()) == set([
             Counter.CountPerFeature('f3', truncate_time(utc_now), 1)
         ])
+        assert deduped == 1
 
     def test_standalone_debug(self, mocker):
         """Test impressions manager in debug mode with sdk in standalone mode."""
@@ -184,7 +189,7 @@ class ImpressionManagerTests(object):
         assert isinstance(manager._strategy, StrategyDebugMode)
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
             (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)
         ])
@@ -192,13 +197,13 @@ class ImpressionManagerTests(object):
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
         # Tracking the same impression a ms later should return the impression
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k1',  'f1', 'on', 'l1', 123, None, utc_now-2), None)
         ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2, utc_now-3)]
 
         # Tracking a in impression with a different key makes it to the queue
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)
         ])
         assert imps == [Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
@@ -210,7 +215,7 @@ class ImpressionManagerTests(object):
         mocker.patch('splitio.engine.impressions.strategies.utctime_ms', return_value=utc_time_mock())
 
         # Track the same impressions but "one hour later"
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
             (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
         ])
@@ -234,7 +239,7 @@ class ImpressionManagerTests(object):
         assert isinstance(manager._strategy, StrategyNoneMode)
 
         # no impressions are tracked, only counter and mtk
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
             (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)
         ])
@@ -248,14 +253,14 @@ class ImpressionManagerTests(object):
             'f2': set({'k1'})}
 
         # Tracking the same impression a ms later should not return the impression and no change on mtk cache
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
         ])
         assert imps == []
         assert manager._strategy.get_unique_keys_tracker()._cache == {'f1': set({'k1'}), 'f2': set({'k1'})}
 
         # Tracking an impression with a different key, will only increase mtk
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k3', 'f1', 'on', 'l1', 123, None, utc_now-1), None)
         ])
         assert imps == []
@@ -270,7 +275,7 @@ class ImpressionManagerTests(object):
         mocker.patch('splitio.engine.impressions.strategies.utctime_ms', return_value=utc_time_mock())
 
         # Track the same impressions but "one hour later", no changes on mtk
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
             (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
         ])
@@ -305,24 +310,27 @@ class ImpressionManagerTests(object):
         assert isinstance(manager._strategy, StrategyOptimizedMode)
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
             (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)
         ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
+        assert deduped == 0
 
         # Tracking the same impression a ms later should return empty
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
         ])
         assert imps == []
+        assert deduped == 1
 
         # Tracking a in impression with a different key makes it to the queue
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)
         ])
         assert imps == [Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
+        assert deduped == 0
 
         # Advance the perceived clock one hour
         old_utc = utc_now  # save it to compare captured impressions
@@ -331,12 +339,13 @@ class ImpressionManagerTests(object):
         mocker.patch('splitio.engine.impressions.strategies.utctime_ms', return_value=utc_time_mock())
 
         # Track the same impressions but "one hour later"
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
             (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
         ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1)]
+        assert deduped == 0
 
         assert len(manager._strategy._observer._cache._data) == 3  # distinct impressions seen
         assert len(manager._strategy._counter._data) == 2  # 2 distinct features. 1 seen in 2 different timeframes
@@ -356,17 +365,19 @@ class ImpressionManagerTests(object):
         ]
 
         # Test counting only from the second impression
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k3', 'f3', 'on', 'l1', 123, None, utc_now-1), None)
         ])
         assert set(manager._strategy._counter.pop_all()) == set([])
+        assert deduped == 0
 
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k3', 'f3', 'on', 'l1', 123, None, utc_now-1), None)
         ])
         assert set(manager._strategy._counter.pop_all()) == set([
             Counter.CountPerFeature('f3', truncate_time(utc_now), 1)
         ])
+        assert deduped == 1
 
     def test_standalone_debug_listener(self, mocker):
         """Test impressions manager in optimized mode with sdk in standalone mode."""
@@ -384,7 +395,7 @@ class ImpressionManagerTests(object):
         assert isinstance(manager._strategy, StrategyDebugMode)
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
             (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)
         ])
@@ -392,13 +403,13 @@ class ImpressionManagerTests(object):
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
 
         # Tracking the same impression a ms later should return the imp
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
         ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2, utc_now-3)]
 
         # Tracking a in impression with a different key makes it to the queue
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)
         ])
         assert imps == [Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
@@ -410,7 +421,7 @@ class ImpressionManagerTests(object):
         mocker.patch('splitio.engine.impressions.strategies.utctime_ms', return_value=utc_time_mock())
 
         # Track the same impressions but "one hour later"
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
             (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
         ])
@@ -444,7 +455,7 @@ class ImpressionManagerTests(object):
         assert isinstance(manager._strategy, StrategyNoneMode)
 
         # An impression that hasn't happened in the last hour (pt = None) should not be tracked
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
             (Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), None)
         ])
@@ -458,7 +469,7 @@ class ImpressionManagerTests(object):
             'f2': set({'k1'})}
 
         # Tracking the same impression a ms later should return empty, no updates on mtk
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
         ])
         assert imps == []
@@ -467,7 +478,7 @@ class ImpressionManagerTests(object):
             'f2': set({'k1'})}
 
         # Tracking a in impression with a different key update mtk
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)
         ])
         assert imps == []
@@ -482,7 +493,7 @@ class ImpressionManagerTests(object):
         mocker.patch('splitio.engine.impressions.strategies.utctime_ms', return_value=utc_time_mock())
 
         # Track the same impressions but "one hour later"
-        imps = manager.process_impressions([
+        imps, deduped = manager.process_impressions([
             (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), None),
             (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), None)
         ])

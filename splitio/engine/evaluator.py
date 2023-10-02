@@ -1,10 +1,15 @@
 """Split evaluator module."""
 import logging
-from splitio.models.impressions import Label
+from collections import namedtuple
 
+from splitio.models.impressions import Label
+from splitio.models.grammar import matchers
+from splitio.models.grammar.condition import ConditionType
+from splitio.models.grammar.matchers.misc import DependencyMatcher
+from splitio.engine import FeatureNotFoundException
 
 CONTROL = 'control'
-
+EvaluationDataContext = namedtuple('EvaluationDataContext', ['feature_flag', 'condition_matchers'])
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -121,7 +126,7 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
         """
         return {
             feature_flag.name: self._evaluate_treatment(feature_flag, matching_key,
-                                              bucketing_key, condition_matchers)
+                                              bucketing_key, condition_matchers[feature_flag.name])
             for (feature_flag) in feature_flags
         }
 
@@ -161,3 +166,227 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
 
         # No condition matches
         return None, None
+
+class EvaluationDataCollector(object):
+    """Split Evaluator data collector class."""
+
+    def __init__(self, feature_flag_storage, segment_storage, splitter, evaluator):
+        """
+        Construct a Evaluator instance.
+
+        :param feature_flag_storage: Feature flag storage object.
+        :type feature_flag_storage: splitio.storage.SplitStorage
+        :param segment_storage: Segment storage object.
+        :type splitter: splitio.storage.SegmentStorage
+        :param splitter: partition object.
+        :type splitter: splitio.engine.splitters.Splitters
+        :param evaluator: Evaluator object
+        :type evaluator: splitio.engine.evaluator.Evaluator
+        """
+        self._feature_flag_storage = feature_flag_storage
+        self._segment_storage = segment_storage
+        self._splitter = splitter
+        self._evaluator = evaluator
+        self.feature_flag = None
+
+    def get_condition_matchers(self, feature_flag_name, bucketing_key, matching_key, attributes=None):
+        """
+        Calculate and store all condition matchers for given feature flag.
+        If there are dependent Feature Flag(s), the function will do recursive calls until all matchers are resolved.
+
+        :param feature_flag: Feature flag Split objects
+        :type feature_flag: splitio.models.splits.Split
+        :param bucketing_key: Bucketing key for which to get the treatment
+        :type bucketing_key: str
+        :param matching_key: Matching key for which to get the treatment
+        :type matching_key: str
+        :return: dictionary representing all matchers for each current feature flag
+        :type: dict
+        """
+        feature_flag =  self._feature_flag_storage.get(feature_flag_name)
+        if feature_flag is None:
+            raise FeatureNotFoundException(feature_flag_name)
+
+        segment_matchers = self._get_segment_matchers(feature_flag, matching_key)
+        return EvaluationDataContext(feature_flag, self._get_condition_matchers(feature_flag, bucketing_key, matching_key, segment_matchers, attributes))
+
+    def _get_condition_matchers(self, feature_flag, bucketing_key, matching_key, segment_matchers, attributes=None):
+        """
+        Calculate and store all condition matchers for given feature flag.
+        If there are dependent Feature Flag(s), the function will do recursive calls until all matchers are resolved.
+
+        :param feature_flag: Feature flag Split objects
+        :type feature_flag: splitio.models.splits.Split
+        :param bucketing_key: Bucketing key for which to get the treatment
+        :type bucketing_key: str
+        :param matching_key: Matching key for which to get the treatment
+        :type matching_key: str
+        :param segment_matchers: Segment matchers for the feature flag
+        :type segment_matchers: dict
+        :return: dictionary representing all matchers for each current feature flag
+        :type: dict
+        """
+        roll_out = False
+        context = {
+            'segment_matchers': segment_matchers,
+            'evaluator': self._evaluator,
+            'bucketing_key': bucketing_key
+        }
+        condition_matchers = []
+        for condition in feature_flag.conditions:
+            if (not roll_out and
+                    condition.condition_type == ConditionType.ROLLOUT):
+                if feature_flag.traffic_allocation < 100:
+                    bucket = self._splitter.get_bucket(
+                        bucketing_key,
+                        feature_flag.traffic_allocation_seed,
+                        feature_flag.algo
+                    )
+                    if bucket > feature_flag.traffic_allocation:
+                        return feature_flag.default_treatment, Label.NOT_IN_SPLIT
+                roll_out = True
+            dependent_feature_flags = []
+            for matcher in condition.matchers:
+                if isinstance(matcher, DependencyMatcher):
+                    dependent_feature_flag = self._feature_flag_storage.get(matcher.to_json()['dependencyMatcherData']['split'])
+                    depenedent_segment_matchers = self._get_segment_matchers(dependent_feature_flag, matching_key)
+                    dependent_feature_flags.append((dependent_feature_flag,
+                                                   self._get_condition_matchers(dependent_feature_flag, bucketing_key, matching_key, depenedent_segment_matchers, attributes)))
+            context['dependent_splits'] = dependent_feature_flags
+            condition_matchers.append((condition.matches(
+                matching_key,
+                attributes=attributes,
+                context=context
+            ), condition))
+
+        return condition_matchers
+
+    def _get_segment_matchers(self, feature_flag, matching_key):
+        """
+        Get all segments matchers for given feature flag.
+        If there are dependent Feature Flag(s), the function will do recursive calls until all matchers are resolved.
+
+        :param feature_flag: Feature flag Split objects
+        :type feature_flag: splitio.models.splits.Split
+        :param matching_key: Matching key for which to get the treatment
+        :type matching_key: str
+        :return: Segment matchers for the feature flag
+        :type: dict
+        """
+        segment_matchers = {}
+        for segment in self._get_segment_names(feature_flag):
+            for condition in feature_flag.conditions:
+                for matcher in condition.matchers:
+                    if isinstance(matcher, matchers.UserDefinedSegmentMatcher):
+                        segment_matchers[segment] = self._segment_storage.segment_contains(segment, matching_key)
+        return segment_matchers
+
+    def _get_segment_names(self, feature_flag):
+        """
+        Fetch segment names for all IN_SEGMENT matchers.
+
+        :return: List of segment names
+        :rtype: list(str)
+        """
+        segment_names = []
+        if feature_flag is None:
+            return []
+        for condition in feature_flag.conditions:
+            matcher_list = condition.matchers
+            for matcher in matcher_list:
+                if isinstance(matcher, matchers.UserDefinedSegmentMatcher):
+                    segment_names.append(matcher._segment_name)
+
+        return segment_names
+
+    async def get_condition_matchers_async(self, feature_flag_name, bucketing_key, matching_key, attributes=None):
+        """
+        Calculate and store all condition matchers for given feature flag.
+        If there are dependent Feature Flag(s), the function will do recursive calls until all matchers are resolved.
+
+        :param feature_flag: Feature flag Split objects
+        :type feature_flag: splitio.models.splits.Split
+        :param bucketing_key: Bucketing key for which to get the treatment
+        :type bucketing_key: str
+        :param matching_key: Matching key for which to get the treatment
+        :type matching_key: str
+        :return: dictionary representing all matchers for each current feature flag
+        :type: dict
+        """
+        feature_flag =  await self._feature_flag_storage.get(feature_flag_name)
+        if feature_flag is None:
+            raise FeatureNotFoundException(feature_flag_name)
+
+        segment_matchers = await self._get_segment_matchers_async(feature_flag, matching_key)
+        return EvaluationDataContext(feature_flag, await self._get_condition_matchers_async(feature_flag, bucketing_key, matching_key, segment_matchers, attributes))
+
+    async def _get_condition_matchers_async(self, feature_flag, bucketing_key, matching_key, segment_matchers, attributes=None):
+        """
+        Calculate and store all condition matchers for given feature flag for async calls
+        If there are dependent Feature Flag(s), the function will do recursive calls until all matchers are resolved.
+
+        :param feature_flag: Feature flag Split objects
+        :type feature_flag: splitio.models.splits.Split
+        :param bucketing_key: Bucketing key for which to get the treatment
+        :type bucketing_key: str
+        :param matching_key: Matching key for which to get the treatment
+        :type matching_key: str
+        :param segment_matchers: Segment matchers for the feature flag
+        :type segment_matchers: dict
+        :return: dictionary representing all matchers for each current feature flag
+        :type: dict
+        """
+        roll_out = False
+        context = {
+            'segment_matchers': segment_matchers,
+            'evaluator': self._evaluator,
+            'bucketing_key': bucketing_key,
+        }
+        condition_matchers = []
+        for condition in feature_flag.conditions:
+            if (not roll_out and
+                    condition.condition_type == ConditionType.ROLLOUT):
+                if feature_flag.traffic_allocation < 100:
+                    bucket = self._splitter.get_bucket(
+                        bucketing_key,
+                        feature_flag.traffic_allocation_seed,
+                        feature_flag.algo
+                    )
+                    if bucket > feature_flag.traffic_allocation:
+                        return feature_flag.default_treatment, Label.NOT_IN_SPLIT
+                roll_out = True
+            dependent_splits = []
+            for matcher in condition.matchers:
+                if isinstance(matcher, DependencyMatcher):
+                    dependent_split = await self._feature_flag_storage.get(matcher.to_json()['dependencyMatcherData']['split'])
+                    depenedent_segment_matchers = await self._get_segment_matchers_async(dependent_split, matching_key)
+                    dependent_splits.append((dependent_split,
+                                                   await self._get_condition_matchers_async(dependent_split, bucketing_key, matching_key, depenedent_segment_matchers, attributes)))
+            context['dependent_splits'] = dependent_splits
+            condition_matchers.append((condition.matches(
+                matching_key,
+                attributes=attributes,
+                context=context
+            ), condition))
+
+        return condition_matchers
+
+    async def _get_segment_matchers_async(self, feature_flag, matching_key):
+        """
+        Get all segments matchers for given feature flag for async calls
+        If there are dependent Feature Flag(s), the function will do recursive calls until all matchers are resolved.
+
+        :param feature_flag: Feature flag Split objects
+        :type feature_flag: splitio.models.splits.Split
+        :param matching_key: Matching key for which to get the treatment
+        :type matching_key: str
+        :return: Segment matchers for the feature flag
+        :type: dict
+        """
+        segment_matchers = {}
+        for segment in self._get_segment_names(feature_flag):
+            for condition in feature_flag.conditions:
+                for matcher in condition.matchers:
+                    if isinstance(matcher, matchers.UserDefinedSegmentMatcher):
+                        segment_matchers[segment] = await self._segment_storage.segment_contains(segment, matching_key)
+        return segment_matchers

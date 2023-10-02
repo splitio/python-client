@@ -42,7 +42,7 @@ class DependencyMatcher(Matcher):
                 dependent_split = split[0]
                 condition_matchers = split[1]
                 break
-        result = evaluator.evaluate_feature(dependent_split, key, bucketing_key, condition_matchers, attributes)
+        result = evaluator.evaluate_feature(dependent_split, key, bucketing_key, condition_matchers)
         return result['treatment'] in self._treatments
 
     def _add_matcher_specific_properties_to_json(self):
