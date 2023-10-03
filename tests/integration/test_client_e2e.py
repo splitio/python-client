@@ -3529,7 +3529,7 @@ class PluggableOptimizedIntegrationAsyncTests(object):
         await client.get_treatment('user1', 'sample_feature')
 
         # Only one impression was added, and popped when validating, the rest were ignored
-        assert self.factory._storages['impressions']._pluggable_adapter._keys.get('SPLITIO.impressions') == None
+        assert self.factory._storages['impressions']._pluggable_adapter._keys.get('SPLITIO.impressions') == []
 
         assert await client.get_treatment('invalidKey', 'sample_feature') == 'off'
         await self._validate_last_impressions(client, ('sample_feature', 'invalidKey', 'off'))
@@ -3614,7 +3614,7 @@ class PluggableOptimizedIntegrationAsyncTests(object):
         assert result['killed_feature'] == 'defTreatment'
         assert result['invalid_feature'] == 'control'
         assert result['sample_feature'] == 'off'
-        assert self.factory._storages['impressions']._pluggable_adapter._keys.get('SPLITIO.impressions') == None
+        assert self.factory._storages['impressions']._pluggable_adapter._keys.get('SPLITIO.impressions') == []
         await self.factory.destroy()
         await self._teardown_method()
 
@@ -3664,7 +3664,7 @@ class PluggableOptimizedIntegrationAsyncTests(object):
         assert result['killed_feature'] == ('defTreatment', '{"size":15,"defTreatment":true}')
         assert result['invalid_feature'] == ('control', None)
         assert result['sample_feature'] == ('off', None)
-        assert self.factory._storages['impressions']._pluggable_adapter._keys.get('SPLITIO.impressions') == None
+        assert self.factory._storages['impressions']._pluggable_adapter._keys.get('SPLITIO.impressions') == []
         await self.factory.destroy()
         await self._teardown_method()
 

@@ -512,40 +512,47 @@ class RedisPipelineAdapterAsyncTests(object):
         self.key = None
         self.value = None
         self.value2 = None
-        async def rpush(sel, key, value, value2):
+        def rpush(sel, key, value, value2):
             self.key = key
             self.value = value
             self.value2 = value2
         mocker.patch('redis.asyncio.client.Pipeline.rpush', new=rpush)
-        await adapter.rpush('key1', 'value1', 'value2')
+        adapter.rpush('key1', 'value1', 'value2')
         assert self.key == 'some_prefix.key1'
         assert self.value == 'value1'
         assert self.value2 == 'value2'
 
         self.key = None
         self.value = None
-        async def incr(sel, key, value):
+        def incr(sel, key, value):
             self.key = key
             self.value = value
         mocker.patch('redis.asyncio.client.Pipeline.incr', new=incr)
-        await adapter.incr('key1')
+        adapter.incr('key1')
         assert self.key == 'some_prefix.key1'
         assert self.value == 1
 
         self.key = None
         self.value = None
         self.name = None
-        async def hincrby(sel, key, name, value):
+        def hincrby(sel, key, name, value):
             self.key = key
             self.value = value
             self.name = name
         mocker.patch('redis.asyncio.client.Pipeline.hincrby', new=hincrby)
-        await adapter.hincrby('key1', 'name1')
+        adapter.hincrby('key1', 'name1')
         assert self.key == 'some_prefix.key1'
         assert self.name == 'name1'
         assert self.value == 1
 
-        await adapter.hincrby('key1', 'name1', 5)
+        adapter.hincrby('key1', 'name1', 5)
         assert self.key == 'some_prefix.key1'
         assert self.name == 'name1'
         assert self.value == 5
+
+        self.called = False
+        async def execute(*_):
+            self.called = True
+        mocker.patch('redis.asyncio.client.Pipeline.execute', new=execute)
+        await adapter.execute()
+        assert self.called

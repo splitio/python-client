@@ -119,8 +119,8 @@ class SplitManagerAsyncTests(object):  # pylint: disable=too-few-public-methods
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorageAsync()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        telemetry_consumer = TelemetryStorageConsumerAsync(telemetry_storage)
-        recorder = StandardRecorderAsync(impmanager, mocker.Mock(), mocker.Mock(), telemetry_producer.get_telemetry_evaluation_producer())
+        recorder = StandardRecorderAsync(impmanager, mocker.Mock(), mocker.Mock(), telemetry_producer.get_telemetry_evaluation_producer(),
+                                         telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
             {'splits': mocker.Mock(),
             'segments': mocker.Mock(),

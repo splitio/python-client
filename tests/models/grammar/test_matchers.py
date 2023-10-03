@@ -785,12 +785,11 @@ class DependencyMatcherTests(MatcherTestsBase):
         assert parsed.evaluate('SPLIT_2', {}, {'bucketing_key': 'buck', 'evaluator': evaluator, 'dependent_splits': [(split, [cond])]}) is True
 
         evaluator.evaluate_feature.return_value = {'treatment': 'off'}
-#        pytest.set_trace()
         assert parsed.evaluate('SPLIT_2', {}, {'bucketing_key': 'buck', 'evaluator': evaluator, 'dependent_splits': [(split, [cond])]}) is False
 
         assert evaluator.evaluate_feature.mock_calls == [
-            mocker.call(split, 'SPLIT_2', 'buck', [cond], {}),
-            mocker.call(split, 'SPLIT_2', 'buck', [cond], {})
+            mocker.call(split, 'SPLIT_2', 'buck', [cond]),
+            mocker.call(split, 'SPLIT_2', 'buck', [cond])
         ]
 
         assert parsed.evaluate([], {}, {'bucketing_key': 'buck', 'evaluator': evaluator, 'dependent_splits': [(split, [cond])]}) is False
