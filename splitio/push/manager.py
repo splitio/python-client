@@ -171,7 +171,6 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
             return
         self._telemetry_runtime_producer.record_token_refreshes()
         _LOGGER.debug("auth token fetched. connecting to streaming.")
-        _LOGGER(token)
         self._status_tracker.reset()
         if self._sse_client.start(token):
             _LOGGER.debug("connected to streaming, scheduling next refresh")
