@@ -1,5 +1,6 @@
 """Evaluator tests module."""
 import logging
+import pytest
 
 from splitio.models.splits import Split
 from splitio.models.grammar.condition import Condition, ConditionType
@@ -86,7 +87,8 @@ class EvaluatorTests(object):
         mocked_split2.change_number = 123
         mocked_split2.get_configurations_for.return_value = None
 
-        results = e.evaluate_features([mocked_split, mocked_split2], 'some_key', 'some_bucketing_key', mocker.Mock())
+#        pytest.set_trace()
+        results = e.evaluate_features([mocked_split, mocked_split2], 'some_key', 'some_bucketing_key', {'feature2': {}, 'feature4': {}})
         result = results['feature4']
         assert result['configurations'] == None
         assert result['treatment'] == 'on'

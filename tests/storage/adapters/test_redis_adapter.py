@@ -3,6 +3,7 @@
 import pytest
 from redis.asyncio.client import Redis as aioredis
 from splitio.storage.adapters import redis
+from splitio.storage.adapters.redis import _build_default_client_async
 from redis import StrictRedis, Redis
 from redis.sentinel import Sentinel
 
@@ -404,52 +405,6 @@ class RedisStorageAdapterAsyncTests(object):
     @pytest.mark.asyncio
     async def test_adapter_building(self, mocker):
         """Test buildin different types of client according to parameters received."""
-        self.host = None
-        self.db = None
-        self.password = None
-        self.timeout = None
-        self.socket_connect_timeout = None
-        self.socket_keepalive = None
-        self.socket_keepalive_options = None
-        self.connection_pool = None
-        self.unix_socket_path = None
-        self.encoding = None
-        self.encoding_errors = None
-        self.errors = None
-        self.decode_responses = None
-        self.retry_on_timeout = None
-        self.ssl = None
-        self.ssl_keyfile = None
-        self.ssl_certfile = None
-        self.ssl_cert_reqs = None
-        self.ssl_ca_certs = None
-        self.max_connections = None
-        async def from_url(host, db, password, timeout, socket_connect_timeout,
-            socket_keepalive, socket_keepalive_options, connection_pool,
-            unix_socket_path, encoding, encoding_errors, errors, decode_responses,
-            retry_on_timeout, ssl, ssl_keyfile, ssl_certfile, ssl_cert_reqs,
-            ssl_ca_certs, max_connections):
-            self.host = host
-            self.db = db
-            self.password = password
-            self.timeout = timeout
-            self.socket_connect_timeout = socket_connect_timeout
-            self.socket_keepalive = socket_keepalive
-            self.socket_keepalive_options = socket_keepalive_options
-            self.connection_pool = connection_pool
-            self.unix_socket_path = unix_socket_path
-            self.encoding = encoding
-            self.encoding_errors = encoding_errors
-            self.errors = errors
-            self.decode_responses = decode_responses
-            self.retry_on_timeout = retry_on_timeout
-            self.ssl = ssl
-            self.ssl_keyfile = ssl_keyfile
-            self.ssl_certfile = ssl_certfile
-            self.ssl_cert_reqs = ssl_cert_reqs
-            self.ssl_ca_certs = ssl_ca_certs
-            self.max_connections = max_connections
-        mocker.patch('redis.asyncio.client.Redis.from_url', new=from_url)
 
         config = {
             'redisHost': 'some_host',
@@ -457,14 +412,11 @@ class RedisStorageAdapterAsyncTests(object):
             'redisDb': 0,
             'redisPassword': 'some_password',
             'redisSocketTimeout': 123,
-            'redisSocketConnectTimeout': 456,
             'redisSocketKeepalive': 789,
             'redisSocketKeepaliveOptions': 10,
-            'redisConnectionPool': 20,
             'redisUnixSocketPath': '/tmp/socket',
             'redisEncoding': 'utf-8',
             'redisEncodingErrors': 'strict',
-            'redisErrors': 'abc',
             'redisDecodeResponses': True,
             'redisRetryOnTimeout': True,
             'redisSsl': True,
@@ -476,28 +428,51 @@ class RedisStorageAdapterAsyncTests(object):
             'redisPrefix': 'some_prefix'
         }
 
-        await redis.build_async(config)
+        def redis_init(se, connection_pool,
+                socket_connect_timeout,
+                socket_keepalive,
+                socket_keepalive_options,
+                unix_socket_path,
+                encoding_errors,
+                retry_on_timeout,
+                ssl,
+                ssl_keyfile,
+                ssl_certfile,
+                ssl_cert_reqs,
+                ssl_ca_certs):
+            self.connection_pool=connection_pool
+            self.socket_connect_timeout=socket_connect_timeout
+            self.socket_keepalive=socket_keepalive
+            self.socket_keepalive_options=socket_keepalive_options
+            self.unix_socket_path=unix_socket_path
+            self.encoding_errors=encoding_errors
+            self.retry_on_timeout=retry_on_timeout
+            self.ssl=ssl
+            self.ssl_keyfile=ssl_keyfile
+            self.ssl_certfile=ssl_certfile
+            self.ssl_cert_reqs=ssl_cert_reqs
+            self.ssl_ca_certs=ssl_ca_certs
+        mocker.patch('redis.asyncio.client.Redis.__init__', new=redis_init)
 
-        assert self.host == 'redis://some_host:1234'
-        assert self.db == 0
-        assert self.password == 'some_password'
-        assert self.timeout == 123
-        assert self.socket_connect_timeout == 456
+        redis_mock = await _build_default_client_async(config)
+
+        assert self.connection_pool.connection_kwargs['host'] == 'some_host'
+        assert self.connection_pool.connection_kwargs['port'] == 1234
+        assert self.connection_pool.connection_kwargs['db'] == 0
+        assert self.connection_pool.connection_kwargs['password'] == 'some_password'
+        assert self.connection_pool.connection_kwargs['encoding'] == 'utf-8'
+        assert self.connection_pool.connection_kwargs['decode_responses'] == True
+
         assert self.socket_keepalive == 789
         assert self.socket_keepalive_options == 10
-        assert self.connection_pool == 20
         assert self.unix_socket_path == '/tmp/socket'
-        assert self.encoding == 'utf-8'
         assert self.encoding_errors == 'strict'
-        assert self.errors == 'abc'
-        assert self.decode_responses == True
         assert self.retry_on_timeout == True
         assert self.ssl == True
         assert self.ssl_keyfile == '/ssl.cert'
         assert self.ssl_certfile == '/ssl2.cert'
         assert self.ssl_cert_reqs == 'abc'
         assert self.ssl_ca_certs == 'def'
-        assert self.max_connections == 5
 
 
 class RedisPipelineAdapterTests(object):

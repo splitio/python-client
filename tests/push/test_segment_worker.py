@@ -61,6 +61,8 @@ class SegmentWorkerTests(object):
         assert not segment_worker.is_running()
 
 class SegmentWorkerAsyncTests(object):
+
+    @pytest.mark.asyncio
     async def test_on_error(self):
         q = asyncio.Queue()
 
@@ -91,6 +93,7 @@ class SegmentWorkerAsyncTests(object):
                 break
         return worker_running
 
+    @pytest.mark.asyncio
     async def test_handler(self):
         q = asyncio.Queue()
         segment_worker = SegmentWorkerAsync(handler_sync, q)

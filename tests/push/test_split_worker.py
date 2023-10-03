@@ -64,6 +64,7 @@ class SplitWorkerTests(object):
 
 class SplitWorkerAsyncTests(object):
 
+    @pytest.mark.asyncio
     async def test_on_error(self):
         q = asyncio.Queue()
 
@@ -95,6 +96,7 @@ class SplitWorkerAsyncTests(object):
                 break
         return worker_running
 
+    @pytest.mark.asyncio
     async def test_handler(self):
         q = asyncio.Queue()
         split_worker = SplitWorkerAsync(handler_async, q)

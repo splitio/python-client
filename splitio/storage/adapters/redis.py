@@ -816,8 +816,7 @@ async def _build_default_client_async(config):  # pylint: disable=too-many-local
         ssl_keyfile=ssl_keyfile,
         ssl_certfile=ssl_certfile,
         ssl_cert_reqs=ssl_cert_reqs,
-        ssl_ca_certs=ssl_ca_certs,
-
+        ssl_ca_certs=ssl_ca_certs
     )
     return RedisAdapterAsync(redis, prefix=prefix)
 

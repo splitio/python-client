@@ -1273,9 +1273,9 @@ class StreamingIntegrationAsyncTests(object):
         }
 
         factory = await get_factory_async('some_apikey', **kwargs)
-        await factory.block_until_ready_async(1)
+        await factory.block_until_ready(1)
         assert factory.ready
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'on'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'on'
 
         await asyncio.sleep(1)
         assert(factory._telemetry_evaluation_producer._telemetry_storage._streaming_events._streaming_events[len(factory._telemetry_evaluation_producer._telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.SYNC_MODE_UPDATE.value)
@@ -1288,7 +1288,7 @@ class StreamingIntegrationAsyncTests(object):
         split_changes[2] = {'since': 2, 'till': 2, 'splits': []}
         sse_server.publish(make_split_change_event(2))
         await asyncio.sleep(1)
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'off'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'off'
 
         split_changes[2] = {
             'since': 2,
@@ -1312,8 +1312,8 @@ class StreamingIntegrationAsyncTests(object):
         sse_server.publish(make_segment_change_event('segment1', 1))
         await asyncio.sleep(1)
 
-        assert await factory.client().get_treatment_async('pindon', 'split2') == 'off'
-        assert await factory.client().get_treatment_async('maldo', 'split2') == 'on'
+        assert await factory.client().get_treatment('pindon', 'split2') == 'off'
+        assert await factory.client().get_treatment('maldo', 'split2') == 'on'
 
         # Validate the SSE request
         sse_request = sse_requests.get()
@@ -1400,7 +1400,7 @@ class StreamingIntegrationAsyncTests(object):
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Cleanup
-        await factory.destroy_async()
+        await factory.destroy()
         sse_server.publish(sse_server.GRACEFUL_REQUEST_END)
         sse_server.stop()
         split_backend.stop()
@@ -1452,7 +1452,7 @@ class StreamingIntegrationAsyncTests(object):
         }
 
         factory = await get_factory_async('some_apikey', **kwargs)
-        await factory.block_until_ready_async(1)
+        await factory.block_until_ready(1)
         assert factory.ready
         await asyncio.sleep(2)
 
@@ -1460,7 +1460,7 @@ class StreamingIntegrationAsyncTests(object):
         task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
         assert not task.running()
 
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'on'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'on'
 
         # Make a change in the BE but don't send the event.
         # After dropping occupancy, the sdk should switch to polling
@@ -1475,7 +1475,7 @@ class StreamingIntegrationAsyncTests(object):
         sse_server.publish(make_occupancy('control_pri', 0))
         sse_server.publish(make_occupancy('control_sec', 0))
         await asyncio.sleep(2)
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'off'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'off'
         assert task.running()
 
         # We make another chagne in the BE and don't send the event.
@@ -1490,7 +1490,7 @@ class StreamingIntegrationAsyncTests(object):
 
         sse_server.publish(make_occupancy('control_pri', 1))
         await asyncio.sleep(2)
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'on'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'on'
         assert not task.running()
 
         # Now we make another change and send an event so it's propagated
@@ -1502,7 +1502,7 @@ class StreamingIntegrationAsyncTests(object):
         split_changes[4] = {'since': 4, 'till': 4, 'splits': []}
         sse_server.publish(make_split_change_event(4))
         await asyncio.sleep(2)
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'off'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'off'
 
         # Kill the split
         split_changes[4] = {
@@ -1513,7 +1513,7 @@ class StreamingIntegrationAsyncTests(object):
         split_changes[5] = {'since': 5, 'till': 5, 'splits': []}
         sse_server.publish(make_split_kill_event('split1', 'frula', 5))
         await asyncio.sleep(2)
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'frula'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'frula'
 
         # Validate the SSE request
         sse_request = sse_requests.get()
@@ -1612,7 +1612,7 @@ class StreamingIntegrationAsyncTests(object):
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Cleanup
-        await factory.destroy_async()
+        await factory.destroy()
         sse_server.publish(sse_server.GRACEFUL_REQUEST_END)
         sse_server.stop()
         split_backend.stop()
@@ -1665,7 +1665,7 @@ class StreamingIntegrationAsyncTests(object):
 
         factory = await get_factory_async('some_apikey', **kwargs)
         try:
-            await factory.block_until_ready_async(1)
+            await factory.block_until_ready(1)
         except Exception:
             pass
         assert factory.ready
@@ -1674,7 +1674,7 @@ class StreamingIntegrationAsyncTests(object):
         # Get a hook of the task so we can query its status
         task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
         assert task.running()
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'on'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'on'
 
         # Make a change in the BE but don't send the event.
         # After restoring occupancy, the sdk should switch to polling
@@ -1688,7 +1688,7 @@ class StreamingIntegrationAsyncTests(object):
 
         sse_server.publish(make_occupancy('control_sec', 1))
         await asyncio.sleep(2)
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'off'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'off'
         assert not task.running()
 
         # Validate the SSE request
@@ -1758,7 +1758,7 @@ class StreamingIntegrationAsyncTests(object):
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Cleanup
-        await factory.destroy_async()
+        await factory.destroy()
         sse_server.publish(sse_server.GRACEFUL_REQUEST_END)
         sse_server.stop()
         split_backend.stop()
@@ -1810,7 +1810,7 @@ class StreamingIntegrationAsyncTests(object):
         }
 
         factory = await get_factory_async('some_apikey', **kwargs)
-        await factory.block_until_ready_async(1)
+        await factory.block_until_ready(1)
         assert factory.ready
         await asyncio.sleep(2)
 
@@ -1818,7 +1818,7 @@ class StreamingIntegrationAsyncTests(object):
         task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
         assert not task.running()
 
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'on'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'on'
 
         # Make a change in the BE but don't send the event.
         # After dropping occupancy, the sdk should switch to polling
@@ -1833,7 +1833,7 @@ class StreamingIntegrationAsyncTests(object):
         sse_server.publish(make_control_event('STREAMING_PAUSED', 1))
         await asyncio.sleep(4)
 
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'off'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'off'
         assert task.running()
 
         # We make another chagne in the BE and don't send the event.
@@ -1849,7 +1849,7 @@ class StreamingIntegrationAsyncTests(object):
         sse_server.publish(make_control_event('STREAMING_ENABLED', 2))
         await asyncio.sleep(2)
 
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'on'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'on'
         assert not task.running()
 
         # Now we make another change and send an event so it's propagated
@@ -1862,7 +1862,7 @@ class StreamingIntegrationAsyncTests(object):
         sse_server.publish(make_split_change_event(4))
         await asyncio.sleep(2)
 
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'off'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'off'
         assert not task.running()
 
         split_changes[4] = {
@@ -1874,7 +1874,7 @@ class StreamingIntegrationAsyncTests(object):
         sse_server.publish(make_control_event('STREAMING_DISABLED', 2))
         await asyncio.sleep(2)
 
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'on'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'on'
         assert task.running()
         assert 'PushStatusHandler' not in [t.name for t in threading.enumerate()]
 
@@ -1975,7 +1975,7 @@ class StreamingIntegrationAsyncTests(object):
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Cleanup
-        await factory.destroy_async()
+        await factory.destroy()
         sse_server.publish(sse_server.GRACEFUL_REQUEST_END)
         sse_server.stop()
         split_backend.stop()
@@ -2032,9 +2032,9 @@ class StreamingIntegrationAsyncTests(object):
                        'impressionsRefreshRate': 100, 'eventsPushRate': 100}
         }
         factory = await get_factory_async('some_apikey', **kwargs)
-        await factory.block_until_ready_async(1)
+        await factory.block_until_ready(1)
         assert factory.ready
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'on'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'on'
         task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
         assert not task.running()
 
@@ -2047,11 +2047,11 @@ class StreamingIntegrationAsyncTests(object):
         split_changes[2] = {'since': 2, 'till': 2, 'splits': []}
         sse_server.publish(make_split_change_event(2))
         await asyncio.sleep(1)
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'off'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'off'
 
         sse_server.publish(SSEMockServer.GRACEFUL_REQUEST_END)
         await asyncio.sleep(1)
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'off'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'off'
         assert task.running()
 
 #          # wait for the backoff to expire so streaming gets re-attached
@@ -2073,7 +2073,7 @@ class StreamingIntegrationAsyncTests(object):
         sse_server.publish(make_split_change_event(3))
         await asyncio.sleep(1)
 
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'on'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'on'
         assert not task.running()
 
         # Validate the SSE requests
@@ -2190,7 +2190,7 @@ class StreamingIntegrationAsyncTests(object):
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Cleanup
-        await factory.destroy_async()
+        await factory.destroy()
         sse_server.publish(sse_server.GRACEFUL_REQUEST_END)
         sse_server.stop()
         split_backend.stop()
@@ -2250,7 +2250,7 @@ class StreamingIntegrationAsyncTests(object):
 
         factory = await get_factory_async('some_apikey', **kwargs)
         try:
-            await factory.block_until_ready_async(5)
+            await factory.block_until_ready(5)
         except Exception:
             pass
         assert factory.ready
@@ -2259,7 +2259,7 @@ class StreamingIntegrationAsyncTests(object):
         task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
         assert not task.running()
 
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'on'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'on'
 
         # Make a change in the BE but don't send the event.
         # We'll send an ignorable error and check it has nothing happened
@@ -2273,7 +2273,7 @@ class StreamingIntegrationAsyncTests(object):
         sse_server.publish(make_ably_error_event(60000, 600))
         await asyncio.sleep(1)
 
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'on'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'on'
         assert not task.running()
 
         sse_server.publish(make_ably_error_event(40145, 401))
@@ -2281,7 +2281,7 @@ class StreamingIntegrationAsyncTests(object):
         await asyncio.sleep(3)
 
         assert task.running()
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'off'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'off'
 
         # Re-publish initial events so that the retry succeeds
         sse_server.publish(make_initial_event())
@@ -2299,7 +2299,7 @@ class StreamingIntegrationAsyncTests(object):
         split_changes[3] = {'since': 3, 'till': 3, 'splits': []}
         sse_server.publish(make_split_change_event(3))
         await asyncio.sleep(2)
-        assert await factory.client().get_treatment_async('maldo', 'split1') == 'on'
+        assert await factory.client().get_treatment('maldo', 'split1') == 'on'
         assert not task.running()
 
         # Send a non-retryable ably error
@@ -2424,7 +2424,7 @@ class StreamingIntegrationAsyncTests(object):
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Cleanup
-        await factory.destroy_async()
+        await factory.destroy()
         sse_server.publish(sse_server.GRACEFUL_REQUEST_END)
         sse_server.stop()
         split_backend.stop()

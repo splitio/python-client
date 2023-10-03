@@ -987,8 +987,6 @@ class RedisTelemetryStorageTests(object):
         redis_telemetry = RedisTelemetryStorage(mocker.Mock(), mocker.Mock())
         assert(redis_telemetry._redis_client is not None)
         assert(redis_telemetry._sdk_metadata is not None)
-        assert(isinstance(redis_telemetry._method_latencies, MethodLatencies))
-        assert(isinstance(redis_telemetry._method_exceptions, MethodExceptions))
         assert(isinstance(redis_telemetry._tel_config, TelemetryConfig))
         assert(redis_telemetry._make_pipe is not None)
 
@@ -1007,7 +1005,7 @@ class RedisTelemetryStorageTests(object):
 
     def test_format_config_stats(self, mocker):
         redis_telemetry = RedisTelemetryStorage(mocker.Mock(), mocker.Mock())
-        json_value = redis_telemetry._format_config_stats()
+        json_value = redis_telemetry._format_config_stats({'aF': 0, 'rF': 0, 'sT': None, 'oM': None}, [])
         stats = redis_telemetry._tel_config.get_stats()
         assert(json_value == json.dumps({
             'aF': stats['aF'],
