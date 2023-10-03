@@ -1114,7 +1114,7 @@ class RedisTelemetryStorageAsyncTests(object):
             self.hash = hash
 
         adapter.hset = hset
-        async def format_config_stats(stats, tags):
+        def format_config_stats(stats, tags):
             return ""
         redis_telemetry._format_config_stats = format_config_stats
         await redis_telemetry.push_config_stats()

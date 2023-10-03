@@ -90,7 +90,7 @@ class SplitWorkerAsyncTests(object):
 
     def _worker_running(self):
         worker_running = False
-        for task in asyncio.Task.all_tasks():
+        for task in asyncio.all_tasks():
             if task._coro.cr_code.co_name == '_run' and not task.done():
                 worker_running = True
                 break

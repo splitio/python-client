@@ -1041,7 +1041,6 @@ class PluggableEventsStorageAsyncTests(object):
             assert(await pluggable_events_storage.put(events2))
             assert(self.mock_adapter._keys[prefix + "SPLITIO.events"] == pluggable_events_storage._wrap_events(events + events2))
 
-    @pytest.mark.asyncio
     def test_wrap_events(self):
         for sprefix in [None, 'myprefix']:
             pluggable_events_storage = PluggableEventsStorageAsync(self.mock_adapter, self.metadata, prefix=sprefix)

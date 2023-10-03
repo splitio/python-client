@@ -358,7 +358,7 @@ class StatusTrackerAsyncTests(object):
     @pytest.mark.asyncio
     async def test_disconnect_expected(self, mocker):
         """Test that no error is propagated when a disconnect is expected."""
-        telemetry_storage = InMemoryTelemetryStorageAsync.create()
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         tracker = PushStatusTrackerAsync(telemetry_runtime_producer)

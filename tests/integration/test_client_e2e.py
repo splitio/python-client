@@ -2515,8 +2515,8 @@ class RedisIntegrationAsyncTests(object):
         await redis_client.set(segment_storage._get_till_key(data['name']), data['till'])
 
         telemetry_redis_storage = await RedisTelemetryStorageAsync.create(redis_client, metadata)
-        telemetry_producer = TelemetryStorageProducer(telemetry_redis_storage)
-        telemetry_submitter = RedisTelemetrySubmitter(telemetry_redis_storage)
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_redis_storage)
+        telemetry_submitter = RedisTelemetrySubmitterAsync(telemetry_redis_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
 
         storages = {
@@ -2861,8 +2861,8 @@ class RedisWithCacheIntegrationAsyncTests(RedisIntegrationAsyncTests):
         await redis_client.set(segment_storage._get_till_key(data['name']), data['till'])
 
         telemetry_redis_storage = await RedisTelemetryStorageAsync.create(redis_client, metadata)
-        telemetry_producer = TelemetryStorageProducer(telemetry_redis_storage)
-        telemetry_submitter = RedisTelemetrySubmitter(telemetry_redis_storage)
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_redis_storage)
+        telemetry_submitter = RedisTelemetrySubmitterAsync(telemetry_redis_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
 
         storages = {
