@@ -3,7 +3,6 @@
 import logging
 from threading import Timer
 import abc
-
 from splitio.optional.loaders import asyncio, anext
 from splitio.api import APIException
 from splitio.util.time import get_current_epoch_time_ms
@@ -167,12 +166,12 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
             self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
             return
 
-        if not token.push_enabled:
+        if token is None or not token.push_enabled:
             self._feedback_loop.put(Status.PUSH_NONRETRYABLE_ERROR)
             return
         self._telemetry_runtime_producer.record_token_refreshes()
         _LOGGER.debug("auth token fetched. connecting to streaming.")
-
+        _LOGGER(token)
         self._status_tracker.reset()
         if self._sse_client.start(token):
             _LOGGER.debug("connected to streaming, scheduling next refresh")
@@ -393,9 +392,6 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         """Get new auth token"""
         try:
             token = await self._auth_api.authenticate()
-            if token is not None:
-                await self._telemetry_runtime_producer.record_token_refreshes()
-                await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.TOKEN_REFRESH, 1000 * token.exp,  get_current_epoch_time_ms()))
         except APIException:
             _LOGGER.error('error performing sse auth request.')
             _LOGGER.debug('stack trace: ', exc_info=True)
@@ -406,6 +402,8 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             await self._feedback_loop.put(Status.PUSH_NONRETRYABLE_ERROR)
             raise Exception("Push is not enabled")
 
+        await self._telemetry_runtime_producer.record_token_refreshes()
+        await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.TOKEN_REFRESH, 1000 * token.exp,  get_current_epoch_time_ms()))
         _LOGGER.debug("auth token fetched. connecting to streaming.")
         return token
 
@@ -417,7 +415,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             try:
                 token = await self._get_auth_token()
             except Exception as e:
-                _LOGGER.error("error getting auth token" + str(e))
+                _LOGGER.error("error getting auth token: " + str(e))
                 _LOGGER.debug("trace: ", exc_info=True)
                 return
 
