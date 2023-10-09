@@ -10,7 +10,7 @@ from splitio.client import input_validator
 from splitio.client.manager import SplitManager, SplitManagerAsync
 from splitio.client.config import sanitize as sanitize_config, DEFAULT_DATA_SAMPLING
 from splitio.client import util
-from splitio.client.listener import ImpressionListenerWrapper
+from splitio.client.listener import ImpressionListenerWrapper, ImpressionListenerWrapperAsync
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager
 from splitio.engine.impressions import set_classes
 from splitio.engine.impressions.strategies import StrategyDebugMode
@@ -482,6 +482,18 @@ def _wrap_impression_listener(listener, metadata):
         return ImpressionListenerWrapper(listener, metadata)
     return None
 
+def _wrap_impression_listener_async(listener, metadata):
+    """
+    Wrap the impression listener if any.
+
+    :param listener: User supplied impression listener or None
+    :type listener: splitio.client.listener.ImpressionListener | None
+    :param metadata: SDK Metadata
+    :type metadata: splitio.client.util.SdkMetadata
+    """
+    if listener is not None:
+        return ImpressionListenerWrapperAsync(listener, metadata)
+    return None
 
 def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pylint:disable=too-many-arguments,too-many-locals
                              auth_api_base_url=None, streaming_api_base_url=None, telemetry_api_base_url=None):
@@ -535,8 +547,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     imp_strategy = set_classes('MEMORY', cfg['impressionsMode'], apis)
 
     imp_manager = ImpressionsManager(
-        imp_strategy, telemetry_runtime_producer,
-        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata))
+        imp_strategy, telemetry_runtime_producer)
 
     synchronizers = SplitSynchronizers(
         SplitSynchronizer(apis['splits'], storages['splits']),
@@ -586,7 +597,8 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         storages['events'],
         storages['impressions'],
         telemetry_evaluation_producer,
-        telemetry_runtime_producer
+        telemetry_runtime_producer,
+        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata)
     )
 
     telemetry_init_producer.record_config(cfg, extra_cfg)
@@ -658,8 +670,7 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
     imp_strategy = set_classes('MEMORY', cfg['impressionsMode'], apis, parallel_tasks_mode='asyncio')
 
     imp_manager = ImpressionsManager(
-        imp_strategy, telemetry_runtime_producer,
-        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata))
+        imp_strategy, telemetry_runtime_producer)
 
     synchronizers = SplitSynchronizers(
         SplitSynchronizerAsync(apis['splits'], storages['splits']),
@@ -708,7 +719,8 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
         storages['events'],
         storages['impressions'],
         telemetry_evaluation_producer,
-        telemetry_runtime_producer
+        telemetry_runtime_producer,
+        _wrap_impression_listener_async(cfg['impressionListener'], sdk_metadata)
     )
 
     await telemetry_init_producer.record_config(cfg, extra_cfg)
@@ -757,9 +769,7 @@ def _build_redis_factory(api_key, cfg):
 
     imp_manager = ImpressionsManager(
         imp_strategy,
-        telemetry_runtime_producer,
-        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
-        )
+        telemetry_runtime_producer)
 
     synchronizers = SplitSynchronizers(None, None, None, None,
         impressions_count_sync,
@@ -783,6 +793,7 @@ def _build_redis_factory(api_key, cfg):
         storages['impressions'],
         storages['telemetry'],
         data_sampling,
+        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata)
     )
 
     manager = RedisManager(synchronizer)
@@ -837,9 +848,7 @@ async def _build_redis_factory_async(api_key, cfg):
 
     imp_manager = ImpressionsManager(
         imp_strategy,
-        telemetry_runtime_producer,
-        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
-        )
+        telemetry_runtime_producer)
 
     synchronizers = SplitSynchronizers(None, None, None, None,
         impressions_count_sync,
@@ -863,6 +872,7 @@ async def _build_redis_factory_async(api_key, cfg):
         storages['impressions'],
         storages['telemetry'],
         data_sampling,
+        _wrap_impression_listener_async(cfg['impressionListener'], sdk_metadata)
     )
 
     manager = RedisManagerAsync(synchronizer)
@@ -913,9 +923,7 @@ def _build_pluggable_factory(api_key, cfg):
 
     imp_manager = ImpressionsManager(
         imp_strategy,
-        telemetry_runtime_producer,
-        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
-        )
+        telemetry_runtime_producer)
 
     synchronizers = SplitSynchronizers(None, None, None, None,
         impressions_count_sync,
@@ -938,7 +946,8 @@ def _build_pluggable_factory(api_key, cfg):
         storages['events'],
         storages['impressions'],
         telemetry_producer.get_telemetry_evaluation_producer(),
-        telemetry_runtime_producer
+        telemetry_runtime_producer,
+        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata)
     )
 
     # Using same class as redis for consumer mode only
@@ -991,9 +1000,7 @@ async def _build_pluggable_factory_async(api_key, cfg):
 
     imp_manager = ImpressionsManager(
         imp_strategy,
-        telemetry_runtime_producer,
-        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
-        )
+        telemetry_runtime_producer)
 
     synchronizers = SplitSynchronizers(None, None, None, None,
         impressions_count_sync,
@@ -1016,7 +1023,8 @@ async def _build_pluggable_factory_async(api_key, cfg):
         storages['events'],
         storages['impressions'],
         telemetry_producer.get_telemetry_evaluation_producer(),
-        telemetry_runtime_producer
+        telemetry_runtime_producer,
+        _wrap_impression_listener_async(cfg['impressionListener'], sdk_metadata)
     )
 
     # Using same class as redis for consumer mode only
