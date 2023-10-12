@@ -92,8 +92,6 @@ class FlagSets(object):
         :param feature_flag: feature flag name
         :type feature_flag: str
         """
-        _LOGGER.debug("remove_feature_flag_to_flag_set")
-        _LOGGER.debug(flag_set)
         with self._lock:
             if self.flag_set_exist(flag_set):
                 self.sets_feature_flag_map[flag_set].remove(feature_flag)
