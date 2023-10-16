@@ -61,6 +61,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
     def _evaluate_if_ready(self, matching_key, bucketing_key, feature, attributes=None):
         if not self.ready:
+            _LOGGER.warning("The SDK is not ready, results may be incorrect for feature flag %s. Make sure to wait for SDK readiness before using this method", feature)
             self._telemetry_init_producer.record_not_ready_usage()
             return {
                 'treatment': CONTROL,
@@ -214,6 +215,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
     def _evaluate_features_if_ready(self, matching_key, bucketing_key, feature_flags, attributes=None):
         if not self.ready:
+            _LOGGER.warning("The SDK is not ready, results may be incorrect for feature flags %s. Make sure to wait for SDK readiness before using this method", ', '.join([feature for feature in feature_flags]))
             self._telemetry_init_producer.record_not_ready_usage()
             return {
                 feature_flag: {
