@@ -7,7 +7,7 @@ from splitio.models.grammar import condition
 
 SplitView = namedtuple(
     'SplitView',
-    ['name', 'traffic_type', 'killed', 'treatments', 'change_number', 'configs', 'sets']
+    ['name', 'traffic_type', 'killed', 'treatments', 'change_number', 'configs', 'default_treatment', 'sets']
 )
 
 
@@ -200,6 +200,7 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             list(set(part.treatment for cond in self.conditions for part in cond.partitions)),
             self.change_number,
             self._configurations if self._configurations is not None else {},
+            self._default_treatment,
             list(self._sets) if self._sets is not None else []
         )
 

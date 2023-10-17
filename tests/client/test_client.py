@@ -83,6 +83,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert mocker.call(
             [(Impression('some_key', 'some_feature', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY), {'some_attribute': 1})]
         ) in impmanager.process_impressions.mock_calls
+        assert _logger.call(["The SDK is not ready, results may be incorrect for feature flag %s. Make sure to wait for SDK readiness before using this method", 'some_feature'])
 
         # Test with exception:
         ready_property.return_value = True
@@ -159,6 +160,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             [(Impression('some_key', 'some_feature', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY),
               {'some_attribute': 1})]
         ) in impmanager.process_impressions.mock_calls
+        assert _logger.call(["The SDK is not ready, results may be incorrect for feature flag %s. Make sure to wait for SDK readiness before using this method", 'some_feature'])
 
         # Test with exception:
         ready_property.return_value = True
@@ -236,6 +238,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert mocker.call(
             [(Impression('some_key', 'some_feature', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY), {'some_attribute': 1})]
         ) in impmanager.process_impressions.mock_calls
+        assert _logger.call(["The SDK is not ready, results may be incorrect for feature flags %s. Make sure to wait for SDK readiness before using this method", 'some_feature'])
 
         # Test with exception:
         ready_property.return_value = True
@@ -310,6 +313,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert mocker.call(
             [(Impression('some_key', 'some_feature', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY), {'some_attribute': 1})]
         ) in impmanager.process_impressions.mock_calls
+        assert _logger.call(["The SDK is not ready, results may be incorrect for feature flags %s. Make sure to wait for SDK readiness before using this method", 'some_feature'])
 
         # Test with exception:
         ready_property.return_value = True
@@ -400,6 +404,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert mocker.call(
             [(Impression('some_key', 'some_feature', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY), {'some_attribute': 1})]
         ) in impmanager.process_impressions.mock_calls
+        assert _logger.call(["The SDK is not ready, results may be incorrect for feature flags %s. Make sure to wait for SDK readiness before using this method", 'some_feature'])
 
         # Test with exception:
         ready_property.return_value = True
@@ -465,7 +470,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         client._evaluator.evaluate_features = evaluate_features
         _logger = mocker.Mock()
         client._send_impression_to_listener = mocker.Mock()
-#        pytest.set_trace()
         assert client.get_treatments_by_flag_sets('key', ['set1', 'set2']) == {'f1': 'on', 'f2': 'on'}
 
         impressions_called = impmanager.process_impressions.mock_calls[0][1][0]
@@ -488,6 +492,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert mocker.call(
             [(Impression('some_key', 'some_feature', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY), {'some_attribute': 1})]
         ) in impmanager.process_impressions.mock_calls
+        assert _logger.call(["The SDK is not ready, results may be incorrect for feature flags %s. Make sure to wait for SDK readiness before using this method", 'some_feature'])
 
         # Test with exception:
         ready_property.return_value = True
@@ -581,6 +586,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert mocker.call(
             [(Impression('some_key', 'some_feature', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY), {'some_attribute': 1})]
         ) in impmanager.process_impressions.mock_calls
+        assert _logger.call(["The SDK is not ready, results may be incorrect for feature flags %s. Make sure to wait for SDK readiness before using this method", 'some_feature'])
 
         # Test with exception:
         ready_property.return_value = True
@@ -677,6 +683,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert mocker.call(
             [(Impression('some_key', 'some_feature', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY), {'some_attribute': 1})]
         ) in impmanager.process_impressions.mock_calls
+        assert _logger.call(["The SDK is not ready, results may be incorrect for feature flags %s. Make sure to wait for SDK readiness before using this method", 'some_feature'])
 
         # Test with exception:
         ready_property.return_value = True
@@ -748,6 +755,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
+        _logger = mocker.Mock()
 
         destroyed_mock = mocker.PropertyMock()
         destroyed_mock.return_value = False
@@ -762,6 +770,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 size=1024
             )
         ]) in event_storage.put.mock_calls
+        assert _logger.call("track: the SDK is not ready, results may be incorrect. Make sure to wait for SDK readiness before using this method")
 
     def test_evaluations_before_running_post_fork(self, mocker):
         destroyed_property = mocker.PropertyMock()
@@ -837,7 +846,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         )
         client = Client(factory, mocker.Mock())
         client.ready = False
-        client._evaluate_if_ready('matching_key','matching_key', 'feature')
+        client._evaluate_if_ready('matching_key','matching_key', 'method', 'feature')
         assert(telemetry_storage._tel_config._not_ready == 1)
         client.track('key', 'tt', 'ev')
         assert(telemetry_storage._tel_config._not_ready == 2)
