@@ -784,7 +784,6 @@ async def _build_default_client_async(config):  # pylint: disable=too-many-local
     unix_socket_path = config.get('redisUnixSocketPath', None)
     encoding = config.get('redisEncoding', 'utf-8')
     encoding_errors = config.get('redisEncodingErrors', 'strict')
-#    errors = config.get('redisErrors', None)
     decode_responses = config.get('redisDecodeResponses', True)
     retry_on_timeout = config.get('redisRetryOnTimeout', False)
     ssl = config.get('redisSsl', False)
@@ -897,9 +896,6 @@ async def _build_sentinel_client_async(config):  # pylint: disable=too-many-loca
     :rtype: splitio.storage.adapters.redis.RedisAdapter
     """
     sentinels = config.get('redisSentinels')
-
-    if config.get('redisSsl', False):
-        raise SentinelConfigurationException('Redis Sentinel cannot be used with SSL/TLS.')
 
     if sentinels is None:
         raise SentinelConfigurationException('redisSentinels must be specified.')
