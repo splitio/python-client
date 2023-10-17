@@ -3,7 +3,7 @@
 import pytest
 from redis.asyncio.client import Redis as aioredis
 from splitio.storage.adapters import redis
-from splitio.storage.adapters.redis import _build_default_client_async
+from splitio.storage.adapters.redis import _build_default_client_async, _build_sentinel_client_async
 from redis import StrictRedis, Redis
 from redis.sentinel import Sentinel
 
@@ -473,6 +473,78 @@ class RedisStorageAdapterAsyncTests(object):
         assert self.ssl_certfile == '/ssl2.cert'
         assert self.ssl_cert_reqs == 'abc'
         assert self.ssl_ca_certs == 'def'
+
+        def create_sentinel(se,
+                sentinels,
+                db,
+                password,
+                encoding,
+                max_connections,
+                encoding_errors,
+                decode_responses,
+                connection_pool,
+                socket_connect_timeout):
+            self.sentinels=sentinels
+            self.db=db
+            self.password=password
+            self.encoding=encoding
+            self.max_connections=max_connections
+            self.encoding_errors=encoding_errors,
+            self.decode_responses=decode_responses,
+            self.connection_pool=connection_pool,
+            self.socket_connect_timeout=socket_connect_timeout
+        mocker.patch('redis.asyncio.sentinel.Sentinel.__init__', new=create_sentinel)
+
+        def master_for(se,
+            master_service,
+            socket_timeout,
+            socket_keepalive,
+            socket_keepalive_options,
+            encoding_errors,
+            retry_on_timeout,
+            ssl):
+            self.master_service = master_service,
+            self.socket_timeout = socket_timeout,
+            self.socket_keepalive = socket_keepalive,
+            self.socket_keepalive_options = socket_keepalive_options,
+            self.encoding_errors = encoding_errors,
+            self.retry_on_timeout = retry_on_timeout,
+            self.ssl = ssl
+        mocker.patch('redis.asyncio.sentinel.Sentinel.master_for', new=master_for)
+
+        config = {
+            'redisSentinels': [('123.123.123.123', 1), ('456.456.456.456', 2), ('789.789.789.789', 3)],
+            'redisMasterService': 'some_master',
+            'redisDb': 0,
+            'redisPassword': 'some_password',
+            'redisSocketTimeout': 123,
+            'redisSocketConnectTimeout': 456,
+            'redisSocketKeepalive': 789,
+            'redisSocketKeepaliveOptions': 10,
+            'redisConnectionPool': 20,
+            'redisUnixSocketPath': '/tmp/socket',
+            'redisEncoding': 'utf-8',
+            'redisEncodingErrors': 'strict',
+            'redisErrors': 'abc',
+            'redisDecodeResponses': True,
+            'redisRetryOnTimeout': True,
+            'redisSsl': False,
+            'redisMaxConnections': 5,
+            'redisPrefix': 'some_prefix'
+        }
+        await _build_sentinel_client_async(config)
+        assert self.sentinels == [('123.123.123.123', 1), ('456.456.456.456', 2), ('789.789.789.789', 3)]
+        assert self.db == 0
+        assert self.password == 'some_password'
+        assert self.encoding == 'utf-8'
+        assert self.max_connections == 5
+        assert self.ssl == False
+        assert self.master_service == ('some_master',)
+        assert self.socket_timeout == (123,)
+        assert self.socket_keepalive == (789,)
+        assert self.socket_keepalive_options == (10,)
+        assert self.encoding_errors == ('strict',)
+        assert self.retry_on_timeout == (True,)
 
 
 class RedisPipelineAdapterTests(object):
