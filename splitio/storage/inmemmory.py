@@ -200,7 +200,7 @@ class InMemorySplitStorage(SplitStorage):
         if feature_flag.sets is not None:
             for flag_set in feature_flag.sets:
                 self.flag_set.remove_feature_flag_to_flag_set(flag_set, feature_flag.name)
-                if len(self.flag_set.get_flag_set(flag_set)) == 0 and not self.flag_set_filter.should_filter:
+                if self.is_flag_set_exist(flag_set) and len(self.flag_set.get_flag_set(flag_set)) == 0 and not self.flag_set_filter.should_filter:
                     self.flag_set.remove_flag_set(flag_set)
 
     def get_feature_flags_by_sets(self, sets):
