@@ -846,7 +846,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         )
         client = Client(factory, mocker.Mock())
         client.ready = False
-        client._evaluate_if_ready('matching_key','matching_key', 'feature')
+        client._evaluate_if_ready('matching_key','matching_key', 'method', 'feature')
         assert(telemetry_storage._tel_config._not_ready == 1)
         client.track('key', 'tt', 'ev')
         assert(telemetry_storage._tel_config._not_ready == 2)

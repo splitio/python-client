@@ -59,9 +59,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
         """Return whether the factory holding this client has been destroyed."""
         return self._factory.destroyed
 
-    def _evaluate_if_ready(self, matching_key, bucketing_key, feature, attributes=None):
+    def _evaluate_if_ready(self, matching_key, bucketing_key, feature, method, attributes=None):
         if not self.ready:
-            _LOGGER.warning("The SDK is not ready, results may be incorrect for feature flag %s. Make sure to wait for SDK readiness before using this method", feature)
+            _LOGGER.warning("%s: The SDK is not ready, results may be incorrect for feature flag %s. Make sure to wait for SDK readiness before using this method", method, feature)
             self._telemetry_init_producer.record_not_ready_usage()
             return {
                 'treatment': CONTROL,
@@ -103,7 +103,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
                     or not input_validator.validate_attributes(attributes, method_name):
                 return CONTROL, None
 
-            result = self._evaluate_if_ready(matching_key, bucketing_key, feature_flag, attributes)
+            result = self._evaluate_if_ready(matching_key, bucketing_key, feature_flag, method_name, attributes)
 
             impression = self._build_impression(
                 matching_key,
@@ -168,7 +168,7 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
 
         try:
             evaluations = self._evaluate_features_if_ready(matching_key, bucketing_key,
-                                                           list(feature_flags), attributes)
+                                                           list(feature_flags), method_name, attributes)
 
             for feature_flag in feature_flags:
                 try:
@@ -213,9 +213,9 @@ class Client(object):  # pylint: disable=too-many-instance-attributes
             _LOGGER.debug('Error: ', exc_info=True)
         return input_validator.generate_control_treatments(list(feature_flags), method_name)
 
-    def _evaluate_features_if_ready(self, matching_key, bucketing_key, feature_flags, attributes=None):
+    def _evaluate_features_if_ready(self, matching_key, bucketing_key, feature_flags, method, attributes=None):
         if not self.ready:
-            _LOGGER.warning("The SDK is not ready, results may be incorrect for feature flags %s. Make sure to wait for SDK readiness before using this method", ', '.join([feature for feature in feature_flags]))
+            _LOGGER.warning("%s: The SDK is not ready, results may be incorrect for feature flags %s. Make sure to wait for SDK readiness before using this method", method, ', '.join([feature for feature in feature_flags]))
             self._telemetry_init_producer.record_not_ready_usage()
             return {
                 feature_flag: {
