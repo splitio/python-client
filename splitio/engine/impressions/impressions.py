@@ -37,5 +37,5 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         :return: processed and deduped impressions.
         :rtype: tuple(list[tuple[splitio.models.impression.Impression, dict]], list(int))
         """
-        for_log, for_listener = self._strategy.process_impressions(impressions)
-        return for_log, len(impressions) - len(for_log), for_listener
+        for_log, for_listener, for_counter, for_unique_keys_tracker = self._strategy.process_impressions(impressions)
+        return for_log, len(impressions) - len(for_log), for_listener, for_counter, for_unique_keys_tracker

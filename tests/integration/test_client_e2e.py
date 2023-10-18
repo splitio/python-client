@@ -27,10 +27,10 @@ from splitio.models import splits, segments
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager, ImpressionsMode
 from splitio.engine.impressions import set_classes
 from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyOptimizedMode, StrategyNoneMode
-from splitio.engine.impressions.manager import Counter
 from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageConsumerAsync,\
     TelemetryStorageProducerAsync
-from splitio.engine.impressions.manager import Counter as ImpressionsCounter
+from splitio.engine.impressions.manager import Counter as ImpressionsCounter, CounterAsync as ImpressionsCounterAsync
+from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder, StandardRecorderAsync, PipelinedRecorderAsync
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, RedisSynchronizer, SynchronizerAsync,\
@@ -377,8 +377,9 @@ class InMemoryOptimizedIntegrationTests(object):
             'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
         }
-        impmanager = ImpressionsManager(StrategyOptimizedMode(ImpressionsCounter()), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer)
+        impmanager = ImpressionsManager(StrategyOptimizedMode(), telemetry_runtime_producer) # no listener
+        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer,
+                                    imp_counter=ImpressionsCounter())
         self.factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
@@ -1483,11 +1484,12 @@ class PluggableOptimizedIntegrationTests(object):
             'telemetry': telemetry_pluggable_storage
         }
 
-        impmanager = ImpressionsManager(StrategyOptimizedMode(ImpressionsCounter()), telemetry_runtime_producer) # no listener
+        impmanager = ImpressionsManager(StrategyOptimizedMode(), telemetry_runtime_producer) # no listener
         recorder = StandardRecorder(impmanager, storages['events'],
                                     storages['impressions'],
                                     telemetry_producer.get_telemetry_evaluation_producer(),
-                                    telemetry_runtime_producer)
+                                    telemetry_runtime_producer,
+                                    imp_counter=ImpressionsCounter())
 
         self.factory = SplitFactory('some_api_key',
                                     storages,
@@ -1752,16 +1754,19 @@ class PluggableNoneIntegrationTests(object):
             'events': PluggableEventsStorage(self.pluggable_storage_adapter, metadata, 'myprefix'),
             'telemetry': telemetry_pluggable_storage
         }
-
+        imp_counter = ImpressionsCounter()
+        unique_keys_tracker = UniqueKeysTracker()
         unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
         clear_filter_task, impressions_count_sync, impressions_count_task, \
-        imp_strategy = set_classes('PLUGGABLE', ImpressionsMode.NONE, self.pluggable_storage_adapter, 'myprefix')
+        imp_strategy = set_classes('PLUGGABLE', ImpressionsMode.NONE, self.pluggable_storage_adapter, imp_counter, unique_keys_tracker, 'myprefix')
         impmanager = ImpressionsManager(imp_strategy, telemetry_runtime_producer) # no listener
 
         recorder = StandardRecorder(impmanager, storages['events'],
                                     storages['impressions'],
                                     telemetry_producer.get_telemetry_evaluation_producer(),
-                                    telemetry_runtime_producer)
+                                    telemetry_runtime_producer,
+                                    imp_counter=imp_counter,
+                                    unique_keys_tracker=unique_keys_tracker)
 
         synchronizers = SplitSynchronizers(None, None, None, None,
             impressions_count_sync,
@@ -2247,8 +2252,9 @@ class InMemoryOptimizedIntegrationAsyncTests(object):
             'impressions': InMemoryImpressionStorageAsync(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
         }
-        impmanager = ImpressionsManager(StrategyOptimizedMode(ImpressionsCounter()), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorderAsync(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer)
+        impmanager = ImpressionsManager(StrategyOptimizedMode(), telemetry_runtime_producer) # no listener
+        recorder = StandardRecorderAsync(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer,
+                                         imp_counter = ImpressionsCounterAsync())
         # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
         try:
             self.factory = SplitFactoryAsync('some_api_key',
@@ -3447,11 +3453,12 @@ class PluggableOptimizedIntegrationAsyncTests(object):
             'telemetry': telemetry_pluggable_storage
         }
 
-        impmanager = ImpressionsManager(StrategyOptimizedMode(Counter()), telemetry_runtime_producer) # no listener
+        impmanager = ImpressionsManager(StrategyOptimizedMode(), telemetry_runtime_producer) # no listener
         recorder = StandardRecorderAsync(impmanager, storages['events'],
                                     storages['impressions'],
                                     telemetry_producer.get_telemetry_evaluation_producer(),
-                                    telemetry_runtime_producer)
+                                    telemetry_runtime_producer,
+                                    imp_counter=ImpressionsCounterAsync())
 
         self.factory = SplitFactoryAsync('some_api_key',
                                     storages,
