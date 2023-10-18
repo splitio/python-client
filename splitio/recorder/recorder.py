@@ -83,6 +83,10 @@ class StandardRecorder(StatsRecorder):
         :type event_storage: splitio.storage.EventStorage
         :param impression_storage: impression storage instance
         :type impression_storage: splitio.storage.ImpressionStorage
+        :param unique_keys_tracker: Unique Keys Tracker instance
+        :type unique_keys_tracker: splitio.engine.unique_keys_tracker.UniqueKeysTracker
+        :param imp_counter: Impressions Counter instance
+        :type imp_counter: splitio.engine.impressions.Counter
         """
         self._impressions_manager = impressions_manager
         self._event_sotrage = event_storage
@@ -144,6 +148,10 @@ class StandardRecorderAsync(StatsRecorder):
         :type event_storage: splitio.storage.EventStorage
         :param impression_storage: impression storage instance
         :type impression_storage: splitio.storage.ImpressionStorage
+        :param unique_keys_tracker: Unique Keys Tracker instance
+        :type unique_keys_tracker: splitio.engine.unique_keys_tracker.UniqueKeysTrackerAsync
+        :param imp_counter: Impressions Counter instance
+        :type imp_counter: splitio.engine.impressions.CounterAsync
         """
         self._impressions_manager = impressions_manager
         self._event_sotrage = event_storage
@@ -211,6 +219,10 @@ class PipelinedRecorder(StatsRecorder):
         :type impression_storage: splitio.storage.redis.RedisImpressionsStorage
         :param data_sampling: data sampling factor
         :type data_sampling: number
+        :param unique_keys_tracker: Unique Keys Tracker instance
+        :type unique_keys_tracker: splitio.engine.unique_keys_tracker.UniqueKeysTracker
+        :param imp_counter: Impressions Counter instance
+        :type imp_counter: splitio.engine.impressions.Counter
         """
         self._make_pipe = pipe
         self._impressions_manager = impressions_manager
@@ -299,6 +311,10 @@ class PipelinedRecorderAsync(StatsRecorder):
         :type impression_storage: splitio.storage.redis.RedisImpressionsStorage
         :param data_sampling: data sampling factor
         :type data_sampling: number
+        :param unique_keys_tracker: Unique Keys Tracker instance
+        :type unique_keys_tracker: splitio.engine.unique_keys_tracker.UniqueKeysTrackerAsync
+        :param imp_counter: Impressions Counter instance
+        :type imp_counter: splitio.engine.impressions.CounterAsync
         """
         self._make_pipe = pipe
         self._impressions_manager = impressions_manager

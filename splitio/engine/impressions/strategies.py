@@ -35,8 +35,8 @@ class StrategyDebugMode(BaseStrategy):
         :param impressions: List of impression objects with attributes
         :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
 
-        :returns: Observed list of impressions
-        :rtype: list[tuple[splitio.models.impression.Impression, dict]]
+        :returns: Tuple of to be stored, observed and counted impressions, and unique keys tuple
+        :rtype: list[tuple[splitio.models.impression.Impression, dict]], list[], list[], list[]
         """
         imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions]
         return [i for i, _ in imps], imps, [], []
@@ -54,8 +54,8 @@ class StrategyNoneMode(BaseStrategy):
         :param impressions: List of impression objects with attributes
         :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
 
-        :returns: Empty list, no impressions to post
-        :rtype: list[]
+        :returns: Tuple of to be stored, observed and counted impressions, and unique keys tuple
+        :rtype: list[[], dict]], list[splitio.models.impression.Impression], list[splitio.models.impression.Impression], list[(str, str)]
         """
         counter_imps = [imp for imp, _ in impressions]
         unique_keys_tracker = []
@@ -82,8 +82,8 @@ class StrategyOptimizedMode(BaseStrategy):
         :param impressions: List of impression objects with attributes
         :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
 
-        :returns: Observed list of impressions
-        :rtype: list[tuple[splitio.models.impression.Impression, dict]]
+        :returns: Tuple of to be stored, observed and counted impressions, and unique keys tuple
+        :rtype: list[tuple[splitio.models.impression.Impression, dict]], list[splitio.models.impression.Impression], list[splitio.models.impression.Impression], list[]
         """
         imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions]
         counter_imps = [imp for imp, _ in imps if imp.previous_time != None]
