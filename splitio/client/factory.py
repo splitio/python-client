@@ -16,6 +16,8 @@ from splitio.engine.impressions import set_classes
 from splitio.engine.impressions.strategies import StrategyDebugMode
 from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageConsumer, \
     TelemetryStorageProducerAsync, TelemetryStorageConsumerAsync
+from splitio.engine.impressions.manager import Counter as ImpressionsCounter, CounterAsync as ImpressionsCounterAsync
+from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
 
 # Storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
@@ -78,6 +80,7 @@ _INSTANTIATED_FACTORIES = Counter()
 _INSTANTIATED_FACTORIES_LOCK = threading.RLock()
 _MIN_DEFAULT_DATA_SAMPLING_ALLOWED = 0.1  # 10%
 _MAX_RETRY_SYNC_ALL = 3
+_UNIQUE_KEYS_CACHE_SIZE = 30000
 
 
 class Status(Enum):
@@ -430,12 +433,11 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
             if self._sync_manager is not None:
                 await self._sync_manager.stop(True)
 
-                if isinstance(self._sync_manager, RedisManagerAsync):
+                if isinstance(self._storages['splits'], RedisSplitStorageAsync):
                     await self._get_storage('splits').redis.close()
 
                 if isinstance(self._sync_manager, ManagerAsync) and isinstance(self._telemetry_submitter, InMemoryTelemetrySubmitterAsync):
                     await self._telemetry_submitter._telemetry_api._client.close_session()
-
         except Exception as e:
             _LOGGER.error('Exception destroying factory.')
             _LOGGER.debug(str(e))
@@ -542,9 +544,11 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
 
     telemetry_submitter = InMemoryTelemetrySubmitter(telemetry_consumer, storages['splits'], storages['segments'], apis['telemetry'])
 
+    imp_counter = ImpressionsCounter()
+    unique_keys_tracker = UniqueKeysTracker(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
     clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy = set_classes('MEMORY', cfg['impressionsMode'], apis)
+    imp_strategy = set_classes('MEMORY', cfg['impressionsMode'], apis, imp_counter, unique_keys_tracker)
 
     imp_manager = ImpressionsManager(
         imp_strategy, telemetry_runtime_producer)
@@ -598,7 +602,9 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         storages['impressions'],
         telemetry_evaluation_producer,
         telemetry_runtime_producer,
-        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata)
+        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
+        imp_counter=imp_counter,
+        unique_keys_tracker=unique_keys_tracker
     )
 
     telemetry_init_producer.record_config(cfg, extra_cfg)
@@ -665,9 +671,11 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
 
     telemetry_submitter = InMemoryTelemetrySubmitterAsync(telemetry_consumer, storages['splits'], storages['segments'], apis['telemetry'])
 
+    imp_counter = ImpressionsCounterAsync()
+    unique_keys_tracker = UniqueKeysTrackerAsync(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
     clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy = set_classes('MEMORY', cfg['impressionsMode'], apis, parallel_tasks_mode='asyncio')
+    imp_strategy = set_classes('MEMORY', cfg['impressionsMode'], apis, imp_counter, unique_keys_tracker, parallel_tasks_mode='asyncio')
 
     imp_manager = ImpressionsManager(
         imp_strategy, telemetry_runtime_producer)
@@ -720,7 +728,9 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
         storages['impressions'],
         telemetry_evaluation_producer,
         telemetry_runtime_producer,
-        _wrap_impression_listener_async(cfg['impressionListener'], sdk_metadata)
+        _wrap_impression_listener_async(cfg['impressionListener'], sdk_metadata),
+        imp_counter=imp_counter,
+        unique_keys_tracker=unique_keys_tracker
     )
 
     await telemetry_init_producer.record_config(cfg, extra_cfg)
@@ -763,9 +773,11 @@ def _build_redis_factory(api_key, cfg):
                         _MIN_DEFAULT_DATA_SAMPLING_ALLOWED)
         data_sampling = _MIN_DEFAULT_DATA_SAMPLING_ALLOWED
 
+    imp_counter = ImpressionsCounter()
+    unique_keys_tracker = UniqueKeysTracker(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
     clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy = set_classes('REDIS', cfg['impressionsMode'], redis_adapter)
+    imp_strategy = set_classes('REDIS', cfg['impressionsMode'], redis_adapter, imp_counter, unique_keys_tracker)
 
     imp_manager = ImpressionsManager(
         imp_strategy,
@@ -793,7 +805,9 @@ def _build_redis_factory(api_key, cfg):
         storages['impressions'],
         storages['telemetry'],
         data_sampling,
-        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata)
+        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
+        imp_counter=imp_counter,
+        unique_keys_tracker=unique_keys_tracker
     )
 
     manager = RedisManager(synchronizer)
@@ -842,9 +856,11 @@ async def _build_redis_factory_async(api_key, cfg):
                         _MIN_DEFAULT_DATA_SAMPLING_ALLOWED)
         data_sampling = _MIN_DEFAULT_DATA_SAMPLING_ALLOWED
 
+    imp_counter = ImpressionsCounterAsync()
+    unique_keys_tracker = UniqueKeysTrackerAsync(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
     clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy = set_classes('REDIS', cfg['impressionsMode'], redis_adapter, parallel_tasks_mode='asyncio')
+    imp_strategy = set_classes('REDIS', cfg['impressionsMode'], redis_adapter, imp_counter, unique_keys_tracker, parallel_tasks_mode='asyncio')
 
     imp_manager = ImpressionsManager(
         imp_strategy,
@@ -872,7 +888,9 @@ async def _build_redis_factory_async(api_key, cfg):
         storages['impressions'],
         storages['telemetry'],
         data_sampling,
-        _wrap_impression_listener_async(cfg['impressionListener'], sdk_metadata)
+        _wrap_impression_listener_async(cfg['impressionListener'], sdk_metadata),
+        imp_counter=imp_counter,
+        unique_keys_tracker=unique_keys_tracker
     )
 
     manager = RedisManagerAsync(synchronizer)
@@ -917,9 +935,11 @@ def _build_pluggable_factory(api_key, cfg):
     # Using same class as redis
     telemetry_submitter = RedisTelemetrySubmitter(storages['telemetry'])
 
+    imp_counter = ImpressionsCounter()
+    unique_keys_tracker = UniqueKeysTracker(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
     clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy = set_classes('PLUGGABLE', cfg['impressionsMode'], pluggable_adapter, storage_prefix)
+    imp_strategy = set_classes('PLUGGABLE', cfg['impressionsMode'], pluggable_adapter, imp_counter, unique_keys_tracker, storage_prefix)
 
     imp_manager = ImpressionsManager(
         imp_strategy,
@@ -947,7 +967,9 @@ def _build_pluggable_factory(api_key, cfg):
         storages['impressions'],
         telemetry_producer.get_telemetry_evaluation_producer(),
         telemetry_runtime_producer,
-        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata)
+        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
+        imp_counter=imp_counter,
+        unique_keys_tracker=unique_keys_tracker
     )
 
     # Using same class as redis for consumer mode only
@@ -994,9 +1016,11 @@ async def _build_pluggable_factory_async(api_key, cfg):
     # Using same class as redis
     telemetry_submitter = RedisTelemetrySubmitterAsync(storages['telemetry'])
 
+    imp_counter = ImpressionsCounterAsync()
+    unique_keys_tracker = UniqueKeysTrackerAsync(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
     clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy = set_classes('PLUGGABLE', cfg['impressionsMode'], pluggable_adapter, storage_prefix, parallel_tasks_mode='asyncio')
+    imp_strategy = set_classes('PLUGGABLE', cfg['impressionsMode'], pluggable_adapter, imp_counter, unique_keys_tracker, storage_prefix, parallel_tasks_mode='asyncio')
 
     imp_manager = ImpressionsManager(
         imp_strategy,
@@ -1024,7 +1048,9 @@ async def _build_pluggable_factory_async(api_key, cfg):
         storages['impressions'],
         telemetry_producer.get_telemetry_evaluation_producer(),
         telemetry_runtime_producer,
-        _wrap_impression_listener_async(cfg['impressionListener'], sdk_metadata)
+        _wrap_impression_listener_async(cfg['impressionListener'], sdk_metadata),
+        imp_counter=imp_counter,
+        unique_keys_tracker=unique_keys_tracker
     )
 
     # Using same class as redis for consumer mode only

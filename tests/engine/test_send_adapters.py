@@ -4,12 +4,13 @@ import json
 import pytest
 import redis.asyncio as aioredis
 
-from splitio.engine.impressions.adapters import InMemorySenderAdapter, RedisSenderAdapter, PluggableSenderAdapter, InMemorySenderAdapterAsync, RedisSenderAdapterAsync
+from splitio.engine.impressions.adapters import InMemorySenderAdapter, RedisSenderAdapter, PluggableSenderAdapter, \
+    InMemorySenderAdapterAsync, RedisSenderAdapterAsync, PluggableSenderAdapterAsync
 from splitio.engine.impressions import adapters
 from splitio.api.telemetry import TelemetryAPI, TelemetryAPIAsync
 from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterAsync
 from splitio.engine.impressions.manager import Counter
-from tests.storage.test_pluggable import StorageMockAdapter
+from tests.storage.test_pluggable import StorageMockAdapter, StorageMockAdapterAsync
 
 
 class InMemorySenderAdapterTests(object):
@@ -234,4 +235,48 @@ class PluggableSenderAdapterTests(object):
         assert(adapter._keys[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f2::123'] == 123)
         assert(adapter._expire[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f1::123'] == adapters._IMP_COUNT_KEY_DEFAULT_TTL)
         sender_adapter.flush_counters(counters)
+        assert(adapter._expire[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f2::123'] == adapters._IMP_COUNT_KEY_DEFAULT_TTL)
+
+class PluggableSenderAdapterAsyncTests(object):
+    """Pluggable sender adapter test."""
+
+    @pytest.mark.asyncio
+    async def test_record_unique_keys(self, mocker):
+        """Test sending unique keys."""
+        adapter = StorageMockAdapterAsync()
+        sender_adapter = PluggableSenderAdapterAsync(adapter)
+
+        uniques = {"feature1": set({"key1", "key2", "key3"}),
+                   "feature2": set({"key1", "key6", "key10"}),
+                   }
+        formatted = [
+            '{"f": "feature1", "ks": ["key3", "key2", "key1"]}',
+            '{"f": "feature2", "ks": ["key1", "key10", "key6"]}',
+        ]
+
+        await sender_adapter.record_unique_keys(uniques)
+        assert(sorted(json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][0])["ks"]) == sorted(json.loads(formatted[0])["ks"]))
+        assert(sorted(json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][1])["ks"]) == sorted(json.loads(formatted[1])["ks"]))
+        assert(json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][0])["f"] == "feature1")
+        assert(json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][1])["f"] == "feature2")
+        assert(adapter._expire[adapters._MTK_QUEUE_KEY] == adapters._MTK_KEY_DEFAULT_TTL)
+        await sender_adapter.record_unique_keys(uniques)
+        assert(adapter._expire[adapters._MTK_QUEUE_KEY] != -1)
+
+    @pytest.mark.asyncio
+    async def test_flush_counters(self, mocker):
+        """Test sending counters."""
+        adapter = StorageMockAdapterAsync()
+        sender_adapter = PluggableSenderAdapterAsync(adapter)
+
+        counters = [
+            Counter.CountPerFeature('f1', 123, 2),
+            Counter.CountPerFeature('f2', 123, 123),
+        ]
+
+        await sender_adapter.flush_counters(counters)
+        assert(adapter._keys[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f1::123'] == 2)
+        assert(adapter._keys[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f2::123'] == 123)
+        assert(adapter._expire[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f1::123'] == adapters._IMP_COUNT_KEY_DEFAULT_TTL)
+        await sender_adapter.flush_counters(counters)
         assert(adapter._expire[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f2::123'] == adapters._IMP_COUNT_KEY_DEFAULT_TTL)
