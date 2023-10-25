@@ -36,13 +36,13 @@ class DependencyMatcher(Matcher):
 
         bucketing_key = context.get('bucketing_key')
         dependent_split = None
-        condition_matchers = {}
+        evaluation_contexts = {}
         for split in context.get("dependent_splits"):
             if split[0].name == self._split_name:
                 dependent_split = split[0]
-                condition_matchers = split[1]
+                evaluation_contexts = split[1]
                 break
-        result = evaluator.evaluate_feature(dependent_split, key, bucketing_key, condition_matchers)
+        result = evaluator.evaluate_feature(dependent_split, key, bucketing_key, evaluation_contexts)
         return result['treatment'] in self._treatments
 
     def _add_matcher_specific_properties_to_json(self):

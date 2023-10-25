@@ -57,7 +57,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         """Return whether the factory holding this client has been destroyed."""
         return self._factory.destroyed
 
-    def _evaluate_if_ready(self, matching_key, bucketing_key, feature_flag_name, feature_flag, condition_matchers):
+    def _evaluate_if_ready(self, matching_key, bucketing_key, feature_flag_name, feature_flag, evaluation_contexts):
         if not self.ready:
             return {
                 'treatment': CONTROL,
@@ -77,10 +77,10 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
             feature_flag,
             matching_key,
             bucketing_key,
-            condition_matchers
+            evaluation_contexts
         )
 
-    def _make_evaluation(self, matching_key, bucketing_key, feature_flag_name, attributes, method, feature_flag, condition_matchers, storage_change_number):
+    def _make_evaluation(self, matching_key, bucketing_key, feature_flag_name, attributes, method, feature_flag, evaluation_contexts, storage_change_number):
         """
         Evaluate treatment for given feature flag
 
@@ -92,8 +92,8 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         :type method: splitio.models.telemetry.MethodExceptionsAndLatencies
         :param feature_flag: Feature flag Split object
         :type feature_flag: splitio.models.splits.Split
-        :param condition_matchers: A dictionary representing all matchers for the current feature flag
-        :type condition_matchers: dict
+        :param evaluation_contexts: A dictionary representing all matchers for the current feature flag
+        :type evaluation_contexts: dict
         :param storage_change_number: the change number for the Feature flag storage.
         :type storage_change_number: int
         :return: The treatment and config for the key and feature flag, impressions created, start time and exception flag
@@ -106,7 +106,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
                     or not input_validator.validate_attributes(attributes, method):
                 return EvaluationResult((CONTROL, None), None, None, False)
 
-            result = self._evaluate_if_ready(matching_key, bucketing_key, feature_flag_name, feature_flag, condition_matchers)
+            result = self._evaluate_if_ready(matching_key, bucketing_key, feature_flag_name, feature_flag, evaluation_contexts)
 
             impression = self._build_impression(
                 matching_key,
@@ -138,7 +138,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
                 _LOGGER.debug('Error: ', exc_info=True)
             return EvaluationResult((CONTROL, None), None, None, False)
 
-    def _make_evaluations(self, matching_key, bucketing_key, feature_flag_names, feature_flags, condition_matchers, attributes, method):
+    def _make_evaluations(self, matching_key, bucketing_key, feature_flag_names, feature_flags, evaluation_contexts, attributes, method):
         """
         Evaluate treatments for given feature flags
 
@@ -148,8 +148,8 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         :type feature_flag_names: list(str)
         :param feature_flags: Array of feature flags Split objects
         :type feature_flag: list(splitio.models.splits.Split)
-        :param condition_matchers: dictionary representing all matchers for each current feature flag
-        :type condition_matchers: dict
+        :param evaluation_contexts: dictionary representing all matchers for each current feature flag
+        :type evaluation_contexts: dict
         :param storage_change_number: the change number for the Feature flag storage.
         :type storage_change_number: int
         :param attributes: An optional dictionary of attributes
@@ -168,7 +168,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         bulk_impressions = []
         try:
             evaluations = self._evaluate_features_if_ready(matching_key, bucketing_key,
-                                                           list(feature_flag_names), feature_flags, condition_matchers)
+                                                           list(feature_flag_names), feature_flags, evaluation_contexts)
             exception_flag = False
             for feature_flag_name in feature_flag_names:
                 try:
@@ -198,7 +198,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
             _LOGGER.debug('Error: ', exc_info=True)
         return EvaluationResult(input_validator.generate_control_treatments(list(feature_flag_names), method), None, start, True)
 
-    def _evaluate_features_if_ready(self, matching_key, bucketing_key, feature_flag_names, feature_flags, condition_matchers):
+    def _evaluate_features_if_ready(self, matching_key, bucketing_key, feature_flag_names, feature_flags, evaluation_contexts):
         """
         Evaluate treatments for given feature flags
 
@@ -210,8 +210,8 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         :type feature_flag_names: list(str)
         :param feature_flags: Array of feature flags Split objects
         :type feature_flag: list(splitio.models.splits.Split)
-        :param condition_matchers: dictionary representing all matchers for each current feature flag
-        :type condition_matchers: dict
+        :param evaluation_contexts: dictionary representing all matchers for each current feature flag
+        :type evaluation_contexts: dict
         :return: The treatments, configs and impressions generated for the key and feature flags
         :rtype: dict
         """
@@ -228,7 +228,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
             feature_flags,
             matching_key,
             bucketing_key,
-            condition_matchers
+            evaluation_contexts
         )
 
     def _build_impression(  # pylint: disable=too-many-arguments
@@ -395,19 +395,15 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         if bucketing_key is None:
             bucketing_key = matching_key
 
-        try:
-            evaluation_data_context = self._evaluator_data_collector.get_condition_matchers(feature_flag_name, bucketing_key, matching_key, attributes)
-        except FeatureNotFoundException:
-            _LOGGER.warning(
-                "%s: you passed \"%s\" that does not exist in this environment, "
-                "please double check what Feature flags exist in the Split user interface.",
-                'get_' + method.value,
-                feature_flag_name
-            )
-            return CONTROL, None
+        verified_feature_flag, missing, evaluation_contexts = self._evaluator_data_collector.build_evaluation_context([feature_flag_name], bucketing_key, matching_key, method, attributes)
+
+        if verified_feature_flag == []:
+            evaluation_result = EvaluationResult((CONTROL, None), None, None, False)
+            return evaluation_result.treatment_with_config[0], evaluation_result.treatment_with_config[1]
 
         evaluation_result = self._make_evaluation(matching_key, bucketing_key, feature_flag_name, attributes, 'get_' + method.value,
-                                            evaluation_data_context.feature_flag , evaluation_data_context.condition_matchers, self._feature_flag_storage.get_change_number())
+                                             verified_feature_flag[0], evaluation_contexts[feature_flag_name], self._feature_flag_storage.get_change_number())
+
         if evaluation_result.impression is not None:
             self._record_stats([(evaluation_result.impression, attributes)], evaluation_result.start_time, method)
 
@@ -493,27 +489,13 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         if bucketing_key is None:
             bucketing_key = matching_key
 
-        condition_matchers = {}
-        feature_flags = []
-        missing = []
-        for feature_flag_name in valid_feature_flag_names:
-            try:
-                evaluation_data_conext = self._evaluator_data_collector.get_condition_matchers(feature_flag_name, bucketing_key, matching_key, attributes)
-                condition_matchers[feature_flag_name] = evaluation_data_conext.condition_matchers
-                feature_flags.append(evaluation_data_conext.feature_flag)
-            except FeatureNotFoundException:
-                _LOGGER.warning(
-                    "%s: you passed \"%s\" that does not exist in this environment, "
-                    "please double check what Feature flags exist in the Split user interface.",
-                    'get_' + method.value,
-                    feature_flag_name
-                )
-                missing.append(feature_flag_name)
+        verified_feature_flags, missing_feature_flag_names, evaluation_contexts = self._evaluator_data_collector.build_evaluation_context(valid_feature_flag_names, bucketing_key, matching_key, method, attributes)
 
-        valid_feature_flag_names = []
-        [valid_feature_flag_names.append(feature_flag.name) for feature_flag in feature_flags]
-        missing_treatments = {name: (CONTROL, None) for name in missing}
-        evaluation_results = self._make_evaluations(matching_key, bucketing_key, valid_feature_flag_names, feature_flags, condition_matchers, attributes, 'get_' + method.value)
+        verified_feature_flag_names = []
+        [verified_feature_flag_names.append(feature_flag.name) for feature_flag in verified_feature_flags]
+        missing_treatments = {name: (CONTROL, None) for name in missing_feature_flag_names}
+
+        evaluation_results = self._make_evaluations(matching_key, bucketing_key, verified_feature_flag_names, verified_feature_flags, evaluation_contexts, attributes, 'get_' + method.value)
 
         try:
             if evaluation_results.impression:
@@ -695,19 +677,14 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         if bucketing_key is None:
             bucketing_key = matching_key
 
-        try:
-            evaluation_data_context = await self._evaluator_data_collector.get_condition_matchers_async(feature_flag_name, bucketing_key, matching_key, attributes)
-        except FeatureNotFoundException:
-            _LOGGER.warning(
-                "%s: you passed \"%s\" that does not exist in this environment, "
-                "please double check what Feature flags exist in the Split user interface.",
-                'get_' + method.value,
-                feature_flag_name
-            )
-            return CONTROL, None
+        verified_feature_flag, missing, evaluation_contexts = await self._evaluator_data_collector.build_evaluation_context_async([feature_flag_name], bucketing_key, matching_key, method, attributes)
+
+        if verified_feature_flag == []:
+            evaluation_result = EvaluationResult((CONTROL, None), None, None, False)
+            return evaluation_result.treatment_with_config[0], evaluation_result.treatment_with_config[1]
 
         evaluation_result = self._make_evaluation(matching_key, bucketing_key, feature_flag_name, attributes, 'get_' + method.value,
-                                             evaluation_data_context.feature_flag, evaluation_data_context.condition_matchers, await self._feature_flag_storage.get_change_number())
+                                             verified_feature_flag[0], evaluation_contexts[feature_flag_name], await self._feature_flag_storage.get_change_number())
         if evaluation_result.impression is not None:
             await self._record_stats_async([(evaluation_result.impression, attributes)], evaluation_result.start_time, method)
 
@@ -794,28 +771,13 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         if bucketing_key is None:
             bucketing_key = matching_key
 
-        condition_matchers = {}
-        feature_flags = []
-        missing = []
-        for feature_flag_name in valid_feature_flag_names:
-            try:
-                evaluation_data_context = await self._evaluator_data_collector.get_condition_matchers_async(feature_flag_name, bucketing_key, matching_key, attributes)
-                condition_matchers[feature_flag_name] = evaluation_data_context.condition_matchers
-                feature_flags.append(evaluation_data_context.feature_flag)
-            except FeatureNotFoundException:
-                _LOGGER.warning(
-                    "%s: you passed \"%s\" that does not exist in this environment, "
-                    "please double check what Feature flags exist in the Split user interface.",
-                    'get_' + method.value,
-                    feature_flag_name
-                )
-                missing.append(feature_flag_name)
+        verified_feature_flags, missing_feature_flag_names, evaluation_contexts = await self._evaluator_data_collector.build_evaluation_context_async(valid_feature_flag_names, bucketing_key, matching_key, method, attributes)
 
-        valid_feature_flag_names = []
-        [valid_feature_flag_names.append(feature_flag.name) for feature_flag in feature_flags]
-        missing_treatments = {name: (CONTROL, None) for name in missing}
+        verified_feature_flag_names = []
+        [verified_feature_flag_names.append(feature_flag.name) for feature_flag in verified_feature_flags]
+        missing_treatments = {name: (CONTROL, None) for name in missing_feature_flag_names}
 
-        evaluation_results = self._make_evaluations(matching_key, bucketing_key, valid_feature_flag_names, feature_flags, condition_matchers, attributes, 'get_' + method.value)
+        evaluation_results = self._make_evaluations(matching_key, bucketing_key, verified_feature_flag_names, verified_feature_flags, evaluation_contexts, attributes, 'get_' + method.value)
 
         try:
             if evaluation_results.impression:

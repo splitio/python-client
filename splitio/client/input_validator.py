@@ -254,31 +254,6 @@ def validate_feature_flag_name(feature_flag_name, method_name):
 
     return _remove_empty_spaces(feature_flag_name, method_name)
 
-
-async def validate_feature_flag_name_async(feature_flag_name, should_validate_existance, feature_flag_storage, method_name):
-    """
-    Check if feature flag name is valid for get_treatment.
-
-    :param feature_flag_name: feature flag name to be checked
-    :type feature_flag_name: str
-    :return: feature_flag_name
-    :rtype: str|None
-    """
-    if not _validate_feature_flag_name(feature_flag_name, method_name):
-        return None
-
-    if should_validate_existance and await feature_flag_storage.get(feature_flag_name) is None:
-        _LOGGER.warning(
-            "%s: you passed \"%s\" that does not exist in this environment, "
-            "please double check what Feature flags exist in the Split user interface.",
-            method_name,
-            feature_flag_name
-        )
-        return None
-
-    return _remove_empty_spaces(feature_flag_name, method_name)
-
-
 def validate_track_key(key):
     """
     Check if key is valid for track.

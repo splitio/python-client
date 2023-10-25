@@ -306,8 +306,19 @@ class PluggableSplitStorage(PluggableSplitStorageBase):
         :rtype: dict(split_name, splitio.models.splits.Split)
         """
         try:
+            to_return = {}
             prefix_added = [self._prefix.format(split_name=split_name) for split_name in split_names]
-            return {split['name']: splits.from_raw(split) for split in self._pluggable_adapter.get_many(prefix_added)}
+            raw_splits = self._pluggable_adapter.get_many(prefix_added)
+            for i in range(len(split_names)):
+                split = None
+                try:
+                    split = splits.from_raw(raw_splits[i])
+                except (ValueError, TypeError):
+                    _LOGGER.error('Could not parse split.')
+                    _LOGGER.debug("Raw split that failed parsing attempt: %s", raw_splits[i])
+                to_return[split_names[i]] = split
+
+            return to_return
         except Exception:
             _LOGGER.error('Error getting split from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -446,8 +457,19 @@ class PluggableSplitStorageAsync(PluggableSplitStorageBase):
         :rtype: dict(split_name, splitio.models.splits.Split)
         """
         try:
+            to_return = {}
             prefix_added = [self._prefix.format(split_name=split_name) for split_name in split_names]
-            return {split['name']: splits.from_raw(split) for split in await self._pluggable_adapter.get_many(prefix_added)}
+            raw_splits = await self._pluggable_adapter.get_many(prefix_added)
+            for i in range(len(split_names)):
+                split = None
+                try:
+                    split = splits.from_raw(raw_splits[i])
+                except (ValueError, TypeError):
+                    _LOGGER.error('Could not parse split.')
+                    _LOGGER.debug("Raw split that failed parsing attempt: %s", raw_splits[i])
+                to_return[split_names[i]] = split
+
+            return to_return
         except Exception:
             _LOGGER.error('Error getting split from storage')
             _LOGGER.debug('Error: ', exc_info=True)
