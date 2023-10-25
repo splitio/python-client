@@ -1,3 +1,7 @@
+9.5.1 (Sep 5, 2023)
+- Exclude tests from when building the package
+- Fixed exception when fetching telemetry stats if no SSE Feature flags update events are stored
+
 9.5.0 (Jul 18, 2023)
 - Improved streaming architecture implementation to apply feature flag updates from the notification received which is now enhanced, improving efficiency and reliability of the whole update system.
 
