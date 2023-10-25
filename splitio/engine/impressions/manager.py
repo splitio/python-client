@@ -1,9 +1,11 @@
 import threading
+from collections import defaultdict, namedtuple
+
 from splitio.util.time import utctime_ms
 from splitio.models.impressions import Impression
 from splitio.engine.hashfns import murmur_128
 from splitio.engine.cache.lru import SimpleLruCache
-from collections import defaultdict, namedtuple
+from splitio.optional.loaders import asyncio
 
 _TIME_INTERVAL_MS = 3600 * 1000  # one hour
 
@@ -146,6 +148,43 @@ class Counter(object):
         :rtype: list[ImpressionCounter.CountPerFeature]
         """
         with self._lock:
+            old = self._data
+            self._data = defaultdict(lambda: 0)
+
+        return [Counter.CountPerFeature(k.feature, k.timeframe, v)
+                for (k, v) in old.items()]
+
+class CounterAsync(object):
+    """Class that counts impressions per timeframe."""
+
+    def __init__(self):
+        """Class constructor."""
+        self._data = defaultdict(lambda: 0)
+        self._lock = asyncio.Lock()
+
+    async def track(self, impressions, inc=1):
+        """
+        Register N new impressions for a feature in a specific timeframe.
+
+        :param impressions: generated impressions
+        :type impressions: list[splitio.models.impressions.Impression]
+
+        :param inc: amount to increment (defaults to 1)
+        :type inc: int
+        """
+        keys = [Counter.CounterKey(i.feature_name, truncate_time(i.time)) for i in impressions]
+        async with self._lock:
+            for key in keys:
+                self._data[key] += inc
+
+    async def pop_all(self):
+        """
+        Clear and return all the counters currently stored.
+
+        :returns: List of count per feature/timeframe objects
+        :rtype: list[ImpressionCounter.CountPerFeature]
+        """
+        async with self._lock:
             old = self._data
             self._data = defaultdict(lambda: 0)
 

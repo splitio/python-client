@@ -20,3 +20,5 @@ async def _anext(it):
 
 if sys.version_info.major < 3 or sys.version_info.minor < 10:
     anext = _anext
+else:
+    anext = anext
