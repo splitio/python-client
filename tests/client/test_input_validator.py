@@ -1004,10 +1004,10 @@ class ClientInputValidationTests(object):
             mocker.call('%s: %s too long - must be %s characters or less.', 'get_treatments_with_config', 'key', 250)
         ]
 
-        def get_condition_matchers(*_):
+        def get_evaluation_contexts(*_):
             return EvaluationDataContext(split_mock, {})
-        old_get_condition_matchers = client._evaluator_data_collector.get_condition_matchers
-        client._evaluator_data_collector.get_condition_matchers = get_condition_matchers
+        old_get_evaluation_contexts = client._evaluator_data_collector.get_evaluation_contexts
+        client._evaluator_data_collector.get_evaluation_contexts = get_evaluation_contexts
 
         _logger.reset_mock()
         assert client.get_treatments_with_config(12345, ['some_feature']) == {'some_feature': ('default_treatment', '{"some": "property"}')}
@@ -1080,7 +1080,7 @@ class ClientInputValidationTests(object):
         ready_mock.return_value = True
         type(factory).ready = ready_mock
         mocker.patch('splitio.client.client._LOGGER', new=_logger)
-        client._evaluator_data_collector.get_condition_matchers = old_get_condition_matchers
+        client._evaluator_data_collector.get_evaluation_contexts = old_get_evaluation_contexts
         assert client.get_treatments('matching_key', ['some_feature'], None) == {'some_feature': CONTROL}
         assert _logger.warning.mock_calls == [
             mocker.call(
@@ -2108,10 +2108,10 @@ class ClientInputValidationAsyncTests(object):
             mocker.call('%s: %s too long - must be %s characters or less.', 'get_treatments_with_config', 'key', 250)
         ]
 
-        async def get_condition_matchers(*_):
+        async def get_evaluation_contexts(*_):
             return EvaluationDataContext(split_mock, {})
-        old_get_condition_matchers = client._evaluator_data_collector.get_condition_matchers
-        client._evaluator_data_collector.get_condition_matchers = get_condition_matchers
+        old_get_evaluation_contexts = client._evaluator_data_collector.get_evaluation_contexts
+        client._evaluator_data_collector.get_evaluation_contexts = get_evaluation_contexts
 
         _logger.reset_mock()
         assert await client.get_treatments_with_config(12345, ['some_feature']) == {'some_feature': ('default_treatment', '{"some": "property"}')}
@@ -2189,7 +2189,7 @@ class ClientInputValidationAsyncTests(object):
         ready_mock.return_value = True
         type(factory).ready = ready_mock
         mocker.patch('splitio.client.client._LOGGER', new=_logger)
-        client._evaluator_data_collector.get_condition_matchers = old_get_condition_matchers
+        client._evaluator_data_collector.get_evaluation_contexts = old_get_evaluation_contexts
         assert await client.get_treatments('matching_key', ['some_feature'], None) == {'some_feature': CONTROL}
         assert _logger.warning.mock_calls == [
             mocker.call(

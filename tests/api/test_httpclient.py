@@ -322,7 +322,7 @@ class HttpClientAsyncTests(object):
         response = await httpclient.post('sdk', 'test1', 'some_api_key', {'p1': 'a'}, {'param1': 123}, {'h1': 'abc'})
         call = mocker.call(
             client.SDK_URL + '/test1',
-            data=b'{"p1": "a"}',
+            json={"p1": "a"},
             headers={'Content-Type': 'application/json', 'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Accept-Encoding': 'gzip'},
             params={'param1': 123},
             timeout=None
@@ -335,7 +335,7 @@ class HttpClientAsyncTests(object):
         response = await httpclient.post('events', 'test1', 'some_api_key', {'p1': 'a'}, {'param1': 123}, {'h1': 'abc'})
         call = mocker.call(
             client.EVENTS_URL + '/test1',
-            data=b'{"p1": "a"}',
+            json={'p1': 'a'},
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json', 'Accept-Encoding': 'gzip'},
             params={'param1': 123},
             timeout=None
@@ -359,7 +359,7 @@ class HttpClientAsyncTests(object):
         response = await httpclient.post('sdk', 'test1', 'some_api_key', {'p1': 'a'}, {'param1': 123}, {'h1': 'abc'})
         call = mocker.call(
             'https://sdk.com' + '/test1',
-            data=b'{"p1": "a"}',
+            json={"p1": "a"},
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json', 'Accept-Encoding': 'gzip'},
             params={'param1': 123},
             timeout=None
@@ -372,7 +372,7 @@ class HttpClientAsyncTests(object):
         response = await httpclient.post('events', 'test1', 'some_api_key', {'p1': 'a'}, {'param1': 123}, {'h1': 'abc'})
         call = mocker.call(
             'https://events.com' + '/test1',
-            data=b'{"p1": "a"}',
+            json={"p1": "a"},
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json', 'Accept-Encoding': 'gzip'},
             params={'param1': 123},
             timeout=None

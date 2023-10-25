@@ -1250,6 +1250,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         except:
             pass
         client = ClientAsync(factory, recorder, True)
+#        pytest.set_trace()
         assert await client.get_treatment('key', 'SPLIT_2') == 'on'
         assert(telemetry_storage._method_latencies._treatment[0] == 1)
         await client.get_treatment_with_config('key', 'SPLIT_2')

@@ -120,7 +120,7 @@ class EvaluatorTests(object):
         mocked_condition_1.matches.return_value = True
         mocked_split = mocker.Mock(spec=Split)
         mocked_split.killed = False
-        condition_matchers = [(True, mocked_condition_1)]
-        treatment, label = e._get_treatment_for_feature_flag(mocked_split, 'some_key', 'some_bucketing', condition_matchers)
+        evaluation_contexts = [(True, mocked_condition_1)]
+        treatment, label = e._get_treatment_for_feature_flag(mocked_split, 'some_key', 'some_bucketing', evaluation_contexts)
         assert treatment == 'on'
         assert label == 'some_label'
