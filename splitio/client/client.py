@@ -638,25 +638,20 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         if not self._client_is_usable():
             return input_validator.generate_control_treatments(features, 'get_' + method.value)
 
-        print("A")
         if not self.ready:
             _LOGGER.error("Client is not ready - no calls possible")
             self._telemetry_init_producer.record_not_ready_usage()
-        print("B")
 
         try:
             key, bucketing, features, attributes = self._validate_treatments_input(key, features, attributes, method)
         except _InvalidInputError:
             return input_validator.generate_control_treatments(features, 'get_' + method.value)
-        print("C")
 
         results = {n: self._NON_READY_EVAL_RESULT for n in features}
         if self.ready:
             try:
                 ctx = await self._context_factory.context_for(key, features)
-                print("D")
                 results = self._evaluator.eval_many_with_context(key, bucketing, features, attributes, ctx)
-                print("E")
             except Exception as e: # toto narrow this
                 _LOGGER.error('Error getting treatment for feature flag')
                 _LOGGER.error(str(e))
