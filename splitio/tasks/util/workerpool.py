@@ -189,7 +189,7 @@ class WorkerPoolAsync(object):
         """
         self.jobs = jobs
         if len(jobs) == 1:
-            wrapped = TaskCompletionWraper(jobs[0])
+            wrapped = TaskCompletionWraper(next(i for i in jobs))
             await self._queue.put(wrapped)
             return wrapped
 
@@ -197,6 +197,7 @@ class WorkerPoolAsync(object):
         for w in tasks:
             await self._queue.put(w)
 
+        print("EEE", tasks)
         return BatchCompletionWrapper(tasks)
 
     async def stop(self, event=None):
@@ -213,6 +214,7 @@ class TaskCompletionWraper:
 
     async def await_completion(self):
         await self._complete.wait()
+        return not self._failed
 
     def _mark_as_complete(self):
         self._complete.set()
