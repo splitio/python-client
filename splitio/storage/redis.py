@@ -89,7 +89,14 @@ class RedisSplitStorage(SplitStorage):
             raw = self._redis.get(self._get_key(feature_flag_name))
             _LOGGER.debug("Fetchting Feature flag [%s] from redis" % feature_flag_name)
             _LOGGER.debug(raw)
-            return splits.from_raw(json.loads(raw)) if raw is not None else None
+            if raw is None:
+                return None
+
+            feature_flag = splits.from_raw(json.loads(raw))
+            if self.flag_set_filter.intersect(feature_flag.sets):
+                return feature_flag
+
+            return None
         except RedisAdapterException:
             _LOGGER.error('Error fetching feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -206,6 +213,9 @@ class RedisSplitStorage(SplitStorage):
         :return: List of feature flag names.
         :rtype: list(str)
         """
+        if self.flag_set_filter.should_filter:
+            return self.get_feature_flags_by_sets(self.flag_set_filter.flag_sets)
+
         try:
             keys = self._redis.keys(self._get_key('*'))
             _LOGGER.debug("Fetchting feature flag names from redis: %s" % keys)
@@ -229,7 +239,12 @@ class RedisSplitStorage(SplitStorage):
         :return: List of all feature flags in cache.
         :rtype: list(splitio.models.splits.Split)
         """
-        keys = self._redis.keys(self._get_key('*'))
+        if self.flag_set_filter.should_filter:
+            keys = self.get_feature_flags_by_sets(self.flag_set_filter.flag_sets)
+        else:
+            keys = self._redis.keys(self._get_key('*'))
+        if keys == []:
+            return []
         to_return = []
         try:
             _LOGGER.debug("Fetchting all feature flags from redis: %s" % keys)
