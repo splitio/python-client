@@ -13,7 +13,7 @@ from splitio.client import input_validator
 from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
 from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.engine.impressions.impressions import Manager as ImpressionManager
-from splitio.engine.evaluator import EvaluationDataContext
+from splitio.engine.evaluator import EvaluationDataFactory
 
 class ClientInputValidationTests(object):
     """Input validation test cases."""

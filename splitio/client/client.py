@@ -21,7 +21,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         'config': None,
         'impression': {
             'label': Label.EXCEPTION,
-            'changeNumber': None,
+            'change_number': None,
         }
     }
 
@@ -126,7 +126,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
                 label=result['impression']['label'] if self._labels_enabled else None,
                 change_number=result['impression']['change_number'],
                 bucketing_key=bucketing,
-                time=start)
+                time=utctime_ms)
 
     def _build_impressions(self, key, bucketing, results, start):
         """Build an impression based on evaluation data & it's result."""
@@ -297,7 +297,9 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
                 result = self._FAILED_EVAL_RESULT
 
         impression = self._build_impression(key, bucketing, feature, result, start)
-        self._record_stats([(impression, attributes)], start, method)
+        if result['treatment'] != CONTROL:
+            self._record_stats([(impression, attributes)], start, method)
+
         return result['treatment'], result['configurations']
 
     def get_treatments(self, key, feature_flag_names, attributes=None):
@@ -359,7 +361,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :rtype: dict
         """
         start = get_current_epoch_time_ms()
-        if self._client_is_usable():
+        if not self._client_is_usable():
             return input_validator.generate_control_treatments(features, 'get_' + method.value)
 
         if not self.ready:
@@ -384,14 +386,14 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
                 results = {n: self._FAILED_EVAL_RESULT for n in features}
 
         imp_attrs = [
-                (self._build_impression(key, bucketing, feature, result, start), attributes)
-                for feature, result in results
+                (self._build_impression(key, bucketing, feature, results[feature], start), attributes)
+                for feature in results
         ]
         self._record_stats(imp_attrs, start, method)
 
         return {
-            feature: (res['treatment'], res['configurations'])
-            for feature, res in results
+            feature: (results[feature]['treatment'], results[feature]['configurations'])
+            for feature in results
         }
 
     def _record_stats(self, impressions, start, operation):
@@ -552,7 +554,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         start = get_current_epoch_time_ms()
         if not self.ready:
             _LOGGER.error("Client is not ready - no calls possible")
-            self._telemetry_init_producer.record_not_ready_usage()
+            await self._telemetry_init_producer.record_not_ready_usage()
 
         try:
             key, bucketing, feature, attributes = self._validate_treatment_input(key, feature, attributes, method)
@@ -568,7 +570,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
                 _LOGGER.error('Error getting treatment for feature flag')
                 _LOGGER.error(str(e))
                 _LOGGER.debug('Error: ', exc_info=True)
-                self._telemetry_evaluation_producer.record_exception(method)
+                await self._telemetry_evaluation_producer.record_exception(method)
                 result = self._FAILED_EVAL_RESULT
 
         impression = self._build_impression(key, bucketing, feature, result, start)
@@ -640,7 +642,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
 
         if not self.ready:
             _LOGGER.error("Client is not ready - no calls possible")
-            self._telemetry_init_producer.record_not_ready_usage()
+            await self._telemetry_init_producer.record_not_ready_usage()
 
         try:
             key, bucketing, features, attributes = self._validate_treatments_input(key, features, attributes, method)
@@ -656,7 +658,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
                 _LOGGER.error('Error getting treatment for feature flag')
                 _LOGGER.error(str(e))
                 _LOGGER.debug('Error: ', exc_info=True)
-                self._telemetry_evaluation_producer.record_exception(method)
+                await self._telemetry_evaluation_producer.record_exception(method)
                 results = {n: self._FAILED_EVAL_RESULT for n in features}
 
         imp_attrs = [(i, attributes) for i in self._build_impressions(key, bucketing, results, start)]

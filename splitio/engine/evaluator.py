@@ -98,7 +98,7 @@ class EvaluationDataFactory:
     def __init__(self, split_storage, segment_storage):
         self._flag_storage = split_storage
         self._segment_storage = segment_storage
-        
+
     def context_for(self, key, feature_names):
         """
         Recursively iterate & fetch all data required to evaluate these flags.

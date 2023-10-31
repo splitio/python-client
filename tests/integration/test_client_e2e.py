@@ -148,6 +148,7 @@ class InMemoryIntegrationTests(object):
         self._validate_last_impressions(client)  # No impressions should be present
 
         #  testing Dependency matcher
+#        pytest.set_trace()
         assert client.get_treatment('somekey', 'dependency_test') == 'off'
         self._validate_last_impressions(client, ('dependency_test', 'somekey', 'off'))
 
