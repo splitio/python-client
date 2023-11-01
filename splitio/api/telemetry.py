@@ -76,6 +76,7 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
                 'Error posting init config because an exception was raised by the HTTPClient'
             )
             _LOGGER.debug('Error: ', exc_info=True)
+            raise APIException('Init config data not flushed properly.') from exc
 
     def record_stats(self, stats):
         """
