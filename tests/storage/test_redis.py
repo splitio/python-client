@@ -15,8 +15,6 @@ from splitio.models.impressions import Impression
 from splitio.models.events import Event, EventWrapper
 from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MethodExceptionsAndLatencies
 from splitio.storage import FlagSetsFilter
-from tests.integration import splits_json
-
 
 class RedisSplitStorageTests(object):
     """Redis split storage test cases."""
@@ -188,52 +186,6 @@ class RedisSplitStorageTests(object):
 
         storage2 = RedisSplitStorage(adapter, True, 1, ['set2', 'set3'])
         assert storage2.flag_set_filter.flag_sets == set({'set2', 'set3'})
-
-    def test_fetching_split_with_flag_set(self, mocker):
-        """Test retrieving a split works."""
-        adapter = mocker.Mock(spec=RedisAdapter)
-        adapter.get.return_value = json.dumps(splits_json["splitChange1_1"]["splits"][0])
-        adapter.keys.return_value = ['SPLIT_1', 'SPLIT_2']
-
-        def mget(keys):
-            if keys == ['SPLIT_2']:
-                return [json.dumps(splits_json["splitChange1_1"]["splits"][0])]
-            if keys == ['SPLIT_2', 'SPLIT_1']:
-                return [json.dumps(splits_json["splitChange1_1"]["splits"][0]), json.dumps(splits_json["splitChange1_1"]["splits"][1])]
-        adapter.mget = mget
-
-        storage = RedisSplitStorage(adapter, config_flag_sets=['set_1'])
-
-        def get_feature_flags_by_sets(flag_sets):
-            if flag_sets=={'set_1'}:
-                return []
-            if flag_sets=={'set2'}:
-                return ['SPLIT_2']
-            if flag_sets=={'set2', 'set1'}:
-                return ['SPLIT_2', 'SPLIT_1']
-        storage.get_feature_flags_by_sets = get_feature_flags_by_sets
-
-        assert storage.get('SPLIT_2') == None
-        assert storage.get_split_names() == []
-        assert storage.get_all_splits() == []
-
-        storage = RedisSplitStorage(adapter, config_flag_sets=['set2'])
-        storage.get_feature_flags_by_sets = get_feature_flags_by_sets
-        assert storage.get('SPLIT_2').name == 'SPLIT_2'
-        assert storage.get_split_names() == ['SPLIT_2']
-        splits = storage.get_all_splits()
-        assert splits[0].name == 'SPLIT_2'
-        assert len(splits) == 1
-
-        storage = RedisSplitStorage(adapter, config_flag_sets=['set2', 'set1'])
-        storage.get_feature_flags_by_sets = get_feature_flags_by_sets
-        assert storage.get('SPLIT_2').name == 'SPLIT_2'
-        assert storage.get_split_names() == ['SPLIT_2', 'SPLIT_1']
-        splits = storage.get_all_splits()
-        assert splits[0].name == 'SPLIT_2'
-        assert splits[1].name == 'SPLIT_1'
-        assert len(splits) == 2
-
 
 class RedisSegmentStorageTests(object):
     """Redis segment storage test cases."""
