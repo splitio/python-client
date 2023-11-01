@@ -1,6 +1,5 @@
 """Base storage interfaces."""
 import abc
-import threading
 
 class SplitStorage(object, metaclass=abc.ABCMeta):
     """Split storage interface implemented as an abstract class."""

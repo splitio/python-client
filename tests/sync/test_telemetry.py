@@ -111,7 +111,7 @@ class TelemetrySubmitterTests(object):
                                         'activeFactoryCount': 1,
                                         'notReady': 0,
                                         'timeUntilReady': 1
-                                       }, {}
+                                       }, {}, 0, 0
         )
         self.formatted_config = ""
         def record_init(*args, **kwargs):

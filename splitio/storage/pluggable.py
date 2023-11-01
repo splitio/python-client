@@ -795,7 +795,7 @@ class PluggableTelemetryStorage(TelemetryStorage):
             if len(self._config_tags) < MAX_TAGS:
                 self._config_tags.append(tag)
 
-    def record_config(self, config, extra_config):
+    def record_config(self, config, extra_config, total_flag_sets, invalid_flag_sets):
         """
         initilize telemetry objects
 
@@ -804,15 +804,7 @@ class PluggableTelemetryStorage(TelemetryStorage):
         :param extra_config: any extra configs
         :type extra_config: Dict
         """
-        self._tel_config.record_config(config, extra_config)
-
-    def record_flag_sets(self, flag_sets):
-            """Record flag sets."""
-            self._tel_config.record_flag_sets(flag_sets)
-
-    def record_invalid_flag_sets(self, flag_sets):
-        """Record invalid flag sets."""
-        self._tel_config.record_invalid_flag_sets(flag_sets)
+        self._tel_config.record_config(config, extra_config, total_flag_sets, invalid_flag_sets)
 
     def pop_config_tags(self):
         """Get and reset configs."""
@@ -833,9 +825,7 @@ class PluggableTelemetryStorage(TelemetryStorage):
             'rF': config_stats['rF'],
             'sT': config_stats['sT'],
             'oM': config_stats['oM'],
-            't': self.pop_config_tags(),
-            'fsT': self._tel_config.get_flag_sets(),
-            'fsI': self._tel_config.get_invalid_flag_sets()
+            't': self.pop_config_tags()
         })
 
     def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):

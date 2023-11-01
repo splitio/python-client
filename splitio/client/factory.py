@@ -69,9 +69,6 @@ _INSTANTIATED_FACTORIES = Counter()
 _INSTANTIATED_FACTORIES_LOCK = threading.RLock()
 _MIN_DEFAULT_DATA_SAMPLING_ALLOWED = 0.1  # 10%
 _MAX_RETRY_SYNC_ALL = 3
-_FLAG_SETS_LOCK = threading.RLock()
-_TOTAL_FLAG_SETS = 0
-_INVALID_FLAG_SETS = 0
 
 
 class Status(Enum):
@@ -315,7 +312,8 @@ def _wrap_impression_listener(listener, metadata):
 
 
 def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pylint:disable=too-many-arguments,too-many-locals
-                             auth_api_base_url=None, streaming_api_base_url=None, telemetry_api_base_url=None):
+                             auth_api_base_url=None, streaming_api_base_url=None, telemetry_api_base_url=None,
+                             total_flag_sets=0, invalid_flag_sets=0):
     """Build and return a split factory tailored to the supplied config."""
     if not input_validator.validate_factory_instantiation(api_key):
         return None
@@ -419,10 +417,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         telemetry_evaluation_producer
     )
 
-    telemetry_init_producer.record_config(cfg, extra_cfg)
-    total_flag_sets, invalid_flag_sets = _get_total_and_invalid_flag_sets()
-    telemetry_init_producer.record_flag_sets(total_flag_sets)
-    telemetry_init_producer.record_invalid_flag_sets(invalid_flag_sets)
+    telemetry_init_producer.record_config(cfg, extra_cfg, total_flag_sets, invalid_flag_sets)
 
     if preforked_initialization:
         synchronizer.sync_all(max_retry_attempts=_MAX_RETRY_SYNC_ALL)
@@ -501,7 +496,7 @@ def _build_redis_factory(api_key, cfg):
     initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
     initialization_thread.start()
 
-    telemetry_init_producer.record_config(cfg, {})
+    telemetry_init_producer.record_config(cfg, {}, 0, 0)
 
     split_factory = SplitFactory(
         api_key,
@@ -514,10 +509,7 @@ def _build_redis_factory(api_key, cfg):
         telemetry_init_producer=telemetry_init_producer
     )
     redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
-    total_flag_sets, invalid_flag_sets = _get_total_and_invalid_flag_sets()
     storages['telemetry'].record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
-    storages['telemetry'].record_flag_sets(total_flag_sets)
-    storages['telemetry'].record_invalid_flag_sets(invalid_flag_sets)
     telemetry_submitter.synchronize_config()
 
     return split_factory
@@ -582,7 +574,7 @@ def _build_pluggable_factory(api_key, cfg):
     initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
     initialization_thread.start()
 
-    telemetry_init_producer.record_config(cfg, {})
+    telemetry_init_producer.record_config(cfg, {}, 0, 0)
 
     split_factory = SplitFactory(
         api_key,
@@ -595,10 +587,7 @@ def _build_pluggable_factory(api_key, cfg):
         telemetry_init_producer=telemetry_init_producer
     )
     redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
-    total_flag_sets, invalid_flag_sets = _get_total_and_invalid_flag_sets()
     storages['telemetry'].record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
-    storages['telemetry'].record_flag_sets(total_flag_sets)
-    storages['telemetry'].record_invalid_flag_sets(invalid_flag_sets)
     telemetry_submitter.synchronize_config()
 
     return split_factory
@@ -697,13 +686,11 @@ def get_factory(api_key, **kwargs):
     _INSTANTIATED_FACTORIES_LOCK.release()
 
     config_raw = kwargs.get('config', {})
+    total_flag_sets = 0
+    invalid_flag_sets = 0
     if config_raw.get('flagSetsFilter') is not None and isinstance(config_raw.get('flagSetsFilter'), list):
-        global _TOTAL_FLAG_SETS
-        global _INVALID_FLAG_SETS
-        _FLAG_SETS_LOCK.acquire()
-        _TOTAL_FLAG_SETS = len(config_raw.get('flagSetsFilter'))
-        _INVALID_FLAG_SETS = _TOTAL_FLAG_SETS - len(input_validator.validate_flag_sets(config_raw.get('flagSetsFilter'), 'Telemetry Init'))
-        _FLAG_SETS_LOCK.release()
+        total_flag_sets = len(config_raw.get('flagSetsFilter'))
+        invalid_flag_sets = total_flag_sets - len(input_validator.validate_flag_sets(config_raw.get('flagSetsFilter'), 'Telemetry Init'))
 
     config = sanitize_config(api_key, config_raw)
 
@@ -721,7 +708,9 @@ def get_factory(api_key, **kwargs):
         kwargs.get('events_api_base_url'),
         kwargs.get('auth_api_base_url'),
         kwargs.get('streaming_api_base_url'),
-        kwargs.get('telemetry_api_base_url'))
+        kwargs.get('telemetry_api_base_url'),
+        total_flag_sets,
+        invalid_flag_sets)
 
     return split_factory
 
@@ -734,12 +723,3 @@ def _get_active_and_redundant_count():
         active_factory_count += _INSTANTIATED_FACTORIES[item]
     _INSTANTIATED_FACTORIES_LOCK.release()
     return redundant_factory_count, active_factory_count
-
-def _get_total_and_invalid_flag_sets():
-    total_flag_sets = 0
-    invalid_flag_sets = 0
-    _FLAG_SETS_LOCK.acquire()
-    total_flag_sets = _TOTAL_FLAG_SETS
-    invalid_flag_sets = _INVALID_FLAG_SETS
-    _FLAG_SETS_LOCK.release()
-    return total_flag_sets, invalid_flag_sets
