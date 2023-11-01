@@ -40,7 +40,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property = mocker.PropertyMock()
         destroyed_property.return_value = False
 
-        mocker.patch('splitio.client.client.utctime_ms', new=1000)
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
@@ -128,7 +128,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
 
-        mocker.patch('splitio.client.client.utctime_ms', new=1000)
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         split_storage.put(from_raw(splits_json['splitChange1_1']['splits'][0]))
@@ -204,7 +204,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
 
-        mocker.patch('splitio.client.client.utctime_ms', new=1000)
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         client = Client(factory, recorder, True)
@@ -280,7 +280,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
 
-        mocker.patch('splitio.client.client.utctime_ms', new=1000)
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         client = Client(factory, recorder, True)
@@ -515,7 +515,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property = mocker.PropertyMock()
         destroyed_property.return_value = False
 
-        mocker.patch('splitio.client.client.utctime_ms', new=1000)
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         impmanager = mocker.Mock(spec=ImpressionManager)
@@ -593,7 +593,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property = mocker.PropertyMock()
         destroyed_property.return_value = False
 
-        mocker.patch('splitio.client.client.utctime_ms', new=1000)
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda:1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         factory = SplitFactory(mocker.Mock(),
@@ -641,7 +641,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property = mocker.PropertyMock()
         destroyed_property.return_value = False
 
-        mocker.patch('splitio.client.client.utctime_ms', new=1000)
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         impmanager = mocker.Mock(spec=ImpressionManager)
@@ -695,7 +695,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property = mocker.PropertyMock()
         destroyed_property.return_value = False
 
-        mocker.patch('splitio.client.client.utctime_ms', new=1000)
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         factory = SplitFactoryAsync(mocker.Mock(),
@@ -783,7 +783,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
 
-        mocker.patch('splitio.client.client.utctime_ms', new=1000)
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         await factory.block_until_ready(1)
@@ -859,7 +859,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
 
-        mocker.patch('splitio.client.client.utctime_ms', new=1000)
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         await factory.block_until_ready(1)
@@ -937,7 +937,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
 
-        mocker.patch('splitio.client.client.utctime_ms', new=1000)
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         await factory.block_until_ready(1)
@@ -1163,7 +1163,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property = mocker.PropertyMock()
         destroyed_property.return_value = False
 
-        mocker.patch('splitio.client.client.utctime_ms', new=1000)
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         factory = SplitFactoryAsync(mocker.Mock(),
@@ -1184,33 +1184,29 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
 
-        await factory.block_until_ready(1)
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = True
+        type(factory).ready = ready_property
+ 
         client = ClientAsync(factory, recorder, True)
+        client._evaluator = mocker.Mock()
         def _raise(*_):
             raise Exception('something')
+        client._evaluator.eval_with_context.side_effect = _raise
         client._evaluator.eval_many_with_context.side_effect = _raise
 
-        try:
-            await client.get_treatment('key', 'SPLIT_2')
-        except:
-            pass
+        await client.get_treatment('key', 'SPLIT_2')
         assert(telemetry_storage._method_exceptions._treatment == 1)
-        try:
-            await client.get_treatment_with_config('key', 'SPLIT_2')
-        except:
-            pass
+
+        await client.get_treatment_with_config('key', 'SPLIT_2')
         assert(telemetry_storage._method_exceptions._treatment_with_config == 1)
-        client._eval_many_with_context_if_ready = _raise
-        try:
-            await client.get_treatments('key', ['SPLIT_2'])
-        except:
-            pass
+
+        await client.get_treatments('key', ['SPLIT_2'])
         assert(telemetry_storage._method_exceptions._treatments == 1)
-        try:
-            await client.get_treatments_with_config('key', ['SPLIT_2'])
-        except:
-            pass
+
+        await client.get_treatments_with_config('key', ['SPLIT_2'])
         assert(telemetry_storage._method_exceptions._treatments_with_config == 1)
+
         await factory.destroy()
 
     @pytest.mark.asyncio
@@ -1228,7 +1224,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property = mocker.PropertyMock()
         destroyed_property.return_value = False
 
-        mocker.patch('splitio.client.client.utctime_ms', new=1000)
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         factory = SplitFactoryAsync(mocker.Mock(),

@@ -54,7 +54,7 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
                 label = Label.KILLED
                 _treatment = feature.default_treatment
             else:
-                treatment, label = self.treatment_for_flag(feature, key, bucketing, attrs, ctx)
+                treatment, label = self._treatment_for_flag(feature, key, bucketing, attrs, ctx)
                 if treatment is None:
                     label = Label.NO_CONDITION_MATCHED
                     _treatment = feature.default_treatment
@@ -70,7 +70,7 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
             }
         }
 
-    def treatment_for_flag(self, flag, key, bucketing, attributes, ctx):
+    def _treatment_for_flag(self, flag, key, bucketing, attributes, ctx):
         """
         ...
         """
@@ -92,6 +92,8 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
 
                 return self._splitter.get_treatment(bucketing, flag.seed, condition.partitions, flag.algo), condition.label
 
+        raise Exception('invalid split')
+
 
 class EvaluationDataFactory:
 
@@ -112,7 +114,8 @@ class EvaluationDataFactory:
         splits = {}
         pending_memberships = set()
         while pending:
-            features = self._flag_storage.fetch_many(pending)
+            fetched = self._flag_storage.fetch_many(list(pending))
+            features = filter_missing(fetched)
             splits.update(features)
             pending = set()
             for feature in features.values():
@@ -145,7 +148,8 @@ class AsyncEvaluationDataFactory:
         splits = {}
         pending_memberships = set()
         while pending:
-            features = await self._flag_storage.fetch_many(pending)
+            fetched = await self._flag_storage.fetch_many(list(pending))
+            features = filter_missing(fetched)
             splits.update(features)
             pending = set()
             for feature in features.values():
@@ -176,3 +180,6 @@ def get_dependencies(feature):
                 feature_names.append(matcher._split_name)
 
     return feature_names, segment_names
+
+def filter_missing(features):
+    return {k: v for (k, v) in features.items() if v is not None}

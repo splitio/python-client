@@ -117,7 +117,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         return matching_key, bucketing_key, features, attributes
 
 
-    def _build_impression(self, key, bucketing, feature, result, start):
+    def _build_impression(self, key, bucketing, feature, result):
         """Build an impression based on evaluation data & it's result."""
         return Impression(
                 matching_key=key,
@@ -126,12 +126,12 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
                 label=result['impression']['label'] if self._labels_enabled else None,
                 change_number=result['impression']['change_number'],
                 bucketing_key=bucketing,
-                time=utctime_ms)
+                time=utctime_ms())
 
-    def _build_impressions(self, key, bucketing, results, start):
+    def _build_impressions(self, key, bucketing, results):
         """Build an impression based on evaluation data & it's result."""
         return [
-            self._build_impression(key, bucketing, feature, result, start)
+            self._build_impression(key, bucketing, feature, result)
             for feature, result in results.items()
         ]
 
@@ -296,8 +296,8 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
                 self._telemetry_evaluation_producer.record_exception(method)
                 result = self._FAILED_EVAL_RESULT
 
-        impression = self._build_impression(key, bucketing, feature, result, start)
-        if result['treatment'] != CONTROL:
+        if result['impression']['label'] != Label.SPLIT_NOT_FOUND:
+            impression = self._build_impression(key, bucketing, feature, result)
             self._record_stats([(impression, attributes)], start, method)
 
         return result['treatment'], result['configurations']
@@ -385,9 +385,10 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
                 self._telemetry_evaluation_producer.record_exception(method)
                 results = {n: self._FAILED_EVAL_RESULT for n in features}
 
+
         imp_attrs = [
-                (self._build_impression(key, bucketing, feature, results[feature], start), attributes)
-                for feature in results
+            (i, attributes) for i in self._build_impressions(key, bucketing, results)
+            if i.label != Label.SPLIT_NOT_FOUND
         ]
         self._record_stats(imp_attrs, start, method)
 
@@ -573,8 +574,9 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
                 await self._telemetry_evaluation_producer.record_exception(method)
                 result = self._FAILED_EVAL_RESULT
 
-        impression = self._build_impression(key, bucketing, feature, result, start)
-        await self._record_stats([(impression, attributes)], start, method)
+        if result['impression']['label'] != Label.SPLIT_NOT_FOUND:
+            impression = self._build_impression(key, bucketing, feature, result)
+            await self._record_stats([(impression, attributes)], start, method)
         return result['treatment'], result['configurations']
 
     async def get_treatments(self, key, feature_flag_names, attributes=None):
@@ -661,7 +663,10 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
                 await self._telemetry_evaluation_producer.record_exception(method)
                 results = {n: self._FAILED_EVAL_RESULT for n in features}
 
-        imp_attrs = [(i, attributes) for i in self._build_impressions(key, bucketing, results, start)]
+        imp_attrs = [
+            (i, attributes) for i in self._build_impressions(key, bucketing, results)
+            if i.label != Label.SPLIT_NOT_FOUND
+        ]
         await self._record_stats(imp_attrs, start, method)
 
         return {
