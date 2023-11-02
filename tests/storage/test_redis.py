@@ -413,7 +413,7 @@ class RedisTelemetryStorageTests(object):
     @mock.patch('splitio.models.telemetry.TelemetryConfig.record_config')
     def test_record_config(self, mocker):
         redis_telemetry = RedisTelemetryStorage(mocker.Mock(), mocker.Mock())
-        redis_telemetry.record_config(mocker.Mock(), mocker.Mock())
+        redis_telemetry.record_config(mocker.Mock(), mocker.Mock(), 0, 0)
         assert(mocker.called)
 
     @mock.patch('splitio.storage.adapters.redis.RedisAdapter.hset')
@@ -432,8 +432,6 @@ class RedisTelemetryStorageTests(object):
             'rF': stats['rF'],
             'sT': stats['sT'],
             'oM': stats['oM'],
-            'fsT': redis_telemetry._tel_config.get_flag_sets(),
-            'fsI': redis_telemetry._tel_config.get_invalid_flag_sets(),
             't': redis_telemetry.pop_config_tags(),
         }))
 

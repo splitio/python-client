@@ -673,12 +673,12 @@ class PluggableTelemetryStorageTests(object):
             pluggable_telemetry_storage = PluggableTelemetryStorage(self.mock_adapter, self.sdk_metadata, prefix=sprefix)
             self.config = {}
             self.extra_config = {}
-            def record_config_mock(config, extra_config):
+            def record_config_mock(config, extra_config, fs, ifs):
                 self.config = config
                 self.extra_config = extra_config
 
             pluggable_telemetry_storage.record_config = record_config_mock
-            pluggable_telemetry_storage.record_config({'item': 'value'}, {'item2': 'value2'})
+            pluggable_telemetry_storage.record_config({'item': 'value'}, {'item2': 'value2'}, 0, 0)
             assert(self.config == {'item': 'value'})
             assert(self.extra_config == {'item2': 'value2'})
 
@@ -764,10 +764,8 @@ class PluggableTelemetryStorageTests(object):
                     'eventsPushRate': 60,
                     'metricsRefreshRate': 10,
                     'storageType': None
-                    }, {}
+                    }, {}, 0, 0
             )
             pluggable_telemetry_storage.record_active_and_redundant_factories(2, 1)
-            pluggable_telemetry_storage.record_flag_sets(3)
-            pluggable_telemetry_storage.record_invalid_flag_sets(1)
             pluggable_telemetry_storage.push_config_stats()
-            assert(self.mock_adapter._keys[pluggable_telemetry_storage._telemetry_config_key + "::" + pluggable_telemetry_storage._sdk_metadata] == '{"aF": 2, "rF": 1, "sT": "memory", "oM": 0, "t": [], "fsT": 3, "fsI": 1}')
+            assert(self.mock_adapter._keys[pluggable_telemetry_storage._telemetry_config_key + "::" + pluggable_telemetry_storage._sdk_metadata] == '{"aF": 2, "rF": 1, "sT": "memory", "oM": 0, "t": []}')

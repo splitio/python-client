@@ -316,7 +316,7 @@ class TelemetryModelTests(object):
                   'storageType': None,
                   'flagSetsFilter': None
                 }
-        telemetry_config.record_config(config, {})
+        telemetry_config.record_config(config, {}, 5, 2)
         assert(telemetry_config.get_stats() == {'oM': 0,
             'sT': telemetry_config._get_storage_type(config['operationMode'], config['storageType']),
             'sE': config['streamingEnabled'],
@@ -332,15 +332,12 @@ class TelemetryModelTests(object):
             'bT': 0,
             'aF': 0,
             'rF': 0,
-            'fsT': 0,
-            'fsI': 0}
+            'fsT': 5,
+            'fsI': 2}
             )
 
         telemetry_config.record_ready_time(10)
         assert(telemetry_config._time_until_ready == 10)
-
-        telemetry_config.record_flag_sets(5)
-        assert(telemetry_config._flag_sets == 5)
 
         assert(telemetry_config.get_bur_time_outs() == 0)
         [telemetry_config.record_bur_time_out() for i in range(2)]
@@ -349,9 +346,6 @@ class TelemetryModelTests(object):
         assert(telemetry_config.get_non_ready_usage() == 0)
         [telemetry_config.record_not_ready_usage() for i in range(5)]
         assert(telemetry_config.get_non_ready_usage() == 5)
-
-        telemetry_config.record_invalid_flag_sets(2)
-        assert(telemetry_config._flag_sets_invalid == 2)
 
         os.environ["https_proxy"] = "some_host_ip"
         assert(telemetry_config._check_if_proxy_detected() == True)

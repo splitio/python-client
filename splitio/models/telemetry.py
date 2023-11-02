@@ -796,7 +796,7 @@ class TelemetryConfig(object):
             self._flag_sets = 0
             self._flag_sets_invalid = 0
 
-    def record_config(self, config, extra_config):
+    def record_config(self, config, extra_config, total_flag_sets, invalid_flag_sets):
         """
         Record configurations.
 
@@ -829,31 +829,13 @@ class TelemetryConfig(object):
             self._impressions_mode = self._get_impressions_mode(config[_ConfigParams.IMPRESSIONS_MODE.value])
             self._impression_listener = True if config[_ConfigParams.IMPRESSIONS_LISTENER.value] is not None else False
             self._http_proxy = self._check_if_proxy_detected()
+            self._flag_sets = total_flag_sets
+            self._flag_sets_invalid = invalid_flag_sets
 
     def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
         with self._lock:
             self._active_factory_count = active_factory_count
             self._redundant_factory_count = redundant_factory_count
-
-    def record_flag_sets(self, flag_sets):
-        """
-        Record flag sets
-
-        :param flag_sets: flag sets count
-        :type flag_sets: int
-        """
-        with self._lock:
-            self._flag_sets = flag_sets
-
-    def record_invalid_flag_sets(self, flag_sets):
-        """
-        Record invalid flag sets
-
-        :param flag_sets: flag sets count
-        :type flag_sets: int
-        """
-        with self._lock:
-            self._flag_sets_invalid = flag_sets
 
     def record_ready_time(self, ready_time):
         """
@@ -880,22 +862,6 @@ class TelemetryConfig(object):
         """
         with self._lock:
             self._not_ready += 1
-
-    def get_flag_sets(self):
-        """
-        Get flag sets
-
-        """
-        with self._lock:
-            return self._flag_sets
-
-    def get_invalid_flag_sets(self):
-        """
-        Get invalid flag sets
-
-        """
-        with self._lock:
-            return self._flag_sets_invalid
 
     def get_bur_time_outs(self):
         """

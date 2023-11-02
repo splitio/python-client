@@ -641,10 +641,8 @@ class InMemoryTelemetryStorageTests(object):
                   'metricsRefreshRate': 10,
                   'storageType': None
                   }
-        storage.record_config(config, {})
+        storage.record_config(config, {}, 2, 1)
         storage.record_active_and_redundant_factories(1, 0)
-        storage.record_flag_sets(2)
-        storage.record_invalid_flag_sets(1)
         assert(storage._tel_config.get_stats() == {'oM': 0,
             'sT': storage._tel_config._get_storage_type(config['operationMode'], config['storageType']),
             'sE': config['streamingEnabled'],

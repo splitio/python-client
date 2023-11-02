@@ -1,7 +1,6 @@
 """Default settings for the Split.IO SDK Python client."""
 import os.path
 import logging
-import re
 
 from splitio.engine.impressions import ImpressionsMode
 from splitio.client.input_validator import validate_flag_sets

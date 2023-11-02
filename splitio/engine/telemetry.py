@@ -36,9 +36,9 @@ class TelemetryInitProducer(object):
         """Constructor."""
         self._telemetry_storage = telemetry_storage
 
-    def record_config(self, config, extra_config):
+    def record_config(self, config, extra_config, total_flag_sets=0, invalid_flag_sets=0):
         """Record configurations."""
-        self._telemetry_storage.record_config(config, extra_config)
+        self._telemetry_storage.record_config(config, extra_config, total_flag_sets, invalid_flag_sets)
         current_app, app_worker_id = self._get_app_worker_id()
         if  current_app is not None:
             self.add_config_tag("initilization:" + current_app)

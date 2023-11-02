@@ -35,10 +35,8 @@ class TelemetryStorageProducerTests(object):
             'metricsRefreshRate': 10,
             'storageType': None
         }
-        telemetry_init_producer.record_config(config, {})
+        telemetry_init_producer.record_config(config, {}, 5, 2)
         telemetry_init_producer.record_active_and_redundant_factories(1, 0)
-        telemetry_init_producer.record_flag_sets(5)
-        telemetry_init_producer.record_invalid_flag_sets(2)
 
         assert(telemetry_storage._tel_config.get_stats() == {'oM': 0,
             'sT': telemetry_storage._tel_config._get_storage_type(config['operationMode'], config['storageType']),
