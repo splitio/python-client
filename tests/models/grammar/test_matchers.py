@@ -14,7 +14,7 @@ from splitio.models.grammar import matchers
 from splitio.models import splits
 from splitio.models.grammar import condition
 from splitio.storage import SegmentStorage
-from splitio.engine.evaluator import Evaluator
+from splitio.engine.evaluator import Evaluator, EvaluationContext
 from tests.integration import splits_json
 
 class MatcherTestsBase(object):
@@ -403,10 +403,9 @@ class UserDefinedSegmentMatcherTests(MatcherTestsBase):
         matcher = matchers.UserDefinedSegmentMatcher(self.raw)
 
         # Test that if the key if the storage wrapper finds the key in the segment, it matches.
-        assert matcher.evaluate('some_key', {}, {'segment_matchers':{'some_segment': True} }) is True
-
+        assert matcher.evaluate('some_key', {}, {'evaluator': None, 'ec': EvaluationContext([],{'some_segment': True})}) is True
         # Test that if the key if the storage wrapper doesn't find the key in the segment, it fails.
-        assert matcher.evaluate('some_key', {}, {'segment_matchers':{'some_segment': False}}) is False
+        assert matcher.evaluate('some_key', {}, {'evaluator': None, 'ec': EvaluationContext([], {'some_segment': False})}) is False
 
     def test_to_json(self):
         """Test that the object serializes to JSON properly."""
@@ -781,21 +780,21 @@ class DependencyMatcherTests(MatcherTestsBase):
         cond = condition.from_raw(splits_json["splitChange1_1"]["splits"][0]['conditions'][0])
         split = splits.from_raw(splits_json["splitChange1_1"]["splits"][0])
 
-        evaluator.evaluate_feature.return_value = {'treatment': 'on'}
-        assert parsed.evaluate('SPLIT_2', {}, {'bucketing_key': 'buck', 'evaluator': evaluator, 'dependent_splits': [(split, [cond])]}) is True
+        evaluator.eval_with_context.return_value = {'treatment': 'on'}
+        assert parsed.evaluate('SPLIT_2', {}, {'evaluator': evaluator, 'ec': [{'flags': [split], 'segment_memberships': {}}]}) is True
 
-        evaluator.evaluate_feature.return_value = {'treatment': 'off'}
-        assert parsed.evaluate('SPLIT_2', {}, {'bucketing_key': 'buck', 'evaluator': evaluator, 'dependent_splits': [(split, [cond])]}) is False
+        evaluator.eval_with_context.return_value = {'treatment': 'off'}
+        assert parsed.evaluate('SPLIT_2', {}, {'evaluator': evaluator, 'ec': [{'flags': [split], 'segment_memberships': {}}]}) is False
 
-        assert evaluator.evaluate_feature.mock_calls == [
-            mocker.call(split, 'SPLIT_2', 'buck', [cond]),
-            mocker.call(split, 'SPLIT_2', 'buck', [cond])
+        assert evaluator.eval_with_context.mock_calls == [
+            mocker.call('SPLIT_2', None, 'SPLIT_2', {}, [{'flags': [split], 'segment_memberships': {}}]),
+            mocker.call('SPLIT_2', None, 'SPLIT_2', {}, [{'flags': [split], 'segment_memberships': {}}])
         ]
 
-        assert parsed.evaluate([], {}, {'bucketing_key': 'buck', 'evaluator': evaluator, 'dependent_splits': [(split, [cond])]}) is False
-        assert parsed.evaluate({}, {}, {'bucketing_key': 'buck', 'evaluator': evaluator, 'dependent_splits': [(split, [cond])]}) is False
-        assert parsed.evaluate(123, {}, {'bucketing_key': 'buck', 'evaluator': evaluator, 'dependent_splits': [(split, [cond])]}) is False
-        assert parsed.evaluate(object(), {}, {'bucketing_key': 'buck', 'evaluator': evaluator, 'dependent_splits': [(split, [cond])]}) is False
+        assert parsed.evaluate([], {}, {'evaluator': evaluator, 'ec': [{'flags': [split], 'segment_memberships': {}}]}) is False
+        assert parsed.evaluate({}, {}, {'evaluator': evaluator, 'ec': [{'flags': [split], 'segment_memberships': {}}]}) is False
+        assert parsed.evaluate(123, {}, {'evaluator': evaluator, 'ec': [{'flags': [split], 'segment_memberships': {}}]}) is False
+        assert parsed.evaluate(object(), {}, {'evaluator': evaluator, 'ec': [{'flags': [split], 'segment_memberships': {}}]}) is False
 
     def test_to_json(self):
         """Test that the object serializes to JSON properly."""

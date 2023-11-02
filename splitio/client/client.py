@@ -93,7 +93,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         if not feature:
             raise _InvalidInputError()
 
-        if not input_validator.validate_attributes(attributes, method):
+        if not input_validator.validate_attributes(attributes, 'get_' + method.value):
             raise _InvalidInputError()
 
         return matching_key, bucketing_key, feature, attributes
@@ -288,6 +288,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         if self.ready:
             try:
                 ctx = self._context_factory.context_for(key, [feature])
+                input_validator.validate_feature_flag_names({feature: ctx.flags.get(feature)}, 'get_' + method.value)
                 result = self._evaluator.eval_with_context(key, bucketing, feature, attributes, ctx)
             except Exception as e: # toto narrow this
                 _LOGGER.error('Error getting treatment for feature flag')
@@ -362,7 +363,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         """
         start = get_current_epoch_time_ms()
         if not self._client_is_usable():
-            return input_validator.generate_control_treatments(features, 'get_' + method.value)
+            return input_validator.generate_control_treatments(features)
 
         if not self.ready:
             _LOGGER.error("Client is not ready - no calls possible")
@@ -371,12 +372,13 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         try:
             key, bucketing, features, attributes = self._validate_treatments_input(key, features, attributes, method)
         except _InvalidInputError:
-            return CONTROL, None
+            return input_validator.generate_control_treatments(features)
 
         results = {n: self._NON_READY_EVAL_RESULT for n in features}
         if self.ready:
             try:
                 ctx = self._context_factory.context_for(key, features)
+                input_validator.validate_feature_flag_names({feature: ctx.flags.get(feature) for feature in features}, 'get_' + method.value)
                 results = self._evaluator.eval_many_with_context(key, bucketing, features, attributes, ctx)
             except Exception as e: # toto narrow this
                 _LOGGER.error('Error getting treatment for feature flag')
@@ -566,6 +568,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         if self.ready:
             try:
                 ctx = await self._context_factory.context_for(key, [feature])
+                input_validator.validate_feature_flag_names({feature: ctx.flags.get(feature)}, 'get_' + method.value)
                 result = self._evaluator.eval_with_context(key, bucketing, feature, attributes, ctx)
             except Exception as e: # toto narrow this
                 _LOGGER.error('Error getting treatment for feature flag')
@@ -640,7 +643,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         """
         start = get_current_epoch_time_ms()
         if not self._client_is_usable():
-            return input_validator.generate_control_treatments(features, 'get_' + method.value)
+            return input_validator.generate_control_treatments(features)
 
         if not self.ready:
             _LOGGER.error("Client is not ready - no calls possible")
@@ -649,12 +652,13 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         try:
             key, bucketing, features, attributes = self._validate_treatments_input(key, features, attributes, method)
         except _InvalidInputError:
-            return input_validator.generate_control_treatments(features, 'get_' + method.value)
+            return input_validator.generate_control_treatments(features)
 
         results = {n: self._NON_READY_EVAL_RESULT for n in features}
         if self.ready:
             try:
                 ctx = await self._context_factory.context_for(key, features)
+                input_validator.validate_feature_flag_names({feature: ctx.flags.get(feature) for feature in features}, 'get_' + method.value)
                 results = self._evaluator.eval_many_with_context(key, bucketing, features, attributes, ctx)
             except Exception as e: # toto narrow this
                 _LOGGER.error('Error getting treatment for feature flag')

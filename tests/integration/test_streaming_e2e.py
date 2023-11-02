@@ -2593,6 +2593,23 @@ def make_split_with_segment(name, cn, active, killed, default_treatment,
                     'treatment': 'on' if on else 'off',
                     'size': 100
                 }]
+            },
+            {
+                'matcherGroup': {
+                    'combiner': 'AND',
+                    'matchers': [
+                        {
+                            'matcherType': 'ALL_KEYS',
+                            'negate': False,
+                            'userDefinedSegmentMatcherData': None,
+                            'whitelistMatcherData': None
+                        }
+                    ]
+                },
+                'partitions': [
+                    {'treatment': 'on' if on else 'off', 'size': 0},
+                    {'treatment': 'off' if on else 'on', 'size': 100}
+                ]
             }
         ]
     }

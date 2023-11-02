@@ -377,7 +377,6 @@ def validate_value(value):
         return False
     return value
 
-
 def validate_manager_feature_flag_name(feature_flag_name, should_validate_existance, feature_flag_storage):
     """
     Check if feature flag name is valid for track.
@@ -390,7 +389,8 @@ def validate_manager_feature_flag_name(feature_flag_name, should_validate_exista
     if not _validate_feature_flag_name(feature_flag_name, 'split'):
         return None
 
-    if should_validate_existance and feature_flag_storage.get(feature_flag_name) is None:
+    feature_flag = feature_flag_storage.get(feature_flag_name)
+    if should_validate_existance and feature_flag is None:
         _LOGGER.warning(
             "split: you passed \"%s\" that does not exist in this environment, "
             "please double check what Feature flags exist in the Split user interface.",
@@ -398,8 +398,7 @@ def validate_manager_feature_flag_name(feature_flag_name, should_validate_exista
         )
         return None
 
-    return feature_flag_name
-
+    return feature_flag
 
 async def validate_manager_feature_flag_name_async(feature_flag_name, should_validate_existance, feature_flag_storage):
     """
@@ -413,7 +412,8 @@ async def validate_manager_feature_flag_name_async(feature_flag_name, should_val
     if not _validate_feature_flag_name(feature_flag_name, 'split'):
         return None
 
-    if should_validate_existance and await feature_flag_storage.get(feature_flag_name) is None:
+    feature_flag = await feature_flag_storage.get(feature_flag_name)
+    if should_validate_existance and feature_flag is None:
         _LOGGER.warning(
             "split: you passed \"%s\" that does not exist in this environment, "
             "please double check what Feature flags exist in the Split user interface.",
@@ -421,7 +421,22 @@ async def validate_manager_feature_flag_name_async(feature_flag_name, should_val
         )
         return None
 
-    return feature_flag_name
+    return feature_flag
+
+def validate_feature_flag_names(feature_flags, method_name):
+    """
+    Check if feature flag name is valid for track.
+
+    :param feature_flag_name: feature flag name to be checked
+    :type feature_flag_name: str
+    """
+    for feature_flag in  feature_flags.keys():
+        if feature_flags[feature_flag] is None:
+            _LOGGER.warning(
+                "%s: you passed \"%s\" that does not exist in this environment, "
+                "please double check what Feature flags exist in the Split user interface.",
+                method_name, feature_flag
+            )
 
 def _check_feature_flag_instance(feature_flags, method_name):
     if feature_flags is None or not isinstance(feature_flags, list):
@@ -468,7 +483,7 @@ def validate_feature_flags_get_treatments(  # pylint: disable=invalid-name
         valid_feature_flags.append(ff)
     return valid_feature_flags
 
-def generate_control_treatments(feature_flags, method_name):
+def generate_control_treatments(feature_flags):
     """
     Generate valid feature flags to control.
 
@@ -477,7 +492,14 @@ def generate_control_treatments(feature_flags, method_name):
     :return: dict
     :rtype: dict|None
     """
-    return {feature_flag: (CONTROL, None) for feature_flag in feature_flags}
+    if not isinstance(feature_flags, list):
+        return {}
+
+    to_return = {}
+    for feature_flag in feature_flags:
+        if isinstance(feature_flag, str) and len(feature_flag.strip())> 0:
+            to_return[feature_flag] = (CONTROL, None)
+    return to_return
 
 
 def validate_attributes(attributes, method_name):
