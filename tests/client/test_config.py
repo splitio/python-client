@@ -1,5 +1,6 @@
 """Configuration unit tests."""
 # pylint: disable=protected-access,no-self-use,line-too-long
+import pytest
 
 from splitio.client import config
 from splitio.engine.impressions.impressions import ImpressionsMode
@@ -64,7 +65,12 @@ class ConfigSanitizationTests(object):
 
     def test_sanitize(self):
         """Test sanitization."""
-        configs = {}
-        processed = config.sanitize('some', configs)
-
+        processed = config.sanitize('some', {})
         assert processed['redisLocalCacheEnabled']  # check default is True
+        assert processed['flagSetsFilter'] is None
+
+        processed = config.sanitize('some', {'redisHost': 'x', 'flagSetsFilter': ['set']})
+        assert processed['flagSetsFilter'] is None
+
+        processed = config.sanitize('some', {'storageType': 'pluggable', 'flagSetsFilter': ['set']})
+        assert processed['flagSetsFilter'] is None

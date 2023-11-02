@@ -60,6 +60,7 @@ class SplitTests(object):
         'configurations': {
             'on': '{"color": "blue", "size": 13}'
         },
+        'sets': ['set1', 'set2']
     }
 
     def test_from_raw(self):
@@ -79,6 +80,7 @@ class SplitTests(object):
         assert len(parsed.conditions) == 2
         assert parsed.get_configurations_for('on') == '{"color": "blue", "size": 13}'
         assert parsed._configurations == {'on': '{"color": "blue", "size": 13}'}
+        assert parsed.sets == {'set1', 'set2'}
 
     def test_get_segment_names(self, mocker):
         """Test fetching segment names."""
@@ -88,7 +90,6 @@ class SplitTests(object):
         cond2.get_segment_names.return_value = ['segment3', 'segment4']
         split1 = splits.Split( 'some_split', 123, False, 'off', 'user', 'ACTIVE', 123, [cond1, cond2])
         assert split1.get_segment_names() == ['segment%d' % i for i in range(1, 5)]
-
 
     def test_to_json(self):
         """Test json serialization."""
@@ -105,6 +106,7 @@ class SplitTests(object):
         assert as_json['defaultTreatment'] == 'off'
         assert as_json['algo'] == 2
         assert len(as_json['conditions']) == 2
+        assert sorted(as_json['sets']) == ['set1', 'set2']
 
     def test_to_split_view(self):
         """Test SplitView creation."""
@@ -115,3 +117,5 @@ class SplitTests(object):
         assert as_split_view.killed == self.raw['killed']
         assert as_split_view.traffic_type == self.raw['trafficTypeName']
         assert set(as_split_view.treatments) == set(['on', 'off'])
+        assert as_split_view.default_treatment == self.raw['defaultTreatment']
+        assert sorted(as_split_view.sets) == sorted(list(self.raw['sets']))
