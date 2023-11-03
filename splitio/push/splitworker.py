@@ -10,7 +10,7 @@ from enum import Enum
 from splitio.models.splits import from_raw, Status
 from splitio.models.telemetry import UpdateFromSSE
 from splitio.push.parser import UpdateType
-
+from splitio.util.storage_helper import update_feature_flag_storage
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -88,17 +88,12 @@ class SplitWorker(object):
             try:
                 if self._check_instant_ff_update(event):
                     try:
-                        new_split = from_raw(json.loads(self._get_feature_flag_definition(event)))
-                        if new_split.status == Status.ACTIVE:
-                            self._feature_flag_storage.put(new_split)
-                            _LOGGER.debug('Feature flag %s is updated', new_split.name)
-                            for segment_name in new_split.get_segment_names():
-                                if self._segment_storage.get(segment_name) is None:
-                                    _LOGGER.debug('Fetching new segment %s', segment_name)
-                                    self._segment_handler(segment_name, event.change_number)
-                        else:
-                            self._feature_flag_storage.remove(new_split.name)
-                        self._feature_flag_storage.set_change_number(event.change_number)
+                        new_feature_flag = from_raw(json.loads(self._get_feature_flag_definition(event)))
+                        segment_list = update_feature_flag_storage(self._feature_flag_storage, [new_feature_flag], event.change_number)
+                        for segment_name in segment_list:
+                            if self._segment_storage.get(segment_name) is None:
+                                _LOGGER.debug('Fetching new segment %s', segment_name)
+                                self._segment_handler(segment_name, event.change_number)
                         self._telemetry_runtime_producer.record_update_from_sse(UpdateFromSSE.SPLIT_UPDATE)
                         continue
                     except Exception as e:
