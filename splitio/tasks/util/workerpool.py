@@ -197,7 +197,6 @@ class WorkerPoolAsync(object):
         for w in tasks:
             await self._queue.put(w)
 
-        print("EEE", tasks)
         return BatchCompletionWrapper(tasks)
 
     async def stop(self, event=None):

@@ -148,7 +148,6 @@ class InMemoryIntegrationTests(object):
         self._validate_last_impressions(client)  # No impressions should be present
 
         #  testing Dependency matcher
-        #pytest.set_trace()
         assert client.get_treatment('somekey', 'dependency_test') == 'off'
         self._validate_last_impressions(client, ('dependency_test', 'somekey', 'off'))
 
@@ -671,7 +670,6 @@ class RedisIntegrationTests(object):
         """Test client.get_treatment()."""
         client = self.factory.client()
 
-        #pytest.set_trace()
         assert client.get_treatment('user1', 'sample_feature') == 'on'
         self._validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
 

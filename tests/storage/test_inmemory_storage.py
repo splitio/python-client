@@ -589,7 +589,6 @@ class InMemoryImpressionsStorageTests(object):
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         storage = InMemoryImpressionStorage(2, telemetry_runtime_producer)
-#        pytest.set_trace()
         storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
         storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
         storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
