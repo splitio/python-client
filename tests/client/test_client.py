@@ -41,7 +41,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
@@ -84,6 +83,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert mocker.call(
             [(Impression('some_key', 'some_feature', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY), {'some_attribute': 1})]
         ) in impmanager.process_impressions.mock_calls
+        assert _logger.call(["The SDK is not ready, results may be incorrect for feature flag %s. Make sure to wait for SDK readiness before using this method", 'some_feature'])
 
         # Test with exception:
         ready_property.return_value = True
@@ -98,7 +98,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         ) in impmanager.process_impressions.mock_calls
 
     def test_get_treatment_with_config(self, mocker):
-        """Test get_treatment execution paths."""
+        """Test get_treatment with config execution paths."""
         split_storage = mocker.Mock(spec=SplitStorage)
         segment_storage = mocker.Mock(spec=SegmentStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
@@ -110,7 +110,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
@@ -161,6 +160,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             [(Impression('some_key', 'some_feature', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY),
               {'some_attribute': 1})]
         ) in impmanager.process_impressions.mock_calls
+        assert _logger.call(["The SDK is not ready, results may be incorrect for feature flag %s. Make sure to wait for SDK readiness before using this method", 'some_feature'])
 
         # Test with exception:
         ready_property.return_value = True
@@ -175,7 +175,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         ) in impmanager.process_impressions.mock_calls
 
     def test_get_treatments(self, mocker):
-        """Test get_treatment execution paths."""
+        """Test get_treatments execution paths."""
         split_storage = mocker.Mock(spec=SplitStorage)
         segment_storage = mocker.Mock(spec=SegmentStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
@@ -238,6 +238,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert mocker.call(
             [(Impression('some_key', 'some_feature', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY), {'some_attribute': 1})]
         ) in impmanager.process_impressions.mock_calls
+        assert _logger.call(["The SDK is not ready, results may be incorrect for feature flags %s. Make sure to wait for SDK readiness before using this method", 'some_feature'])
 
         # Test with exception:
         ready_property.return_value = True
@@ -249,7 +250,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert client.get_treatments('key', ['f1', 'f2']) == {'f1': 'control', 'f2': 'control'}
 
     def test_get_treatments_with_config(self, mocker):
-        """Test get_treatment execution paths."""
+        """Test get_treatments with config execution paths."""
         split_storage = mocker.Mock(spec=SplitStorage)
         segment_storage = mocker.Mock(spec=SegmentStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
@@ -260,7 +261,6 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
@@ -313,6 +313,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert mocker.call(
             [(Impression('some_key', 'some_feature', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY), {'some_attribute': 1})]
         ) in impmanager.process_impressions.mock_calls
+        assert _logger.call(["The SDK is not ready, results may be incorrect for feature flags %s. Make sure to wait for SDK readiness before using this method", 'some_feature'])
 
         # Test with exception:
         ready_property.return_value = True
@@ -322,6 +323,376 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             raise Exception('something')
         client._evaluator.evaluate_features.side_effect = _raise
         assert client.get_treatments_with_config('key', ['f1', 'f2']) == {
+            'f1': ('control', None),
+            'f2': ('control', None)
+        }
+
+    def test_get_treatments_by_flag_set(self, mocker):
+        """Test get_treatments by flagset execution paths."""
+        split_storage = mocker.Mock(spec=SplitStorage)
+        segment_storage = mocker.Mock(spec=SegmentStorage)
+        impression_storage = mocker.Mock(spec=ImpressionStorage)
+        event_storage = mocker.Mock(spec=EventStorage)
+
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
+        factory = SplitFactory(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            mocker.Mock(),
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+        def get_feature_flags_by_sets(flag_sets):
+            if flag_sets == ['set1']:
+                return ['f1', 'f2']
+            if flag_sets == ['set2']:
+                return ['f3', 'f4']
+            if flag_sets == ['set3']:
+                return ['some_feature']
+        split_storage.get_feature_flags_by_sets = get_feature_flags_by_sets
+
+        client = Client(factory, recorder, True)
+        client._evaluator = mocker.Mock(spec=Evaluator)
+        evaluation = {
+            'treatment': 'on',
+            'configurations': '{"color": "red"}',
+            'impression': {
+                'label': 'some_label',
+                'change_number': 123
+            }
+        }
+        def evaluate_features(feature_flag_names, matching_key, bucketing_key, attributes=None):
+            return {feature_flag_name: evaluation for feature_flag_name in feature_flag_names}
+        client._evaluator.evaluate_features = evaluate_features
+
+        _logger = mocker.Mock()
+        client._send_impression_to_listener = mocker.Mock()
+        assert client.get_treatments_by_flag_set('key', 'set1') == {'f1': 'on', 'f2': 'on'}
+
+        impressions_called = impmanager.process_impressions.mock_calls[0][1][0]
+        assert (Impression('key', 'f1', 'on', 'some_label', 123, None, 1000), None) in impressions_called
+        assert (Impression('key', 'f2', 'on', 'some_label', 123, None, 1000), None) in impressions_called
+        assert _logger.mock_calls == []
+
+        assert client.get_treatments_by_flag_set('key', 'set2') == {'f3': 'on', 'f4': 'on'}
+        impressions_called = impmanager.process_impressions.mock_calls[1][1][0]
+        assert (Impression('key', 'f3', 'on', 'some_label', 123, None, 1000), None) in impressions_called
+        assert (Impression('key', 'f4', 'on', 'some_label', 123, None, 1000), None) in impressions_called
+        assert _logger.mock_calls == []
+
+        # Test with client not ready
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = False
+        type(factory).ready = ready_property
+        impmanager.process_impressions.reset_mock()
+        assert client.get_treatments_by_flag_set('some_key', 'set3', {'some_attribute': 1}) == {'some_feature': 'control'}
+        assert mocker.call(
+            [(Impression('some_key', 'some_feature', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY), {'some_attribute': 1})]
+        ) in impmanager.process_impressions.mock_calls
+        assert _logger.call(["The SDK is not ready, results may be incorrect for feature flags %s. Make sure to wait for SDK readiness before using this method", 'some_feature'])
+
+        # Test with exception:
+        ready_property.return_value = True
+        split_storage.get_change_number.return_value = -1
+
+        def _raise(*_):
+            raise Exception('something')
+        client._evaluator.evaluate_features = _raise
+        assert client.get_treatments_by_flag_set('key', 'set1') == {'f1': 'control', 'f2': 'control'}
+
+    def test_get_treatments_by_flag_sets(self, mocker):
+        """Test get_treatments by flagsets execution paths."""
+        split_storage = mocker.Mock(spec=SplitStorage)
+        segment_storage = mocker.Mock(spec=SegmentStorage)
+        impression_storage = mocker.Mock(spec=ImpressionStorage)
+        event_storage = mocker.Mock(spec=EventStorage)
+
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
+        factory = SplitFactory(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            mocker.Mock(),
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+        def get_feature_flags_by_sets(flag_sets):
+            if sorted(flag_sets) == ['set1', 'set2']:
+                return ['f1', 'f2']
+            if sorted(flag_sets) == ['set3', 'set4']:
+                return ['f3', 'f4']
+            if flag_sets == ['set5']:
+                return ['some_feature']
+        split_storage.get_feature_flags_by_sets = get_feature_flags_by_sets
+
+        client = Client(factory, recorder, True)
+        client._evaluator = mocker.Mock(spec=Evaluator)
+        evaluation = {
+            'treatment': 'on',
+            'configurations': '{"color": "red"}',
+            'impression': {
+                'label': 'some_label',
+                'change_number': 123
+            }
+        }
+        def evaluate_features(feature_flag_names, matching_key, bucketing_key, attributes=None):
+            return {feature_flag_name: evaluation for feature_flag_name in feature_flag_names}
+
+        client._evaluator.evaluate_features = evaluate_features
+        _logger = mocker.Mock()
+        client._send_impression_to_listener = mocker.Mock()
+        assert client.get_treatments_by_flag_sets('key', ['set1', 'set2']) == {'f1': 'on', 'f2': 'on'}
+
+        impressions_called = impmanager.process_impressions.mock_calls[0][1][0]
+        assert (Impression('key', 'f1', 'on', 'some_label', 123, None, 1000), None) in impressions_called
+        assert (Impression('key', 'f2', 'on', 'some_label', 123, None, 1000), None) in impressions_called
+        assert _logger.mock_calls == []
+
+        assert client.get_treatments_by_flag_sets('key', ['set3', 'set4']) == {'f3': 'on', 'f4': 'on'}
+        impressions_called = impmanager.process_impressions.mock_calls[1][1][0]
+        assert (Impression('key', 'f3', 'on', 'some_label', 123, None, 1000), None) in impressions_called
+        assert (Impression('key', 'f4', 'on', 'some_label', 123, None, 1000), None) in impressions_called
+        assert _logger.mock_calls == []
+
+        # Test with client not ready
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = False
+        type(factory).ready = ready_property
+        impmanager.process_impressions.reset_mock()
+        assert client.get_treatments_by_flag_sets('some_key', ['set5'], {'some_attribute': 1}) == {'some_feature': 'control'}
+        assert mocker.call(
+            [(Impression('some_key', 'some_feature', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY), {'some_attribute': 1})]
+        ) in impmanager.process_impressions.mock_calls
+        assert _logger.call(["The SDK is not ready, results may be incorrect for feature flags %s. Make sure to wait for SDK readiness before using this method", 'some_feature'])
+
+        # Test with exception:
+        ready_property.return_value = True
+        split_storage.get_change_number.return_value = -1
+
+        def _raise(*_):
+            raise Exception('something')
+        client._evaluator.evaluate_features = _raise
+        assert client.get_treatments_by_flag_sets('key', ['set1', 'set2']) == {'f1': 'control', 'f2': 'control'}
+
+    def test_get_treatments_with_config_by_flag_set(self, mocker):
+        """Test get_treatments with config by flagset execution paths."""
+        split_storage = mocker.Mock(spec=SplitStorage)
+        segment_storage = mocker.Mock(spec=SegmentStorage)
+        impression_storage = mocker.Mock(spec=ImpressionStorage)
+        event_storage = mocker.Mock(spec=EventStorage)
+
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
+        factory = SplitFactory(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            mocker.Mock(),
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+        def get_feature_flags_by_sets(flag_sets):
+            if flag_sets == ['set1']:
+                return ['f1', 'f2']
+            if flag_sets == ['set2']:
+                return ['f3', 'f4']
+            if flag_sets == ['set3']:
+                return ['some_feature']
+        split_storage.get_feature_flags_by_sets = get_feature_flags_by_sets
+
+        client = Client(factory, recorder, True)
+        client._evaluator = mocker.Mock(spec=Evaluator)
+        evaluation = {
+            'treatment': 'on',
+            'configurations': '{"color": "red"}',
+            'impression': {
+                'label': 'some_label',
+                'change_number': 123
+            }
+        }
+        def evaluate_features(feature_flag_names, matching_key, bucketing_key, attributes=None):
+            return {feature_flag_name: evaluation for feature_flag_name in feature_flag_names}
+        client._evaluator.evaluate_features = evaluate_features
+
+        _logger = mocker.Mock()
+        assert client.get_treatments_with_config_by_flag_set('key', 'set1') == {
+            'f1': ('on', '{"color": "red"}'),
+            'f2': ('on', '{"color": "red"}')
+        }
+
+        impressions_called = impmanager.process_impressions.mock_calls[0][1][0]
+        assert (Impression('key', 'f1', 'on', 'some_label', 123, None, 1000), None) in impressions_called
+        assert (Impression('key', 'f2', 'on', 'some_label', 123, None, 1000), None) in impressions_called
+        assert _logger.mock_calls == []
+
+        _logger = mocker.Mock()
+        assert client.get_treatments_with_config_by_flag_set('key', 'set2') == {
+            'f3': ('on', '{"color": "red"}'),
+            'f4': ('on', '{"color": "red"}')
+        }
+
+        impressions_called = impmanager.process_impressions.mock_calls[1][1][0]
+        assert (Impression('key', 'f3', 'on', 'some_label', 123, None, 1000), None) in impressions_called
+        assert (Impression('key', 'f4', 'on', 'some_label', 123, None, 1000), None) in impressions_called
+        assert _logger.mock_calls == []
+
+        # Test with client not ready
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = False
+        type(factory).ready = ready_property
+        impmanager.process_impressions.reset_mock()
+        assert client.get_treatments_with_config_by_flag_set('some_key', 'set3', {'some_attribute': 1}) == {'some_feature': ('control', None)}
+        assert mocker.call(
+            [(Impression('some_key', 'some_feature', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY), {'some_attribute': 1})]
+        ) in impmanager.process_impressions.mock_calls
+        assert _logger.call(["The SDK is not ready, results may be incorrect for feature flags %s. Make sure to wait for SDK readiness before using this method", 'some_feature'])
+
+        # Test with exception:
+        ready_property.return_value = True
+        split_storage.get_change_number.return_value = -1
+
+        def _raise(*_):
+            raise Exception('something')
+        client._evaluator.evaluate_features = _raise
+        assert client.get_treatments_with_config_by_flag_set('key', 'set1') == {
+            'f1': ('control', None),
+            'f2': ('control', None)
+        }
+
+    def test_get_treatments_with_config_by_flag_sets(self, mocker):
+        """Test get_treatments with config by flagsets execution paths."""
+        split_storage = mocker.Mock(spec=SplitStorage)
+        segment_storage = mocker.Mock(spec=SegmentStorage)
+        impression_storage = mocker.Mock(spec=ImpressionStorage)
+        event_storage = mocker.Mock(spec=EventStorage)
+
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer())
+        factory = SplitFactory(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            mocker.Mock(),
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+        def get_feature_flags_by_sets(flag_sets):
+            if sorted(flag_sets) == ['set1', 'set2']:
+                return ['f1', 'f2']
+            if sorted(flag_sets) == ['set3', 'set4']:
+                return ['f3', 'f4']
+            if flag_sets == ['set5']:
+                return ['some_feature']
+        split_storage.get_feature_flags_by_sets = get_feature_flags_by_sets
+
+        client = Client(factory, recorder, True)
+        client._evaluator = mocker.Mock(spec=Evaluator)
+        evaluation = {
+            'treatment': 'on',
+            'configurations': '{"color": "red"}',
+            'impression': {
+                'label': 'some_label',
+                'change_number': 123
+            }
+        }
+        def evaluate_features(feature_flag_names, matching_key, bucketing_key, attributes=None):
+            return {feature_flag_name: evaluation for feature_flag_name in feature_flag_names}
+        client._evaluator.evaluate_features = evaluate_features
+
+        _logger = mocker.Mock()
+        assert client.get_treatments_with_config_by_flag_sets('key', ['set1', 'set2']) == {
+            'f1': ('on', '{"color": "red"}'),
+            'f2': ('on', '{"color": "red"}')
+        }
+
+        impressions_called = impmanager.process_impressions.mock_calls[0][1][0]
+        assert (Impression('key', 'f1', 'on', 'some_label', 123, None, 1000), None) in impressions_called
+        assert (Impression('key', 'f2', 'on', 'some_label', 123, None, 1000), None) in impressions_called
+        assert _logger.mock_calls == []
+
+        _logger = mocker.Mock()
+        assert client.get_treatments_with_config_by_flag_sets('key', ['set3', 'set4']) == {
+            'f3': ('on', '{"color": "red"}'),
+            'f4': ('on', '{"color": "red"}')
+        }
+
+        impressions_called = impmanager.process_impressions.mock_calls[1][1][0]
+        assert (Impression('key', 'f3', 'on', 'some_label', 123, None, 1000), None) in impressions_called
+        assert (Impression('key', 'f4', 'on', 'some_label', 123, None, 1000), None) in impressions_called
+        assert _logger.mock_calls == []
+
+        # Test with client not ready
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = False
+        type(factory).ready = ready_property
+        impmanager.process_impressions.reset_mock()
+        assert client.get_treatments_with_config_by_flag_sets('some_key', ['set5'], {'some_attribute': 1}) == {'some_feature': ('control', None)}
+        assert mocker.call(
+            [(Impression('some_key', 'some_feature', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY), {'some_attribute': 1})]
+        ) in impmanager.process_impressions.mock_calls
+        assert _logger.call(["The SDK is not ready, results may be incorrect for feature flags %s. Make sure to wait for SDK readiness before using this method", 'some_feature'])
+
+        # Test with exception:
+        ready_property.return_value = True
+        split_storage.get_change_number.return_value = -1
+
+        def _raise(*_):
+            raise Exception('something')
+        client._evaluator.evaluate_features = _raise
+        assert client.get_treatments_with_config_by_flag_sets('key', ['set1', 'set2']) == {
             'f1': ('control', None),
             'f2': ('control', None)
         }
@@ -384,6 +755,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
+        _logger = mocker.Mock()
 
         destroyed_mock = mocker.PropertyMock()
         destroyed_mock.return_value = False
@@ -398,6 +770,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 size=1024
             )
         ]) in event_storage.put.mock_calls
+        assert _logger.call("track: the SDK is not ready, results may be incorrect. Make sure to wait for SDK readiness before using this method")
 
     def test_evaluations_before_running_post_fork(self, mocker):
         destroyed_property = mocker.PropertyMock()
@@ -473,7 +846,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         )
         client = Client(factory, mocker.Mock())
         client.ready = False
-        client._evaluate_if_ready('matching_key','matching_key', 'feature')
+        client._evaluate_if_ready('matching_key','matching_key', 'method', 'feature')
         assert(telemetry_storage._tel_config._not_ready == 1)
         client.track('key', 'tt', 'ev')
         assert(telemetry_storage._tel_config._not_ready == 2)
@@ -481,7 +854,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
     @mock.patch('splitio.client.client.Client._evaluate_if_ready', side_effect=Exception())
     def test_telemetry_record_treatment_exception(self, mocker):
         split_storage = InMemorySplitStorage()
-        split_storage.put(Split('split1', 1234, 1, False, 'user', Status.ACTIVE, 123))
+        split_storage.update([Split('split1', 1234, 1, False, 'user', Status.ACTIVE, 123)], [], 123)
         segment_storage = mocker.Mock(spec=SegmentStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
@@ -525,7 +898,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
     @mock.patch('splitio.client.client.Client._evaluate_features_if_ready', side_effect=Exception())
     def test_telemetry_record_treatments_exception(self, mocker):
         split_storage = InMemorySplitStorage()
-        split_storage.put(Split('split1', 1234, 1, False, 'user', Status.ACTIVE, 123))
+        split_storage.update([Split('split1', 1234, 1, False, 'user', Status.ACTIVE, 123)], [], 123)
         segment_storage = mocker.Mock(spec=SegmentStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
@@ -568,7 +941,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
     def test_telemetry_method_latency(self, mocker):
         split_storage = InMemorySplitStorage()
-        split_storage.put(Split('split1', 1234, 1, False, 'user', Status.ACTIVE, 123))
+        split_storage.update([Split('split1', 1234, 1, False, 'user', Status.ACTIVE, 123)], [], 123)
         segment_storage = mocker.Mock(spec=SegmentStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)

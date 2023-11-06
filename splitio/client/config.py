@@ -3,11 +3,11 @@ import os.path
 import logging
 
 from splitio.engine.impressions import ImpressionsMode
+from splitio.client.input_validator import validate_flag_sets
 
 
 _LOGGER = logging.getLogger(__name__)
 DEFAULT_DATA_SAMPLING = 1
-
 
 DEFAULT_CONFIG = {
     'operationMode': 'standalone',
@@ -58,9 +58,9 @@ DEFAULT_CONFIG = {
     'dataSampling': DEFAULT_DATA_SAMPLING,
     'storageWrapper': None,
     'storagePrefix': None,
-    'storageType': None
+    'storageType': None,
+    'flagSetsFilter': None
 }
-
 
 def _parse_operation_mode(sdk_key, config):
     """
@@ -118,7 +118,6 @@ def _sanitize_impressions_mode(storage_type, mode, refresh_rate=None):
 
     return mode, refresh_rate
 
-
 def sanitize(sdk_key, config):
     """
     Look for inconsistencies or ill-formed configs and tune it accordingly.
@@ -142,5 +141,11 @@ def sanitize(sdk_key, config):
     if processed['metricsRefreshRate'] < 60:
         _LOGGER.warning('metricRefreshRate parameter minimum value is 60 seconds, defaulting to 3600 seconds.')
         processed['metricsRefreshRate'] = 3600
+
+    if config['operationMode'] == 'consumer' and config.get('flagSetsFilter') is not None:
+        processed['flagSetsFilter'] = None
+        _LOGGER.warning('config: FlagSets filter is not applicable for Consumer modes where the SDK does keep rollout data in sync. FlagSet filter was discarded.')
+    else:
+        processed['flagSetsFilter'] = sorted(validate_flag_sets(processed['flagSetsFilter'], 'SDK Config')) if processed['flagSetsFilter'] is not None else None
 
     return processed

@@ -11,8 +11,12 @@ class TokenTests(object):
     def test_from_raw_false(self):
         """Test token model parsing."""
         parsed = token.from_raw(self.raw_false)
-        assert parsed == None
-    
+        assert parsed.push_enabled == False
+        assert parsed.iat == None
+        assert parsed.channels == None
+        assert parsed.exp == None
+        assert parsed.token == None
+
     raw_empty = {
         'pushEnabled': True,
         'token': '',
@@ -21,7 +25,11 @@ class TokenTests(object):
     def test_from_raw_empty(self):
         """Test token model parsing."""
         parsed = token.from_raw(self.raw_empty)
-        assert parsed == None
+        assert parsed.push_enabled == False
+        assert parsed.iat == None
+        assert parsed.channels == None
+        assert parsed.exp == None
+        assert parsed.token == None
 
     raw_ok = {
         'pushEnabled': True,
@@ -39,4 +47,3 @@ class TokenTests(object):
         assert parsed.channels['NzM2MDI5Mzc0_MTgyNTg1MTgwNg==_splits'] == ['subscribe']
         assert parsed.channels['control_pri'] == ['subscribe', 'channel-metadata:publishers']
         assert parsed.channels['control_sec'] == ['subscribe', 'channel-metadata:publishers']
-

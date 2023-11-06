@@ -10,9 +10,11 @@ from enum import Enum
 
 from splitio.api import APIException
 from splitio.api.commons import FetchOptions
+from splitio.client.input_validator import validate_flag_sets
 from splitio.models import splits
 from splitio.util.backoff import Backoff
 from splitio.util.time import get_current_epoch_time_ms
+from splitio.util.storage_helper import update_feature_flag_storage
 from splitio.sync import util
 
 _LEGACY_COMMENT_LINE_RE = re.compile(r'^#.*$')
@@ -79,15 +81,9 @@ class SplitSynchronizer(object):
                 _LOGGER.error('Exception raised while fetching feature flags')
                 _LOGGER.debug('Exception information: ', exc_info=True)
                 raise exc
-
-            for feature_flag in feature_flag_changes.get('splits', []):
-                if feature_flag['status'] == splits.Status.ACTIVE.value:
-                    parsed = splits.from_raw(feature_flag)
-                    self._feature_flag_storage.put(parsed)
-                    segment_list.update(set(parsed.get_segment_names()))
-                else:
-                    self._feature_flag_storage.remove(feature_flag['name'])
-            self._feature_flag_storage.set_change_number(feature_flag_changes['till'])
+            fetched_feature_flags = []
+            [fetched_feature_flags.append(splits.from_raw(feature_flag)) for feature_flag in feature_flag_changes.get('splits', [])]
+            segment_list = update_feature_flag_storage(self._feature_flag_storage, fetched_feature_flags, feature_flag_changes['till'])
             if feature_flag_changes['till'] == feature_flag_changes['since']:
                 return feature_flag_changes['till'], segment_list
 
@@ -118,6 +114,17 @@ class SplitSynchronizer(object):
             how_long = self._backoff.get()
             time.sleep(how_long)
 
+    def _get_config_sets(self):
+        """
+        Get all filter flag sets cnverrted to string, if no filter flagsets exist return None
+
+        :return: string with flagsets
+        :rtype: str
+        """
+        if self._feature_flag_storage.flag_set_filter.flag_sets == set({}):
+            return None
+        return ','.join(self._feature_flag_storage.flag_set_filter.sorted_flag_sets)
+
     def synchronize_splits(self, till=None):
         """
         Hit endpoint, update storage and return True if sync is complete.
@@ -126,7 +133,7 @@ class SplitSynchronizer(object):
         :type till: int
         """
         final_segment_list = set()
-        fetch_options = FetchOptions(True)  # Set Cache-Control to no-cache
+        fetch_options = FetchOptions(True, sets=self._get_config_sets())  # Set Cache-Control to no-cache
         successful_sync, remaining_attempts, change_number, segment_list = self._attempt_feature_flag_sync(fetch_options,
                                                                                       till)
         final_segment_list.update(segment_list)
@@ -134,7 +141,7 @@ class SplitSynchronizer(object):
         if successful_sync:  # succedeed sync
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return final_segment_list
-        with_cdn_bypass = FetchOptions(True, change_number)  # Set flag for bypassing CDN
+        with_cdn_bypass = FetchOptions(True, change_number, sets=self._get_config_sets())  # Set flag for bypassing CDN
         without_cdn_successful_sync, remaining_attempts, change_number, segment_list = self._attempt_feature_flag_sync(with_cdn_bypass, till)
         final_segment_list.update(segment_list)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
@@ -347,11 +354,10 @@ class LocalSplitSynchronizer(object):
             fetched = self._read_feature_flags_from_legacy_file(self._filename)
         to_delete = [name for name in self._feature_flag_storage.get_split_names()
                      if name not in fetched.keys()]
-        for feature_flag in fetched.values():
-            self._feature_flag_storage.put(feature_flag)
+        to_add = []
+        [to_add.append(feature_flag) for feature_flag in fetched.values()]
 
-        for feature_flag in to_delete:
-            self._feature_flag_storage.remove(feature_flag)
+        self._feature_flag_storage.update(to_add, to_delete, 0)
 
         return []
 
@@ -371,18 +377,12 @@ class LocalSplitSynchronizer(object):
             self._current_json_sha = fecthed_sha
             if self._feature_flag_storage.get_change_number() > till and till != self._DEFAULT_FEATURE_FLAG_TILL:
                 return []
-            for feature_flag in fetched:
-                if feature_flag['status'] == splits.Status.ACTIVE.value:
-                    parsed = splits.from_raw(feature_flag)
-                    self._feature_flag_storage.put(parsed)
-                    _LOGGER.debug("feature flag %s is updated", parsed.name)
-                    segment_list.update(set(parsed.get_segment_names()))
-                else:
-                    self._feature_flag_storage.remove(feature_flag['name'])
-
-                self._feature_flag_storage.set_change_number(till)
+            fetched_feature_flags = []
+            [fetched_feature_flags.append(splits.from_raw(feature_flag)) for feature_flag in fetched]
+            segment_list = update_feature_flag_storage(self._feature_flag_storage, fetched_feature_flags, till)
             return segment_list
         except Exception as exc:
+            _LOGGER.debug(exc)
             raise ValueError("Error reading feature flags from json.") from exc
 
     def _read_feature_flags_from_json_file(self, filename):
@@ -434,7 +434,7 @@ class LocalSplitSynchronizer(object):
         if 'till' not in parsed or parsed['till'] is None or parsed['till'] < -1:
             parsed['till'] = -1
         if 'since' not in parsed or parsed['since'] is None or parsed['since'] < -1 or parsed['since'] > parsed['till']:
-            parsed['since'] = parsed['till']
+           parsed['since'] = parsed['till']
 
         return parsed
 
@@ -464,6 +464,11 @@ class LocalSplitSynchronizer(object):
                             ('algo', 2, 2, 2, None, None)]:
                 feature_flag = util._sanitize_object_element(feature_flag, 'split', element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=element[4], not_in_list=element[5])
             feature_flag = self._sanitize_condition(feature_flag)
+
+            if 'sets' not in feature_flag:
+                feature_flag['sets'] = []
+            feature_flag['sets'] = validate_flag_sets(feature_flag['sets'], 'Localhost Validator')
+
             sanitized_feature_flags.append(feature_flag)
         return sanitized_feature_flags
 
