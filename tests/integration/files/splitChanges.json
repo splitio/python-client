@@ -198,6 +198,29 @@
                             "size": 70
                         }
                     ]
+                },
+                {
+                    "matcherGroup": {
+                        "combiner": "AND",
+                        "matchers": [
+                            {
+                                "matcherType": "ALL_KEYS",
+                                "negate": false,
+                                "userDefinedSegmentMatcherData": null,
+                                "whitelistMatcherData": null
+                            }
+                        ]
+                    },
+                    "partitions": [
+                        {
+                            "treatment": "on",
+                            "size": 0
+                        },
+                        {
+                            "treatment": "off",
+                            "size": 100
+                        }
+                    ]
                 }
             ]
         },
@@ -225,6 +248,29 @@
                                     "split": "all_feature",
                                     "treatments": ["on"]
                                 }
+                            }
+                        ]
+                    },
+                    "partitions": [
+                        {
+                            "treatment": "on",
+                            "size": 0
+                        },
+                        {
+                            "treatment": "off",
+                            "size": 100
+                        }
+                    ]
+                },
+                {
+                    "matcherGroup": {
+                        "combiner": "AND",
+                        "matchers": [
+                            {
+                                "matcherType": "ALL_KEYS",
+                                "negate": false,
+                                "userDefinedSegmentMatcherData": null,
+                                "whitelistMatcherData": null
                             }
                         ]
                     },
@@ -275,6 +321,29 @@
                             "size": 0
                         }
                     ]
+                },
+                {
+                    "matcherGroup": {
+                        "combiner": "AND",
+                        "matchers": [
+                            {
+                                "matcherType": "ALL_KEYS",
+                                "negate": false,
+                                "userDefinedSegmentMatcherData": null,
+                                "whitelistMatcherData": null
+                            }
+                        ]
+                    },
+                    "partitions": [
+                        {
+                            "treatment": "on",
+                            "size": 0
+                        },
+                        {
+                            "treatment": "off",
+                            "size": 100
+                        }
+                    ]
                 }
             ]
         },
@@ -310,6 +379,29 @@
                         {
                             "treatment": "off",
                             "size": 0
+                        }
+                    ]
+                },
+                {
+                    "matcherGroup": {
+                        "combiner": "AND",
+                        "matchers": [
+                            {
+                                "matcherType": "ALL_KEYS",
+                                "negate": false,
+                                "userDefinedSegmentMatcherData": null,
+                                "whitelistMatcherData": null
+                            }
+                        ]
+                    },
+                    "partitions": [
+                        {
+                            "treatment": "on",
+                            "size": 0
+                        },
+                        {
+                            "treatment": "off",
+                            "size": 100
                         }
                     ]
                 }

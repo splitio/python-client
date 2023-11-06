@@ -13,7 +13,7 @@ from splitio.client import input_validator
 from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
 from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.engine.impressions.impressions import Manager as ImpressionManager
-from splitio.engine.evaluator import EvaluationDataContext
+from splitio.engine.evaluator import EvaluationDataFactory
 
 class ClientInputValidationTests(object):
     """Input validation test cases."""
@@ -28,7 +28,7 @@ class ClientInputValidationTests(object):
         conditions_mock.return_value = []
         type(split_mock).conditions = conditions_mock
         storage_mock = mocker.Mock(spec=SplitStorage)
-        storage_mock.get.return_value = split_mock
+        storage_mock.fetch_many.return_value = {'some_feature': split_mock}
 
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
@@ -238,7 +238,7 @@ class ClientInputValidationTests(object):
         ]
 
         _logger.reset_mock()
-        storage_mock.get.return_value = None
+        storage_mock.fetch_many.return_value = {'some_feature': None}
         mocker.patch('splitio.client.client._LOGGER', new=_logger)
         assert client.get_treatment('matching_key', 'some_feature', None) == CONTROL
         assert _logger.warning.mock_calls == [
@@ -264,7 +264,7 @@ class ClientInputValidationTests(object):
             return '{"some": "property"}' if treatment == 'default_treatment' else None
         split_mock.get_configurations_for.side_effect = _configs
         storage_mock = mocker.Mock(spec=SplitStorage)
-        storage_mock.get.return_value = split_mock
+        storage_mock.fetch_many.return_value = {'some_feature': split_mock}
 
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
@@ -474,7 +474,7 @@ class ClientInputValidationTests(object):
         ]
 
         _logger.reset_mock()
-        storage_mock.get.return_value = None
+        storage_mock.fetch_many.return_value = {'some_feature': None}
         mocker.patch('splitio.client.client._LOGGER', new=_logger)
         assert client.get_treatment_with_config('matching_key', 'some_feature', None) == (CONTROL, None)
         assert _logger.warning.mock_calls == [
@@ -808,10 +808,8 @@ class ClientInputValidationTests(object):
         conditions_mock.return_value = []
         type(split_mock).conditions = conditions_mock
         storage_mock = mocker.Mock(spec=SplitStorage)
-        storage_mock.get.return_value = split_mock
         storage_mock.fetch_many.return_value = {
-            'some_feature': split_mock,
-            'some': split_mock,
+            'some_feature': split_mock
         }
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
@@ -926,7 +924,7 @@ class ClientInputValidationTests(object):
         storage_mock.fetch_many.return_value = {
             'some_feature': None
         }
-        storage_mock.get.return_value = None
+        storage_mock.fetch_many.return_value = {'some_feature': None}
         ready_mock = mocker.PropertyMock()
         ready_mock.return_value = True
         type(factory).ready = ready_mock
@@ -1004,11 +1002,6 @@ class ClientInputValidationTests(object):
             mocker.call('%s: %s too long - must be %s characters or less.', 'get_treatments_with_config', 'key', 250)
         ]
 
-        def get_condition_matchers(*_):
-            return EvaluationDataContext(split_mock, {})
-        old_get_condition_matchers = client._evaluator_data_collector.get_condition_matchers
-        client._evaluator_data_collector.get_condition_matchers = get_condition_matchers
-
         _logger.reset_mock()
         assert client.get_treatments_with_config(12345, ['some_feature']) == {'some_feature': ('default_treatment', '{"some": "property"}')}
         assert _logger.warning.mock_calls == [
@@ -1080,7 +1073,6 @@ class ClientInputValidationTests(object):
         ready_mock.return_value = True
         type(factory).ready = ready_mock
         mocker.patch('splitio.client.client._LOGGER', new=_logger)
-        client._evaluator_data_collector.get_condition_matchers = old_get_condition_matchers
         assert client.get_treatments('matching_key', ['some_feature'], None) == {'some_feature': CONTROL}
         assert _logger.warning.mock_calls == [
             mocker.call(
@@ -1106,9 +1098,11 @@ class ClientInputValidationAsyncTests(object):
         conditions_mock.return_value = []
         type(split_mock).conditions = conditions_mock
         storage_mock = mocker.Mock(spec=SplitStorage)
-        async def get(*_):
-            return split_mock
-        storage_mock.get = get
+        async def fetch_many(*_):
+            return {
+            'some_feature': split_mock
+            }
+        storage_mock.fetch_many = fetch_many
 
         async def get_change_number(*_):
             return 1
@@ -1330,9 +1324,9 @@ class ClientInputValidationAsyncTests(object):
         ]
 
         _logger.reset_mock()
-        async def get(*_):
-            return None
-        storage_mock.get = get
+        async def fetch_many(*_):
+            return {'some_feature': None}
+        storage_mock.fetch_many = fetch_many
 
         mocker.patch('splitio.client.client._LOGGER', new=_logger)
         assert await client.get_treatment('matching_key', 'some_feature', None) == CONTROL
@@ -1360,9 +1354,11 @@ class ClientInputValidationAsyncTests(object):
             return '{"some": "property"}' if treatment == 'default_treatment' else None
         split_mock.get_configurations_for.side_effect = _configs
         storage_mock = mocker.Mock(spec=SplitStorage)
-        async def get(*_):
-            return split_mock
-        storage_mock.get = get
+        async def fetch_many(*_):
+            return {
+            'some_feature': split_mock
+            }
+        storage_mock.fetch_many = fetch_many
 
         async def get_change_number(*_):
             return 1
@@ -1583,9 +1579,9 @@ class ClientInputValidationAsyncTests(object):
         ]
 
         _logger.reset_mock()
-        async def get(*_):
-            return None
-        storage_mock.get = get
+        async def fetch_many(*_):
+            return {'some_feature': None}
+        storage_mock.fetch_many = fetch_many
 
         mocker.patch('splitio.client.client._LOGGER', new=_logger)
         assert await client.get_treatment_with_config('matching_key', 'some_feature', None) == (CONTROL, None)
@@ -2015,9 +2011,6 @@ class ClientInputValidationAsyncTests(object):
         }
         storage_mock.fetch_many = fetch_many
 
-        async def get(*_):
-            return None
-        storage_mock.get = get
         ready_mock = mocker.PropertyMock()
         ready_mock.return_value = True
         type(factory).ready = ready_mock
@@ -2108,11 +2101,6 @@ class ClientInputValidationAsyncTests(object):
             mocker.call('%s: %s too long - must be %s characters or less.', 'get_treatments_with_config', 'key', 250)
         ]
 
-        async def get_condition_matchers(*_):
-            return EvaluationDataContext(split_mock, {})
-        old_get_condition_matchers = client._evaluator_data_collector.get_condition_matchers
-        client._evaluator_data_collector.get_condition_matchers = get_condition_matchers
-
         _logger.reset_mock()
         assert await client.get_treatments_with_config(12345, ['some_feature']) == {'some_feature': ('default_treatment', '{"some": "property"}')}
         assert _logger.warning.mock_calls == [
@@ -2181,15 +2169,11 @@ class ClientInputValidationAsyncTests(object):
             'some_feature': None
         }
         storage_mock.fetch_many = fetch_many
-        async def get(*_):
-            return None
-        storage_mock.get = get
 
         ready_mock = mocker.PropertyMock()
         ready_mock.return_value = True
         type(factory).ready = ready_mock
         mocker.patch('splitio.client.client._LOGGER', new=_logger)
-        client._evaluator_data_collector.get_condition_matchers = old_get_condition_matchers
         assert await client.get_treatments('matching_key', ['some_feature'], None) == {'some_feature': CONTROL}
         assert _logger.warning.mock_calls == [
             mocker.call(

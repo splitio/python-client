@@ -336,7 +336,6 @@ class SplitFactoryTests(object):
             factory.block_until_ready(1)
         except:
             pass
-#        pytest.set_trace()
         assert factory._status == Status.READY
         assert factory.destroyed is False
 

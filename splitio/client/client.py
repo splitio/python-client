@@ -1,23 +1,38 @@
 """A module for Split.io SDK API clients."""
 import logging
-from collections import namedtuple
 
-from splitio.engine.evaluator import Evaluator, CONTROL, EvaluationDataCollector
+from splitio.engine.evaluator import Evaluator, CONTROL, EvaluationDataFactory, AsyncEvaluationDataFactory
 from splitio.engine.splitters import Splitter
 from splitio.models.impressions import Impression, Label
 from splitio.models.events import Event, EventWrapper
 from splitio.models.telemetry import get_latency_bucket_index, MethodExceptionsAndLatencies
 from splitio.client import input_validator
 from splitio.util.time import get_current_epoch_time_ms, utctime_ms
-from splitio.sync.manager import ManagerAsync, RedisManagerAsync
-from splitio.engine import FeatureNotFoundException
+
 
 _LOGGER = logging.getLogger(__name__)
 
-EvaluationResult = namedtuple('EvaluationResult', ['treatment_with_config', 'impression', 'start_time', 'exception_flag'])
 
 class ClientBase(object):  # pylint: disable=too-many-instance-attributes
     """Entry point for the split sdk."""
+
+    _FAILED_EVAL_RESULT = {
+        'treatment': CONTROL,
+        'config': None,
+        'impression': {
+            'label': Label.EXCEPTION,
+            'change_number': None,
+        }
+    }
+
+    _NON_READY_EVAL_RESULT = {
+        'treatment': CONTROL,
+        'configurations': None,
+        'impression': {
+            'label': Label.NOT_READY,
+            'change_number': None
+        }
+    }
 
     def __init__(self, factory, recorder, labels_enabled=True):
         """
@@ -44,8 +59,6 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         self._evaluator = Evaluator(self._splitter)
         self._telemetry_evaluation_producer = self._factory._telemetry_evaluation_producer
         self._telemetry_init_producer = self._factory._telemetry_init_producer
-        self._evaluator_data_collector = EvaluationDataCollector(self._feature_flag_storage, self._segment_storage,
-                                                                 self._splitter, self._evaluator)
 
     @property
     def ready(self):
@@ -57,199 +70,70 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         """Return whether the factory holding this client has been destroyed."""
         return self._factory.destroyed
 
-    def _evaluate_if_ready(self, matching_key, bucketing_key, feature_flag_name, feature_flag, condition_matchers):
-        if not self.ready:
-            return {
-                'treatment': CONTROL,
-                'configurations': None,
-                'impression': {
-                    'label': Label.NOT_READY,
-                    'change_number': None
-                }
-            }
-        if feature_flag is None:
-            _LOGGER.warning('Unknown or invalid feature: %s', feature_flag_name)
+    def _client_is_usable(self):
+        if self.destroyed:
+            _LOGGER.error("Client has already been destroyed - no calls possible")
+            return False
+        if self._factory._waiting_fork():
+            _LOGGER.error("Client is not ready - no calls possible")
+            return False
 
+        return True
+
+    @staticmethod
+    def _validate_treatment_input(key, feature, attributes, method):
+        """Perform all static validations on user supplied input."""
+        matching_key, bucketing_key = input_validator.validate_key(key, 'get_' + method.value)
+        if not matching_key:
+            raise _InvalidInputError()
         if bucketing_key is None:
             bucketing_key = matching_key
 
-        return self._evaluator.evaluate_feature(
-            feature_flag,
-            matching_key,
-            bucketing_key,
-            condition_matchers
-        )
+        feature = input_validator.validate_feature_flag_name(feature, 'get_' + method.value)
+        if not feature:
+            raise _InvalidInputError()
 
-    def _make_evaluation(self, matching_key, bucketing_key, feature_flag_name, attributes, method, feature_flag, condition_matchers, storage_change_number):
-        """
-        Evaluate treatment for given feature flag
+        if not input_validator.validate_attributes(attributes, 'get_' + method.value):
+            raise _InvalidInputError()
 
-        :param key: The key for which to get the treatment
-        :type key: str
-        :param feature_flag_name: The name of the feature flag for which to get the treatment
-        :type feature_flag_name: str
-        :param method: The method calling this function
-        :type method: splitio.models.telemetry.MethodExceptionsAndLatencies
-        :param feature_flag: Feature flag Split object
-        :type feature_flag: splitio.models.splits.Split
-        :param condition_matchers: A dictionary representing all matchers for the current feature flag
-        :type condition_matchers: dict
-        :param storage_change_number: the change number for the Feature flag storage.
-        :type storage_change_number: int
-        :return: The treatment and config for the key and feature flag, impressions created, start time and exception flag
-        :rtype: EvaluationResult
-        """
-        try:
-            start = get_current_epoch_time_ms()
-            if (matching_key is None and bucketing_key is None) \
-                    or feature_flag_name is None \
-                    or not input_validator.validate_attributes(attributes, method):
-                return EvaluationResult((CONTROL, None), None, None, False)
+        return matching_key, bucketing_key, feature, attributes
 
-            result = self._evaluate_if_ready(matching_key, bucketing_key, feature_flag_name, feature_flag, condition_matchers)
+    @staticmethod
+    def _validate_treatments_input(key, features, attributes, method):
+        """Perform all static validations on user supplied input."""
+        matching_key, bucketing_key = input_validator.validate_key(key, 'get_' + method.value)
+        if not matching_key:
+            raise _InvalidInputError()
+        if bucketing_key is None:
+            bucketing_key = matching_key
 
-            impression = self._build_impression(
-                matching_key,
-                feature_flag_name,
-                result['treatment'],
-                result['impression']['label'],
-                result['impression']['change_number'],
-                bucketing_key,
-                utctime_ms(),
-            )
-            return EvaluationResult((result['treatment'], result['configurations']), impression, start, False)
-        except Exception as e:  # pylint: disable=broad-except
-            _LOGGER.error('Error getting treatment for feature flag')
-            _LOGGER.error(str(e))
-            _LOGGER.debug('Error: ', exc_info=True)
-            try:
-                impression = self._build_impression(
-                    matching_key,
-                    feature_flag_name,
-                    CONTROL,
-                    Label.EXCEPTION,
-                    storage_change_number,
-                    bucketing_key,
-                    utctime_ms(),
-                )
-                return EvaluationResult((CONTROL, None), impression, start, True)
-            except Exception:  # pylint: disable=broad-except
-                _LOGGER.error('Error reporting impression into get_treatment exception block')
-                _LOGGER.debug('Error: ', exc_info=True)
-            return EvaluationResult((CONTROL, None), None, None, False)
+        features = input_validator.validate_feature_flags_get_treatments('get_' + method.value, features)
+        if not features:
+            raise _InvalidInputError()
 
-    def _make_evaluations(self, matching_key, bucketing_key, feature_flag_names, feature_flags, condition_matchers, attributes, method):
-        """
-        Evaluate treatments for given feature flags
+        if not input_validator.validate_attributes(attributes, method):
+            raise _InvalidInputError()
 
-        :param key: The key for which to get the treatment
-        :type key: str
-        :param feature_flag_names: Array of feature flag names for which to get the treatment
-        :type feature_flag_names: list(str)
-        :param feature_flags: Array of feature flags Split objects
-        :type feature_flag: list(splitio.models.splits.Split)
-        :param condition_matchers: dictionary representing all matchers for each current feature flag
-        :type condition_matchers: dict
-        :param storage_change_number: the change number for the Feature flag storage.
-        :type storage_change_number: int
-        :param attributes: An optional dictionary of attributes
-        :type attributes: dict
-        :param method: The method calling this function
-        :type method: splitio.models.telemetry.MethodExceptionsAndLatencies
-        :return: The treatments and configs for the key and feature flags, impressions created, start time and exception flag
-        :rtype: tuple(dict, splitio.models.impressions.Impression, int, bool)
-        """
-        start = get_current_epoch_time_ms()
+        return matching_key, bucketing_key, features, attributes
 
-        if input_validator.validate_attributes(attributes, method) is False:
-            return EvaluationResult(input_validator.generate_control_treatments(feature_flags, method), None, None, False)
 
-        treatments = {}
-        bulk_impressions = []
-        try:
-            evaluations = self._evaluate_features_if_ready(matching_key, bucketing_key,
-                                                           list(feature_flag_names), feature_flags, condition_matchers)
-            exception_flag = False
-            for feature_flag_name in feature_flag_names:
-                try:
-                    result = evaluations[feature_flag_name]
-                    impression = self._build_impression(matching_key,
-                                                        feature_flag_name,
-                                                        result['treatment'],
-                                                        result['impression']['label'],
-                                                        result['impression']['change_number'],
-                                                        bucketing_key,
-                                                        utctime_ms())
-
-                    bulk_impressions.append(impression)
-                    treatments[feature_flag_name] = (result['treatment'], result['configurations'])
-
-                except Exception:  # pylint: disable=broad-except
-                    _LOGGER.error('%s: An exception occured when evaluating '
-                                  'feature flag %s returning CONTROL.' % (method, feature_flag_name))
-                    treatments[feature_flag_name] = CONTROL, None
-                    _LOGGER.debug('Error: ', exc_info=True)
-                    exception_flag = True
-                    continue
-
-            return EvaluationResult(treatments, bulk_impressions, start, exception_flag)
-        except Exception:  # pylint: disable=broad-except
-            _LOGGER.error('Error getting treatment for feature flags')
-            _LOGGER.debug('Error: ', exc_info=True)
-        return EvaluationResult(input_validator.generate_control_treatments(list(feature_flag_names), method), None, start, True)
-
-    def _evaluate_features_if_ready(self, matching_key, bucketing_key, feature_flag_names, feature_flags, condition_matchers):
-        """
-        Evaluate treatments for given feature flags
-
-        :param matching_key: Matching key for which to get the treatment
-        :type matching_key: str
-        :param bucketing_key: Bucketing key for which to get the treatment
-        :type bucketing_key: str
-        :param feature_flag_names: Array of feature flag names for which to get the treatment
-        :type feature_flag_names: list(str)
-        :param feature_flags: Array of feature flags Split objects
-        :type feature_flag: list(splitio.models.splits.Split)
-        :param condition_matchers: dictionary representing all matchers for each current feature flag
-        :type condition_matchers: dict
-        :return: The treatments, configs and impressions generated for the key and feature flags
-        :rtype: dict
-        """
-        if not self.ready:
-            return {
-                feature_flag_name: {
-                    'treatment': CONTROL,
-                    'configurations': None,
-                    'impression': {'label': Label.NOT_READY, 'change_number': None}
-                }
-                for feature_flag_name in feature_flag_names
-            }
-        return self._evaluator.evaluate_features(
-            feature_flags,
-            matching_key,
-            bucketing_key,
-            condition_matchers
-        )
-
-    def _build_impression(  # pylint: disable=too-many-arguments
-            self,
-            matching_key,
-            feature_flag_name,
-            treatment,
-            label,
-            change_number,
-            bucketing_key,
-            imp_time
-    ):
-        """Build an impression."""
-        if not self._labels_enabled:
-            label = None
-
+    def _build_impression(self, key, bucketing, feature, result):
+        """Build an impression based on evaluation data & it's result."""
         return Impression(
-            matching_key=matching_key, feature_name=feature_flag_name,
-            treatment=treatment, label=label, change_number=change_number,
-            bucketing_key=bucketing_key, time=imp_time
-        )
+                matching_key=key,
+                feature_name=feature,
+                treatment=result['treatment'],
+                label=result['impression']['label'] if self._labels_enabled else None,
+                change_number=result['impression']['change_number'],
+                bucketing_key=bucketing,
+                time=utctime_ms())
+
+    def _build_impressions(self, key, bucketing, results):
+        """Build an impression based on evaluation data & it's result."""
+        return [
+            self._build_impression(key, bucketing, feature, result)
+            for feature, result in results.items()
+        ]
 
     def _validate_track(self, key, traffic_type, event_type, value=None, properties=None):
         """
@@ -315,7 +199,8 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
 
         :rtype: Client
         """
-        super().__init__(factory, recorder, labels_enabled)
+        ClientBase.__init__(self, factory, recorder, labels_enabled)
+        self._context_factory = EvaluationDataFactory(factory._get_storage('splits'), factory._get_storage('segments'))
 
     def destroy(self):
         """
@@ -324,24 +209,6 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         Only applicable when using in-memory operation mode.
         """
         self._factory.destroy()
-
-    def get_treatment_with_config(self, key, feature_flag_name, attributes=None):
-        """
-        Get the treatment and config for a feature flag and key, with optional dictionary of attributes.
-
-        This method never raises an exception. If there's a problem, the appropriate log message
-        will be generated and the method will return the CONTROL treatment.
-
-        :param key: The key for which to get the treatment
-        :type key: str
-        :param feature: The name of the feature flag for which to get the treatment
-        :type feature: str
-        :param attributes: An optional dictionary of attributes
-        :type attributes: dict
-        :return: The treatment for the key and feature flag
-        :rtype: tuple(str, str)
-        """
-        return self._get_treatment(key, feature_flag_name, MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG, attributes)
 
     def get_treatment(self, key, feature_flag_name, attributes=None):
         """
@@ -359,10 +226,37 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: The treatment for the key and feature flag
         :rtype: str
         """
-        treatment, _ = self._get_treatment(key, feature_flag_name, MethodExceptionsAndLatencies.TREATMENT, attributes)
-        return treatment
+        try:
+            treatment, _ = self._get_treatment(MethodExceptionsAndLatencies.TREATMENT, key, feature_flag_name, attributes)
+            return treatment
+        except:
+            # TODO: maybe log here?
+            return CONTROL
 
-    def _get_treatment(self, key, feature_flag_name, method, attributes=None):
+
+    def get_treatment_with_config(self, key, feature_flag_name, attributes=None):
+        """
+        Get the treatment and config for a feature flag and key, with optional dictionary of attributes.
+
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param feature: The name of the feature flag for which to get the treatment
+        :type feature: str
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :return: The treatment for the key and feature flag
+        :rtype: tuple(str, str)
+        """
+        try:
+            return self._get_treatment(MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG, key, feature_flag_name, attributes)
+        except Exception:
+            # TODO: maybe log here?
+            return CONTROL, None
+
+    def _get_treatment(self, method, key, feature, attributes=None):
         """
         Validate key, feature flag name and object, and get the treatment and config with an optional dictionary of attributes.
 
@@ -377,62 +271,37 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: The treatment and config for the key and feature flag
         :rtype: dict
         """
-        if self.destroyed:
-            _LOGGER.error("Client has already been destroyed - no calls possible")
+        if not self._client_is_usable(): # not destroyed & not waiting for a fork
             return CONTROL, None
-        if self._factory._waiting_fork():
-            _LOGGER.error("Client is not ready - no calls possible")
-            return CONTROL, None
+
+        start = get_current_epoch_time_ms()
         if not self.ready:
+            _LOGGER.error("Client is not ready - no calls possible")
             self._telemetry_init_producer.record_not_ready_usage()
 
-        if input_validator.validate_feature_flag_name(
-            feature_flag_name,
-            'get_' + method.value) == None:
-            return CONTROL, None
-
-        matching_key, bucketing_key = input_validator.validate_key(key, 'get_' + method.value)
-        if bucketing_key is None:
-            bucketing_key = matching_key
-
         try:
-            evaluation_data_context = self._evaluator_data_collector.get_condition_matchers(feature_flag_name, bucketing_key, matching_key, attributes)
-        except FeatureNotFoundException:
-            _LOGGER.warning(
-                "%s: you passed \"%s\" that does not exist in this environment, "
-                "please double check what Feature flags exist in the Split user interface.",
-                'get_' + method.value,
-                feature_flag_name
-            )
+            key, bucketing, feature, attributes = self._validate_treatment_input(key, feature, attributes, method)
+        except _InvalidInputError:
             return CONTROL, None
 
-        evaluation_result = self._make_evaluation(matching_key, bucketing_key, feature_flag_name, attributes, 'get_' + method.value,
-                                            evaluation_data_context.feature_flag , evaluation_data_context.condition_matchers, self._feature_flag_storage.get_change_number())
-        if evaluation_result.impression is not None:
-            self._record_stats([(evaluation_result.impression, attributes)], evaluation_result.start_time, method)
+        result = self._NON_READY_EVAL_RESULT
+        if self.ready:
+            try:
+                ctx = self._context_factory.context_for(key, [feature])
+                input_validator.validate_feature_flag_names({feature: ctx.flags.get(feature)}, 'get_' + method.value)
+                result = self._evaluator.eval_with_context(key, bucketing, feature, attributes, ctx)
+            except Exception as e: # toto narrow this
+                _LOGGER.error('Error getting treatment for feature flag')
+                _LOGGER.error(str(e))
+                _LOGGER.debug('Error: ', exc_info=True)
+                self._telemetry_evaluation_producer.record_exception(method)
+                result = self._FAILED_EVAL_RESULT
 
-        if evaluation_result.exception_flag:
-            self._telemetry_evaluation_producer.record_exception(method)
+        if result['impression']['label'] != Label.SPLIT_NOT_FOUND:
+            impression = self._build_impression(key, bucketing, feature, result)
+            self._record_stats([(impression, attributes)], start, method)
 
-        return evaluation_result.treatment_with_config[0], evaluation_result.treatment_with_config[1]
-
-    def get_treatments_with_config(self, key, feature_flag_names, attributes=None):
-        """
-        Evaluate multiple feature flags and return a dict with feature flag -> (treatment, config).
-
-        Get the treatments for a list of feature flags considering a key, with an optional dictionary of
-        attributes. This method never raises an exception. If there's a problem, the appropriate
-        log message will be generated and the method will return the CONTROL treatment.
-        :param key: The key for which to get the treatment
-        :type key: str
-        :param features: Array of the names of the feature flags for which to get the treatment
-        :type feature: list
-        :param attributes: An optional dictionary of attributes
-        :type attributes: dict
-        :return: Dictionary with the result of all the feature flags provided
-        :rtype: dict
-        """
-        return self._get_treatments(key, feature_flag_names, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG, attributes)
+        return result['treatment'], result['configurations']
 
     def get_treatments(self, key, feature_flag_names, attributes=None):
         """
@@ -450,10 +319,34 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
-        with_config = self._get_treatments(key, feature_flag_names, MethodExceptionsAndLatencies.TREATMENTS, attributes)
-        return {feature_flag: result[0] for (feature_flag, result) in with_config.items()}
+        try:
+            with_config = self._get_treatments(key, feature_flag_names, MethodExceptionsAndLatencies.TREATMENTS, attributes)
+            return {feature_flag: result[0] for (feature_flag, result) in with_config.items()}
+        except Exception:
+            return {feature: CONTROL for feature in feature_flag_names}
 
-    def _get_treatments(self, key, feature_flag_names, method, attributes=None):
+    def get_treatments_with_config(self, key, feature_flag_names, attributes=None):
+        """
+        Evaluate multiple feature flags and return a dict with feature flag -> (treatment, config).
+
+        Get the treatments for a list of feature flags considering a key, with an optional dictionary of
+        attributes. This method never raises an exception. If there's a problem, the appropriate
+        log message will be generated and the method will return the CONTROL treatment.
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param features: Array of the names of the feature flags for which to get the treatment
+        :type feature: list
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :return: Dictionary with the result of all the feature flags provided
+        :rtype: dict
+        """
+        try:
+            return self._get_treatments(key, feature_flag_names, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG, attributes)
+        except Exception:
+            return {feature: (CONTROL, None) for feature in feature_flag_names}
+
+    def _get_treatments(self, key, features, method, attributes=None):
         """
         Validate key, feature flag names and objects, and get the treatments and configs with an optional dictionary of attributes.
 
@@ -468,71 +361,43 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: The treatments and configs for the key and feature flags
         :rtype: dict
         """
-        if self.destroyed:
-            _LOGGER.error("Client has already been destroyed - no calls possible")
-            return input_validator.generate_control_treatments(feature_flag_names, 'get_' + method.value)
-        if self._factory._waiting_fork():
-            _LOGGER.error("Client is not ready - no calls possible")
-            return input_validator.generate_control_treatments(feature_flag_names, 'get_' + method.value)
+        start = get_current_epoch_time_ms()
+        if not self._client_is_usable():
+            return input_validator.generate_control_treatments(features)
 
         if not self.ready:
             _LOGGER.error("Client is not ready - no calls possible")
             self._telemetry_init_producer.record_not_ready_usage()
 
-        valid_feature_flag_names = input_validator.validate_feature_flags_get_treatments(
-            'get_' + method.value,
-            feature_flag_names,
-        )
-        if valid_feature_flag_names is None:
-            return {}
-
-        matching_key, bucketing_key = input_validator.validate_key(key, 'get_' + method.value)
-        if matching_key is None and bucketing_key is None:
-            return input_validator.generate_control_treatments(feature_flag_names, 'get_' + method.value)
-
-        if bucketing_key is None:
-            bucketing_key = matching_key
-
-        condition_matchers = {}
-        feature_flags = []
-        missing = []
-        for feature_flag_name in valid_feature_flag_names:
-            try:
-                evaluation_data_conext = self._evaluator_data_collector.get_condition_matchers(feature_flag_name, bucketing_key, matching_key, attributes)
-                condition_matchers[feature_flag_name] = evaluation_data_conext.condition_matchers
-                feature_flags.append(evaluation_data_conext.feature_flag)
-            except FeatureNotFoundException:
-                _LOGGER.warning(
-                    "%s: you passed \"%s\" that does not exist in this environment, "
-                    "please double check what Feature flags exist in the Split user interface.",
-                    'get_' + method.value,
-                    feature_flag_name
-                )
-                missing.append(feature_flag_name)
-
-        valid_feature_flag_names = []
-        [valid_feature_flag_names.append(feature_flag.name) for feature_flag in feature_flags]
-        missing_treatments = {name: (CONTROL, None) for name in missing}
-        evaluation_results = self._make_evaluations(matching_key, bucketing_key, valid_feature_flag_names, feature_flags, condition_matchers, attributes, 'get_' + method.value)
-
         try:
-            if evaluation_results.impression:
-                self._record_stats(
-                    [(i, attributes) for i in evaluation_results.impression],
-                    evaluation_results.start_time,
-                    method
-                )
-        except Exception:  # pylint: disable=broad-except
-            _LOGGER.error('%s: An exception when trying to store '
-                            'impressions.' % 'get_' + method.value)
-            _LOGGER.debug('Error: ', exc_info=True)
-            self._telemetry_evaluation_producer.record_exception(method)
+            key, bucketing, features, attributes = self._validate_treatments_input(key, features, attributes, method)
+        except _InvalidInputError:
+            return input_validator.generate_control_treatments(features)
 
-        if evaluation_results.exception_flag:
-            self._telemetry_evaluation_producer.record_exception(method)
+        results = {n: self._NON_READY_EVAL_RESULT for n in features}
+        if self.ready:
+            try:
+                ctx = self._context_factory.context_for(key, features)
+                input_validator.validate_feature_flag_names({feature: ctx.flags.get(feature) for feature in features}, 'get_' + method.value)
+                results = self._evaluator.eval_many_with_context(key, bucketing, features, attributes, ctx)
+            except Exception as e: # toto narrow this
+                _LOGGER.error('Error getting treatment for feature flag')
+                _LOGGER.error(str(e))
+                _LOGGER.debug('Error: ', exc_info=True)
+                self._telemetry_evaluation_producer.record_exception(method)
+                results = {n: self._FAILED_EVAL_RESULT for n in features}
 
-        evaluation_results.treatment_with_config.update(missing_treatments)
-        return evaluation_results.treatment_with_config
+
+        imp_attrs = [
+            (i, attributes) for i in self._build_impressions(key, bucketing, results)
+            if i.label != Label.SPLIT_NOT_FOUND
+        ]
+        self._record_stats(imp_attrs, start, method)
+
+        return {
+            feature: (results[feature]['treatment'], results[feature]['configurations'])
+            for feature in results
+        }
 
     def _record_stats(self, impressions, start, operation):
         """
@@ -615,7 +480,8 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
 
         :rtype: Client
         """
-        super().__init__(factory, recorder, labels_enabled)
+        ClientBase.__init__(self, factory, recorder, labels_enabled)
+        self._context_factory = AsyncEvaluationDataFactory(factory._get_storage('splits'), factory._get_storage('segments'))
 
     async def destroy(self):
         """
@@ -641,8 +507,12 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: The treatment for the key and feature
         :rtype: str
         """
-        treatment, _ = await self._get_treatment_async(key, feature_flag_name, MethodExceptionsAndLatencies.TREATMENT, attributes)
-        return treatment
+        try:
+            treatment, _ = await self._get_treatment(MethodExceptionsAndLatencies.TREATMENT, key, feature_flag_name, attributes)
+            return treatment
+        except:
+            # TODO: maybe log here?
+            return CONTROL
 
     async def get_treatment_with_config(self, key, feature_flag_name, attributes=None):
         """
@@ -660,9 +530,13 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: The treatment for the key and feature
         :rtype: str
         """
-        return await self._get_treatment_async(key, feature_flag_name, MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG, attributes)
+        try:
+            return await self._get_treatment(MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG, key, feature_flag_name, attributes)
+        except Exception:
+            # TODO: maybe log here?
+            return CONTROL, None
 
-    async def _get_treatment_async(self, key, feature_flag_name, method, attributes=None):
+    async def _get_treatment(self, method, key, feature, attributes=None):
         """
         Validate key, feature flag name and object, and get the treatment and config with an optional dictionary of attributes, for async calls
 
@@ -677,44 +551,36 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: The treatment and config for the key and feature flag
         :rtype: dict
         """
-        if self.destroyed:
-            _LOGGER.error("Client has already been destroyed - no calls possible")
+        if not self._client_is_usable(): # not destroyed & not waiting for a fork
             return CONTROL, None
-        if self._factory._waiting_fork():
-            _LOGGER.error("Client is not ready - no calls possible")
-            return CONTROL, None
+
+        start = get_current_epoch_time_ms()
         if not self.ready:
+            _LOGGER.error("Client is not ready - no calls possible")
             await self._telemetry_init_producer.record_not_ready_usage()
 
-        if input_validator.validate_feature_flag_name(
-            feature_flag_name,
-            'get_' + method.value) == None:
-            return CONTROL, None
-
-        matching_key, bucketing_key = input_validator.validate_key(key, 'get_' + method.value)
-        if bucketing_key is None:
-            bucketing_key = matching_key
-
         try:
-            evaluation_data_context = await self._evaluator_data_collector.get_condition_matchers_async(feature_flag_name, bucketing_key, matching_key, attributes)
-        except FeatureNotFoundException:
-            _LOGGER.warning(
-                "%s: you passed \"%s\" that does not exist in this environment, "
-                "please double check what Feature flags exist in the Split user interface.",
-                'get_' + method.value,
-                feature_flag_name
-            )
+            key, bucketing, feature, attributes = self._validate_treatment_input(key, feature, attributes, method)
+        except _InvalidInputError:
             return CONTROL, None
 
-        evaluation_result = self._make_evaluation(matching_key, bucketing_key, feature_flag_name, attributes, 'get_' + method.value,
-                                             evaluation_data_context.feature_flag, evaluation_data_context.condition_matchers, await self._feature_flag_storage.get_change_number())
-        if evaluation_result.impression is not None:
-            await self._record_stats_async([(evaluation_result.impression, attributes)], evaluation_result.start_time, method)
+        result = self._NON_READY_EVAL_RESULT
+        if self.ready:
+            try:
+                ctx = await self._context_factory.context_for(key, [feature])
+                input_validator.validate_feature_flag_names({feature: ctx.flags.get(feature)}, 'get_' + method.value)
+                result = self._evaluator.eval_with_context(key, bucketing, feature, attributes, ctx)
+            except Exception as e: # toto narrow this
+                _LOGGER.error('Error getting treatment for feature flag')
+                _LOGGER.error(str(e))
+                _LOGGER.debug('Error: ', exc_info=True)
+                await self._telemetry_evaluation_producer.record_exception(method)
+                result = self._FAILED_EVAL_RESULT
 
-        if evaluation_result.exception_flag:
-            await self._telemetry_evaluation_producer.record_exception(method)
-
-        return evaluation_result.treatment_with_config[0], evaluation_result.treatment_with_config[1]
+        if result['impression']['label'] != Label.SPLIT_NOT_FOUND:
+            impression = self._build_impression(key, bucketing, feature, result)
+            await self._record_stats([(impression, attributes)], start, method)
+        return result['treatment'], result['configurations']
 
     async def get_treatments(self, key, feature_flag_names, attributes=None):
         """
@@ -732,8 +598,11 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
-        with_config = await self._get_treatments_async(key, feature_flag_names, MethodExceptionsAndLatencies.TREATMENTS, attributes)
-        return {feature_flag: result[0] for (feature_flag, result) in with_config.items()}
+        try:
+            with_config = await self._get_treatments(key, feature_flag_names, MethodExceptionsAndLatencies.TREATMENTS, attributes)
+            return {feature_flag: result[0] for (feature_flag, result) in with_config.items()}
+        except Exception:
+            return {feature: CONTROL for feature in feature_flag_names}
 
     async def get_treatments_with_config(self, key, feature_flag_names, attributes=None):
         """
@@ -751,9 +620,13 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
-        return await self._get_treatments_async(key, feature_flag_names, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG, attributes)
+        try:
+            return await self._get_treatments(key, feature_flag_names, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG, attributes)
+        except Exception:
+            _LOGGER.error("AA", exc_info=True)
+            return {feature: (CONTROL, None) for feature in feature_flag_names}
 
-    async def _get_treatments_async(self, key, feature_flag_names, method, attributes=None):
+    async def _get_treatments(self, key, features, method, attributes=None):
         """
         Validate key, feature flag names and objects, and get the treatments and configs with an optional dictionary of attributes, for async calls
 
@@ -768,75 +641,44 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: The treatments and configs for the key and feature flags
         :rtype: dict
         """
-        if self.destroyed:
-            _LOGGER.error("Client has already been destroyed - no calls possible")
-            return input_validator.generate_control_treatments(feature_flag_names, 'get_' + method.value)
-        if self._factory._waiting_fork():
-            _LOGGER.error("Client is not ready - no calls possible")
-            return input_validator.generate_control_treatments(feature_flag_names, 'get_' + method.value)
+        start = get_current_epoch_time_ms()
+        if not self._client_is_usable():
+            return input_validator.generate_control_treatments(features)
 
         if not self.ready:
             _LOGGER.error("Client is not ready - no calls possible")
             await self._telemetry_init_producer.record_not_ready_usage()
 
-        valid_feature_flag_names = input_validator.validate_feature_flags_get_treatments(
-            'get_' + method.value,
-            feature_flag_names
-        )
-
-        if valid_feature_flag_names is None:
-            return {}
-
-        matching_key, bucketing_key = input_validator.validate_key(key, 'get_' + method.value)
-        if matching_key is None and bucketing_key is None:
-            return input_validator.generate_control_treatments(feature_flag_names, 'get_' + method.value)
-
-        if bucketing_key is None:
-            bucketing_key = matching_key
-
-        condition_matchers = {}
-        feature_flags = []
-        missing = []
-        for feature_flag_name in valid_feature_flag_names:
-            try:
-                evaluation_data_context = await self._evaluator_data_collector.get_condition_matchers_async(feature_flag_name, bucketing_key, matching_key, attributes)
-                condition_matchers[feature_flag_name] = evaluation_data_context.condition_matchers
-                feature_flags.append(evaluation_data_context.feature_flag)
-            except FeatureNotFoundException:
-                _LOGGER.warning(
-                    "%s: you passed \"%s\" that does not exist in this environment, "
-                    "please double check what Feature flags exist in the Split user interface.",
-                    'get_' + method.value,
-                    feature_flag_name
-                )
-                missing.append(feature_flag_name)
-
-        valid_feature_flag_names = []
-        [valid_feature_flag_names.append(feature_flag.name) for feature_flag in feature_flags]
-        missing_treatments = {name: (CONTROL, None) for name in missing}
-
-        evaluation_results = self._make_evaluations(matching_key, bucketing_key, valid_feature_flag_names, feature_flags, condition_matchers, attributes, 'get_' + method.value)
-
         try:
-            if evaluation_results.impression:
-                await self._record_stats_async(
-                    [(i, attributes) for i in evaluation_results.impression],
-                    evaluation_results.start_time,
-                    method
-                )
-        except Exception:  # pylint: disable=broad-except
-            _LOGGER.error('%s: An exception when trying to store '
-                            'impressions.' % 'get_' + method.value)
-            _LOGGER.debug('Error: ', exc_info=True)
-            await self._telemetry_evaluation_producer.record_exception(method)
+            key, bucketing, features, attributes = self._validate_treatments_input(key, features, attributes, method)
+        except _InvalidInputError:
+            return input_validator.generate_control_treatments(features)
 
-        if evaluation_results.exception_flag:
-            await self._telemetry_evaluation_producer.record_exception(method)
+        results = {n: self._NON_READY_EVAL_RESULT for n in features}
+        if self.ready:
+            try:
+                ctx = await self._context_factory.context_for(key, features)
+                input_validator.validate_feature_flag_names({feature: ctx.flags.get(feature) for feature in features}, 'get_' + method.value)
+                results = self._evaluator.eval_many_with_context(key, bucketing, features, attributes, ctx)
+            except Exception as e: # toto narrow this
+                _LOGGER.error('Error getting treatment for feature flag')
+                _LOGGER.error(str(e))
+                _LOGGER.debug('Error: ', exc_info=True)
+                await self._telemetry_evaluation_producer.record_exception(method)
+                results = {n: self._FAILED_EVAL_RESULT for n in features}
 
-        evaluation_results.treatment_with_config.update(missing_treatments)
-        return evaluation_results.treatment_with_config
+        imp_attrs = [
+            (i, attributes) for i in self._build_impressions(key, bucketing, results)
+            if i.label != Label.SPLIT_NOT_FOUND
+        ]
+        await self._record_stats(imp_attrs, start, method)
 
-    async def _record_stats_async(self, impressions, start, operation):
+        return {
+            feature: (res['treatment'], res['configurations'])
+            for feature, res in results.items()
+        }
+
+    async def _record_stats(self, impressions, start, operation):
         """
         Record impressions for async calls
 
@@ -897,3 +739,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
             _LOGGER.error('Error processing track event')
             _LOGGER.debug('Error: ', exc_info=True)
             return False
+
+
+class _InvalidInputError(Exception):
+    pass

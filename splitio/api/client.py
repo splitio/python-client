@@ -297,7 +297,7 @@ class HttpClientAsync(HttpClientBase):
                 _build_url(server, path, self._urls),
                 params=query,
                 headers=headers,
-                data=str(json.dumps(body)).encode('utf-8'),
+                json=body,
                 timeout=self._timeout
             ) as response:
                 body = await response.text()

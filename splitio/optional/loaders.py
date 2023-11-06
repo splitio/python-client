@@ -3,7 +3,6 @@ try:
     import asyncio
     import aiohttp
     import aiofiles
-    from aiohttp import ClientConnectionError
 except ImportError:
     def missing_asyncio_dependencies(*_, **__):
         """Fail if missing dependencies are used."""

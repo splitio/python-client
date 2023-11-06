@@ -84,7 +84,7 @@ class SplitManager(object):
             _LOGGER.error("Client is not ready - no calls possible")
             return None
 
-        feature_name = input_validator.validate_manager_feature_flag_name(
+        feature_flag = input_validator.validate_manager_feature_flag_name(
             feature_name,
             self._factory.ready,
             self._storage
@@ -97,12 +97,7 @@ class SplitManager(object):
                 "Make sure to wait for SDK readiness before using this method"
             )
 
-        if feature_name is None:
-            return None
-
-        split = self._storage.get(feature_name)
-        return split.to_split_view() if split is not None else None
-
+        return feature_flag.to_split_view() if feature_flag is not None else None
 
 class SplitManagerAsync(object):
     """Split Manager. Gives insights on data cached by splits."""
@@ -181,7 +176,7 @@ class SplitManagerAsync(object):
             _LOGGER.error("Client is not ready - no calls possible")
             return None
 
-        feature_name = await input_validator.validate_manager_feature_flag_name_async(
+        feature_flag = await input_validator.validate_manager_feature_flag_name_async(
             feature_name,
             self._factory.ready,
             self._storage
@@ -194,8 +189,4 @@ class SplitManagerAsync(object):
                 "Make sure to wait for SDK readiness before using this method"
             )
 
-        if feature_name is None:
-            return None
-
-        split = await self._storage.get(feature_name)
-        return split.to_split_view() if split is not None else None
+        return feature_flag.to_split_view() if feature_flag is not None else None
