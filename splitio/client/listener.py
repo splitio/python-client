@@ -21,6 +21,13 @@ class ImpressionListener(object, metaclass=abc.ABCMeta):
         """
         pass
 
+    def _construct_data(self, impression, attributes):
+        data = {}
+        data['impression'] = impression
+        data['attributes'] = attributes
+        data['sdk-language-version'] = self._metadata.sdk_version
+        data['instance-id'] = self._metadata.instance_name
+        return data
 
 class ImpressionListenerWrapper(object):  # pylint: disable=too-few-public-methods
     """
@@ -53,11 +60,7 @@ class ImpressionListenerWrapper(object):  # pylint: disable=too-few-public-metho
         :param attributes: User provided attributes when calling get_treatment(s)
         :type attributes: dict
         """
-        data = {}
-        data['impression'] = impression
-        data['attributes'] = attributes
-        data['sdk-language-version'] = self._metadata.sdk_version
-        data['instance-id'] = self._metadata.instance_name
+        data = self._construct_data(impression, attributes)
         try:
             self.impression_listener.log_impression(data)
         except Exception as exc:  # pylint: disable=broad-except
@@ -95,11 +98,7 @@ class ImpressionListenerWrapperAsync(object):  # pylint: disable=too-few-public-
         :param attributes: User provided attributes when calling get_treatment(s)
         :type attributes: dict
         """
-        data = {}
-        data['impression'] = impression
-        data['attributes'] = attributes
-        data['sdk-language-version'] = self._metadata.sdk_version
-        data['instance-id'] = self._metadata.instance_name
+        data = self._construct_data(impression, attributes)
         try:
             await self.impression_listener.log_impression(data)
         except Exception as exc:  # pylint: disable=broad-except

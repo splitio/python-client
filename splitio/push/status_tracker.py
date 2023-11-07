@@ -83,6 +83,32 @@ class PushStatusTrackerBase(object):
         """
         return any(count > 0 for (chan, count) in self._publishers.items())
 
+    def _get_event_type_occupancy(self, event):
+        return StreamingEventTypes.OCCUPANCY_PRI if event.channel[-3:] == 'pri' else StreamingEventTypes.OCCUPANCY_SEC
+
+    def _get_next_status(self):
+        """
+        Return the next status to propagate based on the last status.
+
+        :returns: Next status and Streaming status for telemetry event.
+        :rtype: Tuple(splitio.push.status_tracker.Status, splitio.models.telemetry.SSEStreamingStatus)
+        """
+        if self._last_status_propagated == Status.PUSH_SUBSYSTEM_UP:
+            if not self._occupancy_ok() \
+                    or self._last_control_message == ControlType.STREAMING_PAUSED:
+                return self._propagate_status(Status.PUSH_SUBSYSTEM_DOWN), SSEStreamingStatus.PAUSED.value
+
+            if self._last_control_message == ControlType.STREAMING_DISABLED:
+                return self._propagate_status(Status.PUSH_NONRETRYABLE_ERROR), SSEStreamingStatus.DISABLED.value
+
+        if self._last_status_propagated == Status.PUSH_SUBSYSTEM_DOWN:
+            if self._occupancy_ok() and self._last_control_message == ControlType.STREAMING_ENABLED:
+                return self._propagate_status(Status.PUSH_SUBSYSTEM_UP), SSEStreamingStatus.ENABLED.value
+
+            if self._last_control_message == ControlType.STREAMING_DISABLED:
+                return self._propagate_status(Status.PUSH_NONRETRYABLE_ERROR), SSEStreamingStatus.DISABLED.value
+
+        return None, None
 
 class PushStatusTracker(PushStatusTrackerBase):
     """Tracks status of notification manager/publishers."""
@@ -116,7 +142,7 @@ class PushStatusTracker(PushStatusTrackerBase):
 
         self._publishers[event.channel] = event.publishers
         self._telemetry_runtime_producer.record_streaming_event((
-            StreamingEventTypes.OCCUPANCY_PRI if event.channel[-3:] == 'pri' else StreamingEventTypes.OCCUPANCY_SEC,
+            self._get_event_type_occupancy(event),
             len(self._publishers),
             event.timestamp
         ))
@@ -181,24 +207,10 @@ class PushStatusTracker(PushStatusTrackerBase):
         :returns: A new status if required. None otherwise
         :rtype: Optional[Status]
         """
-        if self._last_status_propagated == Status.PUSH_SUBSYSTEM_UP:
-            if not self._occupancy_ok() \
-                    or self._last_control_message == ControlType.STREAMING_PAUSED:
-                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.STREAMING_STATUS, SSEStreamingStatus.PAUSED.value, get_current_epoch_time_ms()))
-                return self._propagate_status(Status.PUSH_SUBSYSTEM_DOWN)
-
-            if self._last_control_message == ControlType.STREAMING_DISABLED:
-                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.STREAMING_STATUS, SSEStreamingStatus.DISABLED.value, get_current_epoch_time_ms()))
-                return self._propagate_status(Status.PUSH_NONRETRYABLE_ERROR)
-
-        if self._last_status_propagated == Status.PUSH_SUBSYSTEM_DOWN:
-            if self._occupancy_ok() and self._last_control_message == ControlType.STREAMING_ENABLED:
-                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.STREAMING_STATUS, SSEStreamingStatus.ENABLED.value, get_current_epoch_time_ms()))
-                return self._propagate_status(Status.PUSH_SUBSYSTEM_UP)
-
-            if self._last_control_message == ControlType.STREAMING_DISABLED:
-                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.STREAMING_STATUS, SSEStreamingStatus.DISABLED.value, get_current_epoch_time_ms()))
-                return self._propagate_status(Status.PUSH_NONRETRYABLE_ERROR)
+        next_status, telemetry_event_type = self._get_next_status()
+        if next_status is not None:
+            self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.STREAMING_STATUS, telemetry_event_type, get_current_epoch_time_ms()))
+            return next_status
 
         return None
 
@@ -252,7 +264,7 @@ class PushStatusTrackerAsync(PushStatusTrackerBase):
 
         self._publishers[event.channel] = event.publishers
         await self._telemetry_runtime_producer.record_streaming_event((
-            StreamingEventTypes.OCCUPANCY_PRI if event.channel[-3:] == 'pri' else StreamingEventTypes.OCCUPANCY_SEC,
+            self._get_event_type_occupancy(event),
             len(self._publishers),
             event.timestamp
         ))
@@ -317,24 +329,10 @@ class PushStatusTrackerAsync(PushStatusTrackerBase):
         :returns: A new status if required. None otherwise
         :rtype: Optional[Status]
         """
-        if self._last_status_propagated == Status.PUSH_SUBSYSTEM_UP:
-            if not self._occupancy_ok() \
-                    or self._last_control_message == ControlType.STREAMING_PAUSED:
-                await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.STREAMING_STATUS, SSEStreamingStatus.PAUSED.value, get_current_epoch_time_ms()))
-                return self._propagate_status(Status.PUSH_SUBSYSTEM_DOWN)
-
-            if self._last_control_message == ControlType.STREAMING_DISABLED:
-                await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.STREAMING_STATUS, SSEStreamingStatus.DISABLED.value, get_current_epoch_time_ms()))
-                return self._propagate_status(Status.PUSH_NONRETRYABLE_ERROR)
-
-        if self._last_status_propagated == Status.PUSH_SUBSYSTEM_DOWN:
-            if self._occupancy_ok() and self._last_control_message == ControlType.STREAMING_ENABLED:
-                await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.STREAMING_STATUS, SSEStreamingStatus.ENABLED.value, get_current_epoch_time_ms()))
-                return self._propagate_status(Status.PUSH_SUBSYSTEM_UP)
-
-            if self._last_control_message == ControlType.STREAMING_DISABLED:
-                await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.STREAMING_STATUS, SSEStreamingStatus.DISABLED.value, get_current_epoch_time_ms()))
-                return self._propagate_status(Status.PUSH_NONRETRYABLE_ERROR)
+        next_status, telemetry_event_type = self._get_next_status()
+        if next_status is not None:
+            await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.STREAMING_STATUS, telemetry_event_type, get_current_epoch_time_ms()))
+            return next_status
 
         return None
 

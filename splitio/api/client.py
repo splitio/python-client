@@ -246,11 +246,12 @@ class HttpClientAsync(HttpClientBase):
             headers.update(extra_headers)
         start = get_current_epoch_time_ms()
         try:
-            _LOGGER.debug("GET request: %s", _build_url(server, path, self._urls))
+            url = _build_url(server, path, self._urls)
+            _LOGGER.debug("GET request: %s", url)
             _LOGGER.debug("query params: %s", query)
             _LOGGER.debug("headers: %s", headers)
             async with self._session.get(
-                _build_url(server, path, self._urls),
+                url,
                 params=query,
                 headers=headers,
                 timeout=self._timeout

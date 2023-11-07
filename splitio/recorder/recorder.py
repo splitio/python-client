@@ -51,8 +51,6 @@ class StatsRecorder(object, metaclass=abc.ABCMeta):
                     await self._listener.log_impression(impression, attributes)
             except ImpressionListenerException:
                 pass
-#                self._logger.error('An exception was raised while calling user-custom impression listener')
-#                self._logger.debug('Error', exc_info=True)
 
     def _send_impressions_to_listener(self, impressions):
         """
@@ -67,8 +65,6 @@ class StatsRecorder(object, metaclass=abc.ABCMeta):
                     self._listener.log_impression(impression, attributes)
             except ImpressionListenerException:
                 pass
-#                self._logger.error('An exception was raised while calling user-custom impression listener')
-#                self._logger.debug('Error', exc_info=True)
 
 class StandardRecorder(StatsRecorder):
     """StandardRecorder class."""
