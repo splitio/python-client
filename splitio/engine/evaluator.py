@@ -92,8 +92,7 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
 
                 return self._splitter.get_treatment(bucketing, flag.seed, condition.partitions, flag.algo), condition.label
 
-        raise Exception('invalid split')
-
+        return flag.default_treatment, Label.NO_CONDITION_MATCHED
 
 class EvaluationDataFactory:
 
