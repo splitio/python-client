@@ -29,7 +29,7 @@ class ImpressionListener(object, metaclass=abc.ABCMeta):
         data['instance-id'] = self._metadata.instance_name
         return data
 
-class ImpressionListenerWrapper(object):  # pylint: disable=too-few-public-methods
+class ImpressionListenerWrapper(ImpressionListener):  # pylint: disable=too-few-public-methods
     """
     Impression listener safe-execution wrapper.
 
@@ -67,7 +67,7 @@ class ImpressionListenerWrapper(object):  # pylint: disable=too-few-public-metho
             raise ImpressionListenerException('Error in log_impression user\'s method is throwing exceptions') from exc
 
 
-class ImpressionListenerWrapperAsync(object):  # pylint: disable=too-few-public-methods
+class ImpressionListenerWrapperAsync(ImpressionListener):  # pylint: disable=too-few-public-methods
     """
     Impression listener safe-execution wrapper.
 
