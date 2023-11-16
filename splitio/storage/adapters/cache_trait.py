@@ -112,11 +112,15 @@ class LocalMemoryCache(object):  # pylint: disable=too-many-instance-attributes
         :type value: str
         """
         async with asyncio.Lock():
-            node = LocalMemoryCache._Node(key, value, time.time(), None, None)
+            if self._data.get(key) is not None:
+                node = self._data.get(key)
+                node.value = value
+                node.last_update = time.time()
+            else:
+                node = LocalMemoryCache._Node(key, value, time.time(), None, None)
             node = self._bubble_up(node)
             self._data[key] = node
             self._rollover()
-
 
     def remove_expired(self):
         """Remove expired elements."""
