@@ -523,8 +523,10 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
 
     async def _stop_current_conn(self):
         """Abort current streaming connection and stop it's associated workers."""
+        _LOGGER.debug("Aborting SplitSSE tasks.")
         await self._processor.update_workers_status(False)
         self._status_tracker.notify_sse_shutdown_expected()
         await self._sse_client.stop()
         self._running_task.cancel()
         await self._running_task
+        _LOGGER.debug("SplitSSE tasks are stopped")
