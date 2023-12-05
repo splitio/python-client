@@ -31,6 +31,7 @@ DEFAULT_CONFIG = {
     'redisHost': 'localhost',
     'redisPort': 6379,
     'redisDb': 0,
+    'redisUsername': None,
     'redisPassword': None,
     'redisSocketTimeout': None,
     'redisSocketConnectTimeout': None,
