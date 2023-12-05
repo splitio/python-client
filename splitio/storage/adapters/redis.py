@@ -357,6 +357,7 @@ def _build_default_client(config):  # pylint: disable=too-many-locals
     host = config.get('redisHost', 'localhost')
     port = config.get('redisPort', 6379)
     database = config.get('redisDb', 0)
+    username = config.get('redisUsername', None)
     password = config.get('redisPassword', None)
     socket_timeout = config.get('redisSocketTimeout', None)
     socket_connect_timeout = config.get('redisSocketConnectTimeout', None)
@@ -382,6 +383,7 @@ def _build_default_client(config):  # pylint: disable=too-many-locals
         port=port,
         db=database,
         password=password,
+        username=username,
         socket_timeout=socket_timeout,
         socket_connect_timeout=socket_connect_timeout,
         socket_keepalive=socket_keepalive,
@@ -435,6 +437,7 @@ def _build_sentinel_client(config):  # pylint: disable=too-many-locals
         raise SentinelConfigurationException('redisMasterService must be specified.')
 
     database = config.get('redisDb', 0)
+    username = config.get('redisUsername', None)
     password = config.get('redisPassword', None)
     socket_timeout = config.get('redisSocketTimeout', None)
     socket_connect_timeout = config.get('redisSocketConnectTimeout', None)
@@ -452,6 +455,7 @@ def _build_sentinel_client(config):  # pylint: disable=too-many-locals
         sentinels,
         db=database,
         password=password,
+        username=username,
         socket_timeout=socket_timeout,
         socket_connect_timeout=socket_connect_timeout,
         socket_keepalive=socket_keepalive,
