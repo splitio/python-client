@@ -110,10 +110,15 @@ class EvaluatorTests(object):
         e._splitter.get_treatment.return_value = 'on'
         mocked_split = mocker.Mock(spec=Split)
         mocked_split.killed = False
+        mocked_split.default_treatment = 'off'
+        mocked_split.change_number = '123'
         mocked_split.conditions = []
-        
-        with pytest.raises(Exception):
-            e._treatment_for_flag(mocked_split, 'some_key', 'some_bucketing', {}, EvaluationContext({}, set()))
+        mocked_split.get_configurations_for = None
+        ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set())
+        assert e._treatment_for_flag(mocked_split, 'some_key', 'some_bucketing', {}, ctx) == (
+            'off',
+            Label.NO_CONDITION_MATCHED
+        )
 
     def test_get_gtreatment_for_split_non_rollout(self, mocker):
         """Test condition matches."""

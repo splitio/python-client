@@ -86,8 +86,8 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         matching_key, bucketing_key = input_validator.validate_key(key, 'get_' + method.value)
         if not matching_key:
             raise _InvalidInputError()
-        if bucketing_key is None:
-            bucketing_key = matching_key
+#        if bucketing_key is None:
+#            bucketing_key = matching_key
 
         feature = input_validator.validate_feature_flag_name(feature, 'get_' + method.value)
         if not feature:
@@ -104,8 +104,8 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         matching_key, bucketing_key = input_validator.validate_key(key, 'get_' + method.value)
         if not matching_key:
             raise _InvalidInputError()
-        if bucketing_key is None:
-            bucketing_key = matching_key
+#        if bucketing_key is None:
+#            bucketing_key = matching_key
 
         features = input_validator.validate_feature_flags_get_treatments('get_' + method.value, features)
         if not features:
