@@ -197,8 +197,7 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         """
         _LOGGER.debug(self.status)
         if self.status != SplitSSEClient._Status.IDLE:
-#            raise Exception('SseClient already started.')
-            _LOGGER.warning('SseClient already started.')
+            raise Exception('SseClient already started.')
 
         self.status = SplitSSEClient._Status.CONNECTING
         url = self._build_url(token)
