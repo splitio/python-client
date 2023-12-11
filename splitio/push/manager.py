@@ -439,8 +439,9 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             async for event in events_source:
                 await self._event_handler(event)
             await self._handle_connection_end()  # TODO(mredolatti): this is not tested
-            self._token_task.cancel()
         finally:
+            if self._token_task is not None:
+                self._token_task.cancel()
             self._running = False
             self._done.set()
 
