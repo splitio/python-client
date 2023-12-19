@@ -6,6 +6,7 @@ try:
     from redis.sentinel import Sentinel
     from redis.exceptions import RedisError
     import redis.asyncio as aioredis
+    from redis.asyncio.sentinel import Sentinel as SentinelAsync
 except ImportError:
     def missing_redis_dependencies(*_, **__):
         """Fail if missing dependencies are used."""
@@ -604,6 +605,10 @@ class RedisAdapterAsync(RedisAdapterBase):  # pylint: disable=too-many-public-me
         except RedisError as exc:
             raise RedisAdapterException('Error executing ttl operation') from exc
 
+    async def close(self):
+        await self._decorated.close()
+        await self._decorated.connection_pool.disconnect(inuse_connections=True)
+
 class RedisPipelineAdapterBase(object, metaclass=abc.ABCMeta):
     """
     Template decorator for Redis Pipeline.
@@ -679,17 +684,17 @@ class RedisPipelineAdapterAsync(RedisPipelineAdapterBase):
         self._prefix_helper = prefix_helper
         self._pipe = decorated.pipeline()
 
-    async def rpush(self, key, *values):
+    def rpush(self, key, *values):
         """Mimic original redis function but using user custom prefix."""
-        await self._pipe.rpush(self._prefix_helper.add_prefix(key), *values)
+        self._pipe.rpush(self._prefix_helper.add_prefix(key), *values)
 
-    async def incr(self, name, amount=1):
+    def incr(self, name, amount=1):
         """Mimic original redis function but using user custom prefix."""
-        await self._pipe.incr(self._prefix_helper.add_prefix(name), amount)
+        self._pipe.incr(self._prefix_helper.add_prefix(name), amount)
 
-    async def hincrby(self, name, key, amount=1):
+    def hincrby(self, name, key, amount=1):
         """Mimic original redis function but using user custom prefix."""
-        await self._pipe.hincrby(self._prefix_helper.add_prefix(name), key, amount)
+        self._pipe.hincrby(self._prefix_helper.add_prefix(name), key, amount)
 
     async def execute(self):
         """Mimic original redis function but using user custom prefix."""
@@ -779,7 +784,6 @@ async def _build_default_client_async(config):  # pylint: disable=too-many-local
     unix_socket_path = config.get('redisUnixSocketPath', None)
     encoding = config.get('redisEncoding', 'utf-8')
     encoding_errors = config.get('redisEncodingErrors', 'strict')
-    errors = config.get('redisErrors', None)
     decode_responses = config.get('redisDecodeResponses', True)
     retry_on_timeout = config.get('redisRetryOnTimeout', False)
     ssl = config.get('redisSsl', False)
@@ -790,27 +794,29 @@ async def _build_default_client_async(config):  # pylint: disable=too-many-local
     max_connections = config.get('redisMaxConnections', None)
     prefix = config.get('redisPrefix')
 
-    redis = await aioredis.from_url(
-        "redis://" + host + ":" + str(port),
-        db=database,
-        password=password,
-        timeout=socket_timeout,
+    if connection_pool == None:
+        connection_pool = aioredis.ConnectionPool.from_url(
+            "redis://" + host + ":" + str(port),
+            db=database,
+            password=password,
+            max_connections=max_connections,
+            encoding=encoding,
+            decode_responses=decode_responses,
+            socket_timeout=socket_timeout,
+        )
+    redis = aioredis.Redis(
+        connection_pool=connection_pool,
         socket_connect_timeout=socket_connect_timeout,
         socket_keepalive=socket_keepalive,
         socket_keepalive_options=socket_keepalive_options,
-        connection_pool=connection_pool,
         unix_socket_path=unix_socket_path,
-        encoding=encoding,
         encoding_errors=encoding_errors,
-        errors=errors,
-        decode_responses=decode_responses,
         retry_on_timeout=retry_on_timeout,
         ssl=ssl,
         ssl_keyfile=ssl_keyfile,
         ssl_certfile=ssl_certfile,
         ssl_cert_reqs=ssl_cert_reqs,
-        ssl_ca_certs=ssl_ca_certs,
-        max_connections=max_connections
+        ssl_ca_certs=ssl_ca_certs
     )
     return RedisAdapterAsync(redis, prefix=prefix)
 
@@ -879,6 +885,71 @@ def _build_sentinel_client(config):  # pylint: disable=too-many-locals
     redis = sentinel.master_for(master_service)
     return RedisAdapter(redis, prefix=prefix)
 
+async def _build_sentinel_client_async(config):  # pylint: disable=too-many-locals
+    """
+    Build a redis client with sentinel replication.
+
+    :param config: Redis configuration properties.
+    :type config: dict
+
+    :return: A Wrapped redis-sentinel client
+    :rtype: splitio.storage.adapters.redis.RedisAdapter
+    """
+    sentinels = config.get('redisSentinels')
+
+    if sentinels is None:
+        raise SentinelConfigurationException('redisSentinels must be specified.')
+    if not isinstance(sentinels, list):
+        raise SentinelConfigurationException('Sentinels must be an array of elements in the form of'
+                                             ' [(ip, port)].')
+    if not sentinels:
+        raise SentinelConfigurationException('It must be at least one sentinel.')
+    if not all(isinstance(s, tuple) for s in sentinels):
+        raise SentinelConfigurationException('Sentinels must respect the tuple structure'
+                                             '[(ip, port)].')
+
+    master_service = config.get('redisMasterService')
+
+    if master_service is None:
+        raise SentinelConfigurationException('redisMasterService must be specified.')
+
+    database = config.get('redisDb', 0)
+    password = config.get('redisPassword', None)
+    socket_timeout = config.get('redisSocketTimeout', None)
+    socket_connect_timeout = config.get('redisSocketConnectTimeout', None)
+    socket_keepalive = config.get('redisSocketKeepalive', None)
+    socket_keepalive_options = config.get('redisSocketKeepaliveOptions', None)
+    connection_pool = config.get('redisConnectionPool', None)
+    encoding = config.get('redisEncoding', 'utf-8')
+    encoding_errors = config.get('redisEncodingErrors', 'strict')
+    decode_responses = config.get('redisDecodeResponses', True)
+    retry_on_timeout = config.get('redisRetryOnTimeout', False)
+    max_connections = config.get('redisMaxConnections', None)
+    ssl = config.get('redisSsl', False)
+    prefix = config.get('redisPrefix')
+
+    sentinel = SentinelAsync(
+        sentinels,
+        db=database,
+        password=password,
+        encoding=encoding,
+        encoding_errors=encoding_errors,
+        decode_responses=decode_responses,
+        max_connections=max_connections,
+        connection_pool=connection_pool,
+        socket_connect_timeout=socket_connect_timeout
+    )
+
+    redis = sentinel.master_for(
+        master_service,
+        socket_timeout=socket_timeout,
+        socket_keepalive=socket_keepalive,
+        socket_keepalive_options=socket_keepalive_options,
+        encoding_errors=encoding_errors,
+        retry_on_timeout=retry_on_timeout,
+        ssl=ssl
+    )
+    return RedisAdapterAsync(redis, prefix=prefix)
 
 async def build_async(config):
     """
@@ -890,6 +961,8 @@ async def build_async(config):
     :return: A redis async client
     :rtype: splitio.storage.adapters.redis.RedisAdapterAsync
     """
+    if 'redisSentinels' in config:
+        return await _build_sentinel_client_async(config)
     return await _build_default_client_async(config)
 
 def build(config):

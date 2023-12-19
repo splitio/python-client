@@ -61,6 +61,8 @@ class SegmentWorkerTests(object):
         assert not segment_worker.is_running()
 
 class SegmentWorkerAsyncTests(object):
+
+    @pytest.mark.asyncio
     async def test_on_error(self):
         q = asyncio.Queue()
 
@@ -85,12 +87,13 @@ class SegmentWorkerAsyncTests(object):
 
     def _worker_running(self):
         worker_running = False
-        for task in asyncio.Task.all_tasks():
+        for task in asyncio.all_tasks():
             if task._coro.cr_code.co_name == '_run' and not task.done():
                 worker_running = True
                 break
         return worker_running
 
+    @pytest.mark.asyncio
     async def test_handler(self):
         q = asyncio.Queue()
         segment_worker = SegmentWorkerAsync(handler_sync, q)

@@ -3,7 +3,6 @@ try:
     import asyncio
     import aiohttp
     import aiofiles
-    from aiohttp import ClientConnectionError
 except ImportError:
     def missing_asyncio_dependencies(*_, **__):
         """Fail if missing dependencies are used."""
@@ -20,3 +19,5 @@ async def _anext(it):
 
 if sys.version_info.major < 3 or sys.version_info.minor < 10:
     anext = _anext
+else:
+    anext = anext

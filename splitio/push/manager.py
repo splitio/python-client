@@ -3,7 +3,6 @@
 import logging
 from threading import Timer
 import abc
-
 from splitio.optional.loaders import asyncio, anext
 from splitio.api import APIException
 from splitio.util.time import get_current_epoch_time_ms
@@ -12,7 +11,7 @@ from splitio.push.sse import SSE_EVENT_ERROR
 from splitio.push.parser import parse_incoming_event, EventParsingException, EventType, \
     MessageType
 from splitio.push.processor import MessageProcessor, MessageProcessorAsync
-from splitio.push.status_tracker import PushStatusTracker, Status
+from splitio.push.status_tracker import PushStatusTracker, Status, PushStatusTrackerAsync
 from splitio.models.telemetry import StreamingEventTypes
 
 _TOKEN_REFRESH_GRACE_PERIOD = 10 * 60  # 10 minutes
@@ -167,12 +166,11 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
             self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
             return
 
-        if not token.push_enabled:
+        if token is None or not token.push_enabled:
             self._feedback_loop.put(Status.PUSH_NONRETRYABLE_ERROR)
             return
         self._telemetry_runtime_producer.record_token_refreshes()
         _LOGGER.debug("auth token fetched. connecting to streaming.")
-
         self._status_tracker.reset()
         if self._sse_client.start(token):
             _LOGGER.debug("connected to streaming, scheduling next refresh")
@@ -303,7 +301,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         self._auth_api = auth_api
         self._feedback_loop = feedback_loop
         self._processor = MessageProcessorAsync(synchronizer)
-        self._status_tracker = PushStatusTracker(telemetry_runtime_producer)
+        self._status_tracker = PushStatusTrackerAsync(telemetry_runtime_producer)
         self._event_handlers = {
             EventType.MESSAGE: self._handle_message,
             EventType.ERROR: self._handle_error
@@ -353,7 +351,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         if self._token_task:
             self._token_task.cancel()
 
-        stop_task = await self._stop_current_conn()
+        stop_task = asyncio.get_running_loop().create_task(self._stop_current_conn())
         if blocking:
             await stop_task
 
@@ -393,19 +391,18 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         """Get new auth token"""
         try:
             token = await self._auth_api.authenticate()
-            await self._telemetry_runtime_producer.record_token_refreshes()
-            await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.TOKEN_REFRESH, 1000 * token.exp,  get_current_epoch_time_ms()))
-
         except APIException:
             _LOGGER.error('error performing sse auth request.')
             _LOGGER.debug('stack trace: ', exc_info=True)
             await self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
             raise
 
-        if not token.push_enabled:
+        if token is not None and not token.push_enabled:
             await self._feedback_loop.put(Status.PUSH_NONRETRYABLE_ERROR)
             raise Exception("Push is not enabled")
 
+        await self._telemetry_runtime_producer.record_token_refreshes()
+        await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.TOKEN_REFRESH, 1000 * token.exp,  get_current_epoch_time_ms()))
         _LOGGER.debug("auth token fetched. connecting to streaming.")
         return token
 
@@ -417,7 +414,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             try:
                 token = await self._get_auth_token()
             except Exception as e:
-                _LOGGER.error("error getting auth token" + str(e))
+                _LOGGER.error("error getting auth token: " + str(e))
                 _LOGGER.debug("trace: ", exc_info=True)
                 return
 
@@ -442,8 +439,9 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             async for event in events_source:
                 await self._event_handler(event)
             await self._handle_connection_end()  # TODO(mredolatti): this is not tested
-
         finally:
+            if self._token_task is not None:
+                self._token_task.cancel()
             self._running = False
             self._done.set()
 
@@ -481,7 +479,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         :type event: splitio.push.sse.parser.ControlMessage
         """
         _LOGGER.debug('handling control event: %s', str(event))
-        feedback = self._status_tracker.handle_control_message(event)
+        feedback = await self._status_tracker.handle_control_message(event)
         if feedback is not None:
             await self._feedback_loop.put(feedback)
 
@@ -493,7 +491,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         :type event: splitio.push.sse.parser.Occupancy
         """
         _LOGGER.debug('handling occupancy event: %s', str(event))
-        feedback = self._status_tracker.handle_occupancy(event)
+        feedback = await self._status_tracker.handle_occupancy(event)
         if feedback is not None:
             await self._feedback_loop.put(feedback)
 
@@ -505,7 +503,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         :type event: splitio.push.sse.parser.AblyError
         """
         _LOGGER.debug('handling ably error event: %s', str(event))
-        feedback = self._status_tracker.handle_ably_error(event)
+        feedback = await self._status_tracker.handle_ably_error(event)
         if feedback is not None:
             await self._feedback_loop.put(feedback)
 
@@ -520,14 +518,16 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
 
         If the connection shutdown was not requested, trigger a restart.
         """
-        feedback = self._status_tracker.handle_disconnect()
+        feedback = await self._status_tracker.handle_disconnect()
         if feedback is not None:
             await self._feedback_loop.put(feedback)
 
     async def _stop_current_conn(self):
         """Abort current streaming connection and stop it's associated workers."""
+        _LOGGER.debug("Aborting SplitSSE tasks.")
         await self._processor.update_workers_status(False)
         self._status_tracker.notify_sse_shutdown_expected()
         await self._sse_client.stop()
         self._running_task.cancel()
         await self._running_task
+        _LOGGER.debug("SplitSSE tasks are stopped")

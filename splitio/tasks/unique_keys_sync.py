@@ -87,6 +87,15 @@ class ClearFilterSyncTaskBase(BaseSynchronizationTask):
         """Stop executing the unique keys synchronization task."""
         pass
 
+    def is_running(self):
+        """
+        Return whether the task is running or not.
+
+        :return: True if the task is running. False otherwise.
+        :rtype: bool
+        """
+        return self._task.running()
+
 
 class ClearFilterSyncTask(ClearFilterSyncTaskBase):
     """Unique Keys synchronization task uses an asynctask.AsyncTask to send MTKs."""

@@ -3,6 +3,7 @@
 import pytest
 from redis.asyncio.client import Redis as aioredis
 from splitio.storage.adapters import redis
+from splitio.storage.adapters.redis import _build_default_client_async, _build_sentinel_client_async
 from redis import StrictRedis, Redis
 from redis.sentinel import Sentinel
 
@@ -404,56 +405,116 @@ class RedisStorageAdapterAsyncTests(object):
     @pytest.mark.asyncio
     async def test_adapter_building(self, mocker):
         """Test buildin different types of client according to parameters received."""
-        self.host = None
-        self.db = None
-        self.password = None
-        self.timeout = None
-        self.socket_connect_timeout = None
-        self.socket_keepalive = None
-        self.socket_keepalive_options = None
-        self.connection_pool = None
-        self.unix_socket_path = None
-        self.encoding = None
-        self.encoding_errors = None
-        self.errors = None
-        self.decode_responses = None
-        self.retry_on_timeout = None
-        self.ssl = None
-        self.ssl_keyfile = None
-        self.ssl_certfile = None
-        self.ssl_cert_reqs = None
-        self.ssl_ca_certs = None
-        self.max_connections = None
-        async def from_url(host, db, password, timeout, socket_connect_timeout,
-            socket_keepalive, socket_keepalive_options, connection_pool,
-            unix_socket_path, encoding, encoding_errors, errors, decode_responses,
-            retry_on_timeout, ssl, ssl_keyfile, ssl_certfile, ssl_cert_reqs,
-            ssl_ca_certs, max_connections):
-            self.host = host
-            self.db = db
-            self.password = password
-            self.timeout = timeout
-            self.socket_connect_timeout = socket_connect_timeout
-            self.socket_keepalive = socket_keepalive
-            self.socket_keepalive_options = socket_keepalive_options
-            self.connection_pool = connection_pool
-            self.unix_socket_path = unix_socket_path
-            self.encoding = encoding
-            self.encoding_errors = encoding_errors
-            self.errors = errors
-            self.decode_responses = decode_responses
-            self.retry_on_timeout = retry_on_timeout
-            self.ssl = ssl
-            self.ssl_keyfile = ssl_keyfile
-            self.ssl_certfile = ssl_certfile
-            self.ssl_cert_reqs = ssl_cert_reqs
-            self.ssl_ca_certs = ssl_ca_certs
-            self.max_connections = max_connections
-        mocker.patch('redis.asyncio.client.Redis.from_url', new=from_url)
 
         config = {
             'redisHost': 'some_host',
             'redisPort': 1234,
+            'redisDb': 0,
+            'redisPassword': 'some_password',
+            'redisSocketTimeout': 123,
+            'redisSocketKeepalive': 789,
+            'redisSocketKeepaliveOptions': 10,
+            'redisUnixSocketPath': '/tmp/socket',
+            'redisEncoding': 'utf-8',
+            'redisEncodingErrors': 'strict',
+            'redisDecodeResponses': True,
+            'redisRetryOnTimeout': True,
+            'redisSsl': True,
+            'redisSslKeyfile': '/ssl.cert',
+            'redisSslCertfile': '/ssl2.cert',
+            'redisSslCertReqs': 'abc',
+            'redisSslCaCerts': 'def',
+            'redisMaxConnections': 5,
+            'redisPrefix': 'some_prefix'
+        }
+
+        def redis_init(se, connection_pool,
+                socket_connect_timeout,
+                socket_keepalive,
+                socket_keepalive_options,
+                unix_socket_path,
+                encoding_errors,
+                retry_on_timeout,
+                ssl,
+                ssl_keyfile,
+                ssl_certfile,
+                ssl_cert_reqs,
+                ssl_ca_certs):
+            self.connection_pool=connection_pool
+            self.socket_connect_timeout=socket_connect_timeout
+            self.socket_keepalive=socket_keepalive
+            self.socket_keepalive_options=socket_keepalive_options
+            self.unix_socket_path=unix_socket_path
+            self.encoding_errors=encoding_errors
+            self.retry_on_timeout=retry_on_timeout
+            self.ssl=ssl
+            self.ssl_keyfile=ssl_keyfile
+            self.ssl_certfile=ssl_certfile
+            self.ssl_cert_reqs=ssl_cert_reqs
+            self.ssl_ca_certs=ssl_ca_certs
+        mocker.patch('redis.asyncio.client.Redis.__init__', new=redis_init)
+
+        redis_mock = await _build_default_client_async(config)
+
+        assert self.connection_pool.connection_kwargs['host'] == 'some_host'
+        assert self.connection_pool.connection_kwargs['port'] == 1234
+        assert self.connection_pool.connection_kwargs['db'] == 0
+        assert self.connection_pool.connection_kwargs['password'] == 'some_password'
+        assert self.connection_pool.connection_kwargs['encoding'] == 'utf-8'
+        assert self.connection_pool.connection_kwargs['decode_responses'] == True
+
+        assert self.socket_keepalive == 789
+        assert self.socket_keepalive_options == 10
+        assert self.unix_socket_path == '/tmp/socket'
+        assert self.encoding_errors == 'strict'
+        assert self.retry_on_timeout == True
+        assert self.ssl == True
+        assert self.ssl_keyfile == '/ssl.cert'
+        assert self.ssl_certfile == '/ssl2.cert'
+        assert self.ssl_cert_reqs == 'abc'
+        assert self.ssl_ca_certs == 'def'
+
+        def create_sentinel(se,
+                sentinels,
+                db,
+                password,
+                encoding,
+                max_connections,
+                encoding_errors,
+                decode_responses,
+                connection_pool,
+                socket_connect_timeout):
+            self.sentinels=sentinels
+            self.db=db
+            self.password=password
+            self.encoding=encoding
+            self.max_connections=max_connections
+            self.encoding_errors=encoding_errors,
+            self.decode_responses=decode_responses,
+            self.connection_pool=connection_pool,
+            self.socket_connect_timeout=socket_connect_timeout
+        mocker.patch('redis.asyncio.sentinel.Sentinel.__init__', new=create_sentinel)
+
+        def master_for(se,
+            master_service,
+            socket_timeout,
+            socket_keepalive,
+            socket_keepalive_options,
+            encoding_errors,
+            retry_on_timeout,
+            ssl):
+            self.master_service = master_service,
+            self.socket_timeout = socket_timeout,
+            self.socket_keepalive = socket_keepalive,
+            self.socket_keepalive_options = socket_keepalive_options,
+            self.encoding_errors = encoding_errors,
+            self.retry_on_timeout = retry_on_timeout,
+            self.ssl = ssl
+        mocker.patch('redis.asyncio.sentinel.Sentinel.master_for', new=master_for)
+
+        config = {
+            'redisSentinels': [('123.123.123.123', 1), ('456.456.456.456', 2), ('789.789.789.789', 3)],
+            'redisMasterService': 'some_master',
             'redisDb': 0,
             'redisPassword': 'some_password',
             'redisSocketTimeout': 123,
@@ -467,37 +528,23 @@ class RedisStorageAdapterAsyncTests(object):
             'redisErrors': 'abc',
             'redisDecodeResponses': True,
             'redisRetryOnTimeout': True,
-            'redisSsl': True,
-            'redisSslKeyfile': '/ssl.cert',
-            'redisSslCertfile': '/ssl2.cert',
-            'redisSslCertReqs': 'abc',
-            'redisSslCaCerts': 'def',
+            'redisSsl': False,
             'redisMaxConnections': 5,
             'redisPrefix': 'some_prefix'
         }
-
-        await redis.build_async(config)
-
-        assert self.host == 'redis://some_host:1234'
+        await _build_sentinel_client_async(config)
+        assert self.sentinels == [('123.123.123.123', 1), ('456.456.456.456', 2), ('789.789.789.789', 3)]
         assert self.db == 0
         assert self.password == 'some_password'
-        assert self.timeout == 123
-        assert self.socket_connect_timeout == 456
-        assert self.socket_keepalive == 789
-        assert self.socket_keepalive_options == 10
-        assert self.connection_pool == 20
-        assert self.unix_socket_path == '/tmp/socket'
         assert self.encoding == 'utf-8'
-        assert self.encoding_errors == 'strict'
-        assert self.errors == 'abc'
-        assert self.decode_responses == True
-        assert self.retry_on_timeout == True
-        assert self.ssl == True
-        assert self.ssl_keyfile == '/ssl.cert'
-        assert self.ssl_certfile == '/ssl2.cert'
-        assert self.ssl_cert_reqs == 'abc'
-        assert self.ssl_ca_certs == 'def'
         assert self.max_connections == 5
+        assert self.ssl == False
+        assert self.master_service == ('some_master',)
+        assert self.socket_timeout == (123,)
+        assert self.socket_keepalive == (789,)
+        assert self.socket_keepalive_options == (10,)
+        assert self.encoding_errors == ('strict',)
+        assert self.retry_on_timeout == (True,)
 
 
 class RedisPipelineAdapterTests(object):
@@ -537,40 +584,47 @@ class RedisPipelineAdapterAsyncTests(object):
         self.key = None
         self.value = None
         self.value2 = None
-        async def rpush(sel, key, value, value2):
+        def rpush(sel, key, value, value2):
             self.key = key
             self.value = value
             self.value2 = value2
         mocker.patch('redis.asyncio.client.Pipeline.rpush', new=rpush)
-        await adapter.rpush('key1', 'value1', 'value2')
+        adapter.rpush('key1', 'value1', 'value2')
         assert self.key == 'some_prefix.key1'
         assert self.value == 'value1'
         assert self.value2 == 'value2'
 
         self.key = None
         self.value = None
-        async def incr(sel, key, value):
+        def incr(sel, key, value):
             self.key = key
             self.value = value
         mocker.patch('redis.asyncio.client.Pipeline.incr', new=incr)
-        await adapter.incr('key1')
+        adapter.incr('key1')
         assert self.key == 'some_prefix.key1'
         assert self.value == 1
 
         self.key = None
         self.value = None
         self.name = None
-        async def hincrby(sel, key, name, value):
+        def hincrby(sel, key, name, value):
             self.key = key
             self.value = value
             self.name = name
         mocker.patch('redis.asyncio.client.Pipeline.hincrby', new=hincrby)
-        await adapter.hincrby('key1', 'name1')
+        adapter.hincrby('key1', 'name1')
         assert self.key == 'some_prefix.key1'
         assert self.name == 'name1'
         assert self.value == 1
 
-        await adapter.hincrby('key1', 'name1', 5)
+        adapter.hincrby('key1', 'name1', 5)
         assert self.key == 'some_prefix.key1'
         assert self.name == 'name1'
         assert self.value == 5
+
+        self.called = False
+        async def execute(*_):
+            self.called = True
+        mocker.patch('redis.asyncio.client.Pipeline.execute', new=execute)
+        await adapter.execute()
+        assert self.called

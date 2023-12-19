@@ -70,7 +70,7 @@ class TelemetryAPITests(object):
         call_made = httpclient.post.mock_calls[0]
 
         # validate positional arguments
-        assert call_made[1] == ('telemetry', '/v1/metrics/config', 'some_api_key')
+        assert call_made[1] == ('telemetry', 'v1/metrics/config', 'some_api_key')
 
         # validate key-value args (headers)
         assert call_made[2]['extra_headers'] == {
@@ -108,7 +108,7 @@ class TelemetryAPITests(object):
         call_made = httpclient.post.mock_calls[0]
 
         # validate positional arguments
-        assert call_made[1] == ('telemetry', '/v1/metrics/usage', 'some_api_key')
+        assert call_made[1] == ('telemetry', 'v1/metrics/usage', 'some_api_key')
 
         # validate key-value args (headers)
         assert call_made[2]['extra_headers'] == {
@@ -211,7 +211,7 @@ class TelemetryAPIAsyncTests(object):
 
         response = await telemetry_api.record_init(uniques)
         assert self.verb == 'telemetry'
-        assert self.url == '/v1/metrics/config'
+        assert self.url == 'v1/metrics/config'
         assert self.key == 'some_api_key'
 
         # validate key-value args (headers)
@@ -261,7 +261,7 @@ class TelemetryAPIAsyncTests(object):
 
         response = await telemetry_api.record_stats(uniques)
         assert self.verb == 'telemetry'
-        assert self.url == '/v1/metrics/usage'
+        assert self.url == 'v1/metrics/usage'
         assert self.key == 'some_api_key'
 
         # validate key-value args (headers)

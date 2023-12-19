@@ -195,6 +195,7 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         :returns: yield events received from SSEClientAsync object
         :rtype: SSEEvent
         """
+        _LOGGER.debug(self.status)
         if self.status != SplitSSEClient._Status.IDLE:
             raise Exception('SseClient already started.')
 

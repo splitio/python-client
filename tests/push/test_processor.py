@@ -3,7 +3,7 @@ from queue import Queue
 import pytest
 
 from splitio.push.processor import MessageProcessor, MessageProcessorAsync
-from splitio.sync.synchronizer import Synchronizer # , SynchronizerAsync to be added
+from splitio.sync.synchronizer import Synchronizer, SynchronizerAsync
 from splitio.push.parser import SplitChangeUpdate, SegmentChangeUpdate, SplitKillUpdate
 from splitio.optional.loaders import asyncio
 
@@ -82,11 +82,11 @@ class ProcessorAsyncTests(object):
         """Test split kill is properly handled."""
 
         self._killed_split = None
-        async def kill_mock(se, split_name, default_treatment, change_number):
+        async def kill_mock(split_name, default_treatment, change_number):
             self._killed_split = (split_name, default_treatment, change_number)
 
-        mocker.patch('splitio.sync.synchronizer.SynchronizerAsync.kill_split', new=kill_mock)
-        sync_mock = SynchronizerAsync()
+        sync_mock = mocker.Mock(spec=SynchronizerAsync)
+        sync_mock.kill_split = kill_mock
 
         self._update = None
         async def put_mock(first, event):
@@ -103,7 +103,7 @@ class ProcessorAsyncTests(object):
     async def test_segment_change(self, mocker):
         """Test segment change is properly handled."""
 
-        sync_mock = SynchronizerAsync()
+        sync_mock = mocker.Mock(spec=SynchronizerAsync)
         queue_mock = mocker.Mock(spec=asyncio.Queue)
 
         self._update = None

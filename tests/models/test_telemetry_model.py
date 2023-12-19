@@ -89,7 +89,6 @@ class TelemetryModelTests(object):
         http_latencies = HTTPLatencies()
 
         for resource in ModelTelemetry.HTTPExceptionsAndLatencies:
-#            pytest.set_trace()
             if self._get_http_latency(resource, http_latencies) == None:
                 continue
             http_latencies.add_latency(resource, 50)

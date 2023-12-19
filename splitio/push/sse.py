@@ -5,7 +5,7 @@ from collections import namedtuple
 from http.client import HTTPConnection, HTTPSConnection
 from urllib.parse import urlparse
 
-from splitio.optional.loaders import asyncio, aiohttp, ClientConnectionError
+from splitio.optional.loaders import asyncio, aiohttp
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -205,7 +205,7 @@ class SSEClientAsync(object):
     @staticmethod
     def _is_conn_closed_error(exc):
         """Check if the ReadError is caused by the connection being closed."""
-        return isinstance(exc, ClientConnectionError) and str(exc) == "Connection closed"
+        return isinstance(exc, aiohttp.ClientConnectionError) and str(exc) == "Connection closed"
 
 
 def get_headers(extra=None):

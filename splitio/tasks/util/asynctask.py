@@ -219,6 +219,7 @@ class AsyncTaskAsync(object):  # pylint: disable=too-many-instance-attributes
         self._messages = asyncio.Queue()
         self._running = False
         self._completion_event = asyncio.Event()
+        self._sleep_task = None
 
     async def _execution_wrapper(self):
         """
@@ -243,7 +244,7 @@ class AsyncTaskAsync(object):  # pylint: disable=too-many-instance-attributes
 
             while self._running:
                 try:
-                    msg = self._messages.get_nowait()
+                    msg = await asyncio.wait_for(self._messages.get(), timeout=self._period)
                     if msg == __TASK_STOP__:
                         _LOGGER.debug("Stop signal received. finishing task execution")
                         break
@@ -259,8 +260,9 @@ class AsyncTaskAsync(object):  # pylint: disable=too-many-instance-attributes
                     pass
                 except asyncio.CancelledError:
                     break
+                except asyncio.TimeoutError:
+                    pass
 
-                await asyncio.sleep(self._period)
                 if not await _safe_run_async(self._main):
                     _LOGGER.error(
                         "An error occurred when executing the task. "
@@ -277,6 +279,7 @@ class AsyncTaskAsync(object):  # pylint: disable=too-many-instance-attributes
 
         self._running = False
         self._completion_event.set()
+        _LOGGER.debug("AsyncTask finished")
 
     def start(self):
         """Start the async task."""
@@ -285,7 +288,7 @@ class AsyncTaskAsync(object):  # pylint: disable=too-many-instance-attributes
             return
         # Start execution
         self._completion_event.clear()
-        asyncio.get_running_loop().create_task(self._execution_wrapper())
+        self._wrapper_task = asyncio.get_running_loop().create_task(self._execution_wrapper())
 
     async def stop(self, wait_for_completion=False):
         """

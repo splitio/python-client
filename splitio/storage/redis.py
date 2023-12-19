@@ -314,7 +314,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         :param redis_client: Redis client or compliant interface.
         :type redis_client: splitio.storage.adapters.redis.RedisAdapter
         """
-        self._redis = redis_client
+        self.redis = redis_client
         self._enable_caching = enable_caching
         if enable_caching:
             self._cache = LocalMemoryCache(None, None, max_age)
@@ -337,7 +337,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
             if self._enable_caching and await self._cache.get_key(split_name) is not None:
                 raw = await self._cache.get_key(split_name)
             else:
-                raw = await self._redis.get(self._get_key(split_name))
+                raw = await self.redis.get(self._get_key(split_name))
                 if self._enable_caching:
                     await self._cache.add_key(split_name, raw)
                 _LOGGER.debug("Fetchting Split [%s] from redis" % split_name)
@@ -362,7 +362,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
                 raw_splits = await self._cache.get_key(frozenset(split_names))
             else:
                 keys = [self._get_key(split_name) for split_name in split_names]
-                raw_splits = await self._redis.mget(keys)
+                raw_splits = await self.redis.mget(keys)
                 if self._enable_caching:
                     await self._cache.add_key(frozenset(split_names), raw_splits)
             for i in range(len(split_names)):
@@ -390,7 +390,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
             if self._enable_caching and await self._cache.get_key(traffic_type_name) is not None:
                 raw = await self._cache.get_key(traffic_type_name)
             else:
-                raw = await self._redis.get(self._get_traffic_type_key(traffic_type_name))
+                raw = await self.redis.get(self._get_traffic_type_key(traffic_type_name))
                 if self._enable_caching:
                     await self._cache.add_key(traffic_type_name, raw)
             count = json.loads(raw) if raw else 0
@@ -406,7 +406,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         :rtype: int
         """
         try:
-            stored_value = await self._redis.get(self._SPLIT_TILL_KEY)
+            stored_value = await self.redis.get(self._SPLIT_TILL_KEY)
             return json.loads(stored_value) if stored_value is not None else None
         except RedisAdapterException:
             _LOGGER.error('Error fetching split change number from storage')
@@ -420,7 +420,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         :rtype: list(str)
         """
         try:
-            keys = await self._redis.keys(self._get_key('*'))
+            keys = await self.redis.keys(self._get_key('*'))
             return [key.replace(self._get_key(''), '') for key in keys]
         except RedisAdapterException:
             _LOGGER.error('Error fetching split names from storage')
@@ -433,10 +433,10 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         :return: List of all splits in cache.
         :rtype: list(splitio.models.splits.Split)
         """
-        keys = await self._redis.keys(self._get_key('*'))
+        keys = await self.redis.keys(self._get_key('*'))
         to_return = []
         try:
-            raw_splits = await self._redis.mget(keys)
+            raw_splits = await self.redis.mget(keys)
             for raw in raw_splits:
                 try:
                     to_return.append(splits.from_raw(json.loads(raw)))
@@ -1288,6 +1288,14 @@ class RedisTelemetryStorage(RedisTelemetryStorageBase):
         if total_keys == inserted:
             self._redis_client.expire(queue_key, key_default_ttl)
 
+    def record_bur_time_out(self):
+        """record BUR timeouts"""
+        pass
+
+    def record_ready_time(self, ready_time):
+        """Record ready time."""
+        pass
+
 
 class RedisTelemetryStorageAsync(RedisTelemetryStorageBase):
     """Redis based telemetry async storage class."""
@@ -1330,6 +1338,14 @@ class RedisTelemetryStorageAsync(RedisTelemetryStorageBase):
         """
         await self._tel_config.record_config(config, extra_config)
 
+    async def record_bur_time_out(self):
+        """record BUR timeouts"""
+        pass
+
+    async def record_ready_time(self, ready_time):
+        """Record ready time."""
+        pass
+
     async def pop_config_tags(self):
         """Get and reset tags."""
         tags = self._config_tags
@@ -1339,8 +1355,9 @@ class RedisTelemetryStorageAsync(RedisTelemetryStorageBase):
     async def push_config_stats(self):
         """push config stats to redis."""
         _LOGGER.debug("Adding Config stats to redis key %s" % (self._TELEMETRY_CONFIG_KEY))
-        _LOGGER.debug(str(await self._format_config_stats(await self._tel_config.get_stats(), await self.pop_config_tags())))
-        await self._redis_client.hset(self._TELEMETRY_CONFIG_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip, str(await self._format_config_stats(await self._tel_config.get_stats(), await self.pop_config_tags())))
+        stats = str(self._format_config_stats(await self._tel_config.get_stats(), await self.pop_config_tags()))
+        _LOGGER.debug(stats)
+        await self._redis_client.hset(self._TELEMETRY_CONFIG_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip, stats)
 
     async def record_exception(self, method):
         """

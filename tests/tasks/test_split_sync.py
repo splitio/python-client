@@ -141,6 +141,11 @@ class SplitSynchronizationAsyncTests(object):
         change_number_mock._calls = 0
         storage.get_change_number = change_number_mock
 
+        async def set_change_number(*_):
+            pass
+        change_number_mock._calls = 0
+        storage.set_change_number = set_change_number
+
         api = mocker.Mock()
         self.change_number = []
         self.fetch_options = []
@@ -171,7 +176,7 @@ class SplitSynchronizationAsyncTests(object):
         split_synchronizer = SplitSynchronizerAsync(api, storage)
         task = split_sync.SplitSynchronizationTaskAsync(split_synchronizer.synchronize_splits, 0.5)
         task.start()
-        await asyncio.sleep(0.7)
+        await asyncio.sleep(1)
         assert task.is_running()
         await task.stop()
         assert not task.is_running()
