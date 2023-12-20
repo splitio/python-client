@@ -166,6 +166,13 @@ class TelemetryStorageProducerTests(object):
         telemetry_runtime_producer.record_token_refreshes()
         assert(mocker.called)
 
+    @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.record_update_from_sse')
+    def test_record_update_from_sse(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_runtime_producer = TelemetryRuntimeProducer(telemetry_storage)
+        telemetry_runtime_producer.record_update_from_sse('sp')
+        assert(mocker.called)
+
     def test_record_streaming_event(self, mocker):
         telemetry_storage = mocker.Mock()
         telemetry_runtime_producer = TelemetryRuntimeProducer(telemetry_storage)
@@ -378,6 +385,17 @@ class TelemetryStorageProducerAsyncTests(object):
         assert(self.called)
 
     @pytest.mark.asyncio
+    async def test_record_update_from_sse(self, mocker):
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        self.called = False
+        async def record_update_from_sse(*args):
+            self.called = True
+        telemetry_storage.record_update_from_sse = record_update_from_sse
+        telemetry_runtime_producer = TelemetryRuntimeProducerAsync(telemetry_storage)
+        await telemetry_runtime_producer.record_update_from_sse('sp')
+        assert(self.called)
+
+    @pytest.mark.asyncio
     async def test_record_streaming_event(self, mocker):
         telemetry_storage = mocker.Mock()
         telemetry_runtime_producer = TelemetryRuntimeProducerAsync(telemetry_storage)
@@ -507,6 +525,13 @@ class TelemetryStorageConsumerTests(object):
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
         telemetry_runtime_consumer.pop_auth_rejections()
+        assert(mocker.called)
+
+    @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.pop_update_from_sse')
+    def pop_update_from_sse(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+        telemetry_runtime_consumer.pop_update_from_sse('sp')
         assert(mocker.called)
 
     @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.pop_token_refreshes')
@@ -651,7 +676,7 @@ class TelemetryStorageConsumerAsyncTests(object):
         async def pop_tags(*args, **kwargs):
             self.called = True
         telemetry_storage.pop_tags = pop_tags
-        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+        telemetry_runtime_consumer = TelemetryRuntimeConsumerAsync(telemetry_storage)
         await telemetry_runtime_consumer.pop_tags()
         assert(self.called)
 
@@ -663,7 +688,7 @@ class TelemetryStorageConsumerAsyncTests(object):
             self.called = True
         telemetry_storage.pop_http_errors = pop_http_errors
 
-        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+        telemetry_runtime_consumer = TelemetryRuntimeConsumerAsync(telemetry_storage)
         await telemetry_runtime_consumer.pop_http_errors()
         assert(self.called)
 
@@ -675,7 +700,7 @@ class TelemetryStorageConsumerAsyncTests(object):
             self.called = True
         telemetry_storage.pop_http_latencies = pop_http_latencies
 
-        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+        telemetry_runtime_consumer = TelemetryRuntimeConsumerAsync(telemetry_storage)
         await telemetry_runtime_consumer.pop_http_latencies()
         assert(self.called)
 
@@ -687,8 +712,19 @@ class TelemetryStorageConsumerAsyncTests(object):
             self.called = True
         telemetry_storage.pop_auth_rejections = pop_auth_rejections
 
-        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+        telemetry_runtime_consumer = TelemetryRuntimeConsumerAsync(telemetry_storage)
         await telemetry_runtime_consumer.pop_auth_rejections()
+        assert(self.called)
+
+    @pytest.mark.asyncio
+    async def pop_update_from_sse(self, mocker):
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        self.called = False
+        async def pop_update_from_sse(*args, **kwargs):
+            self.called = True
+        telemetry_storage.pop_update_from_sse = pop_update_from_sse
+        telemetry_runtime_consumer = TelemetryRuntimeConsumerAsync(telemetry_storage)
+        await telemetry_runtime_consumer.pop_update_from_sse('sp')
         assert(self.called)
 
     @pytest.mark.asyncio
@@ -699,7 +735,7 @@ class TelemetryStorageConsumerAsyncTests(object):
             self.called = True
         telemetry_storage.pop_token_refreshes = pop_token_refreshes
 
-        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+        telemetry_runtime_consumer = TelemetryRuntimeConsumerAsync(telemetry_storage)
         await telemetry_runtime_consumer.pop_token_refreshes()
         assert(self.called)
 
@@ -711,7 +747,7 @@ class TelemetryStorageConsumerAsyncTests(object):
             self.called = True
         telemetry_storage.pop_streaming_events = pop_streaming_events
 
-        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+        telemetry_runtime_consumer = TelemetryRuntimeConsumerAsync(telemetry_storage)
         await telemetry_runtime_consumer.pop_streaming_events()
         assert(self.called)
 
@@ -723,6 +759,6 @@ class TelemetryStorageConsumerAsyncTests(object):
             self.called = True
         telemetry_storage.get_session_length = get_session_length
 
-        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+        telemetry_runtime_consumer = TelemetryRuntimeConsumerAsync(telemetry_storage)
         await telemetry_runtime_consumer.get_session_length()
         assert(self.called)

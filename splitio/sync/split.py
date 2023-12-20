@@ -31,21 +31,26 @@ _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES = 10
 class SplitSynchronizer(object):
     """Feature Flag changes synchronizer."""
 
-    def __init__(self, split_api, split_storage):
+    def __init__(self, feature_flag_api, feature_flag_storage):
         """
         Class constructor.
 
-        :param split_api: Feature Flag API Client.
-        :type split_api: splitio.api.splits.SplitsAPI
+        :param feature_flag_api: Feature Flag API Client.
+        :type feature_flag_api: splitio.api.splits.SplitsAPI
 
-        :param split_storage: Feature Flag Storage.
-        :type split_storage: splitio.storage.InMemorySplitStorage
+        :param feature_flag_storage: Feature Flag Storage.
+        :type feature_flag_storage: splitio.storage.InMemorySplitStorage
         """
-        self._api = split_api
-        self._split_storage = split_storage
+        self._api = feature_flag_api
+        self._feature_flag_storage = feature_flag_storage
         self._backoff = Backoff(
                                 _ON_DEMAND_FETCH_BACKOFF_BASE,
                                 _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
+
+    @property
+    def feature_flag_storage(self):
+        """Return Feature_flag storage object"""
+        return self._feature_flag_storage
 
     def _fetch_until(self, fetch_options, till=None):
         """
@@ -62,7 +67,7 @@ class SplitSynchronizer(object):
         """
         segment_list = set()
         while True:  # Fetch until since==till
-            change_number = self._split_storage.get_change_number()
+            change_number = self._feature_flag_storage.get_change_number()
             if change_number is None:
                 change_number = -1
             if till is not None and till < change_number:
@@ -70,24 +75,24 @@ class SplitSynchronizer(object):
                 return change_number, segment_list
 
             try:
-                split_changes = self._api.fetch_splits(change_number, fetch_options)
+                feature_flag_changes = self._api.fetch_splits(change_number, fetch_options)
             except APIException as exc:
                 _LOGGER.error('Exception raised while fetching feature flags')
                 _LOGGER.debug('Exception information: ', exc_info=True)
                 raise exc
 
-            for split in split_changes.get('splits', []):
-                if split['status'] == splits.Status.ACTIVE.value:
-                    parsed = splits.from_raw(split)
-                    self._split_storage.put(parsed)
+            for feature_flag in feature_flag_changes.get('splits', []):
+                if feature_flag['status'] == splits.Status.ACTIVE.value:
+                    parsed = splits.from_raw(feature_flag)
+                    self._feature_flag_storage.put(parsed)
                     segment_list.update(set(parsed.get_segment_names()))
                 else:
-                    self._split_storage.remove(split['name'])
-            self._split_storage.set_change_number(split_changes['till'])
-            if split_changes['till'] == split_changes['since']:
-                return split_changes['till'], segment_list
+                    self._feature_flag_storage.remove(feature_flag['name'])
+            self._feature_flag_storage.set_change_number(feature_flag_changes['till'])
+            if feature_flag_changes['till'] == feature_flag_changes['since']:
+                return feature_flag_changes['till'], segment_list
 
-    def _attempt_split_sync(self, fetch_options, till=None):
+    def _attempt_feature_flag_sync(self, fetch_options, till=None):
         """
         Hit endpoint, update storage and return True if sync is complete.
 
@@ -123,7 +128,7 @@ class SplitSynchronizer(object):
         """
         final_segment_list = set()
         fetch_options = FetchOptions(True)  # Set Cache-Control to no-cache
-        successful_sync, remaining_attempts, change_number, segment_list = self._attempt_split_sync(fetch_options,
+        successful_sync, remaining_attempts, change_number, segment_list = self._attempt_feature_flag_sync(fetch_options,
                                                                                       till)
         final_segment_list.update(segment_list)
         attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
@@ -131,7 +136,7 @@ class SplitSynchronizer(object):
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return final_segment_list
         with_cdn_bypass = FetchOptions(True, change_number)  # Set flag for bypassing CDN
-        without_cdn_successful_sync, remaining_attempts, change_number, segment_list = self._attempt_split_sync(with_cdn_bypass, till)
+        without_cdn_successful_sync, remaining_attempts, change_number, segment_list = self._attempt_feature_flag_sync(with_cdn_bypass, till)
         final_segment_list.update(segment_list)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if without_cdn_successful_sync:
@@ -142,38 +147,43 @@ class SplitSynchronizer(object):
             _LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
                           without_cdn_attempts)
 
-    def kill_split(self, split_name, default_treatment, change_number):
+    def kill_split(self, feature_flag_name, default_treatment, change_number):
         """
         Local kill for feature flag.
 
-        :param split_name: name of the feature flag to perform kill
-        :type split_name: str
+        :param feature_flag_name: name of the feature flag to perform kill
+        :type feature_flag_name: str
         :param default_treatment: name of the default treatment to return
         :type default_treatment: str
         :param change_number: change_number
         :type change_number: int
         """
-        self._split_storage.kill_locally(split_name, default_treatment, change_number)
+        self._feature_flag_storage.kill_locally(feature_flag_name, default_treatment, change_number)
 
 
 class SplitSynchronizerAsync(object):
     """Feature Flag changes synchronizer async."""
 
-    def __init__(self, split_api, split_storage):
+    def __init__(self, feature_flag_api, feature_flag_storage):
         """
         Class constructor.
 
-        :param split_api: Feature Flag API Client.
-        :type split_api: splitio.api.splits.SplitsAPI
+        :param feature_flag_api: Feature Flag API Client.
+        :type feature_flag_api: splitio.api.splits.SplitsAPI
 
-        :param split_storage: Feature Flag Storage.
-        :type split_storage: splitio.storage.InMemorySplitStorage
+        :param feature_flag_storage: Feature Flag Storage.
+        :type feature_flag_storage: splitio.storage.InMemorySplitStorage
         """
-        self._api = split_api
-        self._split_storage = split_storage
+        self._api = feature_flag_api
+        self._feature_flag_storage = feature_flag_storage
         self._backoff = Backoff(
                                 _ON_DEMAND_FETCH_BACKOFF_BASE,
                                 _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
+
+    @property
+    def feature_flag_storage(self):
+        """Return Feature_flag storage object"""
+        return self._feature_flag_storage
 
     async def _fetch_until(self, fetch_options, till=None):
         """
@@ -190,7 +200,7 @@ class SplitSynchronizerAsync(object):
         """
         segment_list = set()
         while True:  # Fetch until since==till
-            change_number = await self._split_storage.get_change_number()
+            change_number = await self._feature_flag_storage.get_change_number()
             if change_number is None:
                 change_number = -1
             if till is not None and till < change_number:
@@ -198,24 +208,24 @@ class SplitSynchronizerAsync(object):
                 return change_number, segment_list
 
             try:
-                split_changes = await self._api.fetch_splits(change_number, fetch_options)
+                feature_flag_changes = await self._api.fetch_splits(change_number, fetch_options)
             except APIException as exc:
                 _LOGGER.error('Exception raised while fetching feature flags')
                 _LOGGER.debug('Exception information: ', exc_info=True)
                 raise exc
 
-            for split in split_changes.get('splits', []):
-                if split['status'] == splits.Status.ACTIVE.value:
-                    parsed = splits.from_raw(split)
-                    await self._split_storage.put(parsed)
+            for feature_flag in feature_flag_changes.get('splits', []):
+                if feature_flag['status'] == splits.Status.ACTIVE.value:
+                    parsed = splits.from_raw(feature_flag)
+                    await self._feature_flag_storage.put(parsed)
                     segment_list.update(set(parsed.get_segment_names()))
                 else:
-                    await self._split_storage.remove(split['name'])
-            await self._split_storage.set_change_number(split_changes['till'])
-            if split_changes['till'] == split_changes['since']:
-                return split_changes['till'], segment_list
+                    await self._feature_flag_storage.remove(feature_flag['name'])
+            await self._feature_flag_storage.set_change_number(feature_flag_changes['till'])
+            if feature_flag_changes['till'] == feature_flag_changes['since']:
+                return feature_flag_changes['till'], segment_list
 
-    async def _attempt_split_sync(self, fetch_options, till=None):
+    async def _attempt_feature_flag_sync(self, fetch_options, till=None):
         """
         Hit endpoint, update storage and return True if sync is complete.
 
@@ -251,7 +261,7 @@ class SplitSynchronizerAsync(object):
         """
         final_segment_list = set()
         fetch_options = FetchOptions(True)  # Set Cache-Control to no-cache
-        successful_sync, remaining_attempts, change_number, segment_list = await self._attempt_split_sync(fetch_options,
+        successful_sync, remaining_attempts, change_number, segment_list = await self._attempt_feature_flag_sync(fetch_options,
                                                                                       till)
         final_segment_list.update(segment_list)
         attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
@@ -259,7 +269,7 @@ class SplitSynchronizerAsync(object):
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return final_segment_list
         with_cdn_bypass = FetchOptions(True, change_number)  # Set flag for bypassing CDN
-        without_cdn_successful_sync, remaining_attempts, change_number, segment_list = await self._attempt_split_sync(with_cdn_bypass, till)
+        without_cdn_successful_sync, remaining_attempts, change_number, segment_list = await self._attempt_feature_flag_sync(with_cdn_bypass, till)
         final_segment_list.update(segment_list)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if without_cdn_successful_sync:
@@ -270,18 +280,18 @@ class SplitSynchronizerAsync(object):
             _LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
                           without_cdn_attempts)
 
-    async def kill_split(self, split_name, default_treatment, change_number):
+    async def kill_split(self, feature_flag_name, default_treatment, change_number):
         """
         Local kill for feature flag.
 
-        :param split_name: name of the feature flag to perform kill
-        :type split_name: str
+        :param feature_flag_name: name of the feature flag to perform kill
+        :type feature_flag_name: str
         :param default_treatment: name of the default treatment to return
         :type default_treatment: str
         :param change_number: change_number
         :type change_number: int
         """
-        await self._split_storage.kill_locally(split_name, default_treatment, change_number)
+        await self._feature_flag_storage.kill_locally(feature_flag_name, default_treatment, change_number)
 
 
 class LocalhostMode(Enum):

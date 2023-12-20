@@ -21,7 +21,7 @@ INSTALL_REQUIRES = [
     'pyyaml>=5.4',
     'docopt>=0.6.2',
     'enum34;python_version<"3.4"',
-    'bloom-filter2>=2.0.0',
+    'bloom-filter2>=2.0.0'
 ]
 
 with open(path.join(path.abspath(path.dirname(__file__)), 'splitio', 'version.py')) as f:
@@ -44,7 +44,7 @@ setup(
         'uwsgi': ['uwsgi>=2.0.0'],
         'cpphash': ['mmh3cffi==0.2.1'],
     },
-    setup_requires=['pytest-runner'],
+    setup_requires=['pytest-runner', 'pluggy==1.0.0;python_version<"3.7"'],
     classifiers=[
         'Environment :: Console',
         'Intended Audience :: Developers',

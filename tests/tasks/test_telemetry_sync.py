@@ -20,8 +20,12 @@ class TelemetrySyncTaskTests(object):
         api.record_stats.return_value = HttpResponse(200, '', {})
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
+        telemetry_submitter = InMemoryTelemetrySubmitter(telemetry_consumer, mocker.Mock(), mocker.Mock(), api)
+        def _build_stats():
+            return {}
+        telemetry_submitter._build_stats = _build_stats
 
-        telemetry_synchronizer = TelemetrySynchronizer(InMemoryTelemetrySubmitter(telemetry_consumer, mocker.Mock(), mocker.Mock(),api))
+        telemetry_synchronizer = TelemetrySynchronizer(telemetry_submitter)
         task = TelemetrySyncTask(telemetry_synchronizer.synchronize_stats, 1)
         task.start()
         time.sleep(2)
@@ -48,7 +52,7 @@ class TelemetrySyncTaskAsyncTests(object):
 
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_consumer = TelemetryStorageConsumerAsync(telemetry_storage)
-        telemetry_submitter = InMemoryTelemetrySubmitterAsync(telemetry_consumer, mocker.Mock(), mocker.Mock(),api)
+        telemetry_submitter = InMemoryTelemetrySubmitterAsync(telemetry_consumer, mocker.Mock(), mocker.Mock(), api)
         async def _build_stats():
             return {}
         telemetry_submitter._build_stats = _build_stats

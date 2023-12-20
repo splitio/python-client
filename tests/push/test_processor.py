@@ -16,8 +16,8 @@ class ProcessorTests(object):
         sync_mock = mocker.Mock(spec=Synchronizer)
         queue_mock = mocker.Mock(spec=Queue)
         mocker.patch('splitio.push.processor.Queue', new=queue_mock)
-        processor = MessageProcessor(sync_mock)
-        update = SplitChangeUpdate('sarasa', 123, 123)
+        processor = MessageProcessor(sync_mock, mocker.Mock())
+        update = SplitChangeUpdate('sarasa', 123, 123, None, None, None)
         processor.handle(update)
         assert queue_mock.mock_calls == [
             mocker.call(),  # construction of split queue
@@ -30,7 +30,7 @@ class ProcessorTests(object):
         sync_mock = mocker.Mock(spec=Synchronizer)
         queue_mock = mocker.Mock(spec=Queue)
         mocker.patch('splitio.push.processor.Queue', new=queue_mock)
-        processor = MessageProcessor(sync_mock)
+        processor = MessageProcessor(sync_mock, mocker.Mock())
         update = SplitKillUpdate('sarasa', 123, 456, 'some_split', 'off')
         processor.handle(update)
         assert queue_mock.mock_calls == [
@@ -47,7 +47,7 @@ class ProcessorTests(object):
         sync_mock = mocker.Mock(spec=Synchronizer)
         queue_mock = mocker.Mock(spec=Queue)
         mocker.patch('splitio.push.processor.Queue', new=queue_mock)
-        processor = MessageProcessor(sync_mock)
+        processor = MessageProcessor(sync_mock, mocker.Mock())
         update = SegmentChangeUpdate('sarasa', 123, 123, 'some_segment')
         processor.handle(update)
         assert queue_mock.mock_calls == [
@@ -72,8 +72,8 @@ class ProcessorAsyncTests(object):
             self._update = event
 
         mocker.patch('splitio.push.processor.asyncio.Queue.put', new=put_mock)
-        processor = MessageProcessorAsync(sync_mock)
-        update = SplitChangeUpdate('sarasa', 123, 123)
+        processor = MessageProcessorAsync(sync_mock, mocker.Mock())
+        update = SplitChangeUpdate('sarasa', 123, 123, None, None, None)
         await processor.handle(update)
         assert update == self._update
 
@@ -93,7 +93,7 @@ class ProcessorAsyncTests(object):
             self._update = event
 
         mocker.patch('splitio.push.processor.asyncio.Queue.put', new=put_mock)
-        processor = MessageProcessorAsync(sync_mock)
+        processor = MessageProcessorAsync(sync_mock, mocker.Mock())
         update = SplitKillUpdate('sarasa', 123, 456, 'some_split', 'off')
         await processor.handle(update)
         assert update == self._update
@@ -111,7 +111,7 @@ class ProcessorAsyncTests(object):
             self._update = event
 
         mocker.patch('splitio.push.processor.asyncio.Queue.put', new=put_mock)
-        processor = MessageProcessorAsync(sync_mock)
+        processor = MessageProcessorAsync(sync_mock, mocker.Mock())
         update = SegmentChangeUpdate('sarasa', 123, 123, 'some_segment')
         await processor.handle(update)
         assert update == self._update
