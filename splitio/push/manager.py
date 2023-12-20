@@ -1,5 +1,4 @@
 """Push subsystem manager class and helpers."""
-import pytest
 import logging
 from threading import Timer
 import abc

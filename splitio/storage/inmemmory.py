@@ -1206,6 +1206,7 @@ class InMemoryTelemetryStorageBase(TelemetryStorage):
     def get_session_length(self):
         """Get session length"""
         pass
+
     def pop_update_from_sse(self, event):
         """Get and reset update from sse."""
         pass
