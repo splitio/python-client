@@ -57,6 +57,8 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
             if 200 <= response.status_code < 300:
                 return json.loads(response.body)
             else:
+                if response.status_code == 414:
+                    _LOGGER.error('Error fetching feature flags; the amount of flag sets provided are too big, causing uri length error.')
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
             _LOGGER.error('Error fetching feature flags because an exception was raised by the HTTPClient')
@@ -109,6 +111,8 @@ class SplitsAPIAsync(object):  # pylint: disable=too-few-public-methods
             if 200 <= response.status_code < 300:
                 return json.loads(response.body)
             else:
+                if response.status_code == 414:
+                    _LOGGER.error('Error fetching feature flags; the amount of flag sets provided are too big, causing uri length error.')
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
             _LOGGER.error('Error fetching feature flags because an exception was raised by the HTTPClient')
