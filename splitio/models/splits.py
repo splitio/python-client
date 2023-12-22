@@ -7,7 +7,7 @@ from splitio.models.grammar import condition
 
 SplitView = namedtuple(
     'SplitView',
-    ['name', 'traffic_type', 'killed', 'treatments', 'change_number', 'configs']
+    ['name', 'traffic_type', 'killed', 'treatments', 'change_number', 'configs', 'default_treatment', 'sets']
 )
 
 
@@ -41,7 +41,8 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             algo=None,
             traffic_allocation=None,
             traffic_allocation_seed=None,
-            configurations=None
+            configurations=None,
+            sets=None
     ):
         """
         Class constructor.
@@ -62,6 +63,8 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
         :type traffic_allocation: int
         :pram traffic_allocation_seed: Seed used to hash traffic allocation.
         :type traffic_allocation_seed: int
+        :pram sets: list of flag sets
+        :type sets: list
         """
         self._name = name
         self._seed = seed
@@ -90,6 +93,7 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             self._algo = HashAlgorithm.LEGACY
 
         self._configurations = configurations
+        self._sets = set(sets) if sets is not None else set()
 
     @property
     def name(self):
@@ -146,6 +150,11 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
         """Return the traffic allocation seed of the split."""
         return self._traffic_allocation_seed
 
+    @property
+    def sets(self):
+        """Return the flag sets of the split."""
+        return self._sets
+
     def get_configurations_for(self, treatment):
         """Return the mapping of treatments to configurations."""
         return self._configurations.get(treatment) if self._configurations else None
@@ -173,7 +182,8 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             'defaultTreatment': self.default_treatment,
             'algo': self.algo.value,
             'conditions': [c.to_json() for c in self.conditions],
-            'configurations': self._configurations
+            'configurations': self._configurations,
+            'sets': list(self._sets)
         }
 
     def to_split_view(self):
@@ -189,7 +199,9 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             self.killed,
             list(set(part.treatment for cond in self.conditions for part in cond.partitions)),
             self.change_number,
-            self._configurations if self._configurations is not None else {}
+            self._configurations if self._configurations is not None else {},
+            self._default_treatment,
+            list(self._sets) if self._sets is not None else []
         )
 
     def local_kill(self, default_treatment, change_number):
@@ -238,5 +250,6 @@ def from_raw(raw_split):
         raw_split.get('algo'),
         traffic_allocation=raw_split.get('trafficAllocation'),
         traffic_allocation_seed=raw_split.get('trafficAllocationSeed'),
-        configurations=raw_split.get('configurations')
+        configurations=raw_split.get('configurations'),
+        sets=set(raw_split.get('sets')) if raw_split.get('sets') is not None else []
     )
