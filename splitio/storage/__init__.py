@@ -30,25 +30,15 @@ class SplitStorage(object, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def put(self, split):
+    def update(self, to_add, to_delete, new_change_number):
         """
-        Store a split.
-
-        :param split: Split object to store
-        :type split_name: splitio.models.splits.Split
-        """
-        pass
-
-    @abc.abstractmethod
-    def remove(self, split_name):
-        """
-        Remove a split from storage.
-
-        :param split_name: Name of the feature to remove.
-        :type split_name: str
-
-        :return: True if the split was found and removed. False otherwise.
-        :rtype: bool
+        Update feature flag storage.
+        :param to_add: List of feature flags to add
+        :type to_add: list[splitio.models.splits.Split]
+        :param to_delete: List of feature flags to delete
+        :type to_delete: list[splitio.models.splits.Split]
+        :param new_change_number: New change number.
+        :type new_change_number: int
         """
         pass
 
@@ -58,16 +48,6 @@ class SplitStorage(object, metaclass=abc.ABCMeta):
         Retrieve latest split change number.
 
         :rtype: int
-        """
-        pass
-
-    @abc.abstractmethod
-    def set_change_number(self, new_change_number):
-        """
-        Set the latest change number.
-
-        :param new_change_number: New change number.
-        :type new_change_number: int
         """
         pass
 
@@ -334,3 +314,39 @@ class TelemetryStorage(object, metaclass=abc.ABCMeta):
 
         """
         pass
+
+class FlagSetsFilter(object):
+    """Config Flagsets Filter storage."""
+
+    def __init__(self, flag_sets=[]):
+        """Constructor."""
+        self.flag_sets = set(flag_sets)
+        self.should_filter = any(flag_sets)
+        self.sorted_flag_sets = sorted(flag_sets)
+
+    def set_exist(self, flag_set):
+        """
+        Check if a flagset exist in flagset filter
+        :param flag_set: set name
+        :type flag_set: str
+        :rtype: bool
+        """
+        if not self.should_filter:
+            return True
+        if not isinstance(flag_set, str) or flag_set == '':
+            return False
+
+        return any(self.flag_sets.intersection(set([flag_set])))
+
+    def intersect(self, flag_sets):
+        """
+        Check if a set exist in config flagset filter
+        :param flag_set: set of flagsets
+        :type flag_set: set
+        :rtype: bool
+        """
+        if not self.should_filter:
+            return True
+        if not isinstance(flag_sets, set) or len(flag_sets) == 0:
+            return False
+        return any(self.flag_sets.intersection(flag_sets))

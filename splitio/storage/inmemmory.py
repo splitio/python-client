@@ -7,7 +7,7 @@ from collections import Counter
 from splitio.models.segments import Segment
 from splitio.models.telemetry import HTTPErrors, HTTPLatencies, MethodExceptions, MethodLatencies, LastSynchronization, StreamingEvents, TelemetryConfig, TelemetryCounters, CounterConstants, \
     HTTPErrorsAsync, HTTPLatenciesAsync, MethodExceptionsAsync, MethodLatenciesAsync, LastSynchronizationAsync, StreamingEventsAsync, TelemetryConfigAsync, TelemetryCountersAsync
-from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
+from splitio.storage import FlagSetsFilter, SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
 from splitio.optional.loaders import asyncio
 
 MAX_SIZE_BYTES = 5 * 1024 * 1024
@@ -15,92 +15,221 @@ MAX_TAGS = 10
 
 _LOGGER = logging.getLogger(__name__)
 
+class FlagSets(object):
+    """InMemory Flagsets storage."""
+
+    def __init__(self, flag_sets=[]):
+        """Constructor."""
+        self._lock = threading.RLock()
+        self.sets_feature_flag_map = {}
+        for flag_set in flag_sets:
+            self.sets_feature_flag_map[flag_set] = set()
+
+    def flag_set_exist(self, flag_set):
+        """
+        Check if a flagset exist in stored flagset
+        :param flag_set: set name
+        :type flag_set: str
+        :rtype: bool
+        """
+        with self._lock:
+            return flag_set in self.sets_feature_flag_map.keys()
+
+    def get_flag_set(self, flag_set):
+        """
+        fetch feature flags stored in a flag set
+        :param flag_set: set name
+        :type flag_set: str
+        :rtype: list(str)
+        """
+        with self._lock:
+            return self.sets_feature_flag_map.get(flag_set)
+
+    def add_flag_set(self, flag_set):
+        """
+        Add new flag set to storage
+        :param flag_set: set name
+        :type flag_set: str
+        """
+        with self._lock:
+            if not self.flag_set_exist(flag_set):
+                self.sets_feature_flag_map[flag_set] = set()
+
+    def remove_flag_set(self, flag_set):
+        """
+        Remove existing flag set from storage
+        :param flag_set: set name
+        :type flag_set: str
+        """
+        with self._lock:
+            if self.flag_set_exist(flag_set):
+                del self.sets_feature_flag_map[flag_set]
+
+    def add_feature_flag_to_flag_set(self, flag_set, feature_flag):
+        """
+        Add a feature flag to existing flag set
+        :param flag_set: set name
+        :type flag_set: str
+        :param feature_flag: feature flag name
+        :type feature_flag: str
+        """
+        with self._lock:
+            if self.flag_set_exist(flag_set):
+                self.sets_feature_flag_map[flag_set].add(feature_flag)
+
+    def remove_feature_flag_to_flag_set(self, flag_set, feature_flag):
+        """
+        Remove a feature flag from existing flag set
+        :param flag_set: set name
+        :type flag_set: str
+        :param feature_flag: feature flag name
+        :type feature_flag: str
+        """
+        with self._lock:
+            if self.flag_set_exist(flag_set):
+                self.sets_feature_flag_map[flag_set].remove(feature_flag)
+
+class FlagSetsAsync(object):
+    """InMemory Flagsets storage."""
+
+    def __init__(self, flag_sets=[]):
+        """Constructor."""
+        self._lock = asyncio.Lock()
+        self.sets_feature_flag_map = {}
+        for flag_set in flag_sets:
+            self.sets_feature_flag_map[flag_set] = set()
+
+    async def flag_set_exist(self, flag_set):
+        """
+        Check if a flagset exist in stored flagset
+        :param flag_set: set name
+        :type flag_set: str
+        :rtype: bool
+        """
+        async with self._lock:
+            return flag_set in self.sets_feature_flag_map.keys()
+
+    async def get_flag_set(self, flag_set):
+        """
+        fetch feature flags stored in a flag set
+        :param flag_set: set name
+        :type flag_set: str
+        :rtype: list(str)
+        """
+        async with self._lock:
+            return self.sets_feature_flag_map.get(flag_set)
+
+    async def add_flag_set(self, flag_set):
+        """
+        Add new flag set to storage
+        :param flag_set: set name
+        :type flag_set: str
+        """
+        async with self._lock:
+            if not self.flag_set_exist(flag_set):
+                self.sets_feature_flag_map[flag_set] = set()
+
+    async def remove_flag_set(self, flag_set):
+        """
+        Remove existing flag set from storage
+        :param flag_set: set name
+        :type flag_set: str
+        """
+        async with self._lock:
+            if self.flag_set_exist(flag_set):
+                del self.sets_feature_flag_map[flag_set]
+
+    async def add_feature_flag_to_flag_set(self, flag_set, feature_flag):
+        """
+        Add a feature flag to existing flag set
+        :param flag_set: set name
+        :type flag_set: str
+        :param feature_flag: feature flag name
+        :type feature_flag: str
+        """
+        async with self._lock:
+            if self.flag_set_exist(flag_set):
+                self.sets_feature_flag_map[flag_set].add(feature_flag)
+
+    async def remove_feature_flag_to_flag_set(self, flag_set, feature_flag):
+        """
+        Remove a feature flag from existing flag set
+        :param flag_set: set name
+        :type flag_set: str
+        :param feature_flag: feature flag name
+        :type feature_flag: str
+        """
+        async with self._lock:
+            if self.flag_set_exist(flag_set):
+                self.sets_feature_flag_map[flag_set].remove(feature_flag)
 
 class InMemorySplitStorageBase(SplitStorage):
-    """InMemory implementation of a split storage base."""
+    """InMemory implementation of a feature flag storage base."""
 
-    def get(self, split_name):
+    def get(self, feature_flag_name):
         """
-        Retrieve a split.
+        Retrieve a feature flag.
 
-        :param split_name: Name of the feature to fetch.
-        :type split_name: str
+        :param feature_flag_name: Name of the feature to fetch.
+        :type feature_flag_name: str
 
         :rtype: splitio.models.splits.Split
         """
         pass
 
-    def fetch_many(self, split_names):
+    def fetch_many(self, feature_flag_names):
         """
-        Retrieve splits.
+        Retrieve feature flags.
 
-        :param split_names: Names of the features to fetch.
-        :type split_name: list(str)
+        :param feature_flag_names: Names of the features to fetch.
+        :type feature_flag_name: list(str)
 
-        :return: A dict with split objects parsed from queue.
-        :rtype: dict(split_name, splitio.models.splits.Split)
-        """
-        pass
-
-    def put(self, split):
-        """
-        Store a split.
-
-        :param split: Split object.
-        :type split: splitio.models.split.Split
+        :return: A dict with feature flag objects parsed from queue.
+        :rtype: dict(feature_flag_name, splitio.models.splits.Split)
         """
         pass
 
-    def remove(self, split_name):
+    def update(self, to_add, to_delete, new_change_number):
         """
-        Remove a split from storage.
-
-        :param split_name: Name of the feature to remove.
-        :type split_name: str
-
-        :return: True if the split was found and removed. False otherwise.
-        :rtype: bool
-        """
-        pass
-
-    def get_change_number(self):
-        """
-        Retrieve latest split change number.
-
-        :rtype: int
-        """
-        pass
-
-    def set_change_number(self, new_change_number):
-        """
-        Set the latest change number.
-
+        Update feature flag storage.
+        :param to_add: List of feature flags to add
+        :type to_add: list[splitio.models.splits.Split]
+        :param to_delete: List of feature flags to delete
+        :type to_delete: list[str]
         :param new_change_number: New change number.
         :type new_change_number: int
         """
         pass
 
+    def get_change_number(self):
+        """
+        Retrieve latest feature flag change number.
+
+        :rtype: int
+        """
+        pass
+
     def get_split_names(self):
         """
-        Retrieve a list of all split names.
+        Retrieve a list of all feature flag names.
 
-        :return: List of split names.
+        :return: List of feature flag names.
         :rtype: list(str)
         """
         pass
 
     def get_all_splits(self):
         """
-        Return all the splits.
+        Return all the feature flags.
 
-        :return: List of all the splits.
+        :return: List of all the feature flags.
         :rtype: list
         """
         pass
 
     def get_splits_count(self):
         """
-        Return splits count.
+        Return feature flags count.
 
         :rtype: int
         """
@@ -108,7 +237,7 @@ class InMemorySplitStorageBase(SplitStorage):
 
     def is_valid_traffic_type(self, traffic_type_name):
         """
-        Return whether the traffic type exists in at least one split in cache.
+        Return whether the traffic type exists in at least one feature flag in cache.
 
         :param traffic_type_name: Traffic type to validate.
         :type traffic_type_name: str
@@ -118,12 +247,12 @@ class InMemorySplitStorageBase(SplitStorage):
         """
         pass
 
-    def kill_locally(self, split_name, default_treatment, change_number):
+    def kill_locally(self, feature_flag_name, default_treatment, change_number):
         """
-        Local kill for split
+        Local kill for feature flag
 
-        :param split_name: name of the split to perform kill
-        :type split_name: str
+        :param feature_flag_name: name of the feature flag to perform kill
+        :type feature_flag_name: str
         :param default_treatment: name of the default treatment to return
         :type default_treatment: str
         :param change_number: change_number
@@ -150,84 +279,140 @@ class InMemorySplitStorageBase(SplitStorage):
         self._traffic_types.subtract([traffic_type_name])
         self._traffic_types += Counter()
 
-
 class InMemorySplitStorage(InMemorySplitStorageBase):
-    """InMemory implementation of a split storage."""
+    """InMemory implementation of a feature flag storage."""
 
-    def __init__(self):
+    def __init__(self, flag_sets=[]):
         """Constructor."""
         self._lock = threading.RLock()
-        self._splits = {}
+        self._feature_flags = {}
         self._change_number = -1
         self._traffic_types = Counter()
+        self.flag_set = FlagSets(flag_sets)
+        self.flag_set_filter = FlagSetsFilter(flag_sets)
 
-    def get(self, split_name):
+    def get(self, feature_flag_name):
         """
-        Retrieve a split.
+        Retrieve a feature flag.
 
-        :param split_name: Name of the feature to fetch.
-        :type split_name: str
+        :param feature_flag_name: Name of the feature to fetch.
+        :type feature_flag_name: str
 
         :rtype: splitio.models.splits.Split
         """
         with self._lock:
-            return self._splits.get(split_name)
+            return self._feature_flags.get(feature_flag_name)
 
-    def fetch_many(self, split_names):
+    def fetch_many(self, feature_flag_names):
         """
-        Retrieve splits.
+        Retrieve feature flags.
 
-        :param split_names: Names of the features to fetch.
-        :type split_name: list(str)
+        :param feature_flag_names: Names of the features to fetch.
+        :type feature_flag_names: list(str)
 
-        :return: A dict with split objects parsed from queue.
-        :rtype: dict(split_name, splitio.models.splits.Split)
+        :return: A dict with feature flag objects parsed from queue.
+        :rtype: dict(feature_flag_name, splitio.models.splits.Split)
         """
-        return {split_name: self.get(split_name) for split_name in split_names}
+        return {feature_flag_name: self.get(feature_flag_name) for feature_flag_name in feature_flag_names}
 
-    def put(self, split):
+    def update(self, to_add, to_delete, new_change_number):
         """
-        Store a split.
+        Update feature flag storage.
+        :param to_add: List of feature flags to add
+        :type to_add: list[splitio.models.splits.Split]
+        :param to_delete: List of feature flags to delete
+        :type to_delete: list[str]
+        :param new_change_number: New change number.
+        :type new_change_number: int
+        """
+        [self._put(add_feature_flag) for add_feature_flag in to_add]
+        [self._remove(delete_feature_flag) for delete_feature_flag in to_delete]
+        self._set_change_number(new_change_number)
 
-        :param split: Split object.
-        :type split: splitio.models.split.Split
+    def _put(self, feature_flag):
+        """
+        Store a feature flag.
+
+        :param feature_flag: Split object.
+        :type feature_flag: splitio.models.split.Split
         """
         with self._lock:
-            if split.name in self._splits:
-                self._decrease_traffic_type_count(self._splits[split.name].traffic_type_name)
-            self._splits[split.name] = split
-            self._increase_traffic_type_count(split.traffic_type_name)
+            if feature_flag.name in self._feature_flags:
+                self._remove_from_flag_sets(self._feature_flags[feature_flag.name])
+                self._decrease_traffic_type_count(self._feature_flags[feature_flag.name].traffic_type_name)
+            self._feature_flags[feature_flag.name] = feature_flag
+            self._increase_traffic_type_count(feature_flag.traffic_type_name)
+            if feature_flag.sets is not None:
+                for flag_set in feature_flag.sets:
+                    if not self.flag_set.flag_set_exist(flag_set):
+                        if self.flag_set_filter.should_filter:
+                            continue
+                        self.flag_set.add_flag_set(flag_set)
+                    self.flag_set.add_feature_flag_to_flag_set(flag_set, feature_flag.name)
 
-    def remove(self, split_name):
+    def _remove(self, feature_flag_name):
         """
-        Remove a split from storage.
+        Remove a feature flag from storage.
 
-        :param split_name: Name of the feature to remove.
-        :type split_name: str
+        :param feature_flag_name: Name of the feature to remove.
+        :type feature_flag_name: str
 
-        :return: True if the split was found and removed. False otherwise.
+        :return: True if the feature_flag was found and removed. False otherwise.
         :rtype: bool
         """
         with self._lock:
-            split = self._splits.get(split_name)
-            if not split:
-                _LOGGER.warning("Tried to delete nonexistant split %s. Skipping", split_name)
+            feature_flag = self._feature_flags.get(feature_flag_name)
+            if not feature_flag:
+                _LOGGER.warning("Tried to delete nonexistant feature flag %s. Skipping", feature_flag_name)
                 return False
 
-            self._splits.pop(split_name)
-            self._decrease_traffic_type_count(split.traffic_type_name)
+            self._feature_flags.pop(feature_flag_name)
+            self._decrease_traffic_type_count(feature_flag.traffic_type_name)
+            self._remove_from_flag_sets(feature_flag)
             return True
+
+    def _remove_from_flag_sets(self, feature_flag):
+        """
+        Remove flag sets associated to a feature flag
+        :param feature_flag: feature flag object
+        :type feature_flag: splitio.models.splits.Split
+        """
+        if feature_flag.sets is not None:
+            for flag_set in feature_flag.sets:
+                self.flag_set.remove_feature_flag_to_flag_set(flag_set, feature_flag.name)
+                if self.is_flag_set_exist(flag_set) and len(self.flag_set.get_flag_set(flag_set)) == 0 and not self.flag_set_filter.should_filter:
+                    self.flag_set.remove_flag_set(flag_set)
+
+    def get_feature_flags_by_sets(self, sets):
+        """
+        Get list of feature flag names associated to a set, if it does not exist will return empty list
+        :param set: flag set
+        :type set: str
+        :return: list of feature flag names
+        :rtype: list
+        """
+        with self._lock:
+            sets_to_fetch = []
+            for flag_set in sets:
+                if not self.flag_set.flag_set_exist(flag_set):
+                    _LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring it." % (flag_set))
+                    continue
+                sets_to_fetch.append(flag_set)
+
+            to_return = set()
+            [to_return.update(self.flag_set.get_flag_set(flag_set)) for flag_set in sets_to_fetch]
+            return list(to_return)
 
     def get_change_number(self):
         """
-        Retrieve latest split change number.
+        Retrieve latest feature flag change number.
 
         :rtype: int
         """
         with self._lock:
             return self._change_number
 
-    def set_change_number(self, new_change_number):
+    def _set_change_number(self, new_change_number):
         """
         Set the latest change number.
 
@@ -239,36 +424,36 @@ class InMemorySplitStorage(InMemorySplitStorageBase):
 
     def get_split_names(self):
         """
-        Retrieve a list of all split names.
+        Retrieve a list of all feature flag names.
 
-        :return: List of split names.
+        :return: List of feature flag names.
         :rtype: list(str)
         """
         with self._lock:
-            return list(self._splits.keys())
+            return list(self._feature_flags.keys())
 
     def get_all_splits(self):
         """
-        Return all the splits.
+        Return all the feature flags.
 
-        :return: List of all the splits.
+        :return: List of all the feature flags.
         :rtype: list
         """
         with self._lock:
-            return list(self._splits.values())
+            return list(self._feature_flags.values())
 
     def get_splits_count(self):
         """
-        Return splits count.
+        Return feature flags count.
 
         :rtype: int
         """
         with self._lock:
-            return len(self._splits)
+            return len(self._feature_flags)
 
     def is_valid_traffic_type(self, traffic_type_name):
         """
-        Return whether the traffic type exists in at least one split in cache.
+        Return whether the traffic type exists in at least one feature flag in cache.
 
         :param traffic_type_name: Traffic type to validate.
         :type traffic_type_name: str
@@ -279,12 +464,12 @@ class InMemorySplitStorage(InMemorySplitStorageBase):
         with self._lock:
             return traffic_type_name in self._traffic_types
 
-    def kill_locally(self, split_name, default_treatment, change_number):
+    def kill_locally(self, feature_flag_name, default_treatment, change_number):
         """
-        Local kill for split
+        Local kill for feature flag
 
-        :param split_name: name of the split to perform kill
-        :type split_name: str
+        :param feature_flag_name: name of the feature flag to perform kill
+        :type feature_flag_name: str
         :param default_treatment: name of the default treatment to return
         :type default_treatment: str
         :param change_number: change_number
@@ -293,90 +478,156 @@ class InMemorySplitStorage(InMemorySplitStorageBase):
         with self._lock:
             if self.get_change_number() > change_number:
                 return
-            split = self._splits.get(split_name)
-            if not split:
+            feature_flag = self._feature_flags.get(feature_flag_name)
+            if not feature_flag:
                 return
-            split.local_kill(default_treatment, change_number)
-            self.put(split)
+            feature_flag.local_kill(default_treatment, change_number)
+            self._put(feature_flag)
 
+    def is_flag_set_exist(self, flag_set):
+        """
+        Return whether a flag set exists in at least one feature flag in cache.
+        :param flag_set: Flag set to validate.
+        :type flag_set: str
+        :return: True if the flag_set exist. False otherwise.
+        :rtype: bool
+        """
+        return self.flag_set.flag_set_exist(flag_set)
 
 class InMemorySplitStorageAsync(InMemorySplitStorageBase):
-    """InMemory implementation of a split async storage."""
+    """InMemory implementation of a feature flag async storage."""
 
-    def __init__(self):
+    def __init__(self, flag_sets=[]):
         """Constructor."""
         self._lock = asyncio.Lock()
-        self._splits = {}
+        self._feature_flags = {}
         self._change_number = -1
         self._traffic_types = Counter()
+        self.flag_set = FlagSets(flag_sets)
+        self.flag_set_filter = FlagSetsFilter(flag_sets)
 
-    async def get(self, split_name):
+    async def get(self, feature_flag_name):
         """
-        Retrieve a split.
+        Retrieve a feature flag.
 
-        :param split_name: Name of the feature to fetch.
-        :type split_name: str
+        :param feature_flag_name: Name of the feature to fetch.
+        :type feature_flag_name: str
 
         :rtype: splitio.models.splits.Split
         """
         async with self._lock:
-            return self._splits.get(split_name)
+            return self._feature_flags.get(feature_flag_name)
 
-    async def fetch_many(self, split_names):
+    async def fetch_many(self, feature_flag_names):
         """
-        Retrieve splits.
+        Retrieve feature flags.
 
-        :param split_names: Names of the features to fetch.
-        :type split_name: list(str)
+        :param feature_flag_names: Names of the features to fetch.
+        :type feature_flag_name: list(str)
 
-        :return: A dict with split objects parsed from queue.
-        :rtype: dict(split_name, splitio.models.splits.Split)
+        :return: A dict with feature flag objects parsed from queue.
+        :rtype: dict(feature_flag_name, splitio.models.splits.Split)
         """
-        return {split_name: await self.get(split_name) for split_name in split_names}
+        return {feature_flag_name: await self.get(feature_flag_name) for feature_flag_name in feature_flag_names}
 
-    async def put(self, split):
+    async def update(self, to_add, to_delete, new_change_number):
         """
-        Store a split.
+        Update feature flag storage.
+        :param to_add: List of feature flags to add
+        :type to_add: list[splitio.models.splits.Split]
+        :param to_delete: List of feature flags to delete
+        :type to_delete: list[str]
+        :param new_change_number: New change number.
+        :type new_change_number: int
+        """
+        [await self._put(add_feature_flag) for add_feature_flag in to_add]
+        [await self._remove(delete_feature_flag) for delete_feature_flag in to_delete]
+        await self._set_change_number(new_change_number)
 
-        :param split: Split object.
-        :type split: splitio.models.split.Split
+    async def _put(self, feature_flag):
+        """
+        Store a feature flag.
+
+        :param feature flag: Split object.
+        :type feature flag: splitio.models.split.Split
         """
         async with self._lock:
-            if split.name in self._splits:
-                self._decrease_traffic_type_count(self._splits[split.name].traffic_type_name)
-            self._splits[split.name] = split
-            self._increase_traffic_type_count(split.traffic_type_name)
+            if feature_flag.name in self._feature_flags:
+                await self._remove_from_flag_sets(self._feature_flags[feature_flag.name])
+                self._decrease_traffic_type_count(self._feature_flags[feature_flag.name].traffic_type_name)
+            self._feature_flags[feature_flag.name] = feature_flag
+            self._increase_traffic_type_count(feature_flag.traffic_type_name)
+            if feature_flag.sets is not None:
+                for flag_set in feature_flag.sets:
+                    if not await self.flag_set.flag_set_exist(flag_set):
+                        if self.flag_set_filter.should_filter:
+                            continue
+                        await self.flag_set.add_flag_set(flag_set)
+                    await self.flag_set.add_feature_flag_to_flag_set(flag_set, feature_flag.name)
 
-    async def remove(self, split_name):
+    async def _remove(self, feature_flag_name):
         """
-        Remove a split from storage.
+        Remove a feature flag from storage.
 
-        :param split_name: Name of the feature to remove.
-        :type split_name: str
+        :param feature_flag_name: Name of the feature to remove.
+        :type feature_flag_name: str
 
-        :return: True if the split was found and removed. False otherwise.
+        :return: True if the feature flag was found and removed. False otherwise.
         :rtype: bool
         """
         async with self._lock:
-            split = self._splits.get(split_name)
-            if not split:
-                _LOGGER.warning("Tried to delete nonexistant split %s. Skipping", split_name)
+            feature_flag = self._feature_flags.get(feature_flag_name)
+            if not feature_flag:
+                _LOGGER.warning("Tried to delete nonexistant feature flag %s. Skipping", feature_flag_name)
                 return False
 
-            self._splits.pop(split_name)
-            self._decrease_traffic_type_count(split.traffic_type_name)
+            self._feature_flags.pop(feature_flag_name)
+            self._decrease_traffic_type_count(feature_flag.traffic_type_name)
+            await self._remove_from_flag_sets(feature_flag)
             return True
+
+    async def _remove_from_flag_sets(self, feature_flag):
+        """
+        Remove flag sets associated to a feature flag
+        :param feature_flag: feature flag object
+        :type feature_flag: splitio.models.splits.Split
+        """
+        if feature_flag.sets is not None:
+            for flag_set in feature_flag.sets:
+                await self.flag_set.remove_feature_flag_to_flag_set(flag_set, feature_flag.name)
+                if await self.is_flag_set_exist(flag_set) and len(await self.flag_set.get_flag_set(flag_set)) == 0 and not self.flag_set_filter.should_filter:
+                    await self.flag_set.remove_flag_set(flag_set)
+
+    async def get_feature_flags_by_sets(self, sets):
+        """
+        Get list of feature flag names associated to a set, if it does not exist will return empty list
+        :param set: flag set
+        :type set: str
+        :return: list of feature flag names
+        :rtype: list
+        """
+        async with self._lock:
+            sets_to_fetch = []
+            for flag_set in sets:
+                if not await self.flag_set.flag_set_exist(flag_set):
+                    _LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring it." % (flag_set))
+                    continue
+                sets_to_fetch.append(flag_set)
+
+            to_return = set()
+            [to_return.update(await self.flag_set.get_flag_set(flag_set)) for flag_set in sets_to_fetch]
+            return list(to_return)
 
     async def get_change_number(self):
         """
-        Retrieve latest split change number.
+        Retrieve latest feature flag change number.
 
         :rtype: int
         """
         async with self._lock:
             return self._change_number
 
-    async def set_change_number(self, new_change_number):
+    async def _set_change_number(self, new_change_number):
         """
         Set the latest change number.
 
@@ -388,36 +639,36 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
 
     async def get_split_names(self):
         """
-        Retrieve a list of all split names.
+        Retrieve a list of all feature flag names.
 
-        :return: List of split names.
+        :return: List of feature flag names.
         :rtype: list(str)
         """
         async with self._lock:
-            return list(self._splits.keys())
+            return list(self._feature_flags.keys())
 
     async def get_all_splits(self):
         """
-        Return all the splits.
+        Return all the feature flags.
 
-        :return: List of all the splits.
+        :return: List of all the feature flags.
         :rtype: list
         """
         async with self._lock:
-            return list(self._splits.values())
+            return list(self._feature_flags.values())
 
     async def get_splits_count(self):
         """
-        Return splits count.
+        Return feature flags count.
 
         :rtype: int
         """
         async with self._lock:
-            return len(self._splits)
+            return len(self._feature_flags)
 
     async def is_valid_traffic_type(self, traffic_type_name):
         """
-        Return whether the traffic type exists in at least one split in cache.
+        Return whether the traffic type exists in at least one feature flag in cache.
 
         :param traffic_type_name: Traffic type to validate.
         :type traffic_type_name: str
@@ -428,12 +679,12 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
         async with self._lock:
             return traffic_type_name in self._traffic_types
 
-    async def kill_locally(self, split_name, default_treatment, change_number):
+    async def kill_locally(self, feature_flag_name, default_treatment, change_number):
         """
-        Local kill for split
+        Local kill for feature flag
 
-        :param split_name: name of the split to perform kill
-        :type split_name: str
+        :param feature_flag_name: name of the feature flag to perform kill
+        :type feature_flag_name: str
         :param default_treatment: name of the default treatment to return
         :type default_treatment: str
         :param change_number: change_number
@@ -442,20 +693,30 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
         if await self.get_change_number() > change_number:
             return
         async with self._lock:
-            split = self._splits.get(split_name)
-            if not split:
+            feature_flag = self._feature_flags.get(feature_flag_name)
+            if not feature_flag:
                 return
-            split.local_kill(default_treatment, change_number)
-        await self.put(split)
+            feature_flag.local_kill(default_treatment, change_number)
+        await self.put(feature_flag)
 
     async def get_segment_names(self):
         """
-        Return a set of all segments referenced by splits in storage.
+        Return a set of all segments referenced by feature flags in storage.
 
         :return: Set of all segment names.
         :rtype: set(string)
         """
         return set([name for spl in await self.get_all_splits() for name in spl.get_segment_names()])
+
+    async def is_flag_set_exist(self, flag_set):
+        """
+        Return whether a flag set exists in at least one feature flag in cache.
+        :param flag_set: Flag set to validate.
+        :type flag_set: str
+        :return: True if the flag_set exist. False otherwise.
+        :rtype: bool
+        """
+        return await self.flag_set.flag_set_exist(flag_set)
 
 class InMemorySegmentStorage(SegmentStorage):
     """In-memory implementation of a segment storage."""
@@ -496,7 +757,7 @@ class InMemorySegmentStorage(SegmentStorage):
 
     def update(self, segment_name, to_add, to_remove, change_number=None):
         """
-        Update a split. Create it if it doesn't exist.
+        Update a feature flag. Create it if it doesn't exist.
 
         :param segment_name: Name of the segment to update.
         :type segment_name: str
@@ -624,7 +885,7 @@ class InMemorySegmentStorageAsync(SegmentStorage):
 
     async def update(self, segment_name, to_add, to_remove, change_number=None):
         """
-        Update a split. Create it if it doesn't exist.
+        Update a feature flag. Create it if it doesn't exist.
 
         :param segment_name: Name of the segment to update.
         :type segment_name: str
@@ -1067,7 +1328,7 @@ class InMemoryTelemetryStorageBase(TelemetryStorage):
     def _reset_config_tags(self):
         self._config_tags = []
 
-    def record_config(self, config, extra_config):
+    def record_config(self, config, extra_config, total_flag_sets, invalid_flag_sets):
         """Record configurations."""
         pass
 
@@ -1229,9 +1490,9 @@ class InMemoryTelemetryStorage(InMemoryTelemetryStorageBase):
             self._reset_tags()
             self._reset_config_tags()
 
-    def record_config(self, config, extra_config):
+    def record_config(self, config, extra_config, total_flag_sets, invalid_flag_sets):
         """Record configurations."""
-        self._tel_config.record_config(config, extra_config)
+        self._tel_config.record_config(config, extra_config, total_flag_sets, invalid_flag_sets)
 
     def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
         """Record active and redundant factories."""
@@ -1402,9 +1663,9 @@ class InMemoryTelemetryStorageAsync(InMemoryTelemetryStorageBase):
             self._reset_config_tags()
         return self
 
-    async def record_config(self, config, extra_config):
+    async def record_config(self, config, extra_config, total_flag_sets, invalid_flag_sets):
         """Record configurations."""
-        await self._tel_config.record_config(config, extra_config)
+        await self._tel_config.record_config(config, extra_config, total_flag_sets, invalid_flag_sets)
 
     async def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
         """Record active and redundant factories."""
