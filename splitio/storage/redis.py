@@ -18,7 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 MAX_TAGS = 10
 
 class RedisSplitStorageBase(SplitStorage):
-    """Redis-based storage base for     s."""
+    """Redis-based storage base for feature flags."""
 
     _FEATURE_FLAG_KEY = 'SPLITIO.split.{feature_flag_name}'
     _FEATURE_FLAG_TILL_KEY = 'SPLITIO.splits.till'
