@@ -126,7 +126,7 @@ class FlagSetsAsync(object):
         :type flag_set: str
         """
         async with self._lock:
-            if not self.flag_set_exist(flag_set):
+            if not flag_set in self.sets_feature_flag_map.keys():
                 self.sets_feature_flag_map[flag_set] = set()
 
     async def remove_flag_set(self, flag_set):
@@ -136,7 +136,7 @@ class FlagSetsAsync(object):
         :type flag_set: str
         """
         async with self._lock:
-            if self.flag_set_exist(flag_set):
+            if flag_set in self.sets_feature_flag_map.keys():
                 del self.sets_feature_flag_map[flag_set]
 
     async def add_feature_flag_to_flag_set(self, flag_set, feature_flag):
@@ -148,7 +148,7 @@ class FlagSetsAsync(object):
         :type feature_flag: str
         """
         async with self._lock:
-            if self.flag_set_exist(flag_set):
+            if flag_set in self.sets_feature_flag_map.keys():
                 self.sets_feature_flag_map[flag_set].add(feature_flag)
 
     async def remove_feature_flag_to_flag_set(self, flag_set, feature_flag):
@@ -160,7 +160,7 @@ class FlagSetsAsync(object):
         :type feature_flag: str
         """
         async with self._lock:
-            if self.flag_set_exist(flag_set):
+            if flag_set in self.sets_feature_flag_map.keys():
                 self.sets_feature_flag_map[flag_set].remove(feature_flag)
 
 class InMemorySplitStorageBase(SplitStorage):
@@ -503,7 +503,7 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
         self._feature_flags = {}
         self._change_number = -1
         self._traffic_types = Counter()
-        self.flag_set = FlagSets(flag_sets)
+        self.flag_set = FlagSetsAsync(flag_sets)
         self.flag_set_filter = FlagSetsFilter(flag_sets)
 
     async def get(self, feature_flag_name):
