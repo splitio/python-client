@@ -17,7 +17,7 @@ _LOGGER = logging.getLogger(__name__)
 class PluggableSplitStorageBase(SplitStorage):
     """InMemory implementation of a feature flag storage."""
 
-    _FEATURE_FLAG_NAME_LENGTH = 12
+    _FEATURE_FLAG_NAME_LENGTH = 19
 
     def __init__(self, pluggable_adapter, prefix=None, config_flag_sets=[]):
         """
