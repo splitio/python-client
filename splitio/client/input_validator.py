@@ -95,12 +95,12 @@ def _check_string_matches(value, operation, pattern, name, length):
     """
     if re.search(pattern, value) is None or re.search(pattern, value).group() != value:
         _LOGGER.error(
-            '%s: you passed %s, event_type must ' +
+            '%s: you passed %s, %s must ' +
             'adhere to the regular expression %s. ' +
             'This means %s must be alphanumeric, cannot be more ' +
             'than %s characters long, and can only include a dash, underscore, ' +
             'period, or colon as separators of alphanumeric characters.',
-            operation, value, pattern, name, length
+            operation, value, name, pattern, name, length
         )
         return False
     return True
@@ -166,7 +166,7 @@ def _check_valid_object_key(key, name, operation):
     :return: The result of validation
     :rtype: str|None
     """
-    if not _check_not_null(key, 'key', operation):
+    if not _check_not_null(key, name, operation):
         return None
     if isinstance(key, str):
         if not _check_string_not_empty(key, name, operation):
@@ -196,7 +196,7 @@ def _remove_empty_spaces(value, name, operation):
 def _convert_str_to_lower(value, name, operation):
     lower_value = value.lower()
     if value != lower_value:
-        _LOGGER.warning("%s: %s '%s' should be all lowercase - converting string to lowercase" % (operation, name, value))
+        _LOGGER.warning("%s: %s '%s' should be all lowercase - converting string to lowercase", operation, name, value)
     return lower_value
 
 def validate_key(key, method_name):
@@ -647,7 +647,7 @@ def validate_flag_sets(flag_sets, method_name):
     :rtype: list[str]
     """
     if not isinstance(flag_sets, list):
-        _LOGGER.warning("%s: flag sets parameter type should be list object, parameter is discarded" % (method_name))
+        _LOGGER.warning("%s: flag sets parameter type should be list object, parameter is discarded", method_name)
         return []
 
     sanitized_flag_sets = set()

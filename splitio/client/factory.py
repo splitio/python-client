@@ -1240,7 +1240,10 @@ def get_factory(api_key, **kwargs):
     _INSTANTIATED_FACTORIES.update([api_key])
     _INSTANTIATED_FACTORIES_LOCK.release()
 
-    config = sanitize_config(api_key, kwargs.get('config', {}))
+    config_raw = kwargs.get('config', {})
+    total_flag_sets, invalid_flag_sets = _get_total_and_invalid_flag_sets(config_raw)
+
+    config = sanitize_config(api_key, config_raw)
 
     if config['operationMode'] == 'localhost':
         split_factory =  _build_localhost_factory(config)
@@ -1256,7 +1259,9 @@ def get_factory(api_key, **kwargs):
         kwargs.get('events_api_base_url'),
         kwargs.get('auth_api_base_url'),
         kwargs.get('streaming_api_base_url'),
-        kwargs.get('telemetry_api_base_url'))
+        kwargs.get('telemetry_api_base_url'),
+        total_flag_sets,
+        invalid_flag_sets)
 
     return split_factory
 
@@ -1285,11 +1290,7 @@ async def get_factory_async(api_key, **kwargs):
     _INSTANTIATED_FACTORIES_LOCK.release()
 
     config_raw = kwargs.get('config', {})
-    total_flag_sets = 0
-    invalid_flag_sets = 0
-    if config_raw.get('flagSetsFilter') is not None and isinstance(config_raw.get('flagSetsFilter'), list):
-        total_flag_sets = len(config_raw.get('flagSetsFilter'))
-        invalid_flag_sets = total_flag_sets - len(input_validator.validate_flag_sets(config_raw.get('flagSetsFilter'), 'Telemetry Init'))
+    total_flag_sets, invalid_flag_sets = _get_total_and_invalid_flag_sets(config_raw)
 
     config = sanitize_config(api_key, config_raw)
     if config['operationMode'] == 'localhost':
@@ -1320,3 +1321,12 @@ def _get_active_and_redundant_count():
         active_factory_count += _INSTANTIATED_FACTORIES[item]
     _INSTANTIATED_FACTORIES_LOCK.release()
     return redundant_factory_count, active_factory_count
+
+def _get_total_and_invalid_flag_sets(config_raw):
+    total_flag_sets = 0
+    invalid_flag_sets = 0
+    if config_raw.get('flagSetsFilter') is not None and isinstance(config_raw.get('flagSetsFilter'), list):
+        total_flag_sets = len(config_raw.get('flagSetsFilter'))
+        invalid_flag_sets = total_flag_sets - len(input_validator.validate_flag_sets(config_raw.get('flagSetsFilter'), 'Telemetry Init'))
+
+    return total_flag_sets, invalid_flag_sets
