@@ -697,7 +697,7 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
             if not feature_flag:
                 return
             feature_flag.local_kill(default_treatment, change_number)
-        await self.put(feature_flag)
+        await self._put(feature_flag)
 
     async def get_segment_names(self):
         """
