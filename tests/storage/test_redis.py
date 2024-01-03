@@ -993,7 +993,7 @@ class RedisTelemetryStorageTests(object):
     @mock.patch('splitio.models.telemetry.TelemetryConfig.record_config')
     def test_record_config(self, mocker):
         redis_telemetry = RedisTelemetryStorage(mocker.Mock(), mocker.Mock())
-        redis_telemetry.record_config(mocker.Mock(), mocker.Mock())
+        redis_telemetry.record_config(mocker.Mock(), mocker.Mock(), 0, 0)
         assert(mocker.called)
 
     @mock.patch('splitio.storage.adapters.redis.RedisAdapter.hset')
@@ -1100,7 +1100,7 @@ class RedisTelemetryStorageAsyncTests(object):
             self.called = True
         redis_telemetry._tel_config.record_config = record_config
 
-        await redis_telemetry.record_config(mocker.Mock(), mocker.Mock())
+        await redis_telemetry.record_config(mocker.Mock(), mocker.Mock(), 0, 0)
         assert(self.called)
 
     @pytest.mark.asyncio
