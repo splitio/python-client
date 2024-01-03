@@ -282,6 +282,14 @@ class MethodLatenciesAsync(MethodLatenciesBase):
                 self._treatment_with_config[latency_bucket] += 1
             elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG:
                 self._treatments_with_config[latency_bucket] += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET:
+                self._treatments_by_flag_set[latency_bucket] += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS:
+                self._treatments_by_flag_sets[latency_bucket] += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET:
+                self._treatments_with_config_by_flag_set[latency_bucket] += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS:
+                self._treatments_with_config_by_flag_sets[latency_bucket] += 1
             elif method == MethodExceptionsAndLatencies.TRACK:
                 self._track[latency_bucket] += 1
             else:
@@ -573,6 +581,14 @@ class MethodExceptionsAsync(MethodExceptionsBase):
                 self._treatment_with_config += 1
             elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG:
                 self._treatments_with_config += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET:
+                self._treatments_by_flag_set += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS:
+                self._treatments_by_flag_sets += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET:
+                self._treatments_with_config_by_flag_set += 1
+            elif method == MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS:
+                self._treatments_with_config_by_flag_sets += 1
             elif method == MethodExceptionsAndLatencies.TRACK:
                 self._track += 1
             else:
