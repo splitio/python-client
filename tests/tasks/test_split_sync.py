@@ -62,6 +62,16 @@ class SplitSynchronizationTests(object):
         change_number_mock._calls = 0
         storage.get_change_number.side_effect = change_number_mock
 
+        class flag_set_filter():
+            def should_filter():
+                return False
+
+            def intersect(sets):
+                return True
+        storage.flag_set_filter = flag_set_filter
+        storage.flag_set_filter.flag_sets = {}
+        storage.flag_set_filter.sorted_flag_sets = []
+
         api = mocker.Mock()
 
         def get_changes(*args, **kwargs):
@@ -92,10 +102,12 @@ class SplitSynchronizationTests(object):
         task.stop(stop_event)
         stop_event.wait()
         assert not task.is_running()
-        assert mocker.call(-1, fetch_options) in api.fetch_splits.mock_calls
-        assert mocker.call(123, fetch_options) in api.fetch_splits.mock_calls
+        assert api.fetch_splits.mock_calls[0][1][0] == -1
+        assert api.fetch_splits.mock_calls[0][1][1].cache_control_headers == True
+        assert api.fetch_splits.mock_calls[1][1][0] == 123
+        assert api.fetch_splits.mock_calls[1][1][1].cache_control_headers == True
 
-        inserted_split = storage.put.mock_calls[0][1][0]
+        inserted_split = storage.update.mock_calls[0][1][0][0]
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
 
@@ -141,6 +153,16 @@ class SplitSynchronizationAsyncTests(object):
         change_number_mock._calls = 0
         storage.get_change_number = change_number_mock
 
+        class flag_set_filter():
+            def should_filter():
+                return False
+
+            def intersect(sets):
+                return True
+        storage.flag_set_filter = flag_set_filter
+        storage.flag_set_filter.flag_sets = {}
+        storage.flag_set_filter.sorted_flag_sets = []
+
         async def set_change_number(*_):
             pass
         change_number_mock._calls = 0
@@ -168,9 +190,10 @@ class SplitSynchronizationAsyncTests(object):
         api.fetch_splits = get_changes
         get_changes.called = 0
         self.inserted_split = None
-        async def put(split):
-            self.inserted_split = split
-        storage.put = put
+        async def update(split, deleted, change_number):
+            if len(split) > 0:
+                self.inserted_split = split
+        storage.update = update
 
         fetch_options = FetchOptions(True)
         split_synchronizer = SplitSynchronizerAsync(api, storage)
@@ -180,10 +203,10 @@ class SplitSynchronizationAsyncTests(object):
         assert task.is_running()
         await task.stop()
         assert not task.is_running()
-        assert (self.change_number[0], self.fetch_options[0])  == (-1, fetch_options)
-        assert (self.change_number[1], self.fetch_options[1])  == (123, fetch_options)
-        assert isinstance(self.inserted_split, Split)
-        assert self.inserted_split.name == 'some_name'
+        assert (self.change_number[0], self.fetch_options[0].cache_control_headers)  == (-1, fetch_options.cache_control_headers)
+        assert (self.change_number[1], self.fetch_options[1].cache_control_headers, self.fetch_options[1].change_number)  == (123, fetch_options.cache_control_headers, fetch_options.change_number)
+        assert isinstance(self.inserted_split[0], Split)
+        assert self.inserted_split[0].name == 'some_name'
 
     @pytest.mark.asyncio
     async def test_that_errors_dont_stop_task(self, mocker):
