@@ -108,7 +108,8 @@ class SplitSynchronizer(SplitSynchronizerBase):
                 _LOGGER.debug('Exception information: ', exc_info=True)
                 raise exc
 
-            fetched_feature_flags = [splits.from_raw(feature_flag) for feature_flag in feature_flag_changes.get('splits', [])]
+            fetched_feature_flags = []
+            [fetched_feature_flags.append(splits.from_raw(feature_flag)) for feature_flag in feature_flag_changes.get('splits', [])]
             segment_list = update_feature_flag_storage(self._feature_flag_storage, fetched_feature_flags, feature_flag_changes['till'])
             if feature_flag_changes['till'] == feature_flag_changes['since']:
                 return feature_flag_changes['till'], segment_list
@@ -225,9 +226,9 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
                 _LOGGER.debug('Exception information: ', exc_info=True)
                 raise exc
 
-            fetched_feature_flags = [splits.from_raw(feature_flag) for feature_flag in feature_flag_changes.get('splits', [])]
+            fetched_feature_flags = []
+            [fetched_feature_flags.append(splits.from_raw(feature_flag)) for feature_flag in feature_flag_changes.get('splits', [])]
             segment_list = await update_feature_flag_storage_async(self._feature_flag_storage, fetched_feature_flags, feature_flag_changes['till'])
-            await self._feature_flag_storage.set_change_number(feature_flag_changes['till'])
             if feature_flag_changes['till'] == feature_flag_changes['since']:
                 return feature_flag_changes['till'], segment_list
 
@@ -779,7 +780,7 @@ class LocalSplitSynchronizerAsync(LocalSplitSynchronizerBase):
             if await self._feature_flag_storage.get_change_number() > till and till != self._DEFAULT_FEATURE_FLAG_TILL:
                 return []
             fetched_feature_flags = [splits.from_raw(feature_flag) for feature_flag in fetched]
-            segment_list = await update_feature_flag_storage(self._feature_flag_storage, fetched_feature_flags, till)
+            segment_list = await update_feature_flag_storage_async(self._feature_flag_storage, fetched_feature_flags, till)
             return segment_list
         except Exception as exc:
             _LOGGER.debug(exc)
