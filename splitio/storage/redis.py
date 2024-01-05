@@ -18,7 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 MAX_TAGS = 10
 
 class RedisSplitStorageBase(SplitStorage):
-    """Redis-based storage base for feature flags."""
+    """Redis-based storage base for     s."""
 
     _FEATURE_FLAG_KEY = 'SPLITIO.split.{feature_flag_name}'
     _FEATURE_FLAG_TILL_KEY = 'SPLITIO.splits.till'
@@ -336,6 +336,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         self.redis = redis_client
         self._enable_caching = enable_caching
         self.flag_set_filter = FlagSetsFilter(config_flag_sets)
+        self._pipe = self.redis.pipeline
         if enable_caching:
             self._cache = LocalMemoryCache(None, None, max_age)
 
