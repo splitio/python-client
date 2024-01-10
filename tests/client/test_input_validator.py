@@ -7,7 +7,8 @@ from splitio.client.client import CONTROL, Client, _LOGGER as _logger, ClientAsy
 from splitio.client.manager import SplitManager, SplitManagerAsync
 from splitio.client.key import Key
 from splitio.storage import SplitStorage, EventStorage, ImpressionStorage, SegmentStorage
-from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
+from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync, \
+    InMemorySplitStorage, InMemorySplitStorageAsync
 from splitio.models.splits import Split
 from splitio.client import input_validator
 from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
@@ -57,7 +58,7 @@ class ClientInputValidationTests(object):
 
         assert client.get_treatment(None, 'some_feature') == CONTROL
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed a null key, key must be a non-empty string.', 'get_treatment')
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment', 'key', 'key')
         ]
 
         _logger.reset_mock()
@@ -234,7 +235,7 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatment('matching_key', '  some_feature   ', None) == 'default_treatment'
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatment', '  some_feature   ')
+            mocker.call('%s: %s \'%s\' has extra whitespace, trimming.', 'get_treatment', 'feature flag name', '  some_feature   ')
         ]
 
         _logger.reset_mock()
@@ -249,6 +250,7 @@ class ClientInputValidationTests(object):
                 'some_feature'
             )
         ]
+        factory.destroy
 
     def test_get_treatment_with_config(self, mocker):
         """Test get_treatment validation."""
@@ -293,7 +295,7 @@ class ClientInputValidationTests(object):
 
         assert client.get_treatment_with_config(None, 'some_feature') == (CONTROL, None)
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed a null key, key must be a non-empty string.', 'get_treatment_with_config')
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment_with_config', 'key', 'key')
         ]
 
         _logger.reset_mock()
@@ -470,7 +472,7 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatment_with_config('matching_key', '  some_feature   ', None) == ('default_treatment', '{"some": "property"}')
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatment_with_config', '  some_feature   ')
+            mocker.call('%s: %s \'%s\' has extra whitespace, trimming.', 'get_treatment_with_config', 'feature flag name', '  some_feature   ')
         ]
 
         _logger.reset_mock()
@@ -485,6 +487,7 @@ class ClientInputValidationTests(object):
                 'some_feature'
             )
         ]
+        factory.destroy
 
     def test_valid_properties(self, mocker):
         """Test valid_properties() method."""
@@ -635,9 +638,10 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.track("some_key", "TRAFFIC_type", "event_type", 1) is True
         assert _logger.warning.mock_calls == [
-            mocker.call("track: %s should be all lowercase - converting string to lowercase.", 'TRAFFIC_type')
+            mocker.call("%s: %s '%s' should be all lowercase - converting string to lowercase", 'track', 'traffic type', 'TRAFFIC_type')
         ]
 
+        _logger.reset_mock()
         assert client.track("some_key", "traffic_type", None, 1) is False
         assert _logger.error.mock_calls == [
             mocker.call("%s: you passed a null %s, %s must be a non-empty string.", 'track', 'event_type', 'event_type')
@@ -670,12 +674,12 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.track("some_key", "traffic_type", "@@", 1) is False
         assert _logger.error.mock_calls == [
-            mocker.call("%s: you passed %s, event_type must adhere to the regular "
+            mocker.call("%s: you passed %s, %s must adhere to the regular "
                         "expression %s. This means "
-                        "an event name must be alphanumeric, cannot be more than 80 "
+                        "%s must be alphanumeric, cannot be more than %s "
                         "characters long, and can only include a dash, underscore, "
                         "period, or colon as separators of alphanumeric characters.",
-                        'track', '@@', '^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$')
+                        'track', '@@', 'an event name', '^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$', 'an event name', 80)
         ]
 
         _logger.reset_mock()
@@ -797,6 +801,7 @@ class ClientInputValidationTests(object):
         assert _logger.error.mock_calls == [
             mocker.call("The maximum size allowed for the properties is 32768 bytes. Current one is 32952 bytes. Event not queued")
         ]
+        factory.destroy
 
     def test_get_treatments(self, mocker):
         """Test getTreatments() method."""
@@ -841,7 +846,7 @@ class ClientInputValidationTests(object):
 
         assert client.get_treatments(None, ['some_feature']) == {'some_feature': CONTROL}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed a null key, key must be a non-empty string.', 'get_treatments')
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatments', 'key', 'key')
         ]
 
         _logger.reset_mock()
@@ -917,7 +922,7 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatments('some_key', ['some_feature   ']) == {'some_feature': 'default_treatment'}
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatments', 'some_feature   ')
+            mocker.call('%s: %s \'%s\' has extra whitespace, trimming.', 'get_treatments', 'feature flag name', 'some_feature   ')
         ]
 
         _logger.reset_mock()
@@ -938,6 +943,7 @@ class ClientInputValidationTests(object):
                 'some_feature'
             )
         ]
+        factory.destroy
 
     def test_get_treatments_with_config(self, mocker):
         """Test getTreatments() method."""
@@ -986,7 +992,7 @@ class ClientInputValidationTests(object):
 
         assert client.get_treatments_with_config(None, ['some_feature']) == {'some_feature': (CONTROL, None)}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed a null key, key must be a non-empty string.', 'get_treatments_with_config')
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatments_with_config', 'key', 'key')
         ]
 
         _logger.reset_mock()
@@ -1061,7 +1067,7 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.get_treatments_with_config('some_key', ['some_feature   ']) == {'some_feature': ('default_treatment', '{"some": "property"}')}
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatments_with_config', 'some_feature   ')
+            mocker.call('%s: %s \'%s\' has extra whitespace, trimming.', 'get_treatments_with_config', 'feature flag name', 'some_feature   ')
         ]
 
         _logger.reset_mock()
@@ -1082,6 +1088,507 @@ class ClientInputValidationTests(object):
                 'some_feature'
             )
         ]
+        factory.destroy
+
+    def test_get_treatments_by_flag_set(self, mocker):
+        """Test getTreatments() method."""
+        split_mock = mocker.Mock(spec=Split)
+        default_treatment_mock = mocker.PropertyMock()
+        default_treatment_mock.return_value = 'default_treatment'
+        type(split_mock).default_treatment = default_treatment_mock
+        conditions_mock = mocker.PropertyMock()
+        conditions_mock.return_value = []
+        type(split_mock).conditions = conditions_mock
+        storage_mock = mocker.Mock(spec=InMemorySplitStorage)
+        storage_mock.fetch_many.return_value = {
+            'some_feature': split_mock
+        }
+        storage_mock.get_feature_flags_by_sets.return_value = ['some_feature']
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
+        factory = SplitFactory(mocker.Mock(),
+            {
+                'splits': storage_mock,
+                'segments': mocker.Mock(spec=SegmentStorage),
+                'impressions': mocker.Mock(spec=ImpressionStorage),
+                'events': mocker.Mock(spec=EventStorage),
+            },
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+
+        client = Client(factory, recorder)
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
+
+        assert client.get_treatments_by_flag_set(None, 'some_set') == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatments_by_flag_set', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert client.get_treatments_by_flag_set("", 'some_set') == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatments_by_flag_set', 'key', 'key')
+        ]
+
+        key = ''.join('a' for _ in range(0, 255))
+        _logger.reset_mock()
+        assert client.get_treatments_by_flag_set(key, 'some_set') == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: %s too long - must be %s characters or less.', 'get_treatments_by_flag_set', 'key', 250)
+        ]
+
+        split_mock.name = 'some_feature'
+        _logger.reset_mock()
+        assert client.get_treatments_by_flag_set(12345, 'some_set') == {'some_feature': 'default_treatment'}
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s %s is not of type string, converting.', 'get_treatments_by_flag_set', 'key', 12345)
+        ]
+
+        _logger.reset_mock()
+        assert client.get_treatments_by_flag_set(True, 'some_set') == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatments_by_flag_set', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert client.get_treatments_by_flag_set([], 'some_set') == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatments_by_flag_set', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        client.get_treatments_by_flag_set('some_key', None)
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed a null %s, %s must be a non-empty string.",
+                        'get_treatments_by_flag_set', 'flag set', 'flag set')
+        ]
+
+        _logger.reset_mock()
+        client.get_treatments_by_flag_set('some_key', '$$')
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed %s, %s must adhere to the regular "
+                        "expression %s. This means "
+                        "%s must be alphanumeric, cannot be more than %s "
+                        "characters long, and can only include a dash, underscore, "
+                        "period, or colon as separators of alphanumeric characters.",
+                        'get_treatments_by_flag_set', '$$', 'a flag set', '^[a-z0-9][_a-z0-9]{0,49}$', 'a flag set', 50)
+        ]
+
+        _logger.reset_mock()
+        assert client.get_treatments_by_flag_set('some_key', 'some_set   ') == {'some_feature': 'default_treatment'}
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s \'%s\' has extra whitespace, trimming.', 'get_treatments_by_flag_set', 'flag set', 'some_set   ')
+        ]
+
+        _logger.reset_mock()
+        storage_mock.get_feature_flags_by_sets.return_value = []
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+        mocker.patch('splitio.client.client._LOGGER', new=_logger)
+        assert client.get_treatments_by_flag_set('matching_key', 'some_set') == {}
+        assert _logger.warning.mock_calls == [
+            mocker.call("%s: No valid Flag set or no feature flags found for evaluating treatments", "get_treatments_by_flag_set")
+        ]
+        factory.destroy
+
+    def test_get_treatments_by_flag_sets(self, mocker):
+        """Test getTreatments() method."""
+        split_mock = mocker.Mock(spec=Split)
+        default_treatment_mock = mocker.PropertyMock()
+        default_treatment_mock.return_value = 'default_treatment'
+        type(split_mock).default_treatment = default_treatment_mock
+        conditions_mock = mocker.PropertyMock()
+        conditions_mock.return_value = []
+        type(split_mock).conditions = conditions_mock
+        storage_mock = mocker.Mock(spec=InMemorySplitStorage)
+        storage_mock.fetch_many.return_value = {
+            'some_feature': split_mock
+        }
+        storage_mock.get_feature_flags_by_sets.return_value = ['some_feature']
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
+        factory = SplitFactory(mocker.Mock(),
+            {
+                'splits': storage_mock,
+                'segments': mocker.Mock(spec=SegmentStorage),
+                'impressions': mocker.Mock(spec=ImpressionStorage),
+                'events': mocker.Mock(spec=EventStorage),
+            },
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+
+        client = Client(factory, recorder)
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
+
+        assert client.get_treatments_by_flag_sets(None, ['some_set']) == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatments_by_flag_sets', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert client.get_treatments_by_flag_sets("", ['some_set']) == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatments_by_flag_sets', 'key', 'key')
+        ]
+
+        key = ''.join('a' for _ in range(0, 255))
+        _logger.reset_mock()
+        assert client.get_treatments_by_flag_sets(key, ['some_set']) == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: %s too long - must be %s characters or less.', 'get_treatments_by_flag_sets', 'key', 250)
+        ]
+
+        split_mock.name = 'some_feature'
+        _logger.reset_mock()
+        assert client.get_treatments_by_flag_sets(12345, ['some_set']) == {'some_feature': 'default_treatment'}
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s %s is not of type string, converting.', 'get_treatments_by_flag_sets', 'key', 12345)
+        ]
+
+        _logger.reset_mock()
+        assert client.get_treatments_by_flag_sets(True, ['some_set']) == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatments_by_flag_sets', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert client.get_treatments_by_flag_sets([], ['some_set']) == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatments_by_flag_sets', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        client.get_treatments_by_flag_sets('some_key', None)
+        assert _logger.warning.mock_calls == [
+            mocker.call("%s: flag sets parameter type should be list object, parameter is discarded", "get_treatments_by_flag_sets")
+        ]
+
+        _logger.reset_mock()
+        client.get_treatments_by_flag_sets('some_key', [None])
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed a null %s, %s must be a non-empty string.",
+                        'get_treatments_by_flag_sets', 'flag set', 'flag set')
+        ]
+
+        _logger.reset_mock()
+        client.get_treatments_by_flag_sets('some_key', ['$$'])
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed %s, %s must adhere to the regular "
+                        "expression %s. This means "
+                        "%s must be alphanumeric, cannot be more than %s "
+                        "characters long, and can only include a dash, underscore, "
+                        "period, or colon as separators of alphanumeric characters.",
+                        'get_treatments_by_flag_sets', '$$', 'a flag set', '^[a-z0-9][_a-z0-9]{0,49}$', 'a flag set', 50)
+        ]
+
+        _logger.reset_mock()
+        assert client.get_treatments_by_flag_sets('some_key', ['some_set   ']) == {'some_feature': 'default_treatment'}
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s \'%s\' has extra whitespace, trimming.', 'get_treatments_by_flag_sets', 'flag set', 'some_set   ')
+        ]
+
+        _logger.reset_mock()
+        storage_mock.get_feature_flags_by_sets.return_value = []
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+        mocker.patch('splitio.client.client._LOGGER', new=_logger)
+        assert client.get_treatments_by_flag_sets('matching_key', ['some_set']) == {}
+        assert _logger.warning.mock_calls == [
+            mocker.call("%s: No valid Flag set or no feature flags found for evaluating treatments", "get_treatments_by_flag_sets")
+        ]
+        factory.destroy
+
+    def test_get_treatments_with_config_by_flag_set(self, mocker):
+        split_mock = mocker.Mock(spec=Split)
+        def _configs(treatment):
+            return '{"some": "property"}' if treatment == 'default_treatment' else None
+        split_mock.get_configurations_for.side_effect = _configs
+        split_mock.name = 'some_feature'
+        default_treatment_mock = mocker.PropertyMock()
+        default_treatment_mock.return_value = 'default_treatment'
+        type(split_mock).default_treatment = default_treatment_mock
+        conditions_mock = mocker.PropertyMock()
+        conditions_mock.return_value = []
+        type(split_mock).conditions = conditions_mock
+        storage_mock = mocker.Mock(spec=InMemorySplitStorage)
+        storage_mock.fetch_many.return_value = {
+            'some_feature': split_mock
+        }
+        storage_mock.get_feature_flags_by_sets.return_value = ['some_feature']
+
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
+        factory = SplitFactory(mocker.Mock(),
+            {
+                'splits': storage_mock,
+                'segments': mocker.Mock(spec=SegmentStorage),
+                'impressions': mocker.Mock(spec=ImpressionStorage),
+                'events': mocker.Mock(spec=EventStorage),
+            },
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+
+        client = Client(factory, recorder)
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
+
+        assert client.get_treatments_with_config_by_flag_set(None, 'some_set') == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatments_with_config_by_flag_set', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert client.get_treatments_with_config_by_flag_set("", 'some_set') == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatments_with_config_by_flag_set', 'key', 'key')
+        ]
+
+        key = ''.join('a' for _ in range(0, 255))
+        _logger.reset_mock()
+        assert client.get_treatments_with_config_by_flag_set(key, 'some_set') == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: %s too long - must be %s characters or less.', 'get_treatments_with_config_by_flag_set', 'key', 250)
+        ]
+
+        split_mock.name = 'some_feature'
+        _logger.reset_mock()
+        assert client.get_treatments_with_config_by_flag_set(12345, 'some_set') == {'some_feature': ('default_treatment', '{"some": "property"}')}
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s %s is not of type string, converting.', 'get_treatments_with_config_by_flag_set', 'key', 12345)
+        ]
+
+        _logger.reset_mock()
+        assert client.get_treatments_with_config_by_flag_set(True, 'some_set') == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatments_with_config_by_flag_set', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert client.get_treatments_with_config_by_flag_set([], 'some_set') == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatments_with_config_by_flag_set', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        client.get_treatments_with_config_by_flag_set('some_key', None)
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed a null %s, %s must be a non-empty string.",
+                        'get_treatments_with_config_by_flag_set', 'flag set', 'flag set')
+        ]
+
+        _logger.reset_mock()
+        client.get_treatments_with_config_by_flag_set('some_key', '$$')
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed %s, %s must adhere to the regular "
+                        "expression %s. This means "
+                        "%s must be alphanumeric, cannot be more than %s "
+                        "characters long, and can only include a dash, underscore, "
+                        "period, or colon as separators of alphanumeric characters.",
+                        'get_treatments_with_config_by_flag_set', '$$', 'a flag set', '^[a-z0-9][_a-z0-9]{0,49}$', 'a flag set', 50)
+        ]
+
+        _logger.reset_mock()
+        assert client.get_treatments_with_config_by_flag_set('some_key', 'some_set   ') == {'some_feature': ('default_treatment', '{"some": "property"}')}
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s \'%s\' has extra whitespace, trimming.', 'get_treatments_with_config_by_flag_set', 'flag set', 'some_set   ')
+        ]
+
+        _logger.reset_mock()
+        storage_mock.get_feature_flags_by_sets.return_value = []
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+        mocker.patch('splitio.client.client._LOGGER', new=_logger)
+        assert client.get_treatments_with_config_by_flag_set('matching_key', 'some_set') == {}
+        assert _logger.warning.mock_calls == [
+            mocker.call("%s: No valid Flag set or no feature flags found for evaluating treatments", "get_treatments_with_config_by_flag_set")
+        ]
+        factory.destroy
+
+    def test_get_treatments_with_config_by_flag_sets(self, mocker):
+        split_mock = mocker.Mock(spec=Split)
+        def _configs(treatment):
+            return '{"some": "property"}' if treatment == 'default_treatment' else None
+        split_mock.get_configurations_for.side_effect = _configs
+        split_mock.name = 'some_feature'
+        default_treatment_mock = mocker.PropertyMock()
+        default_treatment_mock.return_value = 'default_treatment'
+        type(split_mock).default_treatment = default_treatment_mock
+        conditions_mock = mocker.PropertyMock()
+        conditions_mock.return_value = []
+        type(split_mock).conditions = conditions_mock
+        storage_mock = mocker.Mock(spec=InMemorySplitStorage)
+        storage_mock.fetch_many.return_value = {
+            'some_feature': split_mock
+        }
+        storage_mock.get_feature_flags_by_sets.return_value = ['some_feature']
+
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
+        factory = SplitFactory(mocker.Mock(),
+            {
+                'splits': storage_mock,
+                'segments': mocker.Mock(spec=SegmentStorage),
+                'impressions': mocker.Mock(spec=ImpressionStorage),
+                'events': mocker.Mock(spec=EventStorage),
+            },
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+
+        client = Client(factory, recorder)
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
+
+        assert client.get_treatments_with_config_by_flag_sets(None, ['some_set']) == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatments_with_config_by_flag_sets', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert client.get_treatments_with_config_by_flag_sets("", ['some_set']) == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatments_with_config_by_flag_sets', 'key', 'key')
+        ]
+
+        key = ''.join('a' for _ in range(0, 255))
+        _logger.reset_mock()
+        assert client.get_treatments_with_config_by_flag_sets(key, ['some_set']) == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: %s too long - must be %s characters or less.', 'get_treatments_with_config_by_flag_sets', 'key', 250)
+        ]
+
+        split_mock.name = 'some_feature'
+        _logger.reset_mock()
+        assert client.get_treatments_with_config_by_flag_sets(12345, ['some_set']) == {'some_feature': ('default_treatment', '{"some": "property"}')}
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s %s is not of type string, converting.', 'get_treatments_with_config_by_flag_sets', 'key', 12345)
+        ]
+
+        _logger.reset_mock()
+        assert client.get_treatments_with_config_by_flag_sets(True, ['some_set']) == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatments_with_config_by_flag_sets', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert client.get_treatments_with_config_by_flag_sets([], ['some_set']) == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatments_with_config_by_flag_sets', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        client.get_treatments_with_config_by_flag_sets('some_key', [None])
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed a null %s, %s must be a non-empty string.",
+                        'get_treatments_with_config_by_flag_sets', 'flag set', 'flag set')
+        ]
+
+        _logger.reset_mock()
+        client.get_treatments_with_config_by_flag_sets('some_key', ['$$'])
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed %s, %s must adhere to the regular "
+                        "expression %s. This means "
+                        "%s must be alphanumeric, cannot be more than %s "
+                        "characters long, and can only include a dash, underscore, "
+                        "period, or colon as separators of alphanumeric characters.",
+                        'get_treatments_with_config_by_flag_sets', '$$', 'a flag set', '^[a-z0-9][_a-z0-9]{0,49}$', 'a flag set', 50)
+        ]
+
+        _logger.reset_mock()
+        assert client.get_treatments_with_config_by_flag_sets('some_key', ['some_set   ']) == {'some_feature': ('default_treatment', '{"some": "property"}')}
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s \'%s\' has extra whitespace, trimming.', 'get_treatments_with_config_by_flag_sets', 'flag set', 'some_set   ')
+        ]
+
+        _logger.reset_mock()
+        storage_mock.get_feature_flags_by_sets.return_value = []
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+        mocker.patch('splitio.client.client._LOGGER', new=_logger)
+        assert client.get_treatments_with_config_by_flag_sets('matching_key', ['some_set']) == {}
+        assert _logger.warning.mock_calls == [
+            mocker.call("%s: No valid Flag set or no feature flags found for evaluating treatments", "get_treatments_with_config_by_flag_sets")
+        ]
+        factory.destroy
+
+    def test_flag_sets_validation(self):
+        """Test sanitization for flag sets."""
+        flag_sets = input_validator.validate_flag_sets([' set1', 'set2 ', 'set3'], 'method')
+        assert sorted(flag_sets) == ['set1', 'set2', 'set3']
+
+        flag_sets = input_validator.validate_flag_sets(['1set', '_set2'], 'method')
+        assert flag_sets == ['1set']
+
+        flag_sets = input_validator.validate_flag_sets(['Set1', 'SET2'], 'method')
+        assert sorted(flag_sets) == ['set1', 'set2']
+
+        flag_sets = input_validator.validate_flag_sets(['se\t1', 's/et2', 's*et3', 's!et4', 'se@t5', 'se#t5', 'se$t5', 'se^t5', 'se%t5', 'se&t5'], 'method')
+        assert flag_sets == []
+
+        flag_sets = input_validator.validate_flag_sets(['set4', 'set1', 'set3', 'set1'], 'method')
+        assert sorted(flag_sets) == ['set1', 'set3', 'set4']
+
+        flag_sets = input_validator.validate_flag_sets(['w' * 50, 's' * 51], 'method')
+        assert flag_sets == ['w' * 50]
+
+        flag_sets = input_validator.validate_flag_sets('set1', 'method')
+        assert flag_sets == []
+
+        flag_sets = input_validator.validate_flag_sets([12, 33], 'method')
+        assert flag_sets == []
 
 
 class ClientInputValidationAsyncTests(object):
@@ -1143,7 +1650,7 @@ class ClientInputValidationAsyncTests(object):
 
         assert await client.get_treatment(None, 'some_feature') == CONTROL
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed a null key, key must be a non-empty string.', 'get_treatment')
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment', 'key', 'key')
         ]
 
         _logger.reset_mock()
@@ -1320,7 +1827,7 @@ class ClientInputValidationAsyncTests(object):
         _logger.reset_mock()
         assert await client.get_treatment('matching_key', '  some_feature   ', None) == 'default_treatment'
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatment', '  some_feature   ')
+            mocker.call('%s: %s \'%s\' has extra whitespace, trimming.', 'get_treatment', 'feature flag name', '  some_feature   ')
         ]
 
         _logger.reset_mock()
@@ -1338,6 +1845,7 @@ class ClientInputValidationAsyncTests(object):
                 'some_feature'
             )
         ]
+        await factory.destroy()
 
     @pytest.mark.asyncio
     async def test_get_treatment_with_config(self, mocker):
@@ -1398,7 +1906,7 @@ class ClientInputValidationAsyncTests(object):
 
         assert await client.get_treatment_with_config(None, 'some_feature') == (CONTROL, None)
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed a null key, key must be a non-empty string.', 'get_treatment_with_config')
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatment_with_config', 'key', 'key')
         ]
 
         _logger.reset_mock()
@@ -1575,7 +2083,7 @@ class ClientInputValidationAsyncTests(object):
         _logger.reset_mock()
         assert await client.get_treatment_with_config('matching_key', '  some_feature   ', None) == ('default_treatment', '{"some": "property"}')
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatment_with_config', '  some_feature   ')
+            mocker.call('%s: %s \'%s\' has extra whitespace, trimming.', 'get_treatment_with_config', 'feature flag name', '  some_feature   ')
         ]
 
         _logger.reset_mock()
@@ -1593,6 +2101,7 @@ class ClientInputValidationAsyncTests(object):
                 'some_feature'
             )
         ]
+        await factory.destroy()
 
     @pytest.mark.asyncio
     async def test_track(self, mocker):
@@ -1703,7 +2212,7 @@ class ClientInputValidationAsyncTests(object):
         _logger.reset_mock()
         assert await client.track("some_key", "TRAFFIC_type", "event_type", 1) is True
         assert _logger.warning.mock_calls == [
-            mocker.call("track: %s should be all lowercase - converting string to lowercase.", 'TRAFFIC_type')
+            mocker.call("%s: %s '%s' should be all lowercase - converting string to lowercase", 'track', 'traffic type', 'TRAFFIC_type')
         ]
 
         assert await client.track("some_key", "traffic_type", None, 1) is False
@@ -1738,12 +2247,12 @@ class ClientInputValidationAsyncTests(object):
         _logger.reset_mock()
         assert await client.track("some_key", "traffic_type", "@@", 1) is False
         assert _logger.error.mock_calls == [
-            mocker.call("%s: you passed %s, event_type must adhere to the regular "
+            mocker.call("%s: you passed %s, %s must adhere to the regular "
                         "expression %s. This means "
-                        "an event name must be alphanumeric, cannot be more than 80 "
+                        "%s must be alphanumeric, cannot be more than %s "
                         "characters long, and can only include a dash, underscore, "
                         "period, or colon as separators of alphanumeric characters.",
-                        'track', '@@', '^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$')
+                        'track', '@@', 'an event name', '^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$', 'an event name', 80)
         ]
 
         _logger.reset_mock()
@@ -1866,6 +2375,7 @@ class ClientInputValidationAsyncTests(object):
         assert _logger.error.mock_calls == [
             mocker.call("The maximum size allowed for the properties is 32768 bytes. Current one is 32952 bytes. Event not queued")
         ]
+        await factory.destroy()
 
     @pytest.mark.asyncio
     async def test_get_treatments(self, mocker):
@@ -1925,7 +2435,7 @@ class ClientInputValidationAsyncTests(object):
 
         assert await client.get_treatments(None, ['some_feature']) == {'some_feature': CONTROL}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed a null key, key must be a non-empty string.', 'get_treatments')
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatments', 'key', 'key')
         ]
 
         _logger.reset_mock()
@@ -2001,7 +2511,7 @@ class ClientInputValidationAsyncTests(object):
         _logger.reset_mock()
         assert await client.get_treatments('some_key', ['some_feature   ']) == {'some_feature': 'default_treatment'}
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatments', 'some_feature   ')
+            mocker.call('%s: %s \'%s\' has extra whitespace, trimming.', 'get_treatments', 'feature flag name', 'some_feature   ')
         ]
 
         _logger.reset_mock()
@@ -2024,6 +2534,7 @@ class ClientInputValidationAsyncTests(object):
                 'some_feature'
             )
         ]
+        await factory.destroy()
 
     @pytest.mark.asyncio
     async def test_get_treatments_with_config(self, mocker):
@@ -2085,7 +2596,7 @@ class ClientInputValidationAsyncTests(object):
 
         assert await client.get_treatments_with_config(None, ['some_feature']) == {'some_feature': (CONTROL, None)}
         assert _logger.error.mock_calls == [
-            mocker.call('%s: you passed a null key, key must be a non-empty string.', 'get_treatments_with_config')
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatments_with_config', 'key', 'key')
         ]
 
         _logger.reset_mock()
@@ -2160,7 +2671,7 @@ class ClientInputValidationAsyncTests(object):
         _logger.reset_mock()
         assert await client.get_treatments_with_config('some_key', ['some_feature   ']) == {'some_feature': ('default_treatment', '{"some": "property"}')}
         assert _logger.warning.mock_calls == [
-            mocker.call('%s: feature flag name \'%s\' has extra whitespace, trimming.', 'get_treatments_with_config', 'some_feature   ')
+            mocker.call('%s: %s \'%s\' has extra whitespace, trimming.', 'get_treatments_with_config', 'feature flag name', 'some_feature   ')
         ]
 
         _logger.reset_mock()
@@ -2183,6 +2694,586 @@ class ClientInputValidationAsyncTests(object):
                 'some_feature'
             )
         ]
+        await factory.destroy()
+
+    @pytest.mark.asyncio
+    async def test_get_treatments_by_flag_set(self, mocker):
+        split_mock = mocker.Mock(spec=Split)
+        default_treatment_mock = mocker.PropertyMock()
+        default_treatment_mock.return_value = 'default_treatment'
+        type(split_mock).default_treatment = default_treatment_mock
+        conditions_mock = mocker.PropertyMock()
+        conditions_mock.return_value = []
+        type(split_mock).conditions = conditions_mock
+        storage_mock = mocker.Mock(spec=SplitStorage)
+        async def get(*_):
+            return split_mock
+        storage_mock.get = get
+        async def get_change_number(*_):
+            return 1
+        storage_mock.get_change_number = get_change_number
+        async def fetch_many(*_):
+            return {
+            'some_feature': split_mock,
+            'some': split_mock,
+        }
+        storage_mock.fetch_many = fetch_many
+        async def get_feature_flags_by_sets(*_):
+            return ['some_feature']
+        storage_mock.get_feature_flags_by_sets = get_feature_flags_by_sets
+
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
+        factory = SplitFactoryAsync(mocker.Mock(),
+            {
+                'splits': storage_mock,
+                'segments': mocker.Mock(spec=SegmentStorage),
+                'impressions': mocker.Mock(spec=ImpressionStorage),
+                'events': mocker.Mock(spec=EventStorage),
+            },
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+
+        client = ClientAsync(factory, recorder)
+        async def record_treatment_stats(*_):
+            pass
+        client._recorder.record_treatment_stats = record_treatment_stats
+
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
+
+        assert await client.get_treatments_by_flag_set(None, 'some_flag') == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatments_by_flag_set', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_by_flag_set("", 'some_flag') == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatments_by_flag_set', 'key', 'key')
+        ]
+
+        key = ''.join('a' for _ in range(0, 255))
+        _logger.reset_mock()
+        assert await client.get_treatments_by_flag_set(key, 'some_flag') == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: %s too long - must be %s characters or less.', 'get_treatments_by_flag_set', 'key', 250)
+        ]
+
+        split_mock.name = 'some_feature'
+        _logger.reset_mock()
+        assert await client.get_treatments_by_flag_set(12345, 'some_flag') == {'some_feature': 'default_treatment'}
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s %s is not of type string, converting.', 'get_treatments_by_flag_set', 'key', 12345)
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_by_flag_set(True, 'some_flag') == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatments_by_flag_set', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_by_flag_set([], 'some_flag') == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatments_by_flag_set', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        await client.get_treatments_by_flag_set('some_key', None)
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed a null %s, %s must be a non-empty string.",
+                        'get_treatments_by_flag_set', 'flag set', 'flag set')
+        ]
+
+        _logger.reset_mock()
+        await client.get_treatments_by_flag_set('some_key', "$$")
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed %s, %s must adhere to the regular "
+                        "expression %s. This means "
+                        "%s must be alphanumeric, cannot be more than %s "
+                        "characters long, and can only include a dash, underscore, "
+                        "period, or colon as separators of alphanumeric characters.",
+                        'get_treatments_by_flag_set', '$$', 'a flag set', '^[a-z0-9][_a-z0-9]{0,49}$', 'a flag set', 50)
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_by_flag_set('some_key', 'some_flag   ') == {'some_feature': 'default_treatment'}
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s \'%s\' has extra whitespace, trimming.', 'get_treatments_by_flag_set', 'flag set', 'some_flag   ')
+        ]
+
+        _logger.reset_mock()
+        async def fetch_many(*_):
+            return {
+            'some_feature': None
+        }
+        storage_mock.fetch_many = fetch_many
+
+        async def get_feature_flags_by_sets(*_):
+            return []
+        storage_mock.get_feature_flags_by_sets = get_feature_flags_by_sets
+
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+        mocker.patch('splitio.client.client._LOGGER', new=_logger)
+        assert await client.get_treatments_by_flag_set('matching_key', 'some_flag', None) == {}
+        assert _logger.warning.mock_calls == [
+            mocker.call("%s: No valid Flag set or no feature flags found for evaluating treatments", "get_treatments_by_flag_set")
+        ]
+        await factory.destroy()
+
+    @pytest.mark.asyncio
+    async def test_get_treatments_by_flag_sets(self, mocker):
+        split_mock = mocker.Mock(spec=Split)
+        default_treatment_mock = mocker.PropertyMock()
+        default_treatment_mock.return_value = 'default_treatment'
+        type(split_mock).default_treatment = default_treatment_mock
+        conditions_mock = mocker.PropertyMock()
+        conditions_mock.return_value = []
+        type(split_mock).conditions = conditions_mock
+        storage_mock = mocker.Mock(spec=SplitStorage)
+        async def get(*_):
+            return split_mock
+        storage_mock.get = get
+        async def get_change_number(*_):
+            return 1
+        storage_mock.get_change_number = get_change_number
+        async def fetch_many(*_):
+            return {
+            'some_feature': split_mock,
+            'some': split_mock,
+        }
+        storage_mock.fetch_many = fetch_many
+        async def get_feature_flags_by_sets(*_):
+            return ['some_feature']
+        storage_mock.get_feature_flags_by_sets = get_feature_flags_by_sets
+
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
+        factory = SplitFactoryAsync(mocker.Mock(),
+            {
+                'splits': storage_mock,
+                'segments': mocker.Mock(spec=SegmentStorage),
+                'impressions': mocker.Mock(spec=ImpressionStorage),
+                'events': mocker.Mock(spec=EventStorage),
+            },
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+
+        client = ClientAsync(factory, recorder)
+        async def record_treatment_stats(*_):
+            pass
+        client._recorder.record_treatment_stats = record_treatment_stats
+
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
+
+        assert await client.get_treatments_by_flag_sets(None, ['some_flag']) == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatments_by_flag_sets', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_by_flag_sets("", ['some_flag']) == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatments_by_flag_sets', 'key', 'key')
+        ]
+
+        key = ''.join('a' for _ in range(0, 255))
+        _logger.reset_mock()
+        assert await client.get_treatments_by_flag_sets(key, ['some_flag']) == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: %s too long - must be %s characters or less.', 'get_treatments_by_flag_sets', 'key', 250)
+        ]
+
+        split_mock.name = 'some_feature'
+        _logger.reset_mock()
+        assert await client.get_treatments_by_flag_sets(12345, ['some_flag']) == {'some_feature': 'default_treatment'}
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s %s is not of type string, converting.', 'get_treatments_by_flag_sets', 'key', 12345)
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_by_flag_sets(True, ['some_flag']) == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatments_by_flag_sets', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_by_flag_sets([], ['some_flag']) == {'some_feature': CONTROL}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatments_by_flag_sets', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        await client.get_treatments_by_flag_sets('some_key', None)
+        assert _logger.warning.mock_calls == [
+            mocker.call("%s: flag sets parameter type should be list object, parameter is discarded", "get_treatments_by_flag_sets")
+        ]
+
+        _logger.reset_mock()
+        await client.get_treatments_by_flag_sets('some_key', [None])
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed a null %s, %s must be a non-empty string.",
+                        'get_treatments_by_flag_sets', 'flag set', 'flag set')
+        ]
+
+        _logger.reset_mock()
+        await client.get_treatments_by_flag_sets('some_key', ["$$"])
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed %s, %s must adhere to the regular "
+                        "expression %s. This means "
+                        "%s must be alphanumeric, cannot be more than %s "
+                        "characters long, and can only include a dash, underscore, "
+                        "period, or colon as separators of alphanumeric characters.",
+                        'get_treatments_by_flag_sets', '$$', 'a flag set', '^[a-z0-9][_a-z0-9]{0,49}$', 'a flag set', 50)
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_by_flag_sets('some_key', ['some_flag   ']) == {'some_feature': 'default_treatment'}
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s \'%s\' has extra whitespace, trimming.', 'get_treatments_by_flag_sets', 'flag set', 'some_flag   ')
+        ]
+
+        _logger.reset_mock()
+        async def fetch_many(*_):
+            return {
+            'some_feature': None
+        }
+        storage_mock.fetch_many = fetch_many
+
+        async def get_feature_flags_by_sets(*_):
+            return []
+        storage_mock.get_feature_flags_by_sets = get_feature_flags_by_sets
+
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+        mocker.patch('splitio.client.client._LOGGER', new=_logger)
+        assert await client.get_treatments_by_flag_sets('matching_key', ['some_flag'], None) == {}
+        assert _logger.warning.mock_calls == [
+            mocker.call("%s: No valid Flag set or no feature flags found for evaluating treatments", "get_treatments_by_flag_sets")
+        ]
+        await factory.destroy()
+
+    @pytest.mark.asyncio
+    async def test_get_treatments_with_config_by_flag_set(self, mocker):
+        split_mock = mocker.Mock(spec=Split)
+        def _configs(treatment):
+            return '{"some": "property"}' if treatment == 'default_treatment' else None
+        split_mock.get_configurations_for.side_effect = _configs
+        split_mock.name = 'some_feature'
+        default_treatment_mock = mocker.PropertyMock()
+        default_treatment_mock.return_value = 'default_treatment'
+        type(split_mock).default_treatment = default_treatment_mock
+        conditions_mock = mocker.PropertyMock()
+        conditions_mock.return_value = []
+        type(split_mock).conditions = conditions_mock
+        storage_mock = mocker.Mock(spec=SplitStorage)
+        async def get(*_):
+            return split_mock
+        storage_mock.get = get
+        async def get_change_number(*_):
+            return 1
+        storage_mock.get_change_number = get_change_number
+        async def fetch_many(*_):
+            return {
+            'some_feature': split_mock,
+            'some': split_mock,
+        }
+        storage_mock.fetch_many = fetch_many
+        async def get_feature_flags_by_sets(*_):
+            return ['some_feature']
+        storage_mock.get_feature_flags_by_sets = get_feature_flags_by_sets
+
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
+        factory = SplitFactoryAsync(mocker.Mock(),
+            {
+                'splits': storage_mock,
+                'segments': mocker.Mock(spec=SegmentStorage),
+                'impressions': mocker.Mock(spec=ImpressionStorage),
+                'events': mocker.Mock(spec=EventStorage),
+            },
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+
+        client = ClientAsync(factory, recorder)
+        async def record_treatment_stats(*_):
+            pass
+        client._recorder.record_treatment_stats = record_treatment_stats
+
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
+
+        assert await client.get_treatments_with_config_by_flag_set(None, 'some_flag') == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatments_with_config_by_flag_set', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config_by_flag_set("", 'some_flag') == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatments_with_config_by_flag_set', 'key', 'key')
+        ]
+
+        key = ''.join('a' for _ in range(0, 255))
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config_by_flag_set(key, 'some_flag') == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: %s too long - must be %s characters or less.', 'get_treatments_with_config_by_flag_set', 'key', 250)
+        ]
+
+        split_mock.name = 'some_feature'
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config_by_flag_set(12345, 'some_flag') == {'some_feature': ('default_treatment', '{"some": "property"}')}
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s %s is not of type string, converting.', 'get_treatments_with_config_by_flag_set', 'key', 12345)
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config_by_flag_set(True, 'some_flag') == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatments_with_config_by_flag_set', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config_by_flag_set([], 'some_flag') == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatments_with_config_by_flag_set', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        await client.get_treatments_with_config_by_flag_set('some_key', None)
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed a null %s, %s must be a non-empty string.",
+                        'get_treatments_with_config_by_flag_set', 'flag set', 'flag set')
+        ]
+
+        _logger.reset_mock()
+        await client.get_treatments_with_config_by_flag_set('some_key', "$$")
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed %s, %s must adhere to the regular "
+                        "expression %s. This means "
+                        "%s must be alphanumeric, cannot be more than %s "
+                        "characters long, and can only include a dash, underscore, "
+                        "period, or colon as separators of alphanumeric characters.",
+                        'get_treatments_with_config_by_flag_set', '$$', 'a flag set', '^[a-z0-9][_a-z0-9]{0,49}$', 'a flag set', 50)
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config_by_flag_set('some_key', 'some_flag   ') == {'some_feature': ('default_treatment', '{"some": "property"}')}
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s \'%s\' has extra whitespace, trimming.', 'get_treatments_with_config_by_flag_set', 'flag set', 'some_flag   ')
+        ]
+
+        _logger.reset_mock()
+        async def fetch_many(*_):
+            return {
+            'some_feature': None
+        }
+        storage_mock.fetch_many = fetch_many
+
+        async def get_feature_flags_by_sets(*_):
+            return []
+        storage_mock.get_feature_flags_by_sets = get_feature_flags_by_sets
+
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+        mocker.patch('splitio.client.client._LOGGER', new=_logger)
+        assert await client.get_treatments_with_config_by_flag_set('matching_key', 'some_flag', None) == {}
+        assert _logger.warning.mock_calls == [
+            mocker.call("%s: No valid Flag set or no feature flags found for evaluating treatments", "get_treatments_with_config_by_flag_set")
+        ]
+        await factory.destroy()
+
+    @pytest.mark.asyncio
+    async def test_get_treatments_with_config_by_flag_sets(self, mocker):
+        split_mock = mocker.Mock(spec=Split)
+        def _configs(treatment):
+            return '{"some": "property"}' if treatment == 'default_treatment' else None
+        split_mock.get_configurations_for.side_effect = _configs
+        default_treatment_mock = mocker.PropertyMock()
+        default_treatment_mock.return_value = 'default_treatment'
+        type(split_mock).default_treatment = default_treatment_mock
+        conditions_mock = mocker.PropertyMock()
+        conditions_mock.return_value = []
+        type(split_mock).conditions = conditions_mock
+        storage_mock = mocker.Mock(spec=SplitStorage)
+        async def get(*_):
+            return split_mock
+        storage_mock.get = get
+        async def get_change_number(*_):
+            return 1
+        storage_mock.get_change_number = get_change_number
+        async def fetch_many(*_):
+            return {
+            'some_feature': split_mock,
+            'some': split_mock,
+        }
+        storage_mock.fetch_many = fetch_many
+        async def get_feature_flags_by_sets(*_):
+            return ['some_feature']
+        storage_mock.get_feature_flags_by_sets = get_feature_flags_by_sets
+
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
+        factory = SplitFactoryAsync(mocker.Mock(),
+            {
+                'splits': storage_mock,
+                'segments': mocker.Mock(spec=SegmentStorage),
+                'impressions': mocker.Mock(spec=ImpressionStorage),
+                'events': mocker.Mock(spec=EventStorage),
+            },
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+
+        client = ClientAsync(factory, recorder)
+        async def record_treatment_stats(*_):
+            pass
+        client._recorder.record_treatment_stats = record_treatment_stats
+
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
+
+        assert await client.get_treatments_with_config_by_flag_sets(None, ['some_flag']) == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed a null %s, %s must be a non-empty string.', 'get_treatments_with_config_by_flag_sets', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config_by_flag_sets("", ['some_flag']) == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an empty %s, %s must be a non-empty string.', 'get_treatments_with_config_by_flag_sets', 'key', 'key')
+        ]
+
+        key = ''.join('a' for _ in range(0, 255))
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config_by_flag_sets(key, ['some_flag']) == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: %s too long - must be %s characters or less.', 'get_treatments_with_config_by_flag_sets', 'key', 250)
+        ]
+
+        split_mock.name = 'some_feature'
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config_by_flag_sets(12345, ['some_flag']) == {'some_feature': ('default_treatment', '{"some": "property"}')}
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s %s is not of type string, converting.', 'get_treatments_with_config_by_flag_sets', 'key', 12345)
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config_by_flag_sets(True, ['some_flag']) == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatments_with_config_by_flag_sets', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config_by_flag_sets([], ['some_flag']) == {'some_feature': (CONTROL, None)}
+        assert _logger.error.mock_calls == [
+            mocker.call('%s: you passed an invalid %s, %s must be a non-empty string.', 'get_treatments_with_config_by_flag_sets', 'key', 'key')
+        ]
+
+        _logger.reset_mock()
+        await client.get_treatments_with_config_by_flag_sets('some_key', None)
+        assert _logger.warning.mock_calls == [
+            mocker.call("%s: flag sets parameter type should be list object, parameter is discarded", "get_treatments_with_config_by_flag_sets")
+        ]
+
+        _logger.reset_mock()
+        await client.get_treatments_with_config_by_flag_sets('some_key', [None])
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed a null %s, %s must be a non-empty string.",
+                        'get_treatments_with_config_by_flag_sets', 'flag set', 'flag set')
+        ]
+
+        _logger.reset_mock()
+        await client.get_treatments_with_config_by_flag_sets('some_key', ["$$"])
+        assert _logger.error.mock_calls == [
+            mocker.call("%s: you passed %s, %s must adhere to the regular "
+                        "expression %s. This means "
+                        "%s must be alphanumeric, cannot be more than %s "
+                        "characters long, and can only include a dash, underscore, "
+                        "period, or colon as separators of alphanumeric characters.",
+                        'get_treatments_with_config_by_flag_sets', '$$', 'a flag set', '^[a-z0-9][_a-z0-9]{0,49}$', 'a flag set', 50)
+        ]
+
+        _logger.reset_mock()
+        assert await client.get_treatments_with_config_by_flag_sets('some_key', ['some_flag   ']) == {'some_feature': ('default_treatment', '{"some": "property"}')}
+        assert _logger.warning.mock_calls == [
+            mocker.call('%s: %s \'%s\' has extra whitespace, trimming.', 'get_treatments_with_config_by_flag_sets', 'flag set', 'some_flag   ')
+        ]
+
+        _logger.reset_mock()
+        async def fetch_many(*_):
+            return {
+            'some_feature': None
+        }
+        storage_mock.fetch_many = fetch_many
+
+        async def get_feature_flags_by_sets(*_):
+            return []
+        storage_mock.get_feature_flags_by_sets = get_feature_flags_by_sets
+
+        ready_mock = mocker.PropertyMock()
+        ready_mock.return_value = True
+        type(factory).ready = ready_mock
+        mocker.patch('splitio.client.client._LOGGER', new=_logger)
+        assert await client.get_treatments_with_config_by_flag_sets('matching_key', ['some_flag'], None) == {}
+        assert _logger.warning.mock_calls == [
+            mocker.call("%s: No valid Flag set or no feature flags found for evaluating treatments", "get_treatments_with_config_by_flag_sets")
+        ]
+        await factory.destroy()
 
 
 class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-methods
