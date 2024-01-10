@@ -292,7 +292,6 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
                 result = self._evaluator.eval_with_context(key, bucketing, feature, attributes, ctx)
             except Exception as e: # toto narrow this
                 _LOGGER.error('Error getting treatment for feature flag')
-                _LOGGER.error(str(e))
                 _LOGGER.debug('Error: ', exc_info=True)
                 self._telemetry_evaluation_producer.record_exception(method)
                 result = self._FAILED_EVAL_RESULT
@@ -382,7 +381,6 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
                 results = self._evaluator.eval_many_with_context(key, bucketing, features, attributes, ctx)
             except Exception as e: # toto narrow this
                 _LOGGER.error('Error getting treatment for feature flag')
-                _LOGGER.error(str(e))
                 _LOGGER.debug('Error: ', exc_info=True)
                 self._telemetry_evaluation_producer.record_exception(method)
                 results = {n: self._FAILED_EVAL_RESULT for n in features}
@@ -572,7 +570,6 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
                 result = self._evaluator.eval_with_context(key, bucketing, feature, attributes, ctx)
             except Exception as e: # toto narrow this
                 _LOGGER.error('Error getting treatment for feature flag')
-                _LOGGER.error(str(e))
                 _LOGGER.debug('Error: ', exc_info=True)
                 await self._telemetry_evaluation_producer.record_exception(method)
                 result = self._FAILED_EVAL_RESULT
@@ -662,7 +659,6 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
                 results = self._evaluator.eval_many_with_context(key, bucketing, features, attributes, ctx)
             except Exception as e: # toto narrow this
                 _LOGGER.error('Error getting treatment for feature flag')
-                _LOGGER.error(str(e))
                 _LOGGER.debug('Error: ', exc_info=True)
                 await self._telemetry_evaluation_producer.record_exception(method)
                 results = {n: self._FAILED_EVAL_RESULT for n in features}

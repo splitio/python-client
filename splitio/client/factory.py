@@ -410,7 +410,7 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
             await asyncio.wait_for(asyncio.shield(self._sdk_ready_flag.wait()), timeout)
         except asyncio.TimeoutError as e:
             _LOGGER.error("Exception initializing SDK")
-            _LOGGER.error(str(e))
+            _LOGGER.debug(str(e))
             await self._telemetry_init_producer.record_bur_time_out()
             raise TimeoutException('SDK Initialization: time of %d exceeded' % timeout)
 
