@@ -68,9 +68,9 @@ class TelemetryInitProducer(TelemetryInitProducerBase):
         """Constructor."""
         self._telemetry_storage = telemetry_storage
 
-    def record_config(self, config, extra_config):
+    def record_config(self, config, extra_config, total_flag_sets=0, invalid_flag_sets=0):
         """Record configurations."""
-        self._telemetry_storage.record_config(config, extra_config)
+        self._telemetry_storage.record_config(config, extra_config, total_flag_sets, invalid_flag_sets)
         current_app, app_worker_id = self._get_app_worker_id()
         if  current_app is not None:
             self.add_config_tag("initilization:" + current_app)
@@ -79,6 +79,14 @@ class TelemetryInitProducer(TelemetryInitProducerBase):
     def record_ready_time(self, ready_time):
         """Record ready time."""
         self._telemetry_storage.record_ready_time(ready_time)
+
+    def record_flag_sets(self, flag_sets):
+        """Record flag sets."""
+        self._telemetry_storage.record_flag_sets(flag_sets)
+
+    def record_invalid_flag_sets(self, flag_sets):
+        """Record invalid flag sets."""
+        self._telemetry_storage.record_invalid_flag_sets(flag_sets)
 
     def record_bur_time_out(self):
         """Record block until ready timeout."""
@@ -104,9 +112,9 @@ class TelemetryInitProducerAsync(TelemetryInitProducerBase):
         """Constructor."""
         self._telemetry_storage = telemetry_storage
 
-    async def record_config(self, config, extra_config):
+    async def record_config(self, config, extra_config, total_flag_sets=0, invalid_flag_sets=0):
         """Record configurations."""
-        await self._telemetry_storage.record_config(config, extra_config)
+        await self._telemetry_storage.record_config(config, extra_config, total_flag_sets, invalid_flag_sets)
         current_app, app_worker_id = self._get_app_worker_id()
         if  current_app is not None:
             await self.add_config_tag("initilization:" + current_app)
@@ -115,6 +123,14 @@ class TelemetryInitProducerAsync(TelemetryInitProducerBase):
     async def record_ready_time(self, ready_time):
         """Record ready time."""
         await self._telemetry_storage.record_ready_time(ready_time)
+
+    async def record_flag_sets(self, flag_sets):
+        """Record flag sets."""
+        await self._telemetry_storage.record_flag_sets(flag_sets)
+
+    async def record_invalid_flag_sets(self, flag_sets):
+        """Record invalid flag sets."""
+        await self._telemetry_storage.record_invalid_flag_sets(flag_sets)
 
     async def record_bur_time_out(self):
         """Record block until ready timeout."""
@@ -370,16 +386,24 @@ class TelemetryEvaluationConsumerBase(object):
         """Return json formatted stats"""
         return {
             'mE': {'t': exceptions['treatment'],
-                      'ts': exceptions['treatments'],
-                      'tc': exceptions['treatment_with_config'],
-                      'tcs': exceptions['treatments_with_config'],
-                      'tr': exceptions['track']
+                    'ts': exceptions['treatments'],
+                    'tc': exceptions['treatment_with_config'],
+                    'tcs': exceptions['treatments_with_config'],
+                    'tf': exceptions['treatments_by_flag_set'],
+                    'tfs': exceptions['treatments_by_flag_sets'],
+                    'tcf': exceptions['treatments_with_config_by_flag_set'],
+                    'tcfs': exceptions['treatments_with_config_by_flag_sets'],
+                    'tr': exceptions['track']
                },
-            'mL':  {'t': latencies['treatment'],
-                      'ts': latencies['treatments'],
-                      'tc': latencies['treatment_with_config'],
-                      'tcs': latencies['treatments_with_config'],
-                      'tr': latencies['track']
+            'mL': {'t': latencies['treatment'],
+                    'ts': latencies['treatments'],
+                    'tc': latencies['treatment_with_config'],
+                    'tcs': latencies['treatments_with_config'],
+                    'tf': latencies['treatments_by_flag_set'],
+                    'tfs': latencies['treatments_by_flag_sets'],
+                    'tcf': latencies['treatments_with_config_by_flag_set'],
+                    'tcfs': latencies['treatments_with_config_by_flag_sets'],
+                    'tr': latencies['track']
                },
         }
 
