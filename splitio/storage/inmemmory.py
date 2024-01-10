@@ -45,7 +45,7 @@ class FlagSets(object):
         with self._lock:
             return self.sets_feature_flag_map.get(flag_set)
 
-    def add_flag_set(self, flag_set):
+    def _add_flag_set(self, flag_set):
         """
         Add new flag set to storage
         :param flag_set: set name
@@ -55,7 +55,7 @@ class FlagSets(object):
             if not self.flag_set_exist(flag_set):
                 self.sets_feature_flag_map[flag_set] = set()
 
-    def remove_flag_set(self, flag_set):
+    def _remove_flag_set(self, flag_set):
         """
         Remove existing flag set from storage
         :param flag_set: set name
@@ -89,6 +89,22 @@ class FlagSets(object):
             if self.flag_set_exist(flag_set):
                 self.sets_feature_flag_map[flag_set].remove(feature_flag)
 
+    def update_flag_set(self, flag_sets, feature_flag_name, should_filter):
+        if flag_sets is not None:
+            for flag_set in flag_sets:
+                if not self.flag_set_exist(flag_set):
+                    if should_filter:
+                        continue
+                    self._add_flag_set(flag_set)
+                self.add_feature_flag_to_flag_set(flag_set, feature_flag_name)
+
+    def remove_flag_set(self, flag_sets, feature_flag_name, should_filter):
+        if flag_sets is not None:
+            for flag_set in flag_sets:
+                self.remove_feature_flag_to_flag_set(flag_set, feature_flag_name)
+                if self.flag_set_exist(flag_set) and len(self.get_flag_set(flag_set)) == 0 and not should_filter:
+                    self._remove_flag_set(flag_set)
+
 class FlagSetsAsync(object):
     """InMemory Flagsets storage."""
 
@@ -119,7 +135,7 @@ class FlagSetsAsync(object):
         async with self._lock:
             return self.sets_feature_flag_map.get(flag_set)
 
-    async def add_flag_set(self, flag_set):
+    async def _add_flag_set(self, flag_set):
         """
         Add new flag set to storage
         :param flag_set: set name
@@ -129,7 +145,7 @@ class FlagSetsAsync(object):
             if not flag_set in self.sets_feature_flag_map.keys():
                 self.sets_feature_flag_map[flag_set] = set()
 
-    async def remove_flag_set(self, flag_set):
+    async def _remove_flag_set(self, flag_set):
         """
         Remove existing flag set from storage
         :param flag_set: set name
@@ -162,6 +178,23 @@ class FlagSetsAsync(object):
         async with self._lock:
             if flag_set in self.sets_feature_flag_map.keys():
                 self.sets_feature_flag_map[flag_set].remove(feature_flag)
+
+    async def update_flag_set(self, flag_sets, feature_flag_name, should_filter):
+        if flag_sets is not None:
+            for flag_set in flag_sets:
+                if not await self.flag_set_exist(flag_set):
+                    if should_filter:
+                        continue
+                    await self._add_flag_set(flag_set)
+                await self.add_feature_flag_to_flag_set(flag_set, feature_flag_name)
+
+    async def remove_flag_set(self, flag_sets, feature_flag_name, should_filter):
+        if flag_sets is not None:
+            for flag_set in flag_sets:
+                await self.remove_feature_flag_to_flag_set(flag_set, feature_flag_name)
+                if await self.flag_set_exist(flag_set) and len(await self.get_flag_set(flag_set)) == 0 and not should_filter:
+                    await self._remove_flag_set(flag_set)
+
 
 class InMemorySplitStorageBase(SplitStorage):
     """InMemory implementation of a feature flag storage base."""
@@ -342,13 +375,7 @@ class InMemorySplitStorage(InMemorySplitStorageBase):
                 self._decrease_traffic_type_count(self._feature_flags[feature_flag.name].traffic_type_name)
             self._feature_flags[feature_flag.name] = feature_flag
             self._increase_traffic_type_count(feature_flag.traffic_type_name)
-            if feature_flag.sets is not None:
-                for flag_set in feature_flag.sets:
-                    if not self.flag_set.flag_set_exist(flag_set):
-                        if self.flag_set_filter.should_filter:
-                            continue
-                        self.flag_set.add_flag_set(flag_set)
-                    self.flag_set.add_feature_flag_to_flag_set(flag_set, feature_flag.name)
+            self.flag_set.update_flag_set(feature_flag.sets, feature_flag.name, self.flag_set_filter.should_filter)
 
     def _remove(self, feature_flag_name):
         """
@@ -377,11 +404,7 @@ class InMemorySplitStorage(InMemorySplitStorageBase):
         :param feature_flag: feature flag object
         :type feature_flag: splitio.models.splits.Split
         """
-        if feature_flag.sets is not None:
-            for flag_set in feature_flag.sets:
-                self.flag_set.remove_feature_flag_to_flag_set(flag_set, feature_flag.name)
-                if self.is_flag_set_exist(flag_set) and len(self.flag_set.get_flag_set(flag_set)) == 0 and not self.flag_set_filter.should_filter:
-                    self.flag_set.remove_flag_set(flag_set)
+        self.flag_set.remove_flag_set(feature_flag.sets, feature_flag.name, self.flag_set_filter.should_filter)
 
     def get_feature_flags_by_sets(self, sets):
         """
@@ -557,13 +580,7 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
                 self._decrease_traffic_type_count(self._feature_flags[feature_flag.name].traffic_type_name)
             self._feature_flags[feature_flag.name] = feature_flag
             self._increase_traffic_type_count(feature_flag.traffic_type_name)
-            if feature_flag.sets is not None:
-                for flag_set in feature_flag.sets:
-                    if not await self.flag_set.flag_set_exist(flag_set):
-                        if self.flag_set_filter.should_filter:
-                            continue
-                        await self.flag_set.add_flag_set(flag_set)
-                    await self.flag_set.add_feature_flag_to_flag_set(flag_set, feature_flag.name)
+            await self.flag_set.update_flag_set(feature_flag.sets, feature_flag.name, self.flag_set_filter.should_filter)
 
     async def _remove(self, feature_flag_name):
         """
@@ -592,11 +609,7 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
         :param feature_flag: feature flag object
         :type feature_flag: splitio.models.splits.Split
         """
-        if feature_flag.sets is not None:
-            for flag_set in feature_flag.sets:
-                await self.flag_set.remove_feature_flag_to_flag_set(flag_set, feature_flag.name)
-                if await self.is_flag_set_exist(flag_set) and len(await self.flag_set.get_flag_set(flag_set)) == 0 and not self.flag_set_filter.should_filter:
-                    await self.flag_set.remove_flag_set(flag_set)
+        await self.flag_set.remove_flag_set(feature_flag.sets, feature_flag.name, self.flag_set_filter.should_filter)
 
     async def get_feature_flags_by_sets(self, sets):
         """

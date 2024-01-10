@@ -321,7 +321,7 @@ class FlagSetsFilter(object):
     def __init__(self, flag_sets=[]):
         """Constructor."""
         self.flag_sets = set(flag_sets)
-        self.should_filter = any(flag_sets)
+        self.should_filter = len(flag_sets) > 0
         self.sorted_flag_sets = sorted(flag_sets)
 
     def set_exist(self, flag_set):
@@ -333,10 +333,8 @@ class FlagSetsFilter(object):
         """
         if not self.should_filter:
             return True
-        if not isinstance(flag_set, str) or flag_set == '':
-            return False
 
-        return any(self.flag_sets.intersection(set([flag_set])))
+        return len(self.flag_sets.intersection(set([flag_set]))) > 0
 
     def intersect(self, flag_sets):
         """
@@ -347,6 +345,4 @@ class FlagSetsFilter(object):
         """
         if not self.should_filter:
             return True
-        if not isinstance(flag_sets, set) or len(flag_sets) == 0:
-            return False
-        return any(self.flag_sets.intersection(flag_sets))
+        return len(self.flag_sets.intersection(flag_sets)) > 0
