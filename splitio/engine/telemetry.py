@@ -6,7 +6,7 @@ import logging
 _LOGGER = logging.getLogger(__name__)
 
 from  splitio.storage.inmemmory import InMemoryTelemetryStorage
-from splitio.models.telemetry import CounterConstants
+from splitio.models.telemetry import CounterConstants, UpdateFromSSE
 
 class TelemetryStorageProducerBase(object):
     """Telemetry storage producer base class."""
@@ -212,6 +212,9 @@ class TelemetryRuntimeProducer(object):
         """Record session length."""
         self._telemetry_storage.record_session_length(session)
 
+    def record_update_from_sse(self, event):
+        """Record update from sse."""
+        self._telemetry_storage.record_update_from_sse(event)
 
 class TelemetryRuntimeProducerAsync(object):
     """Telemetry runtime producer async class."""
@@ -260,6 +263,9 @@ class TelemetryRuntimeProducerAsync(object):
         """Record session length."""
         await self._telemetry_storage.record_session_length(session)
 
+    async def record_update_from_sse(self, event):
+        """Record update from sse."""
+        await self._telemetry_storage.record_update_from_sse(event)
 
 class TelemetryStorageConsumerBase(object):
     """Telemetry storage consumer base class."""
@@ -539,6 +545,10 @@ class TelemetryRuntimeConsumer(TelemetryRuntimeConsumerBase):
         """Get and reset streaming events."""
         return self._telemetry_storage.pop_streaming_events()
 
+    def pop_update_from_sse(self, event):
+        """Get and reset update from sse."""
+        return self._telemetry_storage.pop_update_from_sse(event)
+
     def get_session_length(self):
         """Get session length"""
         return self._telemetry_storage.get_session_length()
@@ -561,6 +571,7 @@ class TelemetryRuntimeConsumer(TelemetryRuntimeConsumerBase):
             'eQ': self.get_events_stats(CounterConstants.EVENTS_QUEUED),
             'eD': self.get_events_stats(CounterConstants.EVENTS_DROPPED),
             'lS': self._last_synchronization_to_json(last_synchronization),
+            'ufs': {event.value: self.pop_update_from_sse(event) for event in UpdateFromSSE},
             't': self.pop_tags(),
             'hE': self._http_errors_to_json(http_errors),
             'hL': self._http_latencies_to_json(http_latencies),
@@ -615,6 +626,10 @@ class TelemetryRuntimeConsumerAsync(TelemetryRuntimeConsumerBase):
         """Get and reset streaming events."""
         return await self._telemetry_storage.pop_streaming_events()
 
+    async def pop_update_from_sse(self, event):
+        """Get and reset update from sse."""
+        return await self._telemetry_storage.pop_update_from_sse(event)
+
     async def get_session_length(self):
         """Get session length"""
         return await self._telemetry_storage.get_session_length()
@@ -636,6 +651,7 @@ class TelemetryRuntimeConsumerAsync(TelemetryRuntimeConsumerBase):
             'iDr': await self.get_impressions_stats(CounterConstants.IMPRESSIONS_DROPPED),
             'eQ': await self.get_events_stats(CounterConstants.EVENTS_QUEUED),
             'eD': await self.get_events_stats(CounterConstants.EVENTS_DROPPED),
+            'ufs': {event.value: await self.pop_update_from_sse(event) for event in UpdateFromSSE},
             'lS': self._last_synchronization_to_json(last_synchronization),
             't': await self.pop_tags(),
             'hE': self._http_errors_to_json(http_errors['httpErrors']),

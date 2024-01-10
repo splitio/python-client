@@ -971,7 +971,7 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
 
         # Tests 1
         self.factory._storages['splits'].remove('SPLIT_1')
-        self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._feature_flag_storage.set_change_number(-1)
+        self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._feature_flag_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange1_1'])
         self._synchronize_now()
 
@@ -995,7 +995,7 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
 
         # Tests 3
         self.factory._storages['splits'].remove('SPLIT_1')
-        self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._feature_flag_storage.set_change_number(-1)
+        self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._feature_flag_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange3_1'])
         self._synchronize_now()
 
@@ -1010,7 +1010,7 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
 
         # Tests 4
         self.factory._storages['splits'].remove('SPLIT_2')
-        self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._feature_flag_storage.set_change_number(-1)
+        self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._feature_flag_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange4_1'])
         self._synchronize_now()
 
@@ -1035,7 +1035,7 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
         # Tests 5
         self.factory._storages['splits'].remove('SPLIT_1')
         self.factory._storages['splits'].remove('SPLIT_2')
-        self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._feature_flag_storage.set_change_number(-1)
+        self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._feature_flag_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange5_1'])
         self._synchronize_now()
 
@@ -1050,7 +1050,7 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
 
         # Tests 6
         self.factory._storages['splits'].remove('SPLIT_2')
-        self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._feature_flag_storage.set_change_number(-1)
+        self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._feature_flag_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange6_1'])
         self._synchronize_now()
 
@@ -1079,8 +1079,8 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
 
     def _synchronize_now(self):
         filename = os.path.join(os.path.dirname(__file__), 'files', 'split_changes_temp.json')
-        self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._filename = filename
-        self.factory._sync_manager._synchronizer._split_synchronizers._split_sync.synchronize_splits()
+        self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._filename = filename
+        self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync.synchronize_splits()
 
     def test_incorrect_file_e2e(self):
         """Test initialize factory with a incorrect file name."""
@@ -2911,7 +2911,7 @@ class LocalhostIntegrationAsyncTests(object):  # pylint: disable=too-few-public-
 
         # Tests 1
         await self.factory._storages['splits'].remove('SPLIT_1')
-        await self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._feature_flag_storage.set_change_number(-1)
+        await self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._feature_flag_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange1_1'])
         await self._synchronize_now()
 
@@ -2935,7 +2935,7 @@ class LocalhostIntegrationAsyncTests(object):  # pylint: disable=too-few-public-
 
         # Tests 3
         await self.factory._storages['splits'].remove('SPLIT_1')
-        await self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._feature_flag_storage.set_change_number(-1)
+        await self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._feature_flag_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange3_1'])
         await self._synchronize_now()
 
@@ -2950,7 +2950,7 @@ class LocalhostIntegrationAsyncTests(object):  # pylint: disable=too-few-public-
 
         # Tests 4
         await self.factory._storages['splits'].remove('SPLIT_2')
-        await self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._feature_flag_storage.set_change_number(-1)
+        await self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._feature_flag_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange4_1'])
         await self._synchronize_now()
 
@@ -2975,7 +2975,7 @@ class LocalhostIntegrationAsyncTests(object):  # pylint: disable=too-few-public-
         # Tests 5
         await self.factory._storages['splits'].remove('SPLIT_1')
         await self.factory._storages['splits'].remove('SPLIT_2')
-        await self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._feature_flag_storage.set_change_number(-1)
+        await self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._feature_flag_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange5_1'])
         await self._synchronize_now()
 
@@ -2990,7 +2990,7 @@ class LocalhostIntegrationAsyncTests(object):  # pylint: disable=too-few-public-
 
         # Tests 6
         await self.factory._storages['splits'].remove('SPLIT_2')
-        await self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._feature_flag_storage.set_change_number(-1)
+        await self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._feature_flag_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange6_1'])
         await self._synchronize_now()
 
@@ -3019,8 +3019,8 @@ class LocalhostIntegrationAsyncTests(object):  # pylint: disable=too-few-public-
 
     async def _synchronize_now(self):
         filename = os.path.join(os.path.dirname(__file__), 'files', 'split_changes_temp.json')
-        self.factory._sync_manager._synchronizer._split_synchronizers._split_sync._filename = filename
-        await self.factory._sync_manager._synchronizer._split_synchronizers._split_sync.synchronize_splits()
+        self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._filename = filename
+        await self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync.synchronize_splits()
 
     @pytest.mark.asyncio
     async def test_incorrect_file_e2e(self):

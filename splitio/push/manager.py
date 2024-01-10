@@ -1,5 +1,4 @@
 """Push subsystem manager class and helpers."""
-
 import logging
 from threading import Timer
 import abc
@@ -67,7 +66,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         """
         self._auth_api = auth_api
         self._feedback_loop = feedback_loop
-        self._processor = MessageProcessor(synchronizer)
+        self._processor = MessageProcessor(synchronizer, telemetry_runtime_producer)
         self._status_tracker = PushStatusTracker(telemetry_runtime_producer)
         self._event_handlers = {
             EventType.MESSAGE: self._handle_message,
@@ -300,7 +299,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         """
         self._auth_api = auth_api
         self._feedback_loop = feedback_loop
-        self._processor = MessageProcessorAsync(synchronizer)
+        self._processor = MessageProcessorAsync(synchronizer, telemetry_runtime_producer)
         self._status_tracker = PushStatusTrackerAsync(telemetry_runtime_producer)
         self._event_handlers = {
             EventType.MESSAGE: self._handle_message,

@@ -1139,6 +1139,10 @@ class InMemoryTelemetryStorageBase(TelemetryStorage):
         """Record session length."""
         pass
 
+    def record_update_from_sse(self, event):
+        """Record update from sse."""
+        pass
+
     def get_bur_time_outs(self):
         """Get block until ready timeout."""
         pass
@@ -1203,6 +1207,9 @@ class InMemoryTelemetryStorageBase(TelemetryStorage):
         """Get session length"""
         pass
 
+    def pop_update_from_sse(self, event):
+        """Get and reset update from sse."""
+        pass
 
 class InMemoryTelemetryStorage(InMemoryTelemetryStorageBase):
     """In-memory telemetry storage."""
@@ -1298,6 +1305,10 @@ class InMemoryTelemetryStorage(InMemoryTelemetryStorageBase):
         """Record session length."""
         self._counters.record_session_length(session)
 
+    def record_update_from_sse(self, event):
+        """Record update from sse."""
+        self._counters.record_update_from_sse(event)
+
     def get_bur_time_outs(self):
         """Get block until ready timeout."""
         return self._tel_config.get_bur_time_outs()
@@ -1367,6 +1378,9 @@ class InMemoryTelemetryStorage(InMemoryTelemetryStorageBase):
         """Get session length"""
         return self._counters.get_session_length()
 
+    def pop_update_from_sse(self, event):
+        """Get and reset update from sse."""
+        return self._counters.pop_update_from_sse(event)
 
 class InMemoryTelemetryStorageAsync(InMemoryTelemetryStorageBase):
     """In-memory telemetry async storage."""
@@ -1464,6 +1478,10 @@ class InMemoryTelemetryStorageAsync(InMemoryTelemetryStorageBase):
         """Record session length."""
         await self._counters.record_session_length(session)
 
+    async def record_update_from_sse(self, event):
+        """Record update from sse."""
+        await self._counters.record_update_from_sse(event)
+
     async def get_bur_time_outs(self):
         """Get block until ready timeout."""
         return await self._tel_config.get_bur_time_outs()
@@ -1533,6 +1551,9 @@ class InMemoryTelemetryStorageAsync(InMemoryTelemetryStorageBase):
         """Get session length"""
         return await self._counters.get_session_length()
 
+    async def pop_update_from_sse(self, event):
+        """Get and reset update from sse."""
+        return await self._counters.pop_update_from_sse(event)
 
 class LocalhostTelemetryStorage():
     """Localhost telemetry storage."""
@@ -1616,6 +1637,10 @@ class LocalhostTelemetryStorageAsync():
         """Record session length."""
         pass
 
+    async def record_update_from_sse(self, event):
+        """Record update from sse."""
+        pass
+
     async def get_bur_time_outs(self):
         """Get block until ready timeout."""
         pass
@@ -1677,4 +1702,8 @@ class LocalhostTelemetryStorageAsync():
 
     async def get_session_length(self):
         """Get session length"""
+        pass
+
+    async def pop_update_from_sse(self, event):
+        """Get and reset update from sse."""
         pass
