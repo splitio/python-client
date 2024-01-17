@@ -14,9 +14,6 @@ EVENTS_URL = 'https://events.split.io/api'
 AUTH_URL = 'https://auth.split.io/api'
 TELEMETRY_URL = 'https://telemetry.split.io/api'
 
-_LOGGER = logging.getLogger(__name__)
-
-
 HttpResponse = namedtuple('HttpResponse', ['status_code', 'body', 'headers'])
 
 def _build_url(server, path, urls):
@@ -207,6 +204,8 @@ class HttpClient(HttpClientBase):
 class HttpClientAsync(HttpClientBase):
     """HttpClientAsync wrapper."""
 
+    _LOGGER = logging.getLogger('asyncio')
+
     def __init__(self, timeout=None, sdk_url=None, events_url=None, auth_url=None, telemetry_url=None):
         """
         Class constructor.
@@ -247,9 +246,9 @@ class HttpClientAsync(HttpClientBase):
         start = get_current_epoch_time_ms()
         try:
             url = _build_url(server, path, self._urls)
-            _LOGGER.debug("GET request: %s", url)
-            _LOGGER.debug("query params: %s", query)
-            _LOGGER.debug("headers: %s", headers)
+            self._LOGGER.debug("GET request: %s", url)
+            self._LOGGER.debug("query params: %s", query)
+            self._LOGGER.debug("headers: %s", headers)
             async with self._session.get(
                 url,
                 params=query,
@@ -257,9 +256,9 @@ class HttpClientAsync(HttpClientBase):
                 timeout=self._timeout
             ) as response:
                 body = await response.text()
-                _LOGGER.debug("Response:")
-                _LOGGER.debug(response)
-                _LOGGER.debug(body)
+                self._LOGGER.debug("Response:")
+                self._LOGGER.debug(response)
+                self._LOGGER.debug(body)
                 await self._record_telemetry(response.status, get_current_epoch_time_ms() - start)
                 return HttpResponse(response.status, body, response.headers)
         except aiohttp.ClientError as exc:  # pylint: disable=broad-except
@@ -289,11 +288,11 @@ class HttpClientAsync(HttpClientBase):
         start = get_current_epoch_time_ms()
         try:
             headers['Accept-Encoding'] = 'gzip'
-            _LOGGER.debug("POST request: %s", _build_url(server, path, self._urls))
-            _LOGGER.debug("query params: %s", query)
-            _LOGGER.debug("headers: %s", headers)
-            _LOGGER.debug("payload: ")
-            _LOGGER.debug(str(json.dumps(body)).encode('utf-8'))
+            self._LOGGER.debug("POST request: %s", _build_url(server, path, self._urls))
+            self._LOGGER.debug("query params: %s", query)
+            self._LOGGER.debug("headers: %s", headers)
+            self._LOGGER.debug("payload: ")
+            self._LOGGER.debug(str(json.dumps(body)).encode('utf-8'))
             async with self._session.post(
                 _build_url(server, path, self._urls),
                 params=query,
@@ -302,9 +301,9 @@ class HttpClientAsync(HttpClientBase):
                 timeout=self._timeout
             ) as response:
                 body = await response.text()
-                _LOGGER.debug("Response:")
-                _LOGGER.debug(response)
-                _LOGGER.debug(body)
+                self._LOGGER.debug("Response:")
+                self._LOGGER.debug(response)
+                self._LOGGER.debug(body)
                 await self._record_telemetry(response.status, get_current_epoch_time_ms() - start)
                 return HttpResponse(response.status, body, response.headers)
         except aiohttp.ClientError as exc:  # pylint: disable=broad-except

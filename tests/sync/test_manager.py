@@ -52,6 +52,7 @@ class SyncManagerTests(object):
 
         synchronizer = Synchronizer(synchronizers, split_tasks)
         manager = Manager(threading.Event(), synchronizer,  mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
+        assert manager._LOGGER.name == 'splitio.sync.manager'
 
         manager._SYNC_ALL_ATTEMPTS = 1
         manager.start(2)  # should not throw!
@@ -118,6 +119,7 @@ class SyncManagerAsyncTests(object):
 
         synchronizer = SynchronizerAsync(synchronizers, split_tasks)
         manager = ManagerAsync(synchronizer,  mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
+        assert manager._LOGGER.name == 'asyncio'
 
         manager._SYNC_ALL_ATTEMPTS = 1
         await manager.start(2)  # should not throw!
@@ -185,6 +187,7 @@ class RedisSyncManagerTests(object):
     tasks = SplitTasks(None, None, None, None, None, None, None, None)
     synchronizer = RedisSynchronizer(synchronizers, tasks)
     manager = RedisManager(synchronizer)
+    assert manager._LOGGER.name == 'splitio.sync.manager'
 
     @mock.patch('splitio.sync.synchronizer.RedisSynchronizer.start_periodic_data_recording')
     def test_recreate_and_start(self, mocker):
@@ -214,6 +217,7 @@ class RedisSyncManagerAsyncTests(object):
     tasks = SplitTasks(None, None, None, None, None, None, None, None)
     synchronizer = RedisSynchronizerAsync(synchronizers, tasks)
     manager = RedisManagerAsync(synchronizer)
+    assert manager._LOGGER.name == 'asyncio'
 
     @mock.patch('splitio.sync.synchronizer.RedisSynchronizerAsync.start_periodic_data_recording')
     def test_recreate_and_start(self, mocker):

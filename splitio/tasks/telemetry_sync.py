@@ -3,8 +3,7 @@ import logging
 
 from splitio.tasks import BaseSynchronizationTask
 from splitio.tasks.util.asynctask import AsyncTask, AsyncTaskAsync
-
-_LOGGER = logging.getLogger(__name__)
+from splitio.util import log_helper
 
 class TelemetrySyncTaskBase(BaseSynchronizationTask):
     """Telemetry synchronization task uses an asynctask.AsyncTask to send MTKs."""
@@ -28,12 +27,14 @@ class TelemetrySyncTaskBase(BaseSynchronizationTask):
 
     def flush(self):
         """Flush unique keys."""
-        _LOGGER.debug('Forcing flush execution for telemetry')
+        self._LOGGER.debug('Forcing flush execution for telemetry')
         self._task.force_execution()
 
 
 class TelemetrySyncTask(TelemetrySyncTaskBase):
     """Unique Telemetry task uses an asynctask.AsyncTask to send MTKs."""
+
+    _LOGGER = logging.getLogger(__name__)
 
     def __init__(self, synchronize_telemetry, period):
         """
@@ -55,6 +56,8 @@ class TelemetrySyncTask(TelemetrySyncTaskBase):
 
 class TelemetrySyncTaskAsync(TelemetrySyncTaskBase):
     """Telemetry synchronization task uses an asynctask.AsyncTask to send MTKs."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, synchronize_telemetry, period):
         """

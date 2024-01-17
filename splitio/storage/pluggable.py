@@ -9,16 +9,16 @@ from splitio.models import splits, segments
 from splitio.models.impressions import Impression
 from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MAX_TAGS, get_latency_bucket_index,\
     MethodLatenciesAsync, MethodExceptionsAsync, TelemetryConfigAsync
-from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
-
-_LOGGER = logging.getLogger(__name__)
+from splitio.storage import FlagSetsFilter, SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
+from splitio.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
+from splitio.util import log_helper
 
 class PluggableSplitStorageBase(SplitStorage):
-    """InMemory implementation of a split storage."""
+    """InMemory implementation of a feature flag storage."""
 
-    _SPLIT_NAME_LENGTH = 12
+    _FEATURE_FLAG_NAME_LENGTH = 19
 
-    def __init__(self, pluggable_adapter, prefix=None):
+    def __init__(self, pluggable_adapter, prefix=None, config_flag_sets=[]):
         """
         Class constructor.
 
@@ -28,34 +28,37 @@ class PluggableSplitStorageBase(SplitStorage):
         :type prefix: str
         """
         self._pluggable_adapter = pluggable_adapter
-        self._prefix = "SPLITIO.split.{split_name}"
+        self._prefix = "SPLITIO.split.{feature_flag_name}"
         self._traffic_type_prefix = "SPLITIO.trafficType.{traffic_type_name}"
-        self._split_till_prefix = "SPLITIO.splits.till"
+        self._feature_flag_till_prefix = "SPLITIO.splits.till"
+        self._flag_set_prefix = 'SPLITIO.flagSet.{flag_set}'
+        self.flag_set_filter = FlagSetsFilter(config_flag_sets)
         if prefix is not None:
             self._prefix = prefix + "." + self._prefix
             self._traffic_type_prefix = prefix + "." + self._traffic_type_prefix
-            self._split_till_prefix = prefix + "." + self._split_till_prefix
+            self._feature_flag_till_prefix = prefix + "." + self._feature_flag_till_prefix
+            self._flag_set_prefix = prefix + "." + self._flag_set_prefix
 
-    def get(self, split_name):
+    def get(self, feature_flag_name):
         """
-        Retrieve a split.
+        Retrieve a feature flag.
 
-        :param split_name: Name of the feature to fetch.
-        :type split_name: str
+        :param feature_flag_name: Name of the feature to fetch.
+        :type feature_flag_name: str
 
         :rtype: splitio.models.splits.Split
         """
         pass
 
-    def fetch_many(self, split_names):
+    def fetch_many(self, feature_flag_names):
         """
-        Retrieve splits.
+        Retrieve feature flags.
 
-        :param split_names: Names of the features to fetch.
-        :type split_name: list(str)
+        :param feature_flag_names: Names of the features to fetch.
+        :type feature_flag_name: list(str)
 
-        :return: A dict with split objects parsed from queue.
-        :rtype: dict(split_name, splitio.models.splits.Split)
+        :return: A dict with feature flag objects parsed from queue.
+        :rtype: dict(feature_flag_name, splitio.models.splits.Split)
         """
         pass
 
@@ -72,37 +75,37 @@ class PluggableSplitStorageBase(SplitStorage):
 #                self.put(split)
 #            self._pluggable_adapter.set(self._split_till_prefix, change_number)
 #        except Exception:
-#            _LOGGER.error('Error storing splits in storage')
-#            _LOGGER.debug('Error: ', exc_info=True)
+#            self._LOGGER.error('Error storing splits in storage')
+#            self._LOGGER.debug('Error: ', exc_info=True)
 
-    def remove(self, split_name):
+    def update(self, to_add, to_delete, new_change_number):
         """
-        Remove a split from storage.
-
-        :param split_name: Name of the feature to remove.
-        :type split_name: str
-
-        :return: True if the split was found and removed. False otherwise.
-        :rtype: bool
+        Update feature flag storage.
+        :param to_add: List of feature flags to add
+        :type to_add: list[splitio.models.splits.Split]
+        :param to_delete: List of feature flags to delete
+        :type to_delete: list[splitio.models.splits.Split]
+        :param new_change_number: New change number.
+        :type new_change_number: int
         """
         pass
         # TODO: To be added when producer mode is aupported
 #        try:
-#            split = self.get(split_name)
+#            split = self.get(feature_flag_name)
 #            if not split:
-#                _LOGGER.warning("Tried to delete nonexistant split %s. Skipping", split_name)
+#                self._LOGGER.warning("Tried to delete nonexistant split %s. Skipping", feature_flag_name)
 #                return False
-#            self._pluggable_adapter.delete(self._prefix.format(split_name=split_name))
+#            self._pluggable_adapter.delete(self._prefix.format(feature_flag_name=feature_flag_name))
 #            self._decrease_traffic_type_count(split.traffic_type_name)
 #            return True
 #        except Exception:
-#            _LOGGER.error('Error removing split from storage')
-#            _LOGGER.debug('Error: ', exc_info=True)
+#            self._LOGGER.error('Error removing split from storage')
+#            self._LOGGER.debug('Error: ', exc_info=True)
 #            return False
 
     def get_change_number(self):
         """
-        Retrieve latest split change number.
+        Retrieve latest feature flag change number.
 
         :rtype: int
         """
@@ -120,31 +123,31 @@ class PluggableSplitStorageBase(SplitStorage):
 #        try:
 #            self._pluggable_adapter.set(self._split_till_prefix, new_change_number)
 #        except Exception:
-#            _LOGGER.error('Error setting change number in split storage')
-#            _LOGGER.debug('Error: ', exc_info=True)
+#            self._LOGGER.error('Error setting change number in split storage')
+#            self._LOGGER.debug('Error: ', exc_info=True)
 #            return None
 
     def get_split_names(self):
         """
-        Retrieve a list of all split names.
+        Retrieve a list of all feature flag names.
 
-        :return: List of split names.
+        :return: List of feature flag names.
         :rtype: list(str)
         """
         pass
 
     def get_all(self):
         """
-        Return all the splits.
+        Return all the feature flags.
 
-        :return: List of all the splits.
+        :return: List of all the feature flags.
         :rtype: list
         """
         pass
 
     def traffic_type_exists(self, traffic_type_name):
         """
-        Return whether the traffic type exists in at least one split in cache.
+        Return whether the traffic type exists in at least one feature flag in cache.
 
         :param traffic_type_name: Traffic type to validate.
         :type traffic_type_name: str
@@ -154,12 +157,12 @@ class PluggableSplitStorageBase(SplitStorage):
         """
         pass
 
-    def kill_locally(self, split_name, default_treatment, change_number):
+    def kill_locally(self, feature_flag_name, default_treatment, change_number):
         """
-        Local kill for split
+        Local kill for feature flag
 
-        :param split_name: name of the split to perform kill
-        :type split_name: str
+        :param feature_flag_name: name of the feature flag to perform kill
+        :type feature_flag_name: str
         :param default_treatment: name of the default treatment to return
         :type default_treatment: str
         :param change_number: change_number
@@ -168,16 +171,16 @@ class PluggableSplitStorageBase(SplitStorage):
         pass
         # TODO: To be added when producer mode is aupported
 #        try:
-#            split = self.get(split_name)
+#            split = self.get(feature_flag_name)
 #            if not split:
 #                return
 #            if self.get_change_number() > change_number:
 #                return
 #            split.local_kill(default_treatment, change_number)
-#            self._pluggable_adapter.set(self._prefix.format(split_name=split_name), split.to_json())
+#            self._pluggable_adapter.set(self._prefix.format(feature_flag_name=feature_flag_name), split.to_json())
 #        except Exception:
-#            _LOGGER.error('Error updating split in storage')
-#            _LOGGER.debug('Error: ', exc_info=True)
+#            self._LOGGER.error('Error updating split in storage')
+#            self._LOGGER.debug('Error: ', exc_info=True)
 
     # TODO: To be added when producer mode is aupported
 #    def _increase_traffic_type_count(self, traffic_type_name):
@@ -193,8 +196,8 @@ class PluggableSplitStorageBase(SplitStorage):
 #        try:
 #            return self._pluggable_adapter.increment(self._traffic_type_prefix.format(traffic_type_name=traffic_type_name), 1)
 #        except Exception:
-#            _LOGGER.error('Error updating traffic type count in split storage')
-#            _LOGGER.debug('Error: ', exc_info=True)
+#            self._LOGGER.error('Error updating traffic type count in split storage')
+#            self._LOGGER.debug('Error: ', exc_info=True)
 #            return None
 
     # TODO: To be added when producer mode is aupported
@@ -213,22 +216,22 @@ class PluggableSplitStorageBase(SplitStorage):
 #            if return_count == 0:
 #                self._pluggable_adapter.delete(self._traffic_type_prefix.format(traffic_type_name=traffic_type_name))
 #        except Exception:
-#            _LOGGER.error('Error updating traffic type count in split storage')
-#            _LOGGER.debug('Error: ', exc_info=True)
+#            self._LOGGER.error('Error updating traffic type count in split storage')
+#            self._LOGGER.debug('Error: ', exc_info=True)
 #            return None
 
     def get_all_splits(self):
         """
-        Return all the splits.
+        Return all the feature flags.
 
-        :return: List of all the splits.
+        :return: List of all the feature flags.
         :rtype: list
         """
         pass
 
     def is_valid_traffic_type(self, traffic_type_name):
         """
-        Return whether the traffic type exists in at least one split in cache.
+        Return whether the traffic type exists in at least one feature flag in cache.
 
         :param traffic_type_name: Traffic type to validate.
         :type traffic_type_name: str
@@ -238,34 +241,12 @@ class PluggableSplitStorageBase(SplitStorage):
         """
         pass
 
-    def put(self, split):
-        """
-        Store a split.
-
-        :param split: Split object.
-        :type split: splitio.models.split.Split
-        """
-        pass
-        # TODO: To be added when producer mode is aupported
-#        try:
-#            existing_split = self.get(split.name)
-#            self._pluggable_adapter.set(self._prefix.format(split_name=split.name), split.to_json())
-#            if existing_split is None:
-#                self._increase_traffic_type_count(split.traffic_type_name)
-#                return
-#
-#            if existing_split is not None and existing_split.traffic_type_name != split.traffic_type_name:
-#                self._increase_traffic_type_count(split.traffic_type_name)
-#                self._decrease_traffic_type_count(existing_split.traffic_type_name)
-#        except Exception:
-#            _LOGGER.error('Error ADDING split to storage')
-#            _LOGGER.debug('Error: ', exc_info=True)
-#            return None
-
 class PluggableSplitStorage(PluggableSplitStorageBase):
-    """InMemory implementation of a split storage."""
+    """InMemory implementation of a feature flag storage."""
 
-    def __init__(self, pluggable_adapter, prefix=None):
+    _LOGGER = logging.getLogger(__name__)
+
+    def __init__(self, pluggable_adapter, prefix=None, config_flag_sets=[]):
         """
         Class constructor.
 
@@ -276,98 +257,109 @@ class PluggableSplitStorage(PluggableSplitStorageBase):
         """
         super().__init__(pluggable_adapter, prefix)
 
-    def get(self, split_name):
+    def get(self, feature_flag_name):
         """
-        Retrieve a split.
+        Retrieve a feature flag.
 
-        :param split_name: Name of the feature to fetch.
-        :type split_name: str
+        :param feature_flag_name: Name of the feature to fetch.
+        :type feature_flag_name: str
 
         :rtype: splitio.models.splits.Split
         """
         try:
-            split = self._pluggable_adapter.get(self._prefix.format(split_name=split_name))
-            if not split:
+            feature_flag = self._pluggable_adapter.get(self._prefix.format(feature_flag_name=feature_flag_name))
+            if not feature_flag:
                 return None
-            return splits.from_raw(split)
+            return splits.from_raw(feature_flag)
         except Exception:
-            _LOGGER.error('Error getting split from storage')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error getting feature flag from storage')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
-    def fetch_many(self, split_names):
+    def fetch_many(self, feature_flag_names):
         """
-        Retrieve splits.
+        Retrieve feature flags.
 
-        :param split_names: Names of the features to fetch.
-        :type split_name: list(str)
+        :param feature_flag_names: Names of the features to fetch.
+        :type feature_flag_name: list(str)
 
-        :return: A dict with split objects parsed from queue.
-        :rtype: dict(split_name, splitio.models.splits.Split)
+        :return: A dict with feature flag objects parsed from queue.
+        :rtype: dict(feature_flag_name, splitio.models.splits.Split)
         """
         try:
-            to_return = {}
-            prefix_added = [self._prefix.format(split_name=split_name) for split_name in split_names]
-            raw_splits = self._pluggable_adapter.get_many(prefix_added)
-            for i in range(len(split_names)):
-                split = None
-                try:
-                    split = splits.from_raw(raw_splits[i])
-                except (ValueError, TypeError):
-                    _LOGGER.error('Could not parse split.')
-                    _LOGGER.debug("Raw split that failed parsing attempt: %s", raw_splits[i])
-                to_return[split_names[i]] = split
-
-            return to_return
+            prefix_added = [self._prefix.format(feature_flag_name=feature_flag_name) for feature_flag_name in feature_flag_names]
+            return {feature_flag['name']: splits.from_raw(feature_flag) for feature_flag in self._pluggable_adapter.get_many(prefix_added)}
         except Exception:
-            _LOGGER.error('Error getting split from storage')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error getting feature flag from storage')
+            self._LOGGER.debug('Error: ', exc_info=True)
+            return None
+
+    def get_feature_flags_by_sets(self, flag_sets):
+        """
+        Retrieve feature flags by flag set.
+        :param flag_sets: List of flag sets to fetch.
+        :type flag_sets: list(str)
+        :return: Feature flag names that are tagged with the flag set
+        :rtype: listt(str)
+        """
+        try:
+            sets_to_fetch = get_valid_flag_sets(flag_sets, self.flag_set_filter)
+            if sets_to_fetch == []:
+                return []
+
+            keys = [self._flag_set_prefix.format(flag_set=flag_set) for flag_set in sets_to_fetch]
+            result_sets = []
+            [result_sets.append(set(key)) for key in self._pluggable_adapter.get_many(keys)]
+            return list(combine_valid_flag_sets(result_sets))
+        except Exception:
+            self._LOGGER.error('Error fetching feature flag from storage')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
     def get_change_number(self):
         """
-        Retrieve latest split change number.
+        Retrieve latest feature flag change number.
 
         :rtype: int
         """
         try:
-            return self._pluggable_adapter.get(self._split_till_prefix)
+            return self._pluggable_adapter.get(self._feature_flag_till_prefix)
         except Exception:
-            _LOGGER.error('Error getting change number in split storage')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error getting change number in feature flag storage')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
     def get_split_names(self):
         """
-        Retrieve a list of all split names.
+        Retrieve a list of all feature flag names.
 
-        :return: List of split names.
+        :return: List of feature flag names.
         :rtype: list(str)
         """
         try:
-            return [split.name for split in self.get_all()]
+            return [feature_flag.name for feature_flag in self.get_all()]
         except Exception:
-            _LOGGER.error('Error getting split names from storage')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error getting feature flag names from storage')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
     def get_all(self):
         """
-        Return all the splits.
+        Return all the feature flags.
 
-        :return: List of all the splits.
+        :return: List of all the feature flags.
         :rtype: list
         """
         try:
-            return [splits.from_raw(self._pluggable_adapter.get(key)) for key in self._pluggable_adapter.get_keys_by_prefix(self._prefix[:-self._SPLIT_NAME_LENGTH])]
+            return [splits.from_raw(self._pluggable_adapter.get(key)) for key in self._pluggable_adapter.get_keys_by_prefix(self._prefix[:-self._FEATURE_FLAG_NAME_LENGTH])]
         except Exception:
-            _LOGGER.error('Error getting split keys from storage')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error getting feature flag keys from storage')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
     def traffic_type_exists(self, traffic_type_name):
         """
-        Return whether the traffic type exists in at least one split in cache.
+        Return whether the traffic type exists in at least one feature flag in cache.
 
         :param traffic_type_name: Traffic type to validate.
         :type traffic_type_name: str
@@ -378,27 +370,27 @@ class PluggableSplitStorage(PluggableSplitStorageBase):
         try:
             return self._pluggable_adapter.get(self._traffic_type_prefix.format(traffic_type_name=traffic_type_name)) != None
         except Exception:
-            _LOGGER.error('Error getting split info from storage')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error getting feature flag info from storage')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
     def get_all_splits(self):
         """
-        Return all the splits.
+        Return all the feature flags.
 
-        :return: List of all the splits.
+        :return: List of all the feature flags.
         :rtype: list
         """
         try:
             return self.get_all()
         except Exception:
-            _LOGGER.error('Error fetching splits from storage')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error fetching feature flags from storage')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
     def is_valid_traffic_type(self, traffic_type_name):
         """
-        Return whether the traffic type exists in at least one split in cache.
+        Return whether the traffic type exists in at least one feature flag in cache.
 
         :param traffic_type_name: Traffic type to validate.
         :type traffic_type_name: str
@@ -409,12 +401,14 @@ class PluggableSplitStorage(PluggableSplitStorageBase):
         try:
             return self.traffic_type_exists(traffic_type_name)
         except Exception:
-            _LOGGER.error('Error getting split info from storage')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error getting traffic type info from storage')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
 class PluggableSplitStorageAsync(PluggableSplitStorageBase):
-    """InMemory async implementation of a split storage."""
+    """InMemory async implementation of a feature flag storage."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, pluggable_adapter, prefix=None):
         """
@@ -427,98 +421,109 @@ class PluggableSplitStorageAsync(PluggableSplitStorageBase):
         """
         super().__init__(pluggable_adapter, prefix)
 
-    async def get(self, split_name):
+    async def get(self, feature_flag_name):
         """
-        Retrieve a split.
+        Retrieve a feature flag.
 
-        :param split_name: Name of the feature to fetch.
-        :type split_name: str
+        :param feature_flag_name: Name of the feature to fetch.
+        :type feature_flag_name: str
 
         :rtype: splitio.models.splits.Split
         """
         try:
-            split = await self._pluggable_adapter.get(self._prefix.format(split_name=split_name))
-            if not split:
+            feature_flag = await self._pluggable_adapter.get(self._prefix.format(feature_flag_name=feature_flag_name))
+            if not feature_flag:
                 return None
-            return splits.from_raw(split)
+            return splits.from_raw(feature_flag)
         except Exception:
-            _LOGGER.error('Error getting split from storage')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error getting feature flag from storage')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
-    async def fetch_many(self, split_names):
+    async def fetch_many(self, feature_flag_names):
         """
-        Retrieve splits.
+        Retrieve feature flags.
 
-        :param split_names: Names of the features to fetch.
-        :type split_name: list(str)
+        :param feature_flag_names: Names of the features to fetch.
+        :type feature_flag_name: list(str)
 
-        :return: A dict with split objects parsed from queue.
-        :rtype: dict(split_name, splitio.models.splits.Split)
+        :return: A dict with feature_flag objects parsed from queue.
+        :rtype: dict(split_feature_flag, splitio.models.splits.Split)
         """
         try:
-            to_return = {}
-            prefix_added = [self._prefix.format(split_name=split_name) for split_name in split_names]
-            raw_splits = await self._pluggable_adapter.get_many(prefix_added)
-            for i in range(len(split_names)):
-                split = None
-                try:
-                    split = splits.from_raw(raw_splits[i])
-                except (ValueError, TypeError):
-                    _LOGGER.error('Could not parse split.')
-                    _LOGGER.debug("Raw split that failed parsing attempt: %s", raw_splits[i])
-                to_return[split_names[i]] = split
-
-            return to_return
+            prefix_added = [self._prefix.format(feature_flag_name=feature_flag_name) for feature_flag_name in feature_flag_names]
+            return {feature_flag['name']: splits.from_raw(feature_flag) for feature_flag in await self._pluggable_adapter.get_many(prefix_added)}
         except Exception:
-            _LOGGER.error('Error getting split from storage')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error getting feature flag from storage')
+            self._LOGGER.debug('Error: ', exc_info=True)
+            return None
+
+    async def get_feature_flags_by_sets(self, flag_sets):
+        """
+        Retrieve feature flags by flag set.
+        :param flag_sets: List of flag sets to fetch.
+        :type flag_sets: list(str)
+        :return: Feature flag names that are tagged with the flag set
+        :rtype: listt(str)
+        """
+        try:
+            sets_to_fetch = get_valid_flag_sets(flag_sets, self.flag_set_filter)
+            if sets_to_fetch == []:
+                return []
+
+            keys = [self._flag_set_prefix.format(flag_set=flag_set) for flag_set in sets_to_fetch]
+            result_sets = []
+            [result_sets.append(set(key)) for key in await self._pluggable_adapter.get_many(keys)]
+            return list(combine_valid_flag_sets(result_sets))
+        except Exception:
+            self._LOGGER.error('Error fetching feature flag from storage')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
     async def get_change_number(self):
         """
-        Retrieve latest split change number.
+        Retrieve latest feature flag change number.
 
         :rtype: int
         """
         try:
-            return await self._pluggable_adapter.get(self._split_till_prefix)
+            return await self._pluggable_adapter.get(self._feature_flag_till_prefix)
         except Exception:
-            _LOGGER.error('Error getting change number in split storage')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error getting change number in feature flag storage')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
     async def get_split_names(self):
         """
-        Retrieve a list of all split names.
+        Retrieve a list of all feature flag names.
 
-        :return: List of split names.
+        :return: List of feature flag names.
         :rtype: list(str)
         """
         try:
-            return [split.name for split in await self.get_all()]
+            return [feature_flag.name for feature_flag in await self.get_all()]
         except Exception:
-            _LOGGER.error('Error getting split names from storage')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error getting feature flag names from storage')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
     async def get_all(self):
         """
-        Return all the splits.
+        Return all the feature flags.
 
-        :return: List of all the splits.
+        :return: List of all the feature flags.
         :rtype: list
         """
         try:
-            return [splits.from_raw(await self._pluggable_adapter.get(key)) for key in await self._pluggable_adapter.get_keys_by_prefix(self._prefix[:-self._SPLIT_NAME_LENGTH])]
+            return [splits.from_raw(await self._pluggable_adapter.get(key)) for key in await self._pluggable_adapter.get_keys_by_prefix(self._prefix[:-self._FEATURE_FLAG_NAME_LENGTH])]
         except Exception:
-            _LOGGER.error('Error getting split keys from storage')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error getting feature flag keys from storage')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
     async def traffic_type_exists(self, traffic_type_name):
         """
-        Return whether the traffic type exists in at least one split in cache.
+        Return whether the traffic type exists in at least one feature flag in cache.
 
         :param traffic_type_name: Traffic type to validate.
         :type traffic_type_name: str
@@ -529,27 +534,27 @@ class PluggableSplitStorageAsync(PluggableSplitStorageBase):
         try:
             return await self._pluggable_adapter.get(self._traffic_type_prefix.format(traffic_type_name=traffic_type_name)) != None
         except Exception:
-            _LOGGER.error('Error getting split info from storage')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error getting traffic type info from storage')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
     async def get_all_splits(self):
         """
-        Return all the splits.
+        Return all the feature flags.
 
-        :return: List of all the splits.
+        :return: List of all the feature flags.
         :rtype: list
         """
         try:
             return await self.get_all()
         except Exception:
-            _LOGGER.error('Error fetching splits from storage')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error fetching feature flags from storage')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
     async def is_valid_traffic_type(self, traffic_type_name):
         """
-        Return whether the traffic type exists in at least one split in cache.
+        Return whether the traffic type exists in at least one feature flag in cache.
 
         :param traffic_type_name: Traffic type to validate.
         :type traffic_type_name: str
@@ -560,8 +565,8 @@ class PluggableSplitStorageAsync(PluggableSplitStorageBase):
         try:
             return await self.traffic_type_exists(traffic_type_name)
         except Exception:
-            _LOGGER.error('Error getting split info from storage')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error getting feature flag info from storage')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
 class PluggableSegmentStorageBase(SegmentStorage):
@@ -606,8 +611,8 @@ class PluggableSegmentStorageBase(SegmentStorage):
 #            if change_number is not None:
 #                self._pluggable_adapter.set(self._segment_till_prefix.format(segment_name=segment_name), change_number)
 #        except Exception:
-#            _LOGGER.error('Error updating segment storage')
-#            _LOGGER.debug('Error: ', exc_info=True)
+#            self._LOGGER.error('Error updating segment storage')
+#            self._LOGGER.debug('Error: ', exc_info=True)
 
     def set_change_number(self, segment_name, change_number):
         """
@@ -623,8 +628,8 @@ class PluggableSegmentStorageBase(SegmentStorage):
 #        try:
 #            self._pluggable_adapter.set(self._segment_till_prefix.format(segment_name=segment_name), change_number)
 #        except Exception:
-#            _LOGGER.error('Error updating segment change number')
-#            _LOGGER.debug('Error: ', exc_info=True)
+#            self._LOGGER.error('Error updating segment change number')
+#            self._LOGGER.debug('Error: ', exc_info=True)
 
     def get_change_number(self, segment_name):
         """
@@ -661,8 +666,8 @@ class PluggableSegmentStorageBase(SegmentStorage):
 #        try:
 #            return list(self._pluggable_adapter.get(self._prefix.format(segment_name=segment_name)))
 #        except Exception:
-#            _LOGGER.error('Error getting segments keys')
-#            _LOGGER.debug('Error: ', exc_info=True)
+#            self._LOGGER.error('Error getting segments keys')
+#            self._LOGGER.debug('Error: ', exc_info=True)
 #            return None
 
     def segment_contains(self, segment_name, key):
@@ -691,8 +696,8 @@ class PluggableSegmentStorageBase(SegmentStorage):
 #        try:
 #            return sum([self._pluggable_adapter.get_items_count(key) for key in self._pluggable_adapter.get_keys_by_prefix(self._prefix)])
 #        except Exception:
-#            _LOGGER.error('Error getting segment keys')
-#            _LOGGER.debug('Error: ', exc_info=True)
+#            self._LOGGER.error('Error getting segment keys')
+#            self._LOGGER.debug('Error: ', exc_info=True)
 #            return None
 
     def get(self, segment_name):
@@ -721,12 +726,14 @@ class PluggableSegmentStorageBase(SegmentStorage):
 #            if segment.change_number is not None:
 #                self._pluggable_adapter.set(self._segment_till_prefix.format(segment_name=segment.name), segment.change_number)
 #        except Exception:
-#            _LOGGER.error('Error updating segment storage')
-#            _LOGGER.debug('Error: ', exc_info=True)
+#            self._LOGGER.error('Error updating segment storage')
+#            self._LOGGER.debug('Error: ', exc_info=True)
 
 
 class PluggableSegmentStorage(PluggableSegmentStorageBase):
     """Pluggable implementation of segment storage."""
+
+    _LOGGER = logging.getLogger(__name__)
 
     def __init__(self, pluggable_adapter, prefix=None):
         """
@@ -752,8 +759,8 @@ class PluggableSegmentStorage(PluggableSegmentStorageBase):
         try:
             return self._pluggable_adapter.get(self._segment_till_prefix.format(segment_name=segment_name))
         except Exception:
-            _LOGGER.error('Error fetching segment change number')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error fetching segment change number')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
     def get_segment_names(self):
@@ -770,8 +777,8 @@ class PluggableSegmentStorage(PluggableSegmentStorageBase):
                     keys.append(key[len(self._prefix[:-self._SEGMENT_NAME_LENGTH]):])
             return keys
         except Exception:
-            _LOGGER.error('Error getting segments')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error getting segments')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
     def segment_contains(self, segment_name, key):
@@ -789,8 +796,8 @@ class PluggableSegmentStorage(PluggableSegmentStorageBase):
         try:
             return self._pluggable_adapter.item_contains(self._prefix.format(segment_name=segment_name), key)
         except Exception:
-            _LOGGER.error('Error checking segment key')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error checking segment key')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
     def get(self, segment_name):
@@ -806,12 +813,14 @@ class PluggableSegmentStorage(PluggableSegmentStorageBase):
         try:
             return segments.from_raw({'name': segment_name, 'added': self._pluggable_adapter.get_items(self._prefix.format(segment_name=segment_name)), 'removed': [], 'till': self._pluggable_adapter.get(self._segment_till_prefix.format(segment_name=segment_name))})
         except Exception:
-            _LOGGER.error('Error getting segment')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error getting segment')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
 class PluggableSegmentStorageAsync(PluggableSegmentStorageBase):
     """Pluggable async implementation of segment storage."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, pluggable_adapter, prefix=None):
         """
@@ -837,8 +846,8 @@ class PluggableSegmentStorageAsync(PluggableSegmentStorageBase):
         try:
             return await self._pluggable_adapter.get(self._segment_till_prefix.format(segment_name=segment_name))
         except Exception:
-            _LOGGER.error('Error fetching segment change number')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error fetching segment change number')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
     async def get_segment_names(self):
@@ -855,8 +864,8 @@ class PluggableSegmentStorageAsync(PluggableSegmentStorageBase):
                     keys.append(key[len(self._prefix[:-self._SEGMENT_NAME_LENGTH]):])
             return keys
         except Exception:
-            _LOGGER.error('Error getting segments')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error getting segments')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
     async def segment_contains(self, segment_name, key):
@@ -874,8 +883,8 @@ class PluggableSegmentStorageAsync(PluggableSegmentStorageBase):
         try:
             return await self._pluggable_adapter.item_contains(self._prefix.format(segment_name=segment_name), key)
         except Exception:
-            _LOGGER.error('Error checking segment key')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error checking segment key')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
     async def get(self, segment_name):
@@ -891,8 +900,8 @@ class PluggableSegmentStorageAsync(PluggableSegmentStorageBase):
         try:
             return segments.from_raw({'name': segment_name, 'added': await self._pluggable_adapter.get_items(self._prefix.format(segment_name=segment_name)), 'removed': [], 'till': await self._pluggable_adapter.get(self._segment_till_prefix.format(segment_name=segment_name))})
         except Exception:
-            _LOGGER.error('Error getting segment')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error getting segment')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return None
 
 class PluggableImpressionsStorageBase(ImpressionStorage):
@@ -991,6 +1000,8 @@ class PluggableImpressionsStorageBase(ImpressionStorage):
 class PluggableImpressionsStorage(PluggableImpressionsStorageBase):
     """Pluggable Impressions storage class."""
 
+    _LOGGER = logging.getLogger(__name__)
+
     def __init__(self, pluggable_adapter, sdk_metadata, prefix=None):
         """
         Class constructor.
@@ -1020,8 +1031,8 @@ class PluggableImpressionsStorage(PluggableImpressionsStorageBase):
             self.expire_key(total_keys, len(bulk_impressions))
             return True
         except Exception:
-            _LOGGER.error('Something went wrong when trying to add impression to storage')
-            _LOGGER.error('Error: ', exc_info=True)
+            self._LOGGER.error('Something went wrong when trying to add impression to storage')
+            self._LOGGER.error('Error: ', exc_info=True)
             return False
 
     def expire_key(self, total_keys, inserted):
@@ -1039,6 +1050,8 @@ class PluggableImpressionsStorage(PluggableImpressionsStorageBase):
 
 class PluggableImpressionsStorageAsync(PluggableImpressionsStorageBase):
     """Pluggable Impressions storage class."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, pluggable_adapter, sdk_metadata, prefix=None):
         """
@@ -1069,8 +1082,8 @@ class PluggableImpressionsStorageAsync(PluggableImpressionsStorageBase):
             await self.expire_key(total_keys, len(bulk_impressions))
             return True
         except Exception:
-            _LOGGER.error('Something went wrong when trying to add impression to storage')
-            _LOGGER.error('Error: ', exc_info=True)
+            self._LOGGER.error('Something went wrong when trying to add impression to storage')
+            self._LOGGER.error('Error: ', exc_info=True)
             return False
 
     async def expire_key(self, total_keys, inserted):
@@ -1169,6 +1182,8 @@ class PluggableEventsStorageBase(EventStorage):
 class PluggableEventsStorage(PluggableEventsStorageBase):
     """Pluggable Event storage class."""
 
+    _LOGGER = logging.getLogger(__name__)
+
     def __init__(self, pluggable_adapter, sdk_metadata, prefix=None):
         """
         Class constructor.
@@ -1198,8 +1213,8 @@ class PluggableEventsStorage(PluggableEventsStorageBase):
             self.expire_key(total_keys, len(to_store))
             return True
         except Exception:
-            _LOGGER.error('Something went wrong when trying to add event to redis')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Something went wrong when trying to add event to redis')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return False
 
     def expire_key(self, total_keys, inserted):
@@ -1217,6 +1232,8 @@ class PluggableEventsStorage(PluggableEventsStorageBase):
 
 class PluggableEventsStorageAsync(PluggableEventsStorageBase):
     """Pluggable Event storage class."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, pluggable_adapter, sdk_metadata, prefix=None):
         """
@@ -1247,8 +1264,8 @@ class PluggableEventsStorageAsync(PluggableEventsStorageBase):
             await self.expire_key(total_keys, len(to_store))
             return True
         except Exception:
-            _LOGGER.error('Something went wrong when trying to add event to redis')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Something went wrong when trying to add event to redis')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return False
 
     async def expire_key(self, total_keys, inserted):
@@ -1282,7 +1299,7 @@ class PluggableTelemetryStorageBase(TelemetryStorage):
         """
         pass
 
-    def record_config(self, config, extra_config):
+    def record_config(self, config, extra_config, total_flag_sets, invalid_flag_sets):
         """
         initilize telemetry objects
 
@@ -1421,7 +1438,7 @@ class PluggableTelemetryStorage(PluggableTelemetryStorageBase):
             if len(self._config_tags) < MAX_TAGS:
                 self._config_tags.append(tag)
 
-    def record_config(self, config, extra_config):
+    def record_config(self, config, extra_config, total_flag_sets, invalid_flag_sets):
         """
         initilize telemetry objects
 
@@ -1430,7 +1447,7 @@ class PluggableTelemetryStorage(PluggableTelemetryStorageBase):
         :param extra_config: any extra configs
         :type extra_config: Dict
         """
-        self._tel_config.record_config(config, extra_config)
+        self._tel_config.record_config(config, extra_config, total_flag_sets, invalid_flag_sets)
 
     def pop_config_tags(self):
         """Get and reset configs."""
@@ -1573,7 +1590,7 @@ class PluggableTelemetryStorageAsync(PluggableTelemetryStorageBase):
             if len(self._config_tags) < MAX_TAGS:
                 self._config_tags.append(tag)
 
-    async def record_config(self, config, extra_config):
+    async def record_config(self, config, extra_config, total_flag_sets, invalid_flag_sets):
         """
         initilize telemetry objects
 
@@ -1582,7 +1599,7 @@ class PluggableTelemetryStorageAsync(PluggableTelemetryStorageBase):
         :param extra_config: any extra configs
         :type extra_config: Dict
         """
-        await self._tel_config.record_config(config, extra_config)
+        await self._tel_config.record_config(config, extra_config, total_flag_sets, invalid_flag_sets)
 
     async def pop_config_tags(self):
         """Get and reset configs."""

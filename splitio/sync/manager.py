@@ -12,13 +12,13 @@ from splitio.util.backoff import Backoff
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.models.telemetry import SSESyncMode, StreamingEventTypes
 from splitio.sync.synchronizer import _SYNC_ALL_NO_RETRIES
-
-_LOGGER = logging.getLogger(__name__)
+from splitio.util import log_helper
 
 
 class Manager(object):  # pylint:disable=too-many-instance-attributes
     """Manager Class."""
 
+    _LOGGER = logging.getLogger(__name__)
     _CENTINEL_EVENT = object()
 
     def __init__(self, ready_flag, synchronizer, auth_api, streaming_enabled, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None):  # pylint:disable=too-many-arguments
@@ -75,8 +75,8 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
                 self._synchronizer.start_periodic_fetching()
 
         except (APIException, RuntimeError):
-            _LOGGER.error('Exception raised starting Split Manager')
-            _LOGGER.debug('Exception information: ', exc_info=True)
+            self._LOGGER.error('Exception raised starting Split Manager')
+            self._LOGGER.debug('Exception information: ', exc_info=True)
             raise
 
     def stop(self, blocking):
@@ -86,7 +86,7 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
         :param blocking: flag to wait until tasks are stopped
         :type blocking: bool
         """
-        _LOGGER.info('Stopping manager tasks')
+        self._LOGGER.info('Stopping manager tasks')
         if self._streaming_enabled:
             self._push_status_handler_active = False
             self._queue.put(self._CENTINEL_EVENT)
@@ -110,13 +110,13 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
                 self._synchronizer.sync_all()
                 self._push.update_workers_status(True)
                 self._backoff.reset()
-                _LOGGER.info('streaming up and running. disabling periodic fetching.')
+                self._LOGGER.info('streaming up and running. disabling periodic fetching.')
                 self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.STREAMING.value,  get_current_epoch_time_ms()))
             elif status == Status.PUSH_SUBSYSTEM_DOWN:
                 self._push.update_workers_status(False)
                 self._synchronizer.sync_all()
                 self._synchronizer.start_periodic_fetching()
-                _LOGGER.info('streaming temporarily down. starting periodic fetching')
+                self._LOGGER.info('streaming temporarily down. starting periodic fetching')
                 self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time_ms()))
             elif status == Status.PUSH_RETRYABLE_ERROR:
                 self._push.update_workers_status(False)
@@ -124,7 +124,7 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
                 self._synchronizer.sync_all()
                 self._synchronizer.start_periodic_fetching()
                 how_long = self._backoff.get()
-                _LOGGER.info('error in streaming. restarting flow in %d seconds', how_long)
+                self._LOGGER.info('error in streaming. restarting flow in %d seconds', how_long)
                 time.sleep(how_long)
                 self._push.start()
             elif status == Status.PUSH_NONRETRYABLE_ERROR:
@@ -132,7 +132,7 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
                 self._push.stop(False)
                 self._synchronizer.sync_all()
                 self._synchronizer.start_periodic_fetching()
-                _LOGGER.info('non-recoverable error in streaming. switching to polling.')
+                self._LOGGER.info('non-recoverable error in streaming. switching to polling.')
                 self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time_ms()))
                 return
 
@@ -140,6 +140,7 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
 class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
     """Manager Class."""
 
+    _LOGGER = logging.getLogger('asyncio')
     _CENTINEL_EVENT = object()
 
     def __init__(self, synchronizer, auth_api, streaming_enabled, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None):  # pylint:disable=too-many-arguments
@@ -186,8 +187,8 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
                 self._synchronizer.start_periodic_fetching()
 
         except (APIException, RuntimeError):
-            _LOGGER.error('Exception raised starting Split Manager')
-            _LOGGER.debug('Exception information: ', exc_info=True)
+            self._LOGGER.error('Exception raised starting Split Manager')
+            self._LOGGER.debug('Exception information: ', exc_info=True)
             raise
 
     async def stop(self, blocking):
@@ -197,7 +198,7 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
         :param blocking: flag to wait until tasks are stopped
         :type blocking: bool
         """
-        _LOGGER.info('Stopping manager tasks')
+        self._LOGGER.info('Stopping manager tasks')
         if self._streaming_enabled:
             self._push_status_handler_active = False
             await self._queue.put(self._CENTINEL_EVENT)
@@ -220,13 +221,13 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
                 await self._synchronizer.sync_all()
                 await self._push.update_workers_status(True)
                 self._backoff.reset()
-                _LOGGER.info('streaming up and running. disabling periodic fetching.')
+                self._LOGGER.info('streaming up and running. disabling periodic fetching.')
                 await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.STREAMING.value,  get_current_epoch_time_ms()))
             elif status == Status.PUSH_SUBSYSTEM_DOWN:
                 await self._push.update_workers_status(False)
                 await self._synchronizer.sync_all()
                 self._synchronizer.start_periodic_fetching()
-                _LOGGER.info('streaming temporarily down. starting periodic fetching')
+                self._LOGGER.info('streaming temporarily down. starting periodic fetching')
                 await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time_ms()))
             elif status == Status.PUSH_RETRYABLE_ERROR:
                 await self._push.update_workers_status(False)
@@ -234,7 +235,7 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
                 await self._synchronizer.sync_all()
                 self._synchronizer.start_periodic_fetching()
                 how_long = self._backoff.get()
-                _LOGGER.info('error in streaming. restarting flow in %d seconds', how_long)
+                self._LOGGER.info('error in streaming. restarting flow in %d seconds', how_long)
                 await asyncio.sleep(how_long)
                 self._push.start()
             elif status == Status.PUSH_NONRETRYABLE_ERROR:
@@ -242,7 +243,7 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
                 await self._push.stop(False)
                 await self._synchronizer.sync_all()
                 self._synchronizer.start_periodic_fetching()
-                _LOGGER.info('non-recoverable error in streaming. switching to polling.')
+                self._LOGGER.info('non-recoverable error in streaming. switching to polling.')
                 await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time_ms()))
                 return
 
@@ -270,13 +271,15 @@ class RedisManagerBase(object):  # pylint:disable=too-many-instance-attributes
             self._synchronizer.start_periodic_data_recording()
 
         except (APIException, RuntimeError):
-            _LOGGER.error('Exception raised starting Split Manager')
-            _LOGGER.debug('Exception information: ', exc_info=True)
+            self._LOGGER.error('Exception raised starting Split Manager')
+            self._LOGGER.debug('Exception information: ', exc_info=True)
             raise
 
 
 class RedisManager(RedisManagerBase):  # pylint:disable=too-many-instance-attributes
     """Manager Class."""
+
+    _LOGGER = logging.getLogger(__name__)
 
     def __init__(self, synchronizer):  # pylint:disable=too-many-arguments
         """
@@ -294,12 +297,14 @@ class RedisManager(RedisManagerBase):  # pylint:disable=too-many-instance-attrib
         :param blocking: flag to wait until tasks are stopped
         :type blocking: bool
         """
-        _LOGGER.info('Stopping manager tasks')
+        self._LOGGER.info('Stopping manager tasks')
         self._synchronizer.shutdown(blocking)
 
 
 class RedisManagerAsync(RedisManagerBase):  # pylint:disable=too-many-instance-attributes
     """Manager async Class."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, synchronizer):  # pylint:disable=too-many-arguments
         """
@@ -317,5 +322,5 @@ class RedisManagerAsync(RedisManagerBase):  # pylint:disable=too-many-instance-a
         :param blocking: flag to wait until tasks are stopped
         :type blocking: bool
         """
-        _LOGGER.info('Stopping manager tasks')
+        self._LOGGER.info('Stopping manager tasks')
         await self._synchronizer.shutdown(blocking)

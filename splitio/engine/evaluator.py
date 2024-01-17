@@ -7,12 +7,10 @@ from splitio.models.grammar.condition import ConditionType
 from splitio.models.grammar.matchers.misc import DependencyMatcher
 from splitio.models.grammar.matchers.keys import UserDefinedSegmentMatcher
 from splitio.optional.loaders import asyncio
+from splitio.util import log_helper
 
 CONTROL = 'control'
 EvaluationContext = namedtuple('EvaluationContext', ['flags', 'segment_memberships'])
-
-_LOGGER = logging.getLogger(__name__)
-
 
 class Evaluator(object):  # pylint: disable=too-few-public-methods
     """Split Evaluator class."""
@@ -40,6 +38,7 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
         """
         ...
         """
+        _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
         label = ''
         _treatment = CONTROL
         _change_number = -1

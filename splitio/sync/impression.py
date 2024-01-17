@@ -3,12 +3,14 @@ import queue
 
 from splitio.api import APIException
 from splitio.optional.loaders import asyncio
-
-_LOGGER = logging.getLogger(__name__)
+from splitio.util import log_helper
 
 
 class ImpressionSynchronizer(object):
     """Impressions synchronizer class."""
+
+    _LOGGER = logging.getLogger(__name__)
+
     def __init__(self, impressions_api, storage, bulk_size):
         """
         Class constructor.
@@ -63,12 +65,15 @@ class ImpressionSynchronizer(object):
         try:
             self._api.flush_impressions(to_send)
         except APIException:
-            _LOGGER.error('Exception raised while reporting impressions')
-            _LOGGER.debug('Exception information: ', exc_info=True)
+            self._LOGGER.error('Exception raised while reporting impressions')
+            self._LOGGER.debug('Exception information: ', exc_info=True)
             self._add_to_failed_queue(to_send)
 
 
 class ImpressionsCountSynchronizer(object):
+
+    _LOGGER = logging.getLogger(__name__)
+
     def __init__(self, impressions_api, imp_counter):
         """
         Class constructor.
@@ -95,12 +100,15 @@ class ImpressionsCountSynchronizer(object):
         try:
             self._impressions_api.flush_counters(to_send)
         except APIException:
-            _LOGGER.error('Exception raised while reporting impression counts')
-            _LOGGER.debug('Exception information: ', exc_info=True)
+            self._LOGGER.error('Exception raised while reporting impression counts')
+            self._LOGGER.debug('Exception information: ', exc_info=True)
 
 
 class ImpressionSynchronizerAsync(object):
     """Impressions async synchronizer class."""
+
+    _LOGGER = logging.getLogger('asyncio')
+
     def __init__(self, impressions_api, storage, bulk_size):
         """
         Class constructor.
@@ -155,12 +163,15 @@ class ImpressionSynchronizerAsync(object):
         try:
             await self._api.flush_impressions(to_send)
         except APIException:
-            _LOGGER.error('Exception raised while reporting impressions')
-            _LOGGER.debug('Exception information: ', exc_info=True)
+            self._LOGGER.error('Exception raised while reporting impressions')
+            self._LOGGER.debug('Exception information: ', exc_info=True)
             await self._add_to_failed_queue(to_send)
 
 
 class ImpressionsCountSynchronizerAsync(object):
+
+    _LOGGER = logging.getLogger('asyncio')
+
     def __init__(self, impressions_api, imp_counter):
         """
         Class constructor.
@@ -187,5 +198,5 @@ class ImpressionsCountSynchronizerAsync(object):
         try:
             await self._impressions_api.flush_counters(to_send)
         except APIException:
-            _LOGGER.error('Exception raised while reporting impression counts')
-            _LOGGER.debug('Exception information: ', exc_info=True)
+            self._LOGGER.error('Exception raised while reporting impression counts')
+            self._LOGGER.debug('Exception information: ', exc_info=True)

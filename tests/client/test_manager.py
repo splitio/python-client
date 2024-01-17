@@ -2,7 +2,7 @@
 import pytest
 
 from splitio.client.factory import SplitFactory
-from splitio.client.manager import SplitManager, SplitManagerAsync, _LOGGER as _logger
+from splitio.client.manager import SplitManager, SplitManagerAsync
 from splitio.models import splits
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync, InMemorySplitStorage, InMemorySplitStorageAsync
 from splitio.engine.impressions.impressions import Manager as ImpressionManager
@@ -27,6 +27,7 @@ class SplitManagerTests(object):  # pylint: disable=too-few-public-methods
         factory.ready = True
 
         manager = SplitManager(factory)
+        assert manager._LOGGER.name == 'splitio.client.manager'
         split1 =  splits.from_raw(splits_json["splitChange1_1"]["splits"][0])
         split2 =  splits.from_raw(splits_json["splitChange1_3"]["splits"][0])
         storage.update([split1, split2], [], -1)
@@ -67,7 +68,7 @@ class SplitManagerTests(object):  # pylint: disable=too-few-public-methods
 
         manager = SplitManager(factory)
         _logger = mocker.Mock()
-        mocker.patch('splitio.client.manager._LOGGER', new=_logger)
+        manager._LOGGER = _logger
 
         assert manager.split_names() == []
         assert _logger.error.mock_calls == expected_msg
@@ -99,6 +100,7 @@ class SplitManagerAsyncTests(object):  # pylint: disable=too-few-public-methods
         factory.ready = True
 
         manager = SplitManagerAsync(factory)
+        assert manager._LOGGER.name == 'asyncio'
         split1 =  splits.from_raw(splits_json["splitChange1_1"]["splits"][0])
         split2 =  splits.from_raw(splits_json["splitChange1_3"]["splits"][0])
         await storage.update([split1, split2], [], -1)
@@ -140,7 +142,7 @@ class SplitManagerAsyncTests(object):  # pylint: disable=too-few-public-methods
 
         manager = SplitManagerAsync(factory)
         _logger = mocker.Mock()
-        mocker.patch('splitio.client.manager._LOGGER', new=_logger)
+        manager._LOGGER = _logger
 
         assert await manager.split_names() == []
         assert _logger.error.mock_calls == expected_msg

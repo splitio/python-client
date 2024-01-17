@@ -28,6 +28,7 @@ class EventsSynchronizerTests(object):
 
         api.flush_events.side_effect = run
         event_synchronizer = EventSynchronizer(api, storage, 5)
+        assert event_synchronizer._LOGGER.name == 'splitio.sync.event'
         event_synchronizer.synchronize_events()
         assert event_synchronizer._failed.qsize() == 2
 
@@ -87,6 +88,7 @@ class EventsSynchronizerAsyncTests(object):
 
         api.flush_events = run
         event_synchronizer = EventSynchronizerAsync(api, storage, 5)
+        assert event_synchronizer._LOGGER.name == 'asyncio'
         await event_synchronizer.synchronize_events()
         assert event_synchronizer._failed.qsize() == 2
 

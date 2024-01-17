@@ -31,6 +31,7 @@ class SegmentsSynchronizerTests(object):
 
         api.fetch_segment.side_effect = run
         segments_synchronizer = SegmentSynchronizer(api, split_storage, storage)
+        assert segments_synchronizer._LOGGER.name == 'splitio.sync.segment'
         assert not segments_synchronizer.synchronize_segments()
 
     def test_synchronize_segments(self, mocker):
@@ -216,6 +217,7 @@ class SegmentsSynchronizerAsyncTests(object):
         api.fetch_segment = run
 
         segments_synchronizer = SegmentSynchronizerAsync(api, split_storage, storage)
+        assert segments_synchronizer._LOGGER.name == 'asyncio'
         assert not await segments_synchronizer.synchronize_segments()
         await segments_synchronizer.shutdown()
 
@@ -436,6 +438,7 @@ class LocalSegmentsSynchronizerTests(object):
         storage.get_change_number.return_value = -1
 
         segments_synchronizer = LocalSegmentSynchronizer('/,/,/invalid folder name/,/,/', split_storage, storage)
+        assert segments_synchronizer._LOGGER.name == 'splitio.sync.segment'
         assert not segments_synchronizer.synchronize_segments()
 
     def test_synchronize_segments(self, mocker):
@@ -595,7 +598,7 @@ class LocalSegmentsSynchronizerTests(object):
         assert(segment_synchronizer._sanitize_segment(segment2) == segment3)
 
 
-class LocalSegmentsSynchronizerTests(object):
+class LocalSegmentsSynchronizerAsyncTests(object):
     """Segments synchronizer test cases."""
 
     @pytest.mark.asyncio
@@ -612,6 +615,7 @@ class LocalSegmentsSynchronizerTests(object):
         storage.get_change_number = get_change_number
 
         segments_synchronizer = LocalSegmentSynchronizerAsync('/,/,/invalid folder name/,/,/', split_storage, storage)
+        assert segments_synchronizer._LOGGER.name == 'asyncio'
         assert not await segments_synchronizer.synchronize_segments()
 
     @pytest.mark.asyncio

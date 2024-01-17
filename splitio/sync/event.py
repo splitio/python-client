@@ -3,12 +3,14 @@ import queue
 
 from splitio.api import APIException
 from splitio.optional.loaders import asyncio
-
-_LOGGER = logging.getLogger(__name__)
+from splitio.util import log_helper
 
 
 class EventSynchronizer(object):
     """Event Synchronizer class"""
+
+    _LOGGER = logging.getLogger(__name__)
+
     def __init__(self, events_api, storage, bulk_size):
         """
         Class constructor.
@@ -63,13 +65,16 @@ class EventSynchronizer(object):
         try:
             self._api.flush_events(to_send)
         except APIException:
-            _LOGGER.error('Exception raised while reporting events')
-            _LOGGER.debug('Exception information: ', exc_info=True)
+            self._LOGGER.error('Exception raised while reporting events')
+            self._LOGGER.debug('Exception information: ', exc_info=True)
             self._add_to_failed_queue(to_send)
 
 
 class EventSynchronizerAsync(object):
     """Event Synchronizer async class"""
+
+    _LOGGER = logging.getLogger('asyncio')
+
     def __init__(self, events_api, storage, bulk_size):
         """
         Class constructor.
@@ -124,6 +129,6 @@ class EventSynchronizerAsync(object):
         try:
             await self._api.flush_events(to_send)
         except APIException:
-            _LOGGER.error('Exception raised while reporting events')
-            _LOGGER.debug('Exception information: ', exc_info=True)
+            self._LOGGER.error('Exception raised while reporting events')
+            self._LOGGER.debug('Exception information: ', exc_info=True)
             await self._add_to_failed_queue(to_send)

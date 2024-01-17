@@ -7,9 +7,7 @@ from splitio.client.config import DEFAULT_DATA_SAMPLING
 from splitio.client.listener import ImpressionListenerException
 from splitio.models.telemetry import MethodExceptionsAndLatencies
 from splitio.models import telemetry
-
-_LOGGER = logging.getLogger(__name__)
-
+from splitio.util import log_helper
 
 class StatsRecorder(object, metaclass=abc.ABCMeta):
     """StatsRecorder interface."""
@@ -69,6 +67,8 @@ class StatsRecorder(object, metaclass=abc.ABCMeta):
 class StandardRecorder(StatsRecorder):
     """StandardRecorder class."""
 
+    _LOGGER = logging.getLogger(__name__)
+
     def __init__(self, impressions_manager, event_storage, impression_storage, telemetry_evaluation_producer, telemetry_runtime_producer, listener=None, unique_keys_tracker=None, imp_counter=None):
         """
         Class constructor.
@@ -117,8 +117,8 @@ class StandardRecorder(StatsRecorder):
             if len(for_unique_keys_tracker) > 0:
                 [self._unique_keys_tracker.track(item[0], item[1]) for item in for_unique_keys_tracker]
         except Exception:  # pylint: disable=broad-except
-            _LOGGER.error('Error recording impressions')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error recording impressions')
+            self._LOGGER.debug('Error: ', exc_info=True)
 
     def record_track_stats(self, event, latency):
         """
@@ -133,6 +133,8 @@ class StandardRecorder(StatsRecorder):
 
 class StandardRecorderAsync(StatsRecorder):
     """StandardRecorder async class."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, impressions_manager, event_storage, impression_storage, telemetry_evaluation_producer, telemetry_runtime_producer, listener=None, unique_keys_tracker=None, imp_counter=None):
         """
@@ -183,8 +185,8 @@ class StandardRecorderAsync(StatsRecorder):
             if len(for_unique_keys_tracker) > 0:
                 [await self._unique_keys_tracker.track(item[0], item[1]) for item in for_unique_keys_tracker]
         except Exception:  # pylint: disable=broad-except
-            _LOGGER.error('Error recording impressions')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error recording impressions')
+            self._LOGGER.debug('Error: ', exc_info=True)
 
     async def record_track_stats(self, event, latency):
         """
@@ -199,6 +201,8 @@ class StandardRecorderAsync(StatsRecorder):
 
 class PipelinedRecorder(StatsRecorder):
     """PipelinedRecorder class."""
+
+    _LOGGER = logging.getLogger(__name__)
 
     def __init__(self, pipe, impressions_manager, event_storage,
                  impression_storage, telemetry_redis_storage, data_sampling=DEFAULT_DATA_SAMPLING, listener=None, unique_keys_tracker=None, imp_counter=None):
@@ -263,8 +267,8 @@ class PipelinedRecorder(StatsRecorder):
             if len(for_unique_keys_tracker) > 0:
                 [self._unique_keys_tracker.track(item[0], item[1]) for item in for_unique_keys_tracker]
         except Exception:  # pylint: disable=broad-except
-            _LOGGER.error('Error recording impressions')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error recording impressions')
+            self._LOGGER.debug('Error: ', exc_info=True)
 
     def record_track_stats(self, event, latency):
         """
@@ -285,12 +289,14 @@ class PipelinedRecorder(StatsRecorder):
                     return True
             return False
         except Exception:  # pylint: disable=broad-except
-            _LOGGER.error('Error recording events')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error recording events')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return False
 
 class PipelinedRecorderAsync(StatsRecorder):
     """PipelinedRecorder async class."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, pipe, impressions_manager, event_storage,
                  impression_storage, telemetry_redis_storage, data_sampling=DEFAULT_DATA_SAMPLING, listener=None, unique_keys_tracker=None, imp_counter=None):
@@ -355,8 +361,8 @@ class PipelinedRecorderAsync(StatsRecorder):
             if len(for_unique_keys_tracker) > 0:
                 [await self._unique_keys_tracker.track(item[0], item[1]) for item in for_unique_keys_tracker]
         except Exception:  # pylint: disable=broad-except
-            _LOGGER.error('Error recording impressions')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error recording impressions')
+            self._LOGGER.debug('Error: ', exc_info=True)
 
     async def record_track_stats(self, event, latency):
         """
@@ -377,6 +383,6 @@ class PipelinedRecorderAsync(StatsRecorder):
                     return True
             return False
         except Exception:  # pylint: disable=broad-except
-            _LOGGER.error('Error recording events')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error recording events')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return False

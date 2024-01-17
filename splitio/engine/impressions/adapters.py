@@ -4,7 +4,6 @@ import json
 
 from splitio.storage.adapters.redis import RedisAdapterException
 
-_LOGGER = logging.getLogger(__name__)
 _MTK_QUEUE_KEY = 'SPLITIO.uniquekeys'
 _MTK_KEY_DEFAULT_TTL = 3600
 _IMP_COUNT_QUEUE_KEY = 'SPLITIO.impressions.count'
@@ -92,6 +91,8 @@ class InMemorySenderAdapterAsync(InMemorySenderAdapterBase):
 class RedisSenderAdapter(ImpressionsSenderAdapter):
     """Redis Impressions Sender Adapter class."""
 
+    _LOGGER = logging.getLogger(__name__)
+
     def __init__(self, redis_client):
         """
         Initialize Redis sender adapter instance
@@ -114,8 +115,8 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
             self._expire_keys(_MTK_QUEUE_KEY, _MTK_KEY_DEFAULT_TTL, inserted, len(bulk_mtks))
             return True
         except RedisAdapterException:
-            _LOGGER.error('Something went wrong when trying to add mtks to redis')
-            _LOGGER.error('Error: ', exc_info=True)
+            self._LOGGER.error('Something went wrong when trying to add mtks to redis')
+            self._LOGGER.error('Error: ', exc_info=True)
             return False
 
     def flush_counters(self, to_send):
@@ -137,8 +138,8 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
                               _IMP_COUNT_KEY_DEFAULT_TTL, resulted, counted)
             return True
         except RedisAdapterException:
-            _LOGGER.error('Something went wrong when trying to add counters to redis')
-            _LOGGER.error('Error: ', exc_info=True)
+            self._LOGGER.error('Something went wrong when trying to add counters to redis')
+            self._LOGGER.error('Error: ', exc_info=True)
             return False
 
     def _expire_keys(self, queue_key, key_default_ttl, total_keys, inserted):
@@ -156,6 +157,8 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
 
 class RedisSenderAdapterAsync(ImpressionsSenderAdapter):
     """In Redis Impressions Sender Adapter async class."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, redis_client):
         """
@@ -179,8 +182,8 @@ class RedisSenderAdapterAsync(ImpressionsSenderAdapter):
             await self._expire_keys(_MTK_QUEUE_KEY, _MTK_KEY_DEFAULT_TTL, inserted, len(bulk_mtks))
             return True
         except RedisAdapterException:
-            _LOGGER.error('Something went wrong when trying to add mtks to redis')
-            _LOGGER.error('Error: ', exc_info=True)
+            self._LOGGER.error('Something went wrong when trying to add mtks to redis')
+            self._LOGGER.error('Error: ', exc_info=True)
             return False
 
     async def flush_counters(self, to_send):
@@ -202,8 +205,8 @@ class RedisSenderAdapterAsync(ImpressionsSenderAdapter):
                               _IMP_COUNT_KEY_DEFAULT_TTL, resulted, counted)
             return True
         except RedisAdapterException:
-            _LOGGER.error('Something went wrong when trying to add counters to redis')
-            _LOGGER.error('Error: ', exc_info=True)
+            self._LOGGER.error('Something went wrong when trying to add counters to redis')
+            self._LOGGER.error('Error: ', exc_info=True)
             return False
 
     async def _expire_keys(self, queue_key, key_default_ttl, total_keys, inserted):
@@ -221,6 +224,8 @@ class RedisSenderAdapterAsync(ImpressionsSenderAdapter):
 
 class PluggableSenderAdapter(ImpressionsSenderAdapter):
     """Pluggable Impressions Sender Adapter class."""
+
+    _LOGGER = logging.getLogger(__name__)
 
     def __init__(self, adapter_client, prefix=None):
         """
@@ -247,8 +252,8 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
             self._expire_keys(self._prefix + _MTK_QUEUE_KEY, _MTK_KEY_DEFAULT_TTL, inserted, len(bulk_mtks))
             return True
         except RedisAdapterException:
-            _LOGGER.error('Something went wrong when trying to add mtks to storage adapter')
-            _LOGGER.error('Error: ', exc_info=True)
+            self._LOGGER.error('Something went wrong when trying to add mtks to storage adapter')
+            self._LOGGER.error('Error: ', exc_info=True)
             return False
 
     def flush_counters(self, to_send):
@@ -266,8 +271,8 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
                 self._expire_keys(key, _IMP_COUNT_KEY_DEFAULT_TTL, resulted, pf_count.count)
             return True
         except RedisAdapterException:
-            _LOGGER.error('Something went wrong when trying to add counters to storage adapter')
-            _LOGGER.error('Error: ', exc_info=True)
+            self._LOGGER.error('Something went wrong when trying to add counters to storage adapter')
+            self._LOGGER.error('Error: ', exc_info=True)
             return False
 
     def _expire_keys(self, queue_key, key_default_ttl, total_keys, inserted):
@@ -285,6 +290,8 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
 
 class PluggableSenderAdapterAsync(ImpressionsSenderAdapter):
     """Pluggable Impressions Sender Adapter class."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, adapter_client, prefix=None):
         """
@@ -311,8 +318,8 @@ class PluggableSenderAdapterAsync(ImpressionsSenderAdapter):
             await self._expire_keys(self._prefix + _MTK_QUEUE_KEY, _MTK_KEY_DEFAULT_TTL, inserted, len(bulk_mtks))
             return True
         except RedisAdapterException:
-            _LOGGER.error('Something went wrong when trying to add mtks to storage adapter')
-            _LOGGER.error('Error: ', exc_info=True)
+            self._LOGGER.error('Something went wrong when trying to add mtks to storage adapter')
+            self._LOGGER.error('Error: ', exc_info=True)
             return False
 
     async def flush_counters(self, to_send):
@@ -330,8 +337,8 @@ class PluggableSenderAdapterAsync(ImpressionsSenderAdapter):
                 await self._expire_keys(key, _IMP_COUNT_KEY_DEFAULT_TTL, resulted, pf_count.count)
             return True
         except RedisAdapterException:
-            _LOGGER.error('Something went wrong when trying to add counters to storage adapter')
-            _LOGGER.error('Error: ', exc_info=True)
+            self._LOGGER.error('Something went wrong when trying to add counters to storage adapter')
+            self._LOGGER.error('Error: ', exc_info=True)
             return False
 
     async def _expire_keys(self, queue_key, key_default_ttl, total_keys, inserted):

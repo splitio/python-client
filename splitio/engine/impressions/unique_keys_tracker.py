@@ -5,8 +5,6 @@ import logging
 from splitio.engine.filters import BloomFilter
 from splitio.optional.loaders import asyncio
 
-_LOGGER = logging.getLogger(__name__)
-
 class UniqueKeysTrackerBase(object, metaclass=abc.ABCMeta):
     """Unique Keys Tracker base class."""
 
@@ -43,6 +41,8 @@ class UniqueKeysTrackerBase(object, metaclass=abc.ABCMeta):
 class UniqueKeysTracker(UniqueKeysTrackerBase):
     """Unique Keys Tracker class."""
 
+    _LOGGER = logging.getLogger(__name__)
+
     def __init__(self, cache_size=30000):
         """
         Initialize unique keys tracker instance
@@ -77,11 +77,11 @@ class UniqueKeysTracker(UniqueKeysTrackerBase):
             self._current_cache_size += 1
 
         if self._current_cache_size > self._cache_size:
-            _LOGGER.info(
+            self._LOGGER.info(
                 'Unique Keys queue is full, flushing the current queue now.'
             )
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
-                _LOGGER.info('Calling hook.')
+                self._LOGGER.info('Calling hook.')
                 self._queue_full_hook()
         return True
 
@@ -105,6 +105,8 @@ class UniqueKeysTracker(UniqueKeysTrackerBase):
 
 class UniqueKeysTrackerAsync(UniqueKeysTrackerBase):
     """Unique Keys Tracker async class."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, cache_size=30000):
         """
@@ -140,11 +142,11 @@ class UniqueKeysTrackerAsync(UniqueKeysTrackerBase):
             self._current_cache_size += 1
 
         if self._current_cache_size > self._cache_size:
-            _LOGGER.info(
+            self._LOGGER.info(
                 'Unique Keys queue is full, flushing the current queue now.'
             )
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
-                _LOGGER.info('Calling hook.')
+                self._LOGGER.info('Calling hook.')
                 await self._queue_full_hook()
         return True
 

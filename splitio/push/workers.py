@@ -12,9 +12,8 @@ from splitio.models.splits import from_raw, Status
 from splitio.models.telemetry import UpdateFromSSE
 from splitio.push.parser import UpdateType
 from splitio.optional.loaders import asyncio
-
-
-_LOGGER = logging.getLogger(__name__)
+from splitio.util.storage_helper import update_feature_flag_storage, update_feature_flag_storage_async
+from splitio.util import log_helper
 
 class CompressionMode(Enum):
     """Compression modes """
@@ -22,12 +21,6 @@ class CompressionMode(Enum):
     NO_COMPRESSION = 0
     GZIP_COMPRESSION = 1
     ZLIB_COMPRESSION = 2
-
-_compression_handlers = {
-    CompressionMode.NO_COMPRESSION: lambda event: base64.b64decode(event.feature_flag_definition),
-    CompressionMode.GZIP_COMPRESSION: lambda event: gzip.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8'),
-    CompressionMode.ZLIB_COMPRESSION: lambda event: zlib.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8'),
-}
 
 class WorkerBase(object, metaclass=abc.ABCMeta):
     """Worker template."""
@@ -47,11 +40,12 @@ class WorkerBase(object, metaclass=abc.ABCMeta):
     def _get_feature_flag_definition(self, event):
         """return feature flag definition in event."""
         cm = CompressionMode(event.compression) # will throw if the number is not defined in compression mode
-        return _compression_handlers[cm](event)
+        return self._compression_handlers[cm](event)
 
 class SegmentWorker(WorkerBase):
     """Segment Worker for processing updates."""
 
+    _LOGGER = logging.getLogger(__name__)
     _centinel = object()
 
     def __init__(self, synchronize_segment, segment_queue):
@@ -81,36 +75,38 @@ class SegmentWorker(WorkerBase):
                 break
             if event == self._centinel:
                 continue
-            _LOGGER.debug('Processing segment_update: %s, change_number: %d',
+            self._LOGGER.debug('Processing segment_update: %s, change_number: %d',
                           event.segment_name, event.change_number)
             try:
                 self._handler(event.segment_name, event.change_number)
             except Exception:
-                _LOGGER.error('Exception raised in segment synchronization')
-                _LOGGER.debug('Exception information: ', exc_info=True)
+                self._LOGGER.error('Exception raised in segment synchronization')
+                self._LOGGER.debug('Exception information: ', exc_info=True)
 
     def start(self):
         """Start worker."""
         if self.is_running():
-            _LOGGER.debug('Worker is already running')
+            self._LOGGER.debug('Worker is already running')
             return
         self._running = True
 
-        _LOGGER.debug('Starting Segment Worker')
+        self._LOGGER.debug('Starting Segment Worker')
         self._worker = threading.Thread(target=self._run, name='PushSegmentWorker', daemon=True)
         self._worker.start()
 
     def stop(self):
         """Stop worker."""
-        _LOGGER.debug('Stopping Segment Worker')
+        self._LOGGER.debug('Stopping Segment Worker')
         if not self.is_running():
-            _LOGGER.debug('Worker is not running. Ignoring.')
+            self._LOGGER.debug('Worker is not running. Ignoring.')
             return
         self._running = False
         self._segment_queue.put(self._centinel)
 
 class SegmentWorkerAsync(WorkerBase):
     """Segment Worker for processing updates."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     _centinel = object()
 
@@ -140,29 +136,29 @@ class SegmentWorkerAsync(WorkerBase):
                 break
             if event == self._centinel:
                 continue
-            _LOGGER.debug('Processing segment_update: %s, change_number: %d',
+            self._LOGGER.debug('Processing segment_update: %s, change_number: %d',
                           event.segment_name, event.change_number)
             try:
                 await self._handler(event.segment_name, event.change_number)
             except Exception:
-                _LOGGER.error('Exception raised in segment synchronization')
-                _LOGGER.debug('Exception information: ', exc_info=True)
+                self._LOGGER.error('Exception raised in segment synchronization')
+                self._LOGGER.debug('Exception information: ', exc_info=True)
 
     def start(self):
         """Start worker."""
         if self.is_running():
-            _LOGGER.debug('Worker is already running')
+            self._LOGGER.debug('Worker is already running')
             return
         self._running = True
 
-        _LOGGER.debug('Starting Segment Worker')
+        self._LOGGER.debug('Starting Segment Worker')
         asyncio.get_running_loop().create_task(self._run())
 
     async def stop(self):
         """Stop worker."""
-        _LOGGER.debug('Stopping Segment Worker')
+        self._LOGGER.debug('Stopping Segment Worker')
         if not self.is_running():
-            _LOGGER.debug('Worker is not running. Ignoring.')
+            self._LOGGER.debug('Worker is not running. Ignoring.')
             return
         self._running = False
         await self._segment_queue.put(self._centinel)
@@ -170,6 +166,7 @@ class SegmentWorkerAsync(WorkerBase):
 class SplitWorker(WorkerBase):
     """Feature Flag Worker for processing updates."""
 
+    _LOGGER = logging.getLogger(__name__)
     _centinel = object()
 
     def __init__(self, synchronize_feature_flag, synchronize_segment, feature_flag_queue, feature_flag_storage, segment_storage, telemetry_runtime_producer):
@@ -196,6 +193,11 @@ class SplitWorker(WorkerBase):
         self._worker = None
         self._feature_flag_storage = feature_flag_storage
         self._segment_storage = segment_storage
+        self._compression_handlers = {
+            CompressionMode.NO_COMPRESSION: lambda event: base64.b64decode(event.feature_flag_definition),
+            CompressionMode.GZIP_COMPRESSION: lambda event: gzip.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8'),
+            CompressionMode.ZLIB_COMPRESSION: lambda event: zlib.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8'),
+        }
         self._telemetry_runtime_producer = telemetry_runtime_producer
 
     def is_running(self):
@@ -215,54 +217,54 @@ class SplitWorker(WorkerBase):
                 break
             if event == self._centinel:
                 continue
-            _LOGGER.debug('Processing feature flag update %d', event.change_number)
+            self._LOGGER.debug('Processing feature flag update %d', event.change_number)
             try:
                 if self._check_instant_ff_update(event):
                     try:
-                        new_split = from_raw(json.loads(self._get_feature_flag_definition(event)))
-                        if new_split.status == Status.ACTIVE:
-                            self._feature_flag_storage.put(new_split)
-                            _LOGGER.debug('Feature flag %s is updated', new_split.name)
-                            for segment_name in new_split.get_segment_names():
-                                if self._segment_storage.get(segment_name) is None:
-                                    _LOGGER.debug('Fetching new segment %s', segment_name)
-                                    self._segment_handler(segment_name, event.change_number)
-                        else:
-                            self._feature_flag_storage.remove(new_split.name)
-                        self._feature_flag_storage.set_change_number(event.change_number)
+                        new_feature_flag = from_raw(json.loads(self._get_feature_flag_definition(event)))
+                        segment_list = update_feature_flag_storage(self._feature_flag_storage, [new_feature_flag], event.change_number)
+                        for segment_name in segment_list:
+                            if self._segment_storage.get(segment_name) is None:
+                                self._LOGGER.debug('Fetching new segment %s', segment_name)
+                                self._segment_handler(segment_name, event.change_number)
+
                         self._telemetry_runtime_producer.record_update_from_sse(UpdateFromSSE.SPLIT_UPDATE)
                         continue
                     except Exception as e:
-                        _LOGGER.error('Exception raised in updating feature flag')
-                        _LOGGER.debug('Exception information: ', exc_info=True)
+                        self._LOGGER.error('Exception raised in updating feature flag')
+                        self._LOGGER.debug(str(e))
+                        self._LOGGER.debug('Exception information: ', exc_info=True)
                         pass
                 self._handler(event.change_number)
             except Exception as e:  # pylint: disable=broad-except
-                _LOGGER.error('Exception raised in feature flag synchronization')
-                _LOGGER.debug('Exception information: ', exc_info=True)
+                self._LOGGER.error('Exception raised in feature flag synchronization')
+                self._LOGGER.debug(str(e))
+                self._LOGGER.debug('Exception information: ', exc_info=True)
 
     def start(self):
         """Start worker."""
         if self.is_running():
-            _LOGGER.debug('Worker is already running')
+            self._LOGGER.debug('Worker is already running')
             return
         self._running = True
 
-        _LOGGER.debug('Starting Feature Flag Worker')
+        self._LOGGER.debug('Starting Feature Flag Worker')
         self._worker = threading.Thread(target=self._run, name='PushFeatureFlagWorker', daemon=True)
         self._worker.start()
 
     def stop(self):
         """Stop worker."""
-        _LOGGER.debug('Stopping Feature Flag Worker')
+        self._LOGGER.debug('Stopping Feature Flag Worker')
         if not self.is_running():
-            _LOGGER.debug('Worker is not running')
+            self._LOGGER.debug('Worker is not running')
             return
         self._running = False
         self._feature_flag_queue.put(self._centinel)
 
 class SplitWorkerAsync(WorkerBase):
     """Split Worker for processing updates."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     _centinel = object()
 
@@ -289,6 +291,11 @@ class SplitWorkerAsync(WorkerBase):
         self._running = False
         self._feature_flag_storage = feature_flag_storage
         self._segment_storage = segment_storage
+        self._compression_handlers = {
+            CompressionMode.NO_COMPRESSION: lambda event: base64.b64decode(event.feature_flag_definition),
+            CompressionMode.GZIP_COMPRESSION: lambda event: gzip.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8'),
+            CompressionMode.ZLIB_COMPRESSION: lambda event: zlib.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8'),
+        }
         self._telemetry_runtime_producer = telemetry_runtime_producer
 
     def is_running(self):
@@ -308,47 +315,45 @@ class SplitWorkerAsync(WorkerBase):
                 break
             if event == self._centinel:
                 continue
-            _LOGGER.debug('Processing split_update %d', event.change_number)
+            self._LOGGER.debug('Processing split_update %d', event.change_number)
             try:
                 if await self._check_instant_ff_update(event):
                     try:
-                        new_split = from_raw(json.loads(self._get_feature_flag_definition(event)))
-                        if new_split.status == Status.ACTIVE:
-                            await self._feature_flag_storage.put(new_split)
-                            _LOGGER.debug('Feature flag %s is updated', new_split.name)
-                            for segment_name in new_split.get_segment_names():
-                                if await self._segment_storage.get(segment_name) is None:
-                                    _LOGGER.debug('Fetching new segment %s', segment_name)
-                                    await self._segment_handler(segment_name, event.change_number)
-                        else:
-                            await self._feature_flag_storage.remove(new_split.name)
-                        await self._feature_flag_storage.set_change_number(event.change_number)
+                        new_feature_flag = from_raw(json.loads(self._get_feature_flag_definition(event)))
+                        segment_list = await update_feature_flag_storage_async(self._feature_flag_storage, [new_feature_flag], event.change_number)
+                        for segment_name in segment_list:
+                            if await self._segment_storage.get(segment_name) is None:
+                                self._LOGGER.debug('Fetching new segment %s', segment_name)
+                                await self._segment_handler(segment_name, event.change_number)
+
                         await self._telemetry_runtime_producer.record_update_from_sse(UpdateFromSSE.SPLIT_UPDATE)
                         continue
                     except Exception as e:
-                        _LOGGER.error('Exception raised in updating feature flag')
-                        _LOGGER.debug('Exception information: ', exc_info=True)
+                        self._LOGGER.error('Exception raised in updating feature flag')
+                        self._LOGGER.debug(str(e))
+                        self._LOGGER.debug('Exception information: ', exc_info=True)
                         pass
                 await self._handler(event.change_number)
             except Exception as e:  # pylint: disable=broad-except
-                _LOGGER.error('Exception raised in split synchronization')
-                _LOGGER.debug('Exception information: ', exc_info=True)
+                self._LOGGER.error('Exception raised in split synchronization')
+                self._LOGGER.debug(str(e))
+                self._LOGGER.debug('Exception information: ', exc_info=True)
 
     def start(self):
         """Start worker."""
         if self.is_running():
-            _LOGGER.debug('Worker is already running')
+            self._LOGGER.debug('Worker is already running')
             return
         self._running = True
 
-        _LOGGER.debug('Starting Split Worker')
+        self._LOGGER.debug('Starting Split Worker')
         asyncio.get_running_loop().create_task(self._run())
 
     async def stop(self):
         """Stop worker."""
-        _LOGGER.debug('Stopping Split Worker')
+        self._LOGGER.debug('Stopping Split Worker')
         if not self.is_running():
-            _LOGGER.debug('Worker is not running')
+            self._LOGGER.debug('Worker is not running')
             return
         self._running = False
         await self._feature_flag_queue.put(self._centinel)

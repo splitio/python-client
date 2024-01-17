@@ -6,10 +6,6 @@ from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException
 from splitio.models.telemetry import HTTPExceptionsAndLatencies
 
-
-_LOGGER = logging.getLogger(__name__)
-
-
 class EventsAPIBase(object):  # pylint: disable=too-few-public-methods
     """Base Class that uses an httpClient to communicate with the events API."""
 
@@ -39,6 +35,8 @@ class EventsAPIBase(object):  # pylint: disable=too-few-public-methods
 
 class EventsAPI(EventsAPIBase):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the events API."""
+
+    _LOGGER = logging.getLogger(__name__)
 
     def __init__(self, http_client, sdk_key, sdk_metadata, telemetry_runtime_producer):
         """
@@ -79,12 +77,14 @@ class EventsAPI(EventsAPIBase):  # pylint: disable=too-few-public-methods
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error('Error posting events because an exception was raised by the HTTPClient')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error posting events because an exception was raised by the HTTPClient')
+            self._LOGGER.debug('Error: ', exc_info=True)
             raise APIException('Events not flushed properly.') from exc
 
 class EventsAPIAsync(EventsAPIBase):  # pylint: disable=too-few-public-methods
     """Async Class that uses an httpClient to communicate with the events API."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, http_client, sdk_key, sdk_metadata, telemetry_runtime_producer):
         """
@@ -125,6 +125,6 @@ class EventsAPIAsync(EventsAPIBase):  # pylint: disable=too-few-public-methods
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error('Error posting events because an exception was raised by the HTTPClient')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error posting events because an exception was raised by the HTTPClient')
+            self._LOGGER.debug('Error: ', exc_info=True)
             raise APIException('Events not flushed properly.') from exc

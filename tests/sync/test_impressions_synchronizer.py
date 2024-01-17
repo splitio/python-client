@@ -28,6 +28,7 @@ class ImpressionsSynchronizerTests(object):
         api.flush_impressions.side_effect = run
 
         impression_synchronizer = ImpressionSynchronizer(api, storage, 5)
+        assert impression_synchronizer._LOGGER.name == 'splitio.sync.impression'
         impression_synchronizer.synchronize_impressions()
         assert impression_synchronizer._failed.qsize() == 2
 
@@ -87,6 +88,7 @@ class ImpressionsSynchronizerAsyncTests(object):
         api.flush_impressions = run
 
         impression_synchronizer = ImpressionSynchronizerAsync(api, storage, 5)
+        assert impression_synchronizer._LOGGER.name == 'asyncio'
         await impression_synchronizer.synchronize_impressions()
         assert impression_synchronizer._failed.qsize() == 2
 

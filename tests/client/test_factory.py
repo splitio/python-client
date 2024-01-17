@@ -6,9 +6,10 @@ import os
 import time
 import threading
 import pytest
+
 from splitio.optional.loaders import asyncio
 from splitio.client.factory import get_factory, get_factory_async, SplitFactory, _INSTANTIATED_FACTORIES, Status,\
-    _LOGGER as _logger, SplitFactoryAsync
+    SplitFactoryAsync
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.storage import redis, inmemmory, pluggable
 from splitio.tasks.util import asynctask
@@ -20,7 +21,7 @@ from splitio.sync.segment import SegmentSynchronizer, SegmentSynchronizerAsync
 from splitio.recorder.recorder import PipelinedRecorder, StandardRecorder, StandardRecorderAsync
 from splitio.storage.adapters.redis import RedisAdapter, RedisPipelineAdapter
 from tests.storage.test_pluggable import StorageMockAdapter, StorageMockAdapterAsync
-
+from splitio.util import log_helper
 
 class SplitFactoryTests(object):
     """Split factory test cases."""
@@ -379,7 +380,7 @@ class SplitFactoryTests(object):
         factory_module_logger = mocker.Mock()
         build_redis = mocker.Mock()
         build_redis.side_effect = _make_factory_with_apikey
-        mocker.patch('splitio.client.factory._LOGGER', new=factory_module_logger)
+        mocker.patch('splitio.client.factory.SplitFactory._LOGGER', new=factory_module_logger)
         mocker.patch('splitio.client.factory._build_redis_factory', new=build_redis)
 
         config = {
@@ -434,7 +435,7 @@ class SplitFactoryTests(object):
         mockManager = Manager(sdk_ready_flag, mocker.Mock(), mocker.Mock(), False, mocker.Mock(), mocker.Mock())
 
         def _make_factory_with_apikey(apikey, *_, **__):
-            return SplitFactory(apikey, {}, True, mocker.Mock(spec=ImpressionsManager), mockManager, mocker.Mock(), mocker.Mock(), mocker.Mock())
+            return SplitFactory(apikey, {}, True, mocker.Mock(spec=ImpressionsManager), mockManager, mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
 
         factory_module_logger = mocker.Mock()
         build_in_memory = mocker.Mock()
@@ -443,7 +444,7 @@ class SplitFactoryTests(object):
         build_redis.side_effect = _make_factory_with_apikey
         build_localhost = mocker.Mock()
         build_localhost.side_effect = _make_factory_with_apikey
-        mocker.patch('splitio.client.factory._LOGGER', new=factory_module_logger)
+        mocker.patch('logging.getLogger', return_value=factory_module_logger)
         mocker.patch('splitio.client.factory._build_in_memory_factory', new=build_in_memory)
         mocker.patch('splitio.client.factory._build_redis_factory', new=build_redis)
         mocker.patch('splitio.client.factory._build_localhost_factory', new=build_localhost)
@@ -457,7 +458,8 @@ class SplitFactoryTests(object):
         factory1._telemetry_submitter = TelemetrySubmitterMock()
 
         assert _INSTANTIATED_FACTORIES['some_api_key'] == 1
-        assert factory_module_logger.warning.mock_calls == []
+        # only the config warning
+        assert len(factory_module_logger.warning.mock_calls) == 1
 
         factory2 = get_factory('some_api_key')
         class TelemetrySubmitterMock():
@@ -466,13 +468,13 @@ class SplitFactoryTests(object):
         factory2._telemetry_submitter = TelemetrySubmitterMock()
 
         assert _INSTANTIATED_FACTORIES['some_api_key'] == 2
-        assert factory_module_logger.warning.mock_calls == [mocker.call(
+        assert  mocker.call(
             "factory instantiation: You already have %d %s with this SDK Key. "
             "We recommend keeping only one instance of the factory at all times "
             "(Singleton pattern) and reusing it throughout your application.",
             1,
             'factory'
-        )]
+        ) in factory_module_logger.warning.mock_calls
 
         factory_module_logger.reset_mock()
         factory3 = get_factory('some_api_key')
@@ -482,13 +484,13 @@ class SplitFactoryTests(object):
         factory3._telemetry_submitter = TelemetrySubmitterMock()
 
         assert _INSTANTIATED_FACTORIES['some_api_key'] == 3
-        assert factory_module_logger.warning.mock_calls == [mocker.call(
+        assert mocker.call(
             "factory instantiation: You already have %d %s with this SDK Key. "
             "We recommend keeping only one instance of the factory at all times "
             "(Singleton pattern) and reusing it throughout your application.",
             2,
             'factories'
-        )]
+        ) in factory_module_logger.warning.mock_calls
 
         factory_module_logger.reset_mock()
         factory4 = get_factory('some_other_api_key')
@@ -499,12 +501,12 @@ class SplitFactoryTests(object):
 
         assert _INSTANTIATED_FACTORIES['some_api_key'] == 3
         assert _INSTANTIATED_FACTORIES['some_other_api_key'] == 1
-        assert factory_module_logger.warning.mock_calls == [mocker.call(
+        assert  mocker.call(
             "factory instantiation: You already have an instance of the Split factory. "
             "Make sure you definitely want this additional instance. "
             "We recommend keeping only one instance of the factory at all times "
             "(Singleton pattern) and reusing it throughout your application."
-        )]
+        ) in factory_module_logger.warning.mock_calls
 
         event = threading.Event()
         factory1.destroy(event)
@@ -595,7 +597,7 @@ class SplitFactoryTests(object):
         except:
             pass
         _logger = mocker.Mock()
-        mocker.patch('splitio.client.factory._LOGGER', new=_logger)
+        mocker.patch('splitio.client.factory.SplitFactory._LOGGER', new=_logger)
         factory.resume()
         assert _logger.warning.mock_calls == expected_msg
         factory.destroy()
@@ -912,10 +914,8 @@ class SplitFactoryAsyncTests(object):
         async def _make_factory_with_apikey(apikey, *_, **__):
             return SplitFactoryAsync(apikey, {}, True, mocker.Mock(spec=ImpressionsManager), None, mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
 
-        factory_module_logger = mocker.Mock()
         build_redis = mocker.Mock()
         build_redis.side_effect = _make_factory_with_apikey
-        mocker.patch('splitio.client.factory._LOGGER', new=factory_module_logger)
         mocker.patch('splitio.client.factory._build_redis_factory_async', new=build_redis)
 
         config = {

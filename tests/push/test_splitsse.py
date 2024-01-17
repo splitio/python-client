@@ -41,6 +41,7 @@ class SSESplitClientTests(object):
 
         client = SplitSSEClient(handler, SdkMetadata('1.0', 'some', '1.2.3.4'), on_connect, on_disconnect,
                                 'abcd', base_url='http://localhost:' + str(server.port()))
+        assert client._LOGGER.name == 'splitio.push.splitsse'
 
         token = Token(True, 'some', {'chan1': ['subscribe'], 'chan2': ['subscribe', 'channel-metadata:publishers']},
                       1, 2)
@@ -136,6 +137,7 @@ class SSESplitClientAsyncTests(object):
 
         client = SplitSSEClientAsync(SdkMetadata('1.0', 'some', '1.2.3.4'),
                                 'abcd', base_url='http://localhost:' + str(server.port()))
+        assert client._LOGGER.name == 'asyncio'
 
         token = Token(True, 'some', {'chan1': ['subscribe'], 'chan2': ['subscribe', 'channel-metadata:publishers']},
                       1, 2)

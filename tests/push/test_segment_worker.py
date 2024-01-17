@@ -28,6 +28,7 @@ class SegmentWorkerTests(object):
             raise APIException('some')
 
         segment_worker = SegmentWorker(handler_sync, q)
+        assert segment_worker._LOGGER.name == 'splitio.push.workers'
         segment_worker.start()
         assert segment_worker.is_running()
 
@@ -70,6 +71,7 @@ class SegmentWorkerAsyncTests(object):
             raise APIException('some')
 
         segment_worker = SegmentWorkerAsync(handler_sync, q)
+        assert segment_worker._LOGGER.name == 'asyncio'
         segment_worker.start()
         assert segment_worker.is_running()
 

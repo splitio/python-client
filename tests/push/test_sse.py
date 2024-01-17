@@ -23,6 +23,7 @@ class SSEClientTests(object):
             events.append(event)
 
         client = SSEClient(callback)
+        assert client._LOGGER.name == 'splitio.push.sse'
 
         def runner():
             """SSE client runner thread."""
@@ -135,6 +136,7 @@ class SSEClientAsyncTests(object):
         server = SSEMockServer()
         server.start()
         client = SSEClientAsync()
+        assert client._LOGGER.name == 'asyncio'
         sse_events_loop = client.start(f"http://127.0.0.1:{str(server.port())}?token=abc123$%^&(")
 
         server.publish({'id': '1'})
@@ -226,4 +228,3 @@ class SSEClientAsyncTests(object):
 
         await client._done.wait() # to ensure `start()` has finished
         assert client._response is None
-

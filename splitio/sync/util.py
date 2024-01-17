@@ -1,7 +1,6 @@
 import hashlib
 import logging
-
-_LOGGER = logging.getLogger(__name__)
+from splitio.util import log_helper
 
 def _get_sha(fetched):
     """
@@ -37,6 +36,8 @@ def _sanitize_object_element(object, object_name, element_name, default_value, l
     :return: sanitized object
     :rtype: Dict
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
+
     if element_name not in object or object[element_name] is None:
             object[element_name] = default_value
             _LOGGER.debug("Sanitized element [%s] to '%s' in %s: %s.", element_name, default_value, object_name, object['name'])

@@ -61,6 +61,7 @@ class ImpressionsAPITests(object):
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impressions_api = impressions.ImpressionsAPI(httpclient, 'some_api_key', sdk_metadata, telemetry_runtime_producer)
+        assert impressions_api._LOGGER.name == 'splitio.api.impressions'
         response = impressions_api.flush_impressions(impressions_mock)
 
         call_made = httpclient.post.mock_calls[0]
@@ -162,6 +163,7 @@ class ImpressionsAPIAsyncTests(object):
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impressions_api = impressions.ImpressionsAPIAsync(httpclient, 'some_api_key', sdk_metadata, telemetry_runtime_producer)
+        assert impressions_api._LOGGER.name == 'asyncio'
 
         self.verb = None
         self.url = None

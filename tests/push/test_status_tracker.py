@@ -18,6 +18,7 @@ class StatusTrackerTests(object):
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         tracker = PushStatusTracker(telemetry_runtime_producer)
+        assert tracker._LOGGER.name == 'splitio.push.status_tracker'
         assert tracker._occupancy_ok()
         assert tracker._last_control_message == ControlType.STREAMING_ENABLED
         assert tracker._last_status_propagated == Status.PUSH_SUBSYSTEM_UP
@@ -207,6 +208,7 @@ class StatusTrackerAsyncTests(object):
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         tracker = PushStatusTrackerAsync(telemetry_runtime_producer)
+        assert tracker._LOGGER.name == 'asyncio'
         assert tracker._occupancy_ok()
         assert tracker._last_control_message == ControlType.STREAMING_ENABLED
         assert tracker._last_status_propagated == Status.PUSH_SUBSYSTEM_UP

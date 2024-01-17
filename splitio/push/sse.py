@@ -6,8 +6,7 @@ from http.client import HTTPConnection, HTTPSConnection
 from urllib.parse import urlparse
 
 from splitio.optional.loaders import asyncio, aiohttp
-
-_LOGGER = logging.getLogger(__name__)
+from splitio.util import log_helper
 
 SSE_EVENT_ERROR = 'error'
 SSE_EVENT_MESSAGE = 'message'
@@ -50,6 +49,8 @@ class EventBuilder(object):
 class SSEClient(object):
     """SSE Client implementation."""
 
+    _LOGGER = logging.getLogger(__name__)
+
     def __init__(self, callback):
         """
         Construct an SSE client.
@@ -76,18 +77,18 @@ class SSEClient(object):
                 if line is None or len(line) <= 0:  # connection ended
                     break
                 elif line.startswith(b':'):  # comment. Skip
-                    _LOGGER.debug("skipping sse comment")
+                    self._LOGGER.debug("skipping sse comment")
                     continue
                 elif line in _EVENT_SEPARATORS:
                     event = event_builder.build()
-                    _LOGGER.debug("dispatching event: %s", event)
+                    self._LOGGER.debug("dispatching event: %s", event)
                     self._event_callback(event)
                     event_builder = EventBuilder()
                 else:
                     event_builder.process_line(line)
         except Exception:  # pylint:disable=broad-except
-            _LOGGER.debug('sse connection ended.')
-            _LOGGER.debug('stack trace: ', exc_info=True)
+            self._LOGGER.debug('sse connection ended.')
+            self._LOGGER.debug('stack trace: ', exc_info=True)
         finally:
             self._conn.close()
             self._conn = None  # clear so it can be started again
@@ -125,11 +126,11 @@ class SSEClient(object):
     def shutdown(self):
         """Shutdown the current connection."""
         if self._conn is None or self._conn.sock is None:
-            _LOGGER.warning("no sse connection has been started on this SSEClient instance. Ignoring")
+            self._LOGGER.warning("no sse connection has been started on this SSEClient instance. Ignoring")
             return
 
         if self._shutdown_requested:
-            _LOGGER.warning("shutdown already requested")
+            self._LOGGER.warning("shutdown already requested")
             return
 
         self._shutdown_requested = True
@@ -138,6 +139,8 @@ class SSEClient(object):
 
 class SSEClientAsync(object):
     """SSE Client implementation."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, timeout=_DEFAULT_ASYNC_TIMEOUT):
         """
@@ -163,7 +166,7 @@ class SSEClientAsync(object):
         :returns: yield event when received
         :rtype: SSEEvent
         """
-        _LOGGER.debug("Async SSEClient Started")
+        self._LOGGER.debug("Async SSEClient Started")
         if self._response is not None:
             raise RuntimeError('Client already started.')
 
@@ -175,10 +178,10 @@ class SSEClientAsync(object):
                     event_builder = EventBuilder()
                     async for line in response.content:
                         if line.startswith(b':'):
-                            _LOGGER.debug("skipping emtpy line / comment")
+                            self._LOGGER.debug("skipping emtpy line / comment")
                             continue
                         elif line in _EVENT_SEPARATORS:
-                            _LOGGER.debug("dispatching event: %s", event_builder.build())
+                            self._LOGGER.debug("dispatching event: %s", event_builder.build())
                             yield event_builder.build()
                             event_builder = EventBuilder()
                         else:
@@ -186,11 +189,11 @@ class SSEClientAsync(object):
 
             except Exception as exc:  # pylint:disable=broad-except
                 if self._is_conn_closed_error(exc):
-                    _LOGGER.debug('sse connection ended.')
+                    self._LOGGER.debug('sse connection ended.')
                     return
 
-                _LOGGER.error('http client is throwing exceptions')
-                _LOGGER.error('stack trace: ', exc_info=True)
+                self._LOGGER.error('http client is throwing exceptions')
+                self._LOGGER.error('stack trace: ', exc_info=True)
 
             finally:
                 self._response = None

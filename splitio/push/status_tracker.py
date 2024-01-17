@@ -5,9 +5,7 @@ import logging
 from splitio.push.parser import ControlType
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.models.telemetry import StreamingEventTypes, SSEConnectionError, SSEStreamingStatus
-
-_LOGGER = logging.getLogger(__name__)
-
+from splitio.util import log_helper
 
 class Status(Enum):
     """Push subsystem statuses."""
@@ -113,6 +111,8 @@ class PushStatusTrackerBase(object):
 class PushStatusTracker(PushStatusTrackerBase):
     """Tracks status of notification manager/publishers."""
 
+    _LOGGER = logging.getLogger(__name__)
+
     def __init__(self, telemetry_runtime_producer):
         """Class constructor."""
         super().__init__(telemetry_runtime_producer)
@@ -131,12 +131,12 @@ class PushStatusTracker(PushStatusTrackerBase):
             return None
 
         if event.channel not in self._publishers:
-            _LOGGER.info("received occupancy message from an unknown channel `%s`. Ignoring",
+            self._LOGGER.info("received occupancy message from an unknown channel `%s`. Ignoring",
                          event.channel)
             return None
 
         if self._timestamps.occupancy > event.timestamp:
-            _LOGGER.info('received an old occupancy message. ignoring.')
+            self._LOGGER.info('received an old occupancy message. ignoring.')
             return None
         self._timestamps.occupancy = event.timestamp
 
@@ -160,7 +160,7 @@ class PushStatusTracker(PushStatusTrackerBase):
             return None
 
         if self._timestamps.control > event.timestamp:
-            _LOGGER.info('receved an old control message. ignoring.')
+            self._LOGGER.info('receved an old control message. ignoring.')
             return None
         self._timestamps.control = event.timestamp
 
@@ -180,9 +180,9 @@ class PushStatusTracker(PushStatusTrackerBase):
         if self._shutdown_expected:  # we don't care about an incoming error if a shutdown is expected
             return None
 
-        _LOGGER.debug('handling ably error event: %s', str(event))
+        self._LOGGER.debug('handling ably error event: %s', str(event))
         if event.should_be_ignored():
-            _LOGGER.debug('ignoring sse error message: %s', event)
+            self._LOGGER.debug('ignoring sse error message: %s', event)
             return None
 
         # Indicate that the connection will eventually end. 2 possibilities:
@@ -193,11 +193,11 @@ class PushStatusTracker(PushStatusTrackerBase):
         self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.ABLY_ERROR, event.code, event.timestamp))
 
         if event.is_retryable():
-            _LOGGER.info('received retryable error message. '
+            self._LOGGER.info('received retryable error message. '
                          'Restarting the whole flow with backoff.')
             return self._propagate_status(Status.PUSH_RETRYABLE_ERROR)
 
-        _LOGGER.info('received non-retryable sse error message. Disabling streaming.')
+        self._LOGGER.info('received non-retryable sse error message. Disabling streaming.')
         return self._propagate_status(Status.PUSH_NONRETRYABLE_ERROR)
 
     def _update_status(self):
@@ -235,6 +235,8 @@ class PushStatusTracker(PushStatusTrackerBase):
 class PushStatusTrackerAsync(PushStatusTrackerBase):
     """Tracks status of notification manager/publishers."""
 
+    _LOGGER = logging.getLogger('asyncio')
+
     def __init__(self, telemetry_runtime_producer):
         """Class constructor."""
         super().__init__(telemetry_runtime_producer)
@@ -253,12 +255,12 @@ class PushStatusTrackerAsync(PushStatusTrackerBase):
             return None
 
         if event.channel not in self._publishers:
-            _LOGGER.info("received occupancy message from an unknown channel `%s`. Ignoring",
+            self._LOGGER.info("received occupancy message from an unknown channel `%s`. Ignoring",
                          event.channel)
             return None
 
         if self._timestamps.occupancy > event.timestamp:
-            _LOGGER.info('received an old occupancy message. ignoring.')
+            self._LOGGER.info('received an old occupancy message. ignoring.')
             return None
         self._timestamps.occupancy = event.timestamp
 
@@ -282,7 +284,7 @@ class PushStatusTrackerAsync(PushStatusTrackerBase):
             return None
 
         if self._timestamps.control > event.timestamp:
-            _LOGGER.info('receved an old control message. ignoring.')
+            self._LOGGER.info('receved an old control message. ignoring.')
             return None
         self._timestamps.control = event.timestamp
 
@@ -302,9 +304,9 @@ class PushStatusTrackerAsync(PushStatusTrackerBase):
         if self._shutdown_expected:  # we don't care about an incoming error if a shutdown is expected
             return None
 
-        _LOGGER.debug('handling ably error event: %s', str(event))
+        self._LOGGER.debug('handling ably error event: %s', str(event))
         if event.should_be_ignored():
-            _LOGGER.debug('ignoring sse error message: %s', event)
+            self._LOGGER.debug('ignoring sse error message: %s', event)
             return None
 
         # Indicate that the connection will eventually end. 2 possibilities:
@@ -315,11 +317,11 @@ class PushStatusTrackerAsync(PushStatusTrackerBase):
         await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.ABLY_ERROR, event.code, event.timestamp))
 
         if event.is_retryable():
-            _LOGGER.info('received retryable error message. '
+            self._LOGGER.info('received retryable error message. '
                          'Restarting the whole flow with backoff.')
             return self._propagate_status(Status.PUSH_RETRYABLE_ERROR)
 
-        _LOGGER.info('received non-retryable sse error message. Disabling streaming.')
+        self._LOGGER.info('received non-retryable sse error message. Disabling streaming.')
         return self._propagate_status(Status.PUSH_NONRETRYABLE_ERROR)
 
     async def _update_status(self):

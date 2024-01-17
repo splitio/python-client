@@ -14,9 +14,7 @@ class EvaluatorTests(object):
     def _build_evaluator_with_mocks(self, mocker):
         """Build an evaluator with mocked dependencies."""
         splitter_mock = mocker.Mock(spec=splitters.Splitter)
-        logger_mock = mocker.Mock(spec=logging.Logger)
         e = evaluator.Evaluator(splitter_mock)
-        evaluator._LOGGER = logger_mock
         return e
 
     def test_evaluate_treatment_killed_split(self, mocker):

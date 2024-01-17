@@ -15,8 +15,6 @@ from splitio.models.telemetry import StreamingEventTypes
 
 _TOKEN_REFRESH_GRACE_PERIOD = 10 * 60  # 10 minutes
 
-_LOGGER = logging.getLogger(__name__)
-
 class PushManagerBase(object, metaclass=abc.ABCMeta):
     """Worker template."""
 
@@ -38,6 +36,8 @@ class PushManagerBase(object, metaclass=abc.ABCMeta):
 
 class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attributes
     """Push notifications susbsytem manager."""
+
+    _LOGGER = logging.getLogger(__name__)
 
     def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None):
         """
@@ -99,7 +99,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
     def start(self):
         """Start a new connection if not already running."""
         if self._running:
-            _LOGGER.warning('Push manager already has a connection running. Ignoring')
+            self._LOGGER.warning('Push manager already has a connection running. Ignoring')
             return
 
         self._trigger_connection_flow()
@@ -112,7 +112,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         :type blocking: bool
         """
         if not self._running:
-            _LOGGER.warning('Push manager does not have an open SSE connection. Ignoring')
+            self._LOGGER.warning('Push manager does not have an open SSE connection. Ignoring')
             return
 
         self._running = False
@@ -131,27 +131,27 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         try:
             parsed = parse_incoming_event(event)
         except EventParsingException:
-            _LOGGER.error('error parsing event of type %s', event.event_type)
-            _LOGGER.debug(str(event), exc_info=True)
+            self._LOGGER.error('error parsing event of type %s', event.event_type)
+            self._LOGGER.debug(str(event), exc_info=True)
             return
 
         try:
             handle = self._event_handlers[parsed.event_type]
         except KeyError:
-            _LOGGER.error('no handler for message of type %s', parsed.event_type)
-            _LOGGER.debug(str(event), exc_info=True)
+            self._LOGGER.error('no handler for message of type %s', parsed.event_type)
+            self._LOGGER.debug(str(event), exc_info=True)
             return
 
         try:
             handle(parsed)
         except Exception:  # pylint:disable=broad-except
-            _LOGGER.error('something went wrong when processing message of type %s',
+            self._LOGGER.error('something went wrong when processing message of type %s',
                           parsed.event_type)
-            _LOGGER.debug(str(parsed), exc_info=True)
+            self._LOGGER.debug(str(parsed), exc_info=True)
 
     def _token_refresh(self):
         """Refresh auth token."""
-        _LOGGER.info("retriggering authentication flow.")
+        self._LOGGER.info("retriggering authentication flow.")
         self.stop(True)
         self._trigger_connection_flow()
 
@@ -160,8 +160,8 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         try:
             token = self._auth_api.authenticate()
         except APIException:
-            _LOGGER.error('error performing sse auth request.')
-            _LOGGER.debug('stack trace: ', exc_info=True)
+            self._LOGGER.error('error performing sse auth request.')
+            self._LOGGER.debug('stack trace: ', exc_info=True)
             self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
             return
 
@@ -169,10 +169,10 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
             self._feedback_loop.put(Status.PUSH_NONRETRYABLE_ERROR)
             return
         self._telemetry_runtime_producer.record_token_refreshes()
-        _LOGGER.debug("auth token fetched. connecting to streaming.")
+        self._LOGGER.debug("auth token fetched. connecting to streaming.")
         self._status_tracker.reset()
         if self._sse_client.start(token):
-            _LOGGER.debug("connected to streaming, scheduling next refresh")
+            self._LOGGER.debug("connected to streaming, scheduling next refresh")
             self._setup_next_token_refresh(token)
             self._running = True
             self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.CONNECTION_ESTABLISHED, 0,  get_current_epoch_time_ms()))
@@ -201,8 +201,8 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         try:
             handle = self._message_handlers[event.message_type]
         except KeyError:
-            _LOGGER.error('no handler for message of type %s', event.message_type)
-            _LOGGER.debug(str(event), exc_info=True)
+            self._LOGGER.error('no handler for message of type %s', event.message_type)
+            self._LOGGER.debug(str(event), exc_info=True)
             return
 
         handle(event)
@@ -214,7 +214,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         :param event: Incoming Update message
         :type event: splitio.push.sse.parser.Update
         """
-        _LOGGER.debug('handling update event: %s', str(event))
+        self._LOGGER.debug('handling update event: %s', str(event))
         self._processor.handle(event)
 
     def _handle_control(self, event):
@@ -224,7 +224,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         :param event: Incoming control message.
         :type event: splitio.push.sse.parser.ControlMessage
         """
-        _LOGGER.debug('handling control event: %s', str(event))
+        self._LOGGER.debug('handling control event: %s', str(event))
         feedback = self._status_tracker.handle_control_message(event)
         if feedback is not None:
             self._feedback_loop.put(feedback)
@@ -236,7 +236,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         :param event: Incoming occupancy message.
         :type event: splitio.push.sse.parser.Occupancy
         """
-        _LOGGER.debug('handling occupancy event: %s', str(event))
+        self._LOGGER.debug('handling occupancy event: %s', str(event))
         feedback = self._status_tracker.handle_occupancy(event)
         if feedback is not None:
             self._feedback_loop.put(feedback)
@@ -248,7 +248,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         :param event: Incoming ably error
         :type event: splitio.push.sse.parser.AblyError
         """
-        _LOGGER.debug('handling ably error event: %s', str(event))
+        self._LOGGER.debug('handling ably error event: %s', str(event))
         feedback = self._status_tracker.handle_ably_error(event)
         if feedback is not None:
             self._feedback_loop.put(feedback)
@@ -256,7 +256,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
     def _handle_connection_ready(self):
         """Handle a successful connection to SSE."""
         self._feedback_loop.put(Status.PUSH_SUBSYSTEM_UP)
-        _LOGGER.info('sse initial event received. enabling')
+        self._LOGGER.info('sse initial event received. enabling')
 
     def _handle_connection_end(self):
         """
@@ -271,6 +271,8 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
 
 class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-attributes
     """Push notifications susbsytem manager."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None):
         """
@@ -331,7 +333,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
     def start(self):
         """Start a new connection if not already running."""
         if self._running:
-            _LOGGER.warning('Push manager already has a connection running. Ignoring')
+            self._LOGGER.warning('Push manager already has a connection running. Ignoring')
             return
 
         self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
@@ -344,7 +346,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         :type blocking: bool
         """
         if not self._running:
-            _LOGGER.warning('Push manager does not have an open SSE connection. Ignoring')
+            self._LOGGER.warning('Push manager does not have an open SSE connection. Ignoring')
             return
 
         if self._token_task:
@@ -365,16 +367,16 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             parsed = parse_incoming_event(event)
             handle = self._event_handlers[parsed.event_type]
         except Exception:
-            _LOGGER.error('Parsing exception or no handler for message of type %s', parsed.event_type if parsed else 'unknown')
-            _LOGGER.debug(str(event), exc_info=True)
+            self._LOGGER.error('Parsing exception or no handler for message of type %s', parsed.event_type if parsed else 'unknown')
+            self._LOGGER.debug(str(event), exc_info=True)
             return
 
         try:
             await handle(parsed)
         except Exception:  # pylint:disable=broad-except
-            _LOGGER.error('something went wrong when processing message of type %s',
+            self._LOGGER.error('something went wrong when processing message of type %s',
                           parsed.event_type)
-            _LOGGER.debug(str(parsed), exc_info=True)
+            self._LOGGER.debug(str(parsed), exc_info=True)
 
     async def _token_refresh(self, current_token):
         """Refresh auth token.
@@ -391,8 +393,8 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         try:
             token = await self._auth_api.authenticate()
         except APIException:
-            _LOGGER.error('error performing sse auth request.')
-            _LOGGER.debug('stack trace: ', exc_info=True)
+            self._LOGGER.error('error performing sse auth request.')
+            self._LOGGER.debug('stack trace: ', exc_info=True)
             await self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
             raise
 
@@ -402,7 +404,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
 
         await self._telemetry_runtime_producer.record_token_refreshes()
         await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.TOKEN_REFRESH, 1000 * token.exp,  get_current_epoch_time_ms()))
-        _LOGGER.debug("auth token fetched. connecting to streaming.")
+        self._LOGGER.debug("auth token fetched. connecting to streaming.")
         return token
 
     async def _trigger_connection_flow(self):
@@ -413,8 +415,8 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             try:
                 token = await self._get_auth_token()
             except Exception as e:
-                _LOGGER.error("error getting auth token: " + str(e))
-                _LOGGER.debug("trace: ", exc_info=True)
+                self._LOGGER.error("error getting auth token: " + str(e))
+                self._LOGGER.debug("trace: ", exc_info=True)
                 return
 
             events_source = self._sse_client.start(token)
@@ -430,7 +432,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             if first_event.data is not None:
                 await self._event_handler(first_event)
 
-            _LOGGER.debug("connected to streaming, scheduling next refresh")
+            self._LOGGER.debug("connected to streaming, scheduling next refresh")
             self._token_task = asyncio.get_running_loop().create_task(self._token_refresh(token))
             await self._handle_connection_ready()
             await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.CONNECTION_ESTABLISHED, 0,  get_current_epoch_time_ms()))
@@ -454,8 +456,8 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         try:
             handle = self._message_handlers[event.message_type]
         except KeyError:
-            _LOGGER.error('no handler for message of type %s', event.message_type)
-            _LOGGER.debug(str(event), exc_info=True)
+            self._LOGGER.error('no handler for message of type %s', event.message_type)
+            self._LOGGER.debug(str(event), exc_info=True)
             return
 
         await handle(event)
@@ -467,7 +469,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         :param event: Incoming Update message
         :type event: splitio.push.sse.parser.Update
         """
-        _LOGGER.debug('handling update event: %s', str(event))
+        self._LOGGER.debug('handling update event: %s', str(event))
         await self._processor.handle(event)
 
     async def _handle_control(self, event):
@@ -477,7 +479,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         :param event: Incoming control message.
         :type event: splitio.push.sse.parser.ControlMessage
         """
-        _LOGGER.debug('handling control event: %s', str(event))
+        self._LOGGER.debug('handling control event: %s', str(event))
         feedback = await self._status_tracker.handle_control_message(event)
         if feedback is not None:
             await self._feedback_loop.put(feedback)
@@ -489,7 +491,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         :param event: Incoming occupancy message.
         :type event: splitio.push.sse.parser.Occupancy
         """
-        _LOGGER.debug('handling occupancy event: %s', str(event))
+        self._LOGGER.debug('handling occupancy event: %s', str(event))
         feedback = await self._status_tracker.handle_occupancy(event)
         if feedback is not None:
             await self._feedback_loop.put(feedback)
@@ -501,7 +503,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         :param event: Incoming ably error
         :type event: splitio.push.sse.parser.AblyError
         """
-        _LOGGER.debug('handling ably error event: %s', str(event))
+        self._LOGGER.debug('handling ably error event: %s', str(event))
         feedback = await self._status_tracker.handle_ably_error(event)
         if feedback is not None:
             await self._feedback_loop.put(feedback)
@@ -509,7 +511,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
     async def _handle_connection_ready(self):
         """Handle a successful connection to SSE."""
         await self._feedback_loop.put(Status.PUSH_SUBSYSTEM_UP)
-        _LOGGER.info('sse initial event received. enabling')
+        self._LOGGER.info('sse initial event received. enabling')
 
     async def _handle_connection_end(self):
         """
@@ -523,10 +525,10 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
 
     async def _stop_current_conn(self):
         """Abort current streaming connection and stop it's associated workers."""
-        _LOGGER.debug("Aborting SplitSSE tasks.")
+        self._LOGGER.debug("Aborting SplitSSE tasks.")
         await self._processor.update_workers_status(False)
         self._status_tracker.notify_sse_shutdown_expected()
         await self._sse_client.stop()
         self._running_task.cancel()
         await self._running_task
-        _LOGGER.debug("SplitSSE tasks are stopped")
+        self._LOGGER.debug("SplitSSE tasks are stopped")

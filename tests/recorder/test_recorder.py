@@ -43,6 +43,8 @@ class StandardRecorderTests(object):
         unique_keys_tracker = mocker.Mock(spec=UniqueKeysTracker())
         recorder = StandardRecorder(impmanager, event, impression, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer(),
                                     listener=listener, unique_keys_tracker=unique_keys_tracker, imp_counter=imp_counter)
+        assert recorder._LOGGER.name == 'splitio.recorder.recorder'
+
         recorder.record_treatment_stats(impressions, 1, MethodExceptionsAndLatencies.TREATMENT, 'get_treatment')
 
         assert recorder._impression_storage.put.mock_calls[0][1][0] == impressions
@@ -152,6 +154,7 @@ class StandardRecorderAsyncTests(object):
         unique_keys_tracker = mocker.Mock(spec=UniqueKeysTrackerAsync())
         recorder = StandardRecorderAsync(impmanager, event, impression, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer(),
                                     listener=listener, unique_keys_tracker=unique_keys_tracker, imp_counter=imp_counter)
+        assert recorder._LOGGER.name == 'asyncio'
         self.impressions = []
         async def put(x):
             self.impressions = x

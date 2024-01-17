@@ -32,6 +32,7 @@ class EventsSyncTests(object):
         api.flush_events.return_value = HttpResponse(200, '', {})
         event_synchronizer = EventSynchronizer(api, storage, 5)
         task = events_sync.EventsSyncTask(event_synchronizer.synchronize_events, 1)
+        assert task._LOGGER.name == 'splitio.tasks.events_sync'
         task.start()
         time.sleep(2)
         assert task.is_running()
@@ -76,6 +77,7 @@ class EventsSyncAsyncTests(object):
 
         event_synchronizer = EventSynchronizerAsync(api, storage, 5)
         task = events_sync.EventsSyncTaskAsync(event_synchronizer.synchronize_events, 1)
+        assert task._LOGGER.name == 'asyncio'
         task.start()
         await asyncio.sleep(2)
 

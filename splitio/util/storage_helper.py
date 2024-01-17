@@ -2,8 +2,9 @@
 import logging
 
 from splitio.models import splits
+from splitio.util import log_helper
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
 
 def update_feature_flag_storage(feature_flag_storage, feature_flags, change_number):
     """

@@ -9,9 +9,8 @@ from splitio.api import APIException
 from splitio.api.commons import FetchOptions
 from splitio.client.key import Key
 from splitio.engine.evaluator import CONTROL
+from splitio.util import log_helper
 
-
-_LOGGER = logging.getLogger(__name__)
 MAX_LENGTH = 250
 EVENT_TYPE_PATTERN = r'^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$'
 MAX_PROPERTIES_LENGTH_BYTES = 32768
@@ -31,6 +30,7 @@ def _check_not_null(value, name, operation):
     :return: The result of validation
     :rtype: True|False
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     if value is None:
         _LOGGER.error('%s: you passed a null %s, %s must be a non-empty string.',
                       operation, name, name)
@@ -51,6 +51,7 @@ def _check_is_string(value, name, operation):
     :return: The result of validation
     :rtype: True|False
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     if isinstance(value, str) is False:
         _LOGGER.error(
             '%s: you passed an invalid %s, %s must be a non-empty string.',
@@ -73,6 +74,7 @@ def _check_string_not_empty(value, name, operation):
     :return: The result of validation
     :rtype: True|False
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     if value.strip() == "":
         _LOGGER.error('%s: you passed an empty %s, %s must be a non-empty string.',
                       operation, name, name)
@@ -93,6 +95,7 @@ def _check_string_matches(value, operation, pattern, name, length):
     :return: The result of validation
     :rtype: True|False
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     if re.search(pattern, value) is None or re.search(pattern, value).group() != value:
         _LOGGER.error(
             '%s: you passed %s, %s must ' +
@@ -119,6 +122,7 @@ def _check_can_convert(value, name, operation):
     :return: The result of validation
     :rtype: None|string
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     if isinstance(value, str):
         return value
     else:
@@ -146,6 +150,7 @@ def _check_valid_length(value, name, operation):
     :return: The result of validation
     :rtype: True|False
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     if len(value) > MAX_LENGTH:
         _LOGGER.error('%s: %s too long - must be %s characters or less.',
                       operation, name, MAX_LENGTH)
@@ -188,12 +193,14 @@ def _remove_empty_spaces(value, name, operation):
     :return: The result of trimming
     :rtype: str
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     strip_value = value.strip()
     if value != strip_value:
         _LOGGER.warning("%s: %s '%s' has extra whitespace, trimming.", operation, name, value)
     return strip_value
 
 def _convert_str_to_lower(value, name, operation):
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     lower_value = value.lower()
     if value != lower_value:
         _LOGGER.warning("%s: %s '%s' should be all lowercase - converting string to lowercase", operation, name, value)
@@ -295,6 +302,7 @@ def validate_traffic_type(traffic_type, should_validate_existance, feature_flag_
     :return: traffic_type
     :rtype: str|None
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     if not _validate_traffic_type_value(traffic_type):
         return None
     traffic_type = _convert_str_to_lower(traffic_type, 'traffic type', 'track')
@@ -323,6 +331,7 @@ async def validate_traffic_type_async(traffic_type, should_validate_existance, f
     :return: traffic_type
     :rtype: str|None
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     if not _validate_traffic_type_value(traffic_type):
         return None
     traffic_type = _convert_str_to_lower(traffic_type, 'traffic type', 'track')
@@ -364,6 +373,7 @@ def validate_value(value):
     :return: value
     :rtype: number|None
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     if value is None:
         return None
     if (not isinstance(value, Number)) or isinstance(value, bool):
@@ -380,6 +390,7 @@ def validate_manager_feature_flag_name(feature_flag_name, should_validate_exista
     :return: feature_flag_name
     :rtype: str|None
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     if not _validate_feature_flag_name(feature_flag_name, 'split'):
         return None
 
@@ -403,6 +414,7 @@ async def validate_manager_feature_flag_name_async(feature_flag_name, should_val
     :return: feature_flag_name
     :rtype: str|None
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     if not _validate_feature_flag_name(feature_flag_name, 'split'):
         return None
 
@@ -424,6 +436,7 @@ def validate_feature_flag_names(feature_flags, method_name):
     :param feature_flag_name: feature flag name to be checked
     :type feature_flag_name: str
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     for feature_flag in  feature_flags.keys():
         if feature_flags[feature_flag] is None:
             _LOGGER.warning(
@@ -433,6 +446,7 @@ def validate_feature_flag_names(feature_flags, method_name):
             )
 
 def _check_feature_flag_instance(feature_flags, method_name):
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     if feature_flags is None or not isinstance(feature_flags, list):
         _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
         return False
@@ -463,6 +477,7 @@ def validate_feature_flags_get_treatments(  # pylint: disable=invalid-name
     :return: filtered_feature_flags
     :rtype: tuple
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     if not _check_feature_flag_instance(feature_flag_names, method_name):
         return None
 
@@ -507,6 +522,7 @@ def validate_attributes(attributes, method_name):
     :return: bool
     :rtype: True|False
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     if attributes is None:
         return True
     if not isinstance(attributes, dict):
@@ -548,6 +564,7 @@ def valid_properties(properties):
     :return: tuple
     :rtype: (bool,dict,int)
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     size = 1024  # We assume 1kb events without properties (750 bytes avg measured)
 
     if properties is None:
@@ -600,6 +617,7 @@ def validate_pluggable_adapter(config):
     :return: True if no issue found otherwise False
     :rtype: bool
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     if config.get('storageType') != 'pluggable':
         return True
 
@@ -646,6 +664,7 @@ def validate_flag_sets(flag_sets, method_name):
     :returns: Sanitized and sorted flag sets
     :rtype: list[str]
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     if not isinstance(flag_sets, list):
         _LOGGER.warning("%s: flag sets parameter type should be list object, parameter is discarded", method_name)
         return []

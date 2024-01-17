@@ -1,9 +1,7 @@
 """Telemetry engine classes."""
 import json
 import os
-
 import logging
-_LOGGER = logging.getLogger(__name__)
 
 from  splitio.storage.inmemmory import InMemoryTelemetryStorage
 from splitio.models.telemetry import CounterConstants, UpdateFromSSE
@@ -52,7 +50,7 @@ class TelemetryInitProducerBase(object):
             import uwsgi
             return "uwsgi", str(uwsgi.worker_id())
         except ModuleNotFoundError:
-            _LOGGER.debug("NO uwsgi")
+            self._LOGGER.debug("NO uwsgi")
             pass
 
         if 'gunicorn' in os.environ.get("SERVER_SOFTWARE", ""):
@@ -63,6 +61,8 @@ class TelemetryInitProducerBase(object):
 
 class TelemetryInitProducer(TelemetryInitProducerBase):
     """Telemetry init producer class."""
+
+    _LOGGER = logging.getLogger(__name__)
 
     def __init__(self, telemetry_storage):
         """Constructor."""
@@ -107,6 +107,8 @@ class TelemetryInitProducer(TelemetryInitProducerBase):
 
 class TelemetryInitProducerAsync(TelemetryInitProducerBase):
     """Telemetry init producer async class."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, telemetry_storage):
         """Constructor."""

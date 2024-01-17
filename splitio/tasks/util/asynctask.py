@@ -3,11 +3,12 @@ import threading
 import logging
 import queue
 from splitio.optional.loaders import asyncio
+from splitio.util import log_helper
+
+_LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
 
 __TASK_STOP__ = 0
 __TASK_FORCE_RUN__ = 1
-
-_LOGGER = logging.getLogger(__name__)
 
 def _safe_run(func):
     """
@@ -113,7 +114,7 @@ class AsyncTask(object):  # pylint: disable=too-many-instance-attributes
                         _LOGGER.debug("Force execution signal received. Running now")
                         if not _safe_run(self._main):
                             _LOGGER.error("An error occurred when executing the task. "
-                                          "Retrying after perio expires")
+                                          "Retrying after period expires")
                         continue
                 except queue.Empty:
                     # If no message was received, the timeout has expired
@@ -123,7 +124,7 @@ class AsyncTask(object):  # pylint: disable=too-many-instance-attributes
                 if not _safe_run(self._main):
                     _LOGGER.error(
                         "An error occurred when executing the task. "
-                        "Retrying after perio expires"
+                        "Retrying after period expires"
                     )
         finally:
             self._cleanup()
@@ -252,7 +253,7 @@ class AsyncTaskAsync(object):  # pylint: disable=too-many-instance-attributes
                         _LOGGER.debug("Force execution signal received. Running now")
                         if not await _safe_run_async(self._main):
                             _LOGGER.error("An error occurred when executing the task. "
-                                          "Retrying after perio expires")
+                                          "Retrying after period expires")
                         continue
                 except asyncio.QueueEmpty:
                     # If no message was received, the timeout has expired

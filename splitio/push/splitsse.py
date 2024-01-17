@@ -9,8 +9,6 @@ from splitio.util.threadutil import EventGroup
 from splitio.api import headers_from_metadata
 from splitio.optional.loaders import anext, asyncio
 
-_LOGGER = logging.getLogger(__name__)
-
 class SplitSSEClientBase(object, metaclass=abc.ABCMeta):
     """Split streaming endpoint SSE base client."""
 
@@ -65,6 +63,8 @@ class SplitSSEClientBase(object, metaclass=abc.ABCMeta):
 
 class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-attributes
     """Split streaming endpoint SSE client."""
+
+    _LOGGER = logging.getLogger(__name__)
 
     def __init__(self, event_callback, sdk_metadata, first_event_callback=None,
                  connection_closed_callback=None, client_key=None,
@@ -155,7 +155,7 @@ class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-a
     def stop(self, blocking=False, timeout=None):
         """Abort the ongoing connection."""
         if self._status == SplitSSEClient._Status.IDLE:
-            _LOGGER.warning('sse already closed. ignoring')
+            self._LOGGER.warning('sse already closed. ignoring')
             return
 
         self._client.shutdown()
@@ -164,6 +164,8 @@ class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-a
 
 class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-instance-attributes
     """Split streaming endpoint SSE client."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, sdk_metadata, client_key=None, base_url='https://streaming.split.io'):
         """
@@ -195,7 +197,6 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         :returns: yield events received from SSEClientAsync object
         :rtype: SSEEvent
         """
-        _LOGGER.debug(self.status)
         if self.status != SplitSSEClient._Status.IDLE:
             raise Exception('SseClient already started.')
 
@@ -210,23 +211,23 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
 
             yield first_event
             self.status = SplitSSEClient._Status.CONNECTED
-            _LOGGER.debug("Split SSE client started")
+            self._LOGGER.debug("Split SSE client started")
             async for event in self._event_source:
                 if event.data is not None:
                     yield event
         except Exception:  # pylint:disable=broad-except
-            _LOGGER.error('SplitSSE Client Exception')
-            _LOGGER.debug('stack trace: ', exc_info=True)
+            self._LOGGER.error('SplitSSE Client Exception')
+            self._LOGGER.debug('stack trace: ', exc_info=True)
         finally:
             self.status = SplitSSEClient._Status.IDLE
-            _LOGGER.debug('sse connection ended.')
+            self._LOGGER.debug('sse connection ended.')
             self._event_source_ended.set()
 
     async def stop(self):
         """Abort the ongoing connection."""
-        _LOGGER.debug("stopping SplitSSE Client")
+        self._LOGGER.debug("stopping SplitSSE Client")
         if self.status == SplitSSEClient._Status.IDLE:
-            _LOGGER.warning('sse already closed. ignoring')
+            self._LOGGER.warning('sse already closed. ignoring')
             return
 
         await self._client.shutdown()

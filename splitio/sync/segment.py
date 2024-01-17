@@ -11,8 +11,7 @@ from splitio.util.backoff import Backoff
 from splitio.optional.loaders import asyncio, aiofiles
 from splitio.sync import util
 from splitio.optional.loaders import asyncio
-
-_LOGGER = logging.getLogger(__name__)
+from splitio.util import log_helper
 
 
 _ON_DEMAND_FETCH_BACKOFF_BASE = 10  # backoff base starting at 10 seconds
@@ -22,6 +21,9 @@ _MAX_WORKERS = 10
 
 
 class SegmentSynchronizer(object):
+
+    _LOGGER = logging.getLogger(__name__)
+
     def __init__(self, segment_api, feature_flag_storage, segment_storage):
         """
         Class constructor.
@@ -88,8 +90,8 @@ class SegmentSynchronizer(object):
                 segment_changes = self._api.fetch_segment(segment_name, change_number,
                                                           fetch_options)
             except APIException as exc:
-                _LOGGER.error('Exception raised while fetching segment %s', segment_name)
-                _LOGGER.debug('Exception information: ', exc_info=True)
+                self._LOGGER.error('Exception raised while fetching segment %s', segment_name)
+                self._LOGGER.debug('Exception information: ', exc_info=True)
                 raise exc
 
             if change_number == -1:  # first time fetching the segment
@@ -151,16 +153,16 @@ class SegmentSynchronizer(object):
         successful_sync, remaining_attempts, change_number = self._attempt_segment_sync(segment_name, fetch_options, till)
         attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if successful_sync:  # succedeed sync
-            _LOGGER.debug('Refresh completed in %d attempts.', attempts)
+            self._LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return True
         with_cdn_bypass = FetchOptions(True, change_number)  # Set flag for bypassing CDN
         without_cdn_successful_sync, remaining_attempts, change_number = self._attempt_segment_sync(segment_name, with_cdn_bypass, till)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if without_cdn_successful_sync:
-            _LOGGER.debug('Refresh completed bypassing the CDN in %d attempts.',
+            self._LOGGER.debug('Refresh completed bypassing the CDN in %d attempts.',
                           without_cdn_attempts)
             return True
-        _LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
+        self._LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
                         without_cdn_attempts)
         return False
 
@@ -200,6 +202,9 @@ class SegmentSynchronizer(object):
 
 
 class SegmentSynchronizerAsync(object):
+
+    _LOGGER = logging.getLogger('asyncio')
+
     def __init__(self, segment_api, feature_flag_storage, segment_storage):
         """
         Class constructor.
@@ -266,8 +271,8 @@ class SegmentSynchronizerAsync(object):
                 segment_changes = await self._api.fetch_segment(segment_name, change_number,
                                                           fetch_options)
             except APIException as exc:
-                _LOGGER.error('Exception raised while fetching segment %s', segment_name)
-                _LOGGER.debug('Exception information: ', exc_info=True)
+                self._LOGGER.error('Exception raised while fetching segment %s', segment_name)
+                self._LOGGER.debug('Exception information: ', exc_info=True)
                 raise exc
 
             if change_number == -1:  # first time fetching the segment
@@ -329,16 +334,16 @@ class SegmentSynchronizerAsync(object):
         successful_sync, remaining_attempts, change_number = await self._attempt_segment_sync(segment_name, fetch_options, till)
         attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if successful_sync:  # succedeed sync
-            _LOGGER.debug('Refresh completed in %d attempts.', attempts)
+            self._LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return True
         with_cdn_bypass = FetchOptions(True, change_number)  # Set flag for bypassing CDN
         without_cdn_successful_sync, remaining_attempts, change_number = await self._attempt_segment_sync(segment_name, with_cdn_bypass, till)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if without_cdn_successful_sync:
-            _LOGGER.debug('Refresh completed bypassing the CDN in %d attempts.',
+            self._LOGGER.debug('Refresh completed bypassing the CDN in %d attempts.',
                           without_cdn_attempts)
             return True
-        _LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
+        self._LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
                         without_cdn_attempts)
         return False
 
@@ -392,10 +397,10 @@ class LocalSegmentSynchronizerBase(object):
         :rtype: Dict
         """
         if 'name' not in parsed or parsed['name'] is None:
-            _LOGGER.warning("Segment does not have [name] element, skipping")
+            self._LOGGER.warning("Segment does not have [name] element, skipping")
             raise Exception("Segment does not have [name] element")
         if parsed['name'].strip() == '':
-            _LOGGER.warning("Segment [name] element is blank, skipping")
+            self._LOGGER.warning("Segment [name] element is blank, skipping")
             raise Exception("Segment [name] element is blank")
 
         for element in [('till', -1, -1, None, None, [0]),
@@ -410,6 +415,8 @@ class LocalSegmentSynchronizerBase(object):
 
 class LocalSegmentSynchronizer(LocalSegmentSynchronizerBase):
     """Localhost mode segment synchronizer."""
+
+    _LOGGER = logging.getLogger(__name__)
 
     def __init__(self, segment_folder, feature_flag_storage, segment_storage):
         """
@@ -440,7 +447,7 @@ class LocalSegmentSynchronizer(LocalSegmentSynchronizerBase):
         :return: True if no error occurs. False otherwise.
         :rtype: bool
         """
-        _LOGGER.info('Synchronizing segments now.')
+        self._LOGGER.info('Synchronizing segments now.')
         if segment_names is None:
             segment_names = self._feature_flag_storage.get_segment_names()
 
@@ -470,7 +477,7 @@ class LocalSegmentSynchronizer(LocalSegmentSynchronizerBase):
             if not self.segment_exist_in_storage(segment_name):
                     self._segment_sha[segment_name] = fetched_sha
                     self._segment_storage.put(segments.from_raw(fetched))
-                    _LOGGER.debug("segment %s is added to storage", segment_name)
+                    self._LOGGER.debug("segment %s is added to storage", segment_name)
                     return True
 
             if fetched_sha == self._segment_sha[segment_name]:
@@ -481,9 +488,9 @@ class LocalSegmentSynchronizer(LocalSegmentSynchronizerBase):
                 return True
 
             self._segment_storage.update(segment_name, fetched['added'], fetched['removed'], fetched['till'])
-            _LOGGER.debug("segment %s is updated", segment_name)
+            self._LOGGER.debug("segment %s is updated", segment_name)
         except Exception as e:
-            _LOGGER.error("Could not fetch segment: %s \n" + str(e), segment_name)
+            self._LOGGER.error("Could not fetch segment: %s \n" + str(e), segment_name)
             return False
 
         return True
@@ -522,6 +529,8 @@ class LocalSegmentSynchronizer(LocalSegmentSynchronizerBase):
 class LocalSegmentSynchronizerAsync(LocalSegmentSynchronizerBase):
     """Localhost mode segment async synchronizer."""
 
+    _LOGGER = logging.getLogger('asyncio')
+
     def __init__(self, segment_folder, feature_flag_storage, segment_storage):
         """
         Class constructor.
@@ -551,7 +560,7 @@ class LocalSegmentSynchronizerAsync(LocalSegmentSynchronizerBase):
         :return: True if no error occurs. False otherwise.
         :rtype: bool
         """
-        _LOGGER.info('Synchronizing segments now.')
+        self._LOGGER.info('Synchronizing segments now.')
         if segment_names is None:
             segment_names = await self._feature_flag_storage.get_segment_names()
 
@@ -581,7 +590,7 @@ class LocalSegmentSynchronizerAsync(LocalSegmentSynchronizerBase):
             if not await self.segment_exist_in_storage(segment_name):
                     self._segment_sha[segment_name] = fetched_sha
                     await self._segment_storage.put(segments.from_raw(fetched))
-                    _LOGGER.debug("segment %s is added to storage", segment_name)
+                    self._LOGGER.debug("segment %s is added to storage", segment_name)
                     return True
 
             if fetched_sha == self._segment_sha[segment_name]:
@@ -592,9 +601,9 @@ class LocalSegmentSynchronizerAsync(LocalSegmentSynchronizerBase):
                 return True
 
             await self._segment_storage.update(segment_name, fetched['added'], fetched['removed'], fetched['till'])
-            _LOGGER.debug("segment %s is updated", segment_name)
+            self._LOGGER.debug("segment %s is updated", segment_name)
         except Exception as e:
-            _LOGGER.error("Could not fetch segment: %s \n" + str(e), segment_name)
+            self._LOGGER.error("Could not fetch segment: %s \n" + str(e), segment_name)
             return False
 
         return True

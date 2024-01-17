@@ -9,6 +9,7 @@ class UniqueKeysTrackerTests(object):
 
     def test_adding_and_removing_keys(self, mocker):
         tracker = UniqueKeysTracker()
+        assert tracker._LOGGER.name == 'splitio.engine.impressions.unique_keys_tracker'
 
         assert(tracker._cache_size > 0)
         assert(tracker._current_cache_size == 0)
@@ -69,6 +70,7 @@ class UniqueKeysTrackerAsyncTests(object):
     @pytest.mark.asyncio
     async def test_adding_and_removing_keys(self, mocker):
         tracker = UniqueKeysTrackerAsync()
+        assert tracker._LOGGER.name == 'asyncio'
 
         assert(tracker._cache_size > 0)
         assert(tracker._current_cache_size == 0)

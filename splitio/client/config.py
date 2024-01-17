@@ -4,8 +4,8 @@ import logging
 
 from splitio.engine.impressions import ImpressionsMode
 from splitio.client.input_validator import validate_flag_sets
+from splitio.util import log_helper
 
-_LOGGER = logging.getLogger(__name__)
 DEFAULT_DATA_SAMPLING = 1
 
 
@@ -73,6 +73,7 @@ def _parse_operation_mode(sdk_key, config):
     :returns: operation mode and storage type
     :rtype: Tuple (str, str)
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     if sdk_key == 'localhost':
         _LOGGER.debug('Using Localhost operation mode')
         return 'localhost', 'localhost'
@@ -103,6 +104,7 @@ def _sanitize_impressions_mode(storage_type, mode, refresh_rate=None):
     :returns: config with sanitized impressions mode & refresh rate
     :rtype: config
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     if not isinstance(mode, ImpressionsMode):
         try:
             mode = ImpressionsMode(mode.upper())
@@ -133,6 +135,7 @@ def sanitize(sdk_key, config):
     :returns: sanitized config
     :rtype: dict
     """
+    _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
     config['operationMode'], config['storageType'] = _parse_operation_mode(sdk_key, config)
     processed = DEFAULT_CONFIG.copy()
     processed.update(config)

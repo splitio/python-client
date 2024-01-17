@@ -34,6 +34,7 @@ class ImpressionsSyncTaskTests(object):
             impression_synchronizer.synchronize_impressions,
             1
         )
+        assert task._LOGGER.name == 'splitio.tasks.impressions_sync'
         task.start()
         time.sleep(2)
         assert task.is_running()
@@ -81,6 +82,7 @@ class ImpressionsSyncTaskAsyncTests(object):
             impression_synchronizer.synchronize_impressions,
             1
         )
+        assert task._LOGGER.name == 'asyncio'
         task.start()
         await asyncio.sleep(2)
         assert task.is_running()

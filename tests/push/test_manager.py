@@ -41,6 +41,7 @@ class PushManagerTests(object):
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         manager = PushManager(api_mock, mocker.Mock(), feedback_loop, mocker.Mock(), telemetry_runtime_producer)
+        assert manager._LOGGER.name == 'splitio.push.manager'
 
         def new_start(*args, **kwargs):  # pylint: disable=unused-argument
             """splitsse.start mock."""
@@ -270,6 +271,7 @@ class PushManagerAsyncTests(object):
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         manager = PushManagerAsync(api_mock, mocker.Mock(), feedback_loop, mocker.Mock(), telemetry_runtime_producer)
+        assert manager._LOGGER.name == 'asyncio'
         manager._get_time_period = timer_mock
         manager._sse_client = sse_mock
 

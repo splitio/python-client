@@ -3,10 +3,7 @@ import logging
 
 from splitio.tasks import BaseSynchronizationTask
 from splitio.tasks.util.asynctask import AsyncTask, AsyncTaskAsync
-
-
-_LOGGER = logging.getLogger(__name__)
-
+from splitio.util import log_helper
 
 class EventsSyncTaskBase(BaseSynchronizationTask):
     """Events synchronization task base uses an asynctask.AsyncTask to send events."""
@@ -21,7 +18,7 @@ class EventsSyncTaskBase(BaseSynchronizationTask):
 
     def flush(self):
         """Flush events in storage."""
-        _LOGGER.debug('Forcing flush execution for events')
+        self._LOGGER.debug('Forcing flush execution for events')
         self._task.force_execution()
 
     def is_running(self):
@@ -36,6 +33,8 @@ class EventsSyncTaskBase(BaseSynchronizationTask):
 
 class EventsSyncTask(EventsSyncTaskBase):
     """Events synchronization task uses an asynctask.AsyncTask to send events."""
+
+    _LOGGER = logging.getLogger(__name__)
 
     def __init__(self, synchronize_events, period):
         """
@@ -57,6 +56,8 @@ class EventsSyncTask(EventsSyncTaskBase):
 
 class EventsSyncTaskAsync(EventsSyncTaskBase):
     """Events synchronization task uses an asynctask.AsyncTaskAsync to send events."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, synchronize_events, period):
         """

@@ -27,6 +27,7 @@ class UniqueKeysSyncTests(object):
 
         unique_keys_sync = UniqueKeysSynchronizer(mocker.Mock(), unique_keys_tracker)
         task = UniqueKeysSyncTask(unique_keys_sync.send_all, 1)
+        assert task._LOGGER.name == 'splitio.tasks.unique_keys_sync'
         task.start()
         time.sleep(2)
         assert task.is_running()
@@ -73,6 +74,7 @@ class UniqueKeysSyncAsyncTests(object):
 
         unique_keys_sync = UniqueKeysSynchronizerAsync(mocker.Mock(), unique_keys_tracker)
         task = UniqueKeysSyncTaskAsync(unique_keys_sync.send_all, 1)
+        assert task._LOGGER.name == 'asyncio'
         task.start()
         await asyncio.sleep(2)
         assert task.is_running()

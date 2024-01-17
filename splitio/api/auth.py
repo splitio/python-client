@@ -8,11 +8,11 @@ from splitio.api.client import HttpClientException
 from splitio.models.token import from_raw
 from splitio.models.telemetry import HTTPExceptionsAndLatencies
 
-_LOGGER = logging.getLogger(__name__)
-
 
 class AuthAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the SDK Auth Service API."""
+
+    _LOGGER = logging.getLogger(__name__)
 
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer):
         """
@@ -53,12 +53,14 @@ class AuthAPI(object):  # pylint: disable=too-few-public-methods
                     self._telemetry_runtime_producer.record_auth_rejections()
                 raise APIException(response.body, response.status_code, response.headers)
         except HttpClientException as exc:
-            _LOGGER.error('Exception raised while authenticating')
-            _LOGGER.debug('Exception information: ', exc_info=True)
+            self._LOGGER.error('Exception raised while authenticating')
+            self._LOGGER.debug('Exception information: ', exc_info=True)
             raise APIException('Could not perform authentication.') from exc
 
 class AuthAPIAsync(object):  # pylint: disable=too-few-public-methods
     """Async Class that uses an httpClient to communicate with the SDK Auth Service API."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer):
         """
@@ -99,6 +101,6 @@ class AuthAPIAsync(object):  # pylint: disable=too-few-public-methods
                     await self._telemetry_runtime_producer.record_auth_rejections()
                 raise APIException(response.body, response.status_code, response.headers)
         except HttpClientException as exc:
-            _LOGGER.error('Exception raised while authenticating')
-            _LOGGER.debug('Exception information: ', exc_info=True)
+            self._LOGGER.error('Exception raised while authenticating')
+            self._LOGGER.debug('Exception information: ', exc_info=True)
             raise APIException('Could not perform authentication.') from exc

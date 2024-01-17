@@ -30,6 +30,7 @@ class AuthAPITests(object):
 
         assert response.push_enabled == True
         assert response.token == token
+        assert auth_api._LOGGER.name == 'splitio.api.auth'
 
         call_made = httpclient.get.mock_calls[0]
 
@@ -85,6 +86,7 @@ class AuthAPIAsyncTests(object):
         response = await auth_api.authenticate()
         assert response.push_enabled == True
         assert response.token == self.token
+        assert auth_api._LOGGER.name == 'asyncio'
 
         # validate positional arguments
         assert self.verb == 'auth'

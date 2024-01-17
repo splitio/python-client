@@ -4,10 +4,7 @@ import logging
 
 from splitio.models.grammar.matchers.base import Matcher
 from splitio.models import datatypes
-
-
-_LOGGER = logging.getLogger(__name__)
-
+from splitio.util import log_helper
 
 class Sanitizer(object):  # pylint: disable=too-few-public-methods
     """Numeric input sanitizer."""
@@ -20,6 +17,7 @@ class Sanitizer(object):  # pylint: disable=too-few-public-methods
         :param input: user supplied input.
         :type input: mixed.
         """
+        _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
         if data is None:  # Failed to fetch attribute. no need to convert.
             return None
 

@@ -15,6 +15,7 @@ class SegmentAPITests(object):
         httpclient = mocker.Mock(spec=client.HttpClient)
         httpclient.get.return_value = client.HttpResponse(200, '{"prop1": "value1"}', {})
         segment_api = segments.SegmentsAPI(httpclient, 'some_api_key', SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
+        assert segment_api._LOGGER.name == 'splitio.api.segments'
 
         response = segment_api.fetch_segment('some_segment', 123, FetchOptions())
         assert response['prop1'] == 'value1'
@@ -68,6 +69,7 @@ class SegmentAPIAsyncTests(object):
         """Test segment changes fetching API call."""
         httpclient = mocker.Mock(spec=client.HttpClientAsync)
         segment_api = segments.SegmentsAPIAsync(httpclient, 'some_api_key', SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
+        assert segment_api._LOGGER.name == 'asyncio'
 
         self.verb = None
         self.url = None

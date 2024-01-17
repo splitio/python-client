@@ -39,6 +39,7 @@ class EventsAPITests(object):
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         events_api = events.EventsAPI(httpclient, 'some_api_key', sdk_metadata, telemetry_runtime_producer)
         response = events_api.flush_events(self.events)
+        assert events_api._LOGGER.name == 'splitio.api.events'
 
         call_made = httpclient.post.mock_calls[0]
 
@@ -129,6 +130,7 @@ class EventsAPIAsyncTests(object):
             return client.HttpResponse(200, '', {})
         httpclient.post = post
 
+        assert events_api._LOGGER.name == 'asyncio'
         response = await events_api.flush_events(self.events)
         # validate positional arguments
         assert self.verb == 'events'

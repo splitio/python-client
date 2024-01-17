@@ -6,8 +6,9 @@ import os
 import unittest.mock as mock
 import time
 import pytest
+#import splitio
 
-from splitio.client.client import Client, _LOGGER as _logger, CONTROL, ClientAsync
+from splitio.client.client import Client, CONTROL, ClientAsync
 from splitio.client.factory import SplitFactory, Status as FactoryStatus, SplitFactoryAsync
 from splitio.models.impressions import Impression, Label
 from splitio.models.events import Event, EventWrapper
@@ -65,6 +66,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
         split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0])], [], -1)
         client = Client(factory, recorder, True)
+        assert client._LOGGER.name == 'splitio.client.client'
         client._evaluator = mocker.Mock(spec=Evaluator)
         client._evaluator.eval_with_context.return_value = {
             'treatment': 'on',
@@ -750,7 +752,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
         client = Client(factory, mocker.Mock())
         _logger = mocker.Mock()
-        mocker.patch('splitio.client.client._LOGGER', new=_logger)
+        mocker.patch('splitio.client.client.Client._LOGGER', new=_logger)
 
         assert client.get_treatment('some_key', 'SPLIT_2') == CONTROL
         assert _logger.error.mock_calls == expected_msg
@@ -1078,6 +1080,8 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
 
         await factory.block_until_ready(1)
         client = ClientAsync(factory, recorder, True)
+        assert client._LOGGER.name == 'asyncio'
+
         client._evaluator = mocker.Mock(spec=Evaluator)
         client._evaluator.eval_with_context.return_value = {
             'treatment': 'on',
@@ -1761,7 +1765,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         client._record_stats_async = _record_stats_async
 
         _logger = mocker.Mock()
-        mocker.patch('splitio.client.client._LOGGER', new=_logger)
+        mocker.patch('splitio.client.client.ClientAsync._LOGGER', new=_logger)
 
         assert await client.get_treatment('some_key', 'SPLIT_2') == CONTROL
         assert _logger.error.mock_calls == expected_msg

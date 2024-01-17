@@ -9,11 +9,10 @@ from splitio.models.telemetry import HTTPErrors, HTTPLatencies, MethodExceptions
     HTTPErrorsAsync, HTTPLatenciesAsync, MethodExceptionsAsync, MethodLatenciesAsync, LastSynchronizationAsync, StreamingEventsAsync, TelemetryConfigAsync, TelemetryCountersAsync
 from splitio.storage import FlagSetsFilter, SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
 from splitio.optional.loaders import asyncio
+from splitio.util import log_helper
 
 MAX_SIZE_BYTES = 5 * 1024 * 1024
 MAX_TAGS = 10
-
-_LOGGER = logging.getLogger(__name__)
 
 class FlagSets(object):
     """InMemory Flagsets storage."""
@@ -315,6 +314,8 @@ class InMemorySplitStorageBase(SplitStorage):
 class InMemorySplitStorage(InMemorySplitStorageBase):
     """InMemory implementation of a feature flag storage."""
 
+    _LOGGER = logging.getLogger(__name__)
+
     def __init__(self, flag_sets=[]):
         """Constructor."""
         self._lock = threading.RLock()
@@ -390,7 +391,7 @@ class InMemorySplitStorage(InMemorySplitStorageBase):
         with self._lock:
             feature_flag = self._feature_flags.get(feature_flag_name)
             if not feature_flag:
-                _LOGGER.warning("Tried to delete nonexistant feature flag %s. Skipping", feature_flag_name)
+                self._LOGGER.warning("Tried to delete nonexistant feature flag %s. Skipping", feature_flag_name)
                 return False
 
             self._feature_flags.pop(feature_flag_name)
@@ -418,7 +419,7 @@ class InMemorySplitStorage(InMemorySplitStorageBase):
             sets_to_fetch = []
             for flag_set in sets:
                 if not self.flag_set.flag_set_exist(flag_set):
-                    _LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring it." % (flag_set))
+                    self._LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring it." % (flag_set))
                     continue
                 sets_to_fetch.append(flag_set)
 
@@ -520,6 +521,8 @@ class InMemorySplitStorage(InMemorySplitStorageBase):
 class InMemorySplitStorageAsync(InMemorySplitStorageBase):
     """InMemory implementation of a feature flag async storage."""
 
+    _LOGGER = logging.getLogger('asyncio')
+
     def __init__(self, flag_sets=[]):
         """Constructor."""
         self._lock = asyncio.Lock()
@@ -595,7 +598,7 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
         async with self._lock:
             feature_flag = self._feature_flags.get(feature_flag_name)
             if not feature_flag:
-                _LOGGER.warning("Tried to delete nonexistant feature flag %s. Skipping", feature_flag_name)
+                self._LOGGER.warning("Tried to delete nonexistant feature flag %s. Skipping", feature_flag_name)
                 return False
 
             self._feature_flags.pop(feature_flag_name)
@@ -623,7 +626,7 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
             sets_to_fetch = []
             for flag_set in sets:
                 if not await self.flag_set.flag_set_exist(flag_set):
-                    _LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring it." % (flag_set))
+                    self._LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring it." % (flag_set))
                     continue
                 sets_to_fetch.append(flag_set)
 
@@ -734,6 +737,8 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
 class InMemorySegmentStorage(SegmentStorage):
     """In-memory implementation of a segment storage."""
 
+    _LOGGER = logging.getLogger(__name__)
+
     def __init__(self):
         """Constructor."""
         self._segments = {}
@@ -752,7 +757,7 @@ class InMemorySegmentStorage(SegmentStorage):
         with self._lock:
             fetched = self._segments.get(segment_name)
             if fetched is None:
-                _LOGGER.debug(
+                self._LOGGER.debug(
                     "Tried to retrieve nonexistant segment %s. Skipping",
                     segment_name
                 )
@@ -830,7 +835,7 @@ class InMemorySegmentStorage(SegmentStorage):
         """
         with self._lock:
             if segment_name not in self._segments:
-                _LOGGER.warning(
+                self._LOGGER.warning(
                     "Tried to query members for nonexistant segment %s. Returning False",
                     segment_name
                 )
@@ -862,6 +867,8 @@ class InMemorySegmentStorage(SegmentStorage):
 class InMemorySegmentStorageAsync(SegmentStorage):
     """In-memory implementation of a segment async storage."""
 
+    _LOGGER = logging.getLogger('asyncio')
+
     def __init__(self):
         """Constructor."""
         self._segments = {}
@@ -880,7 +887,7 @@ class InMemorySegmentStorageAsync(SegmentStorage):
         async with self._lock:
             fetched = self._segments.get(segment_name)
             if fetched is None:
-                _LOGGER.debug(
+                self._LOGGER.debug(
                     "Tried to retrieve nonexistant segment %s. Skipping",
                     segment_name
                 )
@@ -958,7 +965,7 @@ class InMemorySegmentStorageAsync(SegmentStorage):
         """
         async with self._lock:
             if segment_name not in self._segments:
-                _LOGGER.warning(
+                self._LOGGER.warning(
                     "Tried to query members for nonexistant segment %s. Returning False",
                     segment_name
                 )
@@ -1026,6 +1033,8 @@ class InMemoryImpressionStorageBase(ImpressionStorage):
 class InMemoryImpressionStorage(InMemoryImpressionStorageBase):
     """In memory implementation of an impressions storage."""
 
+    _LOGGER = logging.getLogger(__name__)
+
     def __init__(self, queue_size, telemetry_runtime_producer):
         """
         Construct an instance.
@@ -1058,7 +1067,7 @@ class InMemoryImpressionStorage(InMemoryImpressionStorageBase):
             self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_QUEUED, impressions_stored)
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
                 self._queue_full_hook()
-            _LOGGER.warning(
+            self._LOGGER.warning(
                 'Impression queue is full, failing to add more impressions. \n'
                 'Consider increasing parameter `impressionsQueueSize` in configuration'
             )
@@ -1088,6 +1097,8 @@ class InMemoryImpressionStorage(InMemoryImpressionStorageBase):
 
 class InMemoryImpressionStorageAsync(InMemoryImpressionStorageBase):
     """In memory implementation of an impressions async storage."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, queue_size, telemetry_runtime_producer):
         """
@@ -1123,7 +1134,7 @@ class InMemoryImpressionStorageAsync(InMemoryImpressionStorageBase):
             await self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_QUEUED, impressions_stored)
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
                 await self._queue_full_hook()
-            _LOGGER.warning(
+            self._LOGGER.warning(
                 'Impression queue is full, failing to add more impressions. \n'
                 'Consider increasing parameter `impressionsQueueSize` in configuration'
             )
@@ -1189,11 +1200,9 @@ class InMemoryEventStorageBase(EventStorage):
 
 
 class InMemoryEventStorage(InMemoryEventStorageBase):
-    """
-    In memory storage for events.
+    """ In memory storage for events. Supports adding and popping events."""
 
-    Supports adding and popping events.
-    """
+    _LOGGER = logging.getLogger(__name__)
 
     def __init__(self, eventsQueueSize, telemetry_runtime_producer):
         """
@@ -1232,7 +1241,7 @@ class InMemoryEventStorage(InMemoryEventStorageBase):
             self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_QUEUED, events_stored)
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
                 self._queue_full_hook()
-            _LOGGER.warning(
+            self._LOGGER.warning(
                 'Events queue is full, failing to add more events. \n'
                 'Consider increasing parameter `eventsQueueSize` in configuration'
             )
@@ -1261,10 +1270,10 @@ class InMemoryEventStorage(InMemoryEventStorageBase):
 
 
 class InMemoryEventStorageAsync(InMemoryEventStorageBase):
-    """
-    In memory async storage for events.
-    Supports adding and popping events.
-    """
+    """In memory async storage for events. Supports adding and popping events."""
+
+    _LOGGER = logging.getLogger('asyncio')
+
     def __init__(self, eventsQueueSize, telemetry_runtime_producer):
         """
         Construct an instance.
@@ -1304,7 +1313,7 @@ class InMemoryEventStorageAsync(InMemoryEventStorageBase):
             await self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_QUEUED, events_stored)
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
                 await self._queue_full_hook()
-            _LOGGER.warning(
+            self._LOGGER.warning(
                 'Events queue is full, failing to add more events. \n'
                 'Consider increasing parameter `eventsQueueSize` in configuration'
             )

@@ -5,10 +5,10 @@ from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException
 from splitio.models.telemetry import HTTPExceptionsAndLatencies
 
-_LOGGER = logging.getLogger(__name__)
-
 class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the Telemetry API."""
+
+    _LOGGER = logging.getLogger(__name__)
 
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer):
         """
@@ -43,10 +43,10 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.debug(
+            self._LOGGER.debug(
                 'Error posting unique keys because an exception was raised by the HTTPClient'
             )
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.debug('Error: ', exc_info=True)
             raise APIException('Unique keys not flushed properly.') from exc
 
     def record_init(self, configs):
@@ -67,11 +67,10 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.debug(
+            self._LOGGER.debug(
                 'Error posting init config because an exception was raised by the HTTPClient'
             )
-            _LOGGER.debug('Error: ', exc_info=True)
-            raise APIException('Init config data not flushed properly.') from exc
+            self._LOGGER.debug('Error: ', exc_info=True)
 
     def record_stats(self, stats):
         """
@@ -91,15 +90,17 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.debug(
+            self._LOGGER.debug(
                 'Error posting runtime stats because an exception was raised by the HTTPClient'
             )
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.debug('Error: ', exc_info=True)
             raise APIException('Runtime stats not flushed properly.') from exc
 
 
 class TelemetryAPIAsync(object):  # pylint: disable=too-few-public-methods
     """Async Class that uses an httpClient to communicate with the Telemetry API."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer):
         """
@@ -134,10 +135,10 @@ class TelemetryAPIAsync(object):  # pylint: disable=too-few-public-methods
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.debug(
+            self._LOGGER.debug(
                 'Error posting unique keys because an exception was raised by the HTTPClient'
             )
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.debug('Error: ', exc_info=True)
             raise APIException('Unique keys not flushed properly.') from exc
 
     async def record_init(self, configs):
@@ -158,11 +159,10 @@ class TelemetryAPIAsync(object):  # pylint: disable=too-few-public-methods
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.debug(
+            self._LOGGER.debug(
                 'Error posting init config because an exception was raised by the HTTPClient'
             )
-            _LOGGER.debug('Error: ', exc_info=True)
-            raise APIException('Init config data not flushed properly.') from exc
+            self._LOGGER.debug('Error: ', exc_info=True)
 
     async def record_stats(self, stats):
         """
@@ -182,8 +182,8 @@ class TelemetryAPIAsync(object):  # pylint: disable=too-few-public-methods
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.debug(
+            self._LOGGER.debug(
                 'Error posting runtime stats because an exception was raised by the HTTPClient'
             )
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.debug('Error: ', exc_info=True)
             raise APIException('Runtime stats not flushed properly.') from exc

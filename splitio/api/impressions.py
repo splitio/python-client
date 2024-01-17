@@ -8,10 +8,6 @@ from splitio.api.client import HttpClientException
 from splitio.engine.impressions import ImpressionsMode
 from splitio.models.telemetry import HTTPExceptionsAndLatencies
 
-
-_LOGGER = logging.getLogger(__name__)
-
-
 class ImpressionsAPIBase(object):  # pylint: disable=too-few-public-methods
     """Base Class that uses an httpClient to communicate with the impressions API."""
 
@@ -73,6 +69,8 @@ class ImpressionsAPIBase(object):  # pylint: disable=too-few-public-methods
 class ImpressionsAPI(ImpressionsAPIBase):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the impressions API."""
 
+    _LOGGER = logging.getLogger(__name__)
+
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer, mode=ImpressionsMode.OPTIMIZED):
         """
         Class constructor.
@@ -108,10 +106,10 @@ class ImpressionsAPI(ImpressionsAPIBase):  # pylint: disable=too-few-public-meth
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error(
+            self._LOGGER.error(
                 'Error posting impressions because an exception was raised by the HTTPClient'
             )
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.debug('Error: ', exc_info=True)
             raise APIException('Impressions not flushed properly.') from exc
 
     def flush_counters(self, counters):
@@ -134,16 +132,18 @@ class ImpressionsAPI(ImpressionsAPIBase):  # pylint: disable=too-few-public-meth
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error(
+            self._LOGGER.error(
                 'Error posting impressions counters because an exception was raised by the '
                 'HTTPClient'
             )
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.debug('Error: ', exc_info=True)
             raise APIException('Impressions not flushed properly.') from exc
 
 
 class ImpressionsAPIAsync(ImpressionsAPIBase):  # pylint: disable=too-few-public-methods
     """Async Class that uses an httpClient to communicate with the impressions API."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer, mode=ImpressionsMode.OPTIMIZED):
         """
@@ -180,10 +180,10 @@ class ImpressionsAPIAsync(ImpressionsAPIBase):  # pylint: disable=too-few-public
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error(
+            self._LOGGER.error(
                 'Error posting impressions because an exception was raised by the HTTPClient'
             )
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.debug('Error: ', exc_info=True)
             raise APIException('Impressions not flushed properly.') from exc
 
     async def flush_counters(self, counters):
@@ -206,9 +206,9 @@ class ImpressionsAPIAsync(ImpressionsAPIBase):  # pylint: disable=too-few-public
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error(
+            self._LOGGER.error(
                 'Error posting impressions counters because an exception was raised by the '
                 'HTTPClient'
             )
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.debug('Error: ', exc_info=True)
             raise APIException('Impressions not flushed properly.') from exc

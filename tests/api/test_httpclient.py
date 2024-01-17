@@ -247,6 +247,7 @@ class HttpClientAsyncTests(object):
         get_mock.return_value = response_mock
         mocker.patch('splitio.optional.loaders.aiohttp.ClientSession.get', new=get_mock)
         httpclient = client.HttpClientAsync()
+        assert httpclient._LOGGER.name == 'asyncio'
         httpclient.set_telemetry_data("metric", telemetry_runtime_producer)
         response = await httpclient.get('sdk', 'test1', 'some_api_key', {'param1': 123}, {'h1': 'abc'})
         assert response.status_code == 200

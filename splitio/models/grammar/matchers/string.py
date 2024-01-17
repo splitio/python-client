@@ -4,10 +4,7 @@ import json
 import re
 
 from splitio.models.grammar.matchers.base import Matcher
-
-
-_LOGGER = logging.getLogger(__name__)
-
+from splitio.util import log_helper
 
 class Sanitizer(object):  # pylint: disable=too-few-public-methods
     """Numeric input sanitizer."""
@@ -23,6 +20,7 @@ class Sanitizer(object):  # pylint: disable=too-few-public-methods
         :return: String or None
         :rtype: string
         """
+        _LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
         if data is None:  # Failed to fetch attribute. no need to convert.
             return None
 

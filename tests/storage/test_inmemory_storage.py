@@ -109,6 +109,7 @@ class InMemorySplitStorageTests(object):
     def test_storing_retrieving_splits(self, mocker):
         """Test storing and retrieving splits works."""
         storage = InMemorySplitStorage()
+        assert storage._LOGGER.name == 'splitio.storage.inmemmory'
 
         split = mocker.Mock(spec=Split)
         name_property = mocker.PropertyMock()
@@ -405,6 +406,7 @@ class InMemorySplitStorageAsyncTests(object):
     async def test_storing_retrieving_splits(self, mocker):
         """Test storing and retrieving splits works."""
         storage = InMemorySplitStorageAsync()
+        assert storage._LOGGER.name == 'asyncio'
 
         split = mocker.Mock(spec=Split)
         name_property = mocker.PropertyMock()
@@ -706,6 +708,7 @@ class InMemorySegmentStorageTests(object):
     def test_segment_storage_retrieval(self, mocker):
         """Test storing and retrieving segments."""
         storage = InMemorySegmentStorage()
+        assert storage._LOGGER.name == 'splitio.storage.inmemmory'
         segment = mocker.Mock(spec=Segment)
         name_property = mocker.PropertyMock()
         name_property.return_value = 'some_segment'
@@ -768,6 +771,7 @@ class InMemorySegmentStorageAsyncTests(object):
     async def test_segment_storage_retrieval(self, mocker):
         """Test storing and retrieving segments."""
         storage = InMemorySegmentStorageAsync()
+        assert storage._LOGGER.name == 'asyncio'
         segment = mocker.Mock(spec=Segment)
         name_property = mocker.PropertyMock()
         name_property.return_value = 'some_segment'
@@ -835,6 +839,7 @@ class InMemoryImpressionsStorageTests(object):
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         storage = InMemoryImpressionStorage(100, telemetry_runtime_producer)
+        assert storage._LOGGER.name == 'splitio.storage.inmemmory'
         storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
         storage.put([Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
         storage.put([Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
@@ -914,6 +919,7 @@ class InMemoryImpressionsStorageAsyncTests(object):
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         storage = InMemoryImpressionStorageAsync(100, telemetry_runtime_producer)
+        assert storage._LOGGER.name == 'asyncio'
         await storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
         await storage.put([Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
         await storage.put([Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
@@ -1001,6 +1007,7 @@ class InMemoryEventsStorageTests(object):
     def test_push_pop_events(self, mocker):
         """Test pushing and retrieving events."""
         storage = InMemoryEventStorage(100, mocker.Mock())
+        assert storage._LOGGER.name == 'splitio.storage.inmemmory'
         storage.put([EventWrapper(
             event=Event('key1', 'user', 'purchase', 3.5, 123456, None),
             size=1024,
@@ -1102,6 +1109,7 @@ class InMemoryEventsStorageAsyncTests(object):
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         storage = InMemoryEventStorageAsync(100, telemetry_runtime_producer)
+        assert storage._LOGGER.name == 'asyncio'
         await storage.put([EventWrapper(
             event=Event('key1', 'user', 'purchase', 3.5, 123456, None),
             size=1024,

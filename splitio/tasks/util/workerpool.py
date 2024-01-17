@@ -5,8 +5,9 @@ from threading import Thread, Event
 import queue
 
 from splitio.optional.loaders import asyncio
+from splitio.util import log_helper
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__name__ if log_helper.get_logger_namespace() == 'class' else log_helper.get_logger_namespace())
 
 class WorkerPool(object):
     """Worker pool class to implement single producer/multiple consumer."""

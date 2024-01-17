@@ -3,12 +3,10 @@ import logging
 
 from . import input_validator
 
-
-_LOGGER = logging.getLogger(__name__)
-
-
 class SplitManager(object):
     """Split Manager. Gives insights on data cached by splits."""
+
+    _LOGGER = logging.getLogger(__name__)
 
     def __init__(self, factory):
         """
@@ -29,15 +27,15 @@ class SplitManager(object):
         :rtype: list
         """
         if self._factory.destroyed:
-            _LOGGER.error("Client has already been destroyed - no calls possible.")
+            self._LOGGER.error("Client has already been destroyed - no calls possible.")
             return []
         if self._factory._waiting_fork():
-            _LOGGER.error("Client is not ready - no calls possible")
+            self._LOGGER.error("Client is not ready - no calls possible")
             return []
 
         if not self._factory.ready:
             self._telemetry_init_producer.record_not_ready_usage()
-            _LOGGER.warning(
+            self._LOGGER.warning(
                 "split_names: The SDK is not ready, results may be incorrect. "
                 "Make sure to wait for SDK readiness before using this method"
             )
@@ -52,15 +50,15 @@ class SplitManager(object):
         :rtype: list()
         """
         if self._factory.destroyed:
-            _LOGGER.error("Client has already been destroyed - no calls possible.")
+            self._LOGGER.error("Client has already been destroyed - no calls possible.")
             return []
         if self._factory._waiting_fork():
-            _LOGGER.error("Client is not ready - no calls possible")
+            self._LOGGER.error("Client is not ready - no calls possible")
             return []
 
         if not self._factory.ready:
             self._telemetry_init_producer.record_not_ready_usage()
-            _LOGGER.warning(
+            self._LOGGER.warning(
                 "splits: The SDK is not ready, results may be incorrect. "
                 "Make sure to wait for SDK readiness before using this method"
             )
@@ -78,10 +76,10 @@ class SplitManager(object):
         :rtype: splitio.models.splits.SplitView
         """
         if self._factory.destroyed:
-            _LOGGER.error("Client has already been destroyed - no calls possible.")
+            self._LOGGER.error("Client has already been destroyed - no calls possible.")
             return None
         if self._factory._waiting_fork():
-            _LOGGER.error("Client is not ready - no calls possible")
+            self._LOGGER.error("Client is not ready - no calls possible")
             return None
 
         feature_flag = input_validator.validate_manager_feature_flag_name(
@@ -92,7 +90,7 @@ class SplitManager(object):
 
         if not self._factory.ready:
             self._telemetry_init_producer.record_not_ready_usage()
-            _LOGGER.warning(
+            self._LOGGER.warning(
                 "split: The SDK is not ready, results may be incorrect. "
                 "Make sure to wait for SDK readiness before using this method"
             )
@@ -101,6 +99,8 @@ class SplitManager(object):
 
 class SplitManagerAsync(object):
     """Split Manager. Gives insights on data cached by splits."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, factory):
         """
@@ -121,15 +121,15 @@ class SplitManagerAsync(object):
         :rtype: list
         """
         if self._factory.destroyed:
-            _LOGGER.error("Client has already been destroyed - no calls possible.")
+            self._LOGGER.error("Client has already been destroyed - no calls possible.")
             return []
         if self._factory._waiting_fork():
-            _LOGGER.error("Client is not ready - no calls possible")
+            self._LOGGER.error("Client is not ready - no calls possible")
             return []
 
         if not self._factory.ready:
             await self._telemetry_init_producer.record_not_ready_usage()
-            _LOGGER.warning(
+            self._LOGGER.warning(
                 "split_names: The SDK is not ready, results may be incorrect. "
                 "Make sure to wait for SDK readiness before using this method"
             )
@@ -144,15 +144,15 @@ class SplitManagerAsync(object):
         :rtype: list()
         """
         if self._factory.destroyed:
-            _LOGGER.error("Client has already been destroyed - no calls possible.")
+            self._LOGGER.error("Client has already been destroyed - no calls possible.")
             return []
         if self._factory._waiting_fork():
-            _LOGGER.error("Client is not ready - no calls possible")
+            self._LOGGER.error("Client is not ready - no calls possible")
             return []
 
         if not self._factory.ready:
             await self._telemetry_init_producer.record_not_ready_usage()
-            _LOGGER.warning(
+            self._LOGGER.warning(
                 "splits: The SDK is not ready, results may be incorrect. "
                 "Make sure to wait for SDK readiness before using this method"
             )
@@ -170,10 +170,10 @@ class SplitManagerAsync(object):
         :rtype: splitio.models.splits.SplitView
         """
         if self._factory.destroyed:
-            _LOGGER.error("Client has already been destroyed - no calls possible.")
+            self._LOGGER.error("Client has already been destroyed - no calls possible.")
             return None
         if self._factory._waiting_fork():
-            _LOGGER.error("Client is not ready - no calls possible")
+            self._LOGGER.error("Client is not ready - no calls possible")
             return None
 
         feature_flag = await input_validator.validate_manager_feature_flag_name_async(
@@ -184,7 +184,7 @@ class SplitManagerAsync(object):
 
         if not self._factory.ready:
             await self._telemetry_init_producer.record_not_ready_usage()
-            _LOGGER.warning(
+            self._LOGGER.warning(
                 "split: The SDK is not ready, results may be incorrect. "
                 "Make sure to wait for SDK readiness before using this method"
             )

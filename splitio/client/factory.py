@@ -18,6 +18,7 @@ from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageC
     TelemetryStorageProducerAsync, TelemetryStorageConsumerAsync
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter, CounterAsync as ImpressionsCounterAsync
 from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
+from splitio.util import log_helper
 
 # Storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
@@ -75,7 +76,6 @@ from splitio.client.localhost import LocalhostEventsStorage, LocalhostImpression
     LocalhostImpressionsStorageAsync, LocalhostEventsStorageAsync
 
 
-_LOGGER = logging.getLogger(__name__)
 _INSTANTIATED_FACTORIES = Counter()
 _INSTANTIATED_FACTORIES_LOCK = threading.RLock()
 _MIN_DEFAULT_DATA_SAMPLING_ALLOWED = 0.1  # 10%
@@ -151,6 +151,8 @@ class SplitFactoryBase(object):  # pylint: disable=too-many-instance-attributes
 class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attributes
     """Split Factory/Container class."""
 
+    _LOGGER = logging.getLogger(__name__)
+
     def __init__(  # pylint: disable=too-many-arguments
             self,
             sdk_key,
@@ -193,7 +195,7 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
         self._telemetry_init_producer = telemetry_init_producer
         self._telemetry_submitter = telemetry_submitter
         self._ready_time = get_current_epoch_time_ms()
-        _LOGGER.debug("Running in threading mode")
+        self._LOGGER.debug("Running in threading mode")
         self._sdk_internal_ready_flag = sdk_ready_flag
         self._start_status_updater()
 
@@ -274,11 +276,11 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
         :type destroyed_event: threading.Event
         """
         if self.destroyed:
-            _LOGGER.info('Factory already destroyed.')
+            self._LOGGER.info('Factory already destroyed.')
             return
 
         try:
-            _LOGGER.info('Factory destroy called, stopping tasks.')
+            self._LOGGER.info('Factory destroy called, stopping tasks.')
             if self._sync_manager is not None:
                 if destroyed_event is not None:
 
@@ -300,7 +302,7 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
         Function in charge of starting periodic/realtime synchronization after a fork.
         """
         if not self._waiting_fork():
-            _LOGGER.warning('Cannot call resume')
+            self._LOGGER.warning('Cannot call resume')
             return
         self._sync_manager.recreate()
         sdk_ready_flag = threading.Event()
@@ -320,6 +322,8 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
 
 class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-attributes
     """Split Factory/Container async class."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(  # pylint: disable=too-many-arguments
             self,
@@ -363,7 +367,7 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
         self._telemetry_init_producer = telemetry_init_producer
         self._telemetry_submitter = telemetry_submitter
         self._ready_time = get_current_epoch_time_ms()
-        _LOGGER.debug("Running in asyncio mode")
+        self._LOGGER.debug("Running in asyncio mode")
         self._manager_start_task = manager_start_task
         self._status = Status.NOT_INITIALIZED
         self._sdk_ready_flag = asyncio.Event()
@@ -383,8 +387,8 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
         try:
             await self._telemetry_submitter.synchronize_config()
         except Exception as e:
-            _LOGGER.error("Failed to post Telemetry config")
-            _LOGGER.debug(str(e))
+            self._LOGGER.error("Failed to post Telemetry config")
+            self._LOGGER.debug(str(e))
         self._status = Status.READY
         self._sdk_ready_flag.set()
 
@@ -409,8 +413,8 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
         try:
             await asyncio.wait_for(asyncio.shield(self._sdk_ready_flag.wait()), timeout)
         except asyncio.TimeoutError as e:
-            _LOGGER.error("Exception initializing SDK")
-            _LOGGER.debug(str(e))
+            self._LOGGER.error("Exception initializing SDK")
+            self._LOGGER.error(str(e))
             await self._telemetry_init_producer.record_bur_time_out()
             raise TimeoutException('SDK Initialization: time of %d exceeded' % timeout)
 
@@ -425,11 +429,11 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
         :type destroyed_event: threading.Event
         """
         if self.destroyed:
-            _LOGGER.info('Factory already destroyed.')
+            self._LOGGER.info('Factory already destroyed.')
             return
 
         try:
-            _LOGGER.info('Factory destroy called, stopping tasks.')
+            self._LOGGER.info('Factory destroy called, stopping tasks.')
             if self._sync_manager is not None:
                 await self._sync_manager.stop(True)
 
@@ -439,8 +443,8 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
                 if isinstance(self._sync_manager, ManagerAsync) and isinstance(self._telemetry_submitter, InMemoryTelemetrySubmitterAsync):
                     await self._telemetry_submitter._telemetry_api._client.close_session()
         except Exception as e:
-            _LOGGER.error('Exception destroying factory.')
-            _LOGGER.debug(str(e))
+            self._LOGGER.error('Exception destroying factory.')
+            self._LOGGER.debug(str(e))
         finally:
             self._update_instantiated_factories()
 
@@ -459,7 +463,7 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
         Function in charge of starting periodic/realtime synchronization after a fork.
         """
         if not self._waiting_fork():
-            _LOGGER.warning('Cannot call resume')
+            self._LOGGER.warning('Cannot call resume')
             return
         self._sync_manager.recreate()
         self._sdk_ready_flag = asyncio.Event()
@@ -501,6 +505,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
                              auth_api_base_url=None, streaming_api_base_url=None, telemetry_api_base_url=None,
                              total_flag_sets=0, invalid_flag_sets=0):
     """Build and return a split factory tailored to the supplied config."""
+
     if not input_validator.validate_factory_instantiation(api_key):
         return None
 
@@ -629,7 +634,8 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
                              auth_api_base_url=None, streaming_api_base_url=None, telemetry_api_base_url=None,
                              total_flag_sets=0, invalid_flag_sets=0):
     """Build and return a split factory tailored to the supplied config in async mode."""
-    if not input_validator.validate_factory_instantiation(api_key):
+
+    if not input_validator.validate_factory_instantiation(api_key ):
         return None
 
     extra_cfg = {}
@@ -753,6 +759,8 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
 
 def _build_redis_factory(api_key, cfg):
     """Build and return a split factory with redis-based storage."""
+    _LOGGER = logging.getLogger(__name__)
+
     sdk_metadata = util.get_metadata(cfg)
     redis_adapter = redis.build(cfg)
     cache_enabled = cfg.get('redisLocalCacheEnabled', False)
@@ -836,6 +844,8 @@ def _build_redis_factory(api_key, cfg):
 
 async def _build_redis_factory_async(api_key, cfg):
     """Build and return a split factory with redis-based storage."""
+    _LOGGER = logging.getLogger('asyncio')
+
     sdk_metadata = util.get_metadata(cfg)
     redis_adapter = await redis.build_async(cfg)
     cache_enabled = cfg.get('redisLocalCacheEnabled', False)
@@ -918,6 +928,7 @@ async def _build_redis_factory_async(api_key, cfg):
 
 def _build_pluggable_factory(api_key, cfg):
     """Build and return a split factory with pluggable storage."""
+
     sdk_metadata = util.get_metadata(cfg)
     if not input_validator.validate_pluggable_adapter(cfg):
         raise Exception("Pluggable Adapter validation failed, exiting")
@@ -999,6 +1010,7 @@ def _build_pluggable_factory(api_key, cfg):
 
 async def _build_pluggable_factory_async(api_key, cfg):
     """Build and return a split factory with pluggable storage."""
+
     sdk_metadata = util.get_metadata(cfg)
     if not input_validator.validate_pluggable_adapter(cfg):
         raise Exception("Pluggable Adapter validation failed, exiting")
@@ -1219,6 +1231,8 @@ async def _build_localhost_factory_async(cfg):
 
 def get_factory(api_key, **kwargs):
     """Build and return the appropriate factory."""
+    _LOGGER = logging.getLogger(__name__)
+
     _INSTANTIATED_FACTORIES_LOCK.acquire()
     if _INSTANTIATED_FACTORIES:
         if api_key in _INSTANTIATED_FACTORIES:
@@ -1267,6 +1281,10 @@ def get_factory(api_key, **kwargs):
 
 async def get_factory_async(api_key, **kwargs):
     """Build and return the appropriate factory."""
+
+    log_helper.set_logger_namespace('asyncio')
+    _LOGGER = logging.getLogger('asyncio')
+
     _INSTANTIATED_FACTORIES_LOCK.acquire()
     if _INSTANTIATED_FACTORIES:
         if api_key in _INSTANTIATED_FACTORIES:

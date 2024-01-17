@@ -25,6 +25,7 @@ class TelemetryStorageProducerTests(object):
     def test_record_config(self, mocker):
         telemetry_storage = mocker.Mock()
         telemetry_init_producer = TelemetryInitProducer(telemetry_storage)
+        assert telemetry_init_producer._LOGGER.name == 'splitio.engine.telemetry'
 
         def record_config(*args, **kwargs):
             self.passed_config = args[0]
@@ -216,6 +217,7 @@ class TelemetryStorageProducerAsyncTests(object):
     async def test_record_config(self, mocker):
         telemetry_storage = mocker.Mock()
         telemetry_init_producer = TelemetryInitProducerAsync(telemetry_storage)
+        assert telemetry_init_producer._LOGGER.name == 'asyncio'
 
         async def record_config(*args, **kwargs):
             self.passed_config = args[0]

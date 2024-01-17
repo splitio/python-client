@@ -3,9 +3,7 @@
 import logging
 from splitio.tasks import BaseSynchronizationTask
 from splitio.tasks.util import asynctask
-
-
-_LOGGER = logging.getLogger(__name__)
+from splitio.util import log_helper
 
 
 class SegmentSynchronizationTaskBase(BaseSynchronizationTask):

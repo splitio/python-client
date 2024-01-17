@@ -6,12 +6,8 @@ from splitio.engine.splitters import Splitter
 from splitio.models.impressions import Impression, Label
 from splitio.models.events import Event, EventWrapper
 from splitio.models.telemetry import get_latency_bucket_index, MethodExceptionsAndLatencies
-from splitio.client import input_validator, config
+from splitio.client import input_validator
 from splitio.util.time import get_current_epoch_time_ms, utctime_ms
-
-
-_LOGGER = logging.getLogger(__name__)
-
 
 class ClientBase(object):  # pylint: disable=too-many-instance-attributes
     """Entry point for the split sdk."""
@@ -72,10 +68,10 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
 
     def _client_is_usable(self):
         if self.destroyed:
-            _LOGGER.error("Client has already been destroyed - no calls possible")
+            self._LOGGER.error("Client has already been destroyed - no calls possible")
             return False
         if self._factory._waiting_fork():
-            _LOGGER.error("Client is not ready - no calls possible")
+            self._LOGGER.error("Client is not ready - no calls possible")
             return False
 
         return True
@@ -150,10 +146,10 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         :rtype: tuple(bool, splitio.models.events.Event, int)
         """
         if self.destroyed:
-            _LOGGER.error("Client has already been destroyed - no calls possible")
+            self._LOGGER.error("Client has already been destroyed - no calls possible")
             return False, None, None
         if self._factory._waiting_fork():
-            _LOGGER.error("Client is not ready - no calls possible")
+            self._LOGGER.error("Client is not ready - no calls possible")
             return False, None, None
 
         key = input_validator.validate_track_key(key)
@@ -179,6 +175,8 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
 
 class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
     """Entry point for the split sdk."""
+
+    _LOGGER = logging.getLogger(__name__)
 
     def __init__(self, factory, recorder, labels_enabled=True):
         """
@@ -272,7 +270,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
 
         start = get_current_epoch_time_ms()
         if not self.ready:
-            _LOGGER.error("Client is not ready - no calls possible")
+            self._LOGGER.error("Client is not ready - no calls possible")
             self._telemetry_init_producer.record_not_ready_usage()
 
         try:
@@ -287,8 +285,9 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
                 input_validator.validate_feature_flag_names({feature: ctx.flags.get(feature)}, 'get_' + method.value)
                 result = self._evaluator.eval_with_context(key, bucketing, feature, attributes, ctx)
             except Exception as e: # toto narrow this
-                _LOGGER.error('Error getting treatment for feature flag')
-                _LOGGER.debug('Error: ', exc_info=True)
+                self._LOGGER.error('Error getting treatment for feature flag')
+                self._LOGGER.error(str(e))
+                self._LOGGER.debug('Error: ', exc_info=True)
                 self._telemetry_evaluation_producer.record_exception(method)
                 result = self._FAILED_EVAL_RESULT
 
@@ -423,7 +422,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         """
         feature_flags_names = self._get_feature_flag_names_by_flag_sets(flag_sets, 'get_' + method.value)
         if feature_flags_names == []:
-            _LOGGER.warning("%s: No valid Flag set or no feature flags found for evaluating treatments", 'get_' + method.value)
+            self._LOGGER.warning("%s: No valid Flag set or no feature flags found for evaluating treatments", 'get_' + method.value)
             return {}
 
         if 'config' in method.value:
@@ -444,7 +443,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         sanitized_flag_sets = input_validator.validate_flag_sets(flag_sets, method_name)
         feature_flags_by_set = self._feature_flag_storage.get_feature_flags_by_sets(sanitized_flag_sets)
         if feature_flags_by_set is None:
-            _LOGGER.warning("Fetching feature flags for flag set %s encountered an error, skipping this flag set." % (flag_sets))
+            self._LOGGER.warning("Fetching feature flags for flag set %s encountered an error, skipping this flag set." % (flag_sets))
             return []
         return feature_flags_by_set
 
@@ -468,7 +467,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
             return input_validator.generate_control_treatments(features)
 
         if not self.ready:
-            _LOGGER.error("Client is not ready - no calls possible")
+            self._LOGGER.error("Client is not ready - no calls possible")
             self._telemetry_init_producer.record_not_ready_usage()
 
         try:
@@ -483,8 +482,9 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
                 input_validator.validate_feature_flag_names({feature: ctx.flags.get(feature) for feature in features}, 'get_' + method.value)
                 results = self._evaluator.eval_many_with_context(key, bucketing, features, attributes, ctx)
             except Exception as e: # toto narrow this
-                _LOGGER.error('Error getting treatment for feature flag')
-                _LOGGER.debug('Error: ', exc_info=True)
+                self._LOGGER.error('Error getting treatment for feature flag')
+                self._LOGGER.error(str(e))
+                self._LOGGER.debug('Error: ', exc_info=True)
                 self._telemetry_evaluation_producer.record_exception(method)
                 results = {n: self._FAILED_EVAL_RESULT for n in features}
 
@@ -536,7 +536,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :rtype: bool
         """
         if not self.ready:
-            _LOGGER.warning("track: the SDK is not ready, results may be incorrect. Make sure to wait for SDK readiness before using this method")
+            self._LOGGER.warning("track: the SDK is not ready, results may be incorrect. Make sure to wait for SDK readiness before using this method")
             self._telemetry_init_producer.record_not_ready_usage()
 
         start = get_current_epoch_time_ms()
@@ -558,13 +558,15 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
             return return_flag
         except Exception:  # pylint: disable=broad-except
             self._telemetry_evaluation_producer.record_exception(MethodExceptionsAndLatencies.TRACK)
-            _LOGGER.error('Error processing track event')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error processing track event')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return False
 
 
 class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
     """Entry point for the split sdk."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, factory, recorder, labels_enabled=True):
         """
@@ -657,7 +659,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
 
         start = get_current_epoch_time_ms()
         if not self.ready:
-            _LOGGER.error("Client is not ready - no calls possible")
+            self._LOGGER.error("Client is not ready - no calls possible")
             await self._telemetry_init_producer.record_not_ready_usage()
 
         try:
@@ -672,8 +674,9 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
                 input_validator.validate_feature_flag_names({feature: ctx.flags.get(feature)}, 'get_' + method.value)
                 result = self._evaluator.eval_with_context(key, bucketing, feature, attributes, ctx)
             except Exception as e: # toto narrow this
-                _LOGGER.error('Error getting treatment for feature flag')
-                _LOGGER.debug('Error: ', exc_info=True)
+                self._LOGGER.error('Error getting treatment for feature flag')
+                self._LOGGER.error(str(e))
+                self._LOGGER.debug('Error: ', exc_info=True)
                 await self._telemetry_evaluation_producer.record_exception(method)
                 result = self._FAILED_EVAL_RESULT
 
@@ -723,7 +726,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         try:
             return await self._get_treatments(key, feature_flag_names, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG, attributes)
         except Exception:
-            _LOGGER.error("AA", exc_info=True)
+            self._LOGGER.error("AA", exc_info=True)
             return {feature: (CONTROL, None) for feature in feature_flag_names}
 
     async def get_treatments_by_flag_set(self, key, flag_set, attributes=None):
@@ -808,7 +811,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         """
         feature_flags_names = await self._get_feature_flag_names_by_flag_sets(flag_sets, 'get_' + method.value)
         if feature_flags_names == []:
-            _LOGGER.warning("%s: No valid Flag set or no feature flags found for evaluating treatments", 'get_' + method.value)
+            self._LOGGER.warning("%s: No valid Flag set or no feature flags found for evaluating treatments", 'get_' + method.value)
             return {}
 
         if 'config' in method.value:
@@ -829,7 +832,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         sanitized_flag_sets = input_validator.validate_flag_sets(flag_sets, method_name)
         feature_flags_by_set = await self._feature_flag_storage.get_feature_flags_by_sets(sanitized_flag_sets)
         if feature_flags_by_set is None:
-            _LOGGER.warning("Fetching feature flags for flag set %s encountered an error, skipping this flag set." % (flag_sets))
+            self._LOGGER.warning("Fetching feature flags for flag set %s encountered an error, skipping this flag set." % (flag_sets))
             return []
         return feature_flags_by_set
 
@@ -853,7 +856,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
             return input_validator.generate_control_treatments(features)
 
         if not self.ready:
-            _LOGGER.error("Client is not ready - no calls possible")
+            self._LOGGER.error("Client is not ready - no calls possible")
             await self._telemetry_init_producer.record_not_ready_usage()
 
         try:
@@ -868,8 +871,9 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
                 input_validator.validate_feature_flag_names({feature: ctx.flags.get(feature) for feature in features}, 'get_' + method.value)
                 results = self._evaluator.eval_many_with_context(key, bucketing, features, attributes, ctx)
             except Exception as e: # toto narrow this
-                _LOGGER.error('Error getting treatment for feature flag')
-                _LOGGER.debug('Error: ', exc_info=True)
+                self._LOGGER.error('Error getting treatment for feature flag')
+                self._LOGGER.error(str(e))
+                self._LOGGER.debug('Error: ', exc_info=True)
                 await self._telemetry_evaluation_producer.record_exception(method)
                 results = {n: self._FAILED_EVAL_RESULT for n in features}
 
@@ -920,7 +924,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         :rtype: bool
         """
         if not self.ready:
-            _LOGGER.warning("track: the SDK is not ready, results may be incorrect. Make sure to wait for SDK readiness before using this method")
+            self._LOGGER.warning("track: the SDK is not ready, results may be incorrect. Make sure to wait for SDK readiness before using this method")
             await self._telemetry_init_producer.record_not_ready_usage()
 
         start = get_current_epoch_time_ms()
@@ -942,8 +946,8 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
             return return_flag
         except Exception:  # pylint: disable=broad-except
             await self._telemetry_evaluation_producer.record_exception(MethodExceptionsAndLatencies.TRACK)
-            _LOGGER.error('Error processing track event')
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.error('Error processing track event')
+            self._LOGGER.debug('Error: ', exc_info=True)
             return False
 
 

@@ -27,6 +27,7 @@ class TelemetrySyncTaskTests(object):
 
         telemetry_synchronizer = TelemetrySynchronizer(telemetry_submitter)
         task = TelemetrySyncTask(telemetry_synchronizer.synchronize_stats, 1)
+        assert task._LOGGER.name == 'splitio.tasks.telemetry_sync'
         task.start()
         time.sleep(2)
         assert task.is_running()
@@ -59,6 +60,7 @@ class TelemetrySyncTaskAsyncTests(object):
 
         telemetry_synchronizer = TelemetrySynchronizerAsync(telemetry_submitter)
         task = TelemetrySyncTaskAsync(telemetry_synchronizer.synchronize_stats, 1)
+        assert task._LOGGER.name == 'asyncio'
         task.start()
         await asyncio.sleep(2)
         assert task.is_running()

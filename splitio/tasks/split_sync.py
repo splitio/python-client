@@ -5,9 +5,6 @@ from splitio.tasks import BaseSynchronizationTask
 from splitio.tasks.util.asynctask import AsyncTask, AsyncTaskAsync
 
 
-_LOGGER = logging.getLogger(__name__)
-
-
 class SplitSynchronizationTaskBase(BaseSynchronizationTask):
     """Split Synchronization task class."""
 

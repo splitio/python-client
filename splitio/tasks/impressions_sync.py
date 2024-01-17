@@ -3,9 +3,7 @@ import logging
 
 from splitio.tasks import BaseSynchronizationTask
 from splitio.tasks.util.asynctask import AsyncTask, AsyncTaskAsync
-
-
-_LOGGER = logging.getLogger(__name__)
+from splitio.util import log_helper
 
 
 class ImpressionsSyncTaskBase(BaseSynchronizationTask):
@@ -30,12 +28,14 @@ class ImpressionsSyncTaskBase(BaseSynchronizationTask):
 
     def flush(self):
         """Flush impressions in storage."""
-        _LOGGER.debug('Forcing flush execution for impressions')
+        self._LOGGER.debug('Forcing flush execution for impressions')
         self._task.force_execution()
 
 
 class ImpressionsSyncTask(ImpressionsSyncTaskBase):
     """Impressions synchronization task uses an asynctask.AsyncTask to send impressions."""
+
+    _LOGGER = logging.getLogger(__name__)
 
     def __init__(self, synchronize_impressions, period):
         """
@@ -58,6 +58,8 @@ class ImpressionsSyncTask(ImpressionsSyncTaskBase):
 
 class ImpressionsSyncTaskAsync(ImpressionsSyncTaskBase):
     """Impressions synchronization task uses an asynctask.AsyncTask to send impressions."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, synchronize_impressions, period):
         """
@@ -108,6 +110,8 @@ class ImpressionsCountSyncTaskBase(BaseSynchronizationTask):
 class ImpressionsCountSyncTask(ImpressionsCountSyncTaskBase):
     """Impressions synchronization task uses an asynctask.AsyncTask to send impressions."""
 
+    _LOGGER = logging.getLogger(__name__)
+
     def __init__(self, synchronize_counters):
         """
         Class constructor.
@@ -125,6 +129,8 @@ class ImpressionsCountSyncTask(ImpressionsCountSyncTaskBase):
 
 class ImpressionsCountSyncTaskAsync(ImpressionsCountSyncTaskBase):
     """Impressions synchronization task uses an asynctask.AsyncTask to send impressions."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, synchronize_counters):
         """

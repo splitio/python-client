@@ -30,6 +30,7 @@ class ImpressionsCountSynchronizerTests(object):
         api = mocker.Mock(spec=ImpressionsAPI)
         api.flush_counters.return_value = HttpResponse(200, '', {})
         impression_count_synchronizer = ImpressionsCountSynchronizer(api, counter)
+        assert impression_count_synchronizer._LOGGER.name == 'splitio.sync.impression'
         impression_count_synchronizer.synchronize_counters()
 
         assert counter.pop_all.mock_calls[0] == mocker.call()
@@ -64,6 +65,7 @@ class ImpressionsCountSynchronizerAsyncTests(object):
         api.flush_counters = flush_counters
 
         impression_count_synchronizer = ImpressionsCountSynchronizerAsync(api, counter)
+        assert impression_count_synchronizer._LOGGER.name == 'asyncio'
         await impression_count_synchronizer.synchronize_counters()
 
         assert self.counters == [

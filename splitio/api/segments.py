@@ -9,12 +9,10 @@ from splitio.api.commons import build_fetch
 from splitio.api.client import HttpClientException
 from splitio.models.telemetry import HTTPExceptionsAndLatencies
 
-
-_LOGGER = logging.getLogger(__name__)
-
-
 class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the segments API."""
+
+    _LOGGER = logging.getLogger(__name__)
 
     def __init__(self, http_client, sdk_key, sdk_metadata, telemetry_runtime_producer):
         """
@@ -63,16 +61,18 @@ class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
                 return json.loads(response.body)
             raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error(
+            self._LOGGER.error(
                 'Error fetching %s because an exception was raised by the HTTPClient',
                 segment_name
             )
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.debug('Error: ', exc_info=True)
             raise APIException('Segments not fetched properly.') from exc
 
 
 class SegmentsAPIAsync(object):  # pylint: disable=too-few-public-methods
     """Async Class that uses an httpClient to communicate with the segments API."""
+
+    _LOGGER = logging.getLogger('asyncio')
 
     def __init__(self, http_client, sdk_key, sdk_metadata, telemetry_runtime_producer):
         """
@@ -121,9 +121,9 @@ class SegmentsAPIAsync(object):  # pylint: disable=too-few-public-methods
                 return json.loads(response.body)
             raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error(
+            self._LOGGER.error(
                 'Error fetching %s because an exception was raised by the HTTPClient',
                 segment_name
             )
-            _LOGGER.debug('Error: ', exc_info=True)
+            self._LOGGER.debug('Error: ', exc_info=True)
             raise APIException('Segments not fetched properly.') from exc

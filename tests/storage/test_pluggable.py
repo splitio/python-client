@@ -86,11 +86,9 @@ class StorageMockAdapter(object):
     def get_many(self, keys):
         with self._lock:
             returned_keys = []
-            for key in keys:
-                if key in self._keys:
+            for key in self._keys:
+                if key in keys:
                     returned_keys.append(self._keys[key])
-                else:
-                    returned_keys.append(None)
             return returned_keys
 
     def add_items(self, key, added_items):
@@ -198,11 +196,9 @@ class StorageMockAdapterAsync(object):
     async def get_many(self, keys):
         async with self._lock:
             returned_keys = []
-            for key in keys:
-                if key in self._keys:
+            for key in self._keys:
+                if key in keys:
                     returned_keys.append(self._keys[key])
-                else:
-                    returned_keys.append(None)
             return returned_keys
 
     async def add_items(self, key, added_items):
@@ -251,13 +247,14 @@ class PluggableSplitStorageTests(object):
     def test_init(self):
         for sprefix in [None, 'myprefix']:
             pluggable_split_storage = PluggableSplitStorage(self.mock_adapter, prefix=sprefix)
+            assert pluggable_split_storage._LOGGER.name == 'splitio.storage.pluggable'
             if sprefix == 'myprefix':
                 prefix = 'myprefix.'
             else:
                 prefix = ''
-        assert(pluggable_split_storage._prefix == prefix + "SPLITIO.split.{split_name}")
+        assert(pluggable_split_storage._prefix == prefix + "SPLITIO.split.{feature_flag_name}")
         assert(pluggable_split_storage._traffic_type_prefix == prefix + "SPLITIO.trafficType.{traffic_type_name}")
-        assert(pluggable_split_storage._split_till_prefix == prefix + "SPLITIO.splits.till")
+        assert(pluggable_split_storage._feature_flag_till_prefix == prefix + "SPLITIO.splits.till")
 
     # TODO: To be added when producer mode is aupported
 #    def test_put_many(self):
@@ -282,7 +279,7 @@ class PluggableSplitStorageTests(object):
             split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
             split_name = splits_json['splitChange1_2']['splits'][0]['name']
 
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split_name), split1.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split_name), split1.to_json())
             assert(pluggable_split_storage.get(split_name).to_json() ==  splits.from_raw(splits_json['splitChange1_2']['splits'][0]).to_json())
             assert(pluggable_split_storage.get('not_existing') == None)
 
@@ -295,8 +292,8 @@ class PluggableSplitStorageTests(object):
             split2_temp['name'] = 'another_split'
             split2 = splits.from_raw(split2_temp)
 
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split1.name), split1.to_json())
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split2.name), split2.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split1.name), split1.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split2.name), split2.to_json())
             fetched = pluggable_split_storage.fetch_many([split1.name, split2.name])
             assert(fetched[split1.name].to_json() == split1.to_json())
             assert(fetched[split2.name].to_json() == split2.to_json())
@@ -334,8 +331,8 @@ class PluggableSplitStorageTests(object):
             split2_temp = splits_json['splitChange1_2']['splits'][0].copy()
             split2_temp['name'] = 'another_split'
             split2 = splits.from_raw(split2_temp)
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split1.name), split1.to_json())
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split2.name), split2.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split1.name), split1.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split2.name), split2.to_json())
             assert(pluggable_split_storage.get_split_names() == [split1.name, split2.name])
 
     def test_get_all(self):
@@ -347,8 +344,8 @@ class PluggableSplitStorageTests(object):
             split2_temp['name'] = 'another_split'
             split2 = splits.from_raw(split2_temp)
 
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split1.name), split1.to_json())
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split2.name), split2.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split1.name), split1.to_json())
+            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split2.name), split2.to_json())
             all_splits = pluggable_split_storage.get_all()
             assert([all_splits[0].to_json(), all_splits[1].to_json()] == [split1.to_json(), split2.to_json()])
 
@@ -415,13 +412,14 @@ class PluggableSplitStorageAsyncTests(object):
     def test_init(self):
         for sprefix in [None, 'myprefix']:
             pluggable_split_storage = PluggableSplitStorageAsync(self.mock_adapter, prefix=sprefix)
+            assert pluggable_split_storage._LOGGER.name == 'asyncio'
             if sprefix == 'myprefix':
                 prefix = 'myprefix.'
             else:
                 prefix = ''
-        assert(pluggable_split_storage._prefix == prefix + "SPLITIO.split.{split_name}")
+        assert(pluggable_split_storage._prefix == prefix + "SPLITIO.split.{feature_flag_name}")
         assert(pluggable_split_storage._traffic_type_prefix == prefix + "SPLITIO.trafficType.{traffic_type_name}")
-        assert(pluggable_split_storage._split_till_prefix == prefix + "SPLITIO.splits.till")
+        assert(pluggable_split_storage._feature_flag_till_prefix == prefix + "SPLITIO.splits.till")
 
     @pytest.mark.asyncio
     async def test_get(self):
@@ -432,7 +430,7 @@ class PluggableSplitStorageAsyncTests(object):
             split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
             split_name = splits_json['splitChange1_2']['splits'][0]['name']
 
-            await self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split_name), split1.to_json())
+            await self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split_name), split1.to_json())
             split = await pluggable_split_storage.get(split_name)
             assert(split.to_json() ==  splits.from_raw(splits_json['splitChange1_2']['splits'][0]).to_json())
             assert(await pluggable_split_storage.get('not_existing') == None)
@@ -447,8 +445,8 @@ class PluggableSplitStorageAsyncTests(object):
             split2_temp['name'] = 'another_split'
             split2 = splits.from_raw(split2_temp)
 
-            await self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split1.name), split1.to_json())
-            await self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split2.name), split2.to_json())
+            await self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split1.name), split1.to_json())
+            await self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split2.name), split2.to_json())
             fetched = await pluggable_split_storage.fetch_many([split1.name, split2.name])
             assert(fetched[split1.name].to_json() == split1.to_json())
             assert(fetched[split2.name].to_json() == split2.to_json())
@@ -474,8 +472,8 @@ class PluggableSplitStorageAsyncTests(object):
             split2_temp = splits_json['splitChange1_2']['splits'][0].copy()
             split2_temp['name'] = 'another_split'
             split2 = splits.from_raw(split2_temp)
-            await self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split1.name), split1.to_json())
-            await self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split2.name), split2.to_json())
+            await self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split1.name), split1.to_json())
+            await self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split2.name), split2.to_json())
             assert(await pluggable_split_storage.get_split_names() == [split1.name, split2.name])
 
     @pytest.mark.asyncio
@@ -488,8 +486,8 @@ class PluggableSplitStorageAsyncTests(object):
             split2_temp['name'] = 'another_split'
             split2 = splits.from_raw(split2_temp)
 
-            await self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split1.name), split1.to_json())
-            await self.mock_adapter.set(pluggable_split_storage._prefix.format(split_name=split2.name), split2.to_json())
+            await self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split1.name), split1.to_json())
+            await self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split2.name), split2.to_json())
             all_splits = await pluggable_split_storage.get_all()
             assert([all_splits[0].to_json(), all_splits[1].to_json()] == [split1.to_json(), split2.to_json()])
 
@@ -504,6 +502,7 @@ class PluggableSegmentStorageTests(object):
     def test_init(self):
         for sprefix in [None, 'myprefix']:
             pluggable_segment_storage = PluggableSegmentStorage(self.mock_adapter, prefix=sprefix)
+            assert pluggable_segment_storage._LOGGER.name == 'splitio.storage.pluggable'
             if sprefix == 'myprefix':
                 prefix = 'myprefix.'
             else:
@@ -599,6 +598,7 @@ class PluggableSegmentStorageAsyncTests(object):
     def test_init(self):
         for sprefix in [None, 'myprefix']:
             pluggable_segment_storage = PluggableSegmentStorageAsync(self.mock_adapter, prefix=sprefix)
+            assert pluggable_segment_storage._LOGGER.name == 'asyncio'
             if sprefix == 'myprefix':
                 prefix = 'myprefix.'
             else:
@@ -663,6 +663,7 @@ class PluggableImpressionsStorageTests(object):
             else:
                 prefix = ''
             pluggable_imp_storage = PluggableImpressionsStorage(self.mock_adapter, self.metadata, prefix=sprefix)
+            assert pluggable_imp_storage._LOGGER.name == 'splitio.storage.pluggable'
             assert(pluggable_imp_storage._impressions_queue_key == prefix + "SPLITIO.impressions")
             assert(pluggable_imp_storage._sdk_metadata == {
                                     's': self.metadata.sdk_version,
@@ -780,6 +781,7 @@ class PluggableImpressionsStorageAsyncTests(object):
             else:
                 prefix = ''
             pluggable_imp_storage = PluggableImpressionsStorageAsync(self.mock_adapter, self.metadata, prefix=sprefix)
+            assert pluggable_imp_storage._LOGGER.name == 'asyncio'
             assert(pluggable_imp_storage._impressions_queue_key == prefix + "SPLITIO.impressions")
             assert(pluggable_imp_storage._sdk_metadata == {
                                     's': self.metadata.sdk_version,
@@ -898,6 +900,7 @@ class PluggableEventsStorageTests(object):
             else:
                 prefix = ''
             pluggable_events_storage = PluggableEventsStorage(self.mock_adapter, self.metadata, prefix=sprefix)
+            assert pluggable_events_storage._LOGGER.name == 'splitio.storage.pluggable'
             assert(pluggable_events_storage._events_queue_key == prefix + "SPLITIO.events")
             assert(pluggable_events_storage._sdk_metadata == {
                                     's': self.metadata.sdk_version,
@@ -1012,6 +1015,7 @@ class PluggableEventsStorageAsyncTests(object):
             else:
                 prefix = ''
             pluggable_events_storage = PluggableEventsStorageAsync(self.mock_adapter, self.metadata, prefix=sprefix)
+            assert pluggable_events_storage._LOGGER.name == 'asyncio'
             assert(pluggable_events_storage._events_queue_key == prefix + "SPLITIO.events")
             assert(pluggable_events_storage._sdk_metadata == {
                                     's': self.metadata.sdk_version,
@@ -1158,12 +1162,12 @@ class PluggableTelemetryStorageTests(object):
             pluggable_telemetry_storage = PluggableTelemetryStorage(self.mock_adapter, self.sdk_metadata, prefix=sprefix)
             self.config = {}
             self.extra_config = {}
-            def record_config_mock(config, extra_config):
+            def record_config_mock(config, extra_config, af, inf):
                 self.config = config
                 self.extra_config = extra_config
 
-            pluggable_telemetry_storage.record_config = record_config_mock
-            pluggable_telemetry_storage.record_config({'item': 'value'}, {'item2': 'value2'})
+            pluggable_telemetry_storage._tel_config.record_config = record_config_mock
+            pluggable_telemetry_storage.record_config({'item': 'value'}, {'item2': 'value2'}, 0, 0)
             assert(self.config == {'item': 'value'})
             assert(self.extra_config == {'item2': 'value2'})
 
@@ -1183,7 +1187,7 @@ class PluggableTelemetryStorageTests(object):
                 self.active_factory_count = active_factory_count
                 self.redundant_factory_count = redundant_factory_count
 
-            pluggable_telemetry_storage.record_active_and_redundant_factories = record_active_and_redundant_factories_mock
+            pluggable_telemetry_storage._tel_config.record_active_and_redundant_factories = record_active_and_redundant_factories_mock
             pluggable_telemetry_storage.record_active_and_redundant_factories(2, 1)
             assert(self.active_factory_count == 2)
             assert(self.redundant_factory_count == 1)
@@ -1249,7 +1253,7 @@ class PluggableTelemetryStorageTests(object):
                     'eventsPushRate': 60,
                     'metricsRefreshRate': 10,
                     'storageType': None
-                    }, {}
+                    }, {}, 0, 0
             )
             pluggable_telemetry_storage.record_active_and_redundant_factories(2, 1)
             pluggable_telemetry_storage.push_config_stats()
@@ -1305,12 +1309,12 @@ class PluggableTelemetryStorageAsyncTests(object):
             pluggable_telemetry_storage = await PluggableTelemetryStorageAsync.create(self.mock_adapter, self.sdk_metadata, prefix=sprefix)
             self.config = {}
             self.extra_config = {}
-            async def record_config_mock(config, extra_config):
+            async def record_config_mock(config, extra_config, tf, ifs):
                 self.config = config
                 self.extra_config = extra_config
 
-            pluggable_telemetry_storage.record_config = record_config_mock
-            await pluggable_telemetry_storage.record_config({'item': 'value'}, {'item2': 'value2'})
+            pluggable_telemetry_storage._tel_config.record_config = record_config_mock
+            await pluggable_telemetry_storage.record_config({'item': 'value'}, {'item2': 'value2'}, 0, 0)
             assert(self.config == {'item': 'value'})
             assert(self.extra_config == {'item2': 'value2'})
 
@@ -1332,7 +1336,7 @@ class PluggableTelemetryStorageAsyncTests(object):
                 self.active_factory_count = active_factory_count
                 self.redundant_factory_count = redundant_factory_count
 
-            pluggable_telemetry_storage.record_active_and_redundant_factories = record_active_and_redundant_factories_mock
+            pluggable_telemetry_storage._tel_config.record_active_and_redundant_factories = record_active_and_redundant_factories_mock
             await pluggable_telemetry_storage.record_active_and_redundant_factories(2, 1)
             assert(self.active_factory_count == 2)
             assert(self.redundant_factory_count == 1)
@@ -1401,7 +1405,7 @@ class PluggableTelemetryStorageAsyncTests(object):
                     'eventsPushRate': 60,
                     'metricsRefreshRate': 10,
                     'storageType': None
-                    }, {}
+                    }, {}, 0, 0
             )
             await pluggable_telemetry_storage.record_active_and_redundant_factories(2, 1)
             await pluggable_telemetry_storage.push_config_stats()

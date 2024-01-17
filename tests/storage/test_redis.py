@@ -32,6 +32,7 @@ class RedisSplitStorageTests(object):
         mocker.patch('splitio.storage.redis.splits.from_raw', new=from_raw)
 
         storage = RedisSplitStorage(adapter)
+        assert storage._LOGGER.name == 'splitio.storage.redis'
         storage.get('some_split')
 
         assert adapter.get.mock_calls == [mocker.call('SPLITIO.split.some_split')]
@@ -199,6 +200,7 @@ class RedisSplitStorageAsyncTests(object):
         mocker.patch('splitio.storage.redis.splits.from_raw', new=from_raw)
 
         storage = RedisSplitStorageAsync(adapter)
+        assert storage._LOGGER.name == 'asyncio'
         await storage.get('some_split')
 
         assert self.name == 'SPLITIO.split.some_split'
@@ -445,6 +447,7 @@ class RedisSegmentStorageTests(object):
         mocker.patch('splitio.storage.redis.segments.from_raw', new=from_raw)
 
         storage = RedisSegmentStorage(adapter)
+        assert storage._LOGGER.name == 'splitio.storage.redis'
         result = storage.get('some_segment')
         assert isinstance(result, Segment)
         assert result.name == 'some_segment'
@@ -508,6 +511,7 @@ class RedisSegmentStorageAsyncTests(object):
         mocker.patch('splitio.storage.redis.segments.from_raw', new=from_raw)
 
         storage = RedisSegmentStorageAsync(adapter)
+        assert storage._LOGGER.name == 'asyncio'
         result = await storage.get('some_segment')
         assert isinstance(result, Segment)
         assert result.name == 'some_segment'
@@ -570,6 +574,7 @@ class RedisImpressionsStorageTests(object):  # pylint: disable=too-few-public-me
         adapter = mocker.Mock(spec=RedisAdapter)
         metadata = get_metadata({})
         storage = RedisImpressionsStorage(adapter, metadata)
+        assert storage._LOGGER.name == 'splitio.storage.redis'
 
         impressions = [
             Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
@@ -701,6 +706,7 @@ class RedisImpressionsStorageAsyncTests(object):  # pylint: disable=too-few-publ
         adapter = mocker.Mock(spec=RedisAdapterAsync)
         metadata = get_metadata({})
         storage = RedisImpressionsStorageAsync(adapter, metadata)
+        assert storage._LOGGER.name == 'asyncio'
 
         impressions = [
             Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
@@ -843,6 +849,7 @@ class RedisEventsStorageTests(object):  # pylint: disable=too-few-public-methods
         metadata = get_metadata({})
 
         storage = RedisEventsStorage(adapter, metadata)
+        assert storage._LOGGER.name == 'splitio.storage.redis'
 
         events = [
             EventWrapper(event=Event('key1', 'user', 'purchase', 10, 123456, None),  size=32768),
@@ -913,6 +920,7 @@ class RedisEventsStorageAsyncTests(object):  # pylint: disable=too-few-public-me
         metadata = get_metadata({})
 
         storage = RedisEventsStorageAsync(adapter, metadata)
+        assert storage._LOGGER.name == 'asyncio'
 
         events = [
             EventWrapper(event=Event('key1', 'user', 'purchase', 10, 123456, None),  size=32768),
@@ -985,6 +993,7 @@ class RedisTelemetryStorageTests(object):
 
     def test_init(self, mocker):
         redis_telemetry = RedisTelemetryStorage(mocker.Mock(), mocker.Mock())
+        assert redis_telemetry._LOGGER.name == 'splitio.storage.redis'
         assert(redis_telemetry._redis_client is not None)
         assert(redis_telemetry._sdk_metadata is not None)
         assert(isinstance(redis_telemetry._tel_config, TelemetryConfig))
@@ -993,7 +1002,7 @@ class RedisTelemetryStorageTests(object):
     @mock.patch('splitio.models.telemetry.TelemetryConfig.record_config')
     def test_record_config(self, mocker):
         redis_telemetry = RedisTelemetryStorage(mocker.Mock(), mocker.Mock())
-        redis_telemetry.record_config(mocker.Mock(), mocker.Mock())
+        redis_telemetry.record_config(mocker.Mock(), mocker.Mock(), 0, 0)
         assert(mocker.called)
 
     @mock.patch('splitio.storage.adapters.redis.RedisAdapter.hset')
@@ -1087,6 +1096,7 @@ class RedisTelemetryStorageAsyncTests(object):
     @pytest.mark.asyncio
     async def test_init(self, mocker):
         redis_telemetry = await RedisTelemetryStorageAsync.create(mocker.Mock(), mocker.Mock())
+        assert redis_telemetry._LOGGER.name == 'asyncio'
         assert(redis_telemetry._redis_client is not None)
         assert(redis_telemetry._sdk_metadata is not None)
         assert(isinstance(redis_telemetry._tel_config, TelemetryConfigAsync))
@@ -1100,7 +1110,7 @@ class RedisTelemetryStorageAsyncTests(object):
             self.called = True
         redis_telemetry._tel_config.record_config = record_config
 
-        await redis_telemetry.record_config(mocker.Mock(), mocker.Mock())
+        await redis_telemetry.record_config(mocker.Mock(), mocker.Mock(), 0, 0)
         assert(self.called)
 
     @pytest.mark.asyncio
