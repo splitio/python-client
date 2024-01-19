@@ -105,7 +105,7 @@ class SplitSynchronizer(SplitSynchronizerBase):
                 feature_flag_changes = self._api.fetch_splits(change_number, fetch_options)
             except APIException as exc:
                 if exc._status_code is not None and exc._status_code == 414:
-                    _LOGGER.error('SDK Initialization: the amount of flag sets provided are big causing uri length error.')
+                    _LOGGER.error('Exception caught: the amount of flag sets provided are big causing uri length error.')
                     _LOGGER.debug('Exception information: ', exc_info=True)
                     raise APIUriException("URI is too long due to FlagSets count")
 
