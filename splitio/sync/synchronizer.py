@@ -425,7 +425,7 @@ class Synchronizer(SynchronizerInMemoryBase):
         while True:
             try:
                 sync_result = self.synchronize_splits(None, False)
-                if not sync_result.success and sync_result.error_code == 414:
+                if not sync_result.success and sync_result.error_code is not None and sync_result.error_code == 414:
                     _LOGGER.error("URI too long exception caught, aborting retries")
                     break
 
@@ -587,7 +587,7 @@ class SynchronizerAsync(SynchronizerInMemoryBase):
         while True:
             try:
                 sync_result = await self.synchronize_splits(None, False)
-                if not sync_result.success and sync_result.error_code == 414:
+                if not sync_result.success and sync_result.error_code is not None and sync_result.error_code == 414:
                     _LOGGER.error("URI too long exception caught, aborting retries")
                     break
 
@@ -601,10 +601,6 @@ class SynchronizerAsync(SynchronizerInMemoryBase):
 
                 # All is good
                 return
-            except APIUriException as exc:
-                _LOGGER.error("URI too long exception, aborting retries.")
-                _LOGGER.debug('Error: ', exc_info=True)
-                break
             except Exception as exc:  # pylint:disable=broad-except
                 _LOGGER.error("Exception caught when trying to sync all data: %s", str(exc))
                 _LOGGER.debug('Error: ', exc_info=True)
