@@ -13,7 +13,6 @@ from splitio.models.telemetry import UpdateFromSSE
 from splitio.push.parser import UpdateType
 from splitio.optional.loaders import asyncio
 from splitio.util.storage_helper import update_feature_flag_storage, update_feature_flag_storage_async
-from splitio.util import log_helper
 
 
 _LOGGER = logging.getLogger(__name__)
