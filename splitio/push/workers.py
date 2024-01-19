@@ -82,8 +82,8 @@ class SegmentWorker(WorkerBase):
             try:
                 self._handler(event.segment_name, event.change_number)
             except Exception:
-                self._LOGGER.error('Exception raised in segment synchronization')
-                self._LOGGER.debug('Exception information: ', exc_info=True)
+                _LOGGER.error('Exception raised in segment synchronization')
+                _LOGGER.debug('Exception information: ', exc_info=True)
 
     def start(self):
         """Start worker."""
@@ -158,7 +158,7 @@ class SegmentWorkerAsync(WorkerBase):
         """Stop worker."""
         _LOGGER.debug('Stopping Segment Worker')
         if not self.is_running():
-            self._LOGGER.debug('Worker is not running. Ignoring.')
+            _LOGGER.debug('Worker is not running. Ignoring.')
             return
         self._running = False
         await self._segment_queue.put(self._centinel)
@@ -224,7 +224,7 @@ class SplitWorker(WorkerBase):
                         segment_list = update_feature_flag_storage(self._feature_flag_storage, [new_feature_flag], event.change_number)
                         for segment_name in segment_list:
                             if self._segment_storage.get(segment_name) is None:
-                                self._LOGGER.debug('Fetching new segment %s', segment_name)
+                                _LOGGER.debug('Fetching new segment %s', segment_name)
                                 self._segment_handler(segment_name, event.change_number)
 
                         self._telemetry_runtime_producer.record_update_from_sse(UpdateFromSSE.SPLIT_UPDATE)
@@ -326,7 +326,7 @@ class SplitWorkerAsync(WorkerBase):
                         segment_list = await update_feature_flag_storage_async(self._feature_flag_storage, [new_feature_flag], event.change_number)
                         for segment_name in segment_list:
                             if await self._segment_storage.get(segment_name) is None:
-                                self._LOGGER.debug('Fetching new segment %s', segment_name)
+                                _LOGGER.debug('Fetching new segment %s', segment_name)
                                 await self._segment_handler(segment_name, event.change_number)
 
                         await self._telemetry_runtime_producer.record_update_from_sse(UpdateFromSSE.SPLIT_UPDATE)
