@@ -12,6 +12,8 @@ from splitio.models.splits import from_raw, Status
 from splitio.models.telemetry import UpdateFromSSE
 from splitio.push.parser import UpdateType
 from splitio.optional.loaders import asyncio
+from splitio.util.storage_helper import update_feature_flag_storage, update_feature_flag_storage_async
+from splitio.util import log_helper
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -80,8 +82,8 @@ class SegmentWorker(WorkerBase):
             try:
                 self._handler(event.segment_name, event.change_number)
             except Exception:
-                _LOGGER.error('Exception raised in segment synchronization')
-                _LOGGER.debug('Exception information: ', exc_info=True)
+                self._LOGGER.error('Exception raised in segment synchronization')
+                self._LOGGER.debug('Exception information: ', exc_info=True)
 
     def start(self):
         """Start worker."""
@@ -156,7 +158,7 @@ class SegmentWorkerAsync(WorkerBase):
         """Stop worker."""
         _LOGGER.debug('Stopping Segment Worker')
         if not self.is_running():
-            _LOGGER.debug('Worker is not running. Ignoring.')
+            self._LOGGER.debug('Worker is not running. Ignoring.')
             return
         self._running = False
         await self._segment_queue.put(self._centinel)
@@ -218,17 +220,13 @@ class SplitWorker(WorkerBase):
             try:
                 if self._check_instant_ff_update(event):
                     try:
-                        new_split = from_raw(json.loads(self._get_feature_flag_definition(event)))
-                        if new_split.status == Status.ACTIVE:
-                            self._feature_flag_storage.put(new_split)
-                            _LOGGER.debug('Feature flag %s is updated', new_split.name)
-                            for segment_name in new_split.get_segment_names():
-                                if self._segment_storage.get(segment_name) is None:
-                                    _LOGGER.debug('Fetching new segment %s', segment_name)
-                                    self._segment_handler(segment_name, event.change_number)
-                        else:
-                            self._feature_flag_storage.remove(new_split.name)
-                        self._feature_flag_storage.set_change_number(event.change_number)
+                        new_feature_flag = from_raw(json.loads(self._get_feature_flag_definition(event)))
+                        segment_list = update_feature_flag_storage(self._feature_flag_storage, [new_feature_flag], event.change_number)
+                        for segment_name in segment_list:
+                            if self._segment_storage.get(segment_name) is None:
+                                self._LOGGER.debug('Fetching new segment %s', segment_name)
+                                self._segment_handler(segment_name, event.change_number)
+
                         self._telemetry_runtime_producer.record_update_from_sse(UpdateFromSSE.SPLIT_UPDATE)
                         continue
                     except Exception as e:
@@ -236,7 +234,13 @@ class SplitWorker(WorkerBase):
                         _LOGGER.debug(str(e))
                         _LOGGER.debug('Exception information: ', exc_info=True)
                         pass
-                self._handler(event.change_number)
+                sync_result = self._handler(event.change_number)
+                if not sync_result.success and sync_result.error_code == 414:
+                    _LOGGER.error("URI too long exception caught, sync failed")
+
+                if not sync_result.success:
+                    _LOGGER.error("feature flags sync failed")
+
             except Exception as e:  # pylint: disable=broad-except
                 _LOGGER.error('Exception raised in feature flag synchronization')
                 _LOGGER.debug(str(e))
@@ -318,17 +322,13 @@ class SplitWorkerAsync(WorkerBase):
             try:
                 if await self._check_instant_ff_update(event):
                     try:
-                        new_split = from_raw(json.loads(self._get_feature_flag_definition(event)))
-                        if new_split.status == Status.ACTIVE:
-                            await self._feature_flag_storage.put(new_split)
-                            _LOGGER.debug('Feature flag %s is updated', new_split.name)
-                            for segment_name in new_split.get_segment_names():
-                                if await self._segment_storage.get(segment_name) is None:
-                                    _LOGGER.debug('Fetching new segment %s', segment_name)
-                                    await self._segment_handler(segment_name, event.change_number)
-                        else:
-                            await self._feature_flag_storage.remove(new_split.name)
-                        await self._feature_flag_storage.set_change_number(event.change_number)
+                        new_feature_flag = from_raw(json.loads(self._get_feature_flag_definition(event)))
+                        segment_list = await update_feature_flag_storage_async(self._feature_flag_storage, [new_feature_flag], event.change_number)
+                        for segment_name in segment_list:
+                            if await self._segment_storage.get(segment_name) is None:
+                                self._LOGGER.debug('Fetching new segment %s', segment_name)
+                                await self._segment_handler(segment_name, event.change_number)
+
                         await self._telemetry_runtime_producer.record_update_from_sse(UpdateFromSSE.SPLIT_UPDATE)
                         continue
                     except Exception as e:
