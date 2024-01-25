@@ -14,7 +14,6 @@ from splitio.push.parser import UpdateType
 from splitio.optional.loaders import asyncio
 from splitio.util.storage_helper import update_feature_flag_storage, update_feature_flag_storage_async
 
-
 _LOGGER = logging.getLogger(__name__)
 
 class CompressionMode(Enum):
@@ -23,6 +22,12 @@ class CompressionMode(Enum):
     NO_COMPRESSION = 0
     GZIP_COMPRESSION = 1
     ZLIB_COMPRESSION = 2
+
+_compression_handlers = {
+    CompressionMode.NO_COMPRESSION: lambda event: base64.b64decode(event.feature_flag_definition),
+    CompressionMode.GZIP_COMPRESSION: lambda event: gzip.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8'),
+    CompressionMode.ZLIB_COMPRESSION: lambda event: zlib.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8'),
+}
 
 class WorkerBase(object, metaclass=abc.ABCMeta):
     """Worker template."""
@@ -42,7 +47,7 @@ class WorkerBase(object, metaclass=abc.ABCMeta):
     def _get_feature_flag_definition(self, event):
         """return feature flag definition in event."""
         cm = CompressionMode(event.compression) # will throw if the number is not defined in compression mode
-        return self._compression_handlers[cm](event)
+        return _compression_handlers[cm](event)
 
 class SegmentWorker(WorkerBase):
     """Segment Worker for processing updates."""
@@ -191,11 +196,6 @@ class SplitWorker(WorkerBase):
         self._worker = None
         self._feature_flag_storage = feature_flag_storage
         self._segment_storage = segment_storage
-        self._compression_handlers = {
-            CompressionMode.NO_COMPRESSION: lambda event: base64.b64decode(event.feature_flag_definition),
-            CompressionMode.GZIP_COMPRESSION: lambda event: gzip.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8'),
-            CompressionMode.ZLIB_COMPRESSION: lambda event: zlib.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8'),
-        }
         self._telemetry_runtime_producer = telemetry_runtime_producer
 
     def is_running(self):
@@ -230,7 +230,6 @@ class SplitWorker(WorkerBase):
                         continue
                     except Exception as e:
                         _LOGGER.error('Exception raised in updating feature flag')
-                        _LOGGER.debug(str(e))
                         _LOGGER.debug('Exception information: ', exc_info=True)
                         pass
                 sync_result = self._handler(event.change_number)
@@ -242,7 +241,6 @@ class SplitWorker(WorkerBase):
 
             except Exception as e:  # pylint: disable=broad-except
                 _LOGGER.error('Exception raised in feature flag synchronization')
-                _LOGGER.debug(str(e))
                 _LOGGER.debug('Exception information: ', exc_info=True)
 
     def start(self):
@@ -293,11 +291,6 @@ class SplitWorkerAsync(WorkerBase):
         self._running = False
         self._feature_flag_storage = feature_flag_storage
         self._segment_storage = segment_storage
-        self._compression_handlers = {
-            CompressionMode.NO_COMPRESSION: lambda event: base64.b64decode(event.feature_flag_definition),
-            CompressionMode.GZIP_COMPRESSION: lambda event: gzip.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8'),
-            CompressionMode.ZLIB_COMPRESSION: lambda event: zlib.decompress(base64.b64decode(event.feature_flag_definition)).decode('utf-8'),
-        }
         self._telemetry_runtime_producer = telemetry_runtime_producer
 
     def is_running(self):
@@ -332,13 +325,11 @@ class SplitWorkerAsync(WorkerBase):
                         continue
                     except Exception as e:
                         _LOGGER.error('Exception raised in updating feature flag')
-                        _LOGGER.debug(str(e))
                         _LOGGER.debug('Exception information: ', exc_info=True)
                         pass
                 await self._handler(event.change_number)
             except Exception as e:  # pylint: disable=broad-except
                 _LOGGER.error('Exception raised in split synchronization')
-                _LOGGER.debug(str(e))
                 _LOGGER.debug('Exception information: ', exc_info=True)
 
     def start(self):

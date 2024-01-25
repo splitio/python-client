@@ -1,10 +1,6 @@
 """Telemetry Sync Class."""
 import abc
 
-from splitio.api.telemetry import TelemetryAPI
-from splitio.engine.telemetry import TelemetryStorageConsumer
-from splitio.models.telemetry import UpdateFromSSE
-
 class TelemetrySynchronizer(object):
     """Telemetry synchronizer class."""
 

@@ -6,7 +6,7 @@ from splitio.engine.splitters import Splitter
 from splitio.models.impressions import Impression, Label
 from splitio.models.events import Event, EventWrapper
 from splitio.models.telemetry import get_latency_bucket_index, MethodExceptionsAndLatencies
-from splitio.client import input_validator
+from splitio.client import input_validator, config
 from splitio.util.time import get_current_epoch_time_ms, utctime_ms
 
 
@@ -18,7 +18,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
 
     _FAILED_EVAL_RESULT = {
         'treatment': CONTROL,
-        'config': None,
+        'configurations': None,
         'impression': {
             'label': Label.EXCEPTION,
             'change_number': None,
@@ -86,8 +86,6 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         matching_key, bucketing_key = input_validator.validate_key(key, 'get_' + method.value)
         if not matching_key:
             raise _InvalidInputError()
-#        if bucketing_key is None:
-#            bucketing_key = matching_key
 
         feature = input_validator.validate_feature_flag_name(feature, 'get_' + method.value)
         if not feature:
@@ -104,8 +102,6 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         matching_key, bucketing_key = input_validator.validate_key(key, 'get_' + method.value)
         if not matching_key:
             raise _InvalidInputError()
-#        if bucketing_key is None:
-#            bucketing_key = matching_key
 
         features = input_validator.validate_feature_flags_get_treatments('get_' + method.value, features)
         if not features:
@@ -292,7 +288,6 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
                 result = self._evaluator.eval_with_context(key, bucketing, feature, attributes, ctx)
             except Exception as e: # toto narrow this
                 _LOGGER.error('Error getting treatment for feature flag')
-                _LOGGER.error(str(e))
                 _LOGGER.debug('Error: ', exc_info=True)
                 self._telemetry_evaluation_producer.record_exception(method)
                 result = self._FAILED_EVAL_RESULT
@@ -346,6 +341,113 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         except Exception:
             return {feature: (CONTROL, None) for feature in feature_flag_names}
 
+    def get_treatments_by_flag_set(self, key, flag_set, attributes=None):
+            """
+            Get treatments for feature flags that contain given flag set.
+            This method never raises an exception. If there's a problem, the appropriate log message
+            will be generated and the method will return the CONTROL treatment.
+            :param key: The key for which to get the treatment
+            :type key: str
+            :param flag_set: flag set
+            :type flag_sets: str
+            :param attributes: An optional dictionary of attributes
+            :type attributes: dict
+            :return: Dictionary with the result of all the feature flags provided
+            :rtype: dict
+            """
+            return self._get_treatments_by_flag_sets( key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET, attributes)
+
+    def get_treatments_by_flag_sets(self, key, flag_sets, attributes=None):
+        """
+        Get treatments for feature flags that contain given flag sets.
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param flag_sets: list of flag sets
+        :type flag_sets: list
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :return: Dictionary with the result of all the feature flags provided
+        :rtype: dict
+        """
+        return self._get_treatments_by_flag_sets( key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS, attributes)
+
+    def get_treatments_with_config_by_flag_set(self, key, flag_set, attributes=None):
+        """
+        Get treatments for feature flags that contain given flag set.
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param flag_set: flag set
+        :type flag_sets: str
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :return: Dictionary with the result of all the feature flags provided
+        :rtype: dict
+        """
+        return self._get_treatments_by_flag_sets( key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET, attributes)
+
+    def get_treatments_with_config_by_flag_sets(self, key, flag_sets, attributes=None):
+        """
+        Get treatments for feature flags that contain given flag set.
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param flag_set: flag set
+        :type flag_sets: str
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :return: Dictionary with the result of all the feature flags provided
+        :rtype: dict
+        """
+        return self._get_treatments_by_flag_sets( key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS, attributes)
+
+    def _get_treatments_by_flag_sets(self, key, flag_sets, method, attributes=None):
+        """
+        Get treatments for feature flags that contain given flag sets.
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param flag_sets: list of flag sets
+        :type flag_sets: list
+        :param method: Treatment by flag set method flavor
+        :type method: splitio.models.telemetry.MethodExceptionsAndLatencies
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :return: Dictionary with the result of all the feature flags provided
+        :rtype: dict
+        """
+        feature_flags_names = self._get_feature_flag_names_by_flag_sets(flag_sets, 'get_' + method.value)
+        if feature_flags_names == []:
+            _LOGGER.warning("%s: No valid Flag set or no feature flags found for evaluating treatments", 'get_' + method.value)
+            return {}
+
+        if 'config' in method.value:
+            return self._get_treatments(key, feature_flags_names, method, attributes)
+
+        with_config = self._get_treatments(key, feature_flags_names, method, attributes)
+        return {feature_flag: result[0] for (feature_flag, result) in with_config.items()}
+
+
+    def _get_feature_flag_names_by_flag_sets(self, flag_sets, method_name):
+        """
+        Sanitize given flag sets and return list of feature flag names associated with them
+        :param flag_sets: list of flag sets
+        :type flag_sets: list
+        :return: list of feature flag names
+        :rtype: list
+        """
+        sanitized_flag_sets = input_validator.validate_flag_sets(flag_sets, method_name)
+        feature_flags_by_set = self._feature_flag_storage.get_feature_flags_by_sets(sanitized_flag_sets)
+        if feature_flags_by_set is None:
+            _LOGGER.warning("Fetching feature flags for flag set %s encountered an error, skipping this flag set." % (flag_sets))
+            return []
+        return feature_flags_by_set
+
     def _get_treatments(self, key, features, method, attributes=None):
         """
         Validate key, feature flag names and objects, and get the treatments and configs with an optional dictionary of attributes.
@@ -382,7 +484,6 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
                 results = self._evaluator.eval_many_with_context(key, bucketing, features, attributes, ctx)
             except Exception as e: # toto narrow this
                 _LOGGER.error('Error getting treatment for feature flag')
-                _LOGGER.error(str(e))
                 _LOGGER.debug('Error: ', exc_info=True)
                 self._telemetry_evaluation_producer.record_exception(method)
                 results = {n: self._FAILED_EVAL_RESULT for n in features}
@@ -572,7 +673,6 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
                 result = self._evaluator.eval_with_context(key, bucketing, feature, attributes, ctx)
             except Exception as e: # toto narrow this
                 _LOGGER.error('Error getting treatment for feature flag')
-                _LOGGER.error(str(e))
                 _LOGGER.debug('Error: ', exc_info=True)
                 await self._telemetry_evaluation_producer.record_exception(method)
                 result = self._FAILED_EVAL_RESULT
@@ -626,6 +726,113 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
             _LOGGER.error("AA", exc_info=True)
             return {feature: (CONTROL, None) for feature in feature_flag_names}
 
+    async def get_treatments_by_flag_set(self, key, flag_set, attributes=None):
+            """
+            Get treatments for feature flags that contain given flag set.
+            This method never raises an exception. If there's a problem, the appropriate log message
+            will be generated and the method will return the CONTROL treatment.
+            :param key: The key for which to get the treatment
+            :type key: str
+            :param flag_set: flag set
+            :type flag_sets: str
+            :param attributes: An optional dictionary of attributes
+            :type attributes: dict
+            :return: Dictionary with the result of all the feature flags provided
+            :rtype: dict
+            """
+            return await self._get_treatments_by_flag_sets( key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET, attributes)
+
+    async def get_treatments_by_flag_sets(self, key, flag_sets, attributes=None):
+        """
+        Get treatments for feature flags that contain given flag sets.
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param flag_sets: list of flag sets
+        :type flag_sets: list
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :return: Dictionary with the result of all the feature flags provided
+        :rtype: dict
+        """
+        return await self._get_treatments_by_flag_sets( key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS, attributes)
+
+    async def get_treatments_with_config_by_flag_set(self, key, flag_set, attributes=None):
+        """
+        Get treatments for feature flags that contain given flag set.
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param flag_set: flag set
+        :type flag_sets: str
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :return: Dictionary with the result of all the feature flags provided
+        :rtype: dict
+        """
+        return await self._get_treatments_by_flag_sets( key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET, attributes)
+
+    async def get_treatments_with_config_by_flag_sets(self, key, flag_sets, attributes=None):
+        """
+        Get treatments for feature flags that contain given flag set.
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param flag_set: flag set
+        :type flag_sets: str
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :return: Dictionary with the result of all the feature flags provided
+        :rtype: dict
+        """
+        return await self._get_treatments_by_flag_sets( key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS, attributes)
+
+    async def _get_treatments_by_flag_sets(self, key, flag_sets, method, attributes=None):
+        """
+        Get treatments for feature flags that contain given flag sets.
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param flag_sets: list of flag sets
+        :type flag_sets: list
+        :param method: Treatment by flag set method flavor
+        :type method: splitio.models.telemetry.MethodExceptionsAndLatencies
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+        :return: Dictionary with the result of all the feature flags provided
+        :rtype: dict
+        """
+        feature_flags_names = await self._get_feature_flag_names_by_flag_sets(flag_sets, 'get_' + method.value)
+        if feature_flags_names == []:
+            _LOGGER.warning("%s: No valid Flag set or no feature flags found for evaluating treatments", 'get_' + method.value)
+            return {}
+
+        if 'config' in method.value:
+            return await self._get_treatments(key, feature_flags_names, method, attributes)
+
+        with_config = await self._get_treatments(key, feature_flags_names, method, attributes)
+        return {feature_flag: result[0] for (feature_flag, result) in with_config.items()}
+
+
+    async def _get_feature_flag_names_by_flag_sets(self, flag_sets, method_name):
+        """
+        Sanitize given flag sets and return list of feature flag names associated with them
+        :param flag_sets: list of flag sets
+        :type flag_sets: list
+        :return: list of feature flag names
+        :rtype: list
+        """
+        sanitized_flag_sets = input_validator.validate_flag_sets(flag_sets, method_name)
+        feature_flags_by_set = await self._feature_flag_storage.get_feature_flags_by_sets(sanitized_flag_sets)
+        if feature_flags_by_set is None:
+            _LOGGER.warning("Fetching feature flags for flag set %s encountered an error, skipping this flag set." % (flag_sets))
+            return []
+        return feature_flags_by_set
+
     async def _get_treatments(self, key, features, method, attributes=None):
         """
         Validate key, feature flag names and objects, and get the treatments and configs with an optional dictionary of attributes, for async calls
@@ -662,7 +869,6 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
                 results = self._evaluator.eval_many_with_context(key, bucketing, features, attributes, ctx)
             except Exception as e: # toto narrow this
                 _LOGGER.error('Error getting treatment for feature flag')
-                _LOGGER.error(str(e))
                 _LOGGER.debug('Error: ', exc_info=True)
                 await self._telemetry_evaluation_producer.record_exception(method)
                 results = {n: self._FAILED_EVAL_RESULT for n in features}

@@ -67,3 +67,10 @@ class ConfigSanitizationTests(object):
         configs = {}
         processed = config.sanitize('some', configs)
         assert processed['redisLocalCacheEnabled']  # check default is True
+        assert processed['flagSetsFilter'] is None
+
+        processed = config.sanitize('some', {'redisHost': 'x', 'flagSetsFilter': ['set']})
+        assert processed['flagSetsFilter'] is None
+
+        processed = config.sanitize('some', {'storageType': 'pluggable', 'flagSetsFilter': ['set']})
+        assert processed['flagSetsFilter'] is None

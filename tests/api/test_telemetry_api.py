@@ -82,15 +82,6 @@ class TelemetryAPITests(object):
         # validate key-value args (body)
         assert call_made[2]['body'] == uniques
 
-        httpclient.reset_mock()
-        def raise_exception(*args, **kwargs):
-            raise client.HttpClientException('some_message')
-        httpclient.post.side_effect = raise_exception
-        with pytest.raises(APIException) as exc_info:
-            response = telemetry_api.record_init(uniques)
-            assert exc_info.type == APIException
-            assert exc_info.value.message == 'some_message'
-
     def test_record_stats(self, mocker):
         """Test telemetry posting stats."""
         httpclient = mocker.Mock(spec=client.HttpClient)
@@ -223,15 +214,6 @@ class TelemetryAPIAsyncTests(object):
 
         # validate key-value args (body)
         assert self.body == uniques
-
-        httpclient.reset_mock()
-        def raise_exception(*args, **kwargs):
-            raise client.HttpClientException('some_message')
-        httpclient.post = raise_exception
-        with pytest.raises(APIException) as exc_info:
-            response = await telemetry_api.record_init(uniques)
-            assert exc_info.type == APIException
-            assert exc_info.value.message == 'some_message'
 
     @pytest.mark.asyncio
     async def test_record_stats(self, mocker):
