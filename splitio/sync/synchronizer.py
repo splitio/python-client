@@ -4,13 +4,18 @@ import abc
 import logging
 import threading
 import time
+from collections import namedtuple
 
 from splitio.optional.loaders import asyncio
-from splitio.api import APIException
+from splitio.api import APIException, APIUriException
 from splitio.util.backoff import Backoff
 from splitio.sync.split import _ON_DEMAND_FETCH_BACKOFF_BASE, _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES, _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT, LocalhostMode
 
+SplitSyncResult = namedtuple('SplitSyncResult', ['success', 'error_code'])
+
 _LOGGER = logging.getLogger(__name__)
+
+
 _SYNC_ALL_NO_RETRIES = -1
 
 class SplitSynchronizers(object):
@@ -353,7 +358,7 @@ class Synchronizer(SynchronizerInMemoryBase):
         :param split_tasks: tasks for starting/stopping tasks
         :type split_tasks: splitio.sync.synchronizer.SplitTasks
         """
-        super().__init__(split_synchronizers, split_tasks)
+        SynchronizerInMemoryBase.__init__(self, split_synchronizers, split_tasks)
 
     def _synchronize_segments(self):
         _LOGGER.debug('Starting segments synchronization')
@@ -398,11 +403,16 @@ class Synchronizer(SynchronizerInMemoryBase):
                     _LOGGER.error(','.join(new_segments))
                 else:
                     _LOGGER.debug('Segment sync scheduled.')
-            return True
-        except APIException:
+            return SplitSyncResult(True, 0)
+        except APIUriException as exc:
+            _LOGGER.error('Failed syncing feature flags due to long URI')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return SplitSyncResult(False, exc._status_code)
+
+        except APIException as exc:
             _LOGGER.error('Failed syncing feature flags')
             _LOGGER.debug('Error: ', exc_info=True)
-            return False
+            return SplitSyncResult(False, exc._status_code)
 
     def sync_all(self, max_retry_attempts=_SYNC_ALL_NO_RETRIES):
         """
@@ -414,7 +424,12 @@ class Synchronizer(SynchronizerInMemoryBase):
         retry_attempts = 0
         while True:
             try:
-                if not self.synchronize_splits(None, False):
+                sync_result = self.synchronize_splits(None, False)
+                if not sync_result.success and sync_result.error_code is not None and sync_result.error_code == 414:
+                    _LOGGER.error("URI too long exception caught, aborting retries")
+                    break
+
+                if not sync_result.success:
                     raise Exception("feature flags sync failed")
 
                 # Only retrying feature flags, since segments may trigger too many calls.
@@ -504,7 +519,7 @@ class SynchronizerAsync(SynchronizerInMemoryBase):
         :param split_tasks: tasks for starting/stopping tasks
         :type split_tasks: splitio.sync.synchronizer.SplitTasks
         """
-        super().__init__(split_synchronizers, split_tasks)
+        SynchronizerInMemoryBase.__init__(self, split_synchronizers, split_tasks)
         self.stop_periodic_data_recording_task = None
 
     async def _synchronize_segments(self):
@@ -550,11 +565,16 @@ class SynchronizerAsync(SynchronizerInMemoryBase):
                     _LOGGER.error(','.join(new_segments))
                 else:
                     _LOGGER.debug('Segment sync scheduled.')
-            return True
-        except APIException:
+            return SplitSyncResult(True, 0)
+        except APIUriException as exc:
+            _LOGGER.error('Failed syncing feature flags due to long URI')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return SplitSyncResult(False, exc._status_code)
+
+        except APIException as exc:
             _LOGGER.error('Failed syncing feature flags')
             _LOGGER.debug('Error: ', exc_info=True)
-            return False
+            return SplitSyncResult(False, exc._status_code)
 
     async def sync_all(self, max_retry_attempts=_SYNC_ALL_NO_RETRIES):
         """
@@ -566,7 +586,12 @@ class SynchronizerAsync(SynchronizerInMemoryBase):
         retry_attempts = 0
         while True:
             try:
-                if not await self.synchronize_splits(None, False):
+                sync_result = await self.synchronize_splits(None, False)
+                if not sync_result.success and sync_result.error_code is not None and sync_result.error_code == 414:
+                    _LOGGER.error("URI too long exception caught, aborting retries")
+                    break
+
+                if not sync_result.success:
                     raise Exception("feature flags sync failed")
 
                 # Only retrying feature flags, since segments may trigger too many calls.
@@ -727,7 +752,7 @@ class RedisSynchronizer(RedisSynchronizerBase):
         :param split_tasks: tasks for starting/stopping tasks
         :type split_tasks: splitio.sync.synchronizer.SplitTasks
         """
-        super().__init__(split_synchronizers, split_tasks)
+        RedisSynchronizerBase.__init__(self, split_synchronizers, split_tasks)
 
     def shutdown(self, blocking):
         """
@@ -772,7 +797,7 @@ class RedisSynchronizerAsync(RedisSynchronizerBase):
         :param split_tasks: tasks for starting/stopping tasks
         :type split_tasks: splitio.sync.synchronizer.SplitTasks
         """
-        super().__init__(split_synchronizers, split_tasks)
+        RedisSynchronizerBase.__init__(self, split_synchronizers, split_tasks)
         self.stop_periodic_data_recording_task = None
 
     async def shutdown(self, blocking):
@@ -888,7 +913,7 @@ class LocalhostSynchronizer(LocalhostSynchronizerBase):
         :param split_tasks: tasks for starting/stopping tasks
         :type split_tasks: splitio.sync.synchronizer.SplitTasks
         """
-        super().__init__(split_synchronizers, split_tasks, localhost_mode)
+        LocalhostSynchronizerBase.__init__(self, split_synchronizers, split_tasks, localhost_mode)
 
     def sync_all(self, till=None):
         """
@@ -962,7 +987,7 @@ class LocalhostSynchronizerAsync(LocalhostSynchronizerBase):
         :param split_tasks: tasks for starting/stopping tasks
         :type split_tasks: splitio.sync.synchronizer.SplitTasks
         """
-        super().__init__(split_synchronizers, split_tasks, localhost_mode)
+        LocalhostSynchronizerBase.__init__(self, split_synchronizers, split_tasks, localhost_mode)
 
     async def sync_all(self, till=None):
         """

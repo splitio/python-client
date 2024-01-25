@@ -113,7 +113,7 @@ class AsyncTask(object):  # pylint: disable=too-many-instance-attributes
                         _LOGGER.debug("Force execution signal received. Running now")
                         if not _safe_run(self._main):
                             _LOGGER.error("An error occurred when executing the task. "
-                                          "Retrying after perio expires")
+                                          "Retrying after period expires")
                         continue
                 except queue.Empty:
                     # If no message was received, the timeout has expired
@@ -123,7 +123,7 @@ class AsyncTask(object):  # pylint: disable=too-many-instance-attributes
                 if not _safe_run(self._main):
                     _LOGGER.error(
                         "An error occurred when executing the task. "
-                        "Retrying after perio expires"
+                        "Retrying after period expires"
                     )
         finally:
             self._cleanup()
@@ -252,7 +252,7 @@ class AsyncTaskAsync(object):  # pylint: disable=too-many-instance-attributes
                         _LOGGER.debug("Force execution signal received. Running now")
                         if not await _safe_run_async(self._main):
                             _LOGGER.error("An error occurred when executing the task. "
-                                          "Retrying after perio expires")
+                                          "Retrying after period expires")
                         continue
                 except asyncio.QueueEmpty:
                     # If no message was received, the timeout has expired

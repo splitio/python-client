@@ -8,11 +8,13 @@ import json
 import hashlib
 from enum import Enum
 
-from splitio.api import APIException
+from splitio.api import APIException, APIUriException
 from splitio.api.commons import FetchOptions
+from splitio.client.input_validator import validate_flag_sets
 from splitio.models import splits
 from splitio.util.backoff import Backoff
 from splitio.util.time import get_current_epoch_time_ms
+from splitio.util.storage_helper import update_feature_flag_storage, update_feature_flag_storage_async
 from splitio.sync import util
 from splitio.optional.loaders import asyncio, aiofiles
 
@@ -28,7 +30,7 @@ _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT = 30  # don't sleep for more than 30 seconds
 _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES = 10
 
 
-class SplitSynchronizer(object):
+class SplitSynchronizerBase(object):
     """Feature Flag changes synchronizer."""
 
     def __init__(self, feature_flag_api, feature_flag_storage):
@@ -51,6 +53,31 @@ class SplitSynchronizer(object):
     def feature_flag_storage(self):
         """Return Feature_flag storage object"""
         return self._feature_flag_storage
+
+    def _get_config_sets(self):
+        """
+        Get all filter flag sets cnverrted to string, if no filter flagsets exist return None
+        :return: string with flagsets
+        :rtype: str
+        """
+        if self._feature_flag_storage.flag_set_filter.flag_sets == set({}):
+            return None
+        return ','.join(self._feature_flag_storage.flag_set_filter.sorted_flag_sets)
+
+class SplitSynchronizer(SplitSynchronizerBase):
+    """Feature Flag changes synchronizer."""
+
+    def __init__(self, feature_flag_api, feature_flag_storage):
+        """
+        Class constructor.
+
+        :param feature_flag_api: Feature Flag API Client.
+        :type feature_flag_api: splitio.api.splits.SplitsAPI
+
+        :param feature_flag_storage: Feature Flag Storage.
+        :type feature_flag_storage: splitio.storage.InMemorySplitStorage
+        """
+        SplitSynchronizerBase.__init__(self, feature_flag_api, feature_flag_storage)
 
     def _fetch_until(self, fetch_options, till=None):
         """
@@ -77,18 +104,17 @@ class SplitSynchronizer(object):
             try:
                 feature_flag_changes = self._api.fetch_splits(change_number, fetch_options)
             except APIException as exc:
+                if exc._status_code is not None and exc._status_code == 414:
+                    _LOGGER.error('Exception caught: the amount of flag sets provided are big causing uri length error.')
+                    _LOGGER.debug('Exception information: ', exc_info=True)
+                    raise APIUriException("URI is too long due to FlagSets count", exc._status_code)
+
                 _LOGGER.error('Exception raised while fetching feature flags')
                 _LOGGER.debug('Exception information: ', exc_info=True)
                 raise exc
 
-            for feature_flag in feature_flag_changes.get('splits', []):
-                if feature_flag['status'] == splits.Status.ACTIVE.value:
-                    parsed = splits.from_raw(feature_flag)
-                    self._feature_flag_storage.put(parsed)
-                    segment_list.update(set(parsed.get_segment_names()))
-                else:
-                    self._feature_flag_storage.remove(feature_flag['name'])
-            self._feature_flag_storage.set_change_number(feature_flag_changes['till'])
+            fetched_feature_flags = [(splits.from_raw(feature_flag)) for feature_flag in feature_flag_changes.get('splits', [])]
+            segment_list = update_feature_flag_storage(self._feature_flag_storage, fetched_feature_flags, feature_flag_changes['till'])
             if feature_flag_changes['till'] == feature_flag_changes['since']:
                 return feature_flag_changes['till'], segment_list
 
@@ -127,7 +153,7 @@ class SplitSynchronizer(object):
         :type till: int
         """
         final_segment_list = set()
-        fetch_options = FetchOptions(True)  # Set Cache-Control to no-cache
+        fetch_options = FetchOptions(True, sets=self._get_config_sets())  # Set Cache-Control to no-cache
         successful_sync, remaining_attempts, change_number, segment_list = self._attempt_feature_flag_sync(fetch_options,
                                                                                       till)
         final_segment_list.update(segment_list)
@@ -135,7 +161,7 @@ class SplitSynchronizer(object):
         if successful_sync:  # succedeed sync
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return final_segment_list
-        with_cdn_bypass = FetchOptions(True, change_number)  # Set flag for bypassing CDN
+        with_cdn_bypass = FetchOptions(True, change_number, sets=self._get_config_sets())  # Set flag for bypassing CDN
         without_cdn_successful_sync, remaining_attempts, change_number, segment_list = self._attempt_feature_flag_sync(with_cdn_bypass, till)
         final_segment_list.update(segment_list)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
@@ -160,8 +186,7 @@ class SplitSynchronizer(object):
         """
         self._feature_flag_storage.kill_locally(feature_flag_name, default_treatment, change_number)
 
-
-class SplitSynchronizerAsync(object):
+class SplitSynchronizerAsync(SplitSynchronizerBase):
     """Feature Flag changes synchronizer async."""
 
     def __init__(self, feature_flag_api, feature_flag_storage):
@@ -174,16 +199,7 @@ class SplitSynchronizerAsync(object):
         :param feature_flag_storage: Feature Flag Storage.
         :type feature_flag_storage: splitio.storage.InMemorySplitStorage
         """
-        self._api = feature_flag_api
-        self._feature_flag_storage = feature_flag_storage
-        self._backoff = Backoff(
-                                _ON_DEMAND_FETCH_BACKOFF_BASE,
-                                _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
-
-    @property
-    def feature_flag_storage(self):
-        """Return Feature_flag storage object"""
-        return self._feature_flag_storage
+        SplitSynchronizerBase.__init__(self, feature_flag_api, feature_flag_storage)
 
     async def _fetch_until(self, fetch_options, till=None):
         """
@@ -210,18 +226,17 @@ class SplitSynchronizerAsync(object):
             try:
                 feature_flag_changes = await self._api.fetch_splits(change_number, fetch_options)
             except APIException as exc:
+                if exc._status_code is not None and exc._status_code == 414:
+                    _LOGGER.error('Exception caught: the amount of flag sets provided are big causing uri length error.')
+                    _LOGGER.debug('Exception information: ', exc_info=True)
+                    raise APIUriException("URI is too long due to FlagSets count", exc._status_code)
+
                 _LOGGER.error('Exception raised while fetching feature flags')
                 _LOGGER.debug('Exception information: ', exc_info=True)
                 raise exc
 
-            for feature_flag in feature_flag_changes.get('splits', []):
-                if feature_flag['status'] == splits.Status.ACTIVE.value:
-                    parsed = splits.from_raw(feature_flag)
-                    await self._feature_flag_storage.put(parsed)
-                    segment_list.update(set(parsed.get_segment_names()))
-                else:
-                    await self._feature_flag_storage.remove(feature_flag['name'])
-            await self._feature_flag_storage.set_change_number(feature_flag_changes['till'])
+            fetched_feature_flags = [(splits.from_raw(feature_flag)) for feature_flag in feature_flag_changes.get('splits', [])]
+            segment_list = await update_feature_flag_storage_async(self._feature_flag_storage, fetched_feature_flags, feature_flag_changes['till'])
             if feature_flag_changes['till'] == feature_flag_changes['since']:
                 return feature_flag_changes['till'], segment_list
 
@@ -260,7 +275,7 @@ class SplitSynchronizerAsync(object):
         :type till: int
         """
         final_segment_list = set()
-        fetch_options = FetchOptions(True)  # Set Cache-Control to no-cache
+        fetch_options = FetchOptions(True, sets=self._get_config_sets())  # Set Cache-Control to no-cache
         successful_sync, remaining_attempts, change_number, segment_list = await self._attempt_feature_flag_sync(fetch_options,
                                                                                       till)
         final_segment_list.update(segment_list)
@@ -268,7 +283,7 @@ class SplitSynchronizerAsync(object):
         if successful_sync:  # succedeed sync
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return final_segment_list
-        with_cdn_bypass = FetchOptions(True, change_number)  # Set flag for bypassing CDN
+        with_cdn_bypass = FetchOptions(True, change_number, sets=self._get_config_sets())  # Set flag for bypassing CDN
         without_cdn_successful_sync, remaining_attempts, change_number, segment_list = await self._attempt_feature_flag_sync(with_cdn_bypass, till)
         final_segment_list.update(segment_list)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
@@ -430,6 +445,9 @@ class LocalSplitSynchronizerBase(object):
                             ('algo', 2, 2, 2, None, None)]:
                 feature_flag = util._sanitize_object_element(feature_flag, 'split', element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=element[4], not_in_list=element[5])
             feature_flag = self._sanitize_condition(feature_flag)
+            if 'sets' not in feature_flag:
+                feature_flag['sets'] = []
+            feature_flag['sets'] = validate_flag_sets(feature_flag['sets'], 'Localhost Validator')
             sanitized_feature_flags.append(feature_flag)
         return sanitized_feature_flags
 
@@ -587,7 +605,7 @@ class LocalSplitSynchronizer(LocalSplitSynchronizerBase):
         try:
             return self._synchronize_json() if self._localhost_mode == LocalhostMode.JSON else self._synchronize_legacy()
         except Exception as exc:
-            _LOGGER.error(str(exc))
+            _LOGGER.debug('Exception: ', exc_info=True)
             raise APIException("Error fetching feature flags information") from exc
 
     def _synchronize_legacy(self):
@@ -604,12 +622,8 @@ class LocalSplitSynchronizer(LocalSplitSynchronizerBase):
             fetched = self._read_feature_flags_from_legacy_file(self._filename)
         to_delete = [name for name in self._feature_flag_storage.get_split_names()
                      if name not in fetched.keys()]
-        for feature_flag in fetched.values():
-            self._feature_flag_storage.put(feature_flag)
-
-        for feature_flag in to_delete:
-            self._feature_flag_storage.remove(feature_flag)
-
+        to_add = [feature_flag for feature_flag in fetched.values()]
+        self._feature_flag_storage.update(to_add, to_delete, 0)
         return []
 
     def _synchronize_json(self):
@@ -628,18 +642,12 @@ class LocalSplitSynchronizer(LocalSplitSynchronizerBase):
             self._current_json_sha = fecthed_sha
             if self._feature_flag_storage.get_change_number() > till and till != self._DEFAULT_FEATURE_FLAG_TILL:
                 return []
-            for feature_flag in fetched:
-                if feature_flag['status'] == splits.Status.ACTIVE.value:
-                    parsed = splits.from_raw(feature_flag)
-                    self._feature_flag_storage.put(parsed)
-                    _LOGGER.debug("feature flag %s is updated", parsed.name)
-                    segment_list.update(set(parsed.get_segment_names()))
-                else:
-                    self._feature_flag_storage.remove(feature_flag['name'])
 
-                self._feature_flag_storage.set_change_number(till)
+            fetched_feature_flags = [splits.from_raw(feature_flag) for feature_flag in fetched]
+            segment_list = update_feature_flag_storage(self._feature_flag_storage, fetched_feature_flags, till)
             return segment_list
         except Exception as exc:
+            _LOGGER.debug('Exception: ', exc_info=True)
             raise ValueError("Error reading feature flags from json.") from exc
 
     def _read_feature_flags_from_json_file(self, filename):
@@ -658,7 +666,7 @@ class LocalSplitSynchronizer(LocalSplitSynchronizerBase):
             santitized = self._sanitize_feature_flag(parsed)
             return santitized['splits'], santitized['till']
         except Exception as exc:
-            _LOGGER.error(str(exc))
+            _LOGGER.debug('Exception: ', exc_info=True)
             raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc
 
 
@@ -741,7 +749,7 @@ class LocalSplitSynchronizerAsync(LocalSplitSynchronizerBase):
         try:
             return await self._synchronize_json() if self._localhost_mode == LocalhostMode.JSON else await self._synchronize_legacy()
         except Exception as exc:
-            _LOGGER.error(str(exc))
+            _LOGGER.debug('Exception: ', exc_info=True)
             raise APIException("Error fetching feature flags information") from exc
 
     async def _synchronize_legacy(self):
@@ -758,11 +766,8 @@ class LocalSplitSynchronizerAsync(LocalSplitSynchronizerBase):
             fetched = await self._read_feature_flags_from_legacy_file(self._filename)
         to_delete = [name for name in await self._feature_flag_storage.get_split_names()
                      if name not in fetched.keys()]
-        for feature_flag in fetched.values():
-            await self._feature_flag_storage.put(feature_flag)
-
-        for feature_flag in to_delete:
-            await self._feature_flag_storage.remove(feature_flag)
+        to_add = [feature_flag for feature_flag in fetched.values()]
+        await self._feature_flag_storage.update(to_add, to_delete, 0)
 
         return []
 
@@ -782,18 +787,11 @@ class LocalSplitSynchronizerAsync(LocalSplitSynchronizerBase):
             self._current_json_sha = fecthed_sha
             if await self._feature_flag_storage.get_change_number() > till and till != self._DEFAULT_FEATURE_FLAG_TILL:
                 return []
-            for feature_flag in fetched:
-                if feature_flag['status'] == splits.Status.ACTIVE.value:
-                    parsed = splits.from_raw(feature_flag)
-                    await self._feature_flag_storage.put(parsed)
-                    _LOGGER.debug("feature flag %s is updated", parsed.name)
-                    segment_list.update(set(parsed.get_segment_names()))
-                else:
-                    await self._feature_flag_storage.remove(feature_flag['name'])
-
-                await self._feature_flag_storage.set_change_number(till)
+            fetched_feature_flags = [splits.from_raw(feature_flag) for feature_flag in fetched]
+            segment_list = await update_feature_flag_storage_async(self._feature_flag_storage, fetched_feature_flags, till)
             return segment_list
         except Exception as exc:
+            _LOGGER.debug('Exception: ', exc_info=True)
             raise ValueError("Error reading feature flags from json.") from exc
 
     async def _read_feature_flags_from_json_file(self, filename):
@@ -812,5 +810,5 @@ class LocalSplitSynchronizerAsync(LocalSplitSynchronizerBase):
             santitized = self._sanitize_feature_flag(parsed)
             return santitized['splits'], santitized['till']
         except Exception as exc:
-            _LOGGER.error(str(exc))
+            _LOGGER.debug('Exception: ', exc_info=True)
             raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc

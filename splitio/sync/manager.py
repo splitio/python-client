@@ -285,7 +285,7 @@ class RedisManager(RedisManagerBase):  # pylint:disable=too-many-instance-attrib
         :param synchronizer: synchronizers for performing start/stop logic
         :type synchronizer: splitio.sync.synchronizer.Synchronizer
         """
-        super().__init__(synchronizer)
+        RedisManagerBase.__init__(self, synchronizer)
 
     def stop(self, blocking):
         """
@@ -308,7 +308,7 @@ class RedisManagerAsync(RedisManagerBase):  # pylint:disable=too-many-instance-a
         :param synchronizer: synchronizers for performing start/stop logic
         :type synchronizer: splitio.sync.synchronizer.Synchronizer
         """
-        super().__init__(synchronizer)
+        RedisManagerBase.__init__(self, synchronizer)
 
     async def stop(self, blocking):
         """

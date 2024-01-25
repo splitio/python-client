@@ -232,7 +232,13 @@ class SplitWorker(WorkerBase):
                         _LOGGER.error('Exception raised in updating feature flag')
                         _LOGGER.debug('Exception information: ', exc_info=True)
                         pass
-                self._handler(event.change_number)
+                sync_result = self._handler(event.change_number)
+                if not sync_result.success and sync_result.error_code is not None and sync_result.error_code == 414:
+                    _LOGGER.error("URI too long exception caught, sync failed")
+
+                if not sync_result.success:
+                    _LOGGER.error("feature flags sync failed")
+
             except Exception as e:  # pylint: disable=broad-except
                 _LOGGER.error('Exception raised in feature flag synchronization')
                 _LOGGER.debug('Exception information: ', exc_info=True)

@@ -15,7 +15,7 @@ from splitio.sync.segment import SegmentSynchronizer, SegmentSynchronizerAsync, 
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionSynchronizerAsync, ImpressionsCountSynchronizer, ImpressionsCountSynchronizerAsync
 from splitio.sync.event import EventSynchronizer, EventSynchronizerAsync
 from splitio.storage import SegmentStorage, SplitStorage
-from splitio.api import APIException
+from splitio.api import APIException, APIUriException
 from splitio.models.splits import Split
 from splitio.models.segments import Segment
 from splitio.storage.inmemmory import InMemorySegmentStorage, InMemorySplitStorage, InMemorySegmentStorageAsync, InMemorySplitStorageAsync
@@ -54,6 +54,14 @@ class SynchronizerTests(object):
     def test_sync_all_failed_splits(self, mocker):
         api = mocker.Mock()
         storage = mocker.Mock()
+        class flag_set_filter():
+            def should_filter():
+                return False
+            def intersect(sets):
+                return True
+        storage.flag_set_filter = flag_set_filter
+        storage.flag_set_filter.flag_sets = {}
+        storage.flag_set_filter.sorted_flag_sets = []
 
         def run(x, c):
             raise APIException("something broke")
@@ -68,6 +76,33 @@ class SynchronizerTests(object):
 
         # test forcing to have only one retry attempt and then exit
         sychronizer.sync_all(1)  # sync_all should not throw!
+
+    def test_sync_all_failed_splits_with_flagsets(self, mocker):
+        api = mocker.Mock()
+        storage = mocker.Mock()
+        class flag_set_filter():
+            def should_filter():
+                return False
+            def intersect(sets):
+                return True
+        storage.flag_set_filter = flag_set_filter
+        storage.flag_set_filter.flag_sets = {}
+        storage.flag_set_filter.sorted_flag_sets = []
+
+        def run(x, c):
+            raise APIException("something broke", 414)
+        api.fetch_splits.side_effect = run
+
+        split_sync = SplitSynchronizer(api, storage)
+        split_synchronizers = SplitSynchronizers(split_sync, mocker.Mock(), mocker.Mock(),
+                                                 mocker.Mock(), mocker.Mock())
+        synchronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
+        assert synchronizer._LOGGER.name == 'splitio.sync.synchronizer'
+
+        synchronizer.synchronize_splits(None)
+
+        synchronizer.sync_all(3)
+        assert synchronizer._backoff._attempt == 0
 
     def test_sync_all_failed_segments(self, mocker):
         api = mocker.Mock()
@@ -142,6 +177,15 @@ class SynchronizerTests(object):
         split_storage = mocker.Mock(spec=SplitStorage)
         split_storage.get_change_number.return_value = 123
         split_storage.get_segment_names.return_value = ['segmentA']
+        class flag_set_filter():
+            def should_filter():
+                return False
+            def intersect(sets):
+                return True
+        split_storage.flag_set_filter = flag_set_filter
+        split_storage.flag_set_filter.flag_sets = {}
+        split_storage.flag_set_filter.sorted_flag_sets = []
+
         split_api = mocker.Mock()
         split_api.fetch_splits.return_value = {'splits': splits, 'since': 123,
                                                'till': 123}
@@ -160,7 +204,7 @@ class SynchronizerTests(object):
         synchronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
         synchronizer.sync_all()
 
-        inserted_split = split_storage.put.mock_calls[0][1][0]
+        inserted_split = split_storage.update.mock_calls[0][1][0][0]
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
 
@@ -349,6 +393,14 @@ class SynchronizerAsyncTests(object):
     async def test_sync_all_failed_splits(self, mocker):
         api = mocker.Mock()
         storage = mocker.Mock()
+        class flag_set_filter():
+            def should_filter():
+                return False
+            def intersect(sets):
+                return True
+        storage.flag_set_filter = flag_set_filter
+        storage.flag_set_filter.flag_sets = {}
+        storage.flag_set_filter.sorted_flag_sets = []
 
         async def run(x, c):
             raise APIException("something broke")
@@ -362,11 +414,44 @@ class SynchronizerAsyncTests(object):
         split_synchronizers = SplitSynchronizers(split_sync, mocker.Mock(), mocker.Mock(),
                                                  mocker.Mock(), mocker.Mock())
         sychronizer = SynchronizerAsync(split_synchronizers, mocker.Mock(spec=SplitTasks))
+        assert sychronizer._LOGGER.name == 'asyncio'
 
         await sychronizer.synchronize_splits(None)  # APIExceptions are handled locally and should not be propagated!
 
         # test forcing to have only one retry attempt and then exit
         await sychronizer.sync_all(1)  # sync_all should not throw!
+
+    @pytest.mark.asyncio
+    async def test_sync_all_failed_splits_with_flagsets(self, mocker):
+        api = mocker.Mock()
+        storage = mocker.Mock()
+        class flag_set_filter():
+            def should_filter():
+                return False
+            def intersect(sets):
+                return True
+        storage.flag_set_filter = flag_set_filter
+        storage.flag_set_filter.flag_sets = {}
+        storage.flag_set_filter.sorted_flag_sets = []
+
+        async def get_change_number():
+            pass
+        storage.get_change_number = get_change_number
+
+        async def run(x, c):
+            raise APIException("something broke", 414)
+        api.fetch_splits = run
+
+        split_sync = SplitSynchronizerAsync(api, storage)
+        split_synchronizers = SplitSynchronizers(split_sync, mocker.Mock(), mocker.Mock(),
+                                                 mocker.Mock(), mocker.Mock())
+        synchronizer = SynchronizerAsync(split_synchronizers, mocker.Mock(spec=SplitTasks))
+
+        await synchronizer.synchronize_splits(None)  # APIExceptions are handled locally and should not be propagated!
+
+        # test forcing to have only one retry attempt and then exit
+        await synchronizer.sync_all(3)  # sync_all should not throw!
+        assert synchronizer._backoff._attempt == 0
 
     @pytest.mark.asyncio
     async def test_sync_all_failed_segments(self, mocker):
@@ -477,13 +562,23 @@ class SynchronizerAsyncTests(object):
         split_storage.get_change_number = get_change_number
 
         self.added_split = None
-        async def put(split):
-            self.added_split = split
-        split_storage.put = put
+        async def update(split, deleted, change_number):
+            if len(split) > 0:
+                self.added_split = split
+        split_storage.update = update
 
         async def get_segment_names():
             return ['segmentA']
         split_storage.get_segment_names = get_segment_names
+
+        class flag_set_filter():
+            def should_filter():
+                return False
+            def intersect(sets):
+                return True
+        split_storage.flag_set_filter = flag_set_filter
+        split_storage.flag_set_filter.flag_sets = {}
+        split_storage.flag_set_filter.sorted_flag_sets = []
 
         split_api = mocker.Mock()
         async def fetch_splits(change, options):
@@ -516,8 +611,8 @@ class SynchronizerAsyncTests(object):
         await synchronizer.sync_all()
         await segment_sync._jobs.await_completion()
 
-        assert isinstance(self.added_split, Split)
-        assert self.added_split.name == 'some_name'
+        assert isinstance(self.added_split[0], Split)
+        assert self.added_split[0].name == 'some_name'
 
         assert self.inserted_segment[0] == 'segmentA'
         assert self.inserted_segment[1] == ['key1', 'key2', 'key3']
@@ -594,6 +689,7 @@ class RedisSynchronizerTests(object):
             clear_filter_task
         )
         synchronizer = RedisSynchronizer(mocker.Mock(spec=SplitSynchronizers), split_tasks)
+        assert synchronizer._LOGGER.name == 'splitio.sync.synchronizer'
         synchronizer.start_periodic_data_recording()
 
         assert len(impression_count_task.start.mock_calls) == 1
@@ -656,7 +752,8 @@ class RedisSynchronizerTests(object):
 
 
 class RedisSynchronizerAsyncTests(object):
-    def test_start_periodic_data_recording(self, mocker):
+    @pytest.mark.asyncio
+    async def test_start_periodic_data_recording(self, mocker):
         impression_count_task = mocker.Mock(spec=ImpressionsCountSyncTaskAsync)
         unique_keys_task = mocker.Mock(spec=UniqueKeysSyncTaskAsync)
         clear_filter_task = mocker.Mock(spec=ClearFilterSyncTaskAsync)
@@ -667,6 +764,7 @@ class RedisSynchronizerAsyncTests(object):
             clear_filter_task
         )
         synchronizer = RedisSynchronizerAsync(mocker.Mock(spec=SplitSynchronizers), split_tasks)
+        assert synchronizer._LOGGER.name == 'asyncio'
         synchronizer.start_periodic_data_recording()
 
         assert len(impression_count_task.start.mock_calls) == 1
@@ -920,6 +1018,7 @@ class LocalhostSynchronizerTests(object):
         segment_sync = LocalSegmentSynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock())
         synchronizers = SplitSynchronizers(split_sync, segment_sync, None, None, None)
         local_synchronizer = LocalhostSynchronizer(synchronizers, mocker.Mock(), mocker.Mock())
+        assert local_synchronizer._LOGGER.name == 'splitio.sync.synchronizer'
 
         def synchronize_splits(*args, **kwargs):
             return ["segmentA", "segmentB"]
@@ -978,6 +1077,7 @@ class LocalhostSynchronizerAsyncTests(object):
         segment_sync = LocalSegmentSynchronizerAsync(mocker.Mock(), mocker.Mock(), mocker.Mock())
         synchronizers = SplitSynchronizers(split_sync, segment_sync, None, None, None)
         local_synchronizer = LocalhostSynchronizerAsync(synchronizers, mocker.Mock(), mocker.Mock())
+        assert local_synchronizer._LOGGER.name == 'asyncio'
 
         self.called = False
         async def synchronize_segments(*args):
