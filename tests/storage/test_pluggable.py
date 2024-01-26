@@ -196,11 +196,9 @@ class StorageMockAdapterAsync(object):
     async def get_many(self, keys):
         async with self._lock:
             returned_keys = []
-            for key in keys:
-                if key in self._keys:
+            for key in self._keys:
+                if key in keys:
                     returned_keys.append(self._keys[key])
-                else:
-                    returned_keys.append(None)
             return returned_keys
 
     async def add_items(self, key, added_items):
@@ -336,20 +334,6 @@ class PluggableSplitStorageTests(object):
             self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split2.name), split2.to_json())
             assert(pluggable_split_storage.get_split_names() == [split1.name, split2.name])
 
-    def test_get_all(self):
-        self.mock_adapter._keys = {}
-        for sprefix in [None, 'myprefix']:
-            pluggable_split_storage = PluggableSplitStorage(self.mock_adapter, prefix=sprefix)
-            split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
-            split2_temp = splits_json['splitChange1_2']['splits'][0].copy()
-            split2_temp['name'] = 'another_split'
-            split2 = splits.from_raw(split2_temp)
-
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split1.name), split1.to_json())
-            self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split2.name), split2.to_json())
-            all_splits = pluggable_split_storage.get_all()
-            assert([all_splits[0].to_json(), all_splits[1].to_json()] == [split1.to_json(), split2.to_json()])
-
     # TODO: To be added when producer mode is aupported
 #    def test_kill_locally(self):
 #        self.mock_adapter._keys = {}
@@ -474,23 +458,8 @@ class PluggableSplitStorageAsyncTests(object):
             split2 = splits.from_raw(split2_temp)
             await self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split1.name), split1.to_json())
             await self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split2.name), split2.to_json())
+
             assert(await pluggable_split_storage.get_split_names() == [split1.name, split2.name])
-
-    @pytest.mark.asyncio
-    async def test_get_all(self):
-        self.mock_adapter._keys = {}
-        for sprefix in [None, 'myprefix']:
-            pluggable_split_storage = PluggableSplitStorageAsync(self.mock_adapter, prefix=sprefix)
-            split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
-            split2_temp = splits_json['splitChange1_2']['splits'][0].copy()
-            split2_temp['name'] = 'another_split'
-            split2 = splits.from_raw(split2_temp)
-
-            await self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split1.name), split1.to_json())
-            await self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split2.name), split2.to_json())
-            all_splits = await pluggable_split_storage.get_all()
-            assert([all_splits[0].to_json(), all_splits[1].to_json()] == [split1.to_json(), split2.to_json()])
-
 
 class PluggableSegmentStorageTests(object):
     """In memory split storage test cases."""

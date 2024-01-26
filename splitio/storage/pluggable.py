@@ -18,6 +18,7 @@ class PluggableSplitStorageBase(SplitStorage):
     """InMemory implementation of a feature flag storage."""
 
     _FEATURE_FLAG_NAME_LENGTH = 19
+    _TILL_LENGTH = 4
 
     def __init__(self, pluggable_adapter, prefix=None, config_flag_sets=[]):
         """
@@ -134,15 +135,6 @@ class PluggableSplitStorageBase(SplitStorage):
 
         :return: List of feature flag names.
         :rtype: list(str)
-        """
-        pass
-
-    def get_all(self):
-        """
-        Return all the feature flags.
-
-        :return: List of all the feature flags.
-        :rtype: list
         """
         pass
 
@@ -336,23 +328,13 @@ class PluggableSplitStorage(PluggableSplitStorageBase):
         :rtype: list(str)
         """
         try:
-            return [feature_flag.name for feature_flag in self.get_all()]
+            keys = []
+            for key in self._pluggable_adapter.get_keys_by_prefix(self._prefix[:-self._FEATURE_FLAG_NAME_LENGTH]):
+                if key[-self._TILL_LENGTH:] != 'till':
+                    keys.append(key[len(self._prefix[:-self._FEATURE_FLAG_NAME_LENGTH]):])
+            return keys
         except Exception:
             _LOGGER.error('Error getting feature flag names from storage')
-            _LOGGER.debug('Error: ', exc_info=True)
-            return None
-
-    def get_all(self):
-        """
-        Return all the feature flags.
-
-        :return: List of all the feature flags.
-        :rtype: list
-        """
-        try:
-            return [splits.from_raw(self._pluggable_adapter.get(key)) for key in self._pluggable_adapter.get_keys_by_prefix(self._prefix[:-self._FEATURE_FLAG_NAME_LENGTH])]
-        except Exception:
-            _LOGGER.error('Error getting feature flag keys from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
@@ -381,7 +363,11 @@ class PluggableSplitStorage(PluggableSplitStorageBase):
         :rtype: list
         """
         try:
-            return self.get_all()
+            keys = []
+            for key in self._pluggable_adapter.get_keys_by_prefix(self._prefix[:-self._FEATURE_FLAG_NAME_LENGTH]):
+                if key[-self._TILL_LENGTH:] != 'till':
+                    keys.append(key)
+            return [splits.from_raw(feature_flag) for feature_flag in self._pluggable_adapter.get_many(keys)]
         except Exception:
             _LOGGER.error('Error fetching feature flags from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -498,23 +484,13 @@ class PluggableSplitStorageAsync(PluggableSplitStorageBase):
         :rtype: list(str)
         """
         try:
-            return [feature_flag.name for feature_flag in await self.get_all()]
+            keys = []
+            for key in await self._pluggable_adapter.get_keys_by_prefix(self._prefix[:-self._FEATURE_FLAG_NAME_LENGTH]):
+                if key[-self._TILL_LENGTH:] != 'till':
+                    keys.append(key[len(self._prefix[:-self._FEATURE_FLAG_NAME_LENGTH]):])
+            return keys
         except Exception:
             _LOGGER.error('Error getting feature flag names from storage')
-            _LOGGER.debug('Error: ', exc_info=True)
-            return None
-
-    async def get_all(self):
-        """
-        Return all the feature flags.
-
-        :return: List of all the feature flags.
-        :rtype: list
-        """
-        try:
-            return [splits.from_raw(await self._pluggable_adapter.get(key)) for key in await self._pluggable_adapter.get_keys_by_prefix(self._prefix[:-self._FEATURE_FLAG_NAME_LENGTH])]
-        except Exception:
-            _LOGGER.error('Error getting feature flag keys from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
@@ -543,7 +519,11 @@ class PluggableSplitStorageAsync(PluggableSplitStorageBase):
         :rtype: list
         """
         try:
-            return await self.get_all()
+            keys = []
+            for key in await self._pluggable_adapter.get_keys_by_prefix(self._prefix[:-self._FEATURE_FLAG_NAME_LENGTH]):
+                if key[-self._TILL_LENGTH:] != 'till':
+                    keys.append(key)
+            return [splits.from_raw(feature_flag) for feature_flag in await self._pluggable_adapter.get_many(keys)]
         except Exception:
             _LOGGER.error('Error fetching feature flags from storage')
             _LOGGER.debug('Error: ', exc_info=True)
