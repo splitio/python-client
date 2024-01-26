@@ -655,7 +655,7 @@ class RedisPipelineAdapter(RedisPipelineAdapterBase):
         :param decorated: Instance of redis cache client to decorate.
         :param _prefix_helper: PrefixHelper utility
         """
-        super().__init__(decorated, prefix_helper)
+        RedisPipelineAdapterBase.__init__(self, decorated, prefix_helper)
 
     def execute(self):
         """Mimic original redis function but using user custom prefix."""
@@ -678,7 +678,7 @@ class RedisPipelineAdapterAsync(RedisPipelineAdapterBase):
         :param decorated: Instance of redis cache client to decorate.
         :param _prefix_helper: PrefixHelper utility
         """
-        super().__init__(decorated, prefix_helper)
+        RedisPipelineAdapterBase.__init__(self, decorated, prefix_helper)
 
     async def execute(self):
         """Mimic original redis function but using user custom prefix."""
