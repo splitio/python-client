@@ -246,7 +246,7 @@ class PluggableSplitStorage(PluggableSplitStorageBase):
         :param prefix: optional, prefix to storage keys
         :type prefix: str
         """
-        super().__init__(pluggable_adapter, prefix)
+        PluggableSplitStorageBase.__init__(self, pluggable_adapter, prefix)
 
     def get(self, feature_flag_name):
         """
@@ -402,7 +402,7 @@ class PluggableSplitStorageAsync(PluggableSplitStorageBase):
         :param prefix: optional, prefix to storage keys
         :type prefix: str
         """
-        super().__init__(pluggable_adapter, prefix)
+        PluggableSplitStorageBase.__init__(self, pluggable_adapter, prefix)
 
     async def get(self, feature_flag_name):
         """
@@ -719,7 +719,7 @@ class PluggableSegmentStorage(PluggableSegmentStorageBase):
         :param prefix: optional, prefix to storage keys
         :type prefix: str
         """
-        super().__init__(pluggable_adapter, prefix)
+        PluggableSegmentStorageBase.__init__(self, pluggable_adapter, prefix)
 
     def get_change_number(self, segment_name):
         """
@@ -804,7 +804,7 @@ class PluggableSegmentStorageAsync(PluggableSegmentStorageBase):
         :param prefix: optional, prefix to storage keys
         :type prefix: str
         """
-        super().__init__(pluggable_adapter, prefix)
+        PluggableSegmentStorageBase.__init__(self, pluggable_adapter, prefix)
 
     async def get_change_number(self, segment_name):
         """
@@ -984,7 +984,7 @@ class PluggableImpressionsStorage(PluggableImpressionsStorageBase):
         :param prefix: optional, prefix to storage keys
         :type prefix: str
         """
-        super().__init__(pluggable_adapter, sdk_metadata, prefix)
+        PluggableImpressionsStorageBase.__init__(self, pluggable_adapter, sdk_metadata, prefix)
 
     def put(self, impressions):
         """
@@ -1033,7 +1033,7 @@ class PluggableImpressionsStorageAsync(PluggableImpressionsStorageBase):
         :param prefix: optional, prefix to storage keys
         :type prefix: str
         """
-        super().__init__(pluggable_adapter, sdk_metadata, prefix)
+        PluggableImpressionsStorageBase.__init__(self, pluggable_adapter, sdk_metadata, prefix)
 
     async def put(self, impressions):
         """
@@ -1162,7 +1162,7 @@ class PluggableEventsStorage(PluggableEventsStorageBase):
         :param prefix: optional, prefix to storage keys
         :type prefix: str
         """
-        super().__init__(pluggable_adapter, sdk_metadata, prefix)
+        PluggableEventsStorageBase.__init__(self, pluggable_adapter, sdk_metadata, prefix)
 
     def put(self, events):
         """
@@ -1211,7 +1211,7 @@ class PluggableEventsStorageAsync(PluggableEventsStorageBase):
         :param prefix: optional, prefix to storage keys
         :type prefix: str
         """
-        super().__init__(pluggable_adapter, sdk_metadata, prefix)
+        PluggableEventsStorageBase.__init__(self, pluggable_adapter, sdk_metadata, prefix)
 
     async def put(self, events):
         """
