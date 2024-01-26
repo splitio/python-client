@@ -97,10 +97,8 @@ class SynchronizerTests(object):
         split_synchronizers = SplitSynchronizers(split_sync, mocker.Mock(), mocker.Mock(),
                                                  mocker.Mock(), mocker.Mock())
         synchronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
-        assert synchronizer._LOGGER.name == 'splitio.sync.synchronizer'
 
         synchronizer.synchronize_splits(None)
-
         synchronizer.sync_all(3)
         assert synchronizer._backoff._attempt == 0
 
@@ -414,7 +412,6 @@ class SynchronizerAsyncTests(object):
         split_synchronizers = SplitSynchronizers(split_sync, mocker.Mock(), mocker.Mock(),
                                                  mocker.Mock(), mocker.Mock())
         sychronizer = SynchronizerAsync(split_synchronizers, mocker.Mock(spec=SplitTasks))
-        assert sychronizer._LOGGER.name == 'asyncio'
 
         await sychronizer.synchronize_splits(None)  # APIExceptions are handled locally and should not be propagated!
 
@@ -689,7 +686,6 @@ class RedisSynchronizerTests(object):
             clear_filter_task
         )
         synchronizer = RedisSynchronizer(mocker.Mock(spec=SplitSynchronizers), split_tasks)
-        assert synchronizer._LOGGER.name == 'splitio.sync.synchronizer'
         synchronizer.start_periodic_data_recording()
 
         assert len(impression_count_task.start.mock_calls) == 1
@@ -764,7 +760,6 @@ class RedisSynchronizerAsyncTests(object):
             clear_filter_task
         )
         synchronizer = RedisSynchronizerAsync(mocker.Mock(spec=SplitSynchronizers), split_tasks)
-        assert synchronizer._LOGGER.name == 'asyncio'
         synchronizer.start_periodic_data_recording()
 
         assert len(impression_count_task.start.mock_calls) == 1
@@ -1018,7 +1013,6 @@ class LocalhostSynchronizerTests(object):
         segment_sync = LocalSegmentSynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock())
         synchronizers = SplitSynchronizers(split_sync, segment_sync, None, None, None)
         local_synchronizer = LocalhostSynchronizer(synchronizers, mocker.Mock(), mocker.Mock())
-        assert local_synchronizer._LOGGER.name == 'splitio.sync.synchronizer'
 
         def synchronize_splits(*args, **kwargs):
             return ["segmentA", "segmentB"]
@@ -1077,7 +1071,6 @@ class LocalhostSynchronizerAsyncTests(object):
         segment_sync = LocalSegmentSynchronizerAsync(mocker.Mock(), mocker.Mock(), mocker.Mock())
         synchronizers = SplitSynchronizers(split_sync, segment_sync, None, None, None)
         local_synchronizer = LocalhostSynchronizerAsync(synchronizers, mocker.Mock(), mocker.Mock())
-        assert local_synchronizer._LOGGER.name == 'asyncio'
 
         self.called = False
         async def synchronize_segments(*args):

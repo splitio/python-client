@@ -19,7 +19,7 @@ class APIUriException(APIException):
 
     def __init__(self, custom_message, status_code=None):
         """Constructor."""
-        APIException.__init__(self, custom_message)
+        APIException.__init__(self, custom_message, status_code)
 
 def headers_from_metadata(sdk_metadata, client_key=None):
     """

@@ -58,7 +58,8 @@
                         }
                     ]
                 }
-            ]
+            ],
+            "sets": ["set1", "set2"]
         },
         {
             "orgId": null,
@@ -95,7 +96,8 @@
                         }
                     ]
                 }
-            ]
+            ],
+            "sets": ["set4"]
         },
         {
             "orgId": null,
@@ -136,7 +138,8 @@
                         }
                     ]
                 }
-            ]
+            ],
+            "sets": ["set3"]
         },
         {
             "orgId": null,
@@ -198,31 +201,9 @@
                             "size": 70
                         }
                     ]
-                },
-                {
-                    "matcherGroup": {
-                        "combiner": "AND",
-                        "matchers": [
-                            {
-                                "matcherType": "ALL_KEYS",
-                                "negate": false,
-                                "userDefinedSegmentMatcherData": null,
-                                "whitelistMatcherData": null
-                            }
-                        ]
-                    },
-                    "partitions": [
-                        {
-                            "treatment": "on",
-                            "size": 0
-                        },
-                        {
-                            "treatment": "off",
-                            "size": 100
-                        }
-                    ]
                 }
-            ]
+            ],
+            "sets": ["set1"]
         },
         {
             "orgId": null,
@@ -261,31 +242,9 @@
                             "size": 100
                         }
                     ]
-                },
-                {
-                    "matcherGroup": {
-                        "combiner": "AND",
-                        "matchers": [
-                            {
-                                "matcherType": "ALL_KEYS",
-                                "negate": false,
-                                "userDefinedSegmentMatcherData": null,
-                                "whitelistMatcherData": null
-                            }
-                        ]
-                    },
-                    "partitions": [
-                        {
-                            "treatment": "on",
-                            "size": 0
-                        },
-                        {
-                            "treatment": "off",
-                            "size": 100
-                        }
-                    ]
                 }
-            ]
+            ],
+            "sets": []
         },
         {
             "orgId": null,
@@ -321,31 +280,9 @@
                             "size": 0
                         }
                     ]
-                },
-                {
-                    "matcherGroup": {
-                        "combiner": "AND",
-                        "matchers": [
-                            {
-                                "matcherType": "ALL_KEYS",
-                                "negate": false,
-                                "userDefinedSegmentMatcherData": null,
-                                "whitelistMatcherData": null
-                            }
-                        ]
-                    },
-                    "partitions": [
-                        {
-                            "treatment": "on",
-                            "size": 0
-                        },
-                        {
-                            "treatment": "off",
-                            "size": 100
-                        }
-                    ]
                 }
-            ]
+            ],
+            "sets": []
         },
         {
             "orgId": null,
@@ -381,31 +318,9 @@
                             "size": 0
                         }
                     ]
-                },
-                {
-                    "matcherGroup": {
-                        "combiner": "AND",
-                        "matchers": [
-                            {
-                                "matcherType": "ALL_KEYS",
-                                "negate": false,
-                                "userDefinedSegmentMatcherData": null,
-                                "whitelistMatcherData": null
-                            }
-                        ]
-                    },
-                    "partitions": [
-                        {
-                            "treatment": "on",
-                            "size": 0
-                        },
-                        {
-                            "treatment": "off",
-                            "size": 100
-                        }
-                    ]
                 }
-            ]
+            ],
+            "sets": []
         }
     ],
     "since": -1,
