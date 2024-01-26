@@ -403,7 +403,6 @@ class RedisAdapter(RedisAdapterBase):  # pylint: disable=too-many-public-methods
         except RedisError as exc:
             raise RedisAdapterException('Error executing ttl operation') from exc
 
-
 class RedisAdapterAsync(RedisAdapterBase):  # pylint: disable=too-many-public-methods
     """
     Instance decorator for asyncio Redis clients such as StrictRedis.
@@ -609,26 +608,38 @@ class RedisAdapterAsync(RedisAdapterBase):  # pylint: disable=too-many-public-me
         await self._decorated.close()
         await self._decorated.connection_pool.disconnect(inuse_connections=True)
 
-class RedisPipelineAdapterBase(object, metaclass=abc.ABCMeta):
+class RedisPipelineAdapterBase(object):
     """
-    Template decorator for Redis Pipeline.
+    Base decorator for Redis Pipeline.
+
+    Adds an extra layer handling addition/removal of user prefix when handling
+    keys
     """
-    @abc.abstractmethod
+    def __init__(self, decorated, prefix_helper):
+        """
+        Store the user prefix and the redis client instance.
+
+        :param decorated: Instance of redis cache client to decorate.
+        :param _prefix_helper: PrefixHelper utility
+        """
+        self._prefix_helper = prefix_helper
+        self._pipe = decorated.pipeline()
+
     def rpush(self, key, *values):
         """Mimic original redis function but using user custom prefix."""
+        self._pipe.rpush(self._prefix_helper.add_prefix(key), *values)
 
-    @abc.abstractmethod
     def incr(self, name, amount=1):
         """Mimic original redis function but using user custom prefix."""
+        self._pipe.incr(self._prefix_helper.add_prefix(name), amount)
 
-    @abc.abstractmethod
     def hincrby(self, name, key, amount=1):
         """Mimic original redis function but using user custom prefix."""
+        self._pipe.hincrby(self._prefix_helper.add_prefix(name), key, amount)
 
-    @abc.abstractmethod
-    def execute(self):
-        """Mimic original redis execute."""
-
+    def smembers(self, name):
+        """Mimic original redis function but using user custom prefix."""
+        self._pipe.smembers(self._prefix_helper.add_prefix(name))
 
 class RedisPipelineAdapter(RedisPipelineAdapterBase):
     """
@@ -644,20 +655,7 @@ class RedisPipelineAdapter(RedisPipelineAdapterBase):
         :param decorated: Instance of redis cache client to decorate.
         :param _prefix_helper: PrefixHelper utility
         """
-        self._prefix_helper = prefix_helper
-        self._pipe = decorated.pipeline()
-
-    def rpush(self, key, *values):
-        """Mimic original redis function but using user custom prefix."""
-        self._pipe.rpush(self._prefix_helper.add_prefix(key), *values)
-
-    def incr(self, name, amount=1):
-        """Mimic original redis function but using user custom prefix."""
-        self._pipe.incr(self._prefix_helper.add_prefix(name), amount)
-
-    def hincrby(self, name, key, amount=1):
-        """Mimic original redis function but using user custom prefix."""
-        self._pipe.hincrby(self._prefix_helper.add_prefix(name), key, amount)
+        RedisPipelineAdapterBase.__init__(self, decorated, prefix_helper)
 
     def execute(self):
         """Mimic original redis function but using user custom prefix."""
@@ -665,7 +663,6 @@ class RedisPipelineAdapter(RedisPipelineAdapterBase):
             return self._pipe.execute()
         except RedisError as exc:
             raise RedisAdapterException('Error executing pipeline operation') from exc
-
 
 class RedisPipelineAdapterAsync(RedisPipelineAdapterBase):
     """
@@ -681,20 +678,7 @@ class RedisPipelineAdapterAsync(RedisPipelineAdapterBase):
         :param decorated: Instance of redis cache client to decorate.
         :param _prefix_helper: PrefixHelper utility
         """
-        self._prefix_helper = prefix_helper
-        self._pipe = decorated.pipeline()
-
-    def rpush(self, key, *values):
-        """Mimic original redis function but using user custom prefix."""
-        self._pipe.rpush(self._prefix_helper.add_prefix(key), *values)
-
-    def incr(self, name, amount=1):
-        """Mimic original redis function but using user custom prefix."""
-        self._pipe.incr(self._prefix_helper.add_prefix(name), amount)
-
-    def hincrby(self, name, key, amount=1):
-        """Mimic original redis function but using user custom prefix."""
-        self._pipe.hincrby(self._prefix_helper.add_prefix(name), key, amount)
+        RedisPipelineAdapterBase.__init__(self, decorated, prefix_helper)
 
     async def execute(self):
         """Mimic original redis function but using user custom prefix."""
