@@ -13,7 +13,7 @@ SSE_EVENT_ERROR = 'error'
 SSE_EVENT_MESSAGE = 'message'
 _DEFAULT_HEADERS = {'accept': 'text/event-stream'}
 _EVENT_SEPARATORS = set([b'\n', b'\r\n'])
-_DEFAULT_ASYNC_TIMEOUT = 300
+_DEFAULT_SOCKET_READ_TIMEOUT = 70
 
 SSEEvent = namedtuple('SSEEvent', ['event_id', 'event', 'retry', 'data'])
 
@@ -139,7 +139,7 @@ class SSEClient(object):
 class SSEClientAsync(object):
     """SSE Client implementation."""
 
-    def __init__(self, timeout=_DEFAULT_ASYNC_TIMEOUT):
+    def __init__(self, socket_read_timeout=_DEFAULT_SOCKET_READ_TIMEOUT):
         """
         Construct an SSE client.
 
@@ -152,7 +152,7 @@ class SSEClientAsync(object):
         :param timeout: connection & read timeout
         :type timeout: float
         """
-        self._timeout = timeout
+        self._socket_read_timeout = socket_read_timeout + socket_read_timeout * .3
         self._response = None
         self._done = asyncio.Event()
 
@@ -168,7 +168,8 @@ class SSEClientAsync(object):
             raise RuntimeError('Client already started.')
 
         self._done.clear()
-        async with aiohttp.ClientSession() as sess:
+        client_timeout = aiohttp.ClientTimeout(total=0, sock_read=self._socket_read_timeout)
+        async with aiohttp.ClientSession(timeout=client_timeout) as sess:
             try:
                 async with sess.get(url, headers=get_headers(extra_headers)) as response:
                     self._response = response
