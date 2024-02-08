@@ -181,7 +181,7 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         self._base_url = base_url
         self.status = SplitSSEClient._Status.IDLE
         self._metadata = headers_from_metadata(sdk_metadata, client_key)
-        self._client = SSEClientAsync(timeout=self.KEEPALIVE_TIMEOUT)
+        self._client = SSEClientAsync(self.KEEPALIVE_TIMEOUT)
         self._event_source = None
         self._event_source_ended = asyncio.Event()
 
@@ -230,4 +230,7 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
             return
 
         await self._client.shutdown()
-        await self._event_source_ended.wait()
+        try:
+            await self._event_source_ended.wait()
+        except asyncio.CancelledError:
+            pass
