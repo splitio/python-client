@@ -201,11 +201,11 @@ class SSEClientAsync(object):
         """Close connection"""
         if self._response:
             self._response.close()
-# catching exception to avoid task hanging
+        # catching exception to avoid task hanging if a canceled exception occurred
         try:
             await self._done.wait()
         except asyncio.CancelledError:
-            _LOGGER.error("Exception waiting for event source ended")
+            _LOGGER.error("Exception waiting for SSE connection to end")
             _LOGGER.debug('stack trace: ', exc_info=True)
             pass
 
