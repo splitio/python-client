@@ -155,6 +155,8 @@ class SSEClientAsync(object):
         self._socket_read_timeout = socket_read_timeout + socket_read_timeout * .3
         self._response = None
         self._done = asyncio.Event()
+        client_timeout = aiohttp.ClientTimeout(total=0, sock_read=self._socket_read_timeout)
+        self._sess = aiohttp.ClientSession(timeout=client_timeout)
 
     async def start(self, url, extra_headers=None):  # pylint:disable=protected-access
         """
@@ -168,46 +170,53 @@ class SSEClientAsync(object):
             raise RuntimeError('Client already started.')
 
         self._done.clear()
-        client_timeout = aiohttp.ClientTimeout(total=0, sock_read=self._socket_read_timeout)
-        async with aiohttp.ClientSession(timeout=client_timeout) as sess:
-            try:
-                async with sess.get(url, headers=get_headers(extra_headers)) as response:
-                    self._response = response
-                    event_builder = EventBuilder()
-                    async for line in response.content:
-                        if line.startswith(b':'):
-                            _LOGGER.debug("skipping emtpy line / comment")
-                            continue
-                        elif line in _EVENT_SEPARATORS:
-                            _LOGGER.debug("dispatching event: %s", event_builder.build())
-                            yield event_builder.build()
-                            event_builder = EventBuilder()
-                        else:
-                            event_builder.process_line(line)
+        try:
+            async with self._sess.get(url, headers=get_headers(extra_headers)) as response:
+                self._response = response
+                event_builder = EventBuilder()
+                async for line in response.content:
+                    if line.startswith(b':'):
+                        _LOGGER.debug("skipping emtpy line / comment")
+                        continue
+                    elif line in _EVENT_SEPARATORS:
+                        _LOGGER.debug("dispatching event: %s", event_builder.build())
+                        yield event_builder.build()
+                        event_builder = EventBuilder()
+                    else:
+                        event_builder.process_line(line)
 
-            except Exception as exc:  # pylint:disable=broad-except
-                if self._is_conn_closed_error(exc):
-                    _LOGGER.debug('sse connection ended.')
-                    return
+        except Exception as exc:  # pylint:disable=broad-except
+            if self._is_conn_closed_error(exc):
+                _LOGGER.debug('sse connection ended.')
+                return
 
-                _LOGGER.error('http client is throwing exceptions')
-                _LOGGER.error('stack trace: ', exc_info=True)
+            _LOGGER.error('http client is throwing exceptions')
+            _LOGGER.error('stack trace: ', exc_info=True)
 
-            finally:
-                self._response = None
-                self._done.set()
+        finally:
+            self._response = None
+            self._done.set()
 
     async def shutdown(self):
         """Close connection"""
         if self._response:
             self._response.close()
-        await self._done.wait()
+# catching exception to avoid task hanging
+        try:
+            await self._done.wait()
+        except asyncio.CancelledError:
+            _LOGGER.error("Exception waiting for event source ended")
+            _LOGGER.debug('stack trace: ', exc_info=True)
+            pass
 
     @staticmethod
     def _is_conn_closed_error(exc):
         """Check if the ReadError is caused by the connection being closed."""
         return isinstance(exc, aiohttp.ClientConnectionError) and str(exc) == "Connection closed"
 
+    async def close_session(self):
+        if not self._sess.closed:
+            await self._sess.close()
 
 def get_headers(extra=None):
     """
