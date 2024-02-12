@@ -367,7 +367,7 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
         self._manager_start_task = manager_start_task
         self._status = Status.NOT_INITIALIZED
         self._sdk_ready_flag = asyncio.Event()
-        asyncio.get_running_loop().create_task(self._update_status_when_ready_async())
+        self._ready_task = asyncio.get_running_loop().create_task(self._update_status_when_ready_async())
 
     async def _update_status_when_ready_async(self):
         """Wait until the sdk is ready and update the status for async mode."""
@@ -377,6 +377,7 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
 
         if self._manager_start_task is not None:
             await self._manager_start_task
+            self._manager_start_task = None
         await self._telemetry_init_producer.record_ready_time(get_current_epoch_time_ms() - self._ready_time)
         redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
         await self._telemetry_init_producer.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
@@ -430,14 +431,25 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
 
         try:
             _LOGGER.info('Factory destroy called, stopping tasks.')
+            if self._manager_start_task is not None and not self._manager_start_task.done():
+                self._manager_start_task.cancel()
+
             if self._sync_manager is not None:
                 await self._sync_manager.stop(True)
+
+                if not self._ready_task.done():
+                    self._ready_task.cancel()
+                    self._ready_task = None
 
                 if isinstance(self._storages['splits'], RedisSplitStorageAsync):
                     await self._get_storage('splits').redis.close()
 
                 if isinstance(self._sync_manager, ManagerAsync) and isinstance(self._telemetry_submitter, InMemoryTelemetrySubmitterAsync):
                     await self._telemetry_submitter._telemetry_api._client.close_session()
+
+                if isinstance(self._sync_manager, ManagerAsync) and self._sync_manager._streaming_enabled:
+                    await self._sync_manager._push._sse_client._client.close_session()
+
         except Exception as e:
             _LOGGER.error('Exception destroying factory.')
             _LOGGER.debug(str(e))

@@ -2002,7 +2002,7 @@ class RedisIntegrationAsyncTests(object):
             await redis_client.set(split_storage._get_key(split['name']), json.dumps(split))
             if split.get('sets') is not None:
                 for flag_set in split.get('sets'):
-                    redis_client.sadd(split_storage._get_flag_set_key(flag_set), split['name'])
+                    await redis_client.sadd(split_storage._get_flag_set_key(flag_set), split['name'])
 
         await redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, data['till'])
 
@@ -2217,7 +2217,7 @@ class RedisWithCacheIntegrationAsyncTests(RedisIntegrationAsyncTests):
             await redis_client.set(split_storage._get_key(split['name']), json.dumps(split))
             if split.get('sets') is not None:
                 for flag_set in split.get('sets'):
-                    redis_client.sadd(split_storage._get_flag_set_key(flag_set), split['name'])
+                    await redis_client.sadd(split_storage._get_flag_set_key(flag_set), split['name'])
         await redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, data['till'])
 
         segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')

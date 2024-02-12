@@ -178,7 +178,7 @@ class WorkerPoolAsync(object):
 
     def start(self):
         """Start the workers."""
-        self._task = asyncio.get_running_loop().create_task(self._schedule_work())
+        asyncio.get_running_loop().create_task(self._schedule_work())
 
     async def submit_work(self, jobs):
         """
