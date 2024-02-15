@@ -6,7 +6,6 @@ import pytest
 from splitio.models.telemetry import StorageType, OperationMode, MethodLatencies, MethodExceptions, \
     HTTPLatencies, HTTPErrors, LastSynchronization, TelemetryCounters, TelemetryConfig, \
     StreamingEvent, StreamingEvents, UpdateFromSSE
-
 import splitio.models.telemetry as ModelTelemetry
 
 class TelemetryModelTests(object):
@@ -56,6 +55,14 @@ class TelemetryModelTests(object):
                 assert(method_latencies._treatment_with_config[ModelTelemetry.get_latency_bucket_index(50)] == 1)
             elif method.value == 'treatments_with_config':
                 assert(method_latencies._treatments_with_config[ModelTelemetry.get_latency_bucket_index(50)] == 1)
+            elif method.value == 'treatments_by_flag_set':
+                assert(method_latencies._treatments_by_flag_set[ModelTelemetry.get_latency_bucket_index(50)] == 1)
+            elif method.value == 'treatments_by_flag_sets':
+                assert(method_latencies._treatments_by_flag_sets[ModelTelemetry.get_latency_bucket_index(50)] == 1)
+            elif method.value == 'treatments_with_config_by_flag_set':
+                assert(method_latencies._treatments_with_config_by_flag_set[ModelTelemetry.get_latency_bucket_index(50)] == 1)
+            elif method.value == 'treatments_with_config_by_flag_sets':
+                assert(method_latencies._treatments_with_config_by_flag_sets[ModelTelemetry.get_latency_bucket_index(50)] == 1)
             elif method.value == 'track':
                 assert(method_latencies._track[ModelTelemetry.get_latency_bucket_index(50)] == 1)
             method_latencies.add_latency(method, 50000000)
@@ -67,6 +74,14 @@ class TelemetryModelTests(object):
                 assert(method_latencies._treatment_with_config[ModelTelemetry.get_latency_bucket_index(50000000)] == 1)
             if method.value == 'treatments_with_config':
                 assert(method_latencies._treatments_with_config[ModelTelemetry.get_latency_bucket_index(50000000)] == 1)
+            elif method.value == 'treatments_by_flag_set':
+                assert(method_latencies._treatments_by_flag_set[ModelTelemetry.get_latency_bucket_index(50000000)] == 1)
+            elif method.value == 'treatments_by_flag_sets':
+                assert(method_latencies._treatments_by_flag_sets[ModelTelemetry.get_latency_bucket_index(50000000)] == 1)
+            elif method.value == 'treatments_with_config_by_flag_set':
+                assert(method_latencies._treatments_with_config_by_flag_set[ModelTelemetry.get_latency_bucket_index(50000000)] == 1)
+            elif method.value == 'treatments_with_config_by_flag_sets':
+                assert(method_latencies._treatments_with_config_by_flag_sets[ModelTelemetry.get_latency_bucket_index(50000000)] == 1)
             if method.value == 'track':
                 assert(method_latencies._track[ModelTelemetry.get_latency_bucket_index(50000000)] == 1)
 
@@ -81,9 +96,23 @@ class TelemetryModelTests(object):
         [method_latencies.add_latency(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS, 20) for i in range(2)]
         method_latencies.add_latency(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG, 50)
         method_latencies.add_latency(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG, 20)
+        [method_latencies.add_latency(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET, 20) for i in range(3)]
+        [method_latencies.add_latency(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS, 20) for i in range(4)]
+        [method_latencies.add_latency(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET, 20) for i in range(5)]
+        [method_latencies.add_latency(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS, 20) for i in range(6)]
         method_latencies.add_latency(ModelTelemetry.MethodExceptionsAndLatencies.TRACK, 20)
         latencies = method_latencies.pop_all()
-        assert(latencies == {'methodLatencies': {'treatment': [1] + [0] * 22, 'treatments': [2] + [0] * 22, 'treatment_with_config': [1] + [0] * 22, 'treatments_with_config': [1] + [0] * 22, 'track': [1] + [0] * 22}})
+        assert(latencies == {'methodLatencies': {'treatment': [1] + [0] * 22,
+                                                 'treatments': [2] + [0] * 22,
+                                                 'treatment_with_config': [1] + [0] * 22,
+                                                 'treatments_with_config': [1] + [0] * 22,
+                                                 'treatments_by_flag_set': [3] + [0] * 22,
+                                                 'treatments_by_flag_sets': [4] + [0] * 22,
+                                                 'treatments_with_config_by_flag_set': [5] + [0] * 22,
+                                                 'treatments_with_config_by_flag_sets': [6] + [0] * 22,
+                                                 'track': [1] + [0] * 22}
+                            }
+                )
 
     def test_http_latencies(self, mocker):
         http_latencies = HTTPLatencies()
@@ -148,6 +177,10 @@ class TelemetryModelTests(object):
         method_exception.add_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG)
         [method_exception.add_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG) for i in range(5)]
         [method_exception.add_exception(ModelTelemetry.MethodExceptionsAndLatencies.TRACK) for i in range(3)]
+        [method_exception.add_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET) for i in range(6)]
+        [method_exception.add_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS) for i in range(7)]
+        [method_exception.add_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET) for i in range(8)]
+        [method_exception.add_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS) for i in range(9)]
         exceptions = method_exception.pop_all()
 
         assert(method_exception._treatment == 0)
@@ -155,7 +188,18 @@ class TelemetryModelTests(object):
         assert(method_exception._treatment_with_config == 0)
         assert(method_exception._treatments_with_config == 0)
         assert(method_exception._track == 0)
-        assert(exceptions == {'methodExceptions': {'treatment': 2, 'treatments': 1, 'treatment_with_config': 1, 'treatments_with_config': 5, 'track': 3}})
+        assert(exceptions == {'methodExceptions': {'treatment': 2,
+                                                   'treatments': 1,
+                                                   'treatment_with_config': 1,
+                                                   'treatments_with_config': 5,
+                                                   'treatments_by_flag_set': 6,
+                                                   'treatments_by_flag_sets': 7,
+                                                   'treatments_with_config_by_flag_set': 8,
+                                                   'treatments_with_config_by_flag_sets': 9,
+                                                   'track': 3
+                                                   }
+                            }
+            )
 
     def test_http_errors(self, mocker):
         http_error = HTTPErrors()
@@ -269,9 +313,10 @@ class TelemetryModelTests(object):
                   'impressionsRefreshRate': 60,
                   'eventsPushRate': 60,
                   'metricsRefreshRate': 10,
-                  'storageType': None
+                  'storageType': None,
+                  'flagSetsFilter': None
                 }
-        telemetry_config.record_config(config, {})
+        telemetry_config.record_config(config, {}, 5, 2)
         assert(telemetry_config.get_stats() == {'oM': 0,
             'sT': telemetry_config._get_storage_type(config['operationMode'], config['storageType']),
             'sE': config['streamingEnabled'],
@@ -286,7 +331,9 @@ class TelemetryModelTests(object):
             'nR': 0,
             'bT': 0,
             'aF': 0,
-            'rF': 0}
+            'rF': 0,
+            'fsT': 5,
+            'fsI': 2}
             )
 
         telemetry_config.record_ready_time(10)

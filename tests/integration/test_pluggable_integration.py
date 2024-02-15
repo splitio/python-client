@@ -23,9 +23,9 @@ class PluggableSplitStorageIntegrationTests(object):
             with open(split_fn, 'r') as flo:
                 data = json.loads(flo.read())
                 for split in data['splits']:
-                    adapter.set(storage._prefix.format(split_name=split['name']), split)
+                    adapter.set(storage._prefix.format(feature_flag_name=split['name']), split)
                     adapter.increment(storage._traffic_type_prefix.format(traffic_type_name=split['trafficTypeName']), 1)
-                adapter.set(storage._split_till_prefix, data['till'])
+                adapter.set(storage._feature_flag_till_prefix, data['till'])
 
             split_objects = [splits.from_raw(raw) for raw in data['splits']]
             for split_object in split_objects:
@@ -52,7 +52,7 @@ class PluggableSplitStorageIntegrationTests(object):
                     assert len(original_condition.matchers) == len(fetched_condition.matchers)
                     assert len(original_condition.partitions) == len(fetched_condition.partitions)
 
-            adapter.set(storage._split_till_prefix, data['till'])
+            adapter.set(storage._feature_flag_till_prefix, data['till'])
             assert storage.get_change_number() == data['till']
 
             assert storage.is_valid_traffic_type('user') is True
@@ -89,9 +89,9 @@ class PluggableSplitStorageIntegrationTests(object):
             with open(split_fn, 'r') as flo:
                 data = json.loads(flo.read())
                 for split in data['splits']:
-                    adapter.set(storage._prefix.format(split_name=split['name']), split)
+                    adapter.set(storage._prefix.format(feature_flag_name=split['name']), split)
                     adapter.increment(storage._traffic_type_prefix.format(traffic_type_name=split['trafficTypeName']), 1)
-                adapter.set(storage._split_till_prefix, data['till'])
+                adapter.set(storage._feature_flag_till_prefix, data['till'])
 
             split_objects = [splits.from_raw(raw) for raw in data['splits']]
             original_splits = {split.name: split for split in split_objects}

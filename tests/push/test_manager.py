@@ -90,6 +90,28 @@ class PushManagerTests(object):
         assert feedback_loop.get() == Status.PUSH_RETRYABLE_ERROR
         assert timer_mock.mock_calls == [mocker.call(0, Any())]
 
+    def test_empty_auth_respnse(self, mocker):
+        """Test the initial status is ok and reset() works as expected."""
+        api_mock = mocker.Mock()
+        api_mock.authenticate.return_value = Token(False, None, None, None, None)
+
+        sse_mock = mocker.Mock(spec=SplitSSEClient)
+        sse_constructor_mock = mocker.Mock()
+        sse_constructor_mock.return_value = sse_mock
+        timer_mock = mocker.Mock()
+        mocker.patch('splitio.push.manager.Timer', new=timer_mock)
+        mocker.patch('splitio.push.manager.SplitSSEClient', new=sse_constructor_mock)
+        feedback_loop = Queue()
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        manager = PushManager(api_mock, mocker.Mock(), feedback_loop, mocker.Mock(), telemetry_runtime_producer)
+        manager.start()
+        assert feedback_loop.get() == Status.PUSH_NONRETRYABLE_ERROR
+        assert timer_mock.mock_calls == [mocker.call(0, Any())]
+        assert sse_mock.mock_calls == []
+
+
     def test_push_disabled(self, mocker):
         """Test the initial status is ok and reset() works as expected."""
         api_mock = mocker.Mock()
