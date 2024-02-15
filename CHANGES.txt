@@ -1,3 +1,6 @@
+9.6.1 (Feb 15, 2024)
+- Added redisUsername configuration parameter for Redis connection to set the username for accessing redis when not using the default `root` username
+
 9.6.0 (Nov 3, 2023)
 - Added support for Flag Sets on the SDK, which enables grouping feature flags and interacting with the group rather than individually (more details in our documentation):
   - Added new variations of the get treatment methods to support evaluating flags in given flag set/s.
