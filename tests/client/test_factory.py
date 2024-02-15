@@ -99,6 +99,7 @@ class SplitFactoryTests(object):
             'redisPort': 1234,
             'redisDb': 1,
             'redisPassword': 'some_password',
+            'redisUsername': 'redis_user',
             'redisSocketTimeout': 123,
             'redisSocketConnectTimeout': 123,
             'redisSocketKeepalive': 123,
@@ -115,12 +116,15 @@ class SplitFactoryTests(object):
             'redisSslCertReqs': 'some_cert_req',
             'redisSslCaCerts': 'some_ca_cert',
             'redisMaxConnections': 999,
+            'flagSetsFilter': ['set_1']
         }
         factory = get_factory('some_api_key', config=config)
         assert isinstance(factory._get_storage('splits'), redis.RedisSplitStorage)
         assert isinstance(factory._get_storage('segments'), redis.RedisSegmentStorage)
         assert isinstance(factory._get_storage('impressions'), redis.RedisImpressionsStorage)
         assert isinstance(factory._get_storage('events'), redis.RedisEventsStorage)
+
+        assert factory._get_storage('splits').flag_set_filter.flag_sets == set([])
 
         adapter = factory._get_storage('splits')._redis
         assert adapter == factory._get_storage('segments')._redis
@@ -131,6 +135,7 @@ class SplitFactoryTests(object):
             host='some_host',
             port=1234,
             db=1,
+            username='redis_user',
             password='some_password',
             socket_timeout=123,
             socket_connect_timeout=123,
@@ -569,13 +574,15 @@ class SplitFactoryTests(object):
             'labelsEnabled': False,
             'impressionListener': 123,
             'storageType': 'pluggable',
-            'storageWrapper': StorageMockAdapter()
+            'storageWrapper': StorageMockAdapter(),
+            'flagSetsFilter': ['set_1']
         }
         factory = get_factory('some_api_key', config=config)
         assert isinstance(factory._get_storage('splits'), pluggable.PluggableSplitStorage)
         assert isinstance(factory._get_storage('segments'), pluggable.PluggableSegmentStorage)
         assert isinstance(factory._get_storage('impressions'), pluggable.PluggableImpressionsStorage)
         assert isinstance(factory._get_storage('events'), pluggable.PluggableEventsStorage)
+        assert factory._get_storage('splits').flag_set_filter.flag_sets == set([])
 
         adapter = factory._get_storage('splits')._pluggable_adapter
         assert adapter == factory._get_storage('segments')._pluggable_adapter
