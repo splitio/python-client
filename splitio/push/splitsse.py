@@ -182,7 +182,6 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         self.status = SplitSSEClient._Status.IDLE
         self._metadata = headers_from_metadata(sdk_metadata, client_key)
         self._client = SSEClientAsync(self.KEEPALIVE_TIMEOUT)
-        self._event_source = None
         self._event_source_ended = asyncio.Event()
 
     async def start(self, token):
@@ -203,15 +202,15 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         url = self._build_url(token)
         try:
             self._event_source_ended.clear()
-            self._event_source = self._client.start(url, extra_headers=self._metadata)
-            first_event = await anext(self._event_source)
+            event_source = self._client.start(url, extra_headers=self._metadata)
+            first_event = await anext(event_source)
             if first_event.event == SSE_EVENT_ERROR:
                 return
 
             yield first_event
             self.status = SplitSSEClient._Status.CONNECTED
             _LOGGER.debug("Split SSE client started")
-            async for event in self._event_source:
+            async for event in event_source:
                 if event.data is not None:
                     yield event
         except Exception:  # pylint:disable=broad-except

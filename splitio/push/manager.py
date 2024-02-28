@@ -33,9 +33,7 @@ class PushManagerBase(object, metaclass=abc.ABCMeta):
         """Stop the current ongoing connection."""
 
     def _get_time_period(self, token):
-#        return (token.exp - token.iat) - _TOKEN_REFRESH_GRACE_PERIOD
-        return 60
-
+        return (token.exp - token.iat) - _TOKEN_REFRESH_GRACE_PERIOD
 
 class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attributes
     """Push notifications susbsytem manager."""
