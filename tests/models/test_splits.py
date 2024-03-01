@@ -126,3 +126,10 @@ class SplitTests(object):
         split['conditions'][0]['matcherGroup']['matchers'][0]['matcherType'] = 'INVALID_MATCHER'
         parsed = splits.from_raw(split)
         assert parsed.conditions[0].to_json() == splits._DEFAULT_CONDITIONS_TEMPLATE
+
+        # using multiple conditions
+        split = copy.deepcopy(self.raw)
+        split['conditions'].append(split['conditions'][0])
+        split['conditions'][0]['matcherGroup']['matchers'][0]['matcherType'] = 'INVALID_MATCHER'
+        parsed = splits.from_raw(split)
+        assert parsed.conditions[0].to_json() == splits._DEFAULT_CONDITIONS_TEMPLATE
