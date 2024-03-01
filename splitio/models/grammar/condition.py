@@ -2,6 +2,7 @@
 
 from enum import Enum
 
+from splitio.models import MatcherNotFoundException
 from splitio.models.grammar import matchers
 from splitio.models.grammar import partitions
 
@@ -123,7 +124,11 @@ def from_raw(raw_condition):
         for raw_partition in raw_condition['partitions']
     ]
 
-    matcher_objects = [matchers.from_raw(x) for x in raw_condition['matcherGroup']['matchers']]
+    try:
+        matcher_objects = [matchers.from_raw(x) for x in raw_condition['matcherGroup']['matchers']]
+    except MatcherNotFoundException as e:
+        raise MatcherNotFoundException(str(e))
+
     combiner = _MATCHER_COMBINERS[raw_condition['matcherGroup']['combiner']]
     label = raw_condition.get('label')
 
