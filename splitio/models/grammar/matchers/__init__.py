@@ -1,4 +1,5 @@
 """Matchers entrypoint module."""
+from splitio.models import MatcherNotFoundException
 from splitio.models.grammar.matchers.keys import AllKeysMatcher, UserDefinedSegmentMatcher
 from splitio.models.grammar.matchers.numeric import BetweenMatcher, EqualToMatcher, \
     GreaterThanOrEqualMatcher, LessThanOrEqualMatcher
@@ -63,5 +64,5 @@ def from_raw(raw_matcher):
     try:
         builder = _MATCHER_BUILDERS[matcher_type]
     except KeyError:
-        raise ValueError('Invalid matcher type %s' % matcher_type)
+        raise MatcherNotFoundException('Invalid matcher type %s' % matcher_type)
     return builder(raw_matcher)

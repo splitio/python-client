@@ -1,14 +1,45 @@
 """Splits module."""
 from enum import Enum
 from collections import namedtuple
+import logging
 
+from splitio.models import MatcherNotFoundException
 from splitio.models.grammar import condition
 
+_LOGGER = logging.getLogger(__name__)
 
 SplitView = namedtuple(
     'SplitView',
     ['name', 'traffic_type', 'killed', 'treatments', 'change_number', 'configs', 'default_treatment', 'sets']
 )
+
+_DEFAULT_CONDITIONS_TEMPLATE =   {
+    "conditionType": "ROLLOUT",
+    "matcherGroup": {
+        "combiner": "AND",
+        "matchers": [
+        {
+            "keySelector": None,
+            "matcherType": "ALL_KEYS",
+            "negate": False,
+            "userDefinedSegmentMatcherData": None,
+            "whitelistMatcherData": None,
+            "unaryNumericMatcherData": None,
+            "betweenMatcherData": None,
+            "dependencyMatcherData": None,
+            "booleanMatcherData": None,
+            "stringMatcherData": None
+        }]
+    },
+    "partitions": [
+        {
+        "treatment": "control",
+        "size": 100
+        }
+    ],
+    "label": "unsupported matcher type"
+}
+
 
 
 class Status(Enum):
@@ -238,6 +269,27 @@ def from_raw(raw_split):
     :return: A parsed Split object capable of performing evaluations.
     :rtype: Split
     """
+    try:
+        return Split(
+            raw_split['name'],
+            raw_split['seed'],
+            raw_split['killed'],
+            raw_split['defaultTreatment'],
+            raw_split['trafficTypeName'],
+            raw_split['status'],
+            raw_split['changeNumber'],
+            [condition.from_raw(c) for c in raw_split['conditions']],
+            raw_split.get('algo'),
+            traffic_allocation=raw_split.get('trafficAllocation'),
+            traffic_allocation_seed=raw_split.get('trafficAllocationSeed'),
+            configurations=raw_split.get('configurations'),
+            sets=set(raw_split.get('sets')) if raw_split.get('sets') is not None else []
+        )
+    except MatcherNotFoundException as e:
+        _LOGGER.error(str(e))
+        pass
+
+    _LOGGER.debug("Using default conditions template for feature flag: %s", raw_split['name'])
     return Split(
         raw_split['name'],
         raw_split['seed'],
@@ -246,7 +298,7 @@ def from_raw(raw_split):
         raw_split['trafficTypeName'],
         raw_split['status'],
         raw_split['changeNumber'],
-        [condition.from_raw(c) for c in raw_split['conditions']],
+        [condition.from_raw(_DEFAULT_CONDITIONS_TEMPLATE)],
         raw_split.get('algo'),
         traffic_allocation=raw_split.get('trafficAllocation'),
         traffic_allocation_seed=raw_split.get('trafficAllocationSeed'),
