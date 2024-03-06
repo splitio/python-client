@@ -21,9 +21,9 @@ class Semver(object, metaclass=abc.ABCMeta):
         self._pre_release = []
         self._is_stable = False
         self._old_version = version
-        self.parse()
+        self._parse()
 
-    def parse(self):
+    def _parse(self):
         """
         Parse the string in self._old_version to update the other internal variables
         """
