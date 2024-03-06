@@ -61,7 +61,7 @@ class Semver(object, metaclass=abc.ABCMeta):
         """
 
         parts = version.split(self._VALUE_DELIMITER)
-        if len(parts) != 3 or not ( parts[0].isnumeric() and parts[1].isnumeric() and parts[2].isnumeric()):
+        if len(parts) != 3 or not (parts[0].isnumeric() and parts[1].isnumeric() and parts[2].isnumeric()):
             raise RuntimeError("Unable to convert to Semver, incorrect format: " + version)
 
         self._major = int(parts[0])
@@ -73,7 +73,7 @@ class Semver(object, metaclass=abc.ABCMeta):
         Compare the current Semver object to a given Semver object, return:
             0: if self == passed
             1: if self > passed
-            2: if self < passed
+            -1: if self < passed
 
         :param to_compare: a Semver object
         :type to_compare: splitio.models.grammar.matchers.semver.Semver
@@ -121,7 +121,7 @@ class Semver(object, metaclass=abc.ABCMeta):
         Compare 2 variables and return int as follows:
             0: if var1 == var2
             1: if var1 > var2
-            2: if var1 < var2
+            -1: if var1 < var2
 
         :param var1: any object accept ==, < or > operators
         :type var1: str/int
