@@ -182,7 +182,7 @@ class EqualToSemverMatcher(Matcher):
 
     def __str__(self):
         """Return string Representation."""
-        return 'equal semver {self._data}'
+        return 'equal semver {data}'.format(data=self._data)
 
     def _add_matcher_specific_properties_to_json(self):
         """Add matcher specific properties to base dict before returning it."""

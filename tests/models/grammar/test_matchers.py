@@ -919,3 +919,8 @@ class EqualToSemverMatcherTests(MatcherTestsBase):
         as_json = matchers.EqualToSemverMatcher(self.raw).to_json()
         assert as_json['matcherType'] == 'EQUAL_TO_SEMVER'
         assert as_json['stringMatcherData'] == "2.1.8"
+
+    def test_to_str(self):
+        """Test that the object serializes to str properly."""
+        as_str = matchers.EqualToSemverMatcher(self.raw)
+        assert str(as_str) == "equal semver 2.1.8"
