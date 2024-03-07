@@ -144,11 +144,11 @@ class Semver(object, metaclass=abc.ABCMeta):
         return -1
 
 class EqualToSemverMatcher(Matcher):
-    """A matcher that always returns True."""
+    """A matcher for Semver equal to."""
 
     def _build(self, raw_matcher):
         """
-        Build an AllKeysMatcher.
+        Build an EqualToSemverMatcher.
 
         :param raw_matcher: raw matcher as fetched from splitChanges response.
         :type raw_matcher: dict
