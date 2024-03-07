@@ -887,7 +887,7 @@ class RegexMatcherTests(MatcherTestsBase):
         assert as_json['stringMatcherData'] == "^[a-z][A-Z][0-9]$"
 
 class EqualToSemverMatcherTests(MatcherTestsBase):
-    """Regex matcher test cases."""
+    """Semver equalto matcher test cases."""
 
     raw = {
         'negate': False,
