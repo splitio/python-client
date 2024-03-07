@@ -1,5 +1,11 @@
 """Semver matcher classes."""
 import abc
+import logging
+
+from splitio.models.grammar.matchers.base import Matcher
+from splitio.models.grammar.matchers.string import Sanitizer
+
+_LOGGER = logging.getLogger(__name__)
 
 class Semver(object, metaclass=abc.ABCMeta):
     """Semver class."""
@@ -136,3 +142,48 @@ class Semver(object, metaclass=abc.ABCMeta):
         if var1 > var2:
             return 1
         return -1
+
+class EqualToSemverMatcher(Matcher):
+    """A matcher that always returns True."""
+
+    def _build(self, raw_matcher):
+        """
+        Build an AllKeysMatcher.
+
+        :param raw_matcher: raw matcher as fetched from splitChanges response.
+        :type raw_matcher: dict
+        """
+        self._data = raw_matcher['stringMatcherData']
+        self._semver = Semver(self._data)
+
+    def _match(self, key, attributes=None, context=None):
+        """
+        Evaluate user input against a matcher and return whether the match is successful.
+
+        :param key: User key.
+        :type key: str.
+        :param attributes: Custom user attributes.
+        :type attributes: dict.
+        :param context: Evaluation context
+        :type context: dict
+
+        :returns: Wheter the match is successful.
+        :rtype: bool
+        """
+        if self._data is None:
+            _LOGGER.error("stringMatcherData is required for EQUAL_TO_SEMVER matcher type")
+            return None
+
+        matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
+        if matching_data is None:
+            return False
+
+        return self._semver.compare(Semver(matching_data)) == 0
+
+    def __str__(self):
+        """Return string Representation."""
+        return 'equal semver {self._data}'
+
+    def _add_matcher_specific_properties_to_json(self):
+        """Add matcher specific properties to base dict before returning it."""
+        return {'matcherType': 'EQUAL_TO_SEMVER', 'stringMatcherData': self._data}
