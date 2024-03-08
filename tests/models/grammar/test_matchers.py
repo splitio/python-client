@@ -964,3 +964,43 @@ class GreaterThanOrEqualToSemverMatcherTests(MatcherTestsBase):
         """Test that the object serializes to str properly."""
         as_str = matchers.GreaterThanOrEqualToSemverMatcher(self.raw)
         assert str(as_str) == "greater than or equal to semver 2.1.8"
+
+class LessThanOrEqualToSemverMatcherTests(MatcherTestsBase):
+    """Semver less or equalto matcher test cases."""
+
+    raw = {
+        'negate': False,
+        'matcherType': 'LESS_THAN_OR_EQUAL_TO_SEMVER',
+        'stringMatcherData': "2.1.8"
+    }
+
+    def test_from_raw(self, mocker):
+        """Test parsing from raw json/dict."""
+        parsed = matchers.from_raw(self.raw)
+        assert isinstance(parsed, matchers.LessThanOrEqualToSemverMatcher)
+        assert parsed._data == "2.1.8"
+        assert isinstance(parsed._semver, Semver)
+        assert parsed._semver._major == 2
+        assert parsed._semver._minor == 1
+        assert parsed._semver._patch == 8
+        assert parsed._semver._pre_release == []
+
+    def test_matcher_behaviour(self, mocker):
+        """Test if the matcher works properly."""
+        parsed = matchers.from_raw(self.raw)
+        assert parsed._match("2.1.8+rc")
+        assert parsed._match("2.1.8")
+        assert parsed._match("2.1.11")
+        assert not parsed._match("2.1.5")
+        assert not parsed._match("2.1.5-rc1")
+
+    def test_to_json(self):
+        """Test that the object serializes to JSON properly."""
+        as_json = matchers.LessThanOrEqualToSemverMatcher(self.raw).to_json()
+        assert as_json['matcherType'] == 'LESS_THAN_OR_EQUAL_TO_SEMVER'
+        assert as_json['stringMatcherData'] == "2.1.8"
+
+    def test_to_str(self):
+        """Test that the object serializes to str properly."""
+        as_str = matchers.LessThanOrEqualToSemverMatcher(self.raw)
+        assert str(as_str) == "less than or equal to semver 2.1.8"

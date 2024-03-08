@@ -232,3 +232,48 @@ class GreaterThanOrEqualToSemverMatcher(Matcher):
     def _add_matcher_specific_properties_to_json(self):
         """Add matcher specific properties to base dict before returning it."""
         return {'matcherType': 'GREATER_THAN_OR_EQUAL_TO_SEMVER', 'stringMatcherData': self._data}
+
+class LessThanOrEqualToSemverMatcher(Matcher):
+    """A matcher for Semver less than or equal to."""
+
+    def _build(self, raw_matcher):
+        """
+        Build a LessThanOrEqualToSemverMatcher.
+
+        :param raw_matcher: raw matcher as fetched from splitChanges response.
+        :type raw_matcher: dict
+        """
+        self._data = raw_matcher['stringMatcherData']
+        self._semver = Semver(self._data)
+
+    def _match(self, key, attributes=None, context=None):
+        """
+        Evaluate user input against a matcher and return whether the match is successful.
+
+        :param key: User key.
+        :type key: str.
+        :param attributes: Custom user attributes.
+        :type attributes: dict.
+        :param context: Evaluation context
+        :type context: dict
+
+        :returns: Wheter the match is successful.
+        :rtype: bool
+        """
+        if self._data is None:
+            _LOGGER.error("stringMatcherData is required for LESS_THAN_OR_EQUAL_TO_SEMVER matcher type")
+            return None
+
+        matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
+        if matching_data is None:
+            return False
+
+        return self._semver.compare(Semver(matching_data)) in [0, -1]
+
+    def __str__(self):
+        """Return string Representation."""
+        return 'less than or equal to semver {data}'.format(data=self._data)
+
+    def _add_matcher_specific_properties_to_json(self):
+        """Add matcher specific properties to base dict before returning it."""
+        return {'matcherType': 'LESS_THAN_OR_EQUAL_TO_SEMVER', 'stringMatcherData': self._data}
