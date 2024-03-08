@@ -8,7 +8,7 @@ from splitio.models.grammar.matchers.sets import ContainsAllOfSetMatcher, \
 from splitio.models.grammar.matchers.string import ContainsStringMatcher, \
     EndsWithMatcher, RegexMatcher, StartsWithMatcher, WhitelistMatcher
 from splitio.models.grammar.matchers.misc import BooleanMatcher, DependencyMatcher
-from splitio.models.grammar.matchers.semver import EqualToSemverMatcher, GreaterThanOrEqualToSemverMatcher, LessThanOrEqualToSemverMatcher
+from splitio.models.grammar.matchers.semver import EqualToSemverMatcher, GreaterThanOrEqualToSemverMatcher, LessThanOrEqualToSemverMatcher, BetweenSemverMatcher
 
 
 MATCHER_TYPE_ALL_KEYS = 'ALL_KEYS'
@@ -31,6 +31,7 @@ MATCHER_TYPE_MATCHES_STRING = 'MATCHES_STRING'
 MATCHER_TYPE_EQUAL_TO_SEMVER = 'EQUAL_TO_SEMVER'
 MATCHER_GREATER_THAN_OR_EQUAL_TO_SEMVER = 'GREATER_THAN_OR_EQUAL_TO_SEMVER'
 MATCHER_LESS_THAN_OR_EQUAL_TO_SEMVER = 'LESS_THAN_OR_EQUAL_TO_SEMVER'
+MATCHER_BETWEEN_SEMVER = 'BETWEEN_SEMVER'
 
 _MATCHER_BUILDERS = {
     MATCHER_TYPE_ALL_KEYS: AllKeysMatcher,
@@ -52,7 +53,8 @@ _MATCHER_BUILDERS = {
     MATCHER_TYPE_MATCHES_STRING: RegexMatcher,
     MATCHER_TYPE_EQUAL_TO_SEMVER: EqualToSemverMatcher,
     MATCHER_GREATER_THAN_OR_EQUAL_TO_SEMVER: GreaterThanOrEqualToSemverMatcher,
-    MATCHER_LESS_THAN_OR_EQUAL_TO_SEMVER: LessThanOrEqualToSemverMatcher
+    MATCHER_LESS_THAN_OR_EQUAL_TO_SEMVER: LessThanOrEqualToSemverMatcher,
+    MATCHER_BETWEEN_SEMVER: BetweenSemverMatcher
 }
 
 def from_raw(raw_matcher):
