@@ -153,7 +153,7 @@ class EqualToSemverMatcher(Matcher):
         :param raw_matcher: raw matcher as fetched from splitChanges response.
         :type raw_matcher: dict
         """
-        self._data = raw_matcher['stringMatcherData']
+        self._data = raw_matcher('stringMatcherData')
         self._semver = Semver(self._data)
 
     def _match(self, key, attributes=None, context=None):
@@ -198,7 +198,7 @@ class GreaterThanOrEqualToSemverMatcher(Matcher):
         :param raw_matcher: raw matcher as fetched from splitChanges response.
         :type raw_matcher: dict
         """
-        self._data = raw_matcher['stringMatcherData']
+        self._data = raw_matcher.get('stringMatcherData')
         self._semver = Semver(self._data)
 
     def _match(self, key, attributes=None, context=None):
