@@ -32,6 +32,8 @@ class HttpClient(object):
         """
         Class constructor.
 
+        :param request_decorator: RequestDecorator instance
+        :type request_decorator: splitio.api.request_decorator.RequestDecorator
         :param timeout: How many milliseconds to wait until the server responds.
         :type timeout: int
         :param sdk_url: Optional alternative sdk URL.
