@@ -86,4 +86,4 @@ class RequestDecorator(object):
         :return: True if does not exist in forbidden headers list, False otherwise
         :rtype: Boolean
         """
-        return header not in _FORBIDDEN_HEADERS
+        return header.lower() not in [forbidden.lower() for forbidden in _FORBIDDEN_HEADERS]

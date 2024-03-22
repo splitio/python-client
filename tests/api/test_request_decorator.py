@@ -35,6 +35,7 @@ class RequestDecoratorTests(object):
             def get_header_overrides(self):
                 final_header = {"UserCustomHeader": "value"}
                 [final_header.update({header: "val"}) for header in _FORBIDDEN_HEADERS]
+                [final_header.update({header.lower(): "val"}) for header in _FORBIDDEN_HEADERS]
                 return final_header
 
         decorator = RequestDecorator(MyCustomDecorator())
