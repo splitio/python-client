@@ -28,7 +28,7 @@ class HttpClient(object):
     AUTH_URL = 'https://auth.split.io/api'
     TELEMETRY_URL = 'https://telemetry.split.io/api'
 
-    def __init__(self, timeout=None, sdk_url=None, events_url=None, auth_url=None, telemetry_url=None):
+    def __init__(self, request_decorator, timeout=None, sdk_url=None, events_url=None, auth_url=None, telemetry_url=None):
         """
         Class constructor.
 
@@ -50,6 +50,7 @@ class HttpClient(object):
             'auth': auth_url if auth_url is not None else self.AUTH_URL,
             'telemetry': telemetry_url if telemetry_url is not None else self.TELEMETRY_URL,
         }
+        self._request_decorator = request_decorator
 
     def _build_url(self, server, path):
         """
@@ -101,7 +102,9 @@ class HttpClient(object):
             headers.update(extra_headers)
 
         try:
-            response = requests.get(
+            session = requests.Session()
+            session = self._request_decorator.decorate_headers(session)
+            response = session.get(
                 self._build_url(server, path),
                 params=query,
                 headers=headers,
@@ -110,6 +113,8 @@ class HttpClient(object):
             return HttpResponse(response.status_code, response.text)
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('requests library is throwing exceptions') from exc
+        finally:
+            session.close()
 
     def post(self, server, path, sdk_key, body, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
@@ -137,7 +142,9 @@ class HttpClient(object):
             headers.update(extra_headers)
 
         try:
-            response = requests.post(
+            session = requests.Session()
+            session = self._request_decorator.decorate_headers(session)
+            response = session.post(
                 self._build_url(server, path),
                 json=body,
                 params=query,
@@ -147,3 +154,5 @@ class HttpClient(object):
             return HttpResponse(response.status_code, response.text)
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('requests library is throwing exceptions') from exc
+        finally:
+            session.close()

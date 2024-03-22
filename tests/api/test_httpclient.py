@@ -1,6 +1,8 @@
 """HTTPClient test module."""
+import ssl
 
 from splitio.api import client
+from splitio.api.request_decorator import RequestDecorator, NoOpHeaderDecorator
 
 class HttpClientTests(object):
     """Http Client test cases."""
@@ -12,8 +14,9 @@ class HttpClientTests(object):
         response_mock.text = 'ok'
         get_mock = mocker.Mock()
         get_mock.return_value = response_mock
-        mocker.patch('splitio.api.client.requests.get', new=get_mock)
-        httpclient = client.HttpClient()
+        mocker.patch('splitio.api.client.requests.Session.get', new=get_mock)
+
+        httpclient = client.HttpClient(RequestDecorator(NoOpHeaderDecorator()))
         response = httpclient.get('sdk', '/test1', 'some_api_key', {'param1': 123}, {'h1': 'abc'})
         call = mocker.call(
             client.HttpClient.SDK_URL + '/test1',
@@ -44,8 +47,8 @@ class HttpClientTests(object):
         response_mock.text = 'ok'
         get_mock = mocker.Mock()
         get_mock.return_value = response_mock
-        mocker.patch('splitio.api.client.requests.get', new=get_mock)
-        httpclient = client.HttpClient(sdk_url='https://sdk.com', events_url='https://events.com')
+        mocker.patch('splitio.api.client.requests.Session.get', new=get_mock)
+        httpclient = client.HttpClient(RequestDecorator(NoOpHeaderDecorator()), sdk_url='https://sdk.com', events_url='https://events.com')
         response = httpclient.get('sdk', '/test1', 'some_api_key', {'param1': 123}, {'h1': 'abc'})
         call = mocker.call(
             'https://sdk.com/test1',
@@ -77,8 +80,8 @@ class HttpClientTests(object):
         response_mock.text = 'ok'
         get_mock = mocker.Mock()
         get_mock.return_value = response_mock
-        mocker.patch('splitio.api.client.requests.post', new=get_mock)
-        httpclient = client.HttpClient()
+        mocker.patch('splitio.api.client.requests.Session.post', new=get_mock)
+        httpclient = client.HttpClient(RequestDecorator(NoOpHeaderDecorator()))
         response = httpclient.post('sdk', '/test1', 'some_api_key', {'p1': 'a'}, {'param1': 123}, {'h1': 'abc'})
         call = mocker.call(
             client.HttpClient.SDK_URL + '/test1',
@@ -111,8 +114,8 @@ class HttpClientTests(object):
         response_mock.text = 'ok'
         get_mock = mocker.Mock()
         get_mock.return_value = response_mock
-        mocker.patch('splitio.api.client.requests.post', new=get_mock)
-        httpclient = client.HttpClient(sdk_url='https://sdk.com', events_url='https://events.com')
+        mocker.patch('splitio.api.client.requests.Session.post', new=get_mock)
+        httpclient = client.HttpClient(RequestDecorator(NoOpHeaderDecorator()), sdk_url='https://sdk.com', events_url='https://events.com')
         response = httpclient.post('sdk', '/test1', 'some_api_key', {'p1': 'a'}, {'param1': 123}, {'h1': 'abc'})
         call = mocker.call(
             'https://sdk.com' + '/test1',
