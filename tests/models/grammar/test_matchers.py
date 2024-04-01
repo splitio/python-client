@@ -950,9 +950,9 @@ class GreaterThanOrEqualToSemverMatcherTests(MatcherTestsBase):
         parsed = matchers.from_raw(self.raw)
         assert parsed._match("2.1.8+rc")
         assert parsed._match("2.1.8")
-        assert not parsed._match("2.1.11")
-        assert parsed._match("2.1.5")
-        assert parsed._match("2.1.5-rc1")
+        assert parsed._match("2.1.11")
+        assert not parsed._match("2.1.5")
+        assert not parsed._match("2.1.5-rc1")
 
     def test_to_json(self):
         """Test that the object serializes to JSON properly."""
@@ -990,9 +990,9 @@ class LessThanOrEqualToSemverMatcherTests(MatcherTestsBase):
         parsed = matchers.from_raw(self.raw)
         assert parsed._match("2.1.8+rc")
         assert parsed._match("2.1.8")
-        assert parsed._match("2.1.11")
-        assert not parsed._match("2.1.5")
-        assert not parsed._match("2.1.5-rc1")
+        assert not parsed._match("2.1.11")
+        assert parsed._match("2.1.5")
+        assert parsed._match("2.1.5-rc1")
 
     def test_to_json(self):
         """Test that the object serializes to JSON properly."""
