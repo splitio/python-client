@@ -223,7 +223,7 @@ class GreaterThanOrEqualToSemverMatcher(Matcher):
         if matching_data is None:
             return False
 
-        return self._semver.compare(Semver(matching_data)) in [0, 1]
+        return Semver(matching_data).compare(self._semver) in [0, 1]
 
     def __str__(self):
         """Return string Representation."""
@@ -268,7 +268,7 @@ class LessThanOrEqualToSemverMatcher(Matcher):
         if matching_data is None:
             return False
 
-        return self._semver.compare(Semver(matching_data)) in [0, -1]
+        return Semver(matching_data).compare(self._semver) in [0, -1]
 
     def __str__(self):
         """Return string Representation."""
