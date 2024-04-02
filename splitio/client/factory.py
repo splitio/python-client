@@ -35,6 +35,7 @@ from splitio.api.impressions import ImpressionsAPI
 from splitio.api.events import EventsAPI
 from splitio.api.auth import AuthAPI
 from splitio.api.telemetry import TelemetryAPI
+from splitio.api.request_decorator import RequestDecorator
 from splitio.util.time import get_current_epoch_time_ms
 
 # Tasks
@@ -333,6 +334,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     telemetry_init_producer = telemetry_producer.get_telemetry_init_producer()
 
     http_client = HttpClient(
+        RequestDecorator(cfg['headerOverrideCallback']),
         sdk_url=sdk_url,
         events_url=events_url,
         auth_url=auth_api_base_url,

@@ -2,7 +2,7 @@
 import pytest
 
 from splitio.api import client
-from splitio.api.request_decorator import RequestDecorator, NoOpHeaderDecorator, UserCustomHeaderDecorator
+from splitio.api.request_decorator import RequestDecorator, NoOpHeaderDecorator, CustomHeaderDecorator
 
 class HttpClientTests(object):
     """Http Client test cases."""
@@ -81,9 +81,12 @@ class HttpClientTests(object):
         get_mock.return_value = response_mock
         mocker.patch('splitio.api.client.requests.Session.get', new=get_mock)
 
-        class MyCustomDecorator(UserCustomHeaderDecorator):
-            def get_header_overrides(self):
-                return {"UserCustomHeader": "value", "AnotherCustomHeader": "val"}
+        class MyCustomDecorator(CustomHeaderDecorator):
+            def get_header_overrides(self, request_context):
+                headers = request_context.headers()
+                headers["UserCustomHeader"] = ["value"]
+                headers["AnotherCustomHeader"] = ["val1", "val2"]
+                return headers
 
         global current_session
         current_session = None
@@ -101,8 +104,8 @@ class HttpClientTests(object):
             params={'param1': 123},
             timeout=None
         )
-        assert current_session.headers["UserCustomHeader"] == "value"
-        assert current_session.headers["AnotherCustomHeader"] == "val"
+        assert current_session.headers["UserCustomHeader"] == ["value"]
+        assert current_session.headers["AnotherCustomHeader"] == ["val1", "val2"]
         assert response.status_code == 200
         assert response.body == 'ok'
         assert get_mock.mock_calls == [call]
@@ -183,9 +186,12 @@ class HttpClientTests(object):
         get_mock = mocker.Mock()
         get_mock.return_value = response_mock
         mocker.patch('splitio.api.client.requests.Session.post', new=get_mock)
-        class MyCustomDecorator(UserCustomHeaderDecorator):
-            def get_header_overrides(self):
-                return {"UserCustomHeader": "value", "AnotherCustomHeader": "val"}
+        class MyCustomDecorator(CustomHeaderDecorator):
+            def get_header_overrides(self, request_context):
+                headers = request_context.headers()
+                headers["UserCustomHeader"] = ["value"]
+                headers["AnotherCustomHeader"] = ["val1", "val2"]
+                return headers
 
         global current_session
         current_session = None
@@ -204,8 +210,8 @@ class HttpClientTests(object):
             params={'param1': 123},
             timeout=None
         )
-        assert current_session.headers["UserCustomHeader"] == "value"
-        assert current_session.headers["AnotherCustomHeader"] == "val"
+        assert current_session.headers["UserCustomHeader"] == ["value"]
+        assert current_session.headers["AnotherCustomHeader"] == ["val1", "val2"]
         assert response.status_code == 200
         assert response.body == 'ok'
         assert get_mock.mock_calls == [call]

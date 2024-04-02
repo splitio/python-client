@@ -2,6 +2,7 @@
 # pylint: disable=protected-access,no-self-use,line-too-long
 import pytest
 
+from splitio.api.request_decorator import CustomHeaderDecorator
 from splitio.client import config
 from splitio.engine.impressions.impressions import ImpressionsMode
 
@@ -68,9 +69,24 @@ class ConfigSanitizationTests(object):
         processed = config.sanitize('some', {})
         assert processed['redisLocalCacheEnabled']  # check default is True
         assert processed['flagSetsFilter'] is None
+        assert processed['headerOverrideCallback'] is None
 
         processed = config.sanitize('some', {'redisHost': 'x', 'flagSetsFilter': ['set']})
         assert processed['flagSetsFilter'] is None
 
         processed = config.sanitize('some', {'storageType': 'pluggable', 'flagSetsFilter': ['set']})
         assert processed['flagSetsFilter'] is None
+
+        processed = config.sanitize('some', {'headerOverrideCallback': 'string'})
+        assert processed['headerOverrideCallback'] is None
+
+        class MyCustomDecorator(CustomHeaderDecorator):
+            def get_header_overrides(self, request_context):
+                headers = request_context.headers()
+                headers["UserCustomHeader"] = ["value"]
+                headers["AnotherCustomHeader"] = ["val1", "val2"]
+                return headers
+
+        my_custom_header = MyCustomDecorator()
+        processed = config.sanitize('some', {'headerOverrideCallback': my_custom_header})
+        assert processed['headerOverrideCallback'] == my_custom_header

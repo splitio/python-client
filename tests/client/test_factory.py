@@ -16,6 +16,7 @@ from splitio.api.splits import SplitsAPI
 from splitio.api.segments import SegmentsAPI
 from splitio.api.impressions import ImpressionsAPI
 from splitio.api.events import EventsAPI
+from splitio.api.request_decorator import CustomHeaderDecorator
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager
 from splitio.sync.manager import Manager
 from splitio.sync.synchronizer import Synchronizer, SplitSynchronizers, SplitTasks
@@ -619,3 +620,26 @@ class SplitFactoryTests(object):
         factory.destroy(None)
         time.sleep(0.1)
         assert factory.destroyed
+
+    def test_using_custom_header_decorator(self, mocker):
+        """Test that the factory passes the custom header decorator to the http client."""
+        class MyCustomDecorator(CustomHeaderDecorator):
+            def get_header_overrides(self, request_context):
+                headers = request_context.headers()
+                headers["UserCustomHeader"] = ["value"]
+                headers["AnotherCustomHeader"] = ["val1", "val2"]
+                return headers
+
+        my_custom_header = MyCustomDecorator()
+        config = {
+            'headerOverrideCallback': my_custom_header
+        }
+        factory = get_factory('some_api_key', config=config)
+
+        assert (factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._api._client._request_decorator._custom_header_decorator == my_custom_header)
+
+        try:
+            factory.block_until_ready(1)
+        except:
+            pass
+        factory.destroy()

@@ -105,11 +105,11 @@ class HttpClient(object):
 
         try:
             session = requests.Session()
+            session.headers.update(headers)
             session = self._request_decorator.decorate_headers(session)
             response = session.get(
                 self._build_url(server, path),
                 params=query,
-                headers=headers,
                 timeout=self._timeout
             )
             return HttpResponse(response.status_code, response.text)
@@ -145,12 +145,12 @@ class HttpClient(object):
 
         try:
             session = requests.Session()
+            session.headers.update(headers)
             session = self._request_decorator.decorate_headers(session)
             response = session.post(
                 self._build_url(server, path),
                 json=body,
                 params=query,
-                headers=headers,
                 timeout=self._timeout
             )
             return HttpResponse(response.status_code, response.text)

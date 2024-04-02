@@ -17,7 +17,28 @@ _FORBIDDEN_HEADERS = [
     "X-Fastly-Debug"
 ]
 
-class UserCustomHeaderDecorator(object, metaclass=abc.ABCMeta):
+class RequestContext(object):
+    """Request conext class."""
+
+    def __init__(self, headers):
+        """
+        Class constructor.
+
+        :param headers: Custom headers dictionary
+        :type headers: Dict
+        """
+        self._headers = headers
+
+    def headers(self):
+        """
+        Return a dictionary with all the user-defined custom headers.
+
+        :return: Dictionary {String: String}
+        :rtype: Dict
+        """
+        return self._headers
+
+class CustomHeaderDecorator(object, metaclass=abc.ABCMeta):
     """User custom header decorator interface."""
 
     @abc.abstractmethod
@@ -30,12 +51,15 @@ class UserCustomHeaderDecorator(object, metaclass=abc.ABCMeta):
         """
         pass
 
-class NoOpHeaderDecorator(UserCustomHeaderDecorator):
+class NoOpHeaderDecorator(CustomHeaderDecorator):
     """User custom header Class for no headers."""
 
-    def get_header_overrides(self):
+    def get_header_overrides(self, request_context):
         """
         Return a dictionary with all the user-defined custom headers.
+
+        :param request_context: Request context instance
+        :type request_context: splitio.api.request_decorator.RequestContext
 
         :return: Dictionary {String: String}
         :rtype: Dict
@@ -45,17 +69,17 @@ class NoOpHeaderDecorator(UserCustomHeaderDecorator):
 class RequestDecorator(object):
     """Request decorator class for injecting User custom data."""
 
-    def __init__(self, user_custom_header_decorator=None):
+    def __init__(self, custom_header_decorator=None):
         """
         Class constructor.
 
-        :param user_custom_header_decorator: User custom header decorator instance.
-        :type user_custom_header_decorator: splitio.api.request_decorator.UserCustomHeaderDecorator
+        :param custom_header_decorator: User custom header decorator instance.
+        :type custom_header_decorator: splitio.api.request_decorator.CustomHeaderDecorator
         """
-        if user_custom_header_decorator is None:
-            user_custom_header_decorator = NoOpHeaderDecorator()
+        if custom_header_decorator is None:
+            custom_header_decorator = NoOpHeaderDecorator()
 
-        self._user_custom_header_decorator = user_custom_header_decorator
+        self._custom_header_decorator = custom_header_decorator
 
     def decorate_headers(self, request_session):
         """
@@ -68,10 +92,14 @@ class RequestDecorator(object):
         :rtype: requests.Session()
         """
         try:
-            custom_headers = self._user_custom_header_decorator.get_header_overrides()
+            custom_headers = self._custom_header_decorator.get_header_overrides(RequestContext(request_session.headers))
             for header in custom_headers:
                 if self._is_header_allowed(header):
-                    request_session.headers[header] = custom_headers[header]
+                    if isinstance(request_session.headers[header], list):
+                        request_session.headers[header] = ','.join(custom_headers[header])
+                    else:
+                        request_session.headers[header] = custom_headers[header]
+
             return request_session
         except Exception as exc:
             raise ValueError('Problem adding custom header in request decorator') from exc
@@ -86,4 +114,4 @@ class RequestDecorator(object):
         :return: True if does not exist in forbidden headers list, False otherwise
         :rtype: Boolean
         """
-        return header not in _FORBIDDEN_HEADERS
+        return header.lower() not in [forbidden.lower() for forbidden in _FORBIDDEN_HEADERS]
