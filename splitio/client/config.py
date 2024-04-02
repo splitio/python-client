@@ -2,7 +2,7 @@
 import os.path
 import logging
 
-from splitio.api.request_decorator import NoOpHeaderDecorator, CustomHeaderDecorator
+from splitio.api.request_decorator import CustomHeaderDecorator
 from splitio.engine.impressions import ImpressionsMode
 from splitio.client.input_validator import validate_flag_sets
 

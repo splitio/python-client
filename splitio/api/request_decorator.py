@@ -33,7 +33,7 @@ class RequestContext(object):
         """
         Return a dictionary with all the user-defined custom headers.
 
-        :return: Dictionary {String: String}
+        :return: Dictionary {String: [String]}
         :rtype: Dict
         """
         return self._headers
@@ -61,7 +61,7 @@ class NoOpHeaderDecorator(CustomHeaderDecorator):
         :param request_context: Request context instance
         :type request_context: splitio.api.request_decorator.RequestContext
 
-        :return: Dictionary {String: String}
+        :return: Dictionary {String: [String]}
         :rtype: Dict
         """
         return {}
