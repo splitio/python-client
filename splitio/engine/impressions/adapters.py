@@ -40,6 +40,9 @@ class InMemorySenderAdapter(ImpressionsSenderAdapter):
         :param uniques: unique keys disctionary
         :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
+        if len(uniques) == 0:
+            return
+
         self._telemtry_http_client.record_unique_keys({'keys': self._uniques_formatter(uniques)})
 
     def _uniques_formatter(self, uniques):
@@ -73,6 +76,9 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         :param uniques: unique keys disctionary
         :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
+        if len(uniques) == 0:
+            return
+
         bulk_mtks = _uniques_formatter(uniques)
         try:
             inserted = self._redis_client.rpush(_MTK_QUEUE_KEY, *bulk_mtks)
@@ -90,6 +96,9 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         :param to_send: unique keys disctionary
         :type to_send: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
+        if len(to_send) == 0:
+            return
+
         try:
             resulted = 0
             counted = 0
@@ -140,6 +149,9 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
         :param uniques: unique keys disctionary
         :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
+        if len(uniques) == 0:
+            return
+
         bulk_mtks = _uniques_formatter(uniques)
         try:
             _LOGGER.debug("record_unique_keys")
@@ -159,6 +171,8 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
         :param to_send: unique keys disctionary
         :type to_send: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
+        if len(to_send) == 0:
+            return
         try:
             resulted = 0
             for pf_count in to_send:
