@@ -3,6 +3,8 @@
 import time
 import threading
 import pytest
+
+from splitio.api.request_decorator import RequestDecorator, NoOpHeaderDecorator, CustomHeaderDecorator
 from splitio.push.sse import SSEClient, SSEEvent
 from tests.helpers.mockserver import SSEMockServer
 
@@ -20,7 +22,7 @@ class SSEClientTests(object):
             """Callback."""
             events.append(event)
 
-        client = SSEClient(callback)
+        client = SSEClient(callback, RequestDecorator(NoOpHeaderDecorator()))
 
         def runner():
             """SSE client runner thread."""
@@ -60,7 +62,7 @@ class SSEClientTests(object):
             """Callback."""
             events.append(event)
 
-        client = SSEClient(callback)
+        client = SSEClient(callback, RequestDecorator(NoOpHeaderDecorator()))
 
         def runner():
             """SSE client runner thread."""
@@ -97,7 +99,7 @@ class SSEClientTests(object):
             """Callback."""
             events.append(event)
 
-        client = SSEClient(callback)
+        client = SSEClient(callback, RequestDecorator(NoOpHeaderDecorator()))
 
         def runner():
             """SSE client runner thread."""
@@ -123,3 +125,39 @@ class SSEClientTests(object):
         ]
 
         assert client._conn is None
+
+
+    def test_sse_custom_headers(self, mocker):
+        """Test correct initialization. Server ends connection."""
+        server = SSEMockServer()
+        server.start()
+
+        def callback(event):
+            """Callback."""
+            pass
+
+        class MyCustomDecorator(CustomHeaderDecorator):
+            def get_header_overrides(self, request_context):
+                headers = request_context.headers()
+                headers["UserCustomHeader"] = ["value"]
+                headers["AnotherCustomHeader"] = ["val1", "val2"]
+                return headers
+
+        global myheaders
+        myheaders = {}
+        def get_mock(self, verb, url, headers=None):
+            global myheaders
+            myheaders = headers
+
+        mocker.patch('http.client.HTTPConnection.request', new=get_mock)
+
+        client = SSEClient(callback, RequestDecorator(MyCustomDecorator()))
+
+        def read_mock():
+            pass
+        self._read_events = read_mock()
+
+        client.start('http://127.0.0.1:' + str(server.port()))
+        assert(myheaders == {'accept': 'text/event-stream', 'UserCustomHeader': 'value', 'AnotherCustomHeader': 'val1,val2'})
+
+        server.stop()

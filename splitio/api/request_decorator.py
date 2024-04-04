@@ -81,26 +81,26 @@ class RequestDecorator(object):
 
         self._custom_header_decorator = custom_header_decorator
 
-    def decorate_headers(self, request_session):
+    def decorate_headers(self, new_headers):
         """
         Use a passed header dictionary and append user custom headers from the UserCustomHeaderDecorator instance.
 
-        :param request_session: HTTP Request session
-        :type request_session: requests.Session()
+        :param new_headers: Dict of headers
+        :type new_headers: Dict
 
-        :return: Updated Request session
-        :rtype: requests.Session()
+        :return: Updated headers
+        :rtype: Dict
         """
+        custom_headers = self._custom_header_decorator.get_header_overrides(RequestContext(new_headers))
         try:
-            custom_headers = self._custom_header_decorator.get_header_overrides(RequestContext(request_session.headers))
             for header in custom_headers:
                 if self._is_header_allowed(header):
-                    if isinstance(request_session.headers[header], list):
-                        request_session.headers[header] = ','.join(custom_headers[header])
+                    if isinstance(custom_headers[header], list):
+                        new_headers[header] = ','.join(custom_headers[header])
                     else:
-                        request_session.headers[header] = custom_headers[header]
+                        new_headers[header] = custom_headers[header]
 
-            return request_session
+            return new_headers
         except Exception as exc:
             raise ValueError('Problem adding custom header in request decorator') from exc
 

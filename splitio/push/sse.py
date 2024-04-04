@@ -3,6 +3,7 @@ import logging
 import socket
 from collections import namedtuple
 from http.client import HTTPConnection, HTTPSConnection
+from splitio.api.request_decorator import RequestDecorator, NoOpHeaderDecorator
 from urllib.parse import urlparse
 
 
@@ -53,7 +54,7 @@ class SSEClient(object):
     _DEFAULT_HEADERS = {'accept': 'text/event-stream'}
     _EVENT_SEPARATORS = set([b'\n', b'\r\n'])
 
-    def __init__(self, callback):
+    def __init__(self, callback, request_decorator):
         """
         Construct an SSE client.
 
@@ -63,6 +64,7 @@ class SSEClient(object):
         self._conn = None
         self._event_callback = callback
         self._shutdown_requested = False
+        self._request_decorator = request_decorator
 
     def _read_events(self):
         """
@@ -124,6 +126,7 @@ class SSEClient(object):
                       if url.scheme == 'https'
                       else HTTPConnection(url.hostname, port=url.port, timeout=timeout))
 
+        headers = self._request_decorator.decorate_headers(headers)
         self._conn.request('GET', '%s?%s' % (url.path, url.query), headers=headers)
         return self._read_events()
 

@@ -103,20 +103,17 @@ class HttpClient(object):
         if extra_headers is not None:
             headers.update(extra_headers)
 
+        headers = self._request_decorator.decorate_headers(headers)
         try:
-            session = requests.Session()
-            session.headers.update(headers)
-            session = self._request_decorator.decorate_headers(session)
-            response = session.get(
+            response = requests.get(
                 self._build_url(server, path),
                 params=query,
+                headers=headers,
                 timeout=self._timeout
             )
             return HttpResponse(response.status_code, response.text)
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('requests library is throwing exceptions') from exc
-        finally:
-            session.close()
 
     def post(self, server, path, sdk_key, body, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
@@ -143,18 +140,15 @@ class HttpClient(object):
         if extra_headers is not None:
             headers.update(extra_headers)
 
+        headers = self._request_decorator.decorate_headers(headers)
         try:
-            session = requests.Session()
-            session.headers.update(headers)
-            session = self._request_decorator.decorate_headers(session)
-            response = session.post(
+            response = requests.post(
                 self._build_url(server, path),
                 json=body,
                 params=query,
+                headers=headers,
                 timeout=self._timeout
             )
             return HttpResponse(response.status_code, response.text)
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('requests library is throwing exceptions') from exc
-        finally:
-            session.close()

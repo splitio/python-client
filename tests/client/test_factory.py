@@ -54,7 +54,7 @@ class SplitFactoryTests(object):
         """Test that a client with in-memory storage is created correctly."""
 
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None):
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, request_decorator, sse_url=None, client_key=None):
             synchronizer = mocker.Mock(spec=Synchronizer)
             synchronizer.sync_all.return_values = None
             self._ready_flag = ready_flag
@@ -257,7 +257,7 @@ class SplitFactoryTests(object):
                            evt_async_task_mock, imp_count_async_task_mock, telemetry_async_task_mock)
 
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None):
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, request_decorator, sse_url=None, client_key=None):
             synchronizer = Synchronizer(syncs, tasks)
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
@@ -353,7 +353,7 @@ class SplitFactoryTests(object):
                            evt_async_task_mock, imp_count_async_task_mock, telemetry_async_task_mock)
 
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None):
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, request_decorator, sse_url=None, client_key=None):
             synchronizer = Synchronizer(syncs, tasks)
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
@@ -414,7 +414,7 @@ class SplitFactoryTests(object):
         """Test multiple factories instantiation and tracking."""
         sdk_ready_flag = threading.Event()
 
-        def _init(self, ready_flag, some, auth_api, streaming_enabled, telemetry_runtime_producer, telemetry_init_consumer, sse_url=None):
+        def _init(self, ready_flag, some, auth_api, streaming_enabled, telemetry_runtime_producer, telemetry_init_consumer, request_decorator, sse_url=None):
             self._ready_flag = ready_flag
             self._synchronizer = mocker.Mock(spec=Synchronizer)
             self._streaming_enabled = False
@@ -430,7 +430,7 @@ class SplitFactoryTests(object):
             pass
         mocker.patch('splitio.sync.manager.Manager.stop', new=_stop)
 
-        mockManager = Manager(sdk_ready_flag, mocker.Mock(), mocker.Mock(), False, mocker.Mock(), mocker.Mock())
+        mockManager = Manager(sdk_ready_flag, mocker.Mock(), mocker.Mock(), False, mocker.Mock(), mocker.Mock(), mocker.Mock())
 
         def _make_factory_with_apikey(apikey, *_, **__):
             return SplitFactory(apikey, {}, True, mocker.Mock(spec=ImpressionsManager), mockManager, mocker.Mock(), mocker.Mock(), mocker.Mock())

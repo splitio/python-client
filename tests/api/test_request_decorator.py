@@ -26,10 +26,10 @@ class RequestDecoratorTests(object):
                 return headers
 
         decorator = RequestDecorator(MyCustomDecorator())
-        session = requests.Session()
-        session = decorator.decorate_headers(session)
-        assert(session.headers["UserCustomHeader"] == ["value"])
-        assert(session.headers["AnotherCustomHeader"] == ["val1", "val2"])
+        headers = {}
+        headers = decorator.decorate_headers(headers)
+        assert(headers["UserCustomHeader"] == "value")
+        assert(headers["AnotherCustomHeader"] == "val1", "val2")
 
     def test_add_forbidden_headers(self):
         """test adding forbidden headers."""
@@ -43,9 +43,9 @@ class RequestDecoratorTests(object):
                 return headers
 
         decorator = RequestDecorator(MyCustomDecorator())
-        session = requests.Session()
-        session = decorator.decorate_headers(session)
-        assert(session.headers["UserCustomHeader"] == ["value"])
+        headers = {}
+        headers = decorator.decorate_headers(headers)
+        assert(headers["UserCustomHeader"] == "value")
 
     def test_errors(self):
         class MyCustomDecorator(CustomHeaderDecorator):
@@ -53,6 +53,6 @@ class RequestDecoratorTests(object):
                 return ["MyCustomHeader"]
 
         decorator = RequestDecorator(MyCustomDecorator())
-        session = requests.Session()
+        headers = {}
         with pytest.raises(ValueError):
-            session = decorator.decorate_headers(session)
+            headers = decorator.decorate_headers(headers)
