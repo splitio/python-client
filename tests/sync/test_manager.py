@@ -54,7 +54,7 @@ class SyncManagerTests(object):
                                            mocker.Mock(), mocker.Mock(), mocker.Mock())
 
         synchronizer = Synchronizer(synchronizers, split_tasks)
-        manager = Manager(threading.Event(), synchronizer,  mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
+        manager = Manager(threading.Event(), synchronizer,  mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock(), mocker.Mock())
 
         manager._SYNC_ALL_ATTEMPTS = 1
         manager.start(2)  # should not throw!
@@ -62,7 +62,7 @@ class SyncManagerTests(object):
     def test_start_streaming_false(self, mocker):
         splits_ready_event = threading.Event()
         synchronizer = mocker.Mock(spec=Synchronizer)
-        manager = Manager(splits_ready_event, synchronizer, mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
+        manager = Manager(splits_ready_event, synchronizer, mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock(), mocker.Mock())
         try:
             manager.start()
         except:
@@ -79,7 +79,7 @@ class SyncManagerTests(object):
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
-        manager = Manager(splits_ready_event, synchronizer, mocker.Mock(), True, SdkMetadata('1.0', 'some', '1.2.3.4'), telemetry_runtime_producer)
+        manager = Manager(splits_ready_event, synchronizer, mocker.Mock(), True, SdkMetadata('1.0', 'some', '1.2.3.4'), telemetry_runtime_producer, mocker.Mock())
         try:
             manager.start()
         except:

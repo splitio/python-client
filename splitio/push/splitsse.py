@@ -21,7 +21,7 @@ class SplitSSEClient(object):  # pylint: disable=too-many-instance-attributes
         ERRORED = 2
         CONNECTED = 3
 
-    def __init__(self, event_callback, sdk_metadata, first_event_callback=None,
+    def __init__(self, event_callback, sdk_metadata, request_decorator, first_event_callback=None,
                  connection_closed_callback=None, client_key=None,
                  base_url='https://streaming.split.io'):
         """
@@ -45,7 +45,7 @@ class SplitSSEClient(object):  # pylint: disable=too-many-instance-attributes
         :param client_key: client key.
         :type client_key: str
         """
-        self._client = SSEClient(self._raw_event_handler)
+        self._client = SSEClient(self._raw_event_handler, request_decorator)
         self._callback = event_callback
         self._on_connected = first_event_callback
         self._on_disconnected = connection_closed_callback

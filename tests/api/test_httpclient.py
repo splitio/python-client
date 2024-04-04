@@ -2,7 +2,7 @@
 import pytest
 
 from splitio.api import client
-from splitio.api.request_decorator import RequestDecorator, NoOpHeaderDecorator, UserCustomHeaderDecorator
+from splitio.api.request_decorator import RequestDecorator, NoOpHeaderDecorator, CustomHeaderDecorator
 
 class HttpClientTests(object):
     """Http Client test cases."""
@@ -14,7 +14,7 @@ class HttpClientTests(object):
         response_mock.text = 'ok'
         get_mock = mocker.Mock()
         get_mock.return_value = response_mock
-        mocker.patch('splitio.api.client.requests.Session.get', new=get_mock)
+        mocker.patch('splitio.api.client.requests.get', new=get_mock)
 
         httpclient = client.HttpClient(RequestDecorator(NoOpHeaderDecorator()))
         response = httpclient.get('sdk', '/test1', 'some_api_key', {'param1': 123}, {'h1': 'abc'})
@@ -47,7 +47,7 @@ class HttpClientTests(object):
         response_mock.text = 'ok'
         get_mock = mocker.Mock()
         get_mock.return_value = response_mock
-        mocker.patch('splitio.api.client.requests.Session.get', new=get_mock)
+        mocker.patch('splitio.api.client.requests.get', new=get_mock)
         httpclient = client.HttpClient(RequestDecorator(NoOpHeaderDecorator()), sdk_url='https://sdk.com', events_url='https://events.com')
         response = httpclient.get('sdk', '/test1', 'some_api_key', {'param1': 123}, {'h1': 'abc'})
         call = mocker.call(
@@ -79,30 +79,33 @@ class HttpClientTests(object):
         response_mock.text = 'ok'
         get_mock = mocker.Mock()
         get_mock.return_value = response_mock
-        mocker.patch('splitio.api.client.requests.Session.get', new=get_mock)
+        mocker.patch('splitio.api.client.requests.get', new=get_mock)
 
-        class MyCustomDecorator(UserCustomHeaderDecorator):
-            def get_header_overrides(self):
-                return {"UserCustomHeader": "value", "AnotherCustomHeader": "val"}
+        class MyCustomDecorator(CustomHeaderDecorator):
+            def get_header_overrides(self, request_context):
+                headers = request_context.headers()
+                headers["UserCustomHeader"] = ["value"]
+                headers["AnotherCustomHeader"] = ["val1", "val2"]
+                return headers
 
-        global current_session
-        current_session = None
+        global current_headers
+        current_headers = {}
         class RequestDecoratorWrapper(RequestDecorator):
-            def decorate_headers(self, session):
-                global current_session
-                current_session = session
-                return RequestDecorator.decorate_headers(self, session)
+            def decorate_headers(self, headers):
+                global current_headers
+                current_headers = headers
+                return RequestDecorator.decorate_headers(self, headers)
 
         httpclient = client.HttpClient(RequestDecoratorWrapper(MyCustomDecorator()))
         response = httpclient.get('sdk', '/test1', 'some_api_key', {'param1': 123}, {'h1': 'abc'})
         call = mocker.call(
             client.HttpClient.SDK_URL + '/test1',
-            headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
+            headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json', 'UserCustomHeader': 'value', 'AnotherCustomHeader': 'val1,val2'},
             params={'param1': 123},
             timeout=None
         )
-        assert current_session.headers["UserCustomHeader"] == "value"
-        assert current_session.headers["AnotherCustomHeader"] == "val"
+        assert current_headers["UserCustomHeader"] == "value"
+        assert current_headers["AnotherCustomHeader"] == "val1,val2"
         assert response.status_code == 200
         assert response.body == 'ok'
         assert get_mock.mock_calls == [call]
@@ -114,7 +117,7 @@ class HttpClientTests(object):
         response_mock.text = 'ok'
         get_mock = mocker.Mock()
         get_mock.return_value = response_mock
-        mocker.patch('splitio.api.client.requests.Session.post', new=get_mock)
+        mocker.patch('splitio.api.client.requests.post', new=get_mock)
         httpclient = client.HttpClient(RequestDecorator(NoOpHeaderDecorator()))
         response = httpclient.post('sdk', '/test1', 'some_api_key', {'p1': 'a'}, {'param1': 123}, {'h1': 'abc'})
         call = mocker.call(
@@ -148,7 +151,7 @@ class HttpClientTests(object):
         response_mock.text = 'ok'
         get_mock = mocker.Mock()
         get_mock.return_value = response_mock
-        mocker.patch('splitio.api.client.requests.Session.post', new=get_mock)
+        mocker.patch('splitio.api.client.requests.post', new=get_mock)
         httpclient = client.HttpClient(RequestDecorator(NoOpHeaderDecorator()), sdk_url='https://sdk.com', events_url='https://events.com')
         response = httpclient.post('sdk', '/test1', 'some_api_key', {'p1': 'a'}, {'param1': 123}, {'h1': 'abc'})
         call = mocker.call(
@@ -182,30 +185,33 @@ class HttpClientTests(object):
         response_mock.text = 'ok'
         get_mock = mocker.Mock()
         get_mock.return_value = response_mock
-        mocker.patch('splitio.api.client.requests.Session.post', new=get_mock)
-        class MyCustomDecorator(UserCustomHeaderDecorator):
-            def get_header_overrides(self):
-                return {"UserCustomHeader": "value", "AnotherCustomHeader": "val"}
+        mocker.patch('splitio.api.client.requests.post', new=get_mock)
+        class MyCustomDecorator(CustomHeaderDecorator):
+            def get_header_overrides(self, request_context):
+                headers = request_context.headers()
+                headers["UserCustomHeader"] = ["value"]
+                headers["AnotherCustomHeader"] = ["val1", "val2"]
+                return headers
 
-        global current_session
-        current_session = None
+        global current_headers
+        current_headers = None
         class RequestDecoratorWrapper(RequestDecorator):
-            def decorate_headers(self, session):
-                global current_session
-                current_session = session
-                return RequestDecorator.decorate_headers(self, session)
+            def decorate_headers(self, headers):
+                global current_headers
+                current_headers = headers
+                return RequestDecorator.decorate_headers(self, headers)
 
         httpclient = client.HttpClient(RequestDecoratorWrapper(MyCustomDecorator()))
         response = httpclient.post('sdk', '/test1', 'some_api_key', {'p1': 'a'}, {'param1': 123}, {'h1': 'abc'})
         call = mocker.call(
             client.HttpClient.SDK_URL + '/test1',
             json={'p1': 'a'},
-            headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
+            headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json', 'UserCustomHeader': 'value', 'AnotherCustomHeader': 'val1,val2'},
             params={'param1': 123},
             timeout=None
         )
-        assert current_session.headers["UserCustomHeader"] == "value"
-        assert current_session.headers["AnotherCustomHeader"] == "val"
+        assert current_headers["UserCustomHeader"] == "value"
+        assert current_headers["AnotherCustomHeader"] == "val1,val2"
         assert response.status_code == 200
         assert response.body == 'ok'
         assert get_mock.mock_calls == [call]

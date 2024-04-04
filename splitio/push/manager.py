@@ -20,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 class PushManager(object):  # pylint:disable=too-many-instance-attributes
     """Push notifications susbsytem manager."""
 
-    def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None):
+    def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, telemetry_runtime_producer, request_decorator, sse_url=None, client_key=None):
         """
         Class constructor.
 
@@ -58,7 +58,7 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         }
 
         kwargs = {} if sse_url is None else {'base_url': sse_url}
-        self._sse_client = SplitSSEClient(self._event_handler, sdk_metadata, self._handle_connection_ready,
+        self._sse_client = SplitSSEClient(self._event_handler, sdk_metadata, request_decorator, self._handle_connection_ready,
                                           self._handle_connection_end, client_key, **kwargs)
         self._running = False
         self._next_refresh = Timer(0, lambda: 0)

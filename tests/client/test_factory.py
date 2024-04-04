@@ -16,6 +16,7 @@ from splitio.api.splits import SplitsAPI
 from splitio.api.segments import SegmentsAPI
 from splitio.api.impressions import ImpressionsAPI
 from splitio.api.events import EventsAPI
+from splitio.api.request_decorator import CustomHeaderDecorator
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager
 from splitio.sync.manager import Manager
 from splitio.sync.synchronizer import Synchronizer, SplitSynchronizers, SplitTasks
@@ -53,7 +54,7 @@ class SplitFactoryTests(object):
         """Test that a client with in-memory storage is created correctly."""
 
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None):
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, request_decorator, sse_url=None, client_key=None):
             synchronizer = mocker.Mock(spec=Synchronizer)
             synchronizer.sync_all.return_values = None
             self._ready_flag = ready_flag
@@ -256,7 +257,7 @@ class SplitFactoryTests(object):
                            evt_async_task_mock, imp_count_async_task_mock, telemetry_async_task_mock)
 
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None):
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, request_decorator, sse_url=None, client_key=None):
             synchronizer = Synchronizer(syncs, tasks)
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
@@ -352,7 +353,7 @@ class SplitFactoryTests(object):
                            evt_async_task_mock, imp_count_async_task_mock, telemetry_async_task_mock)
 
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None):
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, request_decorator, sse_url=None, client_key=None):
             synchronizer = Synchronizer(syncs, tasks)
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
@@ -413,7 +414,7 @@ class SplitFactoryTests(object):
         """Test multiple factories instantiation and tracking."""
         sdk_ready_flag = threading.Event()
 
-        def _init(self, ready_flag, some, auth_api, streaming_enabled, telemetry_runtime_producer, telemetry_init_consumer, sse_url=None):
+        def _init(self, ready_flag, some, auth_api, streaming_enabled, telemetry_runtime_producer, telemetry_init_consumer, request_decorator, sse_url=None):
             self._ready_flag = ready_flag
             self._synchronizer = mocker.Mock(spec=Synchronizer)
             self._streaming_enabled = False
@@ -429,7 +430,7 @@ class SplitFactoryTests(object):
             pass
         mocker.patch('splitio.sync.manager.Manager.stop', new=_stop)
 
-        mockManager = Manager(sdk_ready_flag, mocker.Mock(), mocker.Mock(), False, mocker.Mock(), mocker.Mock())
+        mockManager = Manager(sdk_ready_flag, mocker.Mock(), mocker.Mock(), False, mocker.Mock(), mocker.Mock(), mocker.Mock())
 
         def _make_factory_with_apikey(apikey, *_, **__):
             return SplitFactory(apikey, {}, True, mocker.Mock(spec=ImpressionsManager), mockManager, mocker.Mock(), mocker.Mock(), mocker.Mock())
@@ -619,3 +620,26 @@ class SplitFactoryTests(object):
         factory.destroy(None)
         time.sleep(0.1)
         assert factory.destroyed
+
+    def test_using_custom_header_decorator(self, mocker):
+        """Test that the factory passes the custom header decorator to the http client."""
+        class MyCustomDecorator(CustomHeaderDecorator):
+            def get_header_overrides(self, request_context):
+                headers = request_context.headers()
+                headers["UserCustomHeader"] = ["value"]
+                headers["AnotherCustomHeader"] = ["val1", "val2"]
+                return headers
+
+        my_custom_header = MyCustomDecorator()
+        config = {
+            'headerOverrideCallback': my_custom_header
+        }
+        factory = get_factory('some_api_key', config=config)
+
+        assert (factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._api._client._request_decorator._custom_header_decorator == my_custom_header)
+
+        try:
+            factory.block_until_ready(1)
+        except:
+            pass
+        factory.destroy()

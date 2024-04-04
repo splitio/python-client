@@ -4,6 +4,7 @@ import time
 from queue import Queue
 import pytest
 
+from splitio.api.request_decorator import RequestDecorator, NoOpHeaderDecorator
 from splitio.models.token import Token
 
 from splitio.push.splitsse import SplitSSEClient
@@ -41,7 +42,7 @@ class SSEClientTests(object):
         server = SSEMockServer(request_queue)
         server.start()
 
-        client = SplitSSEClient(handler, SdkMetadata('1.0', 'some', '1.2.3.4'), on_connect, on_disconnect,
+        client = SplitSSEClient(handler, SdkMetadata('1.0', 'some', '1.2.3.4'), RequestDecorator(NoOpHeaderDecorator()), on_connect, on_disconnect,
                                 'abcd', base_url='http://localhost:' + str(server.port()))
 
         token = Token(True, 'some', {'chan1': ['subscribe'], 'chan2': ['subscribe', 'channel-metadata:publishers']},
@@ -100,7 +101,7 @@ class SSEClientTests(object):
             """On disconnect handler."""
             status['on_disconnect'] = True
 
-        client = SplitSSEClient(handler, SdkMetadata('1.0', 'some', '1.2.3.4'), on_connect, on_disconnect,
+        client = SplitSSEClient(handler, SdkMetadata('1.0', 'some', '1.2.3.4'), RequestDecorator(NoOpHeaderDecorator()), on_connect, on_disconnect,
                                 "abcd", base_url='http://localhost:' + str(server.port()))
 
         token = Token(True, 'some', {'chan1': ['subscribe'], 'chan2': ['subscribe', 'channel-metadata:publishers']},

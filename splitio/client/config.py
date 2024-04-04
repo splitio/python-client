@@ -2,6 +2,7 @@
 import os.path
 import logging
 
+from splitio.api.request_decorator import CustomHeaderDecorator
 from splitio.engine.impressions import ImpressionsMode
 from splitio.client.input_validator import validate_flag_sets
 
@@ -60,7 +61,8 @@ DEFAULT_CONFIG = {
     'storageWrapper': None,
     'storagePrefix': None,
     'storageType': None,
-    'flagSetsFilter': None
+    'flagSetsFilter': None,
+    'headerOverrideCallback': None
 }
 
 def _parse_operation_mode(sdk_key, config):
@@ -148,5 +150,9 @@ def sanitize(sdk_key, config):
         _LOGGER.warning('config: FlagSets filter is not applicable for Consumer modes where the SDK does keep rollout data in sync. FlagSet filter was discarded.')
     else:
         processed['flagSetsFilter'] = sorted(validate_flag_sets(processed['flagSetsFilter'], 'SDK Config')) if processed['flagSetsFilter'] is not None else None
+
+    if processed.get('headerOverrideCallback') is not None and not isinstance(processed['headerOverrideCallback'], CustomHeaderDecorator):
+        _LOGGER.warning('config: headerOverrideCallback parameter is not set to a CustomHeaderDecorator() instance, will be set to None.')
+        processed['headerOverrideCallback'] = None
 
     return processed
