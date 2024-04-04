@@ -1,3 +1,6 @@
+9.6.2 (XXX XX, 2024)
+- Fixed an issue when pushing unique keys tracker data to redis if no keys exist, i.e. get_treatment flavors are not called.
+
 9.6.1 (Feb 15, 2024)
 - Added redisUsername configuration parameter for Redis connection to set the username for accessing redis when not using the default `root` username
 
