@@ -1,4 +1,4 @@
-9.6.2 (XXX XX, 2024)
+9.6.2 (Apr 5, 2024)
 - Fixed an issue when pushing unique keys tracker data to redis if no keys exist, i.e. get_treatment flavors are not called.
 
 9.6.1 (Feb 15, 2024)
