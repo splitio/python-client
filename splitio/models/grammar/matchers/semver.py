@@ -355,7 +355,7 @@ class InListSemverMatcher(Matcher):
         :rtype: bool
         """
         if self._data is None:
-            _LOGGER.error("whitelistMatcherData is required for INLIST_SEMVER matcher type")
+            _LOGGER.error("whitelistMatcherData is required for IN_LIST_SEMVER matcher type")
             return None
 
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
@@ -370,4 +370,4 @@ class InListSemverMatcher(Matcher):
 
     def _add_matcher_specific_properties_to_json(self):
         """Add matcher specific properties to base dict before returning it."""
-        return {'matcherType': 'INLIST_SEMVER', 'whitelistMatcherData': {'whitelist': self._data}}
+        return {'matcherType': 'IN_LIST_SEMVER', 'whitelistMatcherData': {'whitelist': self._data}}

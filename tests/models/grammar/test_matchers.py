@@ -1056,7 +1056,7 @@ class InListSemverMatcherTests(MatcherTestsBase):
 
     raw = {
         'negate': False,
-        'matcherType': 'INLIST_SEMVER',
+        'matcherType': 'IN_LIST_SEMVER',
         'whitelistMatcherData': {"whitelist": ["2.1.8", "2.1.11"]}
     }
 
@@ -1088,7 +1088,7 @@ class InListSemverMatcherTests(MatcherTestsBase):
     def test_to_json(self):
         """Test that the object serializes to JSON properly."""
         as_json = matchers.InListSemverMatcher(self.raw).to_json()
-        assert as_json['matcherType'] == 'INLIST_SEMVER'
+        assert as_json['matcherType'] == 'IN_LIST_SEMVER'
         assert as_json['whitelistMatcherData'] == {"whitelist": ["2.1.8", "2.1.11"]}
 
     def test_to_str(self):
