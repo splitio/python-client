@@ -26,7 +26,6 @@ DEFAULT_CONFIG = {
     'IPAddressesEnabled': True,
     'impressionsMode': 'OPTIMIZED',
     'impressionListener': None,
-    'tlsRootCAs': None,
     'tlsClientCertificate': None,
     'tlsClientPrivateKey': None,
     'redisLocalCacheEnabled': True,
