@@ -2,10 +2,10 @@
 from collections import namedtuple
 
 import requests
-import logging
-_LOGGER = logging.getLogger(__name__)
+
 
 HttpResponse = namedtuple('HttpResponse', ['status_code', 'body'])
+
 
 class HttpClientException(Exception):
     """HTTP Client exception."""
@@ -28,7 +28,7 @@ class HttpClient(object):
     AUTH_URL = 'https://auth.split.io/api'
     TELEMETRY_URL = 'https://telemetry.split.io/api'
 
-    def __init__(self, timeout=None, sdk_url=None, events_url=None, auth_url=None, telemetry_url=None):
+    def __init__(self, timeout=None, sdk_url=None, events_url=None, auth_url=None, telemetry_url=None, tls_config=None):
         """
         Class constructor.
 
@@ -50,6 +50,8 @@ class HttpClient(object):
             'auth': auth_url if auth_url is not None else self.AUTH_URL,
             'telemetry': telemetry_url if telemetry_url is not None else self.TELEMETRY_URL,
         }
+
+        self._tls = tls_config if tls_config else {}
 
     def _build_url(self, server, path):
         """
@@ -105,7 +107,8 @@ class HttpClient(object):
                 self._build_url(server, path),
                 params=query,
                 headers=headers,
-                timeout=self._timeout
+                timeout=self._timeout,
+                cert=self._certs(),
             )
             return HttpResponse(response.status_code, response.text)
         except Exception as exc:  # pylint: disable=broad-except
@@ -142,8 +145,18 @@ class HttpClient(object):
                 json=body,
                 params=query,
                 headers=headers,
-                timeout=self._timeout
+                timeout=self._timeout,
+                cert=self._certs(),
             )
             return HttpResponse(response.status_code, response.text)
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('requests library is throwing exceptions') from exc
+
+
+    def _certs(self):
+        """
+        Get certificates as a tuple if they're set, None otherwise.
+        """
+        if 'tlsClientCertificate' in self._tls and 'tlsClientPrivateKey' in self._tls:
+            return (self._tls.get('tlsClientCertificate'), self._tls.get('tlsClientPrivateKey')) 
+        return None
