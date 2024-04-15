@@ -9,7 +9,7 @@ TESTS_REQUIRES = [
     'pytest==7.0.1',
     'pytest-mock==3.11.1',
     'coverage==6.2',
-    'pytest-cov==5.0.0',
+    'pytest-cov',
     'importlib-metadata==4.2',
     'tomli==1.2.3',
     'iniconfig==1.1.1',
