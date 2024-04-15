@@ -9,12 +9,12 @@ TESTS_REQUIRES = [
     'pytest==7.0.1',
     'pytest-mock==3.11.1',
     'coverage==6.2',
-    'pytest-cov',
+    'pytest-cov==5.0.0',
     'importlib-metadata==4.2',
     'tomli==1.2.3',
     'iniconfig==1.1.1',
     'attrs==22.1.0',
-    'pytest-asyncio'
+    'pytest-asyncio==0.21.0'
 ]
 
 INSTALL_REQUIRES = [
