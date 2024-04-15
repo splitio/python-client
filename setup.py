@@ -13,7 +13,8 @@ TESTS_REQUIRES = [
     'importlib-metadata==4.2',
     'tomli==1.2.3',
     'iniconfig==1.1.1',
-    'attrs==22.1.0'
+    'attrs==22.1.0',
+    'pytest-asyncio'
 ]
 
 INSTALL_REQUIRES = [
