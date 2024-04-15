@@ -1,7 +1,6 @@
 """Base storage interfaces."""
 import abc
 
-
 class SplitStorage(object, metaclass=abc.ABCMeta):
     """Split storage interface implemented as an abstract class."""
 
@@ -33,6 +32,7 @@ class SplitStorage(object, metaclass=abc.ABCMeta):
     def update(self, to_add, to_delete, new_change_number):
         """
         Update feature flag storage.
+
         :param to_add: List of feature flags to add
         :type to_add: list[splitio.models.splits.Split]
         :param to_delete: List of feature flags to delete
@@ -321,7 +321,7 @@ class FlagSetsFilter(object):
     def __init__(self, flag_sets=[]):
         """Constructor."""
         self.flag_sets = set(flag_sets)
-        self.should_filter = len(flag_sets) > 0
+        self.should_filter = any(flag_sets)
         self.sorted_flag_sets = sorted(flag_sets)
 
     def set_exist(self, flag_set):
@@ -329,20 +329,29 @@ class FlagSetsFilter(object):
         Check if a flagset exist in flagset filter
         :param flag_set: set name
         :type flag_set: str
+
         :rtype: bool
         """
         if not self.should_filter:
             return True
 
-        return len(self.flag_sets.intersection(set([flag_set]))) > 0
+        if not isinstance(flag_set, str) or flag_set == '':
+            return False
+
+        return any(self.flag_sets.intersection(set([flag_set])))
 
     def intersect(self, flag_sets):
         """
         Check if a set exist in config flagset filter
         :param flag_set: set of flagsets
         :type flag_set: set
+
         :rtype: bool
         """
         if not self.should_filter:
             return True
-        return len(self.flag_sets.intersection(flag_sets)) > 0
+
+        if not isinstance(flag_sets, set) or len(flag_sets) == 0:
+            return False
+
+        return any(self.flag_sets.intersection(flag_sets))

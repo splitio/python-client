@@ -8,7 +8,6 @@ from splitio.client.input_validator import validate_flag_sets
 _LOGGER = logging.getLogger(__name__)
 DEFAULT_DATA_SAMPLING = 1
 
-
 DEFAULT_CONFIG = {
     'operationMode': 'standalone',
     'connectionTimeout': 1500,
@@ -31,6 +30,7 @@ DEFAULT_CONFIG = {
     'redisHost': 'localhost',
     'redisPort': 6379,
     'redisDb': 0,
+    'redisUsername': None,
     'redisPassword': None,
     'redisSocketTimeout': None,
     'redisSocketConnectTimeout': None,
@@ -61,7 +61,6 @@ DEFAULT_CONFIG = {
     'storageType': None,
     'flagSetsFilter': None
 }
-
 
 def _parse_operation_mode(sdk_key, config):
     """
@@ -118,7 +117,6 @@ def _sanitize_impressions_mode(storage_type, mode, refresh_rate=None):
         refresh_rate = max(60, refresh_rate) if refresh_rate is not None else 5 * 60
 
     return mode, refresh_rate
-
 
 def sanitize(sdk_key, config):
     """

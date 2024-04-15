@@ -6,7 +6,7 @@ from splitio.engine.splitters import Splitter
 from splitio.models.impressions import Impression, Label
 from splitio.models.events import Event, EventWrapper
 from splitio.models.telemetry import get_latency_bucket_index, MethodExceptionsAndLatencies
-from splitio.client import input_validator, config
+from splitio.client import input_validator
 from splitio.util.time import get_current_epoch_time_ms, utctime_ms
 
 
@@ -74,6 +74,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         if self.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible")
             return False
+
         if self._factory._waiting_fork():
             _LOGGER.error("Client is not ready - no calls possible")
             return False
@@ -152,6 +153,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         if self.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible")
             return False, None, None
+
         if self._factory._waiting_fork():
             _LOGGER.error("Client is not ready - no calls possible")
             return False, None, None
@@ -225,10 +227,10 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         try:
             treatment, _ = self._get_treatment(MethodExceptionsAndLatencies.TREATMENT, key, feature_flag_name, attributes)
             return treatment
+
         except:
             # TODO: maybe log here?
             return CONTROL
-
 
     def get_treatment_with_config(self, key, feature_flag_name, attributes=None):
         """
@@ -248,6 +250,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         """
         try:
             return self._get_treatment(MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG, key, feature_flag_name, attributes)
+
         except Exception:
             # TODO: maybe log here?
             return CONTROL, None
@@ -317,6 +320,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         try:
             with_config = self._get_treatments(key, feature_flag_names, MethodExceptionsAndLatencies.TREATMENTS, attributes)
             return {feature_flag: result[0] for (feature_flag, result) in with_config.items()}
+
         except Exception:
             return {feature: CONTROL for feature in feature_flag_names}
 
@@ -338,6 +342,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         """
         try:
             return self._get_treatments(key, feature_flag_names, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG, attributes)
+
         except Exception:
             return {feature: (CONTROL, None) for feature in feature_flag_names}
 
@@ -432,12 +437,88 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         with_config = self._get_treatments(key, feature_flags_names, method, attributes)
         return {feature_flag: result[0] for (feature_flag, result) in with_config.items()}
 
+    def get_treatments_by_flag_set(self, key, flag_set, attributes=None):
+        """
+        Get treatments for feature flags that contain given flag set.
+
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param flag_set: flag set
+        :type flag_sets: str
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+
+        :return: Dictionary with the result of all the feature flags provided
+        :rtype: dict
+        """
+        return self._get_treatments_by_flag_sets( key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET, attributes)
+
+    def get_treatments_by_flag_sets(self, key, flag_sets, attributes=None):
+        """
+        Get treatments for feature flags that contain given flag sets.
+
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param flag_sets: list of flag sets
+        :type flag_sets: list
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+
+        :return: Dictionary with the result of all the feature flags provided
+        :rtype: dict
+        """
+        return self._get_treatments_by_flag_sets( key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS, attributes)
+
+    def get_treatments_with_config_by_flag_set(self, key, flag_set, attributes=None):
+        """
+        Get treatments for feature flags that contain given flag set.
+
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param flag_set: flag set
+        :type flag_sets: str
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+
+        :return: Dictionary with the result of all the feature flags provided
+        :rtype: dict
+        """
+        return self._get_treatments_by_flag_sets( key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET, attributes)
+
+    def get_treatments_with_config_by_flag_sets(self, key, flag_sets, attributes=None):
+        """
+        Get treatments for feature flags that contain given flag set.
+
+        This method never raises an exception. If there's a problem, the appropriate log message
+        will be generated and the method will return the CONTROL treatment.
+
+        :param key: The key for which to get the treatment
+        :type key: str
+        :param flag_set: flag set
+        :type flag_sets: str
+        :param attributes: An optional dictionary of attributes
+        :type attributes: dict
+
+        :return: Dictionary with the result of all the feature flags provided
+        :rtype: dict
+        """
+        return self._get_treatments_by_flag_sets( key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS, attributes)
 
     def _get_feature_flag_names_by_flag_sets(self, flag_sets, method_name):
         """
         Sanitize given flag sets and return list of feature flag names associated with them
         :param flag_sets: list of flag sets
         :type flag_sets: list
+
         :return: list of feature flag names
         :rtype: list
         """
@@ -446,6 +527,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         if feature_flags_by_set is None:
             _LOGGER.warning("Fetching feature flags for flag set %s encountered an error, skipping this flag set." % (flag_sets))
             return []
+
         return feature_flags_by_set
 
     def _get_treatments(self, key, features, method, attributes=None):
@@ -460,6 +542,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :type method: splitio.models.telemetry.MethodExceptionsAndLatencies
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
+
         :return: The treatments and configs for the key and feature flags
         :rtype: dict
         """
@@ -487,7 +570,6 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
                 _LOGGER.debug('Error: ', exc_info=True)
                 self._telemetry_evaluation_producer.record_exception(method)
                 results = {n: self._FAILED_EVAL_RESULT for n in features}
-
 
         imp_attrs = [
             (i, attributes) for i in self._build_impressions(key, bucketing, results)
@@ -556,6 +638,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
                 size=size,
             )], get_latency_bucket_index(get_current_epoch_time_ms() - start))
             return return_flag
+
         except Exception:  # pylint: disable=broad-except
             self._telemetry_evaluation_producer.record_exception(MethodExceptionsAndLatencies.TRACK)
             _LOGGER.error('Error processing track event')
@@ -611,6 +694,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         try:
             treatment, _ = await self._get_treatment(MethodExceptionsAndLatencies.TREATMENT, key, feature_flag_name, attributes)
             return treatment
+
         except:
             # TODO: maybe log here?
             return CONTROL
@@ -633,6 +717,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         """
         try:
             return await self._get_treatment(MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG, key, feature_flag_name, attributes)
+
         except Exception:
             # TODO: maybe log here?
             return CONTROL, None
@@ -701,6 +786,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         try:
             with_config = await self._get_treatments(key, feature_flag_names, MethodExceptionsAndLatencies.TREATMENTS, attributes)
             return {feature_flag: result[0] for (feature_flag, result) in with_config.items()}
+
         except Exception:
             return {feature: CONTROL for feature in feature_flag_names}
 
@@ -722,6 +808,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         """
         try:
             return await self._get_treatments(key, feature_flag_names, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG, attributes)
+
         except Exception:
             _LOGGER.error("AA", exc_info=True)
             return {feature: (CONTROL, None) for feature in feature_flag_names}
@@ -817,7 +904,6 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         with_config = await self._get_treatments(key, feature_flags_names, method, attributes)
         return {feature_flag: result[0] for (feature_flag, result) in with_config.items()}
 
-
     async def _get_feature_flag_names_by_flag_sets(self, flag_sets, method_name):
         """
         Sanitize given flag sets and return list of feature flag names associated with them
@@ -831,6 +917,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         if feature_flags_by_set is None:
             _LOGGER.warning("Fetching feature flags for flag set %s encountered an error, skipping this flag set." % (flag_sets))
             return []
+
         return feature_flags_by_set
 
     async def _get_treatments(self, key, features, method, attributes=None):
@@ -940,6 +1027,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
                 size=size,
             )], get_latency_bucket_index(get_current_epoch_time_ms() - start))
             return return_flag
+
         except Exception:  # pylint: disable=broad-except
             await self._telemetry_evaluation_producer.record_exception(MethodExceptionsAndLatencies.TRACK)
             _LOGGER.error('Error processing track event')

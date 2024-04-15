@@ -1,6 +1,7 @@
 """Pluggable storage test module."""
 import json
 import threading
+import pytest
 
 from splitio.optional.loaders import asyncio
 from splitio.models.splits import Split
@@ -13,9 +14,7 @@ from splitio.storage.pluggable import PluggableSplitStorage, PluggableSegmentSto
     PluggableSplitStorageAsync, PluggableTelemetryStorageAsync
 from splitio.client.util import get_metadata, SdkMetadata
 from splitio.models.telemetry import MAX_TAGS, MethodExceptionsAndLatencies, OperationMode
-
 from tests.integration import splits_json
-import pytest
 
 class StorageMockAdapter(object):
     def __init__(self):

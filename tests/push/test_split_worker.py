@@ -30,7 +30,6 @@ class SplitWorkerTests(object):
 
     def test_on_error(self, mocker):
         q = queue.Queue()
-
         def handler_sync(change_number):
             raise APIException('some')
 
@@ -38,7 +37,7 @@ class SplitWorkerTests(object):
         split_worker.start()
         assert split_worker.is_running()
 
-        q.put(SplitChangeNotification('some', 'SPLIT_UPDATE', 123456789))
+        q.put(SplitChangeUpdate('some', 'SPLIT_UPDATE', 123456789, None, None, None))
         with pytest.raises(Exception):
             split_worker._handler()
 
@@ -171,7 +170,6 @@ class SplitWorkerTests(object):
         q.put(SplitChangeUpdate('some', 'SPLIT_UPDATE', 123456, 2345, "/2X9I7+N8R/FcPmUd76zjH7X/w4AAP//90glTw==", 2))
         time.sleep(0.1)
         assert self._feature_flag_added == None
-
 
         # should Not call the handler
         self._feature_flag = None

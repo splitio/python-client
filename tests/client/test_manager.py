@@ -10,7 +10,6 @@ from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageP
 from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
 from tests.integration import splits_json
 
-
 class SplitManagerTests(object):  # pylint: disable=too-few-public-methods
     """Split manager test cases."""
 

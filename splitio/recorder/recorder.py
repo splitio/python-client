@@ -283,7 +283,9 @@ class PipelinedRecorder(StatsRecorder):
                 self._telemetry_redis_storage.expire_latency_keys(result[1], latency)
                 if result[0] > 0:
                     return True
+
             return False
+
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error recording events')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -375,7 +377,9 @@ class PipelinedRecorderAsync(StatsRecorder):
                 await self._telemetry_redis_storage.expire_latency_keys(result[1], latency)
                 if result[0] > 0:
                     return True
+
             return False
+
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error recording events')
             _LOGGER.debug('Error: ', exc_info=True)

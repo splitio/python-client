@@ -5,8 +5,6 @@ import re
 import math
 import inspect
 
-from splitio.api import APIException
-from splitio.api.commons import FetchOptions
 from splitio.client.key import Key
 from splitio.engine.evaluator import CONTROL
 
@@ -35,6 +33,7 @@ def _check_not_null(value, name, operation):
         _LOGGER.error('%s: you passed a null %s, %s must be a non-empty string.',
                       operation, name, name)
         return False
+
     return True
 
 
@@ -57,6 +56,7 @@ def _check_is_string(value, name, operation):
             operation, name, name
         )
         return False
+
     return True
 
 
@@ -77,6 +77,7 @@ def _check_string_not_empty(value, name, operation):
         _LOGGER.error('%s: you passed an empty %s, %s must be a non-empty string.',
                       operation, name, name)
         return False
+
     return True
 
 
@@ -103,6 +104,7 @@ def _check_string_matches(value, operation, pattern, name, length):
             operation, value, name, pattern, name, length
         )
         return False
+
     return True
 
 
@@ -121,6 +123,7 @@ def _check_can_convert(value, name, operation):
     """
     if isinstance(value, str):
         return value
+
     else:
         # check whether if isnan and isinf are really necessary
         if isinstance(value, bool) or (not isinstance(value, Number)) or math.isnan(value) \
@@ -128,6 +131,7 @@ def _check_can_convert(value, name, operation):
             _LOGGER.error('%s: you passed an invalid %s, %s must be a non-empty string.',
                           operation, name, name)
             return None
+
     _LOGGER.warning('%s: %s %s is not of type string, converting.',
                     operation, name, value)
     return str(value)
@@ -150,6 +154,7 @@ def _check_valid_length(value, name, operation):
         _LOGGER.error('%s: %s too long - must be %s characters or less.',
                       operation, name, MAX_LENGTH)
         return False
+
     return True
 
 
@@ -168,12 +173,15 @@ def _check_valid_object_key(key, name, operation):
     """
     if not _check_not_null(key, name, operation):
         return None
+
     if isinstance(key, str):
         if not _check_string_not_empty(key, name, operation):
             return None
+
     key_str = _check_can_convert(key, name, operation)
     if key_str is None or not _check_valid_length(key_str, name, operation):
         return None
+
     return key_str
 
 
@@ -199,6 +207,7 @@ def _convert_str_to_lower(value, name, operation):
         _LOGGER.warning("%s: %s '%s' should be all lowercase - converting string to lowercase", operation, name, value)
     return lower_value
 
+
 def validate_key(key, method_name):
     """
     Validate Key parameter for get_treatment/s.
@@ -221,10 +230,12 @@ def validate_key(key, method_name):
         matching_key_result = _check_valid_object_key(key.matching_key, 'matching_key', method_name)
         if matching_key_result is None:
             return None, None
+
         bucketing_key_result = _check_valid_object_key(key.bucketing_key, 'bucketing_key',
                                                        method_name)
         if bucketing_key_result is None:
             return None, None
+
     else:
         key_str = _check_can_convert(key, 'key', method_name)
         if key_str is not None and \
@@ -239,6 +250,7 @@ def _validate_feature_flag_name(feature_flag_name, method_name):
        (not _check_is_string(feature_flag_name, 'feature_flag_name', method_name)) or \
        (not _check_string_not_empty(feature_flag_name, 'feature_flag_name', method_name)):
         return False
+
     return True
 
 
@@ -267,11 +279,13 @@ def validate_track_key(key):
     """
     if not _check_not_null(key, 'key', 'track'):
         return None
+
     key_str = _check_can_convert(key, 'key', 'track')
     if key_str is None or \
        (not _check_string_not_empty(key_str, 'key', 'track')) or \
        (not _check_valid_length(key_str, 'key', 'track')):
         return None
+
     return key_str
 
 
@@ -280,6 +294,7 @@ def _validate_traffic_type_value(traffic_type):
        (not _check_is_string(traffic_type, 'traffic_type', 'track')) or \
        (not _check_string_not_empty(traffic_type, 'traffic_type', 'track')):
         return False
+
     return True
 
 def validate_traffic_type(traffic_type, should_validate_existance, feature_flag_storage):
@@ -297,6 +312,7 @@ def validate_traffic_type(traffic_type, should_validate_existance, feature_flag_
     """
     if not _validate_traffic_type_value(traffic_type):
         return None
+
     traffic_type = _convert_str_to_lower(traffic_type, 'traffic type', 'track')
 
     if should_validate_existance and not feature_flag_storage.is_valid_traffic_type(traffic_type):
@@ -325,6 +341,7 @@ async def validate_traffic_type_async(traffic_type, should_validate_existance, f
     """
     if not _validate_traffic_type_value(traffic_type):
         return None
+
     traffic_type = _convert_str_to_lower(traffic_type, 'traffic type', 'track')
 
     if should_validate_existance and not await feature_flag_storage.is_valid_traffic_type(traffic_type):
@@ -352,6 +369,7 @@ def validate_event_type(event_type):
        (not _check_string_not_empty(event_type, 'event_type', 'track')) or \
        (not _check_string_matches(event_type, 'track', EVENT_TYPE_PATTERN, 'an event name', 80)):
         return None
+
     return event_type
 
 
@@ -366,9 +384,11 @@ def validate_value(value):
     """
     if value is None:
         return None
+
     if (not isinstance(value, Number)) or isinstance(value, bool):
         _LOGGER.error('track: value must be a number.')
         return False
+
     return value
 
 def validate_manager_feature_flag_name(feature_flag_name, should_validate_existance, feature_flag_storage):
@@ -436,9 +456,11 @@ def _check_feature_flag_instance(feature_flags, method_name):
     if feature_flags is None or not isinstance(feature_flags, list):
         _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
         return False
+
     if not feature_flags:
         _LOGGER.error("%s: feature flag names must be a non-empty array.", method_name)
         return False
+
     return True
 
 
@@ -509,9 +531,11 @@ def validate_attributes(attributes, method_name):
     """
     if attributes is None:
         return True
+
     if not isinstance(attributes, dict):
         _LOGGER.error('%s: attributes must be of type dictionary.', method_name)
         return False
+
     return True
 
 
@@ -531,10 +555,12 @@ def validate_factory_instantiation(sdk_key):
     """
     if sdk_key == 'localhost':
         return True
+
     if (not _check_not_null(sdk_key, 'sdk_key', 'factory_instantiation')) or \
        (not _check_is_string(sdk_key, 'sdk_key', 'factory_instantiation')) or \
        (not _check_string_not_empty(sdk_key, 'sdk_key', 'factory_instantiation')):
         return False
+
     return True
 
 
@@ -552,6 +578,7 @@ def valid_properties(properties):
 
     if properties is None:
         return True, None, size
+
     if not isinstance(properties, dict):
         _LOGGER.error('track: properties must be of type dictionary.')
         return False, None, 0
@@ -630,12 +657,15 @@ def validate_pluggable_adapter(config):
                 method_found = True
                 get_method_args = inspect.signature(method[1]).parameters
                 break
+
         if not method_found:
             _LOGGER.error("Pluggable adapter does not have required method: %s" % exp_method)
             return False
+
         if len(get_method_args) < expected_methods[exp_method]:
             _LOGGER.error("Pluggable adapter method %s has less than required arguments count: %s : " % (exp_method, len(get_method_args)))
             return False
+
     return True
 
 def validate_flag_sets(flag_sets, method_name):
@@ -654,8 +684,10 @@ def validate_flag_sets(flag_sets, method_name):
     for flag_set in flag_sets:
         if not _check_not_null(flag_set, 'flag set', method_name):
             continue
+
         if not _check_is_string(flag_set, 'flag set', method_name):
             continue
+
         flag_set = _remove_empty_spaces(flag_set, 'flag set', method_name)
         flag_set = _convert_str_to_lower(flag_set, 'flag set', method_name)
 

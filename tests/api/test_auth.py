@@ -80,6 +80,7 @@ class AuthAPIAsyncTests(object):
             self.headers = extra_headers
             payload = '{{"pushEnabled": true, "token": "{token}"}}'.format(token=self.token)
             return client.HttpResponse(200, payload, {})
+
         httpclient.get = get
 
         response = await auth_api.authenticate()

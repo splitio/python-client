@@ -68,6 +68,7 @@ class UserDefinedSegmentMatcher(Matcher):
         matching_data = self._get_matcher_input(key, attributes)
         if matching_data is None:
             return False
+
         return context['ec'].segment_memberships[self._segment_name]
 
     def _add_matcher_specific_properties_to_json(self):

@@ -266,11 +266,14 @@ class InMemorySplitStorageTests(object):
         name1_prop = mocker.PropertyMock()
         name1_prop.return_value = 'split1'
         type(split1).name = name1_prop
-
         split2 = mocker.Mock()
         name2_prop = mocker.PropertyMock()
         name2_prop.return_value = 'split1'
         type(split2).name = name2_prop
+        sets_property = mocker.PropertyMock()
+        sets_property.return_value = None
+        type(split1).sets = sets_property
+        type(split2).sets = sets_property
 
         tt_user = mocker.PropertyMock()
         tt_user.return_value = 'user'
@@ -698,7 +701,6 @@ class InMemorySplitStorageAsyncTests(object):
         await storage.update([split3], [], 1)
         assert await storage.get_feature_flags_by_sets(['set05']) == ['split3']
         assert await storage.get_feature_flags_by_sets(['set04', 'set05']) == ['split3']
-
 
 class InMemorySegmentStorageTests(object):
     """In memory segment storage tests."""

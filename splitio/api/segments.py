@@ -2,7 +2,6 @@
 
 import json
 import logging
-import time
 
 from splitio.api import APIException, headers_from_metadata
 from splitio.api.commons import build_fetch
@@ -61,6 +60,7 @@ class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
             )
             if 200 <= response.status_code < 300:
                 return json.loads(response.body)
+
             raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
             _LOGGER.error(
@@ -119,6 +119,7 @@ class SegmentsAPIAsync(object):  # pylint: disable=too-few-public-methods
             )
             if 200 <= response.status_code < 300:
                 return json.loads(response.body)
+
             raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
             _LOGGER.error(

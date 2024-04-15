@@ -72,6 +72,7 @@ class UniqueKeysTracker(UniqueKeysTrackerBase):
         with self._lock:
             if self._filter.contains(feature_flag_name+key):
                 return False
+
             self._add_or_update(feature_flag_name, key)
             self._filter.add(feature_flag_name+key)
             self._current_cache_size += 1
@@ -135,6 +136,7 @@ class UniqueKeysTrackerAsync(UniqueKeysTrackerBase):
         async with self._lock:
             if self._filter.contains(feature_flag_name+key):
                 return False
+
             self._add_or_update(feature_flag_name, key)
             self._filter.add(feature_flag_name+key)
             self._current_cache_size += 1

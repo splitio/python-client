@@ -42,9 +42,7 @@ class InMemorySenderAdapterTests(object):
         telemetry_api = TelemetryAPI(mocker.Mock(), 'some_api_key', mocker.Mock(), mocker.Mock())
         sender_adapter = InMemorySenderAdapter(telemetry_api)
         sender_adapter.record_unique_keys(uniques)
-
         assert(mocker.called)
-
 
 class InMemorySenderAdapterAsyncTests(object):
     """In memory sender adapter test."""
@@ -65,7 +63,6 @@ class InMemorySenderAdapterAsyncTests(object):
         sender_adapter = InMemorySenderAdapterAsync(telemetry_api)
         await sender_adapter.record_unique_keys(uniques)
         assert(self.called)
-
 
 class RedisSenderAdapterTests(object):
     """Redis sender adapter test."""
@@ -94,8 +91,11 @@ class RedisSenderAdapterTests(object):
         redis_client = RedisAdapter(mocker.Mock(), mocker.Mock())
         sender_adapter = RedisSenderAdapter(redis_client)
         sender_adapter.record_unique_keys(uniques)
-
         assert(mocker.called)
+
+        mocker.reset_mock()
+        sender_adapter.record_unique_keys({})
+        assert(not mocker.called)
 
     @mock.patch('splitio.storage.adapters.redis.RedisPipelineAdapter.hincrby')
     def test_flush_counters(self, mocker):
@@ -108,8 +108,11 @@ class RedisSenderAdapterTests(object):
         redis_client = RedisAdapter(mocker.Mock(), mocker.Mock())
         sender_adapter = RedisSenderAdapter(redis_client)
         sender_adapter.flush_counters(counters)
-
         assert(mocker.called)
+
+        mocker.reset_mock()
+        sender_adapter.flush_counters({})
+        assert(not mocker.called)
 
     @mock.patch('splitio.storage.adapters.redis.RedisAdapter.expire')
     def test_expire_keys(self, mocker):
@@ -219,6 +222,10 @@ class PluggableSenderAdapterTests(object):
         assert(adapter._expire[adapters._MTK_QUEUE_KEY] == adapters._MTK_KEY_DEFAULT_TTL)
         sender_adapter.record_unique_keys(uniques)
         assert(adapter._expire[adapters._MTK_QUEUE_KEY] != -1)
+
+        adapter._keys[adapters._MTK_QUEUE_KEY] = {}
+        sender_adapter.record_unique_keys({})
+        assert(adapter._keys[adapters._MTK_QUEUE_KEY] == {})
 
     def test_flush_counters(self, mocker):
         """Test sending counters."""

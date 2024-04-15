@@ -77,6 +77,7 @@ class BooleanMatcher(Matcher):
         matching_data = self._get_matcher_input(key, attributes)
         if matching_data is None:
             return False
+
         if isinstance(matching_data, bool):
             decoded = matching_data
         elif isinstance(matching_data, str):
@@ -84,8 +85,10 @@ class BooleanMatcher(Matcher):
                 decoded = json.loads(matching_data.lower())
                 if not isinstance(decoded, bool):
                     return False
+
             except ValueError:
                 return False
+
         else:
             return False
 

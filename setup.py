@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 TESTS_REQUIRES = [
     'flake8',
     'pytest==7.0.1',
-    'pytest-mock>=3.5.1',
+    'pytest-mock==3.12.0',
     'coverage==6.2',
     'pytest-cov',
     'importlib-metadata==4.2',
@@ -53,5 +53,5 @@ setup(
         'Programming Language :: Python :: 3',
         'Topic :: Software Development :: Libraries'
     ],
-    packages=find_packages()
+    packages=find_packages(exclude=('tests', 'tests.*'))
 )

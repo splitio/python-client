@@ -1,6 +1,5 @@
 """Events API module."""
 import logging
-import time
 
 from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException

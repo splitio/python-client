@@ -23,15 +23,42 @@ class TelemetryStorageProducerTests(object):
         assert(telemetry_producer._telemetry_runtime_producer == telemetry_producer.get_telemetry_runtime_producer())
 
     def test_record_config(self, mocker):
-        telemetry_storage = mocker.Mock()
+        telemetry_storage = InMemoryTelemetryStorage()
         telemetry_init_producer = TelemetryInitProducer(telemetry_storage)
+        config = {'operationMode': 'standalone',
+            'streamingEnabled': True,
+            'impressionsQueueSize': 100,
+            'eventsQueueSize': 200,
+            'impressionsMode': 'DEBUG',
+            'impressionListener': None,
+            'featuresRefreshRate': 30,
+            'segmentsRefreshRate': 30,
+            'impressionsRefreshRate': 60,
+            'eventsPushRate': 60,
+            'metricsRefreshRate': 10,
+            'storageType': None
+        }
+        telemetry_init_producer.record_config(config, {}, 5, 2)
+        telemetry_init_producer.record_active_and_redundant_factories(1, 0)
 
-        def record_config(*args, **kwargs):
-            self.passed_config = args[0]
-
-        telemetry_storage.record_config.side_effect = record_config
-        telemetry_init_producer.record_config({'bT':0, 'nR':0, 'uC': 0}, {})
-        assert(self.passed_config == {'bT':0, 'nR':0, 'uC': 0})
+        assert(telemetry_storage._tel_config.get_stats() == {'oM': 0,
+            'sT': telemetry_storage._tel_config._get_storage_type(config['operationMode'], config['storageType']),
+            'sE': config['streamingEnabled'],
+            'rR': {'sp': 30, 'se': 30, 'im': 60, 'ev': 60, 'te': 10},
+            'uO':  {'s': False, 'e': False, 'a': False, 'st': False, 't': False},
+            'iQ': config['impressionsQueueSize'],
+            'eQ': config['eventsQueueSize'],
+            'iM': telemetry_storage._tel_config._get_impressions_mode(config['impressionsMode']),
+            'iL': True if config['impressionListener'] is not None else False,
+            'hp': telemetry_storage._tel_config._check_if_proxy_detected(),
+            'bT': 0,
+            'tR': 0,
+            'nR': 0,
+            'aF': 1,
+            'rF': 0,
+            'fsT': 5,
+            'fsI': 2}
+            )
 
     def test_record_ready_time(self, mocker):
         telemetry_storage = mocker.Mock()
@@ -533,6 +560,12 @@ class TelemetryStorageConsumerTests(object):
         telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
         telemetry_runtime_consumer.pop_update_from_sse('sp')
         assert(mocker.called)
+
+    @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.pop_update_from_sse')
+    def test_pop_auth_rejections(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+        telemetry_runtime_consumer.pop_update_from_sse('sp')
 
     @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.pop_token_refreshes')
     def test_pop_token_refreshes(self, mocker):

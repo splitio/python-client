@@ -10,6 +10,7 @@ import pytest
 from splitio.client.util import get_metadata, SdkMetadata
 from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterAsync, RedisAdapterException, build
 from splitio.optional.loaders import asyncio
+from splitio.storage import FlagSetsFilter
 from splitio.storage.redis import RedisEventsStorage, RedisEventsStorageAsync, RedisImpressionsStorage, RedisImpressionsStorageAsync, \
     RedisSegmentStorage, RedisSegmentStorageAsync, RedisSplitStorage, RedisSplitStorageAsync, RedisTelemetryStorage, RedisTelemetryStorageAsync
 from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterException, build
@@ -19,7 +20,6 @@ from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
 from splitio.models.events import Event, EventWrapper
 from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MethodExceptionsAndLatencies, TelemetryConfigAsync
-
 
 class RedisSplitStorageTests(object):
     """Redis split storage test cases."""
@@ -177,6 +177,20 @@ class RedisSplitStorageTests(object):
         time.sleep(1)
         assert storage.is_valid_traffic_type('any') is False
 
+    @mock.patch('splitio.storage.adapters.redis.RedisPipelineAdapter.execute', return_value = [{'split1', 'split2'}])
+    def test_flag_sets(self, mocker):
+        """Test Flag sets scenarios."""
+        adapter = build({})
+        storage = RedisSplitStorage(adapter, True, 1)
+        assert storage.flag_set_filter.flag_sets == set({})
+        assert sorted(storage.get_feature_flags_by_sets(['set1', 'set2'])) == ['split1', 'split2']
+
+        storage.flag_set_filter = FlagSetsFilter(['set2', 'set3'])
+        assert storage.get_feature_flags_by_sets(['set1']) == []
+        assert sorted(storage.get_feature_flags_by_sets(['set2'])) == ['split1', 'split2']
+
+        storage2 = RedisSplitStorage(adapter, True, 1, ['set2', 'set3'])
+        assert storage2.flag_set_filter.flag_sets == set({'set2', 'set3'})
 
 class RedisSplitStorageAsyncTests(object):
     """Redis split storage test cases."""
@@ -1012,7 +1026,7 @@ class RedisTelemetryStorageTests(object):
             'rF': stats['rF'],
             'sT': stats['sT'],
             'oM': stats['oM'],
-            't': redis_telemetry.pop_config_tags()
+            't': redis_telemetry.pop_config_tags(),
         }))
 
     def test_record_active_and_redundant_factories(self, mocker):

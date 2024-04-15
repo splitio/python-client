@@ -90,7 +90,6 @@ json_body = {'splits': [{
     "since":-1,
 }
 
-
 class SplitsSynchronizerTests(object):
     """Split synchronizer test cases."""
 
@@ -1001,7 +1000,6 @@ class LocalSplitsSynchronizerTests(object):
         target_split[0]["conditions"][1]['partitions'][0]['size'] = 0
         target_split[0]["conditions"][1]['partitions'][1]['size'] = 100
         assert (split_synchronizer._sanitize_feature_flag_elements(split) == target_split)
-
 
 class LocalSplitsSynchronizerAsyncTests(object):
     """Split synchronizer test cases."""

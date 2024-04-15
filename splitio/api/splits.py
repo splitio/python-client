@@ -2,7 +2,6 @@
 
 import logging
 import json
-import time
 
 from splitio.api import APIException, headers_from_metadata
 from splitio.api.commons import build_fetch
@@ -56,6 +55,7 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
             )
             if 200 <= response.status_code < 300:
                 return json.loads(response.body)
+
             else:
                 if response.status_code == 414:
                     _LOGGER.error('Error fetching feature flags; the amount of flag sets provided are too big, causing uri length error.')
@@ -110,6 +110,7 @@ class SplitsAPIAsync(object):  # pylint: disable=too-few-public-methods
             )
             if 200 <= response.status_code < 300:
                 return json.loads(response.body)
+
             else:
                 if response.status_code == 414:
                     _LOGGER.error('Error fetching feature flags; the amount of flag sets provided are too big, causing uri length error.')

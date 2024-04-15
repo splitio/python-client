@@ -442,6 +442,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             if self._token_task is not None:
                 self._token_task.cancel()
             self._running = False
+            await self._processor.update_workers_status(False)
             self._done.set()
 
     async def _handle_message(self, event):

@@ -1,6 +1,6 @@
 import abc
 
-from splitio.engine.impressions.manager import Observer, truncate_impressions_time, Counter, truncate_time
+from splitio.engine.impressions.manager import Observer, truncate_time
 from splitio.util.time import utctime_ms
 
 _IMPRESSION_OBSERVER_CACHE_SIZE = 500000

@@ -5,7 +5,6 @@ import itertools
 import yaml
 import time
 import json
-import hashlib
 from enum import Enum
 
 from splitio.api import APIException, APIUriException
@@ -62,6 +61,7 @@ class SplitSynchronizerBase(object):
         """
         if self._feature_flag_storage.flag_set_filter.flag_sets == set({}):
             return None
+
         return ','.join(self._feature_flag_storage.flag_set_filter.sorted_flag_sets)
 
 class SplitSynchronizer(SplitSynchronizerBase):
@@ -112,6 +112,11 @@ class SplitSynchronizer(SplitSynchronizerBase):
                 _LOGGER.error('Exception raised while fetching feature flags')
                 _LOGGER.debug('Exception information: ', exc_info=True)
                 raise exc
+            fetched_feature_flags = []
+            [fetched_feature_flags.append(splits.from_raw(feature_flag)) for feature_flag in feature_flag_changes.get('splits', [])]
+            segment_list = update_feature_flag_storage(self._feature_flag_storage, fetched_feature_flags, feature_flag_changes['till'])
+            if feature_flag_changes['till'] == feature_flag_changes['since']:
+                return feature_flag_changes['till'], segment_list
 
             fetched_feature_flags = [(splits.from_raw(feature_flag)) for feature_flag in feature_flag_changes.get('splits', [])]
             segment_list = update_feature_flag_storage(self._feature_flag_storage, fetched_feature_flags, feature_flag_changes['till'])
@@ -140,10 +145,24 @@ class SplitSynchronizer(SplitSynchronizerBase):
             final_segment_list.update(segment_list)
             if till is None or till <= change_number:
                 return True, remaining_attempts, change_number, final_segment_list
+
             elif remaining_attempts <= 0:
                 return False, remaining_attempts, change_number, final_segment_list
+
             how_long = self._backoff.get()
             time.sleep(how_long)
+
+    def _get_config_sets(self):
+        """
+        Get all filter flag sets cnverrted to string, if no filter flagsets exist return None
+
+        :return: string with flagsets
+        :rtype: str
+        """
+        if self._feature_flag_storage.flag_set_filter.flag_sets == set({}):
+            return None
+
+        return ','.join(self._feature_flag_storage.flag_set_filter.sorted_flag_sets)
 
     def synchronize_splits(self, till=None):
         """
@@ -161,6 +180,7 @@ class SplitSynchronizer(SplitSynchronizerBase):
         if successful_sync:  # succedeed sync
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return final_segment_list
+
         with_cdn_bypass = FetchOptions(True, change_number, sets=self._get_config_sets())  # Set flag for bypassing CDN
         without_cdn_successful_sync, remaining_attempts, change_number, segment_list = self._attempt_feature_flag_sync(with_cdn_bypass, till)
         final_segment_list.update(segment_list)
@@ -262,8 +282,10 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
             final_segment_list.update(segment_list)
             if till is None or till <= change_number:
                 return True, remaining_attempts, change_number, final_segment_list
+
             elif remaining_attempts <= 0:
                 return False, remaining_attempts, change_number, final_segment_list
+
             how_long = self._backoff.get()
             await asyncio.sleep(how_long)
 
@@ -283,6 +305,7 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
         if successful_sync:  # succedeed sync
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return final_segment_list
+
         with_cdn_bypass = FetchOptions(True, change_number, sets=self._get_config_sets())  # Set flag for bypassing CDN
         without_cdn_successful_sync, remaining_attempts, change_number, segment_list = await self._attempt_feature_flag_sync(with_cdn_bypass, till)
         final_segment_list.update(segment_list)
@@ -291,6 +314,7 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
             _LOGGER.debug('Refresh completed bypassing the CDN in %d attempts.',
                           without_cdn_attempts)
             return final_segment_list
+
         else:
             _LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
                           without_cdn_attempts)
@@ -314,7 +338,6 @@ class LocalhostMode(Enum):
     LEGACY = 0
     YAML = 1
     JSON = 2
-
 
 class LocalSplitSynchronizerBase(object):
     """Localhost mode feature_flag base synchronizer."""
@@ -639,6 +662,7 @@ class LocalSplitSynchronizer(LocalSplitSynchronizerBase):
             fecthed_sha = util._get_sha(json.dumps(fetched))
             if fecthed_sha == self._current_json_sha:
                 return []
+
             self._current_json_sha = fecthed_sha
             if self._feature_flag_storage.get_change_number() > till and till != self._DEFAULT_FEATURE_FLAG_TILL:
                 return []
@@ -646,6 +670,7 @@ class LocalSplitSynchronizer(LocalSplitSynchronizerBase):
             fetched_feature_flags = [splits.from_raw(feature_flag) for feature_flag in fetched]
             segment_list = update_feature_flag_storage(self._feature_flag_storage, fetched_feature_flags, till)
             return segment_list
+
         except Exception as exc:
             _LOGGER.debug('Exception: ', exc_info=True)
             raise ValueError("Error reading feature flags from json.") from exc
@@ -784,12 +809,15 @@ class LocalSplitSynchronizerAsync(LocalSplitSynchronizerBase):
             fecthed_sha = util._get_sha(json.dumps(fetched))
             if fecthed_sha == self._current_json_sha:
                 return []
+
             self._current_json_sha = fecthed_sha
             if await self._feature_flag_storage.get_change_number() > till and till != self._DEFAULT_FEATURE_FLAG_TILL:
                 return []
+
             fetched_feature_flags = [splits.from_raw(feature_flag) for feature_flag in fetched]
             segment_list = await update_feature_flag_storage_async(self._feature_flag_storage, fetched_feature_flags, till)
             return segment_list
+
         except Exception as exc:
             _LOGGER.debug('Exception: ', exc_info=True)
             raise ValueError("Error reading feature flags from json.") from exc

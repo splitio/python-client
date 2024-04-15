@@ -5,12 +5,11 @@ import threading
 
 from splitio.models.impressions import Impression
 from splitio.models import splits, segments
-from splitio.models.telemetry import TelemetryConfig, get_latency_bucket_index, TelemetryConfigAsync
+from splitio.models.telemetry import TelemetryConfig, TelemetryConfigAsync
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, \
     ImpressionPipelinedStorage, TelemetryStorage, FlagSetsFilter
 from splitio.storage.adapters.redis import RedisAdapterException
 from splitio.storage.adapters.cache_trait import decorate as add_cache, DEFAULT_MAX_AGE
-from splitio.optional.loaders import asyncio
 from splitio.storage.adapters.cache_trait import LocalMemoryCache
 from splitio.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
 
@@ -161,6 +160,7 @@ class RedisSplitStorage(RedisSplitStorageBase):
     _FEATURE_FLAG_KEY = 'SPLITIO.split.{feature_flag_name}'
     _FEATURE_FLAG_TILL_KEY = 'SPLITIO.splits.till'
     _TRAFFIC_TYPE_KEY = 'SPLITIO.trafficType.{traffic_type_name}'
+    _FLAG_SET_KEY = 'SPLITIO.flagSet.{flag_set}'
 
     def __init__(self, redis_client, enable_caching=False, max_age=DEFAULT_MAX_AGE, config_flag_sets=[]):
         """
@@ -192,6 +192,7 @@ class RedisSplitStorage(RedisSplitStorageBase):
             _LOGGER.debug("Fetchting feature flag [%s] from redis" % feature_flag_name)
             _LOGGER.debug(raw)
             return splits.from_raw(json.loads(raw)) if raw is not None else None
+
         except RedisAdapterException:
             _LOGGER.error('Error fetching feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -217,6 +218,7 @@ class RedisSplitStorage(RedisSplitStorageBase):
             _LOGGER.debug("Fetchting Feature flags by set [%s] from redis" % (keys))
             _LOGGER.debug(result_sets)
             return list(combine_valid_flag_sets(result_sets))
+
         except RedisAdapterException:
             _LOGGER.error('Error fetching feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -266,6 +268,7 @@ class RedisSplitStorage(RedisSplitStorageBase):
             count = json.loads(raw) if raw else 0
             _LOGGER.debug("Fetching TrafficType [%s] count in redis: %s" % (traffic_type_name, count))
             return count > 0
+
         except RedisAdapterException:
             _LOGGER.error('Error fetching feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -281,6 +284,7 @@ class RedisSplitStorage(RedisSplitStorageBase):
             stored_value = self._redis.get(self._FEATURE_FLAG_TILL_KEY)
             _LOGGER.debug("Fetching feature flag Change Number from redis: %s" % stored_value)
             return json.loads(stored_value) if stored_value is not None else None
+
         except RedisAdapterException:
             _LOGGER.error('Error fetching feature flag change number from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -297,6 +301,7 @@ class RedisSplitStorage(RedisSplitStorageBase):
             keys = self._redis.keys(self._get_key('*'))
             _LOGGER.debug("Fetchting feature flag names from redis: %s" % keys)
             return [key.replace(self._get_key(''), '') for key in keys]
+
         except RedisAdapterException:
             _LOGGER.error('Error fetching feature flag names from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -324,7 +329,6 @@ class RedisSplitStorage(RedisSplitStorageBase):
             _LOGGER.error('Error fetching all feature flags from storage')
             _LOGGER.debug('Error: ', exc_info=True)
         return to_return
-
 
 class RedisSplitStorageAsync(RedisSplitStorage):
     """Async Redis-based storage for feature flags."""
@@ -364,6 +368,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
                 _LOGGER.debug("Fetchting feature flag [%s] from redis" % feature_flag_name)
                 _LOGGER.debug(raw)
             return splits.from_raw(json.loads(raw)) if raw is not None else None
+
         except RedisAdapterException:
             _LOGGER.error('Error fetching feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -389,6 +394,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
             _LOGGER.debug("Fetchting Feature flags by set [%s] from redis" % (keys))
             _LOGGER.debug(result_sets)
             return list(combine_valid_flag_sets(result_sets))
+
         except RedisAdapterException:
             _LOGGER.error('Error fetching feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -441,6 +447,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
                     await self._cache.add_key(traffic_type_name, raw)
             count = json.loads(raw) if raw else 0
             return count > 0
+
         except RedisAdapterException:
             _LOGGER.error('Error fetching traffic type from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -454,6 +461,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         try:
             stored_value = await self.redis.get(self._FEATURE_FLAG_TILL_KEY)
             return json.loads(stored_value) if stored_value is not None else None
+
         except RedisAdapterException:
             _LOGGER.error('Error fetching feature flag change number from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -468,6 +476,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         try:
             keys = await self.redis.keys(self._get_key('*'))
             return [key.replace(self._get_key(''), '') for key in keys]
+
         except RedisAdapterException:
             _LOGGER.error('Error fetching feature flag names from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -634,7 +643,9 @@ class RedisSegmentStorage(RedisSegmentStorageBase):
             till = self.get_change_number(segment_name)
             if not keys or till is None:
                 return None
+
             return segments.Segment(segment_name, keys, till)
+
         except RedisAdapterException:
             _LOGGER.error('Error fetching segment from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -653,6 +664,7 @@ class RedisSegmentStorage(RedisSegmentStorageBase):
             stored_value = self._redis.get(self._get_till_key(segment_name))
             _LOGGER.debug("Fetchting Change Number for Segment [%s] from redis: " % stored_value)
             return json.loads(stored_value) if stored_value is not None else None
+
         except RedisAdapterException:
             _LOGGER.error('Error fetching segment change number from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -674,6 +686,7 @@ class RedisSegmentStorage(RedisSegmentStorageBase):
             res = self._redis.sismember(self._get_key(segment_name), key)
             _LOGGER.debug("Checking Segment [%s] contain key [%s] in redis: %s" % (segment_name, key, res))
             return res
+
         except RedisAdapterException:
             _LOGGER.error('Error testing members in segment stored in redis')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -709,7 +722,9 @@ class RedisSegmentStorageAsync(RedisSegmentStorageBase):
             till = await self.get_change_number(segment_name)
             if not keys or till is None:
                 return None
+
             return segments.Segment(segment_name, keys, till)
+
         except RedisAdapterException:
             _LOGGER.error('Error fetching segment from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -728,6 +743,7 @@ class RedisSegmentStorageAsync(RedisSegmentStorageBase):
             stored_value = await self._redis.get(self._get_till_key(segment_name))
             _LOGGER.debug("Fetchting Change Number for Segment [%s] from redis: " % stored_value)
             return json.loads(stored_value) if stored_value is not None else None
+
         except RedisAdapterException:
             _LOGGER.error('Error fetching segment change number from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -749,6 +765,7 @@ class RedisSegmentStorageAsync(RedisSegmentStorageBase):
             res = await self._redis.sismember(self._get_key(segment_name), key)
             _LOGGER.debug("Checking Segment [%s] contain key [%s] in redis: %s" % (segment_name, key, res))
             return res
+
         except RedisAdapterException:
             _LOGGER.error('Error testing members in segment stored in redis')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -890,6 +907,7 @@ class RedisImpressionsStorage(RedisImpressionsStorageBase):
             inserted = self._redis.rpush(self.IMPRESSIONS_QUEUE_KEY, *bulk_impressions)
             self.expire_key(inserted, len(bulk_impressions))
             return True
+
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add impression to redis')
             _LOGGER.error('Error: ', exc_info=True)
@@ -940,6 +958,7 @@ class RedisImpressionsStorageAsync(RedisImpressionsStorageBase):
             inserted = await self._redis.rpush(self.IMPRESSIONS_QUEUE_KEY, *bulk_impressions)
             await self.expire_key(inserted, len(bulk_impressions))
             return True
+
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add impression to redis')
             _LOGGER.error('Error: ', exc_info=True)
@@ -1056,6 +1075,7 @@ class RedisEventsStorage(RedisEventsStorageBase):
             _LOGGER.debug(to_store)
             self._redis.rpush(key, *to_store)
             return True
+
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add event to redis')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -1106,6 +1126,7 @@ class RedisEventsStorageAsync(RedisEventsStorageBase):
             _LOGGER.debug(to_store)
             await self._redis.rpush(key, *to_store)
             return True
+
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add event to redis')
             _LOGGER.debug('Error: ', exc_info=True)

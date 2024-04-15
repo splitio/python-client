@@ -82,6 +82,7 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
                     bucket = self._splitter.get_bucket(bucketing, flag.traffic_allocation_seed, flag.algo)
                     if bucket > flag.traffic_allocation:
                         return flag.default_treatment, Label.NOT_IN_SPLIT
+
                 rollout = True
 
             if condition.matches(key, attributes, {

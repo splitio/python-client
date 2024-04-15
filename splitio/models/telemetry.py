@@ -702,7 +702,6 @@ class LastSynchronization(LastSynchronizationBase):
                 HTTPExceptionsAndLatencies.TOKEN.value: self._token}
             }
 
-
 class LastSynchronizationAsync(LastSynchronizationBase):
     """
     Last Synchronization async info class
@@ -1094,6 +1093,7 @@ class TelemetryCounters(TelemetryCountersBase):
         with self._lock:
             if self._update_from_sse.get(event.value) is None:
                 return 0
+
             update_from_sse = self._update_from_sse[event.value]
             self._update_from_sse[event.value] = 0
             return update_from_sse
@@ -1122,14 +1122,19 @@ class TelemetryCounters(TelemetryCountersBase):
         with self._lock:
             if resource == CounterConstants.IMPRESSIONS_QUEUED:
                 return self._impressions_queued
+
             elif resource == CounterConstants.IMPRESSIONS_DEDUPED:
                 return self._impressions_deduped
+
             elif resource == CounterConstants.IMPRESSIONS_DROPPED:
                 return self._impressions_dropped
+
             elif resource == CounterConstants.EVENTS_QUEUED:
                 return self._events_queued
+
             elif resource == CounterConstants.EVENTS_DROPPED:
                 return self._events_dropped
+
             else:
                 return 0
 
@@ -1166,7 +1171,6 @@ class TelemetryCounters(TelemetryCountersBase):
             token_refreshes = self._token_refreshes
             self._token_refreshes = 0
             return token_refreshes
-
 
 class TelemetryCountersAsync(TelemetryCountersBase):
     """
@@ -1251,6 +1255,7 @@ class TelemetryCountersAsync(TelemetryCountersBase):
         async with self._lock:
             if self._update_from_sse.get(event.value) is None:
                 return 0
+
             update_from_sse = self._update_from_sse[event.value]
             self._update_from_sse[event.value] = 0
             return update_from_sse
@@ -1278,14 +1283,19 @@ class TelemetryCountersAsync(TelemetryCountersBase):
         async with self._lock:
             if resource == CounterConstants.IMPRESSIONS_QUEUED:
                 return self._impressions_queued
+
             elif resource == CounterConstants.IMPRESSIONS_DEDUPED:
                 return self._impressions_deduped
+
             elif resource == CounterConstants.IMPRESSIONS_DROPPED:
                 return self._impressions_dropped
+
             elif resource == CounterConstants.EVENTS_QUEUED:
                 return self._events_queued
+
             elif resource == CounterConstants.EVENTS_DROPPED:
                 return self._events_dropped
+
             else:
                 return 0
 
@@ -1547,8 +1557,10 @@ class TelemetryConfigBase(object, metaclass=abc.ABCMeta):
         """
         if op_mode == OperationMode.STANDALONE.value:
             return 0
+
         elif op_mode == OperationMode.CONSUMER.value:
             return 1
+
         else:
             return 2
 
@@ -1564,8 +1576,10 @@ class TelemetryConfigBase(object, metaclass=abc.ABCMeta):
         """
         if op_mode == OperationMode.STANDALONE.value:
             return StorageType.MEMORY.value
+
         elif st_type == StorageType.REDIS.value:
             return StorageType.REDIS.value
+
         else:
             return StorageType.PLUGGABLE.value
 
@@ -1617,8 +1631,10 @@ class TelemetryConfigBase(object, metaclass=abc.ABCMeta):
         """
         if imp_mode == ImpressionsMode.DEBUG.value:
             return 1
+
         elif imp_mode == ImpressionsMode.OPTIMIZED.value:
             return 0
+
         else:
             return 2
 
@@ -1632,6 +1648,7 @@ class TelemetryConfigBase(object, metaclass=abc.ABCMeta):
         for x in os.environ:
             if x.upper() == _ExtraConfig.HTTPS_PROXY_ENV.value:
                 return True
+
         return False
 
 
@@ -1695,7 +1712,6 @@ class TelemetryConfig(TelemetryConfigBase):
         with self._lock:
             self._active_factory_count = active_factory_count
             self._redundant_factory_count = redundant_factory_count
-
 
     def record_ready_time(self, ready_time):
         """

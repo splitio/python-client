@@ -5,7 +5,6 @@ import os
 import logging
 _LOGGER = logging.getLogger(__name__)
 
-from  splitio.storage.inmemmory import InMemoryTelemetryStorage
 from splitio.models.telemetry import CounterConstants, UpdateFromSSE
 
 class TelemetryStorageProducerBase(object):
@@ -43,7 +42,6 @@ class TelemetryStorageProducerAsync(TelemetryStorageProducerBase):
         self._telemetry_evaluation_producer = TelemetryEvaluationProducerAsync(telemetry_storage)
         self._telemetry_runtime_producer = TelemetryRuntimeProducerAsync(telemetry_storage)
 
-
 class TelemetryInitProducerBase(object):
     """Telemetry init producer base class."""
 
@@ -51,12 +49,14 @@ class TelemetryInitProducerBase(object):
         try:
             import uwsgi
             return "uwsgi", str(uwsgi.worker_id())
+
         except ModuleNotFoundError:
             _LOGGER.debug("NO uwsgi")
             pass
 
         if 'gunicorn' in os.environ.get("SERVER_SOFTWARE", ""):
             return "gunicorn", str(os.getpid())
+
         else:
             return None, None
 

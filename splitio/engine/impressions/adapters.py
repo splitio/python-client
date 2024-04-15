@@ -64,6 +64,9 @@ class InMemorySenderAdapter(InMemorySenderAdapterBase):
         :param uniques: unique keys disctionary
         :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
+        if len(uniques) == 0:
+            return
+
         self._telemtry_http_client.record_unique_keys({'keys': self._uniques_formatter(uniques)})
 
 
@@ -108,11 +111,15 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         :param uniques: unique keys disctionary
         :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
+        if len(uniques) == 0:
+            return
+
         bulk_mtks = _uniques_formatter(uniques)
         try:
             inserted = self._redis_client.rpush(_MTK_QUEUE_KEY, *bulk_mtks)
             self._expire_keys(_MTK_QUEUE_KEY, _MTK_KEY_DEFAULT_TTL, inserted, len(bulk_mtks))
             return True
+
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add mtks to redis')
             _LOGGER.error('Error: ', exc_info=True)
@@ -125,6 +132,9 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         :param to_send: unique keys disctionary
         :type to_send: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
+        if len(to_send) == 0:
+            return
+
         try:
             resulted = 0
             counted = 0
@@ -136,6 +146,7 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
             self._expire_keys(_IMP_COUNT_QUEUE_KEY,
                               _IMP_COUNT_KEY_DEFAULT_TTL, resulted, counted)
             return True
+
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add counters to redis')
             _LOGGER.error('Error: ', exc_info=True)
@@ -178,6 +189,7 @@ class RedisSenderAdapterAsync(ImpressionsSenderAdapter):
             inserted = await self._redis_client.rpush(_MTK_QUEUE_KEY, *bulk_mtks)
             await self._expire_keys(_MTK_QUEUE_KEY, _MTK_KEY_DEFAULT_TTL, inserted, len(bulk_mtks))
             return True
+
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add mtks to redis')
             _LOGGER.error('Error: ', exc_info=True)
@@ -201,6 +213,7 @@ class RedisSenderAdapterAsync(ImpressionsSenderAdapter):
             await self._expire_keys(_IMP_COUNT_QUEUE_KEY,
                               _IMP_COUNT_KEY_DEFAULT_TTL, resulted, counted)
             return True
+
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add counters to redis')
             _LOGGER.error('Error: ', exc_info=True)
@@ -241,11 +254,15 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
         :param uniques: unique keys disctionary
         :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
+        if len(uniques) == 0:
+            return
+
         bulk_mtks = _uniques_formatter(uniques)
         try:
             inserted = self._adapter_client.push_items(self._prefix + _MTK_QUEUE_KEY, *bulk_mtks)
             self._expire_keys(self._prefix + _MTK_QUEUE_KEY, _MTK_KEY_DEFAULT_TTL, inserted, len(bulk_mtks))
             return True
+
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add mtks to storage adapter')
             _LOGGER.error('Error: ', exc_info=True)
@@ -258,6 +275,8 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
         :param to_send: unique keys disctionary
         :type to_send: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
+        if len(to_send) == 0:
+            return
         try:
             resulted = 0
             for pf_count in to_send:
@@ -265,6 +284,7 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
                 resulted = self._adapter_client.increment(key, pf_count.count)
                 self._expire_keys(key, _IMP_COUNT_KEY_DEFAULT_TTL, resulted, pf_count.count)
             return True
+
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add counters to storage adapter')
             _LOGGER.error('Error: ', exc_info=True)
@@ -310,6 +330,7 @@ class PluggableSenderAdapterAsync(ImpressionsSenderAdapter):
             inserted = await self._adapter_client.push_items(self._prefix + _MTK_QUEUE_KEY, *bulk_mtks)
             await self._expire_keys(self._prefix + _MTK_QUEUE_KEY, _MTK_KEY_DEFAULT_TTL, inserted, len(bulk_mtks))
             return True
+
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add mtks to storage adapter')
             _LOGGER.error('Error: ', exc_info=True)
@@ -329,6 +350,7 @@ class PluggableSenderAdapterAsync(ImpressionsSenderAdapter):
                 resulted = await self._adapter_client.increment(key, pf_count.count)
                 await self._expire_keys(key, _IMP_COUNT_KEY_DEFAULT_TTL, resulted, pf_count.count)
             return True
+
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add counters to storage adapter')
             _LOGGER.error('Error: ', exc_info=True)

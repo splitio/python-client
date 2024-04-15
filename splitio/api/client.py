@@ -145,6 +145,7 @@ class HttpClient(HttpClientBase):
             )
             self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
             return HttpResponse(response.status_code, response.text, response.headers)
+
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('requests library is throwing exceptions') from exc
 
@@ -184,6 +185,7 @@ class HttpClient(HttpClientBase):
             )
             self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
             return HttpResponse(response.status_code, response.text, response.headers)
+
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('requests library is throwing exceptions') from exc
 
@@ -262,6 +264,7 @@ class HttpClientAsync(HttpClientBase):
                 _LOGGER.debug(body)
                 await self._record_telemetry(response.status, get_current_epoch_time_ms() - start)
                 return HttpResponse(response.status, body, response.headers)
+
         except aiohttp.ClientError as exc:  # pylint: disable=broad-except
             raise HttpClientException('aiohttp library is throwing exceptions') from exc
 
@@ -307,6 +310,7 @@ class HttpClientAsync(HttpClientBase):
                 _LOGGER.debug(body)
                 await self._record_telemetry(response.status, get_current_epoch_time_ms() - start)
                 return HttpResponse(response.status, body, response.headers)
+
         except aiohttp.ClientError as exc:  # pylint: disable=broad-except
             raise HttpClientException('aiohttp library is throwing exceptions') from exc
 
@@ -324,6 +328,7 @@ class HttpClientAsync(HttpClientBase):
         if 200 <= status_code < 300:
             await self._telemetry_runtime_producer.record_successful_sync(self._metric_name, get_current_epoch_time_ms())
             return
+
         await self._telemetry_runtime_producer.record_sync_error(self._metric_name, status_code)
 
     async def close_session(self):

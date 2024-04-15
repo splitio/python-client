@@ -30,6 +30,7 @@ class FlagSets(object):
         Check if a flagset exist in stored flagset
         :param flag_set: set name
         :type flag_set: str
+
         :rtype: bool
         """
         with self._lock:
@@ -40,6 +41,7 @@ class FlagSets(object):
         fetch feature flags stored in a flag set
         :param flag_set: set name
         :type flag_set: str
+
         :rtype: list(str)
         """
         with self._lock:
@@ -512,6 +514,7 @@ class InMemorySplitStorage(InMemorySplitStorageBase):
         Return whether a flag set exists in at least one feature flag in cache.
         :param flag_set: Flag set to validate.
         :type flag_set: str
+
         :return: True if the flag_set exist. False otherwise.
         :rtype: bool
         """
@@ -800,6 +803,7 @@ class InMemorySegmentStorage(SegmentStorage):
         with self._lock:
             if segment_name not in self._segments:
                 return None
+
             return self._segments[segment_name].change_number
 
     def set_change_number(self, segment_name, new_change_number):
@@ -835,6 +839,7 @@ class InMemorySegmentStorage(SegmentStorage):
                     segment_name
                 )
                 return False
+
             return self._segments[segment_name].contains(key)
 
     def get_segments_count(self):
@@ -928,6 +933,7 @@ class InMemorySegmentStorageAsync(SegmentStorage):
         async with self._lock:
             if segment_name not in self._segments:
                 return None
+
             return self._segments[segment_name].change_number
 
     async def set_change_number(self, segment_name, new_change_number):
@@ -963,6 +969,7 @@ class InMemorySegmentStorageAsync(SegmentStorage):
                     segment_name
                 )
                 return False
+
             return self._segments[segment_name].contains(key)
 
     async def get_segments_count(self):
@@ -1053,6 +1060,7 @@ class InMemoryImpressionStorage(InMemoryImpressionStorageBase):
                     impressions_stored += 1
             self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_QUEUED, len(impressions))
             return True
+
         except queue.Full:
             self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_DROPPED, len(impressions) - impressions_stored)
             self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_QUEUED, impressions_stored)
@@ -1118,6 +1126,7 @@ class InMemoryImpressionStorageAsync(InMemoryImpressionStorageBase):
                     impressions_stored += 1
             await self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_QUEUED, len(impressions))
             return True
+
         except asyncio.QueueFull:
             await self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_DROPPED, len(impressions) - impressions_stored)
             await self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_QUEUED, impressions_stored)
@@ -1223,10 +1232,12 @@ class InMemoryEventStorage(InMemoryEventStorageBase):
                     if self._size >= MAX_SIZE_BYTES:
                         self._queue_full_hook()
                         return False
+
                     self._events.put(event.event, False)
                     events_stored += 1
             self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_QUEUED, len(events))
             return True
+
         except queue.Full:
             self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_DROPPED, len(events) - events_stored)
             self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_QUEUED, events_stored)
@@ -1295,10 +1306,12 @@ class InMemoryEventStorageAsync(InMemoryEventStorageBase):
                     if self._size >= MAX_SIZE_BYTES:
                         await self._queue_full_hook()
                         return False
+
                     await self._events.put(event.event)
                     events_stored += 1
             await self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_QUEUED, len(events))
             return True
+
         except asyncio.QueueFull:
             await self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_DROPPED, len(events) - events_stored)
             await self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_QUEUED, events_stored)

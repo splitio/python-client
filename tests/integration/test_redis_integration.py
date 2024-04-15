@@ -9,7 +9,7 @@ from splitio.models import splits, impressions, events
 from splitio.storage.redis import RedisSplitStorage, RedisSegmentStorage, RedisImpressionsStorage, \
     RedisEventsStorage, RedisEventsStorageAsync, RedisImpressionsStorageAsync, RedisSegmentStorageAsync, \
     RedisSplitStorageAsync
-from splitio.storage.adapters.redis import _build_default_client, _build_default_client_async
+from splitio.storage.adapters.redis import _build_default_client, _build_default_client_async, StrictRedis
 from splitio.client.config import DEFAULT_CONFIG
 
 
@@ -18,7 +18,11 @@ class RedisSplitStorageTests(object):
 
     def test_put_fetch(self):
         """Test storing and retrieving splits in redis."""
-        adapter = _build_default_client({})
+        redis = StrictRedis(host="localhost")
+        redis.acl_setuser(username='redis_user', enabled=True, passwords=["+split"], categories=["+admin"],
+                          commands=["+@all"], keys=["~*"])
+        redis.close()
+        adapter = _build_default_client({'redisUsername': 'redis_user', 'redisPassword': 'split'})
         try:
             storage = RedisSplitStorage(adapter)
             with open(os.path.join(os.path.dirname(__file__), 'files', 'split_changes.json'), 'r') as flo:
@@ -74,10 +78,12 @@ class RedisSplitStorageTests(object):
             ]
             for item in to_delete:
                 adapter.delete(item)
-
             storage = RedisSplitStorage(adapter)
             assert storage.is_valid_traffic_type('user') is False
             assert storage.is_valid_traffic_type('account') is False
+            redis = StrictRedis(host="localhost")
+            redis.acl_deluser("redis_user")
+            redis.close()
 
     def test_get_all(self):
         """Test get all names & splits."""

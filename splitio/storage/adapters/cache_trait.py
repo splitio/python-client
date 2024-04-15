@@ -98,8 +98,10 @@ class LocalMemoryCache(object):  # pylint: disable=too-many-instance-attributes
             if node is not None:
                 if self._is_expired(node):
                     return None
+
             if node is None:
                 return None
+
             node = self._bubble_up(node)
             return node.value
 

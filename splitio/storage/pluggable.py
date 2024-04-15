@@ -7,7 +7,7 @@ import threading
 from splitio.optional.loaders import asyncio
 from splitio.models import splits, segments
 from splitio.models.impressions import Impression
-from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MAX_TAGS, get_latency_bucket_index,\
+from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MAX_TAGS,\
     MethodLatenciesAsync, MethodExceptionsAsync, TelemetryConfigAsync
 from splitio.storage import FlagSetsFilter, SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
 from splitio.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
@@ -90,8 +90,7 @@ class PluggableSplitStorageBase(SplitStorage):
         :param new_change_number: New change number.
         :type new_change_number: int
         """
-        pass
-        # TODO: To be added when producer mode is aupported
+#        pass
 #        try:
 #            split = self.get(feature_flag_name)
 #            if not split:
@@ -113,15 +112,15 @@ class PluggableSplitStorageBase(SplitStorage):
         """
         pass
 
-    def set_change_number(self, new_change_number):
+    # TODO: To be added when producer mode is aupported
+#    def _set_change_number(self, new_change_number):
         """
         Set the latest change number.
 
         :param new_change_number: New change number.
         :type new_change_number: int
         """
-        pass
-        # TODO: To be added when producer mode is aupported
+#        pass
 #        try:
 #            self._pluggable_adapter.set(self._split_till_prefix, new_change_number)
 #        except Exception:
@@ -261,7 +260,9 @@ class PluggableSplitStorage(PluggableSplitStorageBase):
             feature_flag = self._pluggable_adapter.get(self._prefix.format(feature_flag_name=feature_flag_name))
             if not feature_flag:
                 return None
+
             return splits.from_raw(feature_flag)
+
         except Exception:
             _LOGGER.error('Error getting feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -280,6 +281,7 @@ class PluggableSplitStorage(PluggableSplitStorageBase):
         try:
             prefix_added = [self._prefix.format(feature_flag_name=feature_flag_name) for feature_flag_name in feature_flag_names]
             return {feature_flag['name']: splits.from_raw(feature_flag) for feature_flag in self._pluggable_adapter.get_many(prefix_added)}
+
         except Exception:
             _LOGGER.error('Error getting feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -302,6 +304,7 @@ class PluggableSplitStorage(PluggableSplitStorageBase):
             result_sets = []
             [result_sets.append(set(key)) for key in self._pluggable_adapter.get_many(keys)]
             return list(combine_valid_flag_sets(result_sets))
+
         except Exception:
             _LOGGER.error('Error fetching feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -315,6 +318,7 @@ class PluggableSplitStorage(PluggableSplitStorageBase):
         """
         try:
             return self._pluggable_adapter.get(self._feature_flag_till_prefix)
+
         except Exception:
             _LOGGER.error('Error getting change number in feature flag storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -333,6 +337,7 @@ class PluggableSplitStorage(PluggableSplitStorageBase):
                 if key[-self._TILL_LENGTH:] != 'till':
                     keys.append(key[len(self._prefix[:-self._FEATURE_FLAG_NAME_LENGTH]):])
             return keys
+
         except Exception:
             _LOGGER.error('Error getting feature flag names from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -350,6 +355,7 @@ class PluggableSplitStorage(PluggableSplitStorageBase):
         """
         try:
             return self._pluggable_adapter.get(self._traffic_type_prefix.format(traffic_type_name=traffic_type_name)) != None
+
         except Exception:
             _LOGGER.error('Error getting feature flag info from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -368,6 +374,7 @@ class PluggableSplitStorage(PluggableSplitStorageBase):
                 if key[-self._TILL_LENGTH:] != 'till':
                     keys.append(key)
             return [splits.from_raw(feature_flag) for feature_flag in self._pluggable_adapter.get_many(keys)]
+
         except Exception:
             _LOGGER.error('Error fetching feature flags from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -385,6 +392,7 @@ class PluggableSplitStorage(PluggableSplitStorageBase):
         """
         try:
             return self.traffic_type_exists(traffic_type_name)
+
         except Exception:
             _LOGGER.error('Error getting traffic type info from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -417,7 +425,9 @@ class PluggableSplitStorageAsync(PluggableSplitStorageBase):
             feature_flag = await self._pluggable_adapter.get(self._prefix.format(feature_flag_name=feature_flag_name))
             if not feature_flag:
                 return None
+
             return splits.from_raw(feature_flag)
+
         except Exception:
             _LOGGER.error('Error getting feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -436,6 +446,7 @@ class PluggableSplitStorageAsync(PluggableSplitStorageBase):
         try:
             prefix_added = [self._prefix.format(feature_flag_name=feature_flag_name) for feature_flag_name in feature_flag_names]
             return {feature_flag['name']: splits.from_raw(feature_flag) for feature_flag in await self._pluggable_adapter.get_many(prefix_added)}
+
         except Exception:
             _LOGGER.error('Error getting feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -458,6 +469,7 @@ class PluggableSplitStorageAsync(PluggableSplitStorageBase):
             result_sets = []
             [result_sets.append(set(key)) for key in await self._pluggable_adapter.get_many(keys)]
             return list(combine_valid_flag_sets(result_sets))
+
         except Exception:
             _LOGGER.error('Error fetching feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -471,6 +483,7 @@ class PluggableSplitStorageAsync(PluggableSplitStorageBase):
         """
         try:
             return await self._pluggable_adapter.get(self._feature_flag_till_prefix)
+
         except Exception:
             _LOGGER.error('Error getting change number in feature flag storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -489,6 +502,7 @@ class PluggableSplitStorageAsync(PluggableSplitStorageBase):
                 if key[-self._TILL_LENGTH:] != 'till':
                     keys.append(key[len(self._prefix[:-self._FEATURE_FLAG_NAME_LENGTH]):])
             return keys
+
         except Exception:
             _LOGGER.error('Error getting feature flag names from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -506,6 +520,7 @@ class PluggableSplitStorageAsync(PluggableSplitStorageBase):
         """
         try:
             return await self._pluggable_adapter.get(self._traffic_type_prefix.format(traffic_type_name=traffic_type_name)) != None
+
         except Exception:
             _LOGGER.error('Error getting traffic type info from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -524,6 +539,7 @@ class PluggableSplitStorageAsync(PluggableSplitStorageBase):
                 if key[-self._TILL_LENGTH:] != 'till':
                     keys.append(key)
             return [splits.from_raw(feature_flag) for feature_flag in await self._pluggable_adapter.get_many(keys)]
+
         except Exception:
             _LOGGER.error('Error fetching feature flags from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -541,6 +557,7 @@ class PluggableSplitStorageAsync(PluggableSplitStorageBase):
         """
         try:
             return await self.traffic_type_exists(traffic_type_name)
+
         except Exception:
             _LOGGER.error('Error getting feature flag info from storage')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -733,6 +750,7 @@ class PluggableSegmentStorage(PluggableSegmentStorageBase):
         """
         try:
             return self._pluggable_adapter.get(self._segment_till_prefix.format(segment_name=segment_name))
+
         except Exception:
             _LOGGER.error('Error fetching segment change number')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -751,6 +769,7 @@ class PluggableSegmentStorage(PluggableSegmentStorageBase):
                 if key[-self._TILL_LENGTH:] != 'till':
                     keys.append(key[len(self._prefix[:-self._SEGMENT_NAME_LENGTH]):])
             return keys
+
         except Exception:
             _LOGGER.error('Error getting segments')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -770,6 +789,7 @@ class PluggableSegmentStorage(PluggableSegmentStorageBase):
         """
         try:
             return self._pluggable_adapter.item_contains(self._prefix.format(segment_name=segment_name), key)
+
         except Exception:
             _LOGGER.error('Error checking segment key')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -787,6 +807,7 @@ class PluggableSegmentStorage(PluggableSegmentStorageBase):
         """
         try:
             return segments.from_raw({'name': segment_name, 'added': self._pluggable_adapter.get_items(self._prefix.format(segment_name=segment_name)), 'removed': [], 'till': self._pluggable_adapter.get(self._segment_till_prefix.format(segment_name=segment_name))})
+
         except Exception:
             _LOGGER.error('Error getting segment')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -818,6 +839,7 @@ class PluggableSegmentStorageAsync(PluggableSegmentStorageBase):
         """
         try:
             return await self._pluggable_adapter.get(self._segment_till_prefix.format(segment_name=segment_name))
+
         except Exception:
             _LOGGER.error('Error fetching segment change number')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -836,6 +858,7 @@ class PluggableSegmentStorageAsync(PluggableSegmentStorageBase):
                 if key[-self._TILL_LENGTH:] != 'till':
                     keys.append(key[len(self._prefix[:-self._SEGMENT_NAME_LENGTH]):])
             return keys
+
         except Exception:
             _LOGGER.error('Error getting segments')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -855,6 +878,7 @@ class PluggableSegmentStorageAsync(PluggableSegmentStorageBase):
         """
         try:
             return await self._pluggable_adapter.item_contains(self._prefix.format(segment_name=segment_name), key)
+
         except Exception:
             _LOGGER.error('Error checking segment key')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -872,6 +896,7 @@ class PluggableSegmentStorageAsync(PluggableSegmentStorageBase):
         """
         try:
             return segments.from_raw({'name': segment_name, 'added': await self._pluggable_adapter.get_items(self._prefix.format(segment_name=segment_name)), 'removed': [], 'till': await self._pluggable_adapter.get(self._segment_till_prefix.format(segment_name=segment_name))})
+
         except Exception:
             _LOGGER.error('Error getting segment')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -1001,6 +1026,7 @@ class PluggableImpressionsStorage(PluggableImpressionsStorageBase):
             total_keys = self._pluggable_adapter.push_items(self._impressions_queue_key, *bulk_impressions)
             self.expire_key(total_keys, len(bulk_impressions))
             return True
+
         except Exception:
             _LOGGER.error('Something went wrong when trying to add impression to storage')
             _LOGGER.error('Error: ', exc_info=True)
@@ -1050,6 +1076,7 @@ class PluggableImpressionsStorageAsync(PluggableImpressionsStorageBase):
             total_keys = await self._pluggable_adapter.push_items(self._impressions_queue_key, *bulk_impressions)
             await self.expire_key(total_keys, len(bulk_impressions))
             return True
+
         except Exception:
             _LOGGER.error('Something went wrong when trying to add impression to storage')
             _LOGGER.error('Error: ', exc_info=True)
@@ -1179,6 +1206,7 @@ class PluggableEventsStorage(PluggableEventsStorageBase):
             total_keys = self._pluggable_adapter.push_items(self._events_queue_key, *to_store)
             self.expire_key(total_keys, len(to_store))
             return True
+
         except Exception:
             _LOGGER.error('Something went wrong when trying to add event to redis')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -1228,6 +1256,7 @@ class PluggableEventsStorageAsync(PluggableEventsStorageBase):
             total_keys = await self._pluggable_adapter.push_items(self._events_queue_key, *to_store)
             await self.expire_key(total_keys, len(to_store))
             return True
+
         except Exception:
             _LOGGER.error('Something went wrong when trying to add event to redis')
             _LOGGER.debug('Error: ', exc_info=True)

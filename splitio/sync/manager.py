@@ -1,7 +1,6 @@
 """Synchronization manager module."""
 import logging
 import time
-import threading
 from threading import Thread
 from queue import Queue
 

@@ -39,7 +39,7 @@ class SplitAPITests(object):
                                                          query={'since': 123, 'till': 123, 'sets': 'set3'})]
 
         httpclient.reset_mock()
-        response = split_api.fetch_splits(123, FetchOptions(True, 123))
+        response = split_api.fetch_splits(123, FetchOptions(True, 123, 'set3'))
         assert response['prop1'] == 'value1'
         assert httpclient.get.mock_calls == [mocker.call('sdk', 'splitChanges', 'some_api_key',
                                                          extra_headers={
@@ -48,7 +48,7 @@ class SplitAPITests(object):
                                                              'SplitSDKMachineName': 'some',
                                                              'Cache-Control': 'no-cache'
                                                          },
-                                                         query={'since': 123, 'till': 123})]
+                                                         query={'since': 123, 'till': 123, 'sets': 'set3'})]
 
         httpclient.reset_mock()
         def raise_exception(*args, **kwargs):

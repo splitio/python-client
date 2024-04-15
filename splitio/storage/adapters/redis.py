@@ -64,17 +64,20 @@ class PrefixHelper(object):
         if self._prefix:
             if isinstance(k, str):
                 return '{prefix}.{key}'.format(prefix=self._prefix, key=k)
+
             elif isinstance(k, list) and k:
                 if isinstance(k[0], bytes):
                     return [
                         '{prefix}.{key}'.format(prefix=self._prefix, key=key.decode("utf8"))
                         for key in k
                     ]
+
                 elif isinstance(k[0], str):
                     return [
                         '{prefix}.{key}'.format(prefix=self._prefix, key=key)
                         for key in k
                     ]
+
         else:
             return k
 
@@ -95,8 +98,10 @@ class PrefixHelper(object):
         if self._prefix:
             if isinstance(k, str):
                 return k[len(self._prefix)+1:]
+
             elif isinstance(k, list):
                 return [key[len(self._prefix)+1:] for key in k]
+
         else:
             return k
 
@@ -687,7 +692,6 @@ class RedisPipelineAdapterAsync(RedisPipelineAdapterBase):
         except RedisError as exc:
             raise RedisAdapterException('Error executing pipeline operation') from exc
 
-
 def _build_default_client(config):  # pylint: disable=too-many-locals
     """
     Build a redis adapter.
@@ -701,6 +705,7 @@ def _build_default_client(config):  # pylint: disable=too-many-locals
     host = config.get('redisHost', 'localhost')
     port = config.get('redisPort', 6379)
     database = config.get('redisDb', 0)
+    username = config.get('redisUsername', None)
     password = config.get('redisPassword', None)
     socket_timeout = config.get('redisSocketTimeout', None)
     socket_connect_timeout = config.get('redisSocketConnectTimeout', None)
@@ -726,6 +731,7 @@ def _build_default_client(config):  # pylint: disable=too-many-locals
         port=port,
         db=database,
         password=password,
+        username=username,
         socket_timeout=socket_timeout,
         socket_connect_timeout=socket_connect_timeout,
         socket_keepalive=socket_keepalive,
@@ -837,6 +843,7 @@ def _build_sentinel_client(config):  # pylint: disable=too-many-locals
         raise SentinelConfigurationException('redisMasterService must be specified.')
 
     database = config.get('redisDb', 0)
+    username = config.get('redisUsername', None)
     password = config.get('redisPassword', None)
     socket_timeout = config.get('redisSocketTimeout', None)
     socket_connect_timeout = config.get('redisSocketConnectTimeout', None)
@@ -854,6 +861,7 @@ def _build_sentinel_client(config):  # pylint: disable=too-many-locals
         sentinels,
         db=database,
         password=password,
+        username=username,
         socket_timeout=socket_timeout,
         socket_connect_timeout=socket_connect_timeout,
         socket_keepalive=socket_keepalive,
@@ -947,6 +955,7 @@ async def build_async(config):
     """
     if 'redisSentinels' in config:
         return await _build_sentinel_client_async(config)
+
     return await _build_default_client_async(config)
 
 def build(config):
@@ -961,4 +970,5 @@ def build(config):
     """
     if 'redisSentinels' in config:
         return _build_sentinel_client(config)
+
     return _build_default_client(config)

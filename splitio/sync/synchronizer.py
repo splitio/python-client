@@ -181,7 +181,7 @@ class BaseSynchronizer(object, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def sync_all(self):
-        """Synchronize all split data."""
+        """Synchronize all feature flag data."""
         pass
 
     @abc.abstractmethod
@@ -257,6 +257,15 @@ class SynchronizerInMemoryBase(BaseSynchronizer):
             self._periodic_data_recording_tasks.append(self._split_tasks.unique_keys_task)
         if self._split_tasks.clear_filter_task:
             self._periodic_data_recording_tasks.append(self._split_tasks.clear_filter_task)
+        self._break_sync_all = False
+
+    @property
+    def split_sync(self):
+        return self._split_synchronizers.split_sync
+
+    @property
+    def segment_storage(self):
+        return self._split_synchronizers.segment_sync._segment_storage
 
     @property
     def split_sync(self):
@@ -389,7 +398,8 @@ class Synchronizer(SynchronizerInMemoryBase):
         :returns: whether the synchronization was successful or not.
         :rtype: bool
         """
-        _LOGGER.debug('Starting splits synchronization')
+        self._break_sync_all = False
+        _LOGGER.debug('Starting feature flags synchronization')
         try:
             new_segments = []
             for segment in self._split_synchronizers.split_sync.synchronize_splits(till):
@@ -444,7 +454,7 @@ class Synchronizer(SynchronizerInMemoryBase):
                 _LOGGER.debug('Error: ', exc_info=True)
                 if max_retry_attempts != _SYNC_ALL_NO_RETRIES:
                     retry_attempts += 1
-                    if retry_attempts > max_retry_attempts:
+                    if retry_attempts > max_retry_attempts or self._break_sync_all:
                         break
                 how_long = self._backoff.get()
                 time.sleep(how_long)
@@ -1073,7 +1083,7 @@ class PluggableSynchronizer(BaseSynchronizer):
         pass
 
     def sync_all(self):
-        """Synchronize all split data."""
+        """Synchronize all feature flag data."""
         pass
 
     def start_periodic_fetching(self):

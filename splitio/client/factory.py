@@ -482,6 +482,7 @@ def _wrap_impression_listener(listener, metadata):
     """
     if listener is not None:
         return ImpressionListenerWrapper(listener, metadata)
+
     return None
 
 def _wrap_impression_listener_async(listener, metadata):
@@ -495,6 +496,7 @@ def _wrap_impression_listener_async(listener, metadata):
     """
     if listener is not None:
         return ImpressionListenerWrapperAsync(listener, metadata)
+
     return None
 
 def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pylint:disable=too-many-arguments,too-many-locals
@@ -758,7 +760,7 @@ def _build_redis_factory(api_key, cfg):
     cache_enabled = cfg.get('redisLocalCacheEnabled', False)
     cache_ttl = cfg.get('redisLocalCacheTTL', 5)
     storages = {
-        'splits': RedisSplitStorage(redis_adapter, cache_enabled, cache_ttl),
+        'splits': RedisSplitStorage(redis_adapter, cache_enabled, cache_ttl, []),
         'segments': RedisSegmentStorage(redis_adapter),
         'impressions': RedisImpressionsStorage(redis_adapter, sdk_metadata),
         'events': RedisEventsStorage(redis_adapter, sdk_metadata),
@@ -925,7 +927,7 @@ def _build_pluggable_factory(api_key, cfg):
     pluggable_adapter = cfg.get('storageWrapper')
     storage_prefix = cfg.get('storagePrefix')
     storages = {
-        'splits': PluggableSplitStorage(pluggable_adapter, storage_prefix),
+        'splits': PluggableSplitStorage(pluggable_adapter, storage_prefix, []),
         'segments': PluggableSegmentStorage(pluggable_adapter, storage_prefix),
         'impressions': PluggableImpressionsStorage(pluggable_adapter, sdk_metadata, storage_prefix),
         'events': PluggableEventsStorage(pluggable_adapter, sdk_metadata, storage_prefix),

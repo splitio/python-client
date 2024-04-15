@@ -129,8 +129,10 @@ class SegmentSynchronizer(object):
             change_number = self._fetch_until(segment_name, fetch_options, till)
             if till is None or till <= change_number:
                 return True, remaining_attempts, change_number
+
             elif remaining_attempts <= 0:
                 return False, remaining_attempts, change_number
+
             how_long = self._backoff.get()
             time.sleep(how_long)
 
@@ -153,6 +155,7 @@ class SegmentSynchronizer(object):
         if successful_sync:  # succedeed sync
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return True
+
         with_cdn_bypass = FetchOptions(True, change_number)  # Set flag for bypassing CDN
         without_cdn_successful_sync, remaining_attempts, change_number = self._attempt_segment_sync(segment_name, with_cdn_bypass, till)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
@@ -160,6 +163,7 @@ class SegmentSynchronizer(object):
             _LOGGER.debug('Refresh completed bypassing the CDN in %d attempts.',
                           without_cdn_attempts)
             return True
+
         _LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
                         without_cdn_attempts)
         return False
@@ -184,6 +188,7 @@ class SegmentSynchronizer(object):
             self._worker_pool.submit_work(segment_name)
         if (dont_wait):
             return True
+
         return not self._worker_pool.wait_for_completion()
 
     def segment_exist_in_storage(self, segment_name):
@@ -307,8 +312,10 @@ class SegmentSynchronizerAsync(object):
             change_number = await self._fetch_until(segment_name, fetch_options, till)
             if till is None or till <= change_number:
                 return True, remaining_attempts, change_number
+
             elif remaining_attempts <= 0:
                 return False, remaining_attempts, change_number
+
             how_long = self._backoff.get()
             await asyncio.sleep(how_long)
 
@@ -331,6 +338,7 @@ class SegmentSynchronizerAsync(object):
         if successful_sync:  # succedeed sync
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return True
+
         with_cdn_bypass = FetchOptions(True, change_number)  # Set flag for bypassing CDN
         without_cdn_successful_sync, remaining_attempts, change_number = await self._attempt_segment_sync(segment_name, with_cdn_bypass, till)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
@@ -338,6 +346,7 @@ class SegmentSynchronizerAsync(object):
             _LOGGER.debug('Refresh completed bypassing the CDN in %d attempts.',
                           without_cdn_attempts)
             return True
+
         _LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
                         without_cdn_attempts)
         return False
@@ -361,6 +370,7 @@ class SegmentSynchronizerAsync(object):
         self._jobs = await self._worker_pool.submit_work(segment_names)
         if (dont_wait):
             return True
+
         return await self._jobs.await_completion()
 
     async def segment_exist_in_storage(self, segment_name):

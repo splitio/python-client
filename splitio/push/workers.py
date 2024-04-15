@@ -8,7 +8,7 @@ import base64
 import json
 from enum import Enum
 
-from splitio.models.splits import from_raw, Status
+from splitio.models.splits import from_raw
 from splitio.models.telemetry import UpdateFromSSE
 from splitio.push.parser import UpdateType
 from splitio.optional.loaders import asyncio

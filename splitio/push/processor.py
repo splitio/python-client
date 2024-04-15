@@ -54,9 +54,9 @@ class MessageProcessor(MessageProcessorBase):
 
     def _handle_feature_flag_kill(self, event):
         """
-        Handle incoming feature_flag kill notification.
+        Handle incoming feature flag kill notification.
 
-        :param event: Incoming feature_flag kill event
+        :param event: Incoming feature flag kill event
         :type event: splitio.push.parser.SplitKillUpdate
         """
         self._synchronizer.kill_split(event.feature_flag_name, event.default_treatment,
@@ -101,7 +101,7 @@ class MessageProcessor(MessageProcessorBase):
         handle(event)
 
     def shutdown(self):
-        """Stop splits & segments workers."""
+        """Stop feature flags & segments workers."""
         self._feature_flag_worker.stop()
         self._segments_worker.stop()
 

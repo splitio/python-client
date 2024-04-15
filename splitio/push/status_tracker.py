@@ -138,6 +138,7 @@ class PushStatusTracker(PushStatusTrackerBase):
         if self._timestamps.occupancy > event.timestamp:
             _LOGGER.info('received an old occupancy message. ignoring.')
             return None
+
         self._timestamps.occupancy = event.timestamp
 
         self._publishers[event.channel] = event.publishers
@@ -162,6 +163,7 @@ class PushStatusTracker(PushStatusTrackerBase):
         if self._timestamps.control > event.timestamp:
             _LOGGER.info('receved an old control message. ignoring.')
             return None
+
         self._timestamps.control = event.timestamp
 
         self._last_control_message = event.control_type
@@ -260,6 +262,7 @@ class PushStatusTrackerAsync(PushStatusTrackerBase):
         if self._timestamps.occupancy > event.timestamp:
             _LOGGER.info('received an old occupancy message. ignoring.')
             return None
+
         self._timestamps.occupancy = event.timestamp
 
         self._publishers[event.channel] = event.publishers
@@ -284,6 +287,7 @@ class PushStatusTrackerAsync(PushStatusTrackerBase):
         if self._timestamps.control > event.timestamp:
             _LOGGER.info('receved an old control message. ignoring.')
             return None
+
         self._timestamps.control = event.timestamp
 
         self._last_control_message = event.control_type

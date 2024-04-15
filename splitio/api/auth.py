@@ -48,6 +48,7 @@ class AuthAPI(object):  # pylint: disable=too-few-public-methods
             if 200 <= response.status_code < 300:
                 payload = json.loads(response.body)
                 return from_raw(payload)
+
             else:
                 if (response.status_code >= 400 and response.status_code < 500):
                     self._telemetry_runtime_producer.record_auth_rejections()
@@ -94,6 +95,7 @@ class AuthAPIAsync(object):  # pylint: disable=too-few-public-methods
             if 200 <= response.status_code < 300:
                 payload = json.loads(response.body)
                 return from_raw(payload)
+
             else:
                 if (response.status_code >= 400 and response.status_code < 500):
                     await self._telemetry_runtime_producer.record_auth_rejections()

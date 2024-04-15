@@ -31,6 +31,7 @@ class SplitManager(object):
         if self._factory.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible.")
             return []
+
         if self._factory._waiting_fork():
             _LOGGER.error("Client is not ready - no calls possible")
             return []
@@ -54,6 +55,7 @@ class SplitManager(object):
         if self._factory.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible.")
             return []
+
         if self._factory._waiting_fork():
             _LOGGER.error("Client is not ready - no calls possible")
             return []
@@ -80,6 +82,7 @@ class SplitManager(object):
         if self._factory.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible.")
             return None
+
         if self._factory._waiting_fork():
             _LOGGER.error("Client is not ready - no calls possible")
             return None
@@ -123,6 +126,7 @@ class SplitManagerAsync(object):
         if self._factory.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible.")
             return []
+
         if self._factory._waiting_fork():
             _LOGGER.error("Client is not ready - no calls possible")
             return []
@@ -146,6 +150,7 @@ class SplitManagerAsync(object):
         if self._factory.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible.")
             return []
+
         if self._factory._waiting_fork():
             _LOGGER.error("Client is not ready - no calls possible")
             return []
@@ -172,6 +177,7 @@ class SplitManagerAsync(object):
         if self._factory.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible.")
             return None
+
         if self._factory._waiting_fork():
             _LOGGER.error("Client is not ready - no calls possible")
             return None
