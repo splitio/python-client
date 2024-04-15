@@ -441,7 +441,7 @@ def _build_redis_factory(api_key, cfg):
     cache_enabled = cfg.get('redisLocalCacheEnabled', False)
     cache_ttl = cfg.get('redisLocalCacheTTL', 5)
     storages = {
-        'splits': RedisSplitStorage(redis_adapter, cache_enabled, cache_ttl, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
+        'splits': RedisSplitStorage(redis_adapter, cache_enabled, cache_ttl, []),
         'segments': RedisSegmentStorage(redis_adapter),
         'impressions': RedisImpressionsStorage(redis_adapter, sdk_metadata),
         'events': RedisEventsStorage(redis_adapter, sdk_metadata),
@@ -524,7 +524,7 @@ def _build_pluggable_factory(api_key, cfg):
     pluggable_adapter = cfg.get('storageWrapper')
     storage_prefix = cfg.get('storagePrefix')
     storages = {
-        'splits': PluggableSplitStorage(pluggable_adapter, storage_prefix, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
+        'splits': PluggableSplitStorage(pluggable_adapter, storage_prefix, []),
         'segments': PluggableSegmentStorage(pluggable_adapter, storage_prefix),
         'impressions': PluggableImpressionsStorage(pluggable_adapter, sdk_metadata, storage_prefix),
         'events': PluggableEventsStorage(pluggable_adapter, sdk_metadata, storage_prefix),
