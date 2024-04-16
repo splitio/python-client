@@ -388,7 +388,7 @@ class RedisSegmentStorageAsyncTests(object):
         finally:
             await adapter.delete('SPLITIO.segment.some_segment', 'SPLITIO.segment.some_segment.till')
 
-class RedisImpressionsStorageTests(object):
+class RedisImpressionsStorageAsyncTests(object):
     """Redis Impressions storage e2e tests."""
 
     async def _put_impressions(self, adapter, metadata):
