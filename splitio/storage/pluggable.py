@@ -1539,7 +1539,8 @@ class PluggableTelemetryStorage(PluggableTelemetryStorageBase):
 class PluggableTelemetryStorageAsync(PluggableTelemetryStorageBase):
     """Pluggable telemetry storage class."""
 
-    async def create(pluggable_adapter, sdk_metadata, prefix=None):
+    @classmethod
+    async def create(cls, pluggable_adapter, sdk_metadata, prefix=None):
         """
         Class constructor.
 
@@ -1550,7 +1551,7 @@ class PluggableTelemetryStorageAsync(PluggableTelemetryStorageBase):
         :param prefix: optional, prefix to storage keys
         :type prefix: str
         """
-        self = PluggableTelemetryStorageAsync()
+        self = cls()
         self._pluggable_adapter = pluggable_adapter
         self._sdk_metadata = sdk_metadata.sdk_version + '/' + sdk_metadata.instance_name + '/' + sdk_metadata.instance_ip
         self._telemetry_config_key = 'SPLITIO.telemetry.init'

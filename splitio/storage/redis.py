@@ -1367,7 +1367,8 @@ class RedisTelemetryStorage(RedisTelemetryStorageBase):
 class RedisTelemetryStorageAsync(RedisTelemetryStorageBase):
     """Redis based telemetry async storage class."""
 
-    async def create(redis_client, sdk_metadata):
+    @classmethod
+    async def create(cls, redis_client, sdk_metadata):
         """
         Create instance and reset tags
 
@@ -1379,7 +1380,7 @@ class RedisTelemetryStorageAsync(RedisTelemetryStorageBase):
         :return: self instance.
         :rtype: splitio.storage.redis.RedisTelemetryStorageAsync
         """
-        self = RedisTelemetryStorageAsync()
+        self = cls()
         await self._reset_config_tags()
         self._redis_client = redis_client
         self._sdk_metadata = sdk_metadata

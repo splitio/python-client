@@ -255,9 +255,10 @@ class MethodLatenciesAsync(MethodLatenciesBase):
     Method async Latency class
 
     """
-    async def create():
+    @classmethod
+    async def create(cls):
         """Constructor"""
-        self = MethodLatenciesAsync()
+        self = cls()
         self._lock = asyncio.Lock()
         async with self._lock:
             self._reset_all()
@@ -406,9 +407,10 @@ class HTTPLatenciesAsync(HTTPLatenciesBase):
     HTTP Latency async class
 
     """
-    async def create():
+    @classmethod
+    async def create(cls):
         """Constructor"""
-        self = HTTPLatenciesAsync()
+        self = cls()
         self._lock = asyncio.Lock()
         async with self._lock:
             self._reset_all()
@@ -557,9 +559,10 @@ class MethodExceptionsAsync(MethodExceptionsBase):
     Method async exceptions class
 
     """
-    async def create():
+    @classmethod
+    async def create(cls):
         """Constructor"""
-        self = MethodExceptionsAsync()
+        self = cls()
         self._lock = asyncio.Lock()
         async with self._lock:
             self._reset_all()
@@ -707,9 +710,10 @@ class LastSynchronizationAsync(LastSynchronizationBase):
     Last Synchronization async info class
 
     """
-    async def create():
+    @classmethod
+    async def create(cls):
         """Constructor"""
-        self = LastSynchronizationAsync()
+        self = cls()
         self._lock = asyncio.Lock()
         async with self._lock:
             self._reset_all()
@@ -869,9 +873,10 @@ class HTTPErrorsAsync(HTTPErrorsBase):
     Http error async class
 
     """
-    async def create():
+    @classmethod
+    async def create(cls):
         """Constructor"""
-        self = HTTPErrorsAsync()
+        self = cls()
         self._lock = asyncio.Lock()
         async with self._lock:
             self._reset_all()
@@ -1177,9 +1182,10 @@ class TelemetryCountersAsync(TelemetryCountersBase):
     Counters async class
 
     """
-    async def create():
+    @classmethod
+    async def create(cls):
         """Constructor"""
-        self = TelemetryCountersAsync()
+        self = cls()
         self._lock = asyncio.Lock()
         async with self._lock:
             self._reset_all()
@@ -1385,9 +1391,10 @@ class StreamingEventsAsync(object):
     Streaming events async class
 
     """
-    async def create():
+    @classmethod
+    async def create(cls):
         """Constructor"""
-        self = StreamingEventsAsync()
+        self = cls()
         self._lock = asyncio.Lock()
         async with self._lock:
             self._streaming_events = []
@@ -1803,9 +1810,10 @@ class TelemetryConfigAsync(TelemetryConfigBase):
     Telemetry init config async class
 
     """
-    async def create():
+    @classmethod
+    async def create(cls):
         """Constructor"""
-        self = TelemetryConfigAsync()
+        self = cls()
         self._lock = asyncio.Lock()
         async with self._lock:
             self._reset_all()

@@ -1672,9 +1672,10 @@ class InMemoryTelemetryStorage(InMemoryTelemetryStorageBase):
 class InMemoryTelemetryStorageAsync(InMemoryTelemetryStorageBase):
     """In-memory telemetry async storage."""
 
-    async def create():
+    @classmethod
+    async def create(cls):
         """Constructor"""
-        self = InMemoryTelemetryStorageAsync()
+        self = cls()
         self._lock = asyncio.Lock()
         self._method_exceptions = await MethodExceptionsAsync.create()
         self._last_synchronization = await LastSynchronizationAsync.create()
