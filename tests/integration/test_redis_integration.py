@@ -141,12 +141,12 @@ class RedisSegmentStorageTests(object):
             storage = RedisSegmentStorage(adapter)
             adapter.sadd(storage._get_key('some_segment'), 'key1', 'key2', 'key3', 'key4')
             adapter.set(storage._get_till_key('some_segment'), 123)
-            assert storage.segment_contains('some_segment', 'key0') is False
-            assert storage.segment_contains('some_segment', 'key1') is True
-            assert storage.segment_contains('some_segment', 'key2') is True
-            assert storage.segment_contains('some_segment', 'key3') is True
-            assert storage.segment_contains('some_segment', 'key4') is True
-            assert storage.segment_contains('some_segment', 'key5') is False
+            assert storage.segment_contains('some_segment', 'key0') == 0
+            assert storage.segment_contains('some_segment', 'key1') == 1
+            assert storage.segment_contains('some_segment', 'key2') == 1
+            assert storage.segment_contains('some_segment', 'key3') == 1
+            assert storage.segment_contains('some_segment', 'key4') == 1
+            assert storage.segment_contains('some_segment', 'key5') == 0
 
             fetched = storage.get('some_segment')
             assert fetched.keys == set(['key1', 'key2', 'key3', 'key4'])
@@ -375,12 +375,12 @@ class RedisSegmentStorageAsyncTests(object):
             storage = RedisSegmentStorageAsync(adapter)
             await adapter.sadd(storage._get_key('some_segment'), 'key1', 'key2', 'key3', 'key4')
             await adapter.set(storage._get_till_key('some_segment'), 123)
-            assert await storage.segment_contains('some_segment', 'key0') is False
-            assert await storage.segment_contains('some_segment', 'key1') is True
-            assert await storage.segment_contains('some_segment', 'key2') is True
-            assert await storage.segment_contains('some_segment', 'key3') is True
-            assert await storage.segment_contains('some_segment', 'key4') is True
-            assert await storage.segment_contains('some_segment', 'key5') is False
+            assert await storage.segment_contains('some_segment', 'key0') == 0
+            assert await storage.segment_contains('some_segment', 'key1') == 1
+            assert await storage.segment_contains('some_segment', 'key2') == 1
+            assert await storage.segment_contains('some_segment', 'key3') == 1
+            assert await storage.segment_contains('some_segment', 'key4') == 1
+            assert await storage.segment_contains('some_segment', 'key5') == 0
 
             fetched = await storage.get('some_segment')
             assert fetched.keys == set(['key1', 'key2', 'key3', 'key4'])
