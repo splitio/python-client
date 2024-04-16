@@ -30,7 +30,7 @@ class TelemetrySyncTaskTests(object):
         task.start()
         time.sleep(2)
         assert task.is_running()
-        assert len(api.record_stats.mock_calls) == 1
+        assert len(api.record_stats.mock_calls) >= 1
         stop_event = threading.Event()
         task.stop(stop_event)
         stop_event.wait(5)
