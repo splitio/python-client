@@ -177,7 +177,7 @@ class EqualToSemverMatcher(Matcher):
         :type raw_matcher: dict
         """
         self._data = raw_matcher.get('stringMatcherData')
-        self._semver = Semver(self._data)
+        self._semver = Semver.build(self._data)
 
     def _match(self, key, attributes=None, context=None):
         """
@@ -193,15 +193,19 @@ class EqualToSemverMatcher(Matcher):
         :returns: Wheter the match is successful.
         :rtype: bool
         """
-        if self._data is None:
+        if self._data is None or self._semver is None:
             _LOGGER.error("stringMatcherData is required for EQUAL_TO_SEMVER matcher type")
-            return None
+            return False
 
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
         if matching_data is None:
             return False
 
-        return self._semver.version == Semver(matching_data).version
+        matching_semver = Semver.build(matching_data)
+        if matching_semver is None:
+            return False
+
+        return self._semver.version == matching_semver.version
 
     def __str__(self):
         """Return string Representation."""
@@ -222,7 +226,7 @@ class GreaterThanOrEqualToSemverMatcher(Matcher):
         :type raw_matcher: dict
         """
         self._data = raw_matcher.get('stringMatcherData')
-        self._semver = Semver(self._data)
+        self._semver = Semver.build(self._data)
 
     def _match(self, key, attributes=None, context=None):
         """
@@ -238,15 +242,19 @@ class GreaterThanOrEqualToSemverMatcher(Matcher):
         :returns: Wheter the match is successful.
         :rtype: bool
         """
-        if self._data is None:
+        if self._data is None or self._semver is None:
             _LOGGER.error("stringMatcherData is required for GREATER_THAN_OR_EQUAL_TO_SEMVER matcher type")
-            return None
+            return False
 
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
         if matching_data is None:
             return False
 
-        return Semver(matching_data).compare(self._semver) in [0, 1]
+        matching_semver = Semver.build(matching_data)
+        if matching_semver is None:
+            return False
+
+        return matching_semver.compare(self._semver) in [0, 1]
 
     def __str__(self):
         """Return string Representation."""
