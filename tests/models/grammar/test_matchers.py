@@ -10,6 +10,7 @@ import re
 from datetime import datetime
 
 from splitio.models.grammar import matchers
+from splitio.models.grammar.matchers.semver import Semver
 from splitio.storage import SegmentStorage
 from splitio.engine.evaluator import Evaluator
 
@@ -884,3 +885,44 @@ class RegexMatcherTests(MatcherTestsBase):
         as_json = matchers.RegexMatcher(self.raw).to_json()
         assert as_json['matcherType'] == 'MATCHES_STRING'
         assert as_json['stringMatcherData'] == "^[a-z][A-Z][0-9]$"
+
+class EqualToSemverMatcherTests(MatcherTestsBase):
+    """Semver equalto matcher test cases."""
+
+    raw = {
+        'negate': False,
+        'matcherType': 'EQUAL_TO_SEMVER',
+        'stringMatcherData': "2.1.8"
+    }
+
+    def test_from_raw(self, mocker):
+        """Test parsing from raw json/dict."""
+        parsed = matchers.from_raw(self.raw)
+        assert isinstance(parsed, matchers.EqualToSemverMatcher)
+        assert parsed._data == "2.1.8"
+        assert isinstance(parsed._semver, Semver)
+        assert parsed._semver._major == 2
+        assert parsed._semver._minor == 1
+        assert parsed._semver._patch == 8
+        assert parsed._semver._pre_release == []
+
+    def test_matcher_behaviour(self, mocker):
+        """Test if the matcher works properly."""
+        parsed = matchers.from_raw(self.raw)
+        assert not parsed._match("2.1.8+rc")
+        assert parsed._match("2.1.8")
+        assert not parsed._match("2.1.5")
+        assert not parsed._match("2.1.5-rc1")
+        assert not parsed._match(None)
+        assert not parsed._match("semver")
+
+    def test_to_json(self):
+        """Test that the object serializes to JSON properly."""
+        as_json = matchers.EqualToSemverMatcher(self.raw).to_json()
+        assert as_json['matcherType'] == 'EQUAL_TO_SEMVER'
+        assert as_json['stringMatcherData'] == "2.1.8"
+
+    def test_to_str(self):
+        """Test that the object serializes to str properly."""
+        as_str = matchers.EqualToSemverMatcher(self.raw)
+        assert str(as_str) == "equal semver 2.1.8"

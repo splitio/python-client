@@ -8,6 +8,7 @@ from splitio.models.grammar.matchers.sets import ContainsAllOfSetMatcher, \
 from splitio.models.grammar.matchers.string import ContainsStringMatcher, \
     EndsWithMatcher, RegexMatcher, StartsWithMatcher, WhitelistMatcher
 from splitio.models.grammar.matchers.misc import BooleanMatcher, DependencyMatcher
+from splitio.models.grammar.matchers.semver import EqualToSemverMatcher
 
 
 MATCHER_TYPE_ALL_KEYS = 'ALL_KEYS'
@@ -27,6 +28,7 @@ MATCHER_TYPE_CONTAINS_STRING = 'CONTAINS_STRING'
 MATCHER_TYPE_IN_SPLIT_TREATMENT = 'IN_SPLIT_TREATMENT'
 MATCHER_TYPE_EQUAL_TO_BOOLEAN = 'EQUAL_TO_BOOLEAN'
 MATCHER_TYPE_MATCHES_STRING = 'MATCHES_STRING'
+MATCHER_TYPE_EQUAL_TO_SEMVER = 'EQUAL_TO_SEMVER'
 
 
 _MATCHER_BUILDERS = {
@@ -46,7 +48,9 @@ _MATCHER_BUILDERS = {
     MATCHER_TYPE_CONTAINS_STRING: ContainsStringMatcher,
     MATCHER_TYPE_IN_SPLIT_TREATMENT: DependencyMatcher,
     MATCHER_TYPE_EQUAL_TO_BOOLEAN: BooleanMatcher,
-    MATCHER_TYPE_MATCHES_STRING: RegexMatcher
+    MATCHER_TYPE_MATCHES_STRING: RegexMatcher,
+    MATCHER_TYPE_EQUAL_TO_SEMVER: EqualToSemverMatcher
+
 }
 
 
