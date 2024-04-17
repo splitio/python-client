@@ -1,5 +1,4 @@
 """Semver matcher classes."""
-import abc
 import logging
 
 from splitio.models.grammar.matchers.base import Matcher
