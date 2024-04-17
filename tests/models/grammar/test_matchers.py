@@ -909,7 +909,7 @@ class EqualToSemverMatcherTests(MatcherTestsBase):
     def test_matcher_behaviour(self, mocker):
         """Test if the matcher works properly."""
         parsed = matchers.from_raw(self.raw)
-        assert parsed._match("2.1.8+rc")
+        assert not parsed._match("2.1.8+rc")
         assert parsed._match("2.1.8")
         assert not parsed._match("2.1.5")
         assert not parsed._match("2.1.5-rc1")
@@ -1079,8 +1079,8 @@ class InListSemverMatcherTests(MatcherTestsBase):
     def test_matcher_behaviour(self, mocker):
         """Test if the matcher works properly."""
         parsed = matchers.from_raw(self.raw)
-        assert parsed._match("2.1.8+rc")
-        assert not parsed._match("2.1.8-rc1")
+        assert not parsed._match("2.1.8+rc")
+        assert parsed._match("2.1.8")
         assert not parsed._match("2.1.11-rc12")
         assert parsed._match("2.1.11")
         assert not parsed._match("2.1.7")
