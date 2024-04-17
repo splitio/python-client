@@ -178,7 +178,7 @@ class EqualToSemverMatcher(Matcher):
         :type raw_matcher: dict
         """
         self._data = raw_matcher.get('stringMatcherData')
-        self._semver = Semver(self._data)
+        self._semver = Semver.build(self._data)
 
     def _match(self, key, attributes=None, context=None):
         """
