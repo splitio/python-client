@@ -194,7 +194,7 @@ class EqualToSemverMatcher(Matcher):
         :returns: Wheter the match is successful.
         :rtype: bool
         """
-        if self._data is None:
+        if self._data is None or self._semver is None:
             _LOGGER.error("stringMatcherData is required for EQUAL_TO_SEMVER matcher type")
             return None
 
