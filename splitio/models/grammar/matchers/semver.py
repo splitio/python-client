@@ -51,6 +51,9 @@ class Semver(object):
             self._is_stable = True
         else:
             pre_release_data = without_metadata[index+1:]
+            if pre_release_data == "":
+                raise RuntimeError("Pre-release is empty despite delimeter exists: " + version)
+
             without_metadata = without_metadata[:index]
             self._pre_release = pre_release_data.split(self._VALUE_DELIMITER)
 
@@ -67,7 +70,10 @@ class Semver(object):
         if index == -1:
             return version
 
-        self._metadata = version[index:]
+        self._metadata = version[index+1:]
+        if self._metadata == "":
+            raise RuntimeError("Metadata is empty despite delimeter exists: " + version)
+
         return  version[:index]
 
     def set_major_minor_and_patch(self, version):
