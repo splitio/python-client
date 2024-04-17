@@ -19,10 +19,7 @@ _DEFAULT_CONDITIONS_TEMPLATE =   {
         "combiner": "AND",
         "matchers": [
         {
-            "keySelector": {
-                "trafficType": "user",
-                "attribute": None
-            },
+            "keySelector": None,
             "matcherType": "ALL_KEYS",
             "negate": False,
             "userDefinedSegmentMatcherData": None,
