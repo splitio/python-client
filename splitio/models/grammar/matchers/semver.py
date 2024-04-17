@@ -214,3 +214,52 @@ class EqualToSemverMatcher(Matcher):
     def _add_matcher_specific_properties_to_json(self):
         """Add matcher specific properties to base dict before returning it."""
         return {'matcherType': 'EQUAL_TO_SEMVER', 'stringMatcherData': self._data}
+
+class GreaterThanOrEqualToSemverMatcher(Matcher):
+    """A matcher for Semver greater than or equal to."""
+
+    def _build(self, raw_matcher):
+        """
+        Build a GreaterThanOrEqualToSemverMatcher.
+
+        :param raw_matcher: raw matcher as fetched from splitChanges response.
+        :type raw_matcher: dict
+        """
+        self._data = raw_matcher.get('stringMatcherData')
+        self._semver = Semver.build(self._data)
+
+    def _match(self, key, attributes=None, context=None):
+        """
+        Evaluate user input against a matcher and return whether the match is successful.
+
+        :param key: User key.
+        :type key: str.
+        :param attributes: Custom user attributes.
+        :type attributes: dict.
+        :param context: Evaluation context
+        :type context: dict
+
+        :returns: Wheter the match is successful.
+        :rtype: bool
+        """
+        if self._data is None or self._semver is None:
+            _LOGGER.error("stringMatcherData is required for GREATER_THAN_OR_EQUAL_TO_SEMVER matcher type")
+            return False
+
+        matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
+        if matching_data is None:
+            return False
+
+        matching_semver = Semver.build(matching_data)
+        if matching_semver is None:
+            return False
+
+        return matching_semver.compare(self._semver) in [0, 1]
+
+    def __str__(self):
+        """Return string Representation."""
+        return 'greater than or equal to semver {data}'.format(data=self._data)
+
+    def _add_matcher_specific_properties_to_json(self):
+        """Add matcher specific properties to base dict before returning it."""
+        return {'matcherType': 'GREATER_THAN_OR_EQUAL_TO_SEMVER', 'stringMatcherData': self._data}
