@@ -44,7 +44,6 @@ class Semver(object):
         Parse the string in self.version to update the other internal variables
         """
         without_metadata = self._remove_metadata_if_exists(version)
-
         index = without_metadata.find(self._PRE_RELEASE_DELIMITER)
         if index == -1:
             self._is_stable = True
