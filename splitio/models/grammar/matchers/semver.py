@@ -43,7 +43,7 @@ class Semver(object):
         """
         Parse the string in self.version to update the other internal variables
         """
-        without_metadata = self.remove_metadata_if_exists(version)
+        without_metadata = self._remove_metadata_if_exists(version)
 
         index = without_metadata.find(self._PRE_RELEASE_DELIMITER)
         if index == -1:
@@ -53,9 +53,9 @@ class Semver(object):
             without_metadata = without_metadata[:index]
             self._pre_release = pre_release_data.split(self._VALUE_DELIMITER)
 
-        self.set_major_minor_and_patch(without_metadata)
+        self._set_major_minor_and_patch(without_metadata)
 
-    def remove_metadata_if_exists(self, version):
+    def _remove_metadata_if_exists(self, version):
         """
         Check if there is any metadata characters in self.version.
 
@@ -69,7 +69,7 @@ class Semver(object):
         self._metadata = version[index:]
         return  version[:index]
 
-    def set_major_minor_and_patch(self, version):
+    def _set_major_minor_and_patch(self, version):
         """
         Set the major, minor and patch internal variables based on string passed.
 
