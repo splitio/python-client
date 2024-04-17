@@ -1,5 +1,4 @@
 """Semver matcher classes."""
-import abc
 import logging
 
 from splitio.models.grammar.matchers.base import Matcher
@@ -7,7 +6,7 @@ from splitio.models.grammar.matchers.string import Sanitizer
 
 _LOGGER = logging.getLogger(__name__)
 
-class Semver(object, metaclass=abc.ABCMeta):
+class Semver(object):
     """Semver class."""
 
     _METADATA_DELIMITER = "+"
