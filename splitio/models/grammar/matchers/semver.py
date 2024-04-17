@@ -202,7 +202,11 @@ class EqualToSemverMatcher(Matcher):
         if matching_data is None:
             return False
 
-        return self._semver.version == Semver(matching_data).version
+        matcheing_semver = Semver.build(matching_data)
+        if matcheing_semver is None:
+            return False
+
+        return self._semver.version == matcheing_semver.version
 
     def __str__(self):
         """Return string Representation."""
