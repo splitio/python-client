@@ -196,7 +196,7 @@ class EqualToSemverMatcher(Matcher):
         """
         if self._data is None or self._semver is None:
             _LOGGER.error("stringMatcherData is required for EQUAL_TO_SEMVER matcher type")
-            return None
+            return False
 
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
         if matching_data is None:
