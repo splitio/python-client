@@ -1,7 +1,9 @@
 """Semver matcher classes."""
-import abc
+import logging
 
-class Semver(object, metaclass=abc.ABCMeta):
+_LOGGER = logging.getLogger(__name__)
+
+class Semver(object):
     """Semver class."""
 
     _METADATA_DELIMITER = "+"
@@ -20,14 +22,25 @@ class Semver(object, metaclass=abc.ABCMeta):
         self._patch = 0
         self._pre_release = []
         self._is_stable = False
-        self._old_version = version
-        self._parse()
+        self.version = ""
+        self._metadata = ""
+        self._parse(version)
 
-    def _parse(self):
+    @classmethod
+    def build(cls, version):
+        try:
+            self = cls(version)
+        except RuntimeError as e:
+            _LOGGER.error("Failed to parse Semver data, incorrect data type:  %s", e)
+            return None
+
+        return self
+
+    def _parse(self, version):
         """
-        Parse the string in self._old_version to update the other internal variables
+        Parse the string in self.version to update the other internal variables
         """
-        without_metadata = self.remove_metadata_if_exists()
+        without_metadata = self.remove_metadata_if_exists(version)
 
         index = without_metadata.find(self._PRE_RELEASE_DELIMITER)
         if index == -1:
@@ -39,18 +52,19 @@ class Semver(object, metaclass=abc.ABCMeta):
 
         self.set_major_minor_and_patch(without_metadata)
 
-    def remove_metadata_if_exists(self):
+    def remove_metadata_if_exists(self, version):
         """
-        Check if there is any metadata characters in self._old_version.
+        Check if there is any metadata characters in self.version.
 
         :returns: The semver string without the metadata
         :rtype: str
         """
-        index = self._old_version.find(self._METADATA_DELIMITER)
+        index = version.find(self._METADATA_DELIMITER)
         if index == -1:
-            return self._old_version
+            return version
 
-        return  self._old_version[:index]
+        self._metadata = version[index:]
+        return  version[:index]
 
     def set_major_minor_and_patch(self, version):
         """
@@ -68,6 +82,12 @@ class Semver(object, metaclass=abc.ABCMeta):
         self._minor = int(parts[1])
         self._patch = int(parts[2])
 
+        self.version = "{major}{DELIMITER}{minor}{DELIMITER}{patch}".format(major = self._major, DELIMITER = self._VALUE_DELIMITER,
+                    minor = self._minor, patch = self._patch)
+        self.version += "{DELIMITER}{pre_release}".format(DELIMITER=self._PRE_RELEASE_DELIMITER,
+                    pre_release = '.'.join(self._pre_release)) if len(self._pre_release) > 0 else ""
+        self.version += "{DELIMITER}{metadata}".format(DELIMITER=self._METADATA_DELIMITER, metadata = self._metadata) if self._metadata != "" else ""
+
     def compare(self, to_compare):
         """
         Compare the current Semver object to a given Semver object, return:
@@ -81,7 +101,7 @@ class Semver(object, metaclass=abc.ABCMeta):
         :returns: integer based on comparison
         :rtype: int
         """
-        if self._old_version == to_compare._old_version:
+        if self.version == to_compare.version:
             return 0
 
         # Compare major, minor, and patch versions numerically
