@@ -1058,3 +1058,50 @@ class BetweenSemverMatcherTests(MatcherTestsBase):
         """Test that the object serializes to str properly."""
         as_str = matchers.BetweenSemverMatcher(self.raw)
         assert str(as_str) == "between semver 2.1.8 and 2.1.11"
+
+class InListSemverMatcherTests(MatcherTestsBase):
+    """Semver inlist matcher test cases."""
+
+    raw = {
+        'negate': False,
+        'matcherType': 'IN_LIST_SEMVER',
+        'whitelistMatcherData': {"whitelist": ["2.1.8", "2.1.11"]}
+    }
+
+    def test_from_raw(self, mocker):
+        """Test parsing from raw json/dict."""
+        parsed = matchers.from_raw(self.raw)
+        assert isinstance(parsed, matchers.InListSemverMatcher)
+        assert parsed._data == ["2.1.8", "2.1.11"]
+        assert [isinstance(item, Semver) for item in parsed._semver_list]
+        assert parsed._semver_list[0]._major == 2
+        assert parsed._semver_list[0]._minor == 1
+        assert parsed._semver_list[0]._patch == 8
+        assert parsed._semver_list[0]._pre_release == []
+
+        assert parsed._semver_list[1]._major == 2
+        assert parsed._semver_list[1]._minor == 1
+        assert parsed._semver_list[1]._patch == 11
+        assert parsed._semver_list[1]._pre_release == []
+
+    def test_matcher_behaviour(self, mocker):
+        """Test if the matcher works properly."""
+        parsed = matchers.from_raw(self.raw)
+        assert not parsed._match("2.1.8+rc")
+        assert parsed._match("2.1.8")
+        assert not parsed._match("2.1.11-rc12")
+        assert parsed._match("2.1.11")
+        assert not parsed._match("2.1.7")
+        assert not parsed._match(None)
+        assert not parsed._match("semver")
+
+    def test_to_json(self):
+        """Test that the object serializes to JSON properly."""
+        as_json = matchers.InListSemverMatcher(self.raw).to_json()
+        assert as_json['matcherType'] == 'IN_LIST_SEMVER'
+        assert as_json['whitelistMatcherData'] == {"whitelist": ["2.1.8", "2.1.11"]}
+
+    def test_to_str(self):
+        """Test that the object serializes to str properly."""
+        as_str = matchers.InListSemverMatcher(self.raw)
+        assert str(as_str) == "in list semver ['2.1.8', '2.1.11']"

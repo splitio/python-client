@@ -43,8 +43,7 @@ class Semver(object):
         """
         Parse the string in self.version to update the other internal variables
         """
-        without_metadata = self.remove_metadata_if_exists(version)
-
+        without_metadata = self._remove_metadata_if_exists(version)
         index = without_metadata.find(self._PRE_RELEASE_DELIMITER)
         if index == -1:
             self._is_stable = True
@@ -56,9 +55,9 @@ class Semver(object):
             without_metadata = without_metadata[:index]
             self._pre_release = pre_release_data.split(self._VALUE_DELIMITER)
 
-        self.set_major_minor_and_patch(without_metadata)
+        self._set_major_minor_and_patch(without_metadata)
 
-    def remove_metadata_if_exists(self, version):
+    def _remove_metadata_if_exists(self, version):
         """
         Check if there is any metadata characters in self.version.
 
@@ -75,7 +74,7 @@ class Semver(object):
 
         return  version[:index]
 
-    def set_major_minor_and_patch(self, version):
+    def _set_major_minor_and_patch(self, version):
         """
         Set the major, minor and patch internal variables based on string passed.
 
@@ -362,3 +361,55 @@ class BetweenSemverMatcher(Matcher):
     def _add_matcher_specific_properties_to_json(self):
         """Add matcher specific properties to base dict before returning it."""
         return {'matcherType': 'BETWEEN_SEMVER', 'betweenStringMatcherData': self._data}
+
+class InListSemverMatcher(Matcher):
+    """A matcher for Semver in list."""
+
+    def _build(self, raw_matcher):
+        """
+        Build a InListSemverMatcher.
+
+        :param raw_matcher: raw matcher as fetched from splitChanges response.
+        :type raw_matcher: dict
+        """
+        self._data = raw_matcher.get('whitelistMatcherData')
+        if self._data is not None:
+            self._data = self._data.get('whitelist')
+
+        self._semver_list = [Semver.build(item) if item is not None else None for item in self._data] if self._data is not None else []
+
+    def _match(self, key, attributes=None, context=None):
+        """
+        Evaluate user input against a matcher and return whether the match is successful.
+
+        :param key: User key.
+        :type key: str.
+        :param attributes: Custom user attributes.
+        :type attributes: dict.
+        :param context: Evaluation context
+        :type context: dict
+
+        :returns: Wheter the match is successful.
+        :rtype: bool
+        """
+        if self._data is None:
+            _LOGGER.error("whitelistMatcherData is required for IN_LIST_SEMVER matcher type")
+            return False
+
+        matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
+        if matching_data is None:
+            return False
+
+        matching_semver = Semver.build(matching_data)
+        if matching_semver is None:
+            return False
+
+        return any([item.version == matching_semver.version if item is not None else False for item in self._semver_list])
+
+    def __str__(self):
+        """Return string Representation."""
+        return 'in list semver {data}'.format(data=self._data)
+
+    def _add_matcher_specific_properties_to_json(self):
+        """Add matcher specific properties to base dict before returning it."""
+        return {'matcherType': 'IN_LIST_SEMVER', 'whitelistMatcherData': {'whitelist': self._data}}
