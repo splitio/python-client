@@ -312,3 +312,53 @@ class LessThanOrEqualToSemverMatcher(Matcher):
     def _add_matcher_specific_properties_to_json(self):
         """Add matcher specific properties to base dict before returning it."""
         return {'matcherType': 'LESS_THAN_OR_EQUAL_TO_SEMVER', 'stringMatcherData': self._data}
+
+class BetweenSemverMatcher(Matcher):
+    """A matcher for Semver between."""
+
+    def _build(self, raw_matcher):
+        """
+        Build a BetweenSemverMatcher.
+
+        :param raw_matcher: raw matcher as fetched from splitChanges response.
+        :type raw_matcher: dict
+        """
+        self._data = raw_matcher.get('betweenStringMatcherData')
+        self._semver_start = Semver.build(self._data['start']) if self._data.get('start') is not None else None
+        self._semver_end = Semver.build(self._data['end']) if self._data.get('end') is not None else None
+
+    def _match(self, key, attributes=None, context=None):
+        """
+        Evaluate user input against a matcher and return whether the match is successful.
+
+        :param key: User key.
+        :type key: str.
+        :param attributes: Custom user attributes.
+        :type attributes: dict.
+        :param context: Evaluation context
+        :type context: dict
+
+        :returns: Wheter the match is successful.
+        :rtype: bool
+        """
+        if self._data is None or self._semver_start is None or self._semver_end is None:
+            _LOGGER.error("betweenStringMatcherData is required for BETWEEN_SEMVER matcher type")
+            return False
+
+        matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
+        if matching_data is None:
+            return False
+
+        matching_semver = Semver.build(matching_data)
+        if matching_semver is None:
+            return False
+
+        return (self._semver_start.compare(matching_semver) in [0, -1]) and (self._semver_end.compare(matching_semver) in [0, 1])
+
+    def __str__(self):
+        """Return string Representation."""
+        return 'between semver {start} and {end}'.format(start=self._data.get('start'), end=self._data.get('end'))
+
+    def _add_matcher_specific_properties_to_json(self):
+        """Add matcher specific properties to base dict before returning it."""
+        return {'matcherType': 'BETWEEN_SEMVER', 'betweenStringMatcherData': self._data}
