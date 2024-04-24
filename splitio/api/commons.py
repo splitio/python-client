@@ -3,7 +3,7 @@ from splitio.util.time import get_current_epoch_time_ms
 
 _CACHE_CONTROL = 'Cache-Control'
 _CACHE_CONTROL_NO_CACHE = 'no-cache'
-
+_SPEC_VERSION = '1.1'
 
 def headers_from_metadata(sdk_metadata, client_key=None):
     """
@@ -57,7 +57,7 @@ def record_telemetry(status_code, elapsed, metric_name, telemetry_runtime_produc
 class FetchOptions(object):
     """Fetch Options object."""
 
-    def __init__(self, cache_control_headers=False, change_number=None, sets=None):
+    def __init__(self, cache_control_headers=False, change_number=None, sets=None, spec=_SPEC_VERSION):
         """
         Class constructor.
 
@@ -73,6 +73,7 @@ class FetchOptions(object):
         self._cache_control_headers = cache_control_headers
         self._change_number = change_number
         self._sets = sets
+        self._spec = spec
 
     @property
     def cache_control_headers(self):
@@ -89,6 +90,11 @@ class FetchOptions(object):
         """Return sets."""
         return self._sets
 
+    @property
+    def spec(self):
+        """Return sets."""
+        return self._spec
+
     def __eq__(self, other):
         """Match between other options."""
         if self._cache_control_headers != other._cache_control_headers:
@@ -96,6 +102,8 @@ class FetchOptions(object):
         if self._change_number != other._change_number:
             return False
         if self._sets != other._sets:
+            return False
+        if self._spec != other._spec:
             return False
         return True
 
@@ -116,7 +124,8 @@ def build_fetch(change_number, fetch_options, metadata):
     :return: Objects for fetch
     :rtype: dict, dict
     """
-    query = {'since': change_number}
+    query = {'s': fetch_options.spec} if fetch_options.spec is not None else {}
+    query['since'] = change_number
     extra_headers = metadata
     if fetch_options is None:
         return query, extra_headers
