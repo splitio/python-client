@@ -5,7 +5,7 @@ import json
 
 from splitio.api import APIException
 from splitio.api.commons import headers_from_metadata, record_telemetry
-from splitio.api.commons import _SPEC_VERSION
+from splitio.spec import SPEC_VERSION
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.api.client import HttpClientException
 from splitio.models.token import from_raw
@@ -44,7 +44,7 @@ class AuthAPI(object):  # pylint: disable=too-few-public-methods
         try:
             response = self._client.get(
                 'auth',
-                '/v2/auth?s=' + _SPEC_VERSION,
+                '/v2/auth?s=' + SPEC_VERSION,
                 self._sdk_key,
                 extra_headers=self._metadata,
             )

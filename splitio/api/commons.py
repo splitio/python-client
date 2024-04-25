@@ -1,9 +1,9 @@
 """Commons module."""
 from splitio.util.time import get_current_epoch_time_ms
+from splitio.spec import SPEC_VERSION
 
 _CACHE_CONTROL = 'Cache-Control'
 _CACHE_CONTROL_NO_CACHE = 'no-cache'
-_SPEC_VERSION = '1.1'
 
 def headers_from_metadata(sdk_metadata, client_key=None):
     """
@@ -57,7 +57,7 @@ def record_telemetry(status_code, elapsed, metric_name, telemetry_runtime_produc
 class FetchOptions(object):
     """Fetch Options object."""
 
-    def __init__(self, cache_control_headers=False, change_number=None, sets=None, spec=_SPEC_VERSION):
+    def __init__(self, cache_control_headers=False, change_number=None, sets=None, spec=SPEC_VERSION):
         """
         Class constructor.
 
