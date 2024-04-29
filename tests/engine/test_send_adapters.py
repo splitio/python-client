@@ -40,8 +40,11 @@ class InMemorySenderAdapterTests(object):
         telemetry_api = TelemetryAPI(mocker.Mock(), 'some_api_key', mocker.Mock(), mocker.Mock())
         sender_adapter = InMemorySenderAdapter(telemetry_api)
         sender_adapter.record_unique_keys(uniques)
-
         assert(mocker.called)
+
+        mocker.reset_mock()
+        sender_adapter.record_unique_keys({})
+        assert(not mocker.called)
 
 class RedisSenderAdapterTests(object):
     """Redis sender adapter test."""
@@ -70,8 +73,11 @@ class RedisSenderAdapterTests(object):
         redis_client = RedisAdapter(mocker.Mock(), mocker.Mock())
         sender_adapter = RedisSenderAdapter(redis_client)
         sender_adapter.record_unique_keys(uniques)
-
         assert(mocker.called)
+
+        mocker.reset_mock()
+        sender_adapter.record_unique_keys({})
+        assert(not mocker.called)
 
     @mock.patch('splitio.storage.adapters.redis.RedisPipelineAdapter.hincrby')
     def test_flush_counters(self, mocker):
@@ -84,8 +90,11 @@ class RedisSenderAdapterTests(object):
         redis_client = RedisAdapter(mocker.Mock(), mocker.Mock())
         sender_adapter = RedisSenderAdapter(redis_client)
         sender_adapter.flush_counters(counters)
-
         assert(mocker.called)
+
+        mocker.reset_mock()
+        sender_adapter.flush_counters({})
+        assert(not mocker.called)
 
     @mock.patch('splitio.storage.adapters.redis.RedisAdapter.expire')
     def test_expire_keys(self, mocker):
@@ -128,6 +137,10 @@ class PluggableSenderAdapterTests(object):
         sender_adapter.record_unique_keys(uniques)
         assert(adapter._expire[adapters._MTK_QUEUE_KEY] != -1)
 
+        adapter._keys[adapters._MTK_QUEUE_KEY] = {}
+        sender_adapter.record_unique_keys({})
+        assert(adapter._keys[adapters._MTK_QUEUE_KEY] == {})
+
     def test_flush_counters(self, mocker):
         """Test sending counters."""
         adapter = StorageMockAdapter()
@@ -144,3 +157,8 @@ class PluggableSenderAdapterTests(object):
         assert(adapter._expire[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f1::123'] == adapters._IMP_COUNT_KEY_DEFAULT_TTL)
         sender_adapter.flush_counters(counters)
         assert(adapter._expire[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f2::123'] == adapters._IMP_COUNT_KEY_DEFAULT_TTL)
+
+        del adapter._keys[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f1::123']
+        del adapter._keys[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f2::123']
+        sender_adapter.flush_counters({})
+        assert(adapter.get_keys_by_prefix(adapters._IMP_COUNT_QUEUE_KEY) == [])
