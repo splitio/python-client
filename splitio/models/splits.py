@@ -37,7 +37,7 @@ _DEFAULT_CONDITIONS_TEMPLATE =   {
         "size": 100
         }
     ],
-    "label": "unsupported matcher type"
+    "label": "targeting rule type unsupported by sdk"
 }
 
 
