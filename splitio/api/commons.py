@@ -131,8 +131,8 @@ def build_fetch(change_number, fetch_options, metadata):
         return query, extra_headers
     if fetch_options.cache_control_headers:
         extra_headers[_CACHE_CONTROL] = _CACHE_CONTROL_NO_CACHE
-    if fetch_options.change_number is not None:
-        query['till'] = fetch_options.change_number
     if fetch_options.sets is not None:
         query['sets'] = fetch_options.sets
+    if fetch_options.change_number is not None:
+        query['till'] = fetch_options.change_number
     return query, extra_headers
