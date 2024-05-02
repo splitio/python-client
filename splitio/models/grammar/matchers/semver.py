@@ -1,6 +1,6 @@
 """Semver matcher classes."""
 import logging
-
+import pytest
 from splitio.models.grammar.matchers.base import Matcher
 from splitio.models.grammar.matchers.string import Sanitizer
 
@@ -53,7 +53,10 @@ class Semver(object):
                 raise RuntimeError("Pre-release is empty despite delimeter exists: " + version)
 
             without_metadata = without_metadata[:index]
-            self._pre_release = pre_release_data.split(self._VALUE_DELIMITER)
+            for pre_digit in pre_release_data.split(self._VALUE_DELIMITER):
+                if pre_digit.isnumeric():
+                    pre_digit = str(int(pre_digit))
+                self._pre_release.append(pre_digit)
 
         self._set_major_minor_and_patch(without_metadata)
 
