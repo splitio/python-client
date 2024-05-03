@@ -1,3 +1,6 @@
+9.7.0 (May XX, 2024)
+- Added support for targeting rules based on semantic versions (https://semver.org/).
+
 9.6.2 (Apr 5, 2024)
 - Fixed an issue when pushing unique keys tracker data to redis if no keys exist, i.e. get_treatment flavors are not called.
 
