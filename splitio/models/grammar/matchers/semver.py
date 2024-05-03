@@ -1,6 +1,6 @@
 """Semver matcher classes."""
 import logging
-import pytest
+
 from splitio.models.grammar.matchers.base import Matcher
 from splitio.models.grammar.matchers.string import Sanitizer
 
