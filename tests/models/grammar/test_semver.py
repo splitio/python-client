@@ -53,3 +53,7 @@ class SemverTests(object):
                     assert version2.compare(version1) >= 0 and version3.compare(version2) >= 0
                 else:
                     assert version2.compare(version1) < 0 or version3.compare(version2) < 0
+
+    def test_leading_zeros(self):
+        assert Semver.build('1.01.2').version == '1.1.2'
+        assert Semver.build('1.01.2-rc.01').version == '1.1.2-rc.1'
