@@ -6,6 +6,13 @@ from splitio.models.grammar.matchers.string import Sanitizer
 
 _LOGGER = logging.getLogger(__name__)
 
+def build_semver_or_none(version):
+    try:
+        return Semver(version)
+    except (RuntimeError, ValueError):
+        _LOGGER.error("Invalid semver version: %s", version)
+        return None
+
 class Semver(object):
     """Semver class."""
 
@@ -29,28 +36,19 @@ class Semver(object):
         self._metadata = ""
         self._parse(version)
 
-    @classmethod
-    def build(cls, version):
-        try:
-            self = cls(version)
-        except RuntimeError as e:
-            _LOGGER.error("Failed to parse Semver data, incorrect data type:  %s", e)
-            return None
-
-        return self
 
     def _parse(self, version):
         """
         Parse the string in self.version to update the other internal variables
         """
-        without_metadata = self._remove_metadata_if_exists(version)
+        without_metadata = self._extract_metadata(version)
         index = without_metadata.find(self._PRE_RELEASE_DELIMITER)
         if index == -1:
             self._is_stable = True
         else:
             pre_release_data = without_metadata[index+1:]
             if pre_release_data == "":
-                raise RuntimeError("Pre-release is empty despite delimeter exists: " + version)
+                raise RuntimeError("Pre-release is empty despite delimiter exists: " + version)
 
             without_metadata = without_metadata[:index]
             for pre_digit in pre_release_data.split(self._VALUE_DELIMITER):
@@ -58,9 +56,9 @@ class Semver(object):
                     pre_digit = str(int(pre_digit))
                 self._pre_release.append(pre_digit)
 
-        self._set_major_minor_and_patch(without_metadata)
+        self._set_components(without_metadata)
 
-    def _remove_metadata_if_exists(self, version):
+    def _extract_metadata(self, version):
         """
         Check if there is any metadata characters in self.version.
 
@@ -73,11 +71,11 @@ class Semver(object):
 
         self._metadata = version[index+1:]
         if self._metadata == "":
-            raise RuntimeError("Metadata is empty despite delimeter exists: " + version)
+            raise RuntimeError("Metadata is empty despite delimiter exists: " + version)
 
         return  version[:index]
 
-    def _set_major_minor_and_patch(self, version):
+    def _set_components(self, version):
         """
         Set the major, minor and patch internal variables based on string passed.
 
@@ -140,7 +138,7 @@ class Semver(object):
                 continue
 
             if self._pre_release[i].isnumeric() and to_compare._pre_release[i].isnumeric():
-                 return self._compare_vars(int(self._pre_release[i]), int(to_compare._pre_release[i]))
+                return self._compare_vars(int(self._pre_release[i]), int(to_compare._pre_release[i]))
 
             return self._compare_vars(self._pre_release[i], to_compare._pre_release[i])
 
@@ -179,7 +177,7 @@ class EqualToSemverMatcher(Matcher):
         :type raw_matcher: dict
         """
         self._data = raw_matcher.get('stringMatcherData')
-        self._semver = Semver.build(self._data)
+        self._semver = build_semver_or_none(raw_matcher.get('stringMatcherData'))
 
     def _match(self, key, attributes=None, context=None):
         """
@@ -195,7 +193,7 @@ class EqualToSemverMatcher(Matcher):
         :returns: Wheter the match is successful.
         :rtype: bool
         """
-        if self._data is None or self._semver is None:
+        if self._semver is None:
             _LOGGER.error("stringMatcherData is required for EQUAL_TO_SEMVER matcher type")
             return False
 
@@ -203,7 +201,7 @@ class EqualToSemverMatcher(Matcher):
         if matching_data is None:
             return False
 
-        matching_semver = Semver.build(matching_data)
+        matching_semver = build_semver_or_none(matching_data)
         if matching_semver is None:
             return False
 
@@ -228,7 +226,7 @@ class GreaterThanOrEqualToSemverMatcher(Matcher):
         :type raw_matcher: dict
         """
         self._data = raw_matcher.get('stringMatcherData')
-        self._semver = Semver.build(self._data)
+        self._semver = build_semver_or_none(raw_matcher.get('stringMatcherData'))
 
     def _match(self, key, attributes=None, context=None):
         """
@@ -244,7 +242,7 @@ class GreaterThanOrEqualToSemverMatcher(Matcher):
         :returns: Wheter the match is successful.
         :rtype: bool
         """
-        if self._data is None or self._semver is None:
+        if self._semver is None:
             _LOGGER.error("stringMatcherData is required for GREATER_THAN_OR_EQUAL_TO_SEMVER matcher type")
             return False
 
@@ -252,7 +250,7 @@ class GreaterThanOrEqualToSemverMatcher(Matcher):
         if matching_data is None:
             return False
 
-        matching_semver = Semver.build(matching_data)
+        matching_semver = build_semver_or_none(matching_data)
         if matching_semver is None:
             return False
 
@@ -277,7 +275,7 @@ class LessThanOrEqualToSemverMatcher(Matcher):
         :type raw_matcher: dict
         """
         self._data = raw_matcher.get('stringMatcherData')
-        self._semver = Semver.build(self._data)
+        self._semver = build_semver_or_none(raw_matcher.get('stringMatcherData'))
 
     def _match(self, key, attributes=None, context=None):
         """
@@ -293,7 +291,7 @@ class LessThanOrEqualToSemverMatcher(Matcher):
         :returns: Wheter the match is successful.
         :rtype: bool
         """
-        if self._data is None or self._semver is None:
+        if self._semver is None:
             _LOGGER.error("stringMatcherData is required for LESS_THAN_OR_EQUAL_TO_SEMVER matcher type")
             return False
 
@@ -301,7 +299,7 @@ class LessThanOrEqualToSemverMatcher(Matcher):
         if matching_data is None:
             return False
 
-        matching_semver = Semver.build(matching_data)
+        matching_semver = build_semver_or_none(matching_data)
         if matching_semver is None:
             return False
 
@@ -326,8 +324,8 @@ class BetweenSemverMatcher(Matcher):
         :type raw_matcher: dict
         """
         self._data = raw_matcher.get('betweenStringMatcherData')
-        self._semver_start = Semver.build(self._data['start']) if self._data.get('start') is not None else None
-        self._semver_end = Semver.build(self._data['end']) if self._data.get('end') is not None else None
+        self._semver_start = build_semver_or_none(self._data['start'])
+        self._semver_end = build_semver_or_none(self._data['end'])
 
     def _match(self, key, attributes=None, context=None):
         """
@@ -343,7 +341,7 @@ class BetweenSemverMatcher(Matcher):
         :returns: Wheter the match is successful.
         :rtype: bool
         """
-        if self._data is None or self._semver_start is None or self._semver_end is None:
+        if self._semver_start is None or self._semver_end is None:
             _LOGGER.error("betweenStringMatcherData is required for BETWEEN_SEMVER matcher type")
             return False
 
@@ -351,7 +349,7 @@ class BetweenSemverMatcher(Matcher):
         if matching_data is None:
             return False
 
-        matching_semver = Semver.build(matching_data)
+        matching_semver = build_semver_or_none(matching_data)
         if matching_semver is None:
             return False
 
@@ -375,11 +373,9 @@ class InListSemverMatcher(Matcher):
         :param raw_matcher: raw matcher as fetched from splitChanges response.
         :type raw_matcher: dict
         """
-        self._data = raw_matcher.get('whitelistMatcherData')
-        if self._data is not None:
-            self._data = self._data.get('whitelist')
-
-        self._semver_list = [Semver.build(item) if item is not None else None for item in self._data] if self._data is not None else []
+        self._data = raw_matcher['whitelistMatcherData']['whitelist']
+        semver_list = [build_semver_or_none(item) if item is not None else None for item in self._data]
+        self._semver_list = frozenset([item.version for item in semver_list])
 
     def _match(self, key, attributes=None, context=None):
         """
@@ -395,7 +391,7 @@ class InListSemverMatcher(Matcher):
         :returns: Wheter the match is successful.
         :rtype: bool
         """
-        if self._data is None:
+        if self._semver_list is None:
             _LOGGER.error("whitelistMatcherData is required for IN_LIST_SEMVER matcher type")
             return False
 
@@ -403,11 +399,11 @@ class InListSemverMatcher(Matcher):
         if matching_data is None:
             return False
 
-        matching_semver = Semver.build(matching_data)
+        matching_semver = build_semver_or_none(matching_data)
         if matching_semver is None:
             return False
 
-        return any([item.version == matching_semver.version if item is not None else False for item in self._semver_list])
+        return matching_semver.version in self._semver_list
 
     def __str__(self):
         """Return string Representation."""

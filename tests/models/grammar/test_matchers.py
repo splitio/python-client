@@ -899,7 +899,7 @@ class EqualToSemverMatcherTests(MatcherTestsBase):
         """Test parsing from raw json/dict."""
         parsed = matchers.from_raw(self.raw)
         assert isinstance(parsed, matchers.EqualToSemverMatcher)
-        assert parsed._data == "2.1.8"
+        assert parsed._semver.version == "2.1.8"
         assert isinstance(parsed._semver, Semver)
         assert parsed._semver._major == 2
         assert parsed._semver._minor == 1
@@ -940,7 +940,7 @@ class GreaterThanOrEqualToSemverMatcherTests(MatcherTestsBase):
         """Test parsing from raw json/dict."""
         parsed = matchers.from_raw(self.raw)
         assert isinstance(parsed, matchers.GreaterThanOrEqualToSemverMatcher)
-        assert parsed._data == "2.1.8"
+        assert parsed._semver.version == "2.1.8"
         assert isinstance(parsed._semver, Semver)
         assert parsed._semver._major == 2
         assert parsed._semver._minor == 1
@@ -982,7 +982,7 @@ class LessThanOrEqualToSemverMatcherTests(MatcherTestsBase):
         """Test parsing from raw json/dict."""
         parsed = matchers.from_raw(self.raw)
         assert isinstance(parsed, matchers.LessThanOrEqualToSemverMatcher)
-        assert parsed._data == "2.1.8"
+        assert parsed._semver.version == "2.1.8"
         assert isinstance(parsed._semver, Semver)
         assert parsed._semver._major == 2
         assert parsed._semver._minor == 1
@@ -1024,14 +1024,15 @@ class BetweenSemverMatcherTests(MatcherTestsBase):
         """Test parsing from raw json/dict."""
         parsed = matchers.from_raw(self.raw)
         assert isinstance(parsed, matchers.BetweenSemverMatcher)
-        assert parsed._data == {"start": "2.1.8", "end": "2.1.11"}
         assert isinstance(parsed._semver_start, Semver)
         assert isinstance(parsed._semver_end, Semver)
+        assert parsed._semver_start.version == "2.1.8"
         assert parsed._semver_start._major == 2
         assert parsed._semver_start._minor == 1
         assert parsed._semver_start._patch == 8
         assert parsed._semver_start._pre_release == []
 
+        assert parsed._semver_end.version == "2.1.11"
         assert parsed._semver_end._major == 2
         assert parsed._semver_end._minor == 1
         assert parsed._semver_end._patch == 11
@@ -1073,16 +1074,9 @@ class InListSemverMatcherTests(MatcherTestsBase):
         parsed = matchers.from_raw(self.raw)
         assert isinstance(parsed, matchers.InListSemverMatcher)
         assert parsed._data == ["2.1.8", "2.1.11"]
-        assert [isinstance(item, Semver) for item in parsed._semver_list]
-        assert parsed._semver_list[0]._major == 2
-        assert parsed._semver_list[0]._minor == 1
-        assert parsed._semver_list[0]._patch == 8
-        assert parsed._semver_list[0]._pre_release == []
-
-        assert parsed._semver_list[1]._major == 2
-        assert parsed._semver_list[1]._minor == 1
-        assert parsed._semver_list[1]._patch == 11
-        assert parsed._semver_list[1]._pre_release == []
+        assert [isinstance(item, str) for item in parsed._semver_list]
+        assert "2.1.8" in parsed._semver_list
+        assert "2.1.11" in parsed._semver_list
 
     def test_matcher_behaviour(self, mocker):
         """Test if the matcher works properly."""
