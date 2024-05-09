@@ -287,7 +287,6 @@ def from_raw(raw_split):
         )
     except MatcherNotFoundException as e:
         _LOGGER.error(str(e))
-        pass
 
     _LOGGER.debug("Using default conditions template for feature flag: %s", raw_split['name'])
     return Split(
