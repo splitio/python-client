@@ -270,25 +270,11 @@ def from_raw(raw_split):
     :rtype: Split
     """
     try:
-        return Split(
-            raw_split['name'],
-            raw_split['seed'],
-            raw_split['killed'],
-            raw_split['defaultTreatment'],
-            raw_split['trafficTypeName'],
-            raw_split['status'],
-            raw_split['changeNumber'],
-            [condition.from_raw(c) for c in raw_split['conditions']],
-            raw_split.get('algo'),
-            traffic_allocation=raw_split.get('trafficAllocation'),
-            traffic_allocation_seed=raw_split.get('trafficAllocationSeed'),
-            configurations=raw_split.get('configurations'),
-            sets=set(raw_split.get('sets')) if raw_split.get('sets') is not None else []
-        )
+        conditions = [condition.from_raw(c) for c in raw_split['conditions']]
     except MatcherNotFoundException as e:
         _LOGGER.error(str(e))
-
-    _LOGGER.debug("Using default conditions template for feature flag: %s", raw_split['name'])
+        _LOGGER.debug("Using default conditions template for feature flag: %s", raw_split['name'])
+        conditions = [condition.from_raw(_DEFAULT_CONDITIONS_TEMPLATE)]
     return Split(
         raw_split['name'],
         raw_split['seed'],
@@ -297,7 +283,7 @@ def from_raw(raw_split):
         raw_split['trafficTypeName'],
         raw_split['status'],
         raw_split['changeNumber'],
-        [condition.from_raw(_DEFAULT_CONDITIONS_TEMPLATE)],
+        conditions,
         raw_split.get('algo'),
         traffic_allocation=raw_split.get('trafficAllocation'),
         traffic_allocation_seed=raw_split.get('trafficAllocationSeed'),
