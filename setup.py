@@ -6,21 +6,20 @@ from setuptools import setup, find_packages
 
 TESTS_REQUIRES = [
     'flake8',
-    'pytest==7.0.1',
-    'pytest-mock==3.12.0',
-    'coverage==6.2',
+    'pytest==7.1.0',
+    'pytest-mock==3.11.1',
+    'coverage==7.3.0',
     'pytest-cov',
-    'importlib-metadata==4.2',
-    'tomli==1.2.3',
-    'iniconfig==1.1.1',
-    'attrs==22.1.0'
+    'importlib-metadata==6.7',
+    'tomli',
+    'iniconfig',
+    'attrs'
 ]
 
 INSTALL_REQUIRES = [
-    'requests>=2.9.1',
-    'pyyaml>=5.4',
+    'requests',
+    'pyyaml',
     'docopt>=0.6.2',
-    'enum34;python_version<"3.4"',
     'bloom-filter2>=2.0.0'
 ]
 
