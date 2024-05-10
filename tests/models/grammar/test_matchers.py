@@ -10,7 +10,7 @@ import re
 from datetime import datetime
 
 from splitio.models.grammar import matchers
-from splitio.models.grammar.matchers.semver import Semver
+from splitio.models.grammar.matchers.utils.utils import Semver
 from splitio.storage import SegmentStorage
 from splitio.engine.evaluator import Evaluator
 
@@ -899,6 +899,7 @@ class EqualToSemverMatcherTests(MatcherTestsBase):
         """Test parsing from raw json/dict."""
         parsed = matchers.from_raw(self.raw)
         assert isinstance(parsed, matchers.EqualToSemverMatcher)
+        assert parsed._semver is not None
         assert parsed._semver.version == "2.1.8"
         assert isinstance(parsed._semver, Semver)
         assert parsed._semver._major == 2
@@ -940,6 +941,7 @@ class GreaterThanOrEqualToSemverMatcherTests(MatcherTestsBase):
         """Test parsing from raw json/dict."""
         parsed = matchers.from_raw(self.raw)
         assert isinstance(parsed, matchers.GreaterThanOrEqualToSemverMatcher)
+        assert parsed._semver is not None
         assert parsed._semver.version == "2.1.8"
         assert isinstance(parsed._semver, Semver)
         assert parsed._semver._major == 2
@@ -982,6 +984,7 @@ class LessThanOrEqualToSemverMatcherTests(MatcherTestsBase):
         """Test parsing from raw json/dict."""
         parsed = matchers.from_raw(self.raw)
         assert isinstance(parsed, matchers.LessThanOrEqualToSemverMatcher)
+        assert parsed._semver is not None
         assert parsed._semver.version == "2.1.8"
         assert isinstance(parsed._semver, Semver)
         assert parsed._semver._major == 2

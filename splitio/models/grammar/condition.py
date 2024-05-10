@@ -124,10 +124,7 @@ def from_raw(raw_condition):
         for raw_partition in raw_condition['partitions']
     ]
 
-    try:
-        matcher_objects = [matchers.from_raw(x) for x in raw_condition['matcherGroup']['matchers']]
-    except MatcherNotFoundException as e:
-        raise MatcherNotFoundException(str(e))
+    matcher_objects = [matchers.from_raw(x) for x in raw_condition['matcherGroup']['matchers']]
 
     combiner = _MATCHER_COMBINERS[raw_condition['matcherGroup']['combiner']]
     label = raw_condition.get('label')
