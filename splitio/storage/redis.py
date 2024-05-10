@@ -388,7 +388,7 @@ class RedisSegmentStorage(SegmentStorage):
         try:
             res = self._redis.sismember(self._get_key(segment_name), key)
             _LOGGER.debug("Checking Segment [%s] contain key [%s] in redis: %s" % (segment_name, key, res))
-            return res
+            return bool(res)
         except RedisAdapterException:
             _LOGGER.error('Error testing members in segment stored in redis')
             _LOGGER.debug('Error: ', exc_info=True)
