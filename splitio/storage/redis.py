@@ -392,7 +392,7 @@ class RedisSegmentStorage(SegmentStorage):
         except RedisAdapterException:
             _LOGGER.error('Error testing members in segment stored in redis')
             _LOGGER.debug('Error: ', exc_info=True)
-            return None
+            return False
 
     def get_segments_count(self):
         """
