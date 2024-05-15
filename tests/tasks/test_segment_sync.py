@@ -60,7 +60,7 @@ class SegmentSynchronizationTests(object):
         fetch_segment_mock._count_c = 0
 
         api = mocker.Mock()
-        fetch_options = FetchOptions(True)
+        fetch_options = FetchOptions(True, None, None, None)
         api.fetch_segment.side_effect = fetch_segment_mock
 
         segments_synchronizer = SegmentSynchronizer(api, split_storage, storage)

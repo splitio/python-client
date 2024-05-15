@@ -1,4 +1,5 @@
 """Matchers entrypoint module."""
+from splitio.models import MatcherNotFoundException
 from splitio.models.grammar.matchers.keys import AllKeysMatcher, UserDefinedSegmentMatcher
 from splitio.models.grammar.matchers.numeric import BetweenMatcher, EqualToMatcher, \
     GreaterThanOrEqualMatcher, LessThanOrEqualMatcher
@@ -7,6 +8,8 @@ from splitio.models.grammar.matchers.sets import ContainsAllOfSetMatcher, \
 from splitio.models.grammar.matchers.string import ContainsStringMatcher, \
     EndsWithMatcher, RegexMatcher, StartsWithMatcher, WhitelistMatcher
 from splitio.models.grammar.matchers.misc import BooleanMatcher, DependencyMatcher
+from splitio.models.grammar.matchers.semver import EqualToSemverMatcher, GreaterThanOrEqualToSemverMatcher, LessThanOrEqualToSemverMatcher, \
+        BetweenSemverMatcher, InListSemverMatcher
 
 
 MATCHER_TYPE_ALL_KEYS = 'ALL_KEYS'
@@ -26,6 +29,11 @@ MATCHER_TYPE_CONTAINS_STRING = 'CONTAINS_STRING'
 MATCHER_TYPE_IN_SPLIT_TREATMENT = 'IN_SPLIT_TREATMENT'
 MATCHER_TYPE_EQUAL_TO_BOOLEAN = 'EQUAL_TO_BOOLEAN'
 MATCHER_TYPE_MATCHES_STRING = 'MATCHES_STRING'
+MATCHER_TYPE_EQUAL_TO_SEMVER = 'EQUAL_TO_SEMVER'
+MATCHER_GREATER_THAN_OR_EQUAL_TO_SEMVER = 'GREATER_THAN_OR_EQUAL_TO_SEMVER'
+MATCHER_LESS_THAN_OR_EQUAL_TO_SEMVER = 'LESS_THAN_OR_EQUAL_TO_SEMVER'
+MATCHER_BETWEEN_SEMVER = 'BETWEEN_SEMVER'
+MATCHER_INLIST_SEMVER = 'IN_LIST_SEMVER'
 
 
 _MATCHER_BUILDERS = {
@@ -45,9 +53,13 @@ _MATCHER_BUILDERS = {
     MATCHER_TYPE_CONTAINS_STRING: ContainsStringMatcher,
     MATCHER_TYPE_IN_SPLIT_TREATMENT: DependencyMatcher,
     MATCHER_TYPE_EQUAL_TO_BOOLEAN: BooleanMatcher,
-    MATCHER_TYPE_MATCHES_STRING: RegexMatcher
+    MATCHER_TYPE_MATCHES_STRING: RegexMatcher,
+    MATCHER_TYPE_EQUAL_TO_SEMVER: EqualToSemverMatcher,
+    MATCHER_GREATER_THAN_OR_EQUAL_TO_SEMVER: GreaterThanOrEqualToSemverMatcher,
+    MATCHER_LESS_THAN_OR_EQUAL_TO_SEMVER: LessThanOrEqualToSemverMatcher,
+    MATCHER_BETWEEN_SEMVER: BetweenSemverMatcher,
+    MATCHER_INLIST_SEMVER: InListSemverMatcher
 }
-
 
 def from_raw(raw_matcher):
     """
@@ -63,5 +75,5 @@ def from_raw(raw_matcher):
     try:
         builder = _MATCHER_BUILDERS[matcher_type]
     except KeyError:
-        raise ValueError('Invalid matcher type %s' % matcher_type)
+        raise MatcherNotFoundException('Invalid matcher type %s' % matcher_type)
     return builder(raw_matcher)

@@ -1,6 +1,4 @@
 """SDK main manager test module."""
-import pytest
-
 from splitio.client.factory import SplitFactory
 from splitio.client.manager import SplitManager, _LOGGER as _logger
 from splitio.storage import SplitStorage, EventStorage, ImpressionStorage, SegmentStorage
