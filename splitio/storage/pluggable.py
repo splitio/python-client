@@ -503,7 +503,7 @@ class PluggableSegmentStorage(SegmentStorage):
         except Exception:
             _LOGGER.error('Error checking segment key')
             _LOGGER.debug('Error: ', exc_info=True)
-            return None
+            return False
 
     def get_segment_keys_count(self):
         """
