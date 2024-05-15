@@ -44,7 +44,7 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
         """
         self._auth_api = auth_api
         self._feedback_loop = feedback_loop
-        self._processor = MessageProcessor(synchronizer)
+        self._processor = MessageProcessor(synchronizer, telemetry_runtime_producer)
         self._status_tracker = PushStatusTracker(telemetry_runtime_producer)
         self._event_handlers = {
             EventType.MESSAGE: self._handle_message,
@@ -143,7 +143,8 @@ class PushManager(object):  # pylint:disable=too-many-instance-attributes
             self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
             return
 
-        if not token.push_enabled:
+
+        if token is None or not token.push_enabled:
             self._feedback_loop.put(Status.PUSH_NONRETRYABLE_ERROR)
             return
         self._telemetry_runtime_producer.record_token_refreshes()

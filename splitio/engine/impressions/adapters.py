@@ -5,6 +5,10 @@ import json
 from splitio.storage.adapters.redis import RedisAdapterException
 
 _LOGGER = logging.getLogger(__name__)
+_MTK_QUEUE_KEY = 'SPLITIO.uniquekeys'
+_MTK_KEY_DEFAULT_TTL = 3600
+_IMP_COUNT_QUEUE_KEY = 'SPLITIO.impressions.count'
+_IMP_COUNT_KEY_DEFAULT_TTL = 3600
 
 class ImpressionsSenderAdapter(object, metaclass=abc.ABCMeta):
     """Impressions Sender Adapter interface."""
@@ -34,8 +38,11 @@ class InMemorySenderAdapter(ImpressionsSenderAdapter):
         post the unique keys to split back end.
 
         :param uniques: unique keys disctionary
-        :type uniques: Dictionary {'feature1': set(), 'feature2': set(), .. }
+        :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
+        if len(uniques) == 0:
+            return
+
         self._telemtry_http_client.record_unique_keys({'keys': self._uniques_formatter(uniques)})
 
     def _uniques_formatter(self, uniques):
@@ -43,7 +50,7 @@ class InMemorySenderAdapter(ImpressionsSenderAdapter):
         Format the unique keys dictionary array to a JSON body
 
         :param uniques: unique keys disctionary
-        :type uniques: Dictionary {'feature1': set(), 'feature2': set(), .. }
+        :type uniques: Dictionary {'feature1_flag': set(), 'feature2_flag': set(), .. }
 
         :return: unique keys JSON array
         :rtype: json
@@ -52,11 +59,6 @@ class InMemorySenderAdapter(ImpressionsSenderAdapter):
 
 class RedisSenderAdapter(ImpressionsSenderAdapter):
     """In Memory Impressions Sender Adapter class."""
-
-    MTK_QUEUE_KEY = 'SPLITIO.uniquekeys'
-    MTK_KEY_DEFAULT_TTL = 3600
-    IMP_COUNT_QUEUE_KEY = 'SPLITIO.impressions.count'
-    IMP_COUNT_KEY_DEFAULT_TTL = 3600
 
     def __init__(self, redis_client):
         """
@@ -72,12 +74,15 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         post the unique keys to redis.
 
         :param uniques: unique keys disctionary
-        :type uniques: Dictionary {'feature1': set(), 'feature2': set(), .. }
+        :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
-        bulk_mtks = self._uniques_formatter(uniques)
+        if len(uniques) == 0:
+            return
+
+        bulk_mtks = _uniques_formatter(uniques)
         try:
-            inserted = self._redis_client.rpush(self.MTK_QUEUE_KEY, *bulk_mtks)
-            self._expire_keys(self.MTK_QUEUE_KEY, self.MTK_KEY_DEFAULT_TTL, inserted, len(bulk_mtks))
+            inserted = self._redis_client.rpush(_MTK_QUEUE_KEY, *bulk_mtks)
+            self._expire_keys(_MTK_QUEUE_KEY, _MTK_KEY_DEFAULT_TTL, inserted, len(bulk_mtks))
             return True
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add mtks to redis')
@@ -89,18 +94,21 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         post the impression counters to redis.
 
         :param to_send: unique keys disctionary
-        :type to_send: Dictionary {'feature1': set(), 'feature2': set(), .. }
+        :type to_send: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
+        if len(to_send) == 0:
+            return
+
         try:
             resulted = 0
             counted = 0
             pipe = self._redis_client.pipeline()
             for pf_count in to_send:
-                pipe.hincrby(self.IMP_COUNT_QUEUE_KEY, pf_count.feature + "::" + str(pf_count.timeframe), pf_count.count)
+                pipe.hincrby(_IMP_COUNT_QUEUE_KEY, pf_count.feature + "::" + str(pf_count.timeframe), pf_count.count)
                 counted += pf_count.count
             resulted = sum(pipe.execute())
-            self._expire_keys(self.IMP_COUNT_QUEUE_KEY,
-                              self.IMP_COUNT_KEY_DEFAULT_TTL, resulted, counted)
+            self._expire_keys(_IMP_COUNT_QUEUE_KEY,
+                              _IMP_COUNT_KEY_DEFAULT_TTL, resulted, counted)
             return True
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add counters to redis')
@@ -119,14 +127,84 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         if total_keys == inserted:
             self._redis_client.expire(queue_key, key_default_ttl)
 
-    def _uniques_formatter(self, uniques):
+class PluggableSenderAdapter(ImpressionsSenderAdapter):
+    """In Memory Impressions Sender Adapter class."""
+
+    def __init__(self, adapter_client, prefix=None):
         """
-        Format the unique keys dictionary array to a JSON body
+        Initialize pluggable sender adapter instance
+
+        :param telemtry_http_client: instance of telemetry http api
+        :type telemtry_http_client: splitio.api.telemetry.TelemetryAPI
+        """
+        self._adapter_client = adapter_client
+        self._prefix = ""
+        if prefix is not None:
+            self._prefix = prefix + "."
+
+    def record_unique_keys(self, uniques):
+        """
+        post the unique keys to storage.
 
         :param uniques: unique keys disctionary
-        :type uniques: Dictionary {'feature1': set(), 'feature2': set(), .. }
-
-        :return: unique keys JSON array
-        :rtype: json
+        :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
-        return [json.dumps({'f': feature, 'ks': list(keys)}) for feature, keys in uniques.items()]
+        if len(uniques) == 0:
+            return
+
+        bulk_mtks = _uniques_formatter(uniques)
+        try:
+            _LOGGER.debug("record_unique_keys")
+            _LOGGER.debug(uniques)
+            inserted = self._adapter_client.push_items(self._prefix + _MTK_QUEUE_KEY, *bulk_mtks)
+            self._expire_keys(self._prefix + _MTK_QUEUE_KEY, _MTK_KEY_DEFAULT_TTL, inserted, len(bulk_mtks))
+            return True
+        except RedisAdapterException:
+            _LOGGER.error('Something went wrong when trying to add mtks to storage adapter')
+            _LOGGER.error('Error: ', exc_info=True)
+            return False
+
+    def flush_counters(self, to_send):
+        """
+        post the impression counters to storage.
+
+        :param to_send: unique keys disctionary
+        :type to_send: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
+        """
+        if len(to_send) == 0:
+            return
+        try:
+            resulted = 0
+            for pf_count in to_send:
+                key = self._prefix + _IMP_COUNT_QUEUE_KEY + "." + pf_count.feature + "::" + str(pf_count.timeframe)
+                resulted = self._adapter_client.increment(key, pf_count.count)
+                self._expire_keys(key, _IMP_COUNT_KEY_DEFAULT_TTL, resulted, pf_count.count)
+            return True
+        except RedisAdapterException:
+            _LOGGER.error('Something went wrong when trying to add counters to storage adapter')
+            _LOGGER.error('Error: ', exc_info=True)
+            return False
+
+    def _expire_keys(self, queue_key, key_default_ttl, total_keys, inserted):
+        """
+        Set expire
+
+        :param total_keys: length of keys.
+        :type total_keys: int
+        :param inserted: added keys.
+        :type inserted: int
+        """
+        if total_keys == inserted:
+            self._adapter_client.expire(queue_key, key_default_ttl)
+
+def _uniques_formatter(uniques):
+    """
+    Format the unique keys dictionary array to a JSON body
+
+    :param uniques: unique keys disctionary
+    :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
+
+    :return: unique keys JSON array
+    :rtype: json
+    """
+    return [json.dumps({'f': feature, 'ks': list(keys)}) for feature, keys in uniques.items()]

@@ -5,24 +5,26 @@ import threading
 
 from splitio.models.impressions import Impression
 from splitio.models import splits, segments
-from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig
+from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, get_latency_bucket_index
+from splitio.storage import FlagSetsFilter
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, \
     ImpressionPipelinedStorage, TelemetryStorage
 from splitio.storage.adapters.redis import RedisAdapterException
 from splitio.storage.adapters.cache_trait import decorate as add_cache, DEFAULT_MAX_AGE
-
+from splitio.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
 
 _LOGGER = logging.getLogger(__name__)
 MAX_TAGS = 10
 
 class RedisSplitStorage(SplitStorage):
-    """Redis-based storage for splits."""
+    """Redis-based storage for feature flags."""
 
-    _SPLIT_KEY = 'SPLITIO.split.{split_name}'
-    _SPLIT_TILL_KEY = 'SPLITIO.splits.till'
+    _FEATURE_FLAG_KEY = 'SPLITIO.split.{feature_flag_name}'
+    _FEATURE_FLAG_TILL_KEY = 'SPLITIO.splits.till'
     _TRAFFIC_TYPE_KEY = 'SPLITIO.trafficType.{traffic_type_name}'
+    _FLAG_SET_KEY = 'SPLITIO.flagSet.{flag_set}'
 
-    def __init__(self, redis_client, enable_caching=False, max_age=DEFAULT_MAX_AGE):
+    def __init__(self, redis_client, enable_caching=False, max_age=DEFAULT_MAX_AGE, config_flag_sets=[]):
         """
         Class constructor.
 
@@ -30,83 +32,128 @@ class RedisSplitStorage(SplitStorage):
         :type redis_client: splitio.storage.adapters.redis.RedisAdapter
         """
         self._redis = redis_client
+        self.flag_set_filter = FlagSetsFilter(config_flag_sets)
+        self._pipe = self._redis.pipeline
         if enable_caching:
             self.get = add_cache(lambda *p, **_: p[0], max_age)(self.get)
             self.is_valid_traffic_type = add_cache(lambda *p, **_: p[0], max_age)(self.is_valid_traffic_type)  # pylint: disable=line-too-long
             self.fetch_many = add_cache(lambda *p, **_: frozenset(p[0]), max_age)(self.fetch_many)
 
-    def _get_key(self, split_name):
+    def _get_key(self, feature_flag_name):
         """
-        Use the provided split_name to build the appropriate redis key.
+        Use the provided feature_flag_name to build the appropriate redis key.
 
-        :param split_name: Name of the split to interact with in redis.
-        :type split_name: str
+        :param feature_flag_name: Name of the feature flag to interact with in redis.
+        :type feature_flag_name: str
 
         :return: Redis key.
         :rtype: str.
         """
-        return self._SPLIT_KEY.format(split_name=split_name)
+        return self._FEATURE_FLAG_KEY.format(feature_flag_name=feature_flag_name)
 
     def _get_traffic_type_key(self, traffic_type_name):
         """
-        Use the provided split_name to build the appropriate redis key.
+        Use the provided traffic_type_name to build the appropriate redis key.
 
-        :param split_name: Name of the split to interact with in redis.
-        :type split_name: str
+        :param trafic_type_name: Name of the traffic type to interact with in redis.
+        :type traffic_type_name: str
 
         :return: Redis key.
         :rtype: str.
         """
         return self._TRAFFIC_TYPE_KEY.format(traffic_type_name=traffic_type_name)
 
-    def get(self, split_name):  # pylint: disable=method-hidden
+    def _get_flag_set_key(self, flag_set):
         """
-        Retrieve a split.
+        Use the provided flag set to build the appropriate redis key.
 
-        :param split_name: Name of the feature to fetch.
-        :type split_name: str
+        :param flag_set: Name of the flag set to interact with in redis.
+        :type flag_set: str
+
+        :return: Redis key.
+        :rtype: str.
+        """
+        return self._FLAG_SET_KEY.format(flag_set=flag_set)
+
+    def get(self, feature_flag_name):  # pylint: disable=method-hidden
+        """
+        Retrieve a feature flag.
+
+        :param feature_flag_name: Name of the feature to fetch.
+        :type feature_flag_name: str
 
         :return: A split object parsed from redis if the key exists. None otherwise
         :rtype: splitio.models.splits.Split
         """
         try:
-            raw = self._redis.get(self._get_key(split_name))
+            raw = self._redis.get(self._get_key(feature_flag_name))
+            _LOGGER.debug("Fetchting Feature flag [%s] from redis" % feature_flag_name)
+            _LOGGER.debug(raw)
             return splits.from_raw(json.loads(raw)) if raw is not None else None
         except RedisAdapterException:
-            _LOGGER.error('Error fetching split from storage')
+            _LOGGER.error('Error fetching feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
-    def fetch_many(self, split_names):
+    def get_feature_flags_by_sets(self, flag_sets):
         """
-        Retrieve splits.
+        Retrieve feature flags by flag set.
 
-        :param split_names: Names of the features to fetch.
-        :type split_name: list(str)
+        :param flag_set: Names of the flag set to fetch.
+        :type flag_set: str
+
+        :return: Feature flag names that are tagged with the flag set
+        :rtype: listt(str)
+        """
+        try:
+            sets_to_fetch = get_valid_flag_sets(flag_sets, self.flag_set_filter)
+            if sets_to_fetch == []:
+                return []
+
+            keys = [self._get_flag_set_key(flag_set) for flag_set in sets_to_fetch]
+            pipe = self._pipe()
+            [pipe.smembers(key) for key in keys]
+            result_sets = pipe.execute()
+            _LOGGER.debug("Fetchting Feature flags by set [%s] from redis" % (keys))
+            _LOGGER.debug(result_sets)
+            return list(combine_valid_flag_sets(result_sets))
+        except RedisAdapterException:
+            _LOGGER.error('Error fetching feature flag from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+
+    def fetch_many(self, feature_flag_names):
+        """
+        Retrieve feature flags.
+
+        :param feature_flag_names: Names of the features to fetch.
+        :type feature_flag_name: list(str)
 
         :return: A dict with split objects parsed from redis.
         :rtype: dict(split_name, splitio.models.splits.Split)
         """
         to_return = dict()
         try:
-            keys = [self._get_key(split_name) for split_name in split_names]
-            raw_splits = self._redis.mget(keys)
-            for i in range(len(split_names)):
-                split = None
+            keys = [self._get_key(feature_flag_name) for feature_flag_name in feature_flag_names]
+            raw_feature_flags = self._redis.mget(keys)
+            _LOGGER.debug("Fetchting feature flags [%s] from redis" % feature_flag_names)
+            _LOGGER.debug(raw_feature_flags)
+            for i in range(len(feature_flag_names)):
+                feature_flag = None
                 try:
-                    split = splits.from_raw(json.loads(raw_splits[i]))
+                    feature_flag = splits.from_raw(json.loads(raw_feature_flags[i]))
                 except (ValueError, TypeError):
-                    _LOGGER.error('Could not parse split.')
-                    _LOGGER.debug("Raw split that failed parsing attempt: %s", raw_splits[i])
-                to_return[split_names[i]] = split
+                    _LOGGER.error('Could not parse feature flag.')
+                    _LOGGER.debug("Raw feature flag that failed parsing attempt: %s", raw_feature_flags[i])
+                to_return[feature_flag_names[i]] = feature_flag
         except RedisAdapterException:
-            _LOGGER.error('Error fetching splits from storage')
+            _LOGGER.error('Error fetching feature flags from storage')
             _LOGGER.debug('Error: ', exc_info=True)
         return to_return
 
     def is_valid_traffic_type(self, traffic_type_name):  # pylint: disable=method-hidden
         """
-        Return whether the traffic type exists in at least one split in cache.
+        Return whether the traffic type exists in at least one feature flag in cache.
 
         :param traffic_type_name: Traffic type to validate.
         :type traffic_type_name: str
@@ -117,68 +164,54 @@ class RedisSplitStorage(SplitStorage):
         try:
             raw = self._redis.get(self._get_traffic_type_key(traffic_type_name))
             count = json.loads(raw) if raw else 0
+            _LOGGER.debug("Fetching TrafficType [%s] count in redis: %s" % (traffic_type_name, count))
             return count > 0
         except RedisAdapterException:
-            _LOGGER.error('Error fetching split from storage')
+            _LOGGER.error('Error fetching feature flag from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return False
 
-    def put(self, split):
+    def update(self, to_add, to_delete, new_change_number):
         """
-        Store a split.
+        Update feature flag storage.
 
-        :param split: Split object to store
-        :type split_name: splitio.models.splits.Split
-        """
-        raise NotImplementedError('Only redis-consumer mode is supported.')
-
-    def remove(self, split_name):
-        """
-        Remove a split from storage.
-
-        :param split_name: Name of the feature to remove.
-        :type split_name: str
-
-        :return: True if the split was found and removed. False otherwise.
-        :rtype: bool
-        """
-        raise NotImplementedError('Only redis-consumer mode is supported.')
-
-    def get_change_number(self):
-        """
-        Retrieve latest split change number.
-
-        :rtype: int
-        """
-        try:
-            stored_value = self._redis.get(self._SPLIT_TILL_KEY)
-            return json.loads(stored_value) if stored_value is not None else None
-        except RedisAdapterException:
-            _LOGGER.error('Error fetching split change number from storage')
-            _LOGGER.debug('Error: ', exc_info=True)
-            return None
-
-    def set_change_number(self, new_change_number):
-        """
-        Set the latest change number.
-
+        :param to_add: List of feature flags to add
+        :type to_add: list[splitio.models.splits.Split]
+        :param to_delete: List of feature flags to delete
+        :type to_delete: list[splitio.models.splits.Split]
         :param new_change_number: New change number.
         :type new_change_number: int
         """
         raise NotImplementedError('Only redis-consumer mode is supported.')
 
+    def get_change_number(self):
+        """
+        Retrieve latest feature flag change number.
+
+        :rtype: int
+        """
+        try:
+            stored_value = self._redis.get(self._FEATURE_FLAG_TILL_KEY)
+            _LOGGER.debug("Fetching feature flag Change Number from redis: %s" % stored_value)
+            return json.loads(stored_value) if stored_value is not None else None
+        except RedisAdapterException:
+            _LOGGER.error('Error fetching feature flag change number from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+
     def get_split_names(self):
         """
-        Retrieve a list of all split names.
+        Retrieve a list of all feature flag names.
 
-        :return: List of split names.
+        :return: List of feature flag names.
         :rtype: list(str)
         """
         try:
             keys = self._redis.keys(self._get_key('*'))
+            _LOGGER.debug("Fetchting feature flag names from redis: %s" % keys)
             return [key.replace(self._get_key(''), '') for key in keys]
         except RedisAdapterException:
-            _LOGGER.error('Error fetching split names from storage')
+            _LOGGER.error('Error fetching feature flag names from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return []
 
@@ -192,31 +225,33 @@ class RedisSplitStorage(SplitStorage):
 
     def get_all_splits(self):
         """
-        Return all the splits in cache.
-        :return: List of all splits in cache.
+        Return all the feature flags in cache.
+        :return: List of all feature flags in cache.
         :rtype: list(splitio.models.splits.Split)
         """
         keys = self._redis.keys(self._get_key('*'))
         to_return = []
         try:
-            raw_splits = self._redis.mget(keys)
-            for raw in raw_splits:
+            _LOGGER.debug("Fetchting all feature flags from redis: %s" % keys)
+            raw_feature_flags = self._redis.mget(keys)
+            _LOGGER.debug(raw_feature_flags)
+            for raw in raw_feature_flags:
                 try:
                     to_return.append(splits.from_raw(json.loads(raw)))
                 except (ValueError, TypeError):
-                    _LOGGER.error('Could not parse split. Skipping')
-                    _LOGGER.debug("Raw split that failed parsing attempt: %s", raw)
+                    _LOGGER.error('Could not parse feature flag. Skipping')
+                    _LOGGER.debug("Raw feature flag that failed parsing attempt: %s", raw)
         except RedisAdapterException:
             _LOGGER.error('Error fetching all splits from storage')
             _LOGGER.debug('Error: ', exc_info=True)
         return to_return
 
-    def kill_locally(self, split_name, default_treatment, change_number):
+    def kill_locally(self, feature_flag_name, default_treatment, change_number):
         """
-        Local kill for split
+        Local kill for feature flag
 
-        :param split_name: name of the split to perform kill
-        :type split_name: str
+        :param feature_flag_name: name of the feature flag to perform kill
+        :type feature_flag_name: str
         :param default_treatment: name of the default treatment to return
         :type default_treatment: str
         :param change_number: change_number
@@ -276,6 +311,8 @@ class RedisSegmentStorage(SegmentStorage):
         """
         try:
             keys = (self._redis.smembers(self._get_key(segment_name)))
+            _LOGGER.debug("Fetchting Segment [%s] from redis" % segment_name)
+            _LOGGER.debug(keys)
             till = self.get_change_number(segment_name)
             if not keys or till is None:
                 return None
@@ -309,6 +346,7 @@ class RedisSegmentStorage(SegmentStorage):
         """
         try:
             stored_value = self._redis.get(self._get_till_key(segment_name))
+            _LOGGER.debug("Fetchting Change Number for Segment [%s] from redis: " % stored_value)
             return json.loads(stored_value) if stored_value is not None else None
         except RedisAdapterException:
             _LOGGER.error('Error fetching segment change number from storage')
@@ -348,7 +386,9 @@ class RedisSegmentStorage(SegmentStorage):
         :rtype: bool
         """
         try:
-            return self._redis.sismember(self._get_key(segment_name), key)
+            res = self._redis.sismember(self._get_key(segment_name), key)
+            _LOGGER.debug("Checking Segment [%s] contain key [%s] in redis: %s" % (segment_name, key, res))
+            return res
         except RedisAdapterException:
             _LOGGER.error('Error testing members in segment stored in redis')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -443,6 +483,8 @@ class RedisImpressionsStorage(ImpressionStorage, ImpressionPipelinedStorage):
         :type pipe: redis.pipe
         """
         bulk_impressions = self._wrap_impressions(impressions)
+        _LOGGER.debug("Adding Impressions to redis key %s" % (self.IMPRESSIONS_QUEUE_KEY))
+        _LOGGER.debug(bulk_impressions)
         pipe.rpush(self.IMPRESSIONS_QUEUE_KEY, *bulk_impressions)
 
     def put(self, impressions):
@@ -457,6 +499,8 @@ class RedisImpressionsStorage(ImpressionStorage, ImpressionPipelinedStorage):
         """
         bulk_impressions = self._wrap_impressions(impressions)
         try:
+            _LOGGER.debug("Adding Impressions to redis key %s" % (self.IMPRESSIONS_QUEUE_KEY))
+            _LOGGER.debug(bulk_impressions)
             inserted = self._redis.rpush(self.IMPRESSIONS_QUEUE_KEY, *bulk_impressions)
             self.expire_key(inserted, len(bulk_impressions))
             return True
@@ -509,6 +553,8 @@ class RedisEventsStorage(EventStorage):
         :type pipe: redis.pipe
         """
         bulk_events = self._wrap_events(events)
+        _LOGGER.debug("Adding Events to redis key %s" % (self._EVENTS_KEY_TEMPLATE))
+        _LOGGER.debug(bulk_events)
         pipe.rpush(self._EVENTS_KEY_TEMPLATE, *bulk_events)
 
     def _wrap_events(self, events):
@@ -544,6 +590,8 @@ class RedisEventsStorage(EventStorage):
         key = self._EVENTS_KEY_TEMPLATE
         to_store = self._wrap_events(events)
         try:
+            _LOGGER.debug("Adding Events to redis key %s" % (key))
+            _LOGGER.debug(to_store)
             self._redis.rpush(key, *to_store)
             return True
         except RedisAdapterException:
@@ -614,14 +662,14 @@ class RedisTelemetryStorage(TelemetryStorage):
             if len(self._config_tags) < MAX_TAGS:
                 self._config_tags.append(tag)
 
-    def record_config(self, config, extra_config):
+    def record_config(self, config, extra_config, total_flag_sets, invalid_flag_sets):
         """
         initilize telemetry objects
 
         :param congif: factory configuration parameters
         :type config: splitio.client.config
         """
-        self._tel_config.record_config(config, extra_config)
+        self._tel_config.record_config(config, extra_config, total_flag_sets, invalid_flag_sets)
 
     def pop_config_tags(self):
         """Get and reset tags."""
@@ -632,6 +680,8 @@ class RedisTelemetryStorage(TelemetryStorage):
 
     def push_config_stats(self):
         """push config stats to redis."""
+        _LOGGER.debug("Adding Config stats to redis key %s" % (self._TELEMETRY_CONFIG_KEY))
+        _LOGGER.debug(str(self._format_config_stats()))
         self._redis_client.hset(self._TELEMETRY_CONFIG_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip, str(self._format_config_stats()))
 
     def _format_config_stats(self):
@@ -649,7 +699,7 @@ class RedisTelemetryStorage(TelemetryStorage):
         """Record active and redundant factories."""
         self._tel_config.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
 
-    def add_latency_to_pipe(self, method, latency, pipe):
+    def add_latency_to_pipe(self, method, bucket, pipe):
         """
         record latency data
 
@@ -660,17 +710,11 @@ class RedisTelemetryStorage(TelemetryStorage):
         :param pipe: Redis pipe.
         :type pipe: redis.pipe
         """
-        self._method_latencies.add_latency(method, latency)
-        latencies = self._method_latencies.pop_all()['methodLatencies']
-        values = latencies[method.value]
-        total_keys = 0
-        bucket_number = 0
-        for bucket in values:
-            if bucket > 0:
-                pipe.hincrby(self._TELEMETRY_LATENCIES_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
-                        method.value + '/' + str(bucket_number), bucket)
-                total_keys += 1
-            bucket_number = bucket_number + 0
+        _LOGGER.debug("Adding Latency stats to redis key %s" % (self._TELEMETRY_LATENCIES_KEY))
+        _LOGGER.debug(self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
+            method.value + '/' + str(bucket))
+        pipe.hincrby(self._TELEMETRY_LATENCIES_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
+            method.value + '/' + str(bucket), 1)
 
     def record_latency(self, method, latency):
         """
@@ -685,6 +729,9 @@ class RedisTelemetryStorage(TelemetryStorage):
         :param method: method name
         :type method: string
         """
+        _LOGGER.debug("Adding Excepction stats to redis key %s" % (self._TELEMETRY_EXCEPTIONS_KEY))
+        _LOGGER.debug(self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
+                    method.value)
         pipe = self._make_pipe()
         pipe.hincrby(self._TELEMETRY_EXCEPTIONS_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
                     method.value, 1)

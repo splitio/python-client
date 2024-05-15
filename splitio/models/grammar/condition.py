@@ -11,7 +11,7 @@ _MATCHER_COMBINERS = {
 
 
 class ConditionType(Enum):
-    """Split possible condition types."""
+    """Feature Flag possible condition types."""
 
     WHITELIST = 'WHITELIST'
     ROLLOUT = 'ROLLOUT'
@@ -112,7 +112,7 @@ def from_raw(raw_condition):
     """
     Parse a condition from a JSON portion of splitChanges.
 
-    :param raw_condition: JSON object extracted from a split's conditions array.
+    :param raw_condition: JSON object extracted from a feature flag's conditions array.
     :type raw_condition: dict
 
     :return: A condition object.

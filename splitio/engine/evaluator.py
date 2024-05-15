@@ -13,25 +13,25 @@ _LOGGER = logging.getLogger(__name__)
 class Evaluator(object):  # pylint: disable=too-few-public-methods
     """Split Evaluator class."""
 
-    def __init__(self, split_storage, segment_storage, splitter):
+    def __init__(self, feature_flag_storage, segment_storage, splitter):
         """
         Construct a Evaluator instance.
 
-        :param split_storage: Split storage.
-        :type split_storage: splitio.storage.SplitStorage
+        :param feature_flag_storage: feature_flag storage.
+        :type feature_flag_storage: splitio.storage.SplitStorage
 
-        :param split_storage: Storage storage.
-        :type split_storage: splitio.storage.SegmentStorage
+        :param segment_storage: Segment storage.
+        :type segment_storage: splitio.storage.SegmentStorage
         """
-        self._split_storage = split_storage
+        self._feature_flag_storage = feature_flag_storage
         self._segment_storage = segment_storage
         self._splitter = splitter
 
-    def _evaluate_treatment(self, feature, matching_key, bucketing_key, attributes, split):
+    def _evaluate_treatment(self, feature_flag_name, matching_key, bucketing_key, attributes, feature_flag):
         """
         Evaluate the user submitted data against a feature and return the resulting treatment.
 
-        :param feature: The feature for which to get the treatment
+        :param feature_flag_name: The feature flag for which to get the treatment
         :type feature:  str
 
         :param matching_key: The matching_key for which to get the treatment
@@ -43,51 +43,51 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
 
-        :param split: Split object
+        :param feature_flag: Split object
         :type attributes: splitio.models.splits.Split|None
 
-        :return: The treatment for the key and split
+        :return: The treatment for the key and feature flag
         :rtype: object
         """
         label = ''
         _treatment = CONTROL
         _change_number = -1
 
-        if split is None:
-            _LOGGER.warning('Unknown or invalid feature: %s', feature)
+        if feature_flag is None:
+            _LOGGER.warning('Unknown or invalid feature: %s', feature_flag_name)
             label = Label.SPLIT_NOT_FOUND
         else:
-            _change_number = split.change_number
-            if split.killed:
+            _change_number = feature_flag.change_number
+            if feature_flag.killed:
                 label = Label.KILLED
-                _treatment = split.default_treatment
+                _treatment = feature_flag.default_treatment
             else:
                 treatment, label = self._get_treatment_for_split(
-                    split,
+                    feature_flag,
                     matching_key,
                     bucketing_key,
                     attributes
                 )
                 if treatment is None:
                     label = Label.NO_CONDITION_MATCHED
-                    _treatment = split.default_treatment
+                    _treatment = feature_flag.default_treatment
                 else:
                     _treatment = treatment
 
         return {
             'treatment': _treatment,
-            'configurations': split.get_configurations_for(_treatment) if split else None,
+            'configurations': feature_flag.get_configurations_for(_treatment) if feature_flag else None,
             'impression': {
                 'label': label,
                 'change_number': _change_number
             }
         }
 
-    def evaluate_feature(self, feature, matching_key, bucketing_key, attributes=None):
+    def evaluate_feature(self, feature_flag_name, matching_key, bucketing_key, attributes=None):
         """
         Evaluate the user submitted data against a feature and return the resulting treatment.
 
-        :param feature: The feature for which to get the treatment
+        :param feature_flag_name: The feature flag for which to get the treatment
         :type feature:  str
 
         :param matching_key: The matching_key for which to get the treatment
@@ -103,20 +103,20 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
         :rtype: object
         """
         # Fetching Split definition
-        split = self._split_storage.get(feature)
+        feature_flag = self._feature_flag_storage.get(feature_flag_name)
 
         # Calling evaluation
-        evaluation = self._evaluate_treatment(feature, matching_key,
-                                              bucketing_key, attributes, split)
+        evaluation = self._evaluate_treatment(feature_flag_name, matching_key,
+                                              bucketing_key, attributes, feature_flag)
 
         return evaluation
 
-    def evaluate_features(self, features, matching_key, bucketing_key, attributes=None):
+    def evaluate_features(self, feature_flag_names, matching_key, bucketing_key, attributes=None):
         """
         Evaluate the user submitted data against multiple features and return the resulting
         treatment.
 
-        :param features: The features for which to get the treatments
+        :param feature_flag_names: The feature flags for which to get the treatments
         :type feature:  list(str)
 
         :param matching_key: The matching_key for which to get the treatment
@@ -128,24 +128,24 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
 
-        :return: The treatments for the key and splits
+        :return: The treatments for the key and feature flags
         :rtype: object
         """
         return {
-            feature: self._evaluate_treatment(feature, matching_key,
-                                              bucketing_key, attributes, split)
-            for (feature, split) in self._split_storage.fetch_many(features).items()
+            feature_flag_name: self._evaluate_treatment(feature_flag_name, matching_key,
+                                              bucketing_key, attributes, feature_flag)
+            for (feature_flag_name, feature_flag) in self._feature_flag_storage.fetch_many(feature_flag_names).items()
         }
 
-    def _get_treatment_for_split(self, split, matching_key, bucketing_key, attributes=None):
+    def _get_treatment_for_split(self, feature_flag, matching_key, bucketing_key, attributes=None):
         """
         Evaluate the feature considering the conditions.
 
         If there is a match, it will return the condition and the label.
         Otherwise, it will return (None, None)
 
-        :param split: The split for which to get the treatment
-        :type split: Split
+        :param feature_flag: The feature flag for which to get the treatment
+        :type feature_flag: Split
 
         :param matching_key: The key for which to get the treatment
         :type key: str
@@ -170,17 +170,17 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
             'bucketing_key': bucketing_key
         }
 
-        for condition in split.conditions:
+        for condition in feature_flag.conditions:
             if (not roll_out and
                     condition.condition_type == ConditionType.ROLLOUT):
-                if split.traffic_allocation < 100:
+                if feature_flag.traffic_allocation < 100:
                     bucket = self._splitter.get_bucket(
                         bucketing_key,
-                        split.traffic_allocation_seed,
-                        split.algo
+                        feature_flag.traffic_allocation_seed,
+                        feature_flag.algo
                     )
-                    if bucket > split.traffic_allocation:
-                        return split.default_treatment, Label.NOT_IN_SPLIT
+                    if bucket > feature_flag.traffic_allocation:
+                        return feature_flag.default_treatment, Label.NOT_IN_SPLIT
                 roll_out = True
 
             condition_matches = condition.matches(
@@ -192,9 +192,9 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
             if condition_matches:
                 return self._splitter.get_treatment(
                     bucketing_key,
-                    split.seed,
+                    feature_flag.seed,
                     condition.partitions,
-                    split.algo
+                    feature_flag.algo
                 ), condition.label
 
         # No condition matches

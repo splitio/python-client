@@ -7,12 +7,13 @@ from setuptools import setup, find_packages
 TESTS_REQUIRES = [
     'flake8',
     'pytest==7.0.1',
-    'pytest-mock>=3.5.1',
+    'pytest-mock==3.12.0',
     'coverage==6.2',
     'pytest-cov',
     'importlib-metadata==4.2',
     'tomli==1.2.3',
-    'iniconfig==1.1.1'
+    'iniconfig==1.1.1',
+    'attrs==22.1.0'
 ]
 
 INSTALL_REQUIRES = [
@@ -20,7 +21,7 @@ INSTALL_REQUIRES = [
     'pyyaml>=5.4',
     'docopt>=0.6.2',
     'enum34;python_version<"3.4"',
-    'bloom-filter2>=2.0.0',
+    'bloom-filter2>=2.0.0'
 ]
 
 with open(path.join(path.abspath(path.dirname(__file__)), 'splitio', 'version.py')) as f:
@@ -43,7 +44,7 @@ setup(
         'uwsgi': ['uwsgi>=2.0.0'],
         'cpphash': ['mmh3cffi==0.2.1'],
     },
-    setup_requires=['pytest-runner'],
+    setup_requires=['pytest-runner', 'pluggy==1.0.0;python_version<"3.7"'],
     classifiers=[
         'Environment :: Console',
         'Intended Audience :: Developers',
@@ -52,5 +53,5 @@ setup(
         'Programming Language :: Python :: 3',
         'Topic :: Software Development :: Libraries'
     ],
-    packages=find_packages()
+    packages=find_packages(exclude=('tests', 'tests.*'))
 )

@@ -14,7 +14,7 @@ from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
 from splitio.models.events import Event, EventWrapper
 from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MethodExceptionsAndLatencies
-
+from splitio.storage import FlagSetsFilter
 
 class RedisSplitStorageTests(object):
     """Redis split storage test cases."""
@@ -172,6 +172,20 @@ class RedisSplitStorageTests(object):
         time.sleep(1)
         assert storage.is_valid_traffic_type('any') is False
 
+    @mock.patch('splitio.storage.adapters.redis.RedisPipelineAdapter.execute', return_value = [{'split1', 'split2'}])
+    def test_flag_sets(self, mocker):
+        """Test Flag sets scenarios."""
+        adapter = build({})
+        storage = RedisSplitStorage(adapter, True, 1)
+        assert storage.flag_set_filter.flag_sets == set({})
+        assert sorted(storage.get_feature_flags_by_sets(['set1', 'set2'])) == ['split1', 'split2']
+
+        storage.flag_set_filter = FlagSetsFilter(['set2', 'set3'])
+        assert storage.get_feature_flags_by_sets(['set1']) == []
+        assert sorted(storage.get_feature_flags_by_sets(['set2'])) == ['split1', 'split2']
+
+        storage2 = RedisSplitStorage(adapter, True, 1, ['set2', 'set3'])
+        assert storage2.flag_set_filter.flag_sets == set({'set2', 'set3'})
 
 class RedisSegmentStorageTests(object):
     """Redis segment storage test cases."""
@@ -399,7 +413,7 @@ class RedisTelemetryStorageTests(object):
     @mock.patch('splitio.models.telemetry.TelemetryConfig.record_config')
     def test_record_config(self, mocker):
         redis_telemetry = RedisTelemetryStorage(mocker.Mock(), mocker.Mock())
-        redis_telemetry.record_config(mocker.Mock(), mocker.Mock())
+        redis_telemetry.record_config(mocker.Mock(), mocker.Mock(), 0, 0)
         assert(mocker.called)
 
     @mock.patch('splitio.storage.adapters.redis.RedisAdapter.hset')
@@ -418,7 +432,7 @@ class RedisTelemetryStorageTests(object):
             'rF': stats['rF'],
             'sT': stats['sT'],
             'oM': stats['oM'],
-            't': redis_telemetry.pop_config_tags()
+            't': redis_telemetry.pop_config_tags(),
         }))
 
     def test_record_active_and_redundant_factories(self, mocker):
@@ -430,17 +444,26 @@ class RedisTelemetryStorageTests(object):
         assert (redis_telemetry._tel_config._redundant_factory_count == redundant_factory_count)
 
     def test_add_latency_to_pipe(self, mocker):
-        def _mocked_hincrby(*args, **kwargs):
-            assert(args[1] == RedisTelemetryStorage._TELEMETRY_LATENCIES_KEY)
-            assert(args[2][-11:] == 'treatment/0')
-            assert(args[3] == 1)
-
         adapter = build({})
         metadata = SdkMetadata('python-1.1.1', 'hostname', 'ip')
         redis_telemetry = RedisTelemetryStorage(adapter, metadata)
         pipe = adapter._decorated.pipeline()
+
+        def _mocked_hincrby(*args, **kwargs):
+            assert(args[1] == RedisTelemetryStorage._TELEMETRY_LATENCIES_KEY)
+            assert(args[2][-11:] == 'treatment/0')
+            assert(args[3] == 1)
+        # should increment bucket 0
         with mock.patch('redis.client.Pipeline.hincrby', _mocked_hincrby):
-            redis_telemetry.add_latency_to_pipe(MethodExceptionsAndLatencies.TREATMENT, 20, pipe)
+            redis_telemetry.add_latency_to_pipe(MethodExceptionsAndLatencies.TREATMENT, 0, pipe)
+
+        def _mocked_hincrby2(*args, **kwargs):
+            assert(args[1] == RedisTelemetryStorage._TELEMETRY_LATENCIES_KEY)
+            assert(args[2][-11:] == 'treatment/3')
+            assert(args[3] == 1)
+        # should increment bucket 3
+        with mock.patch('redis.client.Pipeline.hincrby', _mocked_hincrby2):
+            redis_telemetry.add_latency_to_pipe(MethodExceptionsAndLatencies.TREATMENT, 3, pipe)
 
     def test_record_exception(self, mocker):
         def _mocked_hincrby(*args, **kwargs):

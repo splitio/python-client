@@ -1,4 +1,4 @@
-"""Redis storage end to end tests."""
+"""Pluggable storage end to end tests."""
 #pylint: disable=no-self-use,protected-access,line-too-long,too-few-public-methods
 
 import json
@@ -6,32 +6,30 @@ import os
 
 from splitio.client.util import get_metadata
 from splitio.models import splits, impressions, events
-from splitio.storage.redis import RedisSplitStorage, RedisSegmentStorage, RedisImpressionsStorage, \
-    RedisEventsStorage
-from splitio.storage.adapters.redis import _build_default_client, StrictRedis
+from splitio.storage.pluggable import PluggableEventsStorage, PluggableImpressionsStorage, PluggableSegmentStorage, \
+    PluggableSplitStorage, PluggableTelemetryStorage
 from splitio.client.config import DEFAULT_CONFIG
+from tests.storage.test_pluggable import StorageMockAdapter
 
-
-class SplitStorageTests(object):
-    """Redis Split storage e2e tests."""
+class PluggableSplitStorageIntegrationTests(object):
+    """Pluggable Split storage e2e tests."""
 
     def test_put_fetch(self):
-        """Test storing and retrieving splits in redis."""
-        redis = StrictRedis(host="localhost")
-        redis.acl_setuser(username='redis_user', enabled=True, passwords=["+split"], categories=["+admin"],
-                          commands=["+@all"], keys=["~*"])
-        redis.close()
-        adapter = _build_default_client({'redisUsername': 'redis_user', 'redisPassword': 'split'})
+        """Test storing and retrieving splits in pluggable."""
+        adapter = StorageMockAdapter()
         try:
-            storage = RedisSplitStorage(adapter)
-            with open(os.path.join(os.path.dirname(__file__), 'files', 'split_changes.json'), 'r') as flo:
-                split_changes = json.load(flo)
+            storage = PluggableSplitStorage(adapter)
+            split_fn = os.path.join(os.path.dirname(__file__), 'files', 'split_changes.json')
+            with open(split_fn, 'r') as flo:
+                data = json.loads(flo.read())
+                for split in data['splits']:
+                    adapter.set(storage._prefix.format(feature_flag_name=split['name']), split)
+                    adapter.increment(storage._traffic_type_prefix.format(traffic_type_name=split['trafficTypeName']), 1)
+                adapter.set(storage._feature_flag_till_prefix, data['till'])
 
-            split_objects = [splits.from_raw(raw) for raw in split_changes['splits']]
+            split_objects = [splits.from_raw(raw) for raw in data['splits']]
             for split_object in split_objects:
                 raw = split_object.to_json()
-                adapter.set(RedisSplitStorage._FEATURE_FLAG_KEY.format(feature_flag_name=split_object.name), json.dumps(raw))
-                adapter.incr(RedisSplitStorage._TRAFFIC_TYPE_KEY.format(traffic_type_name=split_object.traffic_type_name))
 
             original_splits = {split.name: split for split in split_objects}
             fetched_splits = {name: storage.get(name) for name in original_splits.keys()}
@@ -54,8 +52,8 @@ class SplitStorageTests(object):
                     assert len(original_condition.matchers) == len(fetched_condition.matchers)
                     assert len(original_condition.partitions) == len(fetched_condition.partitions)
 
-            adapter.set(RedisSplitStorage._FEATURE_FLAG_TILL_KEY, split_changes['till'])
-            assert storage.get_change_number() == split_changes['till']
+            adapter.set(storage._feature_flag_till_prefix, data['till'])
+            assert storage.get_change_number() == data['till']
 
             assert storage.is_valid_traffic_type('user') is True
             assert storage.is_valid_traffic_type('account') is True
@@ -77,26 +75,25 @@ class SplitStorageTests(object):
             ]
             for item in to_delete:
                 adapter.delete(item)
-            storage = RedisSplitStorage(adapter)
+
+            storage = PluggableSplitStorage(adapter)
             assert storage.is_valid_traffic_type('user') is False
             assert storage.is_valid_traffic_type('account') is False
-            redis = StrictRedis(host="localhost")
-            redis.acl_deluser("redis_user")
-            redis.close()
 
     def test_get_all(self):
         """Test get all names & splits."""
-        adapter = _build_default_client({})
+        adapter = StorageMockAdapter()
         try:
-            storage = RedisSplitStorage(adapter)
-            with open(os.path.join(os.path.dirname(__file__), 'files', 'split_changes.json'), 'r') as flo:
-                split_changes = json.load(flo)
+            storage = PluggableSplitStorage(adapter)
+            split_fn = os.path.join(os.path.dirname(__file__), 'files', 'split_changes.json')
+            with open(split_fn, 'r') as flo:
+                data = json.loads(flo.read())
+                for split in data['splits']:
+                    adapter.set(storage._prefix.format(feature_flag_name=split['name']), split)
+                    adapter.increment(storage._traffic_type_prefix.format(traffic_type_name=split['trafficTypeName']), 1)
+                adapter.set(storage._feature_flag_till_prefix, data['till'])
 
-            split_objects = [splits.from_raw(raw) for raw in split_changes['splits']]
-            for split_object in split_objects:
-                raw = split_object.to_json()
-                adapter.set(RedisSplitStorage._FEATURE_FLAG_KEY.format(feature_flag_name=split_object.name), json.dumps(raw))
-
+            split_objects = [splits.from_raw(raw) for raw in data['splits']]
             original_splits = {split.name: split for split in split_objects}
             fetched_names = storage.get_split_names()
             fetched_splits = {split.name: split for split in storage.get_all_splits()}
@@ -118,8 +115,7 @@ class SplitStorageTests(object):
                     assert len(original_condition.matchers) == len(fetched_condition.matchers)
                     assert len(original_condition.partitions) == len(fetched_condition.partitions)
         finally:
-            adapter.delete(
-                'SPLITIO.split.sample_feature',
+            [adapter.delete(key) for key in ['SPLITIO.split.sample_feature',
                 'SPLITIO.splits.till',
                 'SPLITIO.split.all_feature',
                 'SPLITIO.split.killed_feature',
@@ -127,19 +123,19 @@ class SplitStorageTests(object):
                 'SPLITIO.split.whitelist_feature',
                 'SPLITIO.split.regex_test',
                 'SPLITIO.split.boolean_test',
-                'SPLITIO.split.dependency_test'
-            )
+                'SPLITIO.split.dependency_test']]
 
-class SegmentStorageTests(object):
-    """Redis Segment storage e2e tests."""
+
+class PluggableSegmentStorageIntegrationTests(object):
+    """Pluggable Segment storage e2e tests."""
 
     def test_put_fetch_contains(self):
-        """Test storing and retrieving splits in redis."""
-        adapter = _build_default_client({})
+        """Test storing and retrieving splits in pluggable."""
+        adapter = StorageMockAdapter()
         try:
-            storage = RedisSegmentStorage(adapter)
-            adapter.sadd(storage._get_key('some_segment'), 'key1', 'key2', 'key3', 'key4')
-            adapter.set(storage._get_till_key('some_segment'), 123)
+            storage = PluggableSegmentStorage(adapter)
+            adapter.set(storage._prefix.format(segment_name='some_segment'), {'key1', 'key2', 'key3', 'key4'})
+            adapter.set(storage._segment_till_prefix.format(segment_name='some_segment'), 123)
             assert storage.segment_contains('some_segment', 'key0') is False
             assert storage.segment_contains('some_segment', 'key1') is True
             assert storage.segment_contains('some_segment', 'key2') is True
@@ -151,14 +147,15 @@ class SegmentStorageTests(object):
             assert fetched.keys == set(['key1', 'key2', 'key3', 'key4'])
             assert fetched.change_number == 123
         finally:
-            adapter.delete('SPLITIO.segment.some_segment', 'SPLITIO.segment.some_segment.till')
+            adapter.delete('SPLITIO.segment.some_segment')
+            adapter.delete('SPLITIO.segment.some_segment.till')
 
 
-class ImpressionsStorageTests(object):
-    """Redis Impressions storage e2e tests."""
+class PluggableImpressionsStorageIntegrationTests(object):
+    """Pluggable Impressions storage e2e tests."""
 
     def _put_impressions(self, adapter, metadata):
-        storage = RedisImpressionsStorage(adapter, metadata)
+        storage = PluggableImpressionsStorage(adapter, metadata)
         storage.put([
             impressions.Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654),
             impressions.Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654),
@@ -167,12 +164,12 @@ class ImpressionsStorageTests(object):
 
 
     def test_put_fetch_contains(self):
-        """Test storing and retrieving splits in redis."""
-        adapter = _build_default_client({})
+        """Test storing and retrieving splits in pluggable."""
+        adapter = StorageMockAdapter()
         try:
             self._put_impressions(adapter, get_metadata({}))
 
-            imps = adapter.lrange('SPLITIO.impressions', 0, 2)
+            imps = adapter.pop_items('SPLITIO.impressions')
             assert len(imps) == 3
             for rawImpression in imps:
                 impression = json.loads(rawImpression)
@@ -182,14 +179,14 @@ class ImpressionsStorageTests(object):
             adapter.delete('SPLITIO.impressions')
 
     def test_put_fetch_contains_ip_address_disabled(self):
-        """Test storing and retrieving splits in redis."""
-        adapter = _build_default_client({})
+        """Test storing and retrieving splits in pluggable."""
+        adapter = StorageMockAdapter()
         try:
             cfg = DEFAULT_CONFIG.copy()
             cfg.update({'IPAddressesEnabled': False})
             self._put_impressions(adapter, get_metadata(cfg))
 
-            imps = adapter.lrange('SPLITIO.impressions', 0, 2)
+            imps = adapter.pop_items('SPLITIO.impressions')
             assert len(imps) == 3
             for rawImpression in imps:
                 impression = json.loads(rawImpression)
@@ -199,10 +196,10 @@ class ImpressionsStorageTests(object):
             adapter.delete('SPLITIO.impressions')
 
 
-class EventsStorageTests(object):
-    """Redis Events storage e2e tests."""
+class PluggableEventsStorageIntegrationTests(object):
+    """Pluggable Events storage e2e tests."""
     def _put_events(self, adapter, metadata):
-        storage = RedisEventsStorage(adapter, metadata)
+        storage = PluggableEventsStorage(adapter, metadata)
         storage.put([
             events.EventWrapper(
                 event=events.Event('key1', 'user', 'purchase', 3.5, 123456, None),
@@ -219,11 +216,11 @@ class EventsStorageTests(object):
         ])
 
     def test_put_fetch_contains(self):
-        """Test storing and retrieving splits in redis."""
-        adapter = _build_default_client({})
+        """Test storing and retrieving splits in pluggable."""
+        adapter = StorageMockAdapter()
         try:
             self._put_events(adapter, get_metadata({}))
-            evts = adapter.lrange('SPLITIO.events', 0, 2)
+            evts = adapter.pop_items('SPLITIO.events')
             assert len(evts) == 3
             for rawEvent in evts:
                 event = json.loads(rawEvent)
@@ -233,14 +230,14 @@ class EventsStorageTests(object):
             adapter.delete('SPLITIO.events')
 
     def test_put_fetch_contains_ip_address_disabled(self):
-        """Test storing and retrieving splits in redis."""
-        adapter = _build_default_client({})
+        """Test storing and retrieving splits in pluggable."""
+        adapter = StorageMockAdapter()
         try:
             cfg = DEFAULT_CONFIG.copy()
             cfg.update({'IPAddressesEnabled': False})
             self._put_events(adapter, get_metadata(cfg))
 
-            evts = adapter.lrange('SPLITIO.events', 0, 2)
+            evts = adapter.pop_items('SPLITIO.events')
             assert len(evts) == 3
             for rawEvent in evts:
                 event = json.loads(rawEvent)

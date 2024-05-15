@@ -9,7 +9,7 @@ import pytest
 from splitio.client.factory import get_factory, SplitFactory, _INSTANTIATED_FACTORIES, Status,\
     _LOGGER as _logger
 from splitio.client.config import DEFAULT_CONFIG
-from splitio.storage import redis, inmemmory
+from splitio.storage import redis, inmemmory, pluggable
 from splitio.tasks import events_sync, impressions_sync, split_sync, segment_sync
 from splitio.tasks.util import asynctask
 from splitio.api.splits import SplitsAPI
@@ -23,10 +23,31 @@ from splitio.sync.split import SplitSynchronizer
 from splitio.sync.segment import SegmentSynchronizer
 from splitio.recorder.recorder import PipelinedRecorder, StandardRecorder
 from splitio.storage.adapters.redis import RedisAdapter, RedisPipelineAdapter
+from tests.storage.test_pluggable import StorageMockAdapter
 
 
 class SplitFactoryTests(object):
     """Split factory test cases."""
+
+    def test_flag_sets_counts(self):
+        factory = get_factory("none", config={
+            'flagSetsFilter': ['set1', 'set2', 'set3']
+        })
+
+        assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets == 3
+        assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets_invalid == 0
+
+        factory = get_factory("none", config={
+            'flagSetsFilter': ['s#et1', 'set2', 'set3']
+        })
+        assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets == 3
+        assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets_invalid == 1
+
+        factory = get_factory("none", config={
+            'flagSetsFilter': ['s#et1', 22, 'set3']
+        })
+        assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets == 3
+        assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets_invalid == 2
 
     def test_inmemory_client_creation_streaming_false(self, mocker):
         """Test that a client with in-memory storage is created correctly."""
@@ -78,6 +99,7 @@ class SplitFactoryTests(object):
             'redisPort': 1234,
             'redisDb': 1,
             'redisPassword': 'some_password',
+            'redisUsername': 'redis_user',
             'redisSocketTimeout': 123,
             'redisSocketConnectTimeout': 123,
             'redisSocketKeepalive': 123,
@@ -94,12 +116,15 @@ class SplitFactoryTests(object):
             'redisSslCertReqs': 'some_cert_req',
             'redisSslCaCerts': 'some_ca_cert',
             'redisMaxConnections': 999,
+            'flagSetsFilter': ['set_1']
         }
         factory = get_factory('some_api_key', config=config)
         assert isinstance(factory._get_storage('splits'), redis.RedisSplitStorage)
         assert isinstance(factory._get_storage('segments'), redis.RedisSegmentStorage)
         assert isinstance(factory._get_storage('impressions'), redis.RedisImpressionsStorage)
         assert isinstance(factory._get_storage('events'), redis.RedisEventsStorage)
+
+        assert factory._get_storage('splits').flag_set_filter.flag_sets == set([])
 
         adapter = factory._get_storage('splits')._redis
         assert adapter == factory._get_storage('segments')._redis
@@ -110,6 +135,7 @@ class SplitFactoryTests(object):
             host='some_host',
             port=1234,
             db=1,
+            username='redis_user',
             password='some_password',
             socket_timeout=123,
             socket_connect_timeout=123,
@@ -221,7 +247,7 @@ class SplitFactoryTests(object):
                      new=_telemetry_task_init_mock)
 
         split_sync = mocker.Mock(spec=SplitSynchronizer)
-        split_sync.synchronize_splits.return_values = None
+        split_sync.synchronize_splits.return_value = []
         segment_sync = mocker.Mock(spec=SegmentSynchronizer)
         segment_sync.synchronize_segments.return_values = None
         syncs = SplitSynchronizers(split_sync, segment_sync, mocker.Mock(),
@@ -317,7 +343,7 @@ class SplitFactoryTests(object):
                      new=_telemetry_task_init_mock)
 
         split_sync = mocker.Mock(spec=SplitSynchronizer)
-        split_sync.synchronize_splits.return_values = None
+        split_sync.synchronize_splits.return_value = []
         segment_sync = mocker.Mock(spec=SegmentSynchronizer)
         segment_sync.synchronize_segments.return_values = None
         syncs = SplitSynchronizers(split_sync, segment_sync, mocker.Mock(),
@@ -340,7 +366,7 @@ class SplitFactoryTests(object):
             factory.block_until_ready(1)
         except:
             pass
-            
+
         assert factory.ready is True
         assert factory.destroyed is False
 
@@ -429,7 +455,7 @@ class SplitFactoryTests(object):
         factory2 = get_factory('some_api_key')
         assert _INSTANTIATED_FACTORIES['some_api_key'] == 2
         assert factory_module_logger.warning.mock_calls == [mocker.call(
-            "factory instantiation: You already have %d %s with this API Key. "
+            "factory instantiation: You already have %d %s with this SDK Key. "
             "We recommend keeping only one instance of the factory at all times "
             "(Singleton pattern) and reusing it throughout your application.",
             1,
@@ -440,7 +466,7 @@ class SplitFactoryTests(object):
         factory3 = get_factory('some_api_key')
         assert _INSTANTIATED_FACTORIES['some_api_key'] == 3
         assert factory_module_logger.warning.mock_calls == [mocker.call(
-            "factory instantiation: You already have %d %s with this API Key. "
+            "factory instantiation: You already have %d %s with this SDK Key. "
             "We recommend keeping only one instance of the factory at all times "
             "(Singleton pattern) and reusing it throughout your application.",
             2,
@@ -541,3 +567,55 @@ class SplitFactoryTests(object):
         factory.resume()
         assert _logger.warning.mock_calls == expected_msg
         factory.destroy()
+
+    def test_pluggable_client_creation(self, mocker):
+        """Test that a client with pluggable storage is created correctly."""
+        config = {
+            'labelsEnabled': False,
+            'impressionListener': 123,
+            'storageType': 'pluggable',
+            'storageWrapper': StorageMockAdapter(),
+            'flagSetsFilter': ['set_1']
+        }
+        factory = get_factory('some_api_key', config=config)
+        assert isinstance(factory._get_storage('splits'), pluggable.PluggableSplitStorage)
+        assert isinstance(factory._get_storage('segments'), pluggable.PluggableSegmentStorage)
+        assert isinstance(factory._get_storage('impressions'), pluggable.PluggableImpressionsStorage)
+        assert isinstance(factory._get_storage('events'), pluggable.PluggableEventsStorage)
+        assert factory._get_storage('splits').flag_set_filter.flag_sets == set([])
+
+        adapter = factory._get_storage('splits')._pluggable_adapter
+        assert adapter == factory._get_storage('segments')._pluggable_adapter
+        assert adapter == factory._get_storage('impressions')._pluggable_adapter
+        assert adapter == factory._get_storage('events')._pluggable_adapter
+
+        assert factory._labels_enabled is False
+        assert isinstance(factory._recorder, StandardRecorder)
+        assert isinstance(factory._recorder._impressions_manager, ImpressionsManager)
+        assert isinstance(factory._recorder._event_sotrage, pluggable.PluggableEventsStorage)
+        assert isinstance(factory._recorder._impression_storage, pluggable.PluggableImpressionsStorage)
+        try:
+            factory.block_until_ready(1)
+        except:
+            pass
+        assert factory.ready
+        factory.destroy()
+
+    def test_destroy_with_event_pluggable(self, mocker):
+        config = {
+            'labelsEnabled': False,
+            'impressionListener': 123,
+            'storageType': 'pluggable',
+            'storageWrapper': StorageMockAdapter()
+        }
+
+        factory = get_factory("none", config=config)
+        event = threading.Event()
+        factory.destroy(event)
+        event.wait()
+        assert factory.destroyed
+
+        factory = get_factory("none", config=config)
+        factory.destroy(None)
+        time.sleep(0.1)
+        assert factory.destroyed

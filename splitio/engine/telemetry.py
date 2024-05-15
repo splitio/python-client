@@ -6,7 +6,7 @@ import logging
 _LOGGER = logging.getLogger(__name__)
 
 from  splitio.storage.inmemmory import InMemoryTelemetryStorage
-from splitio.models.telemetry import CounterConstants
+from splitio.models.telemetry import CounterConstants, UpdateFromSSE
 
 class TelemetryStorageProducer(object):
     """Telemetry storage producer class."""
@@ -36,9 +36,9 @@ class TelemetryInitProducer(object):
         """Constructor."""
         self._telemetry_storage = telemetry_storage
 
-    def record_config(self, config, extra_config):
+    def record_config(self, config, extra_config, total_flag_sets=0, invalid_flag_sets=0):
         """Record configurations."""
-        self._telemetry_storage.record_config(config, extra_config)
+        self._telemetry_storage.record_config(config, extra_config, total_flag_sets, invalid_flag_sets)
         current_app, app_worker_id = self._get_app_worker_id()
         if  current_app is not None:
             self.add_config_tag("initilization:" + current_app)
@@ -47,6 +47,14 @@ class TelemetryInitProducer(object):
     def record_ready_time(self, ready_time):
         """Record ready time."""
         self._telemetry_storage.record_ready_time(ready_time)
+
+    def record_flag_sets(self, flag_sets):
+        """Record flag sets."""
+        self._telemetry_storage.record_flag_sets(flag_sets)
+
+    def record_invalid_flag_sets(self, flag_sets):
+        """Record invalid flag sets."""
+        self._telemetry_storage.record_invalid_flag_sets(flag_sets)
 
     def record_bur_time_out(self):
         """Record block until ready timeout."""
@@ -139,6 +147,10 @@ class TelemetryRuntimeProducer(object):
         """Record session length."""
         self._telemetry_storage.record_session_length(session)
 
+    def record_update_from_sse(self, event):
+        """Record update from sse."""
+        self._telemetry_storage.record_update_from_sse(event)
+
 class TelemetryStorageConsumer(object):
     """Telemetry storage consumer class."""
 
@@ -214,17 +226,27 @@ class TelemetryEvaluationConsumer(object):
         exceptions = self.pop_exceptions()['methodExceptions']
         latencies = self.pop_latencies()['methodLatencies']
         return {
-            'mE': {'t': exceptions['treatment'],
-                      'ts': exceptions['treatments'],
-                      'tc': exceptions['treatment_with_config'],
-                      'tcs': exceptions['treatments_with_config'],
-                      'tr': exceptions['track']
+            'mE': {
+                't': exceptions['treatment'],
+                'ts': exceptions['treatments'],
+                'tc': exceptions['treatment_with_config'],
+                'tcs': exceptions['treatments_with_config'],
+                'tf': exceptions['treatments_by_flag_set'],
+                'tfs': exceptions['treatments_by_flag_sets'],
+                'tcf': exceptions['treatments_with_config_by_flag_set'],
+                'tcfs': exceptions['treatments_with_config_by_flag_sets'],
+                'tr': exceptions['track']
                },
-            'mL':  {'t': latencies['treatment'],
-                      'ts': latencies['treatments'],
-                      'tc': latencies['treatment_with_config'],
-                      'tcs': latencies['treatments_with_config'],
-                      'tr': latencies['track']
+            'mL':  {
+                't': latencies['treatment'],
+                'ts': latencies['treatments'],
+                'tc': latencies['treatment_with_config'],
+                'tcs': latencies['treatments_with_config'],
+                'tf': latencies['treatments_by_flag_set'],
+                'tfs': latencies['treatments_by_flag_sets'],
+                'tcf': latencies['treatments_with_config_by_flag_set'],
+                'tcfs': latencies['treatments_with_config_by_flag_sets'],
+                'tr': latencies['track']
                },
         }
 
@@ -271,6 +293,10 @@ class TelemetryRuntimeConsumer(object):
         """Get and reset streaming events."""
         return self._telemetry_storage.pop_streaming_events()
 
+    def pop_update_from_sse(self, event):
+        """Get and reset update from sse."""
+        return self._telemetry_storage.pop_update_from_sse(event)
+
     def get_session_length(self):
         """Get session length"""
         return self._telemetry_storage.get_session_length()
@@ -292,6 +318,7 @@ class TelemetryRuntimeConsumer(object):
             'iDr': self.get_impressions_stats(CounterConstants.IMPRESSIONS_DROPPED),
             'eQ': self.get_events_stats(CounterConstants.EVENTS_QUEUED),
             'eD': self.get_events_stats(CounterConstants.EVENTS_DROPPED),
+            'ufs': {event.value: self.pop_update_from_sse(event) for event in UpdateFromSSE},
             'lS': {'sp': last_synchronization['split'],
                       'se': last_synchronization['segment'],
                       'im': last_synchronization['impression'],

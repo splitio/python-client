@@ -19,19 +19,43 @@ class TelemetryStorageProducerTests(object):
         assert(telemetry_producer._telemetry_init_producer == telemetry_producer.get_telemetry_init_producer())
         assert(telemetry_producer._telemetry_runtime_producer == telemetry_producer.get_telemetry_runtime_producer())
 
-class TelemetryInitProducerTest(object):
-    """TelemetryInitProducer test."""
-
     def test_record_config(self, mocker):
-        telemetry_storage = mocker.Mock()
+        telemetry_storage = InMemoryTelemetryStorage()
         telemetry_init_producer = TelemetryInitProducer(telemetry_storage)
+        config = {'operationMode': 'standalone',
+            'streamingEnabled': True,
+            'impressionsQueueSize': 100,
+            'eventsQueueSize': 200,
+            'impressionsMode': 'DEBUG',
+            'impressionListener': None,
+            'featuresRefreshRate': 30,
+            'segmentsRefreshRate': 30,
+            'impressionsRefreshRate': 60,
+            'eventsPushRate': 60,
+            'metricsRefreshRate': 10,
+            'storageType': None
+        }
+        telemetry_init_producer.record_config(config, {}, 5, 2)
+        telemetry_init_producer.record_active_and_redundant_factories(1, 0)
 
-        def record_config(*args, **kwargs):
-            self.passed_config = args[0]
-
-        telemetry_storage.record_config.side_effect = record_config
-        telemetry_init_producer.record_config({'bT':0, 'nR':0, 'uC': 0})
-        assert(self.passed_config == {'bT':0, 'nR':0, 'uC': 0})
+        assert(telemetry_storage._tel_config.get_stats() == {'oM': 0,
+            'sT': telemetry_storage._tel_config._get_storage_type(config['operationMode'], config['storageType']),
+            'sE': config['streamingEnabled'],
+            'rR': {'sp': 30, 'se': 30, 'im': 60, 'ev': 60, 'te': 10},
+            'uO':  {'s': False, 'e': False, 'a': False, 'st': False, 't': False},
+            'iQ': config['impressionsQueueSize'],
+            'eQ': config['eventsQueueSize'],
+            'iM': telemetry_storage._tel_config._get_impressions_mode(config['impressionsMode']),
+            'iL': True if config['impressionListener'] is not None else False,
+            'hp': telemetry_storage._tel_config._check_if_proxy_detected(),
+            'bT': 0,
+            'tR': 0,
+            'nR': 0,
+            'aF': 1,
+            'rF': 0,
+            'fsT': 5,
+            'fsI': 2}
+            )
 
     def test_record_ready_time(self, mocker):
         telemetry_storage = mocker.Mock()
@@ -58,9 +82,6 @@ class TelemetryInitProducerTest(object):
         telemetry_init_producer.record_not_ready_usage()
         assert(mocker.called)
 
-class TelemetryEvaluationProducerTest(object):
-    """Telemetry evaluation producer test class."""
-
     def test_record_latency(self, mocker):
         telemetry_storage = mocker.Mock()
         telemetry_evaluation_producer = TelemetryEvaluationProducer(telemetry_storage)
@@ -83,10 +104,6 @@ class TelemetryEvaluationProducerTest(object):
         telemetry_storage.record_exception.side_effect = record_exception
         telemetry_evaluation_producer.record_exception('method')
         assert(self.passed_method == 'method')
-
-
-class TelemetryRuntimeProducerTest(object):
-    """Telemetry runtime producer test."""
 
     def test_add_tag(self, mocker):
         telemetry_storage = mocker.Mock()
@@ -173,6 +190,13 @@ class TelemetryRuntimeProducerTest(object):
         telemetry_runtime_producer.record_token_refreshes()
         assert(mocker.called)
 
+    @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.record_update_from_sse')
+    def test_record_update_from_sse(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_runtime_producer = TelemetryRuntimeProducer(telemetry_storage)
+        telemetry_runtime_producer.record_update_from_sse('sp')
+        assert(mocker.called)
+
     def test_record_streaming_event(self, mocker):
         telemetry_storage = mocker.Mock()
         telemetry_runtime_producer = TelemetryRuntimeProducer(telemetry_storage)
@@ -210,9 +234,6 @@ class TelemetryStorageConsumerTests(object):
         assert(telemetry_consumer._telemetry_init_consumer == telemetry_consumer.get_telemetry_init_consumer())
         assert(telemetry_consumer._telemetry_runtime_consumer == telemetry_consumer.get_telemetry_runtime_consumer())
 
-class TelemetryInitConsumerTest(object):
-    """TelemetryInitConsumer test."""
-
     @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.get_bur_time_outs')
     def test_get_bur_time_outs(self, mocker):
         telemetry_storage = InMemoryTelemetryStorage()
@@ -234,9 +255,6 @@ class TelemetryInitConsumerTest(object):
         telemetry_init_consumer.get_config_stats()
         assert(mocker.called)
 
-class TelemetryEvaluationConsumerTest(object):
-    """TelemetryEvaluationConsumer test."""
-
     @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.pop_exceptions')
     def pop_exceptions(self, mocker):
         telemetry_storage = InMemoryTelemetryStorage()
@@ -250,9 +268,6 @@ class TelemetryEvaluationConsumerTest(object):
         telemetry_evaluation_consumer = TelemetryEvaluationConsumer(telemetry_storage)
         telemetry_evaluation_consumer.pop_latencies()
         assert(mocker.called)
-
-class TelemetryRuntimeConsumerTest(object):
-    """TelemetryRuntimeConsumer test."""
 
     def test_get_impressions_stats(self, mocker):
         telemetry_storage = mocker.Mock()
@@ -308,6 +323,12 @@ class TelemetryRuntimeConsumerTest(object):
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
         telemetry_runtime_consumer.pop_auth_rejections()
+
+    @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.pop_update_from_sse')
+    def test_pop_auth_rejections(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_runtime_consumer = TelemetryRuntimeConsumer(telemetry_storage)
+        telemetry_runtime_consumer.pop_update_from_sse('sp')
 
     @mock.patch('splitio.storage.inmemmory.InMemoryTelemetryStorage.pop_token_refreshes')
     def test_pop_token_refreshes(self, mocker):

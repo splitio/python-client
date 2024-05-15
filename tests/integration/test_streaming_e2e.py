@@ -4,6 +4,9 @@
 import threading
 import time
 import json
+import base64
+import pytest
+
 from queue import Queue
 from splitio.client.factory import get_factory
 from tests.helpers.mockserver import SSEMockServer, SplitMockServer
@@ -105,6 +108,11 @@ class StreamingIntegrationTests(object):
 
         assert factory.client().get_treatment('pindon', 'split2') == 'off'
         assert factory.client().get_treatment('maldo', 'split2') == 'on'
+
+        sse_server.publish(make_split_fast_change_event(4))
+        time.sleep(1)
+        assert factory.client().get_treatment('maldo', 'split5') == 'on'
+
 
         # Validate the SSE request
         sse_request = sse_requests.get()
@@ -1215,6 +1223,66 @@ class StreamingIntegrationTests(object):
         sse_server.stop()
         split_backend.stop()
 
+    def test_change_number(mocker):
+        # test if changeNumber is missing
+        auth_server_response = {
+            'pushEnabled': True,
+            'token': ('eyJhbGciOiJIUzI1NiIsImtpZCI6IjVZOU05US45QnJtR0EiLCJ0eXAiOiJKV1QifQ.'
+                      'eyJ4LWFibHktY2FwYWJpbGl0eSI6IntcIk1UWXlNVGN4T1RRNE13PT1fTWpBNE16Y3pO'
+                      'RFUxTWc9PV9zZWdtZW50c1wiOltcInN1YnNjcmliZVwiXSxcIk1UWXlNVGN4T1RRNE13P'
+                      'T1fTWpBNE16Y3pORFUxTWc9PV9zcGxpdHNcIjpbXCJzdWJzY3JpYmVcIl0sXCJjb250cm'
+                      '9sX3ByaVwiOltcInN1YnNjcmliZVwiLFwiY2hhbm5lbC1tZXRhZGF0YTpwdWJsaXNoZXJ'
+                      'zXCJdLFwiY29udHJvbF9zZWNcIjpbXCJzdWJzY3JpYmVcIixcImNoYW5uZWwtbWV0YWRh'
+                      'dGE6cHVibGlzaGVyc1wiXX0iLCJ4LWFibHktY2xpZW50SWQiOiJjbGllbnRJZCIsImV4c'
+                      'CI6MTYwNDEwMDU5MSwiaWF0IjoxNjA0MDk2OTkxfQ.aP9BfR534K6J9h8gfDWg_CQgpz5E'
+                      'vJh17WlOlAKhcD0')
+        }
+
+        split_changes = {
+            -1: {
+                'since': -1,
+                'till': 1,
+                'splits': [make_simple_split('split1', 1, True, False, 'off', 'user', True)]
+            },
+            1: {'since': 1, 'till': 1, 'splits': []}
+        }
+
+        segment_changes = {}
+        split_backend_requests = Queue()
+        split_backend = SplitMockServer(split_changes, segment_changes, split_backend_requests,
+                                        auth_server_response)
+        sse_requests = Queue()
+        sse_server = SSEMockServer(sse_requests)
+
+        split_backend.start()
+        sse_server.start()
+        sse_server.publish(make_initial_event())
+        sse_server.publish(make_occupancy('control_pri', 2))
+        sse_server.publish(make_occupancy('control_sec', 2))
+
+        kwargs = {
+            'sdk_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
+            'events_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
+            'auth_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
+            'streaming_api_base_url': 'http://localhost:%d' % sse_server.port(),
+            'config': {'connectTimeout': 10000, 'featuresRefreshRate': 10}
+        }
+
+        factory = get_factory('some_apikey', **kwargs)
+        factory.block_until_ready(1)
+        assert factory.ready
+        time.sleep(2)
+
+        split_changes = make_split_fast_change_event(5).copy()
+        data = json.loads(split_changes['data'])
+        inner_data = json.loads(data['data'])
+        inner_data['changeNumber'] = None
+        data['data'] = json.dumps(inner_data)
+        split_changes['data'] = json.dumps(data)
+        sse_server.publish(split_changes)
+        time.sleep(1)
+        assert factory._storages['splits'].get_change_number() == 1
+
 
 def make_split_change_event(change_number):
     """Make a split change event."""
@@ -1229,6 +1297,32 @@ def make_split_change_event(change_number):
             'data': json.dumps({
                 'type': 'SPLIT_UPDATE',
                 'changeNumber': change_number
+            })
+        })
+    }
+
+def make_split_fast_change_event(change_number):
+    """Make a split change event."""
+    json1 = make_simple_split('split5', 1, True, False, 'off', 'user', True)
+    str1 = json.dumps(json1)
+    byt1 = bytes(str1, encoding='utf-8')
+    compressed = base64.b64encode(byt1)
+    final = compressed.decode('utf-8')
+
+    return {
+        'event': 'message',
+        'data': json.dumps({
+            'id':'TVUsxaabHs:0:0',
+            'clientId':'pri:MzM0ODI1MTkxMw==',
+            'timestamp': change_number-1,
+            'encoding':'json',
+            'channel':'MTYyMTcxOTQ4Mw==_MjA4MzczNDU1Mg==_splits',
+            'data': json.dumps({
+                'type': 'SPLIT_UPDATE',
+                'changeNumber': change_number,
+                'pcn': 3,
+                'c': 0,
+                'd': final
             })
         })
     }

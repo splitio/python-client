@@ -16,30 +16,30 @@ _LOGGER = logging.getLogger(__name__)
 class SplitsAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the splits API."""
 
-    def __init__(self, client, apikey, sdk_metadata, telemetry_runtime_producer):
+    def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer):
         """
         Class constructor.
 
         :param client: HTTP Client responsble for issuing calls to the backend.
         :type client: HttpClient
-        :param apikey: User apikey token.
-        :type apikey: string
+        :param sdk_key: User sdk_key token.
+        :type sdk_key: string
         :param sdk_metadata: SDK version & machine name & IP.
         :type sdk_metadata: splitio.client.util.SdkMetadata
         """
         self._client = client
-        self._apikey = apikey
+        self._sdk_key = sdk_key
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
 
     def fetch_splits(self, change_number, fetch_options):
         """
-        Fetch splits from backend.
+        Fetch feature flags from backend.
 
         :param change_number: Last known timestamp of a split modification.
         :type change_number: int
 
-        :param fetch_options: Fetch options for getting split definitions.
+        :param fetch_options: Fetch options for getting feature flag definitions.
         :type fetch_options: splitio.api.commons.FetchOptions
 
         :return: Json representation of a splitChanges response.
@@ -51,7 +51,7 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
             response = self._client.get(
                 'sdk',
                 '/splitChanges',
-                self._apikey,
+                self._sdk_key,
                 extra_headers=extra_headers,
                 query=query,
             )
@@ -59,8 +59,10 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
             if 200 <= response.status_code < 300:
                 return json.loads(response.body)
             else:
+                if response.status_code == 414:
+                    _LOGGER.error('Error fetching feature flags; the amount of flag sets provided are too big, causing uri length error.')
                 raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
-            _LOGGER.error('Error fetching splits because an exception was raised by the HTTPClient')
+            _LOGGER.error('Error fetching feature flags because an exception was raised by the HTTPClient')
             _LOGGER.debug('Error: ', exc_info=True)
-            raise APIException('Splits not fetched correctly.') from exc
+            raise APIException('Feature flags not fetched correctly.') from exc
