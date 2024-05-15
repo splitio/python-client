@@ -1,4 +1,4 @@
-9.7.0 (May XX, 2024)
+9.7.0 (May 15, 2024)
 - Added support for targeting rules based on semantic versions (https://semver.org/).
 
 9.6.2 (Apr 5, 2024)
