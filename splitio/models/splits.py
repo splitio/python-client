@@ -1,14 +1,45 @@
 """Splits module."""
 from enum import Enum
 from collections import namedtuple
+import logging
 
+from splitio.models import MatcherNotFoundException
 from splitio.models.grammar import condition
 
+_LOGGER = logging.getLogger(__name__)
 
 SplitView = namedtuple(
     'SplitView',
     ['name', 'traffic_type', 'killed', 'treatments', 'change_number', 'configs', 'default_treatment', 'sets']
 )
+
+_DEFAULT_CONDITIONS_TEMPLATE =   {
+    "conditionType": "ROLLOUT",
+    "matcherGroup": {
+        "combiner": "AND",
+        "matchers": [
+        {
+            "keySelector": None,
+            "matcherType": "ALL_KEYS",
+            "negate": False,
+            "userDefinedSegmentMatcherData": None,
+            "whitelistMatcherData": None,
+            "unaryNumericMatcherData": None,
+            "betweenMatcherData": None,
+            "dependencyMatcherData": None,
+            "booleanMatcherData": None,
+            "stringMatcherData": None
+        }]
+    },
+    "partitions": [
+        {
+        "treatment": "control",
+        "size": 100
+        }
+    ],
+    "label": "targeting rule type unsupported by sdk"
+}
+
 
 
 class Status(Enum):
@@ -238,6 +269,12 @@ def from_raw(raw_split):
     :return: A parsed Split object capable of performing evaluations.
     :rtype: Split
     """
+    try:
+        conditions = [condition.from_raw(c) for c in raw_split['conditions']]
+    except MatcherNotFoundException as e:
+        _LOGGER.error(str(e))
+        _LOGGER.debug("Using default conditions template for feature flag: %s", raw_split['name'])
+        conditions = [condition.from_raw(_DEFAULT_CONDITIONS_TEMPLATE)]
     return Split(
         raw_split['name'],
         raw_split['seed'],
@@ -246,7 +283,7 @@ def from_raw(raw_split):
         raw_split['trafficTypeName'],
         raw_split['status'],
         raw_split['changeNumber'],
-        [condition.from_raw(c) for c in raw_split['conditions']],
+        conditions,
         raw_split.get('algo'),
         traffic_allocation=raw_split.get('trafficAllocation'),
         traffic_allocation_seed=raw_split.get('trafficAllocationSeed'),
