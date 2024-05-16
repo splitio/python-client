@@ -793,7 +793,7 @@ class PluggableSegmentStorage(PluggableSegmentStorageBase):
         except Exception:
             _LOGGER.error('Error checking segment key')
             _LOGGER.debug('Error: ', exc_info=True)
-            return None
+            return False
 
     def get(self, segment_name):
         """

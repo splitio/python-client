@@ -84,12 +84,12 @@ class SegmentsSynchronizerTests(object):
         assert segments_synchronizer.synchronize_segments()
 
         api_calls = [call for call in api.fetch_segment.mock_calls]
-        assert mocker.call('segmentA', -1, FetchOptions(True)) in api_calls
-        assert mocker.call('segmentB', -1, FetchOptions(True)) in api_calls
-        assert mocker.call('segmentC', -1, FetchOptions(True)) in api_calls
-        assert mocker.call('segmentA', 123, FetchOptions(True)) in api_calls
-        assert mocker.call('segmentB', 123, FetchOptions(True)) in api_calls
-        assert mocker.call('segmentC', 123, FetchOptions(True)) in api_calls
+        assert mocker.call('segmentA', -1, FetchOptions(True, None, None, None)) in api_calls
+        assert mocker.call('segmentB', -1, FetchOptions(True, None, None, None)) in api_calls
+        assert mocker.call('segmentC', -1, FetchOptions(True, None, None, None)) in api_calls
+        assert mocker.call('segmentA', 123, FetchOptions(True, None, None, None)) in api_calls
+        assert mocker.call('segmentB', 123, FetchOptions(True, None, None, None)) in api_calls
+        assert mocker.call('segmentC', 123, FetchOptions(True, None, None, None)) in api_calls
 
         segment_put_calls = storage.put.mock_calls
         segments_to_validate = set(['segmentA', 'segmentB', 'segmentC'])
@@ -128,8 +128,8 @@ class SegmentsSynchronizerTests(object):
         segments_synchronizer.synchronize_segment('segmentA')
 
         api_calls = [call for call in api.fetch_segment.mock_calls]
-        assert mocker.call('segmentA', -1, FetchOptions(True)) in api_calls
-        assert mocker.call('segmentA', 123, FetchOptions(True)) in api_calls
+        assert mocker.call('segmentA', -1, FetchOptions(True, None, None, None)) in api_calls
+        assert mocker.call('segmentA', 123, FetchOptions(True, None, None, None)) in api_calls
 
     def test_synchronize_segment_cdn(self, mocker):
         """Test particular segment update cdn bypass."""
@@ -173,12 +173,12 @@ class SegmentsSynchronizerTests(object):
         segments_synchronizer = SegmentSynchronizer(api, split_storage, storage)
         segments_synchronizer.synchronize_segment('segmentA')
 
-        assert mocker.call('segmentA', -1, FetchOptions(True)) in api.fetch_segment.mock_calls
-        assert mocker.call('segmentA', 123, FetchOptions(True)) in api.fetch_segment.mock_calls
+        assert mocker.call('segmentA', -1, FetchOptions(True, None, None, None)) in api.fetch_segment.mock_calls
+        assert mocker.call('segmentA', 123, FetchOptions(True, None, None, None)) in api.fetch_segment.mock_calls
 
         segments_synchronizer._backoff = Backoff(1, 0.1)
         segments_synchronizer.synchronize_segment('segmentA', 12345)
-        assert mocker.call('segmentA', 12345, FetchOptions(True, 1234)) in api.fetch_segment.mock_calls
+        assert mocker.call('segmentA', 12345, FetchOptions(True, 1234, None, None)) in api.fetch_segment.mock_calls
         assert len(api.fetch_segment.mock_calls) == 8 # 2 ok + BACKOFF(2 since==till + 2 re-attempts) + CDN(2 since==till)
 
     def test_recreate(self, mocker):

@@ -13,6 +13,7 @@ from datetime import datetime
 from splitio.models.grammar import matchers
 from splitio.models import splits
 from splitio.models.grammar import condition
+from splitio.models.grammar.matchers.utils.utils import Semver
 from splitio.storage import SegmentStorage
 from splitio.engine.evaluator import Evaluator, EvaluationContext
 from tests.integration import splits_json
@@ -877,3 +878,220 @@ class RegexMatcherTests(MatcherTestsBase):
         as_json = matchers.RegexMatcher(self.raw).to_json()
         assert as_json['matcherType'] == 'MATCHES_STRING'
         assert as_json['stringMatcherData'] == "^[a-z][A-Z][0-9]$"
+
+class EqualToSemverMatcherTests(MatcherTestsBase):
+    """Semver equalto matcher test cases."""
+
+    raw = {
+        'negate': False,
+        'matcherType': 'EQUAL_TO_SEMVER',
+        'stringMatcherData': "2.1.8"
+    }
+
+    def test_from_raw(self, mocker):
+        """Test parsing from raw json/dict."""
+        parsed = matchers.from_raw(self.raw)
+        assert isinstance(parsed, matchers.EqualToSemverMatcher)
+        assert parsed._semver is not None
+        assert parsed._semver.version == "2.1.8"
+        assert isinstance(parsed._semver, Semver)
+        assert parsed._semver._major == 2
+        assert parsed._semver._minor == 1
+        assert parsed._semver._patch == 8
+        assert parsed._semver._pre_release == []
+
+    def test_matcher_behaviour(self, mocker):
+        """Test if the matcher works properly."""
+        parsed = matchers.from_raw(self.raw)
+        assert not parsed._match("2.1.8+rc")
+        assert parsed._match("2.1.8")
+        assert not parsed._match("2.1.5")
+        assert not parsed._match("2.1.5-rc1")
+        assert not parsed._match(None)
+        assert not parsed._match("semver")
+
+    def test_to_json(self):
+        """Test that the object serializes to JSON properly."""
+        as_json = matchers.EqualToSemverMatcher(self.raw).to_json()
+        assert as_json['matcherType'] == 'EQUAL_TO_SEMVER'
+        assert as_json['stringMatcherData'] == "2.1.8"
+
+    def test_to_str(self):
+        """Test that the object serializes to str properly."""
+        as_str = matchers.EqualToSemverMatcher(self.raw)
+        assert str(as_str) == "equal semver 2.1.8"
+
+class GreaterThanOrEqualToSemverMatcherTests(MatcherTestsBase):
+    """Semver greater or equalto matcher test cases."""
+
+    raw = {
+        'negate': False,
+        'matcherType': 'GREATER_THAN_OR_EQUAL_TO_SEMVER',
+        'stringMatcherData': "2.1.8"
+    }
+
+    def test_from_raw(self, mocker):
+        """Test parsing from raw json/dict."""
+        parsed = matchers.from_raw(self.raw)
+        assert isinstance(parsed, matchers.GreaterThanOrEqualToSemverMatcher)
+        assert parsed._semver is not None
+        assert parsed._semver.version == "2.1.8"
+        assert isinstance(parsed._semver, Semver)
+        assert parsed._semver._major == 2
+        assert parsed._semver._minor == 1
+        assert parsed._semver._patch == 8
+        assert parsed._semver._pre_release == []
+
+    def test_matcher_behaviour(self, mocker):
+        """Test if the matcher works properly."""
+        parsed = matchers.from_raw(self.raw)
+        assert parsed._match("2.1.8+rc")
+        assert parsed._match("2.1.8")
+        assert parsed._match("2.1.11")
+        assert not parsed._match("2.1.5")
+        assert not parsed._match("2.1.5-rc1")
+        assert not parsed._match(None)
+        assert not parsed._match("semver")
+
+    def test_to_json(self):
+        """Test that the object serializes to JSON properly."""
+        as_json = matchers.GreaterThanOrEqualToSemverMatcher(self.raw).to_json()
+        assert as_json['matcherType'] == 'GREATER_THAN_OR_EQUAL_TO_SEMVER'
+        assert as_json['stringMatcherData'] == "2.1.8"
+
+    def test_to_str(self):
+        """Test that the object serializes to str properly."""
+        as_str = matchers.GreaterThanOrEqualToSemverMatcher(self.raw)
+        assert str(as_str) == "greater than or equal to semver 2.1.8"
+
+class LessThanOrEqualToSemverMatcherTests(MatcherTestsBase):
+    """Semver less or equalto matcher test cases."""
+
+    raw = {
+        'negate': False,
+        'matcherType': 'LESS_THAN_OR_EQUAL_TO_SEMVER',
+        'stringMatcherData': "2.1.8"
+    }
+
+    def test_from_raw(self, mocker):
+        """Test parsing from raw json/dict."""
+        parsed = matchers.from_raw(self.raw)
+        assert isinstance(parsed, matchers.LessThanOrEqualToSemverMatcher)
+        assert parsed._semver is not None
+        assert parsed._semver.version == "2.1.8"
+        assert isinstance(parsed._semver, Semver)
+        assert parsed._semver._major == 2
+        assert parsed._semver._minor == 1
+        assert parsed._semver._patch == 8
+        assert parsed._semver._pre_release == []
+
+    def test_matcher_behaviour(self, mocker):
+        """Test if the matcher works properly."""
+        parsed = matchers.from_raw(self.raw)
+        assert parsed._match("2.1.8+rc")
+        assert parsed._match("2.1.8")
+        assert not parsed._match("2.1.11")
+        assert parsed._match("2.1.5")
+        assert parsed._match("2.1.5-rc1")
+        assert not parsed._match(None)
+        assert not parsed._match("semver")
+
+    def test_to_json(self):
+        """Test that the object serializes to JSON properly."""
+        as_json = matchers.LessThanOrEqualToSemverMatcher(self.raw).to_json()
+        assert as_json['matcherType'] == 'LESS_THAN_OR_EQUAL_TO_SEMVER'
+        assert as_json['stringMatcherData'] == "2.1.8"
+
+    def test_to_str(self):
+        """Test that the object serializes to str properly."""
+        as_str = matchers.LessThanOrEqualToSemverMatcher(self.raw)
+        assert str(as_str) == "less than or equal to semver 2.1.8"
+
+class BetweenSemverMatcherTests(MatcherTestsBase):
+    """Semver between matcher test cases."""
+
+    raw = {
+        'negate': False,
+        'matcherType': 'BETWEEN_SEMVER',
+        'betweenStringMatcherData': {"start": "2.1.8", "end": "2.1.11"}
+    }
+
+    def test_from_raw(self, mocker):
+        """Test parsing from raw json/dict."""
+        parsed = matchers.from_raw(self.raw)
+        assert isinstance(parsed, matchers.BetweenSemverMatcher)
+        assert isinstance(parsed._semver_start, Semver)
+        assert isinstance(parsed._semver_end, Semver)
+        assert parsed._semver_start.version == "2.1.8"
+        assert parsed._semver_start._major == 2
+        assert parsed._semver_start._minor == 1
+        assert parsed._semver_start._patch == 8
+        assert parsed._semver_start._pre_release == []
+
+        assert parsed._semver_end.version == "2.1.11"
+        assert parsed._semver_end._major == 2
+        assert parsed._semver_end._minor == 1
+        assert parsed._semver_end._patch == 11
+        assert parsed._semver_end._pre_release == []
+
+    def test_matcher_behaviour(self, mocker):
+        """Test if the matcher works properly."""
+        parsed = matchers.from_raw(self.raw)
+        assert parsed._match("2.1.8+rc")
+        assert parsed._match("2.1.9")
+        assert parsed._match("2.1.11-rc12")
+        assert not parsed._match("2.1.5")
+        assert not parsed._match("2.1.12-rc1")
+        assert not parsed._match(None)
+        assert not parsed._match("semver")
+
+    def test_to_json(self):
+        """Test that the object serializes to JSON properly."""
+        as_json = matchers.BetweenSemverMatcher(self.raw).to_json()
+        assert as_json['matcherType'] == 'BETWEEN_SEMVER'
+        assert as_json['betweenStringMatcherData'] == {"start": "2.1.8", "end": "2.1.11"}
+
+    def test_to_str(self):
+        """Test that the object serializes to str properly."""
+        as_str = matchers.BetweenSemverMatcher(self.raw)
+        assert str(as_str) == "between semver 2.1.8 and 2.1.11"
+
+class InListSemverMatcherTests(MatcherTestsBase):
+    """Semver inlist matcher test cases."""
+
+    raw = {
+        'negate': False,
+        'matcherType': 'IN_LIST_SEMVER',
+        'whitelistMatcherData': {"whitelist": ["2.1.8", "2.1.11"]}
+    }
+
+    def test_from_raw(self, mocker):
+        """Test parsing from raw json/dict."""
+        parsed = matchers.from_raw(self.raw)
+        assert isinstance(parsed, matchers.InListSemverMatcher)
+        assert parsed._data == ["2.1.8", "2.1.11"]
+        assert [isinstance(item, str) for item in parsed._semver_list]
+        assert "2.1.8" in parsed._semver_list
+        assert "2.1.11" in parsed._semver_list
+
+    def test_matcher_behaviour(self, mocker):
+        """Test if the matcher works properly."""
+        parsed = matchers.from_raw(self.raw)
+        assert not parsed._match("2.1.8+rc")
+        assert parsed._match("2.1.8")
+        assert not parsed._match("2.1.11-rc12")
+        assert parsed._match("2.1.11")
+        assert not parsed._match("2.1.7")
+        assert not parsed._match(None)
+        assert not parsed._match("semver")
+
+    def test_to_json(self):
+        """Test that the object serializes to JSON properly."""
+        as_json = matchers.InListSemverMatcher(self.raw).to_json()
+        assert as_json['matcherType'] == 'IN_LIST_SEMVER'
+        assert as_json['whitelistMatcherData'] == {"whitelist": ["2.1.8", "2.1.11"]}
+
+    def test_to_str(self):
+        """Test that the object serializes to str properly."""
+        as_str = matchers.InListSemverMatcher(self.raw)
+        assert str(as_str) == "in list semver ['2.1.8', '2.1.11']"

@@ -16,7 +16,7 @@ class SegmentAPITests(object):
         httpclient.get.return_value = client.HttpResponse(200, '{"prop1": "value1"}', {})
         segment_api = segments.SegmentsAPI(httpclient, 'some_api_key', SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
 
-        response = segment_api.fetch_segment('some_segment', 123, FetchOptions())
+        response = segment_api.fetch_segment('some_segment', 123, FetchOptions(None, None, None, None))
         assert response['prop1'] == 'value1'
         assert httpclient.get.mock_calls == [mocker.call('sdk', 'segmentChanges/some_segment', 'some_api_key',
                                                          extra_headers={
@@ -27,7 +27,7 @@ class SegmentAPITests(object):
                                                          query={'since': 123})]
 
         httpclient.reset_mock()
-        response = segment_api.fetch_segment('some_segment', 123, FetchOptions(True))
+        response = segment_api.fetch_segment('some_segment', 123, FetchOptions(True, None, None, None))
         assert response['prop1'] == 'value1'
         assert httpclient.get.mock_calls == [mocker.call('sdk', 'segmentChanges/some_segment', 'some_api_key',
                                                          extra_headers={
@@ -39,7 +39,7 @@ class SegmentAPITests(object):
                                                          query={'since': 123})]
 
         httpclient.reset_mock()
-        response = segment_api.fetch_segment('some_segment', 123, FetchOptions(True, 123))
+        response = segment_api.fetch_segment('some_segment', 123, FetchOptions(True, 123, None, None))
         assert response['prop1'] == 'value1'
         assert httpclient.get.mock_calls == [mocker.call('sdk', 'segmentChanges/some_segment', 'some_api_key',
                                                          extra_headers={

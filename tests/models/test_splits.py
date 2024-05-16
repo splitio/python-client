@@ -1,8 +1,8 @@
 """Split model tests module."""
+import copy
 
 from splitio.models import splits
 from splitio.models.grammar.condition import Condition
-
 
 class SplitTests(object):
     """Split model tests."""
@@ -118,3 +118,17 @@ class SplitTests(object):
         assert as_split_view.traffic_type == self.raw['trafficTypeName']
         assert set(as_split_view.treatments) == set(['on', 'off'])
         assert sorted(as_split_view.sets) == sorted(list(self.raw['sets']))
+
+    def test_incorrect_matcher(self):
+        """Test incorrect matcher in split model parsing."""
+        split = copy.deepcopy(self.raw)
+        split['conditions'][0]['matcherGroup']['matchers'][0]['matcherType'] = 'INVALID_MATCHER'
+        parsed = splits.from_raw(split)
+        assert parsed.conditions[0].to_json() == splits._DEFAULT_CONDITIONS_TEMPLATE
+
+        # using multiple conditions
+        split = copy.deepcopy(self.raw)
+        split['conditions'].append(split['conditions'][0])
+        split['conditions'][0]['matcherGroup']['matchers'][0]['matcherType'] = 'INVALID_MATCHER'
+        parsed = splits.from_raw(split)
+        assert parsed.conditions[0].to_json() == splits._DEFAULT_CONDITIONS_TEMPLATE
