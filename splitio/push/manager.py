@@ -349,6 +349,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
 
         if self._token_task:
             self._token_task.cancel()
+            self._token_task = None
 
         if blocking:
             await self._stop_current_conn()

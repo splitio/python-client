@@ -614,7 +614,7 @@ class SynchronizerAsync(SynchronizerInMemoryBase):
                         break
                 how_long = self._backoff.get()
                 if not self._shutdown:
-                    time.sleep(how_long)
+                    await asyncio.sleep(how_long)
 
         _LOGGER.error("Could not correctly synchronize feature flags and segments after %d attempts.", retry_attempts)
 
@@ -836,7 +836,6 @@ class RedisSynchronizerAsync(RedisSynchronizerBase):
             _LOGGER.debug('all tasks finished successfully.')
         else:
             asyncio.get_running_loop().create_task(self._stop_periodic_data_recording)
-
 
 
 class LocalhostSynchronizerBase(BaseSynchronizer):
