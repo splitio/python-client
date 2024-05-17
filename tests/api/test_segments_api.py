@@ -83,7 +83,7 @@ class SegmentAPIAsyncTests(object):
             return client.HttpResponse(200, '{"prop1": "value1"}', {})
         httpclient.get = get
 
-        response = await segment_api.fetch_segment('some_segment', 123, FetchOptions())
+        response = await segment_api.fetch_segment('some_segment', 123, FetchOptions(None, None, None, None))
         assert response['prop1'] == 'value1'
         assert self.verb == 'sdk'
         assert self.url == 'segmentChanges/some_segment'
@@ -96,7 +96,7 @@ class SegmentAPIAsyncTests(object):
         assert self.query == {'since': 123}
 
         httpclient.reset_mock()
-        response = await segment_api.fetch_segment('some_segment', 123, FetchOptions(True))
+        response = await segment_api.fetch_segment('some_segment', 123, FetchOptions(True, None, None, None))
         assert response['prop1'] == 'value1'
         assert self.verb == 'sdk'
         assert self.url == 'segmentChanges/some_segment'
@@ -110,7 +110,7 @@ class SegmentAPIAsyncTests(object):
         assert self.query == {'since': 123}
 
         httpclient.reset_mock()
-        response = await segment_api.fetch_segment('some_segment', 123, FetchOptions(True, 123))
+        response = await segment_api.fetch_segment('some_segment', 123, FetchOptions(True, 123, None, None))
         assert response['prop1'] == 'value1'
         assert self.verb == 'sdk'
         assert self.url == 'segmentChanges/some_segment'
@@ -128,6 +128,6 @@ class SegmentAPIAsyncTests(object):
             raise client.HttpClientException('some_message')
         httpclient.get = raise_exception
         with pytest.raises(APIException) as exc_info:
-            response = await segment_api.fetch_segment('some_segment', 123, FetchOptions())
+            response = await segment_api.fetch_segment('some_segment', 123, FetchOptions(None, None, None, None))
             assert exc_info.type == APIException
             assert exc_info.value.message == 'some_message'

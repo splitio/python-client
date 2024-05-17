@@ -44,7 +44,7 @@ class AuthAPI(object):  # pylint: disable=too-few-public-methods
         try:
             response = self._client.get(
                 'auth',
-                '/v2/auth?s=' + SPEC_VERSION,
+                'v2/auth?s=' + SPEC_VERSION,
                 self._sdk_key,
                 extra_headers=self._metadata,
             )
@@ -55,7 +55,7 @@ class AuthAPI(object):  # pylint: disable=too-few-public-methods
             else:
                 if (response.status_code >= 400 and response.status_code < 500):
                     self._telemetry_runtime_producer.record_auth_rejections()
-                raise APIException(response.body, response.status_code, response.headers)
+                raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
             _LOGGER.error('Exception raised while authenticating')
             _LOGGER.debug('Exception information: ', exc_info=True)
@@ -91,7 +91,7 @@ class AuthAPIAsync(object):  # pylint: disable=too-few-public-methods
         try:
             response = await self._client.get(
                 'auth',
-                'v2/auth',
+                'v2/auth?s=' + SPEC_VERSION,
                 self._sdk_key,
                 extra_headers=self._metadata,
             )
@@ -102,7 +102,7 @@ class AuthAPIAsync(object):  # pylint: disable=too-few-public-methods
             else:
                 if (response.status_code >= 400 and response.status_code < 500):
                     await self._telemetry_runtime_producer.record_auth_rejections()
-                raise APIException(response.body, response.status_code, response.headers)
+                raise APIException(response.body, response.status_code)
         except HttpClientException as exc:
             _LOGGER.error('Exception raised while authenticating')
             _LOGGER.debug('Exception information: ', exc_info=True)

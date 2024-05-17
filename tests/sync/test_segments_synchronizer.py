@@ -287,12 +287,12 @@ class SegmentsSynchronizerAsyncTests(object):
         segments_synchronizer = SegmentSynchronizerAsync(api, split_storage, storage)
         assert await segments_synchronizer.synchronize_segments()
 
-        assert (self.segment[0], self.change[0], self.options[0]) == ('segmentA', -1, FetchOptions(True))
-        assert (self.segment[1], self.change[1], self.options[1]) == ('segmentA', 123, FetchOptions(True))
-        assert (self.segment[2], self.change[2], self.options[2]) == ('segmentB', -1, FetchOptions(True))
-        assert (self.segment[3], self.change[3], self.options[3]) == ('segmentB', 123, FetchOptions(True))
-        assert (self.segment[4], self.change[4], self.options[4]) == ('segmentC', -1, FetchOptions(True))
-        assert (self.segment[5], self.change[5], self.options[5]) == ('segmentC', 123, FetchOptions(True))
+        assert (self.segment[0], self.change[0], self.options[0]) == ('segmentA', -1, FetchOptions(True, None, None, None))
+        assert (self.segment[1], self.change[1], self.options[1]) == ('segmentA', 123, FetchOptions(True, None, None, None))
+        assert (self.segment[2], self.change[2], self.options[2]) == ('segmentB', -1, FetchOptions(True, None, None, None))
+        assert (self.segment[3], self.change[3], self.options[3]) == ('segmentB', 123, FetchOptions(True, None, None, None))
+        assert (self.segment[4], self.change[4], self.options[4]) == ('segmentC', -1, FetchOptions(True, None, None, None))
+        assert (self.segment[5], self.change[5], self.options[5]) == ('segmentC', 123, FetchOptions(True, None, None, None))
 
         segments_to_validate = set(['segmentA', 'segmentB', 'segmentC'])
         for segment in self.segment_put:
@@ -343,8 +343,8 @@ class SegmentsSynchronizerAsyncTests(object):
         segments_synchronizer = SegmentSynchronizerAsync(api, split_storage, storage)
         await segments_synchronizer.synchronize_segment('segmentA')
 
-        assert (self.segment[0], self.change[0], self.options[0]) == ('segmentA', -1, FetchOptions(True))
-        assert (self.segment[1], self.change[1], self.options[1]) == ('segmentA', 123, FetchOptions(True))
+        assert (self.segment[0], self.change[0], self.options[0]) == ('segmentA', -1, FetchOptions(True, None, None, None))
+        assert (self.segment[1], self.change[1], self.options[1]) == ('segmentA', 123, FetchOptions(True, None, None, None))
 
         await segments_synchronizer.shutdown()
 
@@ -403,12 +403,12 @@ class SegmentsSynchronizerAsyncTests(object):
         segments_synchronizer = SegmentSynchronizerAsync(api, split_storage, storage)
         await segments_synchronizer.synchronize_segment('segmentA')
 
-        assert (self.segment[0], self.change[0], self.options[0]) == ('segmentA', -1, FetchOptions(True))
-        assert (self.segment[1], self.change[1], self.options[1]) == ('segmentA', 123, FetchOptions(True))
+        assert (self.segment[0], self.change[0], self.options[0]) == ('segmentA', -1, FetchOptions(True, None, None, None))
+        assert (self.segment[1], self.change[1], self.options[1]) == ('segmentA', 123, FetchOptions(True, None, None, None))
 
         segments_synchronizer._backoff = Backoff(1, 0.1)
         await segments_synchronizer.synchronize_segment('segmentA', 12345)
-        assert (self.segment[7], self.change[7], self.options[7]) == ('segmentA', 12345, FetchOptions(True, 1234))
+        assert (self.segment[7], self.change[7], self.options[7]) == ('segmentA', 12345, FetchOptions(True, 1234, None, None))
         assert len(self.segment) == 8 # 2 ok + BACKOFF(2 since==till + 2 re-attempts) + CDN(2 since==till)
         await segments_synchronizer.shutdown()
 

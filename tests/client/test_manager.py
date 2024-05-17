@@ -1,4 +1,6 @@
 """SDK main manager test module."""
+import pytest
+
 from splitio.client.factory import SplitFactory
 from splitio.client.manager import SplitManager, SplitManagerAsync, _LOGGER as _logger
 from splitio.models import splits

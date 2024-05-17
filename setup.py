@@ -8,7 +8,7 @@ TESTS_REQUIRES = [
     'flake8',
     'pytest==7.0.1',
     'pytest-mock==3.11.1',
-    'coverage==7.2,7',
+    'coverage',
     'pytest-cov==4.1.0',
     'importlib-metadata==6.7',
     'tomli==1.2.3',
@@ -45,7 +45,7 @@ setup(
         'test': TESTS_REQUIRES,
         'redis': ['redis>=2.10.5'],
         'uwsgi': ['uwsgi>=2.0.0'],
-        'cpphash': ['mmh3cffi==0.2.1'],
+        'cpphash': ['mmh3cffi==0.2.1']
     },
     setup_requires=['pytest-runner', 'pluggy==1.0.0;python_version<"3.8"'],
     classifiers=[
