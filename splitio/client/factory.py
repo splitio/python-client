@@ -8,7 +8,7 @@ from enum import Enum
 from splitio.client.client import Client
 from splitio.client import input_validator
 from splitio.client.manager import SplitManager
-from splitio.client.config import sanitize as sanitize_config, DEFAULT_DATA_SAMPLING
+from splitio.client.config import sanitize as sanitize_config, DEFAULT_DATA_SAMPLING, AuthenticateScheme
 from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager
@@ -332,12 +332,19 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
     telemetry_init_producer = telemetry_producer.get_telemetry_init_producer()
 
+    authentication_params = None
+    if cfg.get("httpAuthenticateScheme") == AuthenticateScheme.KERBEROS:
+        authentication_params = [cfg.get("kerberosPrincipalUser"),
+                                 cfg.get("kerberosPrincipalPassword")]
+
     http_client = HttpClient(
         sdk_url=sdk_url,
         events_url=events_url,
         auth_url=auth_api_base_url,
         telemetry_url=telemetry_api_base_url,
-        timeout=cfg.get('connectionTimeout')
+        timeout=cfg.get('connectionTimeout'),
+        authentication_scheme = cfg.get("httpAuthenticateScheme"),
+        authentication_params = authentication_params
     )
 
     sdk_metadata = util.get_metadata(cfg)

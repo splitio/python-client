@@ -3,6 +3,10 @@ from collections import namedtuple
 
 import requests
 import logging
+from requests_kerberos import HTTPKerberosAuth, OPTIONAL
+
+from splitio.client.config import AuthenticateScheme
+
 _LOGGER = logging.getLogger(__name__)
 
 HttpResponse = namedtuple('HttpResponse', ['status_code', 'body'])
@@ -28,7 +32,7 @@ class HttpClient(object):
     AUTH_URL = 'https://auth.split.io/api'
     TELEMETRY_URL = 'https://telemetry.split.io/api'
 
-    def __init__(self, timeout=None, sdk_url=None, events_url=None, auth_url=None, telemetry_url=None):
+    def __init__(self, timeout=None, sdk_url=None, events_url=None, auth_url=None, telemetry_url=None, authentication_scheme=None, authentication_params=None):
         """
         Class constructor.
 
@@ -50,6 +54,8 @@ class HttpClient(object):
             'auth': auth_url if auth_url is not None else self.AUTH_URL,
             'telemetry': telemetry_url if telemetry_url is not None else self.TELEMETRY_URL,
         }
+        self._authentication_scheme = authentication_scheme
+        self._authentication_params = authentication_params
 
     def _build_url(self, server, path):
         """
@@ -100,14 +106,17 @@ class HttpClient(object):
         if extra_headers is not None:
             headers.update(extra_headers)
 
+        authentication = self._get_authentication()
         try:
             response = requests.get(
                 self._build_url(server, path),
                 params=query,
                 headers=headers,
-                timeout=self._timeout
+                timeout=self._timeout,
+                auth=authentication
             )
             return HttpResponse(response.status_code, response.text)
+
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('requests library is throwing exceptions') from exc
 
@@ -136,14 +145,25 @@ class HttpClient(object):
         if extra_headers is not None:
             headers.update(extra_headers)
 
+        authentication = self._get_authentication()
         try:
             response = requests.post(
                 self._build_url(server, path),
                 json=body,
                 params=query,
                 headers=headers,
-                timeout=self._timeout
+                timeout=self._timeout,
+                auth=authentication
             )
             return HttpResponse(response.status_code, response.text)
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('requests library is throwing exceptions') from exc
+
+    def _get_authentication(self):
+        authentication = None
+        if self._authentication_scheme == AuthenticateScheme.KERBEROS:
+            if self._authentication_params is not None:
+                authentication = HTTPKerberosAuth(principal=self._authentication_params[0], password=self._authentication_params[1], mutual_authentication=OPTIONAL)
+            else:
+                authentication = HTTPKerberosAuth(mutual_authentication=OPTIONAL)
+        return authentication
