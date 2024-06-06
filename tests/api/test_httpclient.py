@@ -1,6 +1,8 @@
 """HTTPClient test module."""
+from requests_kerberos import HTTPKerberosAuth, OPTIONAL
 
 from splitio.api import client
+from splitio.client.config import AuthenticateScheme
 
 class HttpClientTests(object):
     """Http Client test cases."""
@@ -19,7 +21,8 @@ class HttpClientTests(object):
             client.HttpClient.SDK_URL + '/test1',
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            auth=None
         )
         assert response.status_code == 200
         assert response.body == 'ok'
@@ -31,7 +34,8 @@ class HttpClientTests(object):
             client.HttpClient.EVENTS_URL + '/test1',
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            auth=None
         )
         assert get_mock.mock_calls == [call]
         assert response.status_code == 200
@@ -51,7 +55,8 @@ class HttpClientTests(object):
             'https://sdk.com/test1',
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            auth=None
         )
         assert get_mock.mock_calls == [call]
         assert response.status_code == 200
@@ -63,7 +68,8 @@ class HttpClientTests(object):
             'https://events.com/test1',
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            auth=None
         )
         assert response.status_code == 200
         assert response.body == 'ok'
@@ -85,7 +91,8 @@ class HttpClientTests(object):
             json={'p1': 'a'},
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            auth=None
         )
         assert response.status_code == 200
         assert response.body == 'ok'
@@ -98,7 +105,8 @@ class HttpClientTests(object):
             json={'p1': 'a'},
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            auth=None
         )
         assert response.status_code == 200
         assert response.body == 'ok'
@@ -119,7 +127,8 @@ class HttpClientTests(object):
             json={'p1': 'a'},
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            auth=None
         )
         assert response.status_code == 200
         assert response.body == 'ok'
@@ -132,8 +141,36 @@ class HttpClientTests(object):
             json={'p1': 'a'},
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            auth=None
         )
         assert response.status_code == 200
         assert response.body == 'ok'
         assert get_mock.mock_calls == [call]
+
+    def test_authentication_scheme(self, mocker):
+        response_mock = mocker.Mock()
+        response_mock.status_code = 200
+        response_mock.text = 'ok'
+        get_mock = mocker.Mock()
+        get_mock.return_value = response_mock
+        mocker.patch('splitio.api.client.requests.get', new=get_mock)
+        httpclient = client.HttpClient(sdk_url='https://sdk.com', authentication_scheme=AuthenticateScheme.KERBEROS)
+        response = httpclient.get('sdk', '/test1', 'some_api_key', {'param1': 123}, {'h1': 'abc'})
+        call = mocker.call(
+            'https://sdk.com/test1',
+            headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
+            params={'param1': 123},
+            timeout=None,
+            auth=HTTPKerberosAuth(mutual_authentication=OPTIONAL)
+        )
+
+        httpclient = client.HttpClient(sdk_url='https://sdk.com', authentication_scheme=AuthenticateScheme.KERBEROS, authentication_params=['bilal', 'split'])
+        response = httpclient.get('sdk', '/test1', 'some_api_key', {'param1': 123}, {'h1': 'abc'})
+        call = mocker.call(
+            'https://sdk.com/test1',
+            headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
+            params={'param1': 123},
+            timeout=None,
+            auth=HTTPKerberosAuth(principal='bilal', password='split',mutual_authentication=OPTIONAL)
+        )

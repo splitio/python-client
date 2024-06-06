@@ -6,21 +6,22 @@ from setuptools import setup, find_packages
 
 TESTS_REQUIRES = [
     'flake8',
-    'pytest==7.1.0',
-    'pytest-mock==3.11.1',
-    'coverage==7.2.7',
+    'pytest==7.0.1',
+    'pytest-mock==3.13.0',
+    'coverage==6.2',
     'pytest-cov',
-    'importlib-metadata==6.7',
-    'tomli',
-    'iniconfig',
-    'attrs'
+    'importlib-metadata==4.2',
+    'tomli==1.2.3',
+    'iniconfig==1.1.1',
+    'attrs==22.1.0'
 ]
 
 INSTALL_REQUIRES = [
     'requests',
     'pyyaml',
     'docopt>=0.6.2',
-    'bloom-filter2>=2.0.0'
+    'bloom-filter2>=2.0.0',
+    'requests-kerberos>=0.14.0'
 ]
 
 with open(path.join(path.abspath(path.dirname(__file__)), 'splitio', 'version.py')) as f:
