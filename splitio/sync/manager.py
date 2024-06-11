@@ -206,6 +206,9 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
         await self._synchronizer.shutdown(blocking)
         self._stopped = True
 
+    async def close_sse_http_client(self):
+        await self._push.close_sse_http_client()
+
     async def _streaming_feedback_handler(self):
         """
         Handle status updates from the streaming subsystem.

@@ -237,3 +237,6 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
             _LOGGER.error("Exception waiting for event source ended")
             _LOGGER.debug('stack trace: ', exc_info=True)
             pass
+
+    async def close_sse_http_client(self):
+        await self._client.close_session()

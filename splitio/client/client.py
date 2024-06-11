@@ -226,7 +226,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
             treatment, _ = self._get_treatment(MethodExceptionsAndLatencies.TREATMENT, key, feature_flag_name, attributes)
             return treatment
         except:
-            # TODO: maybe log here?
+            _LOGGER.error('get_treatment failed')
             return CONTROL
 
 
@@ -249,7 +249,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         try:
             return self._get_treatment(MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG, key, feature_flag_name, attributes)
         except Exception:
-            # TODO: maybe log here?
+            _LOGGER.error('get_treatment_with_config failed')
             return CONTROL, None
 
     def _get_treatment(self, method, key, feature, attributes=None):
@@ -286,7 +286,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
                 ctx = self._context_factory.context_for(key, [feature])
                 input_validator.validate_feature_flag_names({feature: ctx.flags.get(feature)}, 'get_' + method.value)
                 result = self._evaluator.eval_with_context(key, bucketing, feature, attributes, ctx)
-            except Exception as e: # toto narrow this
+            except RuntimeError as e:
                 _LOGGER.error('Error getting treatment for feature flag')
                 _LOGGER.debug('Error: ', exc_info=True)
                 self._telemetry_evaluation_producer.record_exception(method)
@@ -482,7 +482,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
                 ctx = self._context_factory.context_for(key, features)
                 input_validator.validate_feature_flag_names({feature: ctx.flags.get(feature) for feature in features}, 'get_' + method.value)
                 results = self._evaluator.eval_many_with_context(key, bucketing, features, attributes, ctx)
-            except Exception as e: # toto narrow this
+            except RuntimeError as e:
                 _LOGGER.error('Error getting treatment for feature flag')
                 _LOGGER.debug('Error: ', exc_info=True)
                 self._telemetry_evaluation_producer.record_exception(method)
@@ -612,7 +612,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
             treatment, _ = await self._get_treatment(MethodExceptionsAndLatencies.TREATMENT, key, feature_flag_name, attributes)
             return treatment
         except:
-            # TODO: maybe log here?
+            _LOGGER.error('get_treatment failed')
             return CONTROL
 
     async def get_treatment_with_config(self, key, feature_flag_name, attributes=None):
@@ -634,7 +634,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         try:
             return await self._get_treatment(MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG, key, feature_flag_name, attributes)
         except Exception:
-            # TODO: maybe log here?
+            _LOGGER.error('get_treatment_with_config failed')
             return CONTROL, None
 
     async def _get_treatment(self, method, key, feature, attributes=None):

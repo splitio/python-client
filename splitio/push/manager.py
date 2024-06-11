@@ -356,6 +356,9 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         else:
             asyncio.get_running_loop().create_task(self._stop_current_conn())
 
+    async def close_sse_http_client(self):
+        await self._sse_client.close_sse_http_client()
+
     async def _event_handler(self, event):
         """
         Process an incoming event.
