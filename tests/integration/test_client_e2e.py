@@ -2925,7 +2925,6 @@ class PluggableNoneIntegrationAsyncTests(object):
                                     True,
                                     recorder,
                                     manager,
-                                    sdk_ready_flag=None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     )  # pylint:disable=attribute-defined-outside-init

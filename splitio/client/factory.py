@@ -887,7 +887,6 @@ async def _build_redis_factory_async(api_key, cfg):
         cfg['labelsEnabled'],
         recorder,
         manager,
-        sdk_ready_flag=None,
         telemetry_producer=telemetry_producer,
         telemetry_init_producer=telemetry_init_producer,
         telemetry_submitter=telemetry_submitter
@@ -1048,7 +1047,6 @@ async def _build_pluggable_factory_async(api_key, cfg):
         cfg['labelsEnabled'],
         recorder,
         manager,
-        sdk_ready_flag=None,
         telemetry_producer=telemetry_producer,
         telemetry_init_producer=telemetry_init_producer,
         telemetry_submitter=telemetry_submitter
@@ -1192,7 +1190,6 @@ async def _build_localhost_factory_async(cfg):
         False,
         recorder,
         manager,
-        None,
         telemetry_producer=telemetry_producer,
         telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
         telemetry_submitter=LocalhostTelemetrySubmitterAsync(),
