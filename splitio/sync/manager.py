@@ -203,11 +203,9 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
             self._push_status_handler_active = False
             await self._queue.put(self._CENTINEL_EVENT)
             await self._push.stop(blocking)
+            await self._push.close_sse_http_client()
         await self._synchronizer.shutdown(blocking)
         self._stopped = True
-
-    async def close_sse_http_client(self):
-        await self._push.close_sse_http_client()
 
     async def _streaming_feedback_handler(self):
         """

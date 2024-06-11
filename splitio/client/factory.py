@@ -372,10 +372,6 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
 
     async def _update_status_when_ready_async(self):
         """Wait until the sdk is ready and update the status for async mode."""
-        if self._preforked_initialization:
-            self._status = Status.WAITING_FORK
-            return
-
         if self._manager_start_task is not None:
             await self._manager_start_task
             self._manager_start_task = None
@@ -447,9 +443,6 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
 
                 if isinstance(self._sync_manager, ManagerAsync) and isinstance(self._telemetry_submitter, InMemoryTelemetrySubmitterAsync):
                     await self._api_client.close_session()
-
-                if isinstance(self._sync_manager, ManagerAsync) and self._sync_manager._streaming_enabled:
-                    await self._sync_manager.close_sse_http_client()
 
         except Exception as e:
             _LOGGER.error('Exception destroying factory.')
