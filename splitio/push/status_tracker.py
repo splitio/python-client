@@ -115,7 +115,7 @@ class PushStatusTracker(PushStatusTrackerBase):
 
     def __init__(self, telemetry_runtime_producer):
         """Class constructor."""
-        super().__init__(telemetry_runtime_producer)
+        PushStatusTrackerBase.__init__(self, telemetry_runtime_producer)
 
     def handle_occupancy(self, event):
         """
@@ -239,7 +239,7 @@ class PushStatusTrackerAsync(PushStatusTrackerBase):
 
     def __init__(self, telemetry_runtime_producer):
         """Class constructor."""
-        super().__init__(telemetry_runtime_producer)
+        PushStatusTrackerBase.__init__(self, telemetry_runtime_producer)
 
     async def handle_occupancy(self, event):
         """

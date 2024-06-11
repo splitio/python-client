@@ -171,19 +171,20 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
             self._backoff = Backoff()
             self._queue = asyncio.Queue()
             self._push = PushManagerAsync(auth_api, synchronizer, self._queue, sdk_metadata, telemetry_runtime_producer, sse_url, client_key)
-            self._push_status_handler_task = None
+        self._stopped = False
 
     async def start(self, max_retry_attempts=_SYNC_ALL_NO_RETRIES):
         """Start the SDK synchronization tasks."""
+        self._stopped = False
         try:
             await self._synchronizer.sync_all(max_retry_attempts)
-            self._synchronizer.start_periodic_data_recording()
-            if self._streaming_enabled:
-                self._push_status_handler_task = asyncio.get_running_loop().create_task(self._streaming_feedback_handler())
-                self._push.start()
-            else:
-                self._synchronizer.start_periodic_fetching()
-
+            if not self._stopped:
+                self._synchronizer.start_periodic_data_recording()
+                if self._streaming_enabled:
+                    asyncio.get_running_loop().create_task(self._streaming_feedback_handler())
+                    self._push.start()
+                else:
+                    self._synchronizer.start_periodic_fetching()
         except (APIException, RuntimeError):
             _LOGGER.error('Exception raised starting Split Manager')
             _LOGGER.debug('Exception information: ', exc_info=True)
@@ -200,8 +201,10 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
         if self._streaming_enabled:
             self._push_status_handler_active = False
             await self._queue.put(self._CENTINEL_EVENT)
-            await self._push.stop()
+            await self._push.stop(blocking)
+            await self._push.close_sse_http_client()
         await self._synchronizer.shutdown(blocking)
+        self._stopped = True
 
     async def _streaming_feedback_handler(self):
         """

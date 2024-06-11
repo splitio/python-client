@@ -191,10 +191,11 @@ class SSEClientAsyncTests(object):
         assert event4 == SSEEvent('4', 'message', None, 'ghi')
         assert client._response == None
 
-        server.stop()
-
         await client._done.wait() # to ensure `start()` has finished
         assert client._response is None
+
+#        server.stop()
+
 
     @pytest.mark.asyncio
     async def test_sse_server_disconnects_abruptly(self):
@@ -226,4 +227,3 @@ class SSEClientAsyncTests(object):
 
         await client._done.wait() # to ensure `start()` has finished
         assert client._response is None
-

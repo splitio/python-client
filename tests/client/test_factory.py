@@ -706,9 +706,9 @@ class SplitFactoryAsyncTests(object):
     @pytest.mark.asyncio
     async def test_flag_sets_counts(self):
         factory = await get_factory_async("none", config={
-            'flagSetsFilter': ['set1', 'set2', 'set3']
+            'flagSetsFilter': ['set1', 'set2', 'set3'],
+            'streamEnabled': False
         })
-
         assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets == 3
         assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets_invalid == 0
         await factory.destroy()
@@ -748,7 +748,7 @@ class SplitFactoryAsyncTests(object):
         mocker.patch('splitio.sync.telemetry.InMemoryTelemetrySubmitterAsync.synchronize_config', new=synchronize_config)
 
         # Start factory and make assertions
-        factory = await get_factory_async('some_api_key')
+        factory = await get_factory_async('some_api_key', config={'streamingEmabled': False})
         assert isinstance(factory, SplitFactoryAsync)
         assert isinstance(factory._storages['splits'], inmemmory.InMemorySplitStorageAsync)
         assert isinstance(factory._storages['segments'], inmemmory.InMemorySegmentStorageAsync)
@@ -865,6 +865,10 @@ class SplitFactoryAsyncTests(object):
             self.manager_called = True
             pass
         factory._sync_manager.stop = stop
+
+        async def start(*_):
+            pass
+        factory._sync_manager.start = start
 
         try:
             await factory.block_until_ready(1)

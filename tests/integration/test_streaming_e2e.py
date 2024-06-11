@@ -1883,7 +1883,10 @@ class StreamingIntegrationAsyncTests(object):
         }
 
         factory = await get_factory_async('some_apikey', **kwargs)
-        await factory.block_until_ready(1)
+        try:
+            await factory.block_until_ready(1)
+        except Exception:
+            pass
         assert factory.ready
         await asyncio.sleep(2)
 

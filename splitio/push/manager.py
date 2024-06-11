@@ -349,10 +349,15 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
 
         if self._token_task:
             self._token_task.cancel()
+            self._token_task = None
 
-        stop_task = asyncio.get_running_loop().create_task(self._stop_current_conn())
         if blocking:
-            await stop_task
+            await self._stop_current_conn()
+        else:
+            asyncio.get_running_loop().create_task(self._stop_current_conn())
+
+    async def close_sse_http_client(self):
+        await self._sse_client.close_sse_http_client()
 
     async def _event_handler(self, event):
         """
@@ -382,6 +387,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         :param current_token: token (parsed) JWT
         :type current_token: splitio.models.token.Token
         """
+        _LOGGER.debug("Next token refresh in " + str(self._get_time_period(current_token)) + " seconds")
         await asyncio.sleep(self._get_time_period(current_token))
         await self._stop_current_conn()
         self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
@@ -441,6 +447,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         finally:
             if self._token_task is not None:
                 self._token_task.cancel()
+                self._token_task = None
             self._running = False
             await self._processor.update_workers_status(False)
             self._done.set()
@@ -530,4 +537,5 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         await self._sse_client.stop()
         self._running_task.cancel()
         await self._running_task
+        self._running_task = None
         _LOGGER.debug("SplitSSE tasks are stopped")

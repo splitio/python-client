@@ -530,7 +530,7 @@ class SynchronizerAsync(SynchronizerInMemoryBase):
         :type split_tasks: splitio.sync.synchronizer.SplitTasks
         """
         SynchronizerInMemoryBase.__init__(self, split_synchronizers, split_tasks)
-        self.stop_periodic_data_recording_task = None
+        self._shutdown = False
 
     async def _synchronize_segments(self):
         _LOGGER.debug('Starting segments synchronization')
@@ -561,6 +561,9 @@ class SynchronizerAsync(SynchronizerInMemoryBase):
         :returns: whether the synchronization was successful or not.
         :rtype: bool
         """
+        if self._shutdown:
+            return
+
         _LOGGER.debug('Starting feature flags synchronization')
         try:
             new_segments = []
@@ -593,8 +596,9 @@ class SynchronizerAsync(SynchronizerInMemoryBase):
         :param max_retry_attempts: apply max attempts if it set to absilute integer.
         :type max_retry_attempts: int
         """
+        self._shutdown = False
         retry_attempts = 0
-        while True:
+        while not self._shutdown:
             try:
                 sync_result = await self.synchronize_splits(None, False)
                 if not sync_result.success and sync_result.error_code is not None and sync_result.error_code == 414:
@@ -619,7 +623,8 @@ class SynchronizerAsync(SynchronizerInMemoryBase):
                     if retry_attempts > max_retry_attempts:
                         break
                 how_long = self._backoff.get()
-                time.sleep(how_long)
+                if not self._shutdown:
+                    await asyncio.sleep(how_long)
 
         _LOGGER.error("Could not correctly synchronize feature flags and segments after %d attempts.", retry_attempts)
 
@@ -631,6 +636,7 @@ class SynchronizerAsync(SynchronizerInMemoryBase):
         :type blocking: bool
         """
         _LOGGER.debug('Shutting down tasks.')
+        self._shutdown = True
         await self._split_synchronizers.segment_sync.shutdown()
         await self.stop_periodic_fetching()
         await self.stop_periodic_data_recording(blocking)
@@ -649,10 +655,11 @@ class SynchronizerAsync(SynchronizerInMemoryBase):
         :type blocking: bool
         """
         _LOGGER.debug('Stopping periodic data recording')
-        stop_periodic_data_recording_task = asyncio.get_running_loop().create_task(self._stop_periodic_data_recording())
         if blocking:
-            await stop_periodic_data_recording_task
+            await self._stop_periodic_data_recording()
             _LOGGER.debug('all tasks finished successfully.')
+        else:
+            asyncio.get_running_loop().create_task(self._stop_periodic_data_recording())
 
     async def _stop_periodic_data_recording(self):
         """
@@ -808,7 +815,6 @@ class RedisSynchronizerAsync(RedisSynchronizerBase):
         :type split_tasks: splitio.sync.synchronizer.SplitTasks
         """
         RedisSynchronizerBase.__init__(self, split_synchronizers, split_tasks)
-        self.stop_periodic_data_recording_task = None
 
     async def shutdown(self, blocking):
         """
@@ -839,8 +845,7 @@ class RedisSynchronizerAsync(RedisSynchronizerBase):
             await self._stop_periodic_data_recording()
             _LOGGER.debug('all tasks finished successfully.')
         else:
-            self.stop_periodic_data_recording_task = asyncio.get_running_loop().create_task(self._stop_periodic_data_recording)
-
+            asyncio.get_running_loop().create_task(self._stop_periodic_data_recording)
 
 
 class LocalhostSynchronizerBase(BaseSynchronizer):

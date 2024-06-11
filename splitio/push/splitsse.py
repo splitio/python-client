@@ -181,7 +181,7 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         self._base_url = base_url
         self.status = SplitSSEClient._Status.IDLE
         self._metadata = headers_from_metadata(sdk_metadata, client_key)
-        self._client = SSEClientAsync(timeout=self.KEEPALIVE_TIMEOUT)
+        self._client = SSEClientAsync(self.KEEPALIVE_TIMEOUT)
         self._event_source = None
         self._event_source_ended = asyncio.Event()
 
@@ -219,7 +219,7 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
             _LOGGER.debug('stack trace: ', exc_info=True)
         finally:
             self.status = SplitSSEClient._Status.IDLE
-            _LOGGER.debug('sse connection ended.')
+            _LOGGER.debug('Split sse connection ended.')
             self._event_source_ended.set()
 
     async def stop(self):
@@ -230,4 +230,13 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
             return
 
         await self._client.shutdown()
-        await self._event_source_ended.wait()
+# catching exception to avoid task hanging
+        try:
+            await self._event_source_ended.wait()
+        except asyncio.CancelledError as e:
+            _LOGGER.error("Exception waiting for event source ended")
+            _LOGGER.debug('stack trace: ', exc_info=True)
+            pass
+
+    async def close_sse_http_client(self):
+        await self._client.close_session()

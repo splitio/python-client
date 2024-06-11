@@ -288,7 +288,7 @@ class AsyncTaskAsync(object):  # pylint: disable=too-many-instance-attributes
             return
         # Start execution
         self._completion_event.clear()
-        self._wrapper_task = asyncio.get_running_loop().create_task(self._execution_wrapper())
+        asyncio.get_running_loop().create_task(self._execution_wrapper())
 
     async def stop(self, wait_for_completion=False):
         """

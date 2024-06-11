@@ -101,6 +101,11 @@ class TimeoutException(Exception):
 class SplitFactoryBase(object):  # pylint: disable=too-many-instance-attributes
     """Split Factory/Container class."""
 
+    def __init__(self, sdk_key, storages):
+        self._sdk_key = sdk_key
+        self._storages = storages
+        self._status = None
+
     def _get_storage(self, name):
         """
         Return a reference to the specified storage.
@@ -162,8 +167,7 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
             telemetry_producer=None,
             telemetry_init_producer=None,
             telemetry_submitter=None,
-            preforked_initialization=False,
-            manager_start_task=None
+            preforked_initialization=False
     ):
         """
         Class constructor.
@@ -183,8 +187,7 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
         :param preforked_initialization: Whether should be instantiated as preforked or not.
         :type preforked_initialization: bool
         """
-        self._sdk_key = sdk_key
-        self._storages = storages
+        SplitFactoryBase.__init__(self, sdk_key, storages)
         self._labels_enabled = labels_enabled
         self._sync_manager = sync_manager
         self._recorder = recorder
@@ -328,12 +331,11 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
             labels_enabled,
             recorder,
             sync_manager=None,
-            sdk_ready_flag=None,
             telemetry_producer=None,
             telemetry_init_producer=None,
             telemetry_submitter=None,
-            preforked_initialization=False,
-            manager_start_task=None
+            manager_start_task=None,
+            api_client=None
     ):
         """
         Class constructor.
@@ -353,12 +355,10 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
         :param preforked_initialization: Whether should be instantiated as preforked or not.
         :type preforked_initialization: bool
         """
-        self._sdk_key = sdk_key
-        self._storages = storages
+        SplitFactoryBase.__init__(self, sdk_key, storages)
         self._labels_enabled = labels_enabled
         self._sync_manager = sync_manager
         self._recorder = recorder
-        self._preforked_initialization = preforked_initialization
         self._telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
         self._telemetry_init_producer = telemetry_init_producer
         self._telemetry_submitter = telemetry_submitter
@@ -367,16 +367,14 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
         self._manager_start_task = manager_start_task
         self._status = Status.NOT_INITIALIZED
         self._sdk_ready_flag = asyncio.Event()
-        asyncio.get_running_loop().create_task(self._update_status_when_ready_async())
+        self._ready_task = asyncio.get_running_loop().create_task(self._update_status_when_ready_async())
+        self._api_client = api_client
 
     async def _update_status_when_ready_async(self):
         """Wait until the sdk is ready and update the status for async mode."""
-        if self._preforked_initialization:
-            self._status = Status.WAITING_FORK
-            return
-
         if self._manager_start_task is not None:
             await self._manager_start_task
+            self._manager_start_task = None
         await self._telemetry_init_producer.record_ready_time(get_current_epoch_time_ms() - self._ready_time)
         redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
         await self._telemetry_init_producer.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
@@ -430,14 +428,22 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
 
         try:
             _LOGGER.info('Factory destroy called, stopping tasks.')
+            if self._manager_start_task is not None and not self._manager_start_task.done():
+                self._manager_start_task.cancel()
+
             if self._sync_manager is not None:
                 await self._sync_manager.stop(True)
+
+                if not self._ready_task.done():
+                    self._ready_task.cancel()
+                    self._ready_task = None
 
                 if isinstance(self._storages['splits'], RedisSplitStorageAsync):
                     await self._get_storage('splits').redis.close()
 
                 if isinstance(self._sync_manager, ManagerAsync) and isinstance(self._telemetry_submitter, InMemoryTelemetrySubmitterAsync):
-                    await self._telemetry_submitter._telemetry_api._client.close_session()
+                    await self._api_client.close_session()
+
         except Exception as e:
             _LOGGER.error('Exception destroying factory.')
             _LOGGER.debug(str(e))
@@ -452,24 +458,6 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
         Creating one a fast operation and safe to be used anywhere.
         """
         return ClientAsync(self, self._recorder, self._labels_enabled)
-
-
-    async def resume(self):
-        """
-        Function in charge of starting periodic/realtime synchronization after a fork.
-        """
-        if not self._waiting_fork():
-            _LOGGER.warning('Cannot call resume')
-            return
-        self._sync_manager.recreate()
-        self._sdk_ready_flag = asyncio.Event()
-        self._sdk_internal_ready_flag = self._sdk_ready_flag
-        self._sync_manager._ready_flag = self._sdk_ready_flag
-        await self._get_storage('impressions').clear()
-        await self._get_storage('events').clear()
-        self._preforked_initialization = False  # reset for status updater
-        asyncio.get_running_loop().create_task(self._update_status_when_ready_async())
-
 
 def _wrap_impression_listener(listener, metadata):
     """
@@ -718,8 +706,6 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
 
     synchronizer = SynchronizerAsync(synchronizers, tasks)
 
-    preforked_initialization = cfg.get('preforkedInitialization', False)
-
     manager = ManagerAsync(synchronizer, apis['auth'], cfg['streamingEnabled'],
                       sdk_metadata, telemetry_runtime_producer, streaming_api_base_url, api_key[-4:])
 
@@ -739,19 +725,13 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
 
     await telemetry_init_producer.record_config(cfg, extra_cfg, total_flag_sets, invalid_flag_sets)
 
-    if preforked_initialization:
-        await synchronizer.sync_all(max_retry_attempts=_MAX_RETRY_SYNC_ALL)
-        await synchronizer._split_synchronizers._segment_sync.shutdown()
-
-        return SplitFactoryAsync(api_key, storages, cfg['labelsEnabled'],
-                            recorder, manager, None, telemetry_producer, telemetry_init_producer, telemetry_submitter, preforked_initialization=preforked_initialization)
-
     manager_start_task = asyncio.get_running_loop().create_task(manager.start())
 
     return SplitFactoryAsync(api_key, storages, cfg['labelsEnabled'],
-                        recorder, manager, manager_start_task,
+                        recorder, manager,
                         telemetry_producer, telemetry_init_producer,
-                        telemetry_submitter, manager_start_task=manager_start_task)
+                        telemetry_submitter, manager_start_task=manager_start_task,
+                        api_client=http_client)
 
 def _build_redis_factory(api_key, cfg):
     """Build and return a split factory with redis-based storage."""
