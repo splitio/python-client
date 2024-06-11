@@ -334,7 +334,6 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
             telemetry_producer=None,
             telemetry_init_producer=None,
             telemetry_submitter=None,
-            preforked_initialization=False,
             manager_start_task=None,
             api_client=None
     ):
@@ -360,7 +359,6 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
         self._labels_enabled = labels_enabled
         self._sync_manager = sync_manager
         self._recorder = recorder
-        self._preforked_initialization = preforked_initialization
         self._telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
         self._telemetry_init_producer = telemetry_init_producer
         self._telemetry_submitter = telemetry_submitter
@@ -712,8 +710,6 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
     )
 
     synchronizer = SynchronizerAsync(synchronizers, tasks)
-
-    preforked_initialization = cfg.get('preforkedInitialization', False)
 
     manager = ManagerAsync(synchronizer, apis['auth'], cfg['streamingEnabled'],
                       sdk_metadata, telemetry_runtime_producer, streaming_api_base_url, api_key[-4:])
