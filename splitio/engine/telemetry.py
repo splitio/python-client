@@ -668,7 +668,7 @@ class TelemetryRuntimeConsumerAsync(TelemetryRuntimeConsumerBase):
         last_synchronization = await self.get_last_synchronization()
         http_errors = await self.pop_http_errors()
         http_latencies = await self.pop_http_latencies()
-
+        # TODO: if ufs value is too large, use gather to fetch events instead of serial style.
         return {
             'iQ': await self.get_impressions_stats(CounterConstants.IMPRESSIONS_QUEUED),
             'iDe': await self.get_impressions_stats(CounterConstants.IMPRESSIONS_DEDUPED),

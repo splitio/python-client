@@ -180,7 +180,7 @@ class ImpressionsCountSynchronizerAsync(object):
         if self._impressions_counter == None:
             return
 
-        to_send = await self._impressions_counter.pop_all()
+        to_send = self._impressions_counter.pop_all()
         if not to_send:
             return
 

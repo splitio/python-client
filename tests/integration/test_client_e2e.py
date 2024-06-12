@@ -29,7 +29,7 @@ from splitio.engine.impressions import set_classes, set_classes_async
 from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyOptimizedMode, StrategyNoneMode
 from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageConsumerAsync,\
     TelemetryStorageProducerAsync
-from splitio.engine.impressions.manager import Counter as ImpressionsCounter, CounterAsync as ImpressionsCounterAsync
+from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder, StandardRecorderAsync, PipelinedRecorderAsync
 from splitio.client.config import DEFAULT_CONFIG
@@ -1872,7 +1872,7 @@ class InMemoryOptimizedIntegrationAsyncTests(object):
         }
         impmanager = ImpressionsManager(StrategyOptimizedMode(), telemetry_runtime_producer) # no listener
         recorder = StandardRecorderAsync(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer,
-                                         imp_counter = ImpressionsCounterAsync())
+                                         imp_counter = ImpressionsCounter())
         # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
         try:
             self.factory = SplitFactoryAsync('some_api_key',
@@ -2691,7 +2691,7 @@ class PluggableOptimizedIntegrationAsyncTests(object):
                                     storages['impressions'],
                                     telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_runtime_producer,
-                                    imp_counter=ImpressionsCounterAsync())
+                                    imp_counter=ImpressionsCounter())
 
         self.factory = SplitFactoryAsync('some_api_key',
                                     storages,
@@ -2892,7 +2892,7 @@ class PluggableNoneIntegrationAsyncTests(object):
             'events': PluggableEventsStorageAsync(self.pluggable_storage_adapter, metadata),
             'telemetry': telemetry_pluggable_storage
         }
-        imp_counter = ImpressionsCounterAsync()
+        imp_counter = ImpressionsCounter()
         unique_keys_tracker = UniqueKeysTrackerAsync()
         unique_keys_synchronizer, clear_filter_sync, self.unique_keys_task, \
         clear_filter_task, impressions_count_sync, impressions_count_task, \

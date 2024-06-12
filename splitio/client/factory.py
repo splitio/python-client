@@ -16,7 +16,7 @@ from splitio.engine.impressions import set_classes, set_classes_async
 from splitio.engine.impressions.strategies import StrategyDebugMode
 from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageConsumer, \
     TelemetryStorageProducerAsync, TelemetryStorageConsumerAsync
-from splitio.engine.impressions.manager import Counter as ImpressionsCounter, CounterAsync as ImpressionsCounterAsync
+from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
 
 # Storage
@@ -663,7 +663,7 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
 
     telemetry_submitter = InMemoryTelemetrySubmitterAsync(telemetry_consumer, storages['splits'], storages['segments'], apis['telemetry'])
 
-    imp_counter = ImpressionsCounterAsync()
+    imp_counter = ImpressionsCounter()
     unique_keys_tracker = UniqueKeysTrackerAsync(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
     clear_filter_task, impressions_count_sync, impressions_count_task, \
@@ -840,7 +840,7 @@ async def _build_redis_factory_async(api_key, cfg):
                         _MIN_DEFAULT_DATA_SAMPLING_ALLOWED)
         data_sampling = _MIN_DEFAULT_DATA_SAMPLING_ALLOWED
 
-    imp_counter = ImpressionsCounterAsync()
+    imp_counter = ImpressionsCounter()
     unique_keys_tracker = UniqueKeysTrackerAsync(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
     clear_filter_task, impressions_count_sync, impressions_count_task, \
@@ -999,7 +999,7 @@ async def _build_pluggable_factory_async(api_key, cfg):
     # Using same class as redis
     telemetry_submitter = RedisTelemetrySubmitterAsync(storages['telemetry'])
 
-    imp_counter = ImpressionsCounterAsync()
+    imp_counter = ImpressionsCounter()
     unique_keys_tracker = UniqueKeysTrackerAsync(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
     clear_filter_task, impressions_count_sync, impressions_count_task, \

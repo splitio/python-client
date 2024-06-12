@@ -1,7 +1,7 @@
 import pytest
 
 from splitio.storage import FlagSetsFilter
-from splitio.storage.inmemmory import FlagSets, FlagSetsAsync
+from splitio.storage.inmemmory import FlagSets
 
 class FlagSetsFilterTests(object):
     """Flag sets filter storage tests."""
@@ -46,50 +46,6 @@ class FlagSetsFilterTests(object):
         flag_set._remove_flag_set('set1')
         assert flag_set.sets_feature_flag_map == {}
         assert flag_set.flag_set_exist('set1') == False
-
-    @pytest.mark.asyncio
-    async def test_without_initial_set_async(self):
-        flag_set = FlagSetsAsync()
-        assert flag_set.sets_feature_flag_map == {}
-
-        await flag_set._add_flag_set('set1')
-        assert await flag_set.get_flag_set('set1') == set({})
-        assert await flag_set.flag_set_exist('set1') == True
-        assert await flag_set.flag_set_exist('set2') == False
-
-        await flag_set.add_feature_flag_to_flag_set('set1', 'split1')
-        assert await flag_set.get_flag_set('set1') == {'split1'}
-        await flag_set.add_feature_flag_to_flag_set('set1', 'split2')
-        assert await flag_set.get_flag_set('set1') == {'split1', 'split2'}
-        await flag_set.remove_feature_flag_to_flag_set('set1', 'split1')
-        assert await flag_set.get_flag_set('set1') == {'split2'}
-        await flag_set._remove_flag_set('set2')
-        assert flag_set.sets_feature_flag_map == {'set1': set({'split2'})}
-        await flag_set._remove_flag_set('set1')
-        assert flag_set.sets_feature_flag_map == {}
-        assert await flag_set.flag_set_exist('set1') == False
-
-    @pytest.mark.asyncio
-    async def test_with_initial_set_async(self):
-        flag_set = FlagSetsAsync(['set1', 'set2'])
-        assert flag_set.sets_feature_flag_map == {'set1': set(), 'set2': set()}
-
-        await flag_set._add_flag_set('set1')
-        assert await flag_set.get_flag_set('set1') == set({})
-        assert await flag_set.flag_set_exist('set1') == True
-        assert await flag_set.flag_set_exist('set2') == True
-
-        await flag_set.add_feature_flag_to_flag_set('set1', 'split1')
-        assert await flag_set.get_flag_set('set1') == {'split1'}
-        await flag_set.add_feature_flag_to_flag_set('set1', 'split2')
-        assert await flag_set.get_flag_set('set1') == {'split1', 'split2'}
-        await flag_set.remove_feature_flag_to_flag_set('set1', 'split1')
-        assert await flag_set.get_flag_set('set1') == {'split2'}
-        await flag_set._remove_flag_set('set2')
-        assert flag_set.sets_feature_flag_map == {'set1': set({'split2'})}
-        await flag_set._remove_flag_set('set1')
-        assert flag_set.sets_feature_flag_map == {}
-        assert await flag_set.flag_set_exist('set1') == False
 
     def test_flag_set_filter(self):
         flag_set_filter = FlagSetsFilter()
