@@ -21,6 +21,7 @@ class FlagSets(object):
     def __init__(self, flag_sets=[]):
         """Constructor."""
         self.sets_feature_flag_map = {}
+        self._lock = threading.RLock()
         for flag_set in flag_sets:
             self.sets_feature_flag_map[flag_set] = set()
 
@@ -32,7 +33,8 @@ class FlagSets(object):
 
         :rtype: bool
         """
-        return flag_set in self.sets_feature_flag_map.keys()
+        with self._lock:
+            return flag_set in self.sets_feature_flag_map.keys()
 
     def get_flag_set(self, flag_set):
         """
@@ -42,7 +44,8 @@ class FlagSets(object):
 
         :rtype: list(str)
         """
-        return self.sets_feature_flag_map.get(flag_set)
+        with self._lock:
+            return self.sets_feature_flag_map.get(flag_set)
 
     def _add_flag_set(self, flag_set):
         """
@@ -50,8 +53,9 @@ class FlagSets(object):
         :param flag_set: set name
         :type flag_set: str
         """
-        if not self.flag_set_exist(flag_set):
-            self.sets_feature_flag_map[flag_set] = set()
+        with self._lock:
+            if not self.flag_set_exist(flag_set):
+                self.sets_feature_flag_map[flag_set] = set()
 
     def _remove_flag_set(self, flag_set):
         """
@@ -59,8 +63,9 @@ class FlagSets(object):
         :param flag_set: set name
         :type flag_set: str
         """
-        if self.flag_set_exist(flag_set):
-            del self.sets_feature_flag_map[flag_set]
+        with self._lock:
+            if self.flag_set_exist(flag_set):
+                del self.sets_feature_flag_map[flag_set]
 
     def add_feature_flag_to_flag_set(self, flag_set, feature_flag):
         """
@@ -70,8 +75,9 @@ class FlagSets(object):
         :param feature_flag: feature flag name
         :type feature_flag: str
         """
-        if self.flag_set_exist(flag_set):
-            self.sets_feature_flag_map[flag_set].add(feature_flag)
+        with self._lock:
+            if self.flag_set_exist(flag_set):
+                self.sets_feature_flag_map[flag_set].add(feature_flag)
 
     def remove_feature_flag_to_flag_set(self, flag_set, feature_flag):
         """
@@ -81,8 +87,9 @@ class FlagSets(object):
         :param feature_flag: feature flag name
         :type feature_flag: str
         """
-        if self.flag_set_exist(flag_set):
-            self.sets_feature_flag_map[flag_set].remove(feature_flag)
+        with self._lock:
+            if self.flag_set_exist(flag_set):
+                self.sets_feature_flag_map[flag_set].remove(feature_flag)
 
     def update_flag_set(self, flag_sets, feature_flag_name, should_filter):
         if flag_sets is not None:
