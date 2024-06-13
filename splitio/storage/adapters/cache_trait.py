@@ -10,7 +10,7 @@ DEFAULT_MAX_AGE = 5
 DEFAULT_MAX_SIZE = 100
 
 
-class LocalMemoryCache(object):  # pylint: disable=too-many-instance-attributes
+class LocalMemoryCacheBase(object):  # pylint: disable=too-many-instance-attributes
     """
     Key/Value local memory cache. with expiration & LRU eviction.
 
@@ -50,87 +50,12 @@ class LocalMemoryCache(object):  # pylint: disable=too-many-instance-attributes
     ):
         """Class constructor."""
         self._data = {}
-        self._lock = threading.Lock()
         self._max_age_seconds = max_age_seconds
         self._max_size = max_size
         self._lru = None
         self._mru = None
         self._key_func = key_func
         self._user_func = user_func
-
-    def get(self, *args, **kwargs):
-        """
-        Fetch an item from the cache. If it's a miss, call user function to refill.
-
-        :param args: User supplied positional arguments
-        :type args: list
-        :param kwargs: User supplied keyword arguments
-        :type kwargs: dict
-
-        :return: Cached/Fetched object
-        :rtype: object
-        """
-        with self._lock:
-            key = self._key_func(*args, **kwargs)
-            node = self._data.get(key)
-            if node is not None:
-                if self._is_expired(node):
-                    node.value = self._user_func(*args, **kwargs)
-                    node.last_update = time.time()
-            else:
-                value = self._user_func(*args, **kwargs)
-                node = LocalMemoryCache._Node(key, value, time.time(), None, None)
-            node = self._bubble_up(node)
-            self._data[key] = node
-            self._rollover()
-            return node.value
-
-    async def get_key(self, key):
-        """
-        Fetch an item from the cache, return None if does not exist
-        :param key: User supplied key
-        :type key: str/frozenset
-        :return: Cached/Fetched object
-        :rtype: object
-        """
-        async with asyncio.Lock():
-            node = self._data.get(key)
-            if node is not None:
-                if self._is_expired(node):
-                    return None
-
-            if node is None:
-                return None
-
-            node = self._bubble_up(node)
-            return node.value
-
-    async def add_key(self, key, value):
-        """
-        Add an item from the cache.
-        :param key: User supplied key
-        :type key: str/frozenset
-        :param value: key value
-        :type value: str
-        """
-        async with asyncio.Lock():
-            if self._data.get(key) is not None:
-                node = self._data.get(key)
-                node.value = value
-                node.last_update = time.time()
-            else:
-                node = LocalMemoryCache._Node(key, value, time.time(), None, None)
-            node = self._bubble_up(node)
-            self._data[key] = node
-            self._rollover()
-
-    def remove_expired(self):
-        """Remove expired elements."""
-        with self._lock:
-            self._data = {
-                key: value for (key, value) in self._data.items()
-                if not self._is_expired(value)
-            }
 
     def clear(self):
         """Clear the cache."""
@@ -191,6 +116,106 @@ class LocalMemoryCache(object):  # pylint: disable=too-many-instance-attributes
             node = node.previous
         return '<MRU>\n' + '\n'.join(nodes) + '\n<LRU>'
 
+class LocalMemoryCache(LocalMemoryCacheBase):  # pylint: disable=too-many-instance-attributes
+    """Local cache for threading"""
+    def __init__(
+            self,
+            key_func,
+            user_func,
+            max_age_seconds=DEFAULT_MAX_AGE,
+            max_size=DEFAULT_MAX_SIZE
+    ):
+        """Class constructor."""
+        LocalMemoryCacheBase.__init__(self, key_func, user_func, max_age_seconds, max_size)
+        self._lock = threading.Lock()
+
+    def get(self, *args, **kwargs):
+        """
+        Fetch an item from the cache. If it's a miss, call user function to refill.
+
+        :param args: User supplied positional arguments
+        :type args: list
+        :param kwargs: User supplied keyword arguments
+        :type kwargs: dict
+
+        :return: Cached/Fetched object
+        :rtype: object
+        """
+        with self._lock:
+            key = self._key_func(*args, **kwargs)
+            node = self._data.get(key)
+            if node is not None:
+                if self._is_expired(node):
+                    node.value = self._user_func(*args, **kwargs)
+                    node.last_update = time.time()
+            else:
+                value = self._user_func(*args, **kwargs)
+                node = LocalMemoryCache._Node(key, value, time.time(), None, None)
+            node = self._bubble_up(node)
+            self._data[key] = node
+            self._rollover()
+            return node.value
+
+
+    def remove_expired(self):
+        """Remove expired elements."""
+        with self._lock:
+            self._data = {
+                key: value for (key, value) in self._data.items()
+                if not self._is_expired(value)
+            }
+
+class LocalMemoryCacheAsync(LocalMemoryCacheBase):  # pylint: disable=too-many-instance-attributes
+    """Local cache for asyncio"""
+    def __init__(
+            self,
+            key_func,
+            user_func,
+            max_age_seconds=DEFAULT_MAX_AGE,
+            max_size=DEFAULT_MAX_SIZE
+    ):
+        """Class constructor."""
+        LocalMemoryCacheBase.__init__(self, key_func, user_func, max_age_seconds, max_size)
+        self._lock = asyncio.Lock()
+
+    async def get_key(self, key):
+        """
+        Fetch an item from the cache, return None if does not exist
+        :param key: User supplied key
+        :type key: str/frozenset
+        :return: Cached/Fetched object
+        :rtype: object
+        """
+        async with self._lock:
+            node = self._data.get(key)
+            if node is not None:
+                if self._is_expired(node):
+                    return None
+
+            if node is None:
+                return None
+
+            node = self._bubble_up(node)
+            return node.value
+
+    async def add_key(self, key, value):
+        """
+        Add an item from the cache.
+        :param key: User supplied key
+        :type key: str/frozenset
+        :param value: key value
+        :type value: str
+        """
+        async with self._lock:
+            if self._data.get(key) is not None:
+                node = self._data.get(key)
+                node.value = value
+                node.last_update = time.time()
+            else:
+                node = LocalMemoryCache._Node(key, value, time.time(), None, None)
+            node = self._bubble_up(node)
+            self._data[key] = node
+            self._rollover()
 
 def decorate(key_func, max_age_seconds=DEFAULT_MAX_AGE, max_size=DEFAULT_MAX_SIZE):
     """

@@ -46,7 +46,7 @@ class ImpressionsCountSynchronizerAsyncTests(object):
         counter = mocker.Mock(spec=Counter)
 
         self.called = 0
-        async def pop_all():
+        def pop_all():
             self.called += 1
             return [
                 Counter.CountPerFeature('f1', 123, 2),

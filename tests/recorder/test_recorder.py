@@ -6,14 +6,14 @@ from splitio.client.listener import ImpressionListenerWrapper, ImpressionListene
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder, StandardRecorderAsync, PipelinedRecorderAsync
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager
 from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
-from splitio.engine.impressions.manager import Counter as ImpressionsCounter, CounterAsync as ImpressionsCounterAsync
+from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
 from splitio.storage.inmemmory import EventStorage, ImpressionStorage, InMemoryTelemetryStorage, InMemoryEventStorageAsync, InMemoryImpressionStorageAsync
 from splitio.storage.redis import ImpressionPipelinedStorage, EventStorage, RedisEventsStorage, RedisImpressionsStorage, RedisImpressionsStorageAsync, RedisEventsStorageAsync
 from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterAsync
 from splitio.models.impressions import Impression
 from splitio.models.telemetry import MethodExceptionsAndLatencies
-
+from splitio.optional.loaders import asyncio
 
 class StandardRecorderTests(object):
     """StandardRecorderTests test cases."""
@@ -148,7 +148,7 @@ class StandardRecorderAsyncTests(object):
             self.passed_args = args
         telemetry_storage.record_latency.side_effect = record_latency
 
-        imp_counter = mocker.Mock(spec=ImpressionsCounterAsync())
+        imp_counter = mocker.Mock(spec=ImpressionsCounter())
         unique_keys_tracker = mocker.Mock(spec=UniqueKeysTrackerAsync())
         recorder = StandardRecorderAsync(impmanager, event, impression, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer(),
                                     listener=listener, unique_keys_tracker=unique_keys_tracker, imp_counter=imp_counter)
@@ -159,7 +159,7 @@ class StandardRecorderAsyncTests(object):
         recorder._impression_storage.put = put
 
         self.count = []
-        async def track(x):
+        def track(x):
             self.count = x
         recorder._imp_counter.track = track
 
@@ -169,6 +169,7 @@ class StandardRecorderAsyncTests(object):
         recorder._unique_keys_tracker.track = track2
 
         await recorder.record_treatment_stats(impressions, 1, MethodExceptionsAndLatencies.TREATMENT, 'get_treatment')
+        await asyncio.sleep(1)
 
         assert self.impressions == impressions
         assert(self.passed_args[0] == MethodExceptionsAndLatencies.TREATMENT)
@@ -206,12 +207,12 @@ class StandardRecorderAsyncTests(object):
             self.listener_attributes.append(attributes)
         listener.log_impression = log_impression
 
-        imp_counter = mocker.Mock(spec=ImpressionsCounterAsync())
+        imp_counter = mocker.Mock(spec=ImpressionsCounter())
         unique_keys_tracker = mocker.Mock(spec=UniqueKeysTrackerAsync())
         recorder = PipelinedRecorderAsync(redis, impmanager, event, impression, mocker.Mock(),
                                     listener=listener, unique_keys_tracker=unique_keys_tracker, imp_counter=imp_counter)
         self.count = []
-        async def track(x):
+        def track(x):
             self.count = x
         recorder._imp_counter.track = track
 
@@ -221,7 +222,7 @@ class StandardRecorderAsyncTests(object):
         recorder._unique_keys_tracker.track = track2
 
         await recorder.record_treatment_stats(impressions, 1, MethodExceptionsAndLatencies.TREATMENT, 'get_treatment')
-
+        await asyncio.sleep(.2)
         assert recorder._impression_storage.add_impressions_to_pipe.mock_calls[0][1][0] == impressions
         assert recorder._telemetry_redis_storage.add_latency_to_pipe.mock_calls[0][1][0] == MethodExceptionsAndLatencies.TREATMENT
         assert recorder._telemetry_redis_storage.add_latency_to_pipe.mock_calls[0][1][1] == 1
@@ -247,7 +248,7 @@ class StandardRecorderAsyncTests(object):
         ], [], []
         event = mocker.Mock(spec=RedisEventsStorageAsync)
         impression = mocker.Mock(spec=RedisImpressionsStorageAsync)
-        imp_counter = mocker.Mock(spec=ImpressionsCounterAsync())
+        imp_counter = mocker.Mock(spec=ImpressionsCounter())
         unique_keys_tracker = mocker.Mock(spec=UniqueKeysTrackerAsync())
         recorder = PipelinedRecorderAsync(redis, impmanager, event, impression, 0.5, mocker.Mock(),
                                     unique_keys_tracker=unique_keys_tracker, imp_counter=imp_counter)

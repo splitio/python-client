@@ -141,7 +141,7 @@ class ImpressionsCountSyncTaskAsyncTests(object):
             Counter.CountPerFeature('f2', 456, 222)
         ]
         self._pop_called = 0
-        async def pop_all():
+        def pop_all():
             self._pop_called += 1
             return counters
         counter.pop_all = pop_all

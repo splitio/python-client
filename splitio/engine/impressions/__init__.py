@@ -18,7 +18,7 @@ def set_classes(storage_mode, impressions_mode, api_adapter, imp_counter, unique
     :param api_adapter: api adapter instance(s)
     :type impressions_mode: dict or splitio.storage.adapters.redis.RedisAdapter/splitio.storage.adapters.redis.RedisAdapterAsync
     :param imp_counter: Impressions Counter instance
-    :type imp_counter: splitio.engine.impressions.Counter/splitio.engine.impressions.CounterAsync
+    :type imp_counter: splitio.engine.impressions.Counter/splitio.engine.impressions.Counter
     :param unique_keys_tracker: Unique Keys Tracker instance
     :type unique_keys_tracker: splitio.engine.unique_keys_tracker.UniqueKeysTracker/splitio.engine.unique_keys_tracker.UniqueKeysTrackerAsync
     :param prefix: Prefix used for redis or pluggable adapters
@@ -83,7 +83,7 @@ def set_classes_async(storage_mode, impressions_mode, api_adapter, imp_counter, 
     :param api_adapter: api adapter instance(s)
     :type impressions_mode: dict or splitio.storage.adapters.redis.RedisAdapter/splitio.storage.adapters.redis.RedisAdapterAsync
     :param imp_counter: Impressions Counter instance
-    :type imp_counter: splitio.engine.impressions.Counter/splitio.engine.impressions.CounterAsync
+    :type imp_counter: splitio.engine.impressions.Counter/splitio.engine.impressions.Counter
     :param unique_keys_tracker: Unique Keys Tracker instance
     :type unique_keys_tracker: splitio.engine.unique_keys_tracker.UniqueKeysTracker/splitio.engine.unique_keys_tracker.UniqueKeysTrackerAsync
     :param prefix: Prefix used for redis or pluggable adapters

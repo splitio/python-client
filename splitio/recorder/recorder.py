@@ -7,12 +7,35 @@ from splitio.client.config import DEFAULT_DATA_SAMPLING
 from splitio.client.listener import ImpressionListenerException
 from splitio.models.telemetry import MethodExceptionsAndLatencies
 from splitio.models import telemetry
+from splitio.optional.loaders import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class StatsRecorder(object, metaclass=abc.ABCMeta):
     """StatsRecorder interface."""
+
+    def __init__(self, impressions_manager, event_storage, impression_storage, listener=None, unique_keys_tracker=None, imp_counter=None):
+        """
+        Class constructor.
+
+        :param impressions_manager: impression manager instance
+        :type impressions_manager: splitio.engine.impressions.Manager
+        :param event_storage: event storage instance
+        :type event_storage: splitio.storage.EventStorage
+        :param impression_storage: impression storage instance
+        :type impression_storage: splitio.storage.ImpressionStorage
+        :param unique_keys_tracker: Unique Keys Tracker instance
+        :type unique_keys_tracker: splitio.engine.unique_keys_tracker.UniqueKeysTracker
+        :param imp_counter: Impressions Counter instance
+        :type imp_counter: splitio.engine.impressions.Counter
+        """
+        self._impressions_manager = impressions_manager
+        self._event_sotrage = event_storage
+        self._impression_storage = impression_storage
+        self._listener = listener
+        self._unique_keys_tracker = unique_keys_tracker
+        self._imp_counter = imp_counter
 
     @abc.abstractmethod
     def record_treatment_stats(self, impressions, latency, operation):
@@ -38,19 +61,25 @@ class StatsRecorder(object, metaclass=abc.ABCMeta):
         """
         pass
 
-    async def _send_impressions_to_listener_async(self, impressions):
-        """
-        Send impression result to custom listener.
+class StatsRecorderThreadingBase(StatsRecorder):
+    """StandardRecorder class."""
 
-        :param impressions: List of impression objects with attributes
-        :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
+    def __init__(self, impressions_manager, event_storage, impression_storage, listener=None, unique_keys_tracker=None, imp_counter=None):
         """
-        if self._listener is not None:
-            try:
-                for impression, attributes in impressions:
-                    await self._listener.log_impression(impression, attributes)
-            except ImpressionListenerException:
-                pass
+        Class constructor.
+
+        :param impressions_manager: impression manager instance
+        :type impressions_manager: splitio.engine.impressions.Manager
+        :param event_storage: event storage instance
+        :type event_storage: splitio.storage.EventStorage
+        :param impression_storage: impression storage instance
+        :type impression_storage: splitio.storage.ImpressionStorage
+        :param unique_keys_tracker: Unique Keys Tracker instance
+        :type unique_keys_tracker: splitio.engine.unique_keys_tracker.UniqueKeysTracker
+        :param imp_counter: Impressions Counter instance
+        :type imp_counter: splitio.engine.impressions.Counter
+        """
+        StatsRecorder.__init__(self, impressions_manager, event_storage, impression_storage, listener, unique_keys_tracker, imp_counter)
 
     def _send_impressions_to_listener(self, impressions):
         """
@@ -66,7 +95,41 @@ class StatsRecorder(object, metaclass=abc.ABCMeta):
             except ImpressionListenerException:
                 pass
 
-class StandardRecorder(StatsRecorder):
+class StatsRecorderAsyncBase(StatsRecorder):
+    """StandardRecorder class."""
+
+    def __init__(self, impressions_manager, event_storage, impression_storage, listener=None, unique_keys_tracker=None, imp_counter=None):
+        """
+        Class constructor.
+
+        :param impressions_manager: impression manager instance
+        :type impressions_manager: splitio.engine.impressions.Manager
+        :param event_storage: event storage instance
+        :type event_storage: splitio.storage.EventStorage
+        :param impression_storage: impression storage instance
+        :type impression_storage: splitio.storage.ImpressionStorage
+        :param unique_keys_tracker: Unique Keys Tracker instance
+        :type unique_keys_tracker: splitio.engine.unique_keys_tracker.UniqueKeysTracker
+        :param imp_counter: Impressions Counter instance
+        :type imp_counter: splitio.engine.impressions.Counter
+        """
+        StatsRecorder.__init__(self, impressions_manager, event_storage, impression_storage, listener, unique_keys_tracker, imp_counter)
+
+    async def _send_impressions_to_listener_async(self, impressions):
+        """
+        Send impression result to custom listener.
+
+        :param impressions: List of impression objects with attributes
+        :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
+        """
+        if self._listener is not None:
+            try:
+                for impression, attributes in impressions:
+                    await self._listener.log_impression(impression, attributes)
+            except ImpressionListenerException:
+                pass
+
+class StandardRecorder(StatsRecorderThreadingBase):
     """StandardRecorder class."""
 
     def __init__(self, impressions_manager, event_storage, impression_storage, telemetry_evaluation_producer, telemetry_runtime_producer, listener=None, unique_keys_tracker=None, imp_counter=None):
@@ -84,14 +147,9 @@ class StandardRecorder(StatsRecorder):
         :param imp_counter: Impressions Counter instance
         :type imp_counter: splitio.engine.impressions.Counter
         """
-        self._impressions_manager = impressions_manager
-        self._event_sotrage = event_storage
-        self._impression_storage = impression_storage
+        StatsRecorderThreadingBase.__init__(self, impressions_manager, event_storage, impression_storage, listener, unique_keys_tracker, imp_counter)
         self._telemetry_evaluation_producer = telemetry_evaluation_producer
         self._telemetry_runtime_producer = telemetry_runtime_producer
-        self._listener = listener
-        self._unique_keys_tracker = unique_keys_tracker
-        self._imp_counter = imp_counter
 
     def record_treatment_stats(self, impressions, latency, operation, method_name):
         """
@@ -130,8 +188,7 @@ class StandardRecorder(StatsRecorder):
         self._telemetry_evaluation_producer.record_latency(MethodExceptionsAndLatencies.TRACK, latency)
         return self._event_sotrage.put(event)
 
-
-class StandardRecorderAsync(StatsRecorder):
+class StandardRecorderAsync(StatsRecorderAsyncBase):
     """StandardRecorder async class."""
 
     def __init__(self, impressions_manager, event_storage, impression_storage, telemetry_evaluation_producer, telemetry_runtime_producer, listener=None, unique_keys_tracker=None, imp_counter=None):
@@ -147,16 +204,11 @@ class StandardRecorderAsync(StatsRecorder):
         :param unique_keys_tracker: Unique Keys Tracker instance
         :type unique_keys_tracker: splitio.engine.unique_keys_tracker.UniqueKeysTrackerAsync
         :param imp_counter: Impressions Counter instance
-        :type imp_counter: splitio.engine.impressions.CounterAsync
+        :type imp_counter: splitio.engine.impressions.Counter
         """
-        self._impressions_manager = impressions_manager
-        self._event_sotrage = event_storage
-        self._impression_storage = impression_storage
+        StatsRecorderAsyncBase.__init__(self, impressions_manager, event_storage, impression_storage, listener, unique_keys_tracker, imp_counter)
         self._telemetry_evaluation_producer = telemetry_evaluation_producer
         self._telemetry_runtime_producer = telemetry_runtime_producer
-        self._listener = listener
-        self._unique_keys_tracker = unique_keys_tracker
-        self._imp_counter = imp_counter
 
     async def record_treatment_stats(self, impressions, latency, operation, method_name):
         """
@@ -179,9 +231,10 @@ class StandardRecorderAsync(StatsRecorder):
             await self._impression_storage.put(impressions)
             await self._send_impressions_to_listener_async(for_listener)
             if len(for_counter) > 0:
-                await self._imp_counter.track(for_counter)
+                self._imp_counter.track(for_counter)
             if len(for_unique_keys_tracker) > 0:
-                [await self._unique_keys_tracker.track(item[0], item[1]) for item in for_unique_keys_tracker]
+                unique_keys_coros = [self._unique_keys_tracker.track(item[0], item[1]) for item in for_unique_keys_tracker]
+                await asyncio.gather(*unique_keys_coros)
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error recording impressions')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -196,8 +249,7 @@ class StandardRecorderAsync(StatsRecorder):
         await self._telemetry_evaluation_producer.record_latency(MethodExceptionsAndLatencies.TRACK, latency)
         return await self._event_sotrage.put(event)
 
-
-class PipelinedRecorder(StatsRecorder):
+class PipelinedRecorder(StatsRecorderThreadingBase):
     """PipelinedRecorder class."""
 
     def __init__(self, pipe, impressions_manager, event_storage,
@@ -220,15 +272,10 @@ class PipelinedRecorder(StatsRecorder):
         :param imp_counter: Impressions Counter instance
         :type imp_counter: splitio.engine.impressions.Counter
         """
+        StatsRecorderThreadingBase.__init__(self, impressions_manager, event_storage, impression_storage, listener, unique_keys_tracker, imp_counter)
         self._make_pipe = pipe
-        self._impressions_manager = impressions_manager
-        self._event_sotrage = event_storage
-        self._impression_storage = impression_storage
         self._data_sampling = data_sampling
         self._telemetry_redis_storage = telemetry_redis_storage
-        self._listener = listener
-        self._unique_keys_tracker = unique_keys_tracker
-        self._imp_counter = imp_counter
 
     def record_treatment_stats(self, impressions, latency, operation, method_name):
         """
@@ -246,6 +293,7 @@ class PipelinedRecorder(StatsRecorder):
                 rnumber = random.uniform(0, 1)
                 if self._data_sampling < rnumber:
                     return
+
             impressions, deduped, for_listener, for_counter, for_unique_keys_tracker = self._impressions_manager.process_impressions(impressions)
             if impressions:
                 pipe = self._make_pipe()
@@ -291,7 +339,7 @@ class PipelinedRecorder(StatsRecorder):
             _LOGGER.debug('Error: ', exc_info=True)
             return False
 
-class PipelinedRecorderAsync(StatsRecorder):
+class PipelinedRecorderAsync(StatsRecorderAsyncBase):
     """PipelinedRecorder async class."""
 
     def __init__(self, pipe, impressions_manager, event_storage,
@@ -312,17 +360,12 @@ class PipelinedRecorderAsync(StatsRecorder):
         :param unique_keys_tracker: Unique Keys Tracker instance
         :type unique_keys_tracker: splitio.engine.unique_keys_tracker.UniqueKeysTrackerAsync
         :param imp_counter: Impressions Counter instance
-        :type imp_counter: splitio.engine.impressions.CounterAsync
+        :type imp_counter: splitio.engine.impressions.Counter
         """
+        StatsRecorderAsyncBase.__init__(self, impressions_manager, event_storage, impression_storage, listener, unique_keys_tracker, imp_counter)
         self._make_pipe = pipe
-        self._impressions_manager = impressions_manager
-        self._event_sotrage = event_storage
-        self._impression_storage = impression_storage
         self._data_sampling = data_sampling
         self._telemetry_redis_storage = telemetry_redis_storage
-        self._listener = listener
-        self._unique_keys_tracker = unique_keys_tracker
-        self._imp_counter = imp_counter
 
     async def record_treatment_stats(self, impressions, latency, operation, method_name):
         """
@@ -340,6 +383,7 @@ class PipelinedRecorderAsync(StatsRecorder):
                 rnumber = random.uniform(0, 1)
                 if self._data_sampling < rnumber:
                     return
+
             impressions, deduped, for_listener, for_counter, for_unique_keys_tracker = self._impressions_manager.process_impressions(impressions)
             if impressions:
                 pipe = self._make_pipe()
@@ -353,9 +397,10 @@ class PipelinedRecorderAsync(StatsRecorder):
                 await self._send_impressions_to_listener_async(for_listener)
 
             if len(for_counter) > 0:
-                await self._imp_counter.track(for_counter)
+                self._imp_counter.track(for_counter)
             if len(for_unique_keys_tracker) > 0:
-                [await self._unique_keys_tracker.track(item[0], item[1]) for item in for_unique_keys_tracker]
+                unique_keys_coros = [self._unique_keys_tracker.track(item[0], item[1]) for item in for_unique_keys_tracker]
+                await asyncio.gather(*unique_keys_coros)
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error recording impressions')
             _LOGGER.debug('Error: ', exc_info=True)

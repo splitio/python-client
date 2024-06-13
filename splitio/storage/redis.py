@@ -10,7 +10,7 @@ from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, Eve
     ImpressionPipelinedStorage, TelemetryStorage, FlagSetsFilter
 from splitio.storage.adapters.redis import RedisAdapterException
 from splitio.storage.adapters.cache_trait import decorate as add_cache, DEFAULT_MAX_AGE
-from splitio.storage.adapters.cache_trait import LocalMemoryCache
+from splitio.storage.adapters.cache_trait import LocalMemoryCache, LocalMemoryCacheAsync
 from splitio.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
 
 _LOGGER = logging.getLogger(__name__)
@@ -342,7 +342,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         self.flag_set_filter = FlagSetsFilter(config_flag_sets)
         self._pipe = self.redis.pipeline
         if enable_caching:
-            self._cache = LocalMemoryCache(None, None, max_age)
+            self._cache = LocalMemoryCacheAsync(None, None, max_age)
 
     async def get(self, feature_flag_name):  # pylint: disable=method-hidden
         """

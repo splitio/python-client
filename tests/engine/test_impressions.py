@@ -3,7 +3,7 @@ from datetime import datetime
 import unittest.mock as mock
 import pytest
 from splitio.engine.impressions.impressions import Manager, ImpressionsMode
-from splitio.engine.impressions.manager import Hasher, Observer, Counter, truncate_time, CounterAsync
+from splitio.engine.impressions.manager import Hasher, Observer, Counter, truncate_time
 from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyOptimizedMode, StrategyNoneMode
 from splitio.models.impressions import Impression
 from splitio.client.listener import ImpressionListenerWrapper
@@ -89,33 +89,6 @@ class ImpressionCounterTests(object):
             Counter.CountPerFeature('f2', truncate_time(utc_1_hour_after), 1)])
         assert len(counter._data) == 0
         assert set(counter.pop_all()) == set()
-
-class ImpressionCounterAsyncTests(object):
-    """Impression counter test cases."""
-
-    @pytest.mark.asyncio
-    async def test_tracking_and_popping(self):
-        """Test adding impressions counts and popping them."""
-        counter = CounterAsync()
-        utc_now = utctime_ms_reimplement()
-        utc_1_hour_after = utc_now + (3600 * 1000)
-        await counter.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now),
-                       Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now),
-                       Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now)])
-
-        await counter.track([Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now),
-                       Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now)])
-
-        await counter.track([Impression('k1', 'f1', 'on', 'l1', 123, None, utc_1_hour_after),
-                       Impression('k1', 'f2', 'on', 'l1', 123, None, utc_1_hour_after)])
-
-        assert set(await counter.pop_all()) == set([
-            Counter.CountPerFeature('f1', truncate_time(utc_now), 3),
-            Counter.CountPerFeature('f2', truncate_time(utc_now), 2),
-            Counter.CountPerFeature('f1', truncate_time(utc_1_hour_after), 1),
-            Counter.CountPerFeature('f2', truncate_time(utc_1_hour_after), 1)])
-        assert len(counter._data) == 0
-        assert set(await counter.pop_all()) == set()
 
 class ImpressionManagerTests(object):
     """Test impressions manager in all of its configurations."""

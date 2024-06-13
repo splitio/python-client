@@ -20,8 +20,8 @@ class FlagSets(object):
 
     def __init__(self, flag_sets=[]):
         """Constructor."""
-        self._lock = threading.RLock()
         self.sets_feature_flag_map = {}
+        self._lock = threading.RLock()
         for flag_set in flag_sets:
             self.sets_feature_flag_map[flag_set] = set()
 
@@ -106,97 +106,6 @@ class FlagSets(object):
                 self.remove_feature_flag_to_flag_set(flag_set, feature_flag_name)
                 if self.flag_set_exist(flag_set) and len(self.get_flag_set(flag_set)) == 0 and not should_filter:
                     self._remove_flag_set(flag_set)
-
-class FlagSetsAsync(object):
-    """InMemory Flagsets storage."""
-
-    def __init__(self, flag_sets=[]):
-        """Constructor."""
-        self._lock = asyncio.Lock()
-        self.sets_feature_flag_map = {}
-        for flag_set in flag_sets:
-            self.sets_feature_flag_map[flag_set] = set()
-
-    async def flag_set_exist(self, flag_set):
-        """
-        Check if a flagset exist in stored flagset
-        :param flag_set: set name
-        :type flag_set: str
-        :rtype: bool
-        """
-        async with self._lock:
-            return flag_set in self.sets_feature_flag_map.keys()
-
-    async def get_flag_set(self, flag_set):
-        """
-        fetch feature flags stored in a flag set
-        :param flag_set: set name
-        :type flag_set: str
-        :rtype: list(str)
-        """
-        async with self._lock:
-            return self.sets_feature_flag_map.get(flag_set)
-
-    async def _add_flag_set(self, flag_set):
-        """
-        Add new flag set to storage
-        :param flag_set: set name
-        :type flag_set: str
-        """
-        async with self._lock:
-            if not flag_set in self.sets_feature_flag_map.keys():
-                self.sets_feature_flag_map[flag_set] = set()
-
-    async def _remove_flag_set(self, flag_set):
-        """
-        Remove existing flag set from storage
-        :param flag_set: set name
-        :type flag_set: str
-        """
-        async with self._lock:
-            if flag_set in self.sets_feature_flag_map.keys():
-                del self.sets_feature_flag_map[flag_set]
-
-    async def add_feature_flag_to_flag_set(self, flag_set, feature_flag):
-        """
-        Add a feature flag to existing flag set
-        :param flag_set: set name
-        :type flag_set: str
-        :param feature_flag: feature flag name
-        :type feature_flag: str
-        """
-        async with self._lock:
-            if flag_set in self.sets_feature_flag_map.keys():
-                self.sets_feature_flag_map[flag_set].add(feature_flag)
-
-    async def remove_feature_flag_to_flag_set(self, flag_set, feature_flag):
-        """
-        Remove a feature flag from existing flag set
-        :param flag_set: set name
-        :type flag_set: str
-        :param feature_flag: feature flag name
-        :type feature_flag: str
-        """
-        async with self._lock:
-            if flag_set in self.sets_feature_flag_map.keys():
-                self.sets_feature_flag_map[flag_set].remove(feature_flag)
-
-    async def update_flag_set(self, flag_sets, feature_flag_name, should_filter):
-        if flag_sets is not None:
-            for flag_set in flag_sets:
-                if not await self.flag_set_exist(flag_set):
-                    if should_filter:
-                        continue
-                    await self._add_flag_set(flag_set)
-                await self.add_feature_flag_to_flag_set(flag_set, feature_flag_name)
-
-    async def remove_flag_set(self, flag_sets, feature_flag_name, should_filter):
-        if flag_sets is not None:
-            for flag_set in flag_sets:
-                await self.remove_feature_flag_to_flag_set(flag_set, feature_flag_name)
-                if await self.flag_set_exist(flag_set) and len(await self.get_flag_set(flag_set)) == 0 and not should_filter:
-                    await self._remove_flag_set(flag_set)
-
 
 class InMemorySplitStorageBase(SplitStorage):
     """InMemory implementation of a feature flag storage base."""
@@ -529,7 +438,7 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
         self._feature_flags = {}
         self._change_number = -1
         self._traffic_types = Counter()
-        self.flag_set = FlagSetsAsync(flag_sets)
+        self.flag_set = FlagSets(flag_sets)
         self.flag_set_filter = FlagSetsFilter(flag_sets)
 
     async def get(self, feature_flag_name):
@@ -583,7 +492,7 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
                 self._decrease_traffic_type_count(self._feature_flags[feature_flag.name].traffic_type_name)
             self._feature_flags[feature_flag.name] = feature_flag
             self._increase_traffic_type_count(feature_flag.traffic_type_name)
-            await self.flag_set.update_flag_set(feature_flag.sets, feature_flag.name, self.flag_set_filter.should_filter)
+            self.flag_set.update_flag_set(feature_flag.sets, feature_flag.name, self.flag_set_filter.should_filter)
 
     async def _remove(self, feature_flag_name):
         """
@@ -612,7 +521,7 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
         :param feature_flag: feature flag object
         :type feature_flag: splitio.models.splits.Split
         """
-        await self.flag_set.remove_flag_set(feature_flag.sets, feature_flag.name, self.flag_set_filter.should_filter)
+        self.flag_set.remove_flag_set(feature_flag.sets, feature_flag.name, self.flag_set_filter.should_filter)
 
     async def get_feature_flags_by_sets(self, sets):
         """
@@ -625,13 +534,13 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
         async with self._lock:
             sets_to_fetch = []
             for flag_set in sets:
-                if not await self.flag_set.flag_set_exist(flag_set):
+                if not self.flag_set.flag_set_exist(flag_set):
                     _LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring it." % (flag_set))
                     continue
                 sets_to_fetch.append(flag_set)
 
             to_return = set()
-            [to_return.update(await self.flag_set.get_flag_set(flag_set)) for flag_set in sets_to_fetch]
+            [to_return.update(self.flag_set.get_flag_set(flag_set)) for flag_set in sets_to_fetch]
             return list(to_return)
 
     async def get_change_number(self):
@@ -732,7 +641,7 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
         :return: True if the flag_set exist. False otherwise.
         :rtype: bool
         """
-        return await self.flag_set.flag_set_exist(flag_set)
+        return self.flag_set.flag_set_exist(flag_set)
 
 class InMemorySegmentStorage(SegmentStorage):
     """In-memory implementation of a segment storage."""
