@@ -112,8 +112,7 @@ class SplitSynchronizer(SplitSynchronizerBase):
                 _LOGGER.error('Exception raised while fetching feature flags')
                 _LOGGER.debug('Exception information: ', exc_info=True)
                 raise exc
-            fetched_feature_flags = []
-            [fetched_feature_flags.append(splits.from_raw(feature_flag)) for feature_flag in feature_flag_changes.get('splits', [])]
+            fetched_feature_flags = [(splits.from_raw(feature_flag)) for feature_flag in feature_flag_changes.get('splits', [])]
             segment_list = update_feature_flag_storage(self._feature_flag_storage, fetched_feature_flags, feature_flag_changes['till'])
             if feature_flag_changes['till'] == feature_flag_changes['since']:
                 return feature_flag_changes['till'], segment_list
