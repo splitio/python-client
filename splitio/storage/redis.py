@@ -157,11 +157,6 @@ class RedisSplitStorageBase(SplitStorage):
 class RedisSplitStorage(RedisSplitStorageBase):
     """Redis-based storage for feature flags."""
 
-    _FEATURE_FLAG_KEY = 'SPLITIO.split.{feature_flag_name}'
-    _FEATURE_FLAG_TILL_KEY = 'SPLITIO.splits.till'
-    _TRAFFIC_TYPE_KEY = 'SPLITIO.trafficType.{traffic_type_name}'
-    _FLAG_SET_KEY = 'SPLITIO.flagSet.{flag_set}'
-
     def __init__(self, redis_client, enable_caching=False, max_age=DEFAULT_MAX_AGE, config_flag_sets=[]):
         """
         Class constructor.
@@ -213,7 +208,8 @@ class RedisSplitStorage(RedisSplitStorageBase):
 
             keys = [self._get_flag_set_key(flag_set) for flag_set in sets_to_fetch]
             pipe = self._pipe()
-            [pipe.smembers(key) for key in keys]
+            for key in keys:
+                pipe.smembers(key)
             result_sets = pipe.execute()
             _LOGGER.debug("Fetchting Feature flags by set [%s] from redis" % (keys))
             _LOGGER.debug(result_sets)
@@ -342,7 +338,9 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         self.flag_set_filter = FlagSetsFilter(config_flag_sets)
         self._pipe = self.redis.pipeline
         if enable_caching:
-            self._cache = LocalMemoryCacheAsync(None, None, max_age)
+            self._feature_flag_cache = LocalMemoryCacheAsync(None, None, max_age)
+            self._traffic_type_cache = LocalMemoryCacheAsync(None, None, max_age)
+
 
     async def get(self, feature_flag_name):  # pylint: disable=method-hidden
         """
@@ -359,15 +357,16 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         :type change_number: int
         """
         try:
-            if self._enable_caching and await self._cache.get_key(feature_flag_name) is not None:
-                raw = await self._cache.get_key(feature_flag_name)
-            else:
-                raw = await self.redis.get(self._get_key(feature_flag_name))
+            raw_feature_flags = None
+            if self._enable_caching:
+                raw_feature_flags = await self._feature_flag_cache.get_key(feature_flag_name)
+            if raw_feature_flags is None:
+                raw_feature_flags = await self.redis.get(self._get_key(feature_flag_name))
                 if self._enable_caching:
-                    await self._cache.add_key(feature_flag_name, raw)
+                    await self._feature_flag_cache.add_key(feature_flag_name, raw_feature_flags)
                 _LOGGER.debug("Fetchting feature flag [%s] from redis" % feature_flag_name)
-                _LOGGER.debug(raw)
-            return splits.from_raw(json.loads(raw)) if raw is not None else None
+                _LOGGER.debug(raw_feature_flags)
+            return splits.from_raw(json.loads(raw_feature_flags)) if raw_feature_flags is not None else None
 
         except RedisAdapterException:
             _LOGGER.error('Error fetching feature flag from storage')
@@ -410,13 +409,13 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         """
         to_return = dict()
         try:
-            if self._enable_caching and await self._cache.get_key(frozenset(feature_flag_names)) is not None:
-                raw_feature_flags = await self._cache.get_key(frozenset(feature_flag_names))
-            else:
-                keys = [self._get_key(feature_flag_name) for feature_flag_name in feature_flag_names]
-                raw_feature_flags = await self.redis.mget(keys)
+            raw_feature_flags = None
+            if self._enable_caching:
+                raw_feature_flags = await self._feature_flag_cache.get_key(frozenset(feature_flag_names))
+            if raw_feature_flags is None:
+                raw_feature_flags = await self.redis.mget([self._get_key(feature_flag_name) for feature_flag_name in feature_flag_names])
                 if self._enable_caching:
-                    await self._cache.add_key(frozenset(feature_flag_names), raw_feature_flags)
+                    await self._feature_flag_cache.add_key(frozenset(feature_flag_names), raw_feature_flags)
             for i in range(len(feature_flag_names)):
                 feature_flag = None
                 try:
@@ -439,13 +438,14 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         :rtype: bool
         """
         try:
-            if self._enable_caching and await self._cache.get_key(traffic_type_name) is not None:
-                raw = await self._cache.get_key(traffic_type_name)
-            else:
-                raw = await self.redis.get(self._get_traffic_type_key(traffic_type_name))
+            raw_traffic_type = None
+            if self._enable_caching:
+                raw_traffic_type = await self._traffic_type_cache.get_key(traffic_type_name)
+            if raw_traffic_type is None:
+                raw_traffic_type = await self.redis.get(self._get_traffic_type_key(traffic_type_name))
                 if self._enable_caching:
-                    await self._cache.add_key(traffic_type_name, raw)
-            count = json.loads(raw) if raw else 0
+                    await self._traffic_type_cache.add_key(traffic_type_name, raw_traffic_type)
+            count = json.loads(raw_traffic_type) if raw_traffic_type else 0
             return count > 0
 
         except RedisAdapterException:

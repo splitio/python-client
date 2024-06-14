@@ -5,6 +5,7 @@ import abc
 from splitio.optional.loaders import asyncio, anext
 from splitio.api import APIException
 from splitio.util.time import get_current_epoch_time_ms
+from splitio.push import AuthException
 from splitio.push.splitsse import SplitSSEClient, SplitSSEClientAsync
 from splitio.push.sse import SSE_EVENT_ERROR
 from splitio.push.parser import parse_incoming_event, EventParsingException, EventType, \
@@ -315,7 +316,6 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         kwargs = {} if sse_url is None else {'base_url': sse_url}
         self._sse_client = SplitSSEClientAsync(sdk_metadata, client_key, **kwargs)
         self._running = False
-        self._done = asyncio.Event()
         self._telemetry_runtime_producer = telemetry_runtime_producer
         self._token_task = None
 
@@ -366,6 +366,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         :param event: Incoming event
         :type event: splitio.push.sse.SSEEvent
         """
+        parsed = None
         try:
             parsed = parse_incoming_event(event)
             handle = self._event_handlers[parsed.event_type]
@@ -377,8 +378,8 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         try:
             await handle(parsed)
         except Exception:  # pylint:disable=broad-except
-            _LOGGER.error('something went wrong when processing message of type %s',
-                          parsed.event_type)
+            event_type = "unknown" if parsed is None else parsed.event_type
+            _LOGGER.error('something went wrong when processing message of type %s', event_type)
             _LOGGER.debug(str(parsed), exc_info=True)
 
     async def _token_refresh(self, current_token):
@@ -419,20 +420,12 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             try:
                 token = await self._get_auth_token()
             except Exception as e:
-                _LOGGER.error("error getting auth token: " + str(e))
-                _LOGGER.debug("trace: ", exc_info=True)
-                return
+                raise AuthException(e)
 
             events_source = self._sse_client.start(token)
-            self._done.clear()
             self._running = True
 
-            try:
-                first_event = await anext(events_source)
-            except StopAsyncIteration: # will enter here if there was an error
-                await self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
-                return
-
+            first_event = await anext(events_source)
             if first_event.data is not None:
                 await self._event_handler(first_event)
 
@@ -444,13 +437,17 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             async for event in events_source:
                 await self._event_handler(event)
             await self._handle_connection_end()  # TODO(mredolatti): this is not tested
+        except AuthException as e:
+            _LOGGER.error("error getting auth token: " + str(e))
+            _LOGGER.debug("trace: ", exc_info=True)
+        except StopAsyncIteration: # will enter here if there was an error
+            await self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
         finally:
             if self._token_task is not None:
                 self._token_task.cancel()
                 self._token_task = None
             self._running = False
             await self._processor.update_workers_status(False)
-            self._done.set()
 
     async def _handle_message(self, event):
         """

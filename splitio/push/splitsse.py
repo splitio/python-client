@@ -22,6 +22,15 @@ class SplitSSEClientBase(object, metaclass=abc.ABCMeta):
         ERRORED = 2
         CONNECTED = 3
 
+    def __init__(self, base_url):
+        """
+        Construct a split sse client.
+
+        :param base_url: scheme + :// + host
+        :type base_url: str
+        """
+        self._base_url = base_url
+
     @staticmethod
     def _format_channels(channels):
         """
@@ -90,11 +99,11 @@ class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-a
         :param client_key: client key.
         :type client_key: str
         """
+        SplitSSEClientBase.__init__(self, base_url)
         self._client = SSEClient(self._raw_event_handler)
         self._callback = event_callback
         self._on_connected = first_event_callback
         self._on_disconnected = connection_closed_callback
-        self._base_url = base_url
         self._status = SplitSSEClient._Status.IDLE
         self._sse_first_event = None
         self._sse_connection_closed = None
@@ -178,7 +187,7 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         :param base_url: scheme + :// + host
         :type base_url: str
         """
-        self._base_url = base_url
+        SplitSSEClientBase.__init__(self, base_url)
         self.status = SplitSSEClient._Status.IDLE
         self._metadata = headers_from_metadata(sdk_metadata, client_key)
         self._client = SSEClientAsync(self.KEEPALIVE_TIMEOUT)
