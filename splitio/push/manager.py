@@ -397,15 +397,15 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         """Get new auth token"""
         try:
             token = await self._auth_api.authenticate()
-        except APIException:
+        except APIException as e:
             _LOGGER.error('error performing sse auth request.')
             _LOGGER.debug('stack trace: ', exc_info=True)
             await self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
-            raise
+            raise AuthException(e)
 
         if token is not None and not token.push_enabled:
             await self._feedback_loop.put(Status.PUSH_NONRETRYABLE_ERROR)
-            raise Exception("Push is not enabled")
+            raise AuthException("Push is not enabled")
 
         await self._telemetry_runtime_producer.record_token_refreshes()
         await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.TOKEN_REFRESH, 1000 * token.exp,  get_current_epoch_time_ms()))
@@ -417,11 +417,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         self._status_tracker.reset()
 
         try:
-            try:
-                token = await self._get_auth_token()
-            except Exception as e:
-                raise AuthException(e)
-
+            token = await self._get_auth_token()
             events_source = self._sse_client.start(token)
             self._running = True
 
