@@ -266,14 +266,6 @@ class SynchronizerInMemoryBase(BaseSynchronizer):
     def segment_storage(self):
         return self._split_synchronizers.segment_sync._segment_storage
 
-    @property
-    def split_sync(self):
-        return self._split_synchronizers.split_sync
-
-    @property
-    def segment_storage(self):
-        return self._split_synchronizers.segment_sync._segment_storage
-
     def synchronize_segment(self, segment_name, till):
         """
         Synchronize particular segment.
@@ -566,8 +558,8 @@ class SynchronizerAsync(SynchronizerInMemoryBase):
         try:
             new_segments = []
             for segment in await self._split_synchronizers.split_sync.synchronize_splits(till):
-                    if not await self._split_synchronizers.segment_sync.segment_exist_in_storage(segment):
-                        new_segments.append(segment)
+                if not await self._split_synchronizers.segment_sync.segment_exist_in_storage(segment):
+                    new_segments.append(segment)
             if sync_segments and len(new_segments) != 0:
                 _LOGGER.debug('Synching Segments: %s', ','.join(new_segments))
                 success = await self._split_synchronizers.segment_sync.synchronize_segments(new_segments, True)

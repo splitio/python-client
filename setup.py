@@ -22,9 +22,7 @@ INSTALL_REQUIRES = [
     'pyyaml',
     'docopt>=0.6.2',
     'enum34;python_version<"3.4"',
-    'bloom-filter2>=2.0.0',
-    'aiohttp>=3.8.4',
-    'aiofiles>=23.1.0'
+    'bloom-filter2>=2.0.0'
 ]
 
 with open(path.join(path.abspath(path.dirname(__file__)), 'splitio', 'version.py')) as f:
@@ -45,7 +43,8 @@ setup(
         'test': TESTS_REQUIRES,
         'redis': ['redis>=2.10.5'],
         'uwsgi': ['uwsgi>=2.0.0'],
-        'cpphash': ['mmh3cffi==0.2.1']
+        'cpphash': ['mmh3cffi==0.2.1'],
+        'asyncio': ['aiohttp>=3.8.4', 'aiofiles>=23.1.0']
     },
     setup_requires=['pytest-runner', 'pluggy==1.0.0;python_version<"3.8"'],
     classifiers=[
