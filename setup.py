@@ -14,7 +14,9 @@ TESTS_REQUIRES = [
     'tomli==1.2.3',
     'iniconfig==1.1.1',
     'attrs==22.1.0',
-    'pytest-asyncio==0.21.0'
+    'pytest-asyncio==0.21.0',
+    'aiohttp>=3.8.4',
+    'aiofiles>=23.1.0'
 ]
 
 INSTALL_REQUIRES = [
