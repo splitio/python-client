@@ -79,7 +79,6 @@ class ParserTests(object):
         assert parsed1.compression == None
         assert parsed1.feature_flag_definition == None
 
-
         e2 = make_message(
             'NDA5ODc2MTAyNg==_MzAyODY0NDkyOA==_segments',
             {'type':'SEGMENT_UPDATE','changeNumber':1591988398533,'segmentName':'some'},

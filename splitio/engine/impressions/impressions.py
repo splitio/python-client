@@ -1,9 +1,6 @@
 """Split evaluator module."""
 from enum import Enum
 
-from splitio.client.listener import ImpressionListenerException
-from splitio.models import telemetry
-
 class ImpressionsMode(Enum):
     """Impressions tracking mode."""
 
@@ -14,7 +11,7 @@ class ImpressionsMode(Enum):
 class Manager(object):  # pylint:disable=too-few-public-methods
     """Impression manager."""
 
-    def __init__(self, strategy, telemetry_runtime_producer, listener=None):
+    def __init__(self, strategy, telemetry_runtime_producer):
         """
         Construct a manger to track and forward impressions to the queue.
 
@@ -26,7 +23,6 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         """
 
         self._strategy = strategy
-        self._listener = listener
         self._telemetry_runtime_producer = telemetry_runtime_producer
 
     def process_impressions(self, impressions):
@@ -37,25 +33,9 @@ class Manager(object):  # pylint:disable=too-few-public-methods
 
         :param impressions: List of impression objects with attributes
         :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
-        """
-        for_log, for_listener = self._strategy.process_impressions(impressions)
-        if len(impressions) > len(for_log):
-            self._telemetry_runtime_producer.record_impression_stats(telemetry.CounterConstants.IMPRESSIONS_DEDUPED, len(impressions) - len(for_log))
-        self._send_impressions_to_listener(for_listener)
-        return for_log
 
-    def _send_impressions_to_listener(self, impressions):
+        :return: processed and deduped impressions.
+        :rtype: tuple(list[tuple[splitio.models.impression.Impression, dict]], list(int))
         """
-        Send impression result to custom listener.
-
-        :param impressions: List of impression objects with attributes
-        :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
-        """
-        if self._listener is not None:
-            try:
-                for impression, attributes in impressions:
-                    self._listener.log_impression(impression, attributes)
-            except ImpressionListenerException:
-                pass
-#                self._logger.error('An exception was raised while calling user-custom impression listener')
-#                self._logger.debug('Error', exc_info=True)
+        for_log, for_listener, for_counter, for_unique_keys_tracker = self._strategy.process_impressions(impressions)
+        return for_log, len(impressions) - len(for_log), for_listener, for_counter, for_unique_keys_tracker

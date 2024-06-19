@@ -30,6 +30,7 @@ def _get_hostname(ip_address):
 def _get_hostname_and_ip(config):
     if config.get('IPAddressesEnabled') is False:
         return 'NA', 'NA'
+
     ip_from_config = config.get('machineIp')
     machine_from_config = config.get('machineName')
     ip_address = ip_from_config if ip_from_config is not None else _get_ip()

@@ -1,3 +1,7 @@
+10.0.0 (XXX XX, XXXX)
+- Added support for asyncio library
+- BREAKING CHANGE: Minimum supported Python version is 3.7.16
+
 9.7.0 (May 15, 2024)
 - Added support for targeting rules based on semantic versions (https://semver.org/).
 - Added the logic to handle correctly when the SDK receives an unsupported Matcher type.
