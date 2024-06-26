@@ -908,7 +908,6 @@ async def _build_sentinel_client_async(config):  # pylint: disable=too-many-loca
         raise SentinelConfigurationException('redisMasterService must be specified.')
 
     database = config.get('redisDb', 0)
-    username = config.get('redisUsername', None)
     password = config.get('redisPassword', None)
     socket_timeout = config.get('redisSocketTimeout', None)
     socket_connect_timeout = config.get('redisSocketConnectTimeout', None)
@@ -926,7 +925,6 @@ async def _build_sentinel_client_async(config):  # pylint: disable=too-many-loca
     sentinel = SentinelAsync(
         sentinels,
         db=database,
-        username=username,
         password=password,
         encoding=encoding,
         encoding_errors=encoding_errors,
