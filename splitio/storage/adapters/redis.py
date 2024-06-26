@@ -765,6 +765,7 @@ async def _build_default_client_async(config):  # pylint: disable=too-many-local
     host = config.get('redisHost', 'localhost')
     port = config.get('redisPort', 6379)
     database = config.get('redisDb', 0)
+    username = config.get('redisUsername', None)
     password = config.get('redisPassword', None)
     socket_timeout = config.get('redisSocketTimeout', None)
     socket_connect_timeout = config.get('redisSocketConnectTimeout', None)
@@ -789,6 +790,7 @@ async def _build_default_client_async(config):  # pylint: disable=too-many-local
             "redis://" + host + ":" + str(port),
             db=database,
             password=password,
+            username=username,
             max_connections=max_connections,
             encoding=encoding,
             decode_responses=decode_responses,
@@ -906,6 +908,7 @@ async def _build_sentinel_client_async(config):  # pylint: disable=too-many-loca
         raise SentinelConfigurationException('redisMasterService must be specified.')
 
     database = config.get('redisDb', 0)
+    username = config.get('redisUsername', None)
     password = config.get('redisPassword', None)
     socket_timeout = config.get('redisSocketTimeout', None)
     socket_connect_timeout = config.get('redisSocketConnectTimeout', None)
@@ -923,6 +926,7 @@ async def _build_sentinel_client_async(config):  # pylint: disable=too-many-loca
     sentinel = SentinelAsync(
         sentinels,
         db=database,
+        username=username,
         password=password,
         encoding=encoding,
         encoding_errors=encoding_errors,
