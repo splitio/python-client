@@ -99,8 +99,10 @@ class FetchOptions(object):
         """Match between other options."""
         if self._cache_control_headers != other._cache_control_headers:
             return False
+
         if self._change_number != other._change_number:
             return False
+
         if self._sets != other._sets:
             return False
         if self._spec != other._spec:
@@ -129,6 +131,7 @@ def build_fetch(change_number, fetch_options, metadata):
     extra_headers = metadata
     if fetch_options is None:
         return query, extra_headers
+
     if fetch_options.cache_control_headers:
         extra_headers[_CACHE_CONTROL] = _CACHE_CONTROL_NO_CACHE
     if fetch_options.sets is not None:

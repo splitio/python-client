@@ -35,6 +35,7 @@ class Sanitizer(object):  # pylint: disable=too-few-public-methods
         )
         try:
             return json.dumps(data)
+
         except TypeError:
             return None
 
@@ -68,6 +69,7 @@ class WhitelistMatcher(Matcher):
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
         if matching_data is None:
             return False
+
         return matching_data in self._whitelist
 
     def _add_matcher_specific_properties_to_json(self):
@@ -114,6 +116,7 @@ class StartsWithMatcher(Matcher):
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
         if matching_data is None:
             return False
+
         return (isinstance(key, str) and
                 any(matching_data.startswith(s) for s in self._whitelist))
 
@@ -161,6 +164,7 @@ class EndsWithMatcher(Matcher):
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
         if matching_data is None:
             return False
+
         return (isinstance(key, str) and
                 any(matching_data.endswith(s) for s in self._whitelist))
 
@@ -208,6 +212,7 @@ class ContainsStringMatcher(Matcher):
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
         if matching_data is None:
             return False
+
         return (isinstance(matching_data, str) and
                 any(s in matching_data for s in self._whitelist))
 
@@ -256,9 +261,11 @@ class RegexMatcher(Matcher):
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
         if matching_data is None:
             return False
+
         try:
             matches = re.search(self._regex, matching_data)
             return matches is not None
+
         except TypeError:
             return False
 

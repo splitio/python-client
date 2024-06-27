@@ -1,11 +1,9 @@
 import abc
 
-from splitio.engine.impressions.manager import Observer, truncate_impressions_time, Counter, truncate_time
-from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker
+from splitio.engine.impressions.manager import Observer, truncate_time
 from splitio.util.time import utctime_ms
 
 _IMPRESSION_OBSERVER_CACHE_SIZE = 500000
-_UNIQUE_KEYS_CACHE_SIZE = 30000
 
 class BaseStrategy(object, metaclass=abc.ABCMeta):
     """Strategy interface."""
@@ -37,22 +35,14 @@ class StrategyDebugMode(BaseStrategy):
         :param impressions: List of impression objects with attributes
         :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
 
-        :returns: Observed list of impressions
-        :rtype: list[tuple[splitio.models.impression.Impression, dict]]
+        :returns: Tuple of to be stored, observed and counted impressions, and unique keys tuple
+        :rtype: list[tuple[splitio.models.impression.Impression, dict]], list[], list[], list[]
         """
         imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions]
-        return [i for i, _ in imps], imps
+        return [i for i, _ in imps], imps, [], []
 
 class StrategyNoneMode(BaseStrategy):
     """Debug mode strategy."""
-
-    def __init__(self, counter):
-        """
-        Construct a strategy instance for none mode.
-
-        """
-        self._counter = counter
-        self._unique_keys_tracker = UniqueKeysTracker(_UNIQUE_KEYS_CACHE_SIZE)
 
     def process_impressions(self, impressions):
         """
@@ -64,27 +54,24 @@ class StrategyNoneMode(BaseStrategy):
         :param impressions: List of impression objects with attributes
         :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
 
-        :returns: Empty list, no impressions to post
-        :rtype: list[]
+        :returns: Tuple of to be stored, observed and counted impressions, and unique keys tuple
+        :rtype: list[[], dict]], list[splitio.models.impression.Impression], list[splitio.models.impression.Impression], list[(str, str)]
         """
-        self._counter.track([imp for imp, _ in impressions])
+        counter_imps = [imp for imp, _ in impressions]
+        unique_keys_tracker = []
         for i, _ in impressions:
-            self._unique_keys_tracker.track(i.matching_key, i.feature_name)
-        return [], impressions
-
-    def get_unique_keys_tracker(self):
-        return self._unique_keys_tracker
+            unique_keys_tracker.append((i.matching_key, i.feature_name))
+        return [], impressions, counter_imps, unique_keys_tracker
 
 class StrategyOptimizedMode(BaseStrategy):
     """Optimized mode strategy."""
 
-    def __init__(self, counter):
+    def __init__(self):
         """
         Construct a strategy instance for optimized mode.
 
         """
         self._observer = Observer(_IMPRESSION_OBSERVER_CACHE_SIZE)
-        self._counter = counter
 
     def process_impressions(self, impressions):
         """
@@ -95,10 +82,10 @@ class StrategyOptimizedMode(BaseStrategy):
         :param impressions: List of impression objects with attributes
         :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
 
-        :returns: Observed list of impressions
-        :rtype: list[tuple[splitio.models.impression.Impression, dict]]
+        :returns: Tuple of to be stored, observed and counted impressions, and unique keys tuple
+        :rtype: list[tuple[splitio.models.impression.Impression, dict]], list[splitio.models.impression.Impression], list[splitio.models.impression.Impression], list[]
         """
         imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions]
-        self._counter.track([imp for imp, _ in imps if imp.previous_time != None])
+        counter_imps = [imp for imp, _ in imps if imp.previous_time != None]
         this_hour = truncate_time(utctime_ms())
-        return [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour], imps
+        return [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour], imps, counter_imps, []

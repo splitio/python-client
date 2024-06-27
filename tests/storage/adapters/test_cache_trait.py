@@ -6,6 +6,7 @@ from random import choice
 import pytest
 
 from splitio.storage.adapters import cache_trait
+from splitio.optional.loaders import asyncio
 
 class  CacheTraitTests(object):
     """Cache trait test cases."""
@@ -130,3 +131,11 @@ class  CacheTraitTests(object):
         assert cache_trait.decorate(key_func, 0, 10)(user_func) is user_func
         assert cache_trait.decorate(key_func, 10, 0)(user_func) is user_func
         assert cache_trait.decorate(key_func, 0, 0)(user_func) is user_func
+
+    @pytest.mark.asyncio
+    async def test_async_add_and_get_key(self, mocker):
+        cache = cache_trait.LocalMemoryCacheAsync(None, None, 1, 1)
+        await cache.add_key('split', {'split_name': 'split'})
+        assert await cache.get_key('split') == {'split_name': 'split'}
+        await asyncio.sleep(1)
+        assert await cache.get_key('split') == None

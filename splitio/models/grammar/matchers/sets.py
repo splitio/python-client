@@ -31,9 +31,11 @@ class ContainsAllOfSetMatcher(Matcher):
         matching_data = self._get_matcher_input(key, attributes)
         if matching_data is None:
             return False
+
         try:
             setkey = set(matching_data)
             return self._whitelist.issubset(setkey)
+
         except TypeError:
             return False
 
@@ -81,8 +83,10 @@ class ContainsAnyOfSetMatcher(Matcher):
         matching_data = self._get_matcher_input(key, attributes)
         if matching_data is None:
             return False
+
         try:
             return len(self._whitelist.intersection(set(matching_data))) != 0
+
         except TypeError:
             return False
 
@@ -130,8 +134,10 @@ class EqualToSetMatcher(Matcher):
         matching_data = self._get_matcher_input(key, attributes)
         if matching_data is None:
             return False
+
         try:
             return self._whitelist == set(matching_data)
+
         except TypeError:
             return False
 
@@ -179,9 +185,11 @@ class PartOfSetMatcher(Matcher):
         matching_data = self._get_matcher_input(key, attributes)
         if matching_data is None:
             return False
+
         try:
             setkey = set(matching_data)
             return len(setkey) > 0 and setkey.issubset(set(self._whitelist))
+
         except TypeError:
             return False
 

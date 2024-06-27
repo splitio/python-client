@@ -65,14 +65,11 @@ class UserDefinedSegmentMatcher(Matcher):
         :returns: Wheter the match is successful.
         :rtype: bool
         """
-        segment_storage = context.get('segment_storage')
-        if not segment_storage:
-            raise Exception('Segment storage not present in matcher context.')
-
         matching_data = self._get_matcher_input(key, attributes)
         if matching_data is None:
             return False
-        return segment_storage.segment_contains(self._segment_name, matching_data)
+
+        return context['ec'].segment_memberships[self._segment_name]
 
     def _add_matcher_specific_properties_to_json(self):
         """Return UserDefinedSegment specific properties."""

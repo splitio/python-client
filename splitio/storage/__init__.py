@@ -327,7 +327,6 @@ class FlagSetsFilter(object):
     def set_exist(self, flag_set):
         """
         Check if a flagset exist in flagset filter
-
         :param flag_set: set name
         :type flag_set: str
 
@@ -335,6 +334,7 @@ class FlagSetsFilter(object):
         """
         if not self.should_filter:
             return True
+
         if not isinstance(flag_set, str) or flag_set == '':
             return False
 
@@ -343,7 +343,6 @@ class FlagSetsFilter(object):
     def intersect(self, flag_sets):
         """
         Check if a set exist in config flagset filter
-
         :param flag_set: set of flagsets
         :type flag_set: set
 
@@ -351,6 +350,8 @@ class FlagSetsFilter(object):
         """
         if not self.should_filter:
             return True
+
         if not isinstance(flag_sets, set) or len(flag_sets) == 0:
             return False
+
         return any(self.flag_sets.intersection(flag_sets))

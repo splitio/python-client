@@ -1,3 +1,5 @@
+import pytest
+
 from splitio.storage import FlagSetsFilter
 from splitio.storage.inmemmory import FlagSets
 
@@ -7,7 +9,7 @@ class FlagSetsFilterTests(object):
         flag_set = FlagSets()
         assert flag_set.sets_feature_flag_map == {}
 
-        flag_set.add_flag_set('set1')
+        flag_set._add_flag_set('set1')
         assert flag_set.get_flag_set('set1') == set({})
         assert flag_set.flag_set_exist('set1') == True
         assert flag_set.flag_set_exist('set2') == False
@@ -18,9 +20,9 @@ class FlagSetsFilterTests(object):
         assert flag_set.get_flag_set('set1') == {'split1', 'split2'}
         flag_set.remove_feature_flag_to_flag_set('set1', 'split1')
         assert flag_set.get_flag_set('set1') == {'split2'}
-        flag_set.remove_flag_set('set2')
+        flag_set._remove_flag_set('set2')
         assert flag_set.sets_feature_flag_map == {'set1': set({'split2'})}
-        flag_set.remove_flag_set('set1')
+        flag_set._remove_flag_set('set1')
         assert flag_set.sets_feature_flag_map == {}
         assert flag_set.flag_set_exist('set1') == False
 
@@ -28,7 +30,7 @@ class FlagSetsFilterTests(object):
         flag_set = FlagSets(['set1', 'set2'])
         assert flag_set.sets_feature_flag_map == {'set1': set(), 'set2': set()}
 
-        flag_set.add_flag_set('set1')
+        flag_set._add_flag_set('set1')
         assert flag_set.get_flag_set('set1') == set({})
         assert flag_set.flag_set_exist('set1') == True
         assert flag_set.flag_set_exist('set2') == True
@@ -39,9 +41,9 @@ class FlagSetsFilterTests(object):
         assert flag_set.get_flag_set('set1') == {'split1', 'split2'}
         flag_set.remove_feature_flag_to_flag_set('set1', 'split1')
         assert flag_set.get_flag_set('set1') == {'split2'}
-        flag_set.remove_flag_set('set2')
+        flag_set._remove_flag_set('set2')
         assert flag_set.sets_feature_flag_map == {'set1': set({'split2'})}
-        flag_set.remove_flag_set('set1')
+        flag_set._remove_flag_set('set1')
         assert flag_set.sets_feature_flag_map == {}
         assert flag_set.flag_set_exist('set1') == False
 

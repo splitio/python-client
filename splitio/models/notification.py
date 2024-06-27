@@ -195,6 +195,7 @@ def wrap_notification(raw_data, channel):
         notification_type = Type(raw_data['type'])
         mapper = _NOTIFICATION_MAPPERS[notification_type]
         return mapper(channel, raw_data)
+
     except ValueError:
         raise ValueError("Wrong notification type received.")
     except KeyError:

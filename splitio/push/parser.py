@@ -346,7 +346,6 @@ class SplitChangeUpdate(BaseUpdate):
     def previous_change_number(self):  # pylint:disable=no-self-use
         """
         Return previous change number
-
         :returns: The previous change number
         :rtype: int
         """
@@ -356,7 +355,6 @@ class SplitChangeUpdate(BaseUpdate):
     def feature_flag_definition(self):  # pylint:disable=no-self-use
         """
         Return feature flag definition
-
         :returns: The new feature flag definition
         :rtype: str
         """
@@ -366,7 +364,6 @@ class SplitChangeUpdate(BaseUpdate):
     def compression(self):  # pylint:disable=no-self-use
         """
         Return previous compression type
-
         :returns: The compression type
         :rtype: int
         """
@@ -505,11 +502,14 @@ def _parse_update(channel, timestamp, data):
     change_number = data['changeNumber']
     if update_type == UpdateType.SPLIT_UPDATE and change_number is not None:
         return SplitChangeUpdate(channel, timestamp, change_number, data.get('pcn'), data.get('d'), data.get('c'))
+
     elif update_type == UpdateType.SPLIT_KILL and change_number is not None:
         return SplitKillUpdate(channel, timestamp, change_number,
                                data['splitName'], data['defaultTreatment'])
+
     elif update_type == UpdateType.SEGMENT_UPDATE:
         return SegmentChangeUpdate(channel, timestamp, change_number, data['segmentName'])
+
     raise EventParsingException('unrecognized event type %s' % update_type)
 
 
@@ -525,15 +525,19 @@ def _parse_message(data):
     """
     if not all(k in data for k in ['data', 'channel']):
         return None
+
     channel = data['channel']
     timestamp = data['timestamp']
     parsed_data = json.loads(data['data'])
     if data.get('name') == TAG_OCCUPANCY:
         return OccupancyMessage(channel, timestamp, parsed_data['metrics']['publishers'])
+
     elif parsed_data['type'] == 'CONTROL':
         return ControlMessage(channel, timestamp, parsed_data['controlType'])
+
     elif parsed_data['type'] in UpdateType.__members__:
         return _parse_update(channel, timestamp, parsed_data)
+
     raise EventParsingException('unrecognized message type %s' % parsed_data['type'])
 
 

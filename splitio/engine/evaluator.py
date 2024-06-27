@@ -1,11 +1,15 @@
 """Split evaluator module."""
 import logging
-from splitio.models.grammar.condition import ConditionType
-from splitio.models.impressions import Label
+from collections import namedtuple
 
+from splitio.models.impressions import Label
+from splitio.models.grammar.condition import ConditionType
+from splitio.models.grammar.matchers.misc import DependencyMatcher
+from splitio.models.grammar.matchers.keys import UserDefinedSegmentMatcher
+from splitio.optional.loaders import asyncio
 
 CONTROL = 'control'
-
+EvaluationContext = namedtuple('EvaluationContext', ['flags', 'segment_memberships'])
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -13,189 +17,169 @@ _LOGGER = logging.getLogger(__name__)
 class Evaluator(object):  # pylint: disable=too-few-public-methods
     """Split Evaluator class."""
 
-    def __init__(self, feature_flag_storage, segment_storage, splitter):
+    def __init__(self, splitter):
         """
         Construct a Evaluator instance.
 
-        :param feature_flag_storage: feature_flag storage.
-        :type feature_flag_storage: splitio.storage.SplitStorage
-
-        :param segment_storage: Segment storage.
-        :type segment_storage: splitio.storage.SegmentStorage
+        :param splitter: partition object.
+        :type splitter: splitio.engine.splitters.Splitters
         """
-        self._feature_flag_storage = feature_flag_storage
-        self._segment_storage = segment_storage
         self._splitter = splitter
 
-    def _evaluate_treatment(self, feature_flag_name, matching_key, bucketing_key, attributes, feature_flag):
+    def eval_many_with_context(self, key, bucketing, features, attrs, ctx):
         """
-        Evaluate the user submitted data against a feature and return the resulting treatment.
+        ...
+        """
+        # we can do a linear evaluation here, since all the dependencies are already fetched
+        return {
+            name: self.eval_with_context(key, bucketing, name, attrs, ctx)
+            for name in features
+        }
 
-        :param feature_flag_name: The feature flag for which to get the treatment
-        :type feature:  str
-
-        :param matching_key: The matching_key for which to get the treatment
-        :type matching_key: str
-
-        :param bucketing_key: The bucketing_key for which to get the treatment
-        :type bucketing_key: str
-
-        :param attributes: An optional dictionary of attributes
-        :type attributes: dict
-
-        :param feature_flag: Split object
-        :type attributes: splitio.models.splits.Split|None
-
-        :return: The treatment for the key and feature flag
-        :rtype: object
+    def eval_with_context(self, key, bucketing, feature_name, attrs, ctx):
+        """
+        ...
         """
         label = ''
         _treatment = CONTROL
         _change_number = -1
 
-        if feature_flag is None:
-            _LOGGER.warning('Unknown or invalid feature: %s', feature_flag_name)
+        feature = ctx.flags.get(feature_name)
+        if not feature:
+            _LOGGER.warning('Unknown or invalid feature: %s', feature)
             label = Label.SPLIT_NOT_FOUND
         else:
-            _change_number = feature_flag.change_number
-            if feature_flag.killed:
+            _change_number = feature.change_number
+            if feature.killed:
                 label = Label.KILLED
-                _treatment = feature_flag.default_treatment
+                _treatment = feature.default_treatment
             else:
-                treatment, label = self._get_treatment_for_split(
-                    feature_flag,
-                    matching_key,
-                    bucketing_key,
-                    attributes
-                )
+                treatment, label = self._treatment_for_flag(feature, key, bucketing, attrs, ctx)
                 if treatment is None:
                     label = Label.NO_CONDITION_MATCHED
-                    _treatment = feature_flag.default_treatment
+                    _treatment = feature.default_treatment
                 else:
                     _treatment = treatment
 
         return {
             'treatment': _treatment,
-            'configurations': feature_flag.get_configurations_for(_treatment) if feature_flag else None,
+            'configurations': feature.get_configurations_for(_treatment) if feature else None,
             'impression': {
                 'label': label,
                 'change_number': _change_number
             }
         }
 
-    def evaluate_feature(self, feature_flag_name, matching_key, bucketing_key, attributes=None):
+    def _treatment_for_flag(self, flag, key, bucketing, attributes, ctx):
         """
-        Evaluate the user submitted data against a feature and return the resulting treatment.
+        ...
+        """
+        bucketing = bucketing if bucketing is not None else key
+        rollout = False
+        for condition in flag.conditions:
+            if not rollout and condition.condition_type == ConditionType.ROLLOUT:
+                if flag.traffic_allocation < 100:
+                    bucket = self._splitter.get_bucket(bucketing, flag.traffic_allocation_seed, flag.algo)
+                    if bucket > flag.traffic_allocation:
+                        return flag.default_treatment, Label.NOT_IN_SPLIT
 
-        :param feature_flag_name: The feature flag for which to get the treatment
-        :type feature:  str
+                rollout = True
 
-        :param matching_key: The matching_key for which to get the treatment
-        :type matching_key: str
+            if condition.matches(key, attributes, {
+                'evaluator': self,
+                'bucketing_key': bucketing,
+                'ec': ctx,
+                }):
 
-        :param bucketing_key: The bucketing_key for which to get the treatment
+                return self._splitter.get_treatment(bucketing, flag.seed, condition.partitions, flag.algo), condition.label
+
+        return flag.default_treatment, Label.NO_CONDITION_MATCHED
+
+class EvaluationDataFactory:
+
+    def __init__(self, split_storage, segment_storage):
+        self._flag_storage = split_storage
+        self._segment_storage = segment_storage
+
+    def context_for(self, key, feature_names):
+        """
+        Recursively iterate & fetch all data required to evaluate these flags.
+        :type features: list
         :type bucketing_key: str
-
-        :param attributes: An optional dictionary of attributes
         :type attributes: dict
 
-        :return: The treatment for the key and split
-        :rtype: object
+        :rtype: EvaluationContext
         """
-        # Fetching Split definition
-        feature_flag = self._feature_flag_storage.get(feature_flag_name)
+        pending = set(feature_names)
+        splits = {}
+        pending_memberships = set()
+        while pending:
+            fetched = self._flag_storage.fetch_many(list(pending))
+            features = filter_missing(fetched)
+            splits.update(features)
+            pending = set()
+            for feature in features.values():
+                cf, cs = get_dependencies(feature)
+                pending.update(filter(lambda f: f not in splits, cf))
+                pending_memberships.update(cs)
 
-        # Calling evaluation
-        evaluation = self._evaluate_treatment(feature_flag_name, matching_key,
-                                              bucketing_key, attributes, feature_flag)
+        return EvaluationContext(splits, {
+            segment: self._segment_storage.segment_contains(segment, key)
+            for segment in pending_memberships
+        })
 
-        return evaluation
 
-    def evaluate_features(self, feature_flag_names, matching_key, bucketing_key, attributes=None):
+class AsyncEvaluationDataFactory:
+
+    def __init__(self, split_storage, segment_storage):
+        self._flag_storage = split_storage
+        self._segment_storage = segment_storage
+
+    async def context_for(self, key, feature_names):
         """
-        Evaluate the user submitted data against multiple features and return the resulting
-        treatment.
-
-        :param feature_flag_names: The feature flags for which to get the treatments
-        :type feature:  list(str)
-
-        :param matching_key: The matching_key for which to get the treatment
-        :type matching_key: str
-
-        :param bucketing_key: The bucketing_key for which to get the treatment
+        Recursively iterate & fetch all data required to evaluate these flags.
+        :type features: list
         :type bucketing_key: str
-
-        :param attributes: An optional dictionary of attributes
         :type attributes: dict
 
-        :return: The treatments for the key and feature flags
-        :rtype: object
+        :rtype: EvaluationContext
         """
-        return {
-            feature_flag_name: self._evaluate_treatment(feature_flag_name, matching_key,
-                                              bucketing_key, attributes, feature_flag)
-            for (feature_flag_name, feature_flag) in self._feature_flag_storage.fetch_many(feature_flag_names).items()
-        }
+        pending = set(feature_names)
+        splits = {}
+        pending_memberships = set()
+        while pending:
+            fetched = await self._flag_storage.fetch_many(list(pending))
+            features = filter_missing(fetched)
+            splits.update(features)
+            pending = set()
+            for feature in features.values():
+                cf, cs = get_dependencies(feature)
+                pending.update(filter(lambda f: f not in splits, cf))
+                pending_memberships.update(cs)
 
-    def _get_treatment_for_split(self, feature_flag, matching_key, bucketing_key, attributes=None):
-        """
-        Evaluate the feature considering the conditions.
+        segment_names = list(pending_memberships)
+        segment_memberships = await asyncio.gather(*[
+            self._segment_storage.segment_contains(segment, key)
+            for segment in segment_names
+        ])
 
-        If there is a match, it will return the condition and the label.
-        Otherwise, it will return (None, None)
+        return EvaluationContext(splits, dict(zip(segment_names, segment_memberships)))
 
-        :param feature_flag: The feature flag for which to get the treatment
-        :type feature_flag: Split
 
-        :param matching_key: The key for which to get the treatment
-        :type key: str
+def get_dependencies(feature):
+    """
+    :rtype: tuple(list, list)
+    """
+    feature_names = []
+    segment_names = []
+    for condition in feature.conditions:
+        for matcher in condition.matchers:
+            if isinstance(matcher,UserDefinedSegmentMatcher):
+                segment_names.append(matcher._segment_name)
+            elif isinstance(matcher, DependencyMatcher):
+                feature_names.append(matcher._split_name)
 
-        :param bucketing_key: The key for which to get the treatment
-        :type key: str
+    return feature_names, segment_names
 
-        :param attributes: An optional dictionary of attributes
-        :type attributes: dict
-
-        :return: The resulting treatment and label
-        :rtype: tuple
-        """
-        if bucketing_key is None:
-            bucketing_key = matching_key
-
-        roll_out = False
-
-        context = {
-            'segment_storage': self._segment_storage,
-            'evaluator': self,
-            'bucketing_key': bucketing_key
-        }
-
-        for condition in feature_flag.conditions:
-            if (not roll_out and
-                    condition.condition_type == ConditionType.ROLLOUT):
-                if feature_flag.traffic_allocation < 100:
-                    bucket = self._splitter.get_bucket(
-                        bucketing_key,
-                        feature_flag.traffic_allocation_seed,
-                        feature_flag.algo
-                    )
-                    if bucket > feature_flag.traffic_allocation:
-                        return feature_flag.default_treatment, Label.NOT_IN_SPLIT
-                roll_out = True
-
-            condition_matches = condition.matches(
-                matching_key,
-                attributes=attributes,
-                context=context
-            )
-
-            if condition_matches:
-                return self._splitter.get_treatment(
-                    bucketing_key,
-                    feature_flag.seed,
-                    condition.partitions,
-                    feature_flag.algo
-                ), condition.label
-
-        # No condition matches
-        return None, None
+def filter_missing(features):
+    return {k: v for (k, v) in features.items() if v is not None}

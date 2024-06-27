@@ -70,6 +70,7 @@ def from_raw(raw_token):
     """
     if not 'pushEnabled' in raw_token or not 'token' in raw_token:
         return Token(False, None, None, None, None)
+
     token = raw_token['token']
     push_enabled = raw_token['pushEnabled']
     token_parts = token.strip().split('.')
