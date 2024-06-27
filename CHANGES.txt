@@ -1,4 +1,4 @@
-10.0.0 (XXX XX, XXXX)
+10.0.0 (Jun 27, 2024)
 - Added support for asyncio library
 - BREAKING CHANGE: Minimum supported Python version is 3.7.16
 
