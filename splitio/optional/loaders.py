@@ -16,8 +16,3 @@ except ImportError:
 
 async def _anext(it):
     return await it.__anext__()
-
-if sys.version_info.major == 3 and sys.version_info.minor < 10:
-    anext = _anext
-else:
-    anext = anext
