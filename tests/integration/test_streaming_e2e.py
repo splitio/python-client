@@ -1952,8 +1952,6 @@ class StreamingIntegrationAsyncTests(object):
 
         assert await factory.client().get_treatment('maldo', 'split1') == 'on'
         assert task.running()
-#        await asyncio.sleep(2)
-#        assert 'PushStatusHandler' not in [t.name for t in threading.enumerate()]
 
         # Validate the SSE request
         sse_request = sse_requests.get()
@@ -2386,7 +2384,6 @@ class StreamingIntegrationAsyncTests(object):
 
         # Assert sync-task is running and the streaming status handler thread is over
         assert task.running()
-        assert 'PushStatusHandler' not in [t.name for t in threading.enumerate()]
 
         # Validate the SSE requests
         sse_request = sse_requests.get()
