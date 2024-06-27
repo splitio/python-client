@@ -17,5 +17,7 @@ except ImportError:
 async def _anext(it):
     return await it.__anext__()
 
-if sys.version_info.major < 3 or sys.version_info.minor < 10:
+if sys.version_info.major > 2:
     anext = _anext
+else:
+    anext = "Asyncio is not supported"
