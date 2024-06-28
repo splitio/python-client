@@ -3,11 +3,15 @@ import logging
 import threading
 from enum import Enum
 import abc
+import sys
 
 from splitio.push.sse import SSEClient, SSEClientAsync, SSE_EVENT_ERROR
 from splitio.util.threadutil import EventGroup
 from splitio.api import headers_from_metadata
-from splitio.optional.loaders import anext, asyncio
+from splitio.optional.loaders import asyncio
+
+if sys.version_info.major == 3 and sys.version_info.minor < 10:
+  from splitio.optional.loaders import _anext as anext
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -2,7 +2,9 @@
 import logging
 from threading import Timer
 import abc
-from splitio.optional.loaders import asyncio, anext
+import sys
+
+from splitio.optional.loaders import asyncio
 from splitio.api import APIException
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.push import AuthException
@@ -13,6 +15,9 @@ from splitio.push.parser import parse_incoming_event, EventParsingException, Eve
 from splitio.push.processor import MessageProcessor, MessageProcessorAsync
 from splitio.push.status_tracker import PushStatusTracker, Status, PushStatusTrackerAsync
 from splitio.models.telemetry import StreamingEventTypes
+
+if sys.version_info.major == 3 and sys.version_info.minor < 10:
+  from splitio.optional.loaders import _anext as anext
 
 _TOKEN_REFRESH_GRACE_PERIOD = 10 * 60  # 10 minutes
 
