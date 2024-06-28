@@ -1,3 +1,6 @@
+10.0.1 (Jun 28, 2024)
+- Fixed failure to load lib issue in SDK startup for Python versions higher than or equal to 3.10
+
 10.0.0 (Jun 27, 2024)
 - Added support for asyncio library
 - BREAKING CHANGE: Minimum supported Python version is 3.7.16
