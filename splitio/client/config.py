@@ -6,7 +6,6 @@ from enum import Enum
 from splitio.engine.impressions import ImpressionsMode
 from splitio.client.input_validator import validate_flag_sets
 
-
 _LOGGER = logging.getLogger(__name__)
 DEFAULT_DATA_SAMPLING = 1
 

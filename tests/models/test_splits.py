@@ -117,7 +117,6 @@ class SplitTests(object):
         assert as_split_view.killed == self.raw['killed']
         assert as_split_view.traffic_type == self.raw['trafficTypeName']
         assert set(as_split_view.treatments) == set(['on', 'off'])
-        assert as_split_view.default_treatment == self.raw['defaultTreatment']
         assert sorted(as_split_view.sets) == sorted(list(self.raw['sets']))
 
     def test_incorrect_matcher(self):

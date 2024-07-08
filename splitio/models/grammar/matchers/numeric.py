@@ -106,6 +106,7 @@ class BetweenMatcher(Matcher, ZeroSecondDataMatcher):
         matching_data = Sanitizer.ensure_int(self._get_matcher_input(key, attributes))
         if matching_data is None:
             return False
+
         return self._lower <= self.input_parsers[self._data_type](matching_data) <= self._upper
 
     def __str__(self):
@@ -154,6 +155,7 @@ class EqualToMatcher(Matcher, ZeroTimeDataMatcher):
         matching_data = Sanitizer.ensure_int(self._get_matcher_input(key, attributes))
         if matching_data is None:
             return False
+
         return self.input_parsers[self._data_type](matching_data) == self._value
 
     def _add_matcher_specific_properties_to_json(self):
@@ -197,6 +199,7 @@ class GreaterThanOrEqualMatcher(Matcher, ZeroSecondDataMatcher):
         matching_data = Sanitizer.ensure_int(self._get_matcher_input(key, attributes))
         if matching_data is None:
             return False
+
         return self.input_parsers[self._data_type](matching_data) >= self._value
 
     def _add_matcher_specific_properties_to_json(self):
@@ -240,6 +243,7 @@ class LessThanOrEqualMatcher(Matcher, ZeroSecondDataMatcher):
         matching_data = Sanitizer.ensure_int(self._get_matcher_input(key, attributes))
         if matching_data is None:
             return False
+
         return self.input_parsers[self._data_type](matching_data) <= self._value
 
     def _add_matcher_specific_properties_to_json(self):

@@ -1,10 +1,12 @@
 """Redis client wrapper with prefix support."""
 from builtins import str
-
+import abc
 try:
     from redis import StrictRedis
     from redis.sentinel import Sentinel
     from redis.exceptions import RedisError
+    import redis.asyncio as aioredis
+    from redis.asyncio.sentinel import Sentinel as SentinelAsync
 except ImportError:
     def missing_redis_dependencies(*_, **__):
         """Fail if missing dependencies are used."""
@@ -12,7 +14,7 @@ except ImportError:
             'Missing Redis support dependencies. '
             'Please use `pip install splitio_client[redis]` to install the sdk with redis support'
         )
-    StrictRedis = Sentinel = missing_redis_dependencies
+    StrictRedis = Sentinel = aioredis = missing_redis_dependencies
 
 class RedisAdapterException(Exception):
     """Exception to be thrown when a redis command fails with an exception."""
@@ -62,17 +64,20 @@ class PrefixHelper(object):
         if self._prefix:
             if isinstance(k, str):
                 return '{prefix}.{key}'.format(prefix=self._prefix, key=k)
+
             elif isinstance(k, list) and k:
                 if isinstance(k[0], bytes):
                     return [
                         '{prefix}.{key}'.format(prefix=self._prefix, key=key.decode("utf8"))
                         for key in k
                     ]
+
                 elif isinstance(k[0], str):
                     return [
                         '{prefix}.{key}'.format(prefix=self._prefix, key=key)
                         for key in k
                     ]
+
         else:
             return k
 
@@ -93,8 +98,10 @@ class PrefixHelper(object):
         if self._prefix:
             if isinstance(k, str):
                 return k[len(self._prefix)+1:]
+
             elif isinstance(k, list):
                 return [key[len(self._prefix)+1:] for key in k]
+
         else:
             return k
 
@@ -102,8 +109,106 @@ class PrefixHelper(object):
             "Cannot remove prefix correctly. Wrong type for key(s) provided"
         )
 
+class RedisAdapterBase(object, metaclass=abc.ABCMeta):
+    """Redis adapter template."""
 
-class RedisAdapter(object):  # pylint: disable=too-many-public-methods
+    @abc.abstractmethod
+    def keys(self, pattern):
+        """Mimic original redis keys."""
+
+    @abc.abstractmethod
+    def set(self, name, value, *args, **kwargs):
+        """Mimic original redis set."""
+
+    @abc.abstractmethod
+    def get(self, name):
+        """Mimic original redis get."""
+
+    @abc.abstractmethod
+    def setex(self, name, time, value):
+        """Mimic original redis setex."""
+
+    @abc.abstractmethod
+    def delete(self, *names):
+        """Mimic original redis delete."""
+
+    @abc.abstractmethod
+    def exists(self, name):
+        """Mimic original redis exists."""
+
+    @abc.abstractmethod
+    def lrange(self, key, start, end):
+        """Mimic original redis lrange."""
+
+    @abc.abstractmethod
+    def mget(self, names):
+        """Mimic original redis mget."""
+
+    @abc.abstractmethod
+    def smembers(self, name):
+        """Mimic original redis smembers."""
+
+    @abc.abstractmethod
+    def sadd(self, name, *values):
+        """Mimic original redis sadd."""
+
+    @abc.abstractmethod
+    def srem(self, name, *values):
+        """Mimic original redis srem."""
+
+    @abc.abstractmethod
+    def sismember(self, name, value):
+        """Mimic original redis sismember."""
+
+    @abc.abstractmethod
+    def eval(self, script, number_of_keys, *keys):
+        """Mimic original redis eval."""
+
+    @abc.abstractmethod
+    def hset(self, name, key, value):
+        """Mimic original redis hset."""
+
+    @abc.abstractmethod
+    def hget(self, name, key):
+        """Mimic original redis hget."""
+
+    @abc.abstractmethod
+    def hincrby(self, name, key, amount=1):
+        """Mimic original redis hincrby."""
+
+    @abc.abstractmethod
+    def incr(self, name, amount=1):
+        """Mimic original redis incr."""
+
+    @abc.abstractmethod
+    def getset(self, name, value):
+        """Mimic original redis getset."""
+
+    @abc.abstractmethod
+    def rpush(self, key, *values):
+        """Mimic original redis rpush."""
+
+    @abc.abstractmethod
+    def expire(self, key, value):
+        """Mimic original redis expire."""
+
+    @abc.abstractmethod
+    def rpop(self, key):
+        """Mimic original redis rpop."""
+
+    @abc.abstractmethod
+    def ttl(self, key):
+        """Mimic original redis ttl."""
+
+    @abc.abstractmethod
+    def lpop(self, key):
+        """Mimic original redis lpop."""
+
+    @abc.abstractmethod
+    def pipeline(self):
+        """Mimic original redis pipeline."""
+
+class RedisAdapter(RedisAdapterBase):  # pylint: disable=too-many-public-methods
     """
     Instance decorator for Redis clients such as StrictRedis.
 
@@ -303,9 +408,214 @@ class RedisAdapter(object):  # pylint: disable=too-many-public-methods
         except RedisError as exc:
             raise RedisAdapterException('Error executing ttl operation') from exc
 
-class RedisPipelineAdapter(object):
+class RedisAdapterAsync(RedisAdapterBase):  # pylint: disable=too-many-public-methods
     """
-    Instance decorator for Redis Pipeline.
+    Instance decorator for asyncio Redis clients such as StrictRedis.
+
+    Adds an extra layer handling addition/removal of user prefix when handling
+    keys
+    """
+    def __init__(self, decorated, prefix=None):
+        """
+        Store the user prefix and the redis client instance.
+
+        :param decorated: Instance of redis cache client to decorate.
+        :param prefix: User prefix to add.
+        """
+        self._decorated = decorated
+        self._prefix_helper = PrefixHelper(prefix)
+
+    # Below starts a list of methods that implement the interface of a standard
+    # redis client.
+
+    async def keys(self, pattern):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return [
+                key
+                for key in self._prefix_helper.remove_prefix(await self._decorated.keys(self._prefix_helper.add_prefix(pattern)))
+            ]
+        except RedisError as exc:
+            raise RedisAdapterException('Failed to execute keys operation') from exc
+
+    async def set(self, name, value, *args, **kwargs):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return await self._decorated.set(
+                self._prefix_helper.add_prefix(name), value, *args, **kwargs
+            )
+        except RedisError as exc:
+            raise RedisAdapterException('Failed to execute set operation') from exc
+
+    async def get(self, name):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return await self._decorated.get(self._prefix_helper.add_prefix(name))
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing get operation') from exc
+
+    async def setex(self, name, time, value):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return await self._decorated.setex(self._prefix_helper.add_prefix(name), time, value)
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing setex operation') from exc
+
+    async def delete(self, *names):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return await self._decorated.delete(*self._prefix_helper.add_prefix(list(names)))
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing delete operation') from exc
+
+    async def exists(self, name):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return await self._decorated.exists(self._prefix_helper.add_prefix(name))
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing exists operation') from exc
+
+    async def lrange(self, key, start, end):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return await self._decorated.lrange(self._prefix_helper.add_prefix(key), start, end)
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing exists operation') from exc
+
+    async def mget(self, names):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return [
+                item
+                for item in await self._decorated.mget(self._prefix_helper.add_prefix(names))
+            ]
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing mget operation') from exc
+
+    async def smembers(self, name):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return [
+                item
+                for item in await self._decorated.smembers(self._prefix_helper.add_prefix(name))
+            ]
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing smembers operation') from exc
+
+    async def sadd(self, name, *values):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return await self._decorated.sadd(self._prefix_helper.add_prefix(name), *values)
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing sadd operation') from exc
+
+    async def srem(self, name, *values):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return await self._decorated.srem(self._prefix_helper.add_prefix(name), *values)
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing srem operation') from exc
+
+    async def sismember(self, name, value):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return await self._decorated.sismember(self._prefix_helper.add_prefix(name), value)
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing sismember operation') from exc
+
+    async def eval(self, script, number_of_keys, *keys):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return await self._decorated.eval(script, number_of_keys, *self._prefix_helper.add_prefix(list(keys)))
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing eval operation') from exc
+
+    async def hset(self, name, key, value):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return await self._decorated.hset(self._prefix_helper.add_prefix(name), key, value)
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing hset operation') from exc
+
+    async def hget(self, name, key):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return await self._decorated.hget(self._prefix_helper.add_prefix(name), key)
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing hget operation') from exc
+
+    async def hincrby(self, name, key, amount=1):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return await self._decorated.hincrby(self._prefix_helper.add_prefix(name), key, amount)
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing hincrby operation') from exc
+
+    async def incr(self, name, amount=1):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return await self._decorated.incr(self._prefix_helper.add_prefix(name), amount)
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing incr operation') from exc
+
+    async def getset(self, name, value):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return await self._decorated.getset(self._prefix_helper.add_prefix(name), value)
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing getset operation') from exc
+
+    async def rpush(self, key, *values):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            async with self._decorated.client() as conn:
+                return await conn.rpush(self._prefix_helper.add_prefix(key), *values)
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing rpush operation') from exc
+
+    async def expire(self, key, value):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            async with self._decorated.client() as conn:
+                return await conn.expire(self._prefix_helper.add_prefix(key), value)
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing expire operation') from exc
+
+    async def rpop(self, key):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return await self._decorated.rpop(self._prefix_helper.add_prefix(key))
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing rpop operation') from exc
+
+    async def ttl(self, key):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return await self._decorated.ttl(self._prefix_helper.add_prefix(key))
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing ttl operation') from exc
+
+    async def lpop(self, key):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return await self._decorated.lpop(self._prefix_helper.add_prefix(key))
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing lpop operation') from exc
+
+    def pipeline(self):
+        """Mimic original redis pipeline."""
+        try:
+            return RedisPipelineAdapterAsync(self._decorated, self._prefix_helper)
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing ttl operation') from exc
+
+    async def close(self):
+        await self._decorated.close()
+        await self._decorated.connection_pool.disconnect(inuse_connections=True)
+
+class RedisPipelineAdapterBase(object):
+    """
+    Base decorator for Redis Pipeline.
 
     Adds an extra layer handling addition/removal of user prefix when handling
     keys
@@ -332,6 +642,26 @@ class RedisPipelineAdapter(object):
         """Mimic original redis function but using user custom prefix."""
         self._pipe.hincrby(self._prefix_helper.add_prefix(name), key, amount)
 
+    def smembers(self, name):
+        """Mimic original redis function but using user custom prefix."""
+        self._pipe.smembers(self._prefix_helper.add_prefix(name))
+
+class RedisPipelineAdapter(RedisPipelineAdapterBase):
+    """
+    Instance decorator for Redis Pipeline.
+
+    Adds an extra layer handling addition/removal of user prefix when handling
+    keys
+    """
+    def __init__(self, decorated, prefix_helper):
+        """
+        Store the user prefix and the redis client instance.
+
+        :param decorated: Instance of redis cache client to decorate.
+        :param _prefix_helper: PrefixHelper utility
+        """
+        RedisPipelineAdapterBase.__init__(self, decorated, prefix_helper)
+
     def execute(self):
         """Mimic original redis function but using user custom prefix."""
         try:
@@ -339,10 +669,28 @@ class RedisPipelineAdapter(object):
         except RedisError as exc:
             raise RedisAdapterException('Error executing pipeline operation') from exc
 
-    def smembers(self, name):
-        """Mimic original redis function but using user custom prefix."""
-        self._pipe.smembers(self._prefix_helper.add_prefix(name))
+class RedisPipelineAdapterAsync(RedisPipelineAdapterBase):
+    """
+    Instance decorator for Asyncio Redis Pipeline.
 
+    Adds an extra layer handling addition/removal of user prefix when handling
+    keys
+    """
+    def __init__(self, decorated, prefix_helper):
+        """
+        Store the user prefix and the redis client instance.
+
+        :param decorated: Instance of redis cache client to decorate.
+        :param _prefix_helper: PrefixHelper utility
+        """
+        RedisPipelineAdapterBase.__init__(self, decorated, prefix_helper)
+
+    async def execute(self):
+        """Mimic original redis function but using user custom prefix."""
+        try:
+            return await self._pipe.execute()
+        except RedisError as exc:
+            raise RedisAdapterException('Error executing pipeline operation') from exc
 
 def _build_default_client(config):  # pylint: disable=too-many-locals
     """
@@ -403,6 +751,66 @@ def _build_default_client(config):  # pylint: disable=too-many-locals
         max_connections=max_connections
     )
     return RedisAdapter(redis, prefix=prefix)
+
+async def _build_default_client_async(config):  # pylint: disable=too-many-locals
+    """
+    Build a redis asyncio adapter.
+
+    :param config: Redis configuration properties
+    :type config: dict
+
+    :return: A wrapped Redis object
+    :rtype: splitio.storage.adapters.redis.RedisAdapterAsync
+    """
+    host = config.get('redisHost', 'localhost')
+    port = config.get('redisPort', 6379)
+    database = config.get('redisDb', 0)
+    username = config.get('redisUsername', None)
+    password = config.get('redisPassword', None)
+    socket_timeout = config.get('redisSocketTimeout', None)
+    socket_connect_timeout = config.get('redisSocketConnectTimeout', None)
+    socket_keepalive = config.get('redisSocketKeepalive', None)
+    socket_keepalive_options = config.get('redisSocketKeepaliveOptions', None)
+    connection_pool = config.get('redisConnectionPool', None)
+    unix_socket_path = config.get('redisUnixSocketPath', None)
+    encoding = config.get('redisEncoding', 'utf-8')
+    encoding_errors = config.get('redisEncodingErrors', 'strict')
+    decode_responses = config.get('redisDecodeResponses', True)
+    retry_on_timeout = config.get('redisRetryOnTimeout', False)
+    ssl = config.get('redisSsl', False)
+    ssl_keyfile = config.get('redisSslKeyfile', None)
+    ssl_certfile = config.get('redisSslCertfile', None)
+    ssl_cert_reqs = config.get('redisSslCertReqs', None)
+    ssl_ca_certs = config.get('redisSslCaCerts', None)
+    max_connections = config.get('redisMaxConnections', None)
+    prefix = config.get('redisPrefix')
+
+    if connection_pool == None:
+        connection_pool = aioredis.ConnectionPool.from_url(
+            "redis://" + host + ":" + str(port),
+            db=database,
+            password=password,
+            username=username,
+            max_connections=max_connections,
+            encoding=encoding,
+            decode_responses=decode_responses,
+            socket_timeout=socket_timeout,
+        )
+    redis = aioredis.Redis(
+        connection_pool=connection_pool,
+        socket_connect_timeout=socket_connect_timeout,
+        socket_keepalive=socket_keepalive,
+        socket_keepalive_options=socket_keepalive_options,
+        unix_socket_path=unix_socket_path,
+        encoding_errors=encoding_errors,
+        retry_on_timeout=retry_on_timeout,
+        ssl=ssl,
+        ssl_keyfile=ssl_keyfile,
+        ssl_certfile=ssl_certfile,
+        ssl_cert_reqs=ssl_cert_reqs,
+        ssl_ca_certs=ssl_ca_certs
+    )
+    return RedisAdapterAsync(redis, prefix=prefix)
 
 
 def _build_sentinel_client(config):  # pylint: disable=too-many-locals
@@ -471,6 +879,86 @@ def _build_sentinel_client(config):  # pylint: disable=too-many-locals
     redis = sentinel.master_for(master_service)
     return RedisAdapter(redis, prefix=prefix)
 
+async def _build_sentinel_client_async(config):  # pylint: disable=too-many-locals
+    """
+    Build a redis client with sentinel replication.
+
+    :param config: Redis configuration properties.
+    :type config: dict
+
+    :return: A Wrapped redis-sentinel client
+    :rtype: splitio.storage.adapters.redis.RedisAdapter
+    """
+    sentinels = config.get('redisSentinels')
+
+    if sentinels is None:
+        raise SentinelConfigurationException('redisSentinels must be specified.')
+    if not isinstance(sentinels, list):
+        raise SentinelConfigurationException('Sentinels must be an array of elements in the form of'
+                                             ' [(ip, port)].')
+    if not sentinels:
+        raise SentinelConfigurationException('It must be at least one sentinel.')
+    if not all(isinstance(s, tuple) for s in sentinels):
+        raise SentinelConfigurationException('Sentinels must respect the tuple structure'
+                                             '[(ip, port)].')
+
+    master_service = config.get('redisMasterService')
+
+    if master_service is None:
+        raise SentinelConfigurationException('redisMasterService must be specified.')
+
+    database = config.get('redisDb', 0)
+    password = config.get('redisPassword', None)
+    socket_timeout = config.get('redisSocketTimeout', None)
+    socket_connect_timeout = config.get('redisSocketConnectTimeout', None)
+    socket_keepalive = config.get('redisSocketKeepalive', None)
+    socket_keepalive_options = config.get('redisSocketKeepaliveOptions', None)
+    connection_pool = config.get('redisConnectionPool', None)
+    encoding = config.get('redisEncoding', 'utf-8')
+    encoding_errors = config.get('redisEncodingErrors', 'strict')
+    decode_responses = config.get('redisDecodeResponses', True)
+    retry_on_timeout = config.get('redisRetryOnTimeout', False)
+    max_connections = config.get('redisMaxConnections', None)
+    ssl = config.get('redisSsl', False)
+    prefix = config.get('redisPrefix')
+
+    sentinel = SentinelAsync(
+        sentinels,
+        db=database,
+        password=password,
+        encoding=encoding,
+        encoding_errors=encoding_errors,
+        decode_responses=decode_responses,
+        max_connections=max_connections,
+        connection_pool=connection_pool,
+        socket_connect_timeout=socket_connect_timeout
+    )
+
+    redis = sentinel.master_for(
+        master_service,
+        socket_timeout=socket_timeout,
+        socket_keepalive=socket_keepalive,
+        socket_keepalive_options=socket_keepalive_options,
+        encoding_errors=encoding_errors,
+        retry_on_timeout=retry_on_timeout,
+        ssl=ssl
+    )
+    return RedisAdapterAsync(redis, prefix=prefix)
+
+async def build_async(config):
+    """
+    Build a async redis storage according to the configuration received.
+
+    :param config: SDK Configuration parameters with redis properties.
+    :type config: dict.
+
+    :return: A redis async client
+    :rtype: splitio.storage.adapters.redis.RedisAdapterAsync
+    """
+    if 'redisSentinels' in config:
+        return await _build_sentinel_client_async(config)
+
+    return await _build_default_client_async(config)
 
 def build(config):
     """
@@ -484,4 +972,5 @@ def build(config):
     """
     if 'redisSentinels' in config:
         return _build_sentinel_client(config)
+
     return _build_default_client(config)

@@ -41,6 +41,7 @@ class Matcher(object, metaclass=abc.ABCMeta):
         if self._attribute_name is not None:
             if attributes is not None and attributes.get(self._attribute_name) is not None:
                 return attributes[self._attribute_name]
+
             return None
 
         if isinstance(key, Key):

@@ -7,21 +7,25 @@ from setuptools import setup, find_packages
 TESTS_REQUIRES = [
     'flake8',
     'pytest==7.0.1',
-    'pytest-mock==3.13.0',
-    'coverage==6.2',
-    'pytest-cov',
-    'importlib-metadata==4.2',
+    'pytest-mock==3.11.1',
+    'coverage',
+    'pytest-cov==4.1.0',
+    'importlib-metadata==6.7',
     'tomli==1.2.3',
     'iniconfig==1.1.1',
-    'attrs==22.1.0'
+    'attrs==22.1.0',
+    'pytest-asyncio==0.21.0',
+    'aiohttp>=3.8.4',
+    'aiofiles>=23.1.0'
 ]
 
 INSTALL_REQUIRES = [
     'requests',
     'pyyaml',
     'docopt>=0.6.2',
-    'bloom-filter2>=2.0.0',
     'requests-kerberos>=0.14.0'
+    'enum34;python_version<"3.4"',
+    'bloom-filter2>=2.0.0'
 ]
 
 with open(path.join(path.abspath(path.dirname(__file__)), 'splitio', 'version.py')) as f:
@@ -43,8 +47,9 @@ setup(
         'redis': ['redis>=2.10.5'],
         'uwsgi': ['uwsgi>=2.0.0'],
         'cpphash': ['mmh3cffi==0.2.1'],
+        'asyncio': ['aiohttp>=3.8.4', 'aiofiles>=23.1.0']
     },
-    setup_requires=['pytest-runner', 'pluggy==1.0.0;python_version<"3.7"'],
+    setup_requires=['pytest-runner', 'pluggy==1.0.0;python_version<"3.8"'],
     classifiers=[
         'Environment :: Console',
         'Intended Audience :: Developers',

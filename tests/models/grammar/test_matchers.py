@@ -6,14 +6,17 @@ import calendar
 import json
 import os.path
 import re
+import pytest
 
 from datetime import datetime
 
 from splitio.models.grammar import matchers
+from splitio.models import splits
+from splitio.models.grammar import condition
 from splitio.models.grammar.matchers.utils.utils import Semver
 from splitio.storage import SegmentStorage
-from splitio.engine.evaluator import Evaluator
-
+from splitio.engine.evaluator import Evaluator, EvaluationContext
+from tests.integration import splits_json
 
 class MatcherTestsBase(object):
     """Abstract class to make sure we test all relevant methods."""
@@ -399,26 +402,11 @@ class UserDefinedSegmentMatcherTests(MatcherTestsBase):
     def test_matcher_behaviour(self, mocker):
         """Test if the matcher works properly."""
         matcher = matchers.UserDefinedSegmentMatcher(self.raw)
-        segment_storage = mocker.Mock(spec=SegmentStorage)
 
         # Test that if the key if the storage wrapper finds the key in the segment, it matches.
-        segment_storage.segment_contains.return_value = True
-        assert matcher.evaluate('some_key', {}, {'segment_storage': segment_storage}) is True
-
+        assert matcher.evaluate('some_key', {}, {'evaluator': None, 'ec': EvaluationContext([],{'some_segment': True})}) is True
         # Test that if the key if the storage wrapper doesn't find the key in the segment, it fails.
-        segment_storage.segment_contains.return_value = False
-        assert matcher.evaluate('some_key', {}, {'segment_storage': segment_storage}) is False
-
-        assert segment_storage.segment_contains.mock_calls == [
-            mocker.call('some_segment', 'some_key'),
-            mocker.call('some_segment', 'some_key')
-        ]
-
-        assert matcher.evaluate([], {}, {'segment_storage': segment_storage}) is False
-        assert matcher.evaluate({}, {}, {'segment_storage': segment_storage}) is False
-        assert matcher.evaluate(123, {}, {'segment_storage': segment_storage}) is False
-        assert matcher.evaluate(True, {}, {'segment_storage': segment_storage}) is False
-        assert matcher.evaluate(False, {}, {'segment_storage': segment_storage}) is False
+        assert matcher.evaluate('some_key', {}, {'evaluator': None, 'ec': EvaluationContext([], {'some_segment': False})}) is False
 
     def test_to_json(self):
         """Test that the object serializes to JSON properly."""
@@ -785,30 +773,35 @@ class DependencyMatcherTests(MatcherTestsBase):
 
     def test_matcher_behaviour(self, mocker):
         """Test if the matcher works properly."""
-        parsed = matchers.DependencyMatcher(self.raw)
+        cond_raw = self.raw.copy()
+        cond_raw['dependencyMatcherData']['split'] = 'SPLIT_2'
+        parsed = matchers.DependencyMatcher(cond_raw)
         evaluator = mocker.Mock(spec=Evaluator)
 
-        evaluator.evaluate_feature.return_value = {'treatment': 'on'}
-        assert parsed.evaluate('test1', {}, {'bucketing_key': 'buck', 'evaluator': evaluator}) is True
+        cond = condition.from_raw(splits_json["splitChange1_1"]["splits"][0]['conditions'][0])
+        split = splits.from_raw(splits_json["splitChange1_1"]["splits"][0])
 
-        evaluator.evaluate_feature.return_value = {'treatment': 'off'}
-        assert parsed.evaluate('test1', {}, {'bucketing_key': 'buck', 'evaluator': evaluator}) is False
+        evaluator.eval_with_context.return_value = {'treatment': 'on'}
+        assert parsed.evaluate('SPLIT_2', {}, {'evaluator': evaluator, 'ec': [{'flags': [split], 'segment_memberships': {}}]}) is True
 
-        assert evaluator.evaluate_feature.mock_calls == [
-            mocker.call('some_split', 'test1', 'buck', {}),
-            mocker.call('some_split', 'test1', 'buck', {})
+        evaluator.eval_with_context.return_value = {'treatment': 'off'}
+        assert parsed.evaluate('SPLIT_2', {}, {'evaluator': evaluator, 'ec': [{'flags': [split], 'segment_memberships': {}}]}) is False
+
+        assert evaluator.eval_with_context.mock_calls == [
+            mocker.call('SPLIT_2', None, 'SPLIT_2', {}, [{'flags': [split], 'segment_memberships': {}}]),
+            mocker.call('SPLIT_2', None, 'SPLIT_2', {}, [{'flags': [split], 'segment_memberships': {}}])
         ]
 
-        assert parsed.evaluate([], {}, {'bucketing_key': 'buck', 'evaluator': evaluator}) is False
-        assert parsed.evaluate({}, {}, {'bucketing_key': 'buck', 'evaluator': evaluator}) is False
-        assert parsed.evaluate(123, {}, {'bucketing_key': 'buck', 'evaluator': evaluator}) is False
-        assert parsed.evaluate(object(), {}, {'bucketing_key': 'buck', 'evaluator': evaluator}) is False
+        assert parsed.evaluate([], {}, {'evaluator': evaluator, 'ec': [{'flags': [split], 'segment_memberships': {}}]}) is False
+        assert parsed.evaluate({}, {}, {'evaluator': evaluator, 'ec': [{'flags': [split], 'segment_memberships': {}}]}) is False
+        assert parsed.evaluate(123, {}, {'evaluator': evaluator, 'ec': [{'flags': [split], 'segment_memberships': {}}]}) is False
+        assert parsed.evaluate(object(), {}, {'evaluator': evaluator, 'ec': [{'flags': [split], 'segment_memberships': {}}]}) is False
 
     def test_to_json(self):
         """Test that the object serializes to JSON properly."""
         as_json = matchers.DependencyMatcher(self.raw).to_json()
         assert as_json['matcherType'] == 'IN_SPLIT_TREATMENT'
-        assert as_json['dependencyMatcherData']['split'] == 'some_split'
+        assert as_json['dependencyMatcherData']['split'] == 'SPLIT_2'
         assert as_json['dependencyMatcherData']['treatments'] == ['on', 'almost_on']
 
 

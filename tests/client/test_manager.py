@@ -1,16 +1,40 @@
 """SDK main manager test module."""
-from splitio.client.factory import SplitFactory
-from splitio.client.manager import SplitManager, _LOGGER as _logger
-from splitio.storage import SplitStorage, EventStorage, ImpressionStorage, SegmentStorage
-from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemorySplitStorage
-from splitio.models import splits
-from splitio.engine.impressions.impressions import Manager as ImpressionManager
-from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageConsumer
-from splitio.recorder.recorder import StandardRecorder
-from tests.models.test_splits import SplitTests
+import pytest
 
-class ManagerTests(object):  # pylint: disable=too-few-public-methods
+from splitio.client.factory import SplitFactory
+from splitio.client.manager import SplitManager, SplitManagerAsync, _LOGGER as _logger
+from splitio.models import splits
+from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync, InMemorySplitStorage, InMemorySplitStorageAsync
+from splitio.engine.impressions.impressions import Manager as ImpressionManager
+from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync, TelemetryStorageConsumer, TelemetryStorageConsumerAsync
+from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
+from tests.integration import splits_json
+
+class SplitManagerTests(object):  # pylint: disable=too-few-public-methods
     """Split manager test cases."""
+
+    def test_manager_calls(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        storage = InMemorySplitStorage()
+
+        factory = mocker.Mock(spec=SplitFactory)
+        factory._storages = {'split': storage}
+        factory._telemetry_init_producer = telemetry_producer._telemetry_init_producer
+        factory.destroyed = False
+        factory._waiting_fork.return_value = False
+        factory.ready = True
+
+        manager = SplitManager(factory)
+        split1 =  splits.from_raw(splits_json["splitChange1_1"]["splits"][0])
+        split2 =  splits.from_raw(splits_json["splitChange1_3"]["splits"][0])
+        storage.update([split1, split2], [], -1)
+        manager._storage = storage
+
+        assert manager.split_names() == ['SPLIT_2', 'SPLIT_1']
+        assert manager.split('SPLIT_3') is None
+        assert manager.split('SPLIT_2') == split1.to_split_view()
+        assert manager.splits() == [split.to_split_view() for split in storage.get_all_splits()]
 
     def test_evaluations_before_running_post_fork(self, mocker):
         destroyed_property = mocker.PropertyMock()
@@ -19,7 +43,8 @@ class ManagerTests(object):  # pylint: disable=too-few-public-methods
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        recorder = StandardRecorder(impmanager, mocker.Mock(), mocker.Mock(), telemetry_producer.get_telemetry_evaluation_producer())
+        recorder = StandardRecorder(impmanager, mocker.Mock(), mocker.Mock(), telemetry_producer.get_telemetry_evaluation_producer(),
+                                    telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
             {'splits': mocker.Mock(),
             'segments': mocker.Mock(),
@@ -55,43 +80,75 @@ class ManagerTests(object):  # pylint: disable=too-few-public-methods
         assert _logger.error.mock_calls == expected_msg
         _logger.reset_mock()
 
-    def test_manager_calls(self, mocker):
-        split_storage = InMemorySplitStorage()
-        split = splits.from_raw(SplitTests.raw)
-        split_storage.update([split], [], 123)
+
+class SplitManagerAsyncTests(object):  # pylint: disable=too-few-public-methods
+    """Split manager test cases."""
+
+    @pytest.mark.asyncio
+    async def test_manager_calls(self, mocker):
+        telemetry_storage = InMemoryTelemetryStorageAsync()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        storage = InMemorySplitStorageAsync()
+
+        factory = mocker.Mock(spec=SplitFactory)
+        factory._storages = {'split': storage}
+        factory._telemetry_init_producer = telemetry_producer._telemetry_init_producer
+        factory.destroyed = False
+        factory._waiting_fork.return_value = False
+        factory.ready = True
+
+        manager = SplitManagerAsync(factory)
+        split1 =  splits.from_raw(splits_json["splitChange1_1"]["splits"][0])
+        split2 =  splits.from_raw(splits_json["splitChange1_3"]["splits"][0])
+        await storage.update([split1, split2], [], -1)
+        manager._storage = storage
+
+        assert await manager.split_names() == ['SPLIT_2', 'SPLIT_1']
+        assert await manager.split('SPLIT_3') is None
+        assert await manager.split('SPLIT_2') == split1.to_split_view()
+        assert await manager.splits() == [split.to_split_view() for split in await storage.get_all_splits()]
+
+    @pytest.mark.asyncio
+    async def test_evaluations_before_running_post_fork(self, mocker):
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+
+        impmanager = mocker.Mock(spec=ImpressionManager)
+        telemetry_storage = InMemoryTelemetryStorageAsync()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        recorder = StandardRecorderAsync(impmanager, mocker.Mock(), mocker.Mock(), telemetry_producer.get_telemetry_evaluation_producer(),
+                                         telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
+            {'splits': mocker.Mock(),
             'segments': mocker.Mock(),
             'impressions': mocker.Mock(),
             'events': mocker.Mock()},
             mocker.Mock(),
+            recorder,
+            impmanager,
             mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock(),
-            mocker.Mock(),
-            mocker.Mock(),
-            mocker.Mock(),
-            mocker.Mock(),
-            False
+            True
         )
-        manager = SplitManager(factory)
-        splits_view = manager.splits()
-        self._verify_split(splits_view[0])
-        assert manager.split_names() == ['some_name']
-        split_view = manager.split('some_name')
-        self._verify_split(split_view)
-        split2 = SplitTests.raw.copy()
-        split2['sets'] = None
-        split2['name'] = 'no_sets_split'
-        split_storage.update([splits.from_raw(split2)], [], 123)
 
-        split_view = manager.split('no_sets_split')
-        assert split_view.sets == []
+        expected_msg = [
+            mocker.call('Client is not ready - no calls possible')
+        ]
 
-    def _verify_split(self, split):
-        assert split.name == 'some_name'
-        assert split.traffic_type == 'user'
-        assert split.killed == False
-        assert sorted(split.treatments) == ['off', 'on']
-        assert split.change_number == 123
-        assert split.configs == {'on': '{"color": "blue", "size": 13}'}
-        assert sorted(split.sets) == ['set1', 'set2']
+        manager = SplitManagerAsync(factory)
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.manager._LOGGER', new=_logger)
+
+        assert await manager.split_names() == []
+        assert _logger.error.mock_calls == expected_msg
+        _logger.reset_mock()
+
+        assert await manager.split('some_feature') is None
+        assert _logger.error.mock_calls == expected_msg
+        _logger.reset_mock()
+
+        assert await manager.splits() == []
+        assert _logger.error.mock_calls == expected_msg
+        _logger.reset_mock()

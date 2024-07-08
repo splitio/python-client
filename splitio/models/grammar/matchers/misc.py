@@ -35,8 +35,7 @@ class DependencyMatcher(Matcher):
         assert evaluator is not None
 
         bucketing_key = context.get('bucketing_key')
-
-        result = evaluator.evaluate_feature(self._split_name, key, bucketing_key, attributes)
+        result = evaluator.eval_with_context(key, bucketing_key, self._split_name, attributes, context['ec'])
         return result['treatment'] in self._treatments
 
     def _add_matcher_specific_properties_to_json(self):
@@ -78,6 +77,7 @@ class BooleanMatcher(Matcher):
         matching_data = self._get_matcher_input(key, attributes)
         if matching_data is None:
             return False
+
         if isinstance(matching_data, bool):
             decoded = matching_data
         elif isinstance(matching_data, str):
@@ -85,8 +85,10 @@ class BooleanMatcher(Matcher):
                 decoded = json.loads(matching_data.lower())
                 if not isinstance(decoded, bool):
                     return False
+
             except ValueError:
                 return False
+
         else:
             return False
 

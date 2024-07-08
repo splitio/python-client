@@ -8,7 +8,9 @@ from splitio.api.commons import FetchOptions
 from splitio.tasks.util import workerpool
 from splitio.models import segments
 from splitio.util.backoff import Backoff
+from splitio.optional.loaders import asyncio, aiofiles
 from splitio.sync import util
+from splitio.optional.loaders import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -16,27 +18,28 @@ _LOGGER = logging.getLogger(__name__)
 _ON_DEMAND_FETCH_BACKOFF_BASE = 10  # backoff base starting at 10 seconds
 _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT = 60  # don't sleep for more than 1 minute
 _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES = 10
+_MAX_WORKERS = 10
 
 
 class SegmentSynchronizer(object):
-    def __init__(self, segment_api, split_storage, segment_storage):
+    def __init__(self, segment_api, feature_flag_storage, segment_storage):
         """
         Class constructor.
 
         :param segment_api: API to retrieve segments from backend.
         :type segment_api: splitio.api.SegmentApi
 
-        :param split_storage: Feature Flag Storage.
-        :type split_storage: splitio.storage.InMemorySplitStorage
+        :param feature_flag_storage: Feature Flag Storage.
+        :type feature_flag_storage: splitio.storage.InMemorySplitStorage
 
         :param segment_storage: Segment storage reference.
         :type segment_storage: splitio.storage.SegmentStorage
 
         """
         self._api = segment_api
-        self._split_storage = split_storage
+        self._feature_flag_storage = feature_flag_storage
         self._segment_storage = segment_storage
-        self._worker_pool = workerpool.WorkerPool(10, self.synchronize_segment)
+        self._worker_pool = workerpool.WorkerPool(_MAX_WORKERS, self.synchronize_segment)
         self._worker_pool.start()
         self._backoff = Backoff(
                                 _ON_DEMAND_FETCH_BACKOFF_BASE,
@@ -47,7 +50,7 @@ class SegmentSynchronizer(object):
         Create worker_pool on forked processes.
 
         """
-        self._worker_pool = workerpool.WorkerPool(10, self.synchronize_segment)
+        self._worker_pool = workerpool.WorkerPool(_MAX_WORKERS, self.synchronize_segment)
         self._worker_pool.start()
 
     def shutdown(self):
@@ -126,8 +129,10 @@ class SegmentSynchronizer(object):
             change_number = self._fetch_until(segment_name, fetch_options, till)
             if till is None or till <= change_number:
                 return True, remaining_attempts, change_number
+
             elif remaining_attempts <= 0:
                 return False, remaining_attempts, change_number
+
             how_long = self._backoff.get()
             time.sleep(how_long)
 
@@ -157,6 +162,7 @@ class SegmentSynchronizer(object):
             _LOGGER.debug('Refresh completed bypassing the CDN in %d attempts.',
                           without_cdn_attempts)
             return True
+
         _LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
                         without_cdn_attempts)
         return False
@@ -175,12 +181,13 @@ class SegmentSynchronizer(object):
         :rtype: bool
         """
         if segment_names is None:
-            segment_names = self._split_storage.get_segment_names()
+            segment_names = self._feature_flag_storage.get_segment_names()
 
         for segment_name in segment_names:
             self._worker_pool.submit_work(segment_name)
         if (dont_wait):
             return True
+
         return not self._worker_pool.wait_for_completion()
 
     def segment_exist_in_storage(self, segment_name):
@@ -195,27 +202,240 @@ class SegmentSynchronizer(object):
         """
         return self._segment_storage.get(segment_name) != None
 
-class LocalSegmentSynchronizer(object):
-    """Localhost mode segment synchronizer."""
+
+class SegmentSynchronizerAsync(object):
+    def __init__(self, segment_api, feature_flag_storage, segment_storage):
+        """
+        Class constructor.
+
+        :param segment_api: API to retrieve segments from backend.
+        :type segment_api: splitio.api.SegmentApi
+
+        :param feature_flag_storage: Feature Flag Storage.
+        :type feature_flag_storage: splitio.storage.InMemorySplitStorage
+
+        :param segment_storage: Segment storage reference.
+        :type segment_storage: splitio.storage.SegmentStorage
+
+        """
+        self._api = segment_api
+        self._feature_flag_storage = feature_flag_storage
+        self._segment_storage = segment_storage
+        self._worker_pool = workerpool.WorkerPoolAsync(_MAX_WORKERS, self.synchronize_segment)
+        self._worker_pool.start()
+        self._backoff = Backoff(
+                                _ON_DEMAND_FETCH_BACKOFF_BASE,
+                                _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
+
+    def recreate(self):
+        """
+        Create worker_pool on forked processes.
+
+        """
+        self._worker_pool = workerpool.WorkerPoolAsync(_MAX_WORKERS, self.synchronize_segment)
+        self._worker_pool.start()
+
+    async def shutdown(self):
+        """
+        Shutdown worker_pool
+
+        """
+        await self._worker_pool.stop()
+
+    async def _fetch_until(self, segment_name, fetch_options, till=None):
+        """
+        Hit endpoint, update storage and return when since==till.
+
+        :param segment_name: Name of the segment to update.
+        :type segment_name: str
+
+        :param fetch_options Fetch options for getting segment definitions.
+        :type fetch_options splitio.api.FetchOptions
+
+        :param till: Passed till from Streaming.
+        :type till: int
+
+        :return: last change number
+        :rtype: int
+        """
+        while True:  # Fetch until since==till
+            change_number = await self._segment_storage.get_change_number(segment_name)
+            if change_number is None:
+                change_number = -1
+            if till is not None and till < change_number:
+                # the passed till is less than change_number, no need to perform updates
+                return change_number
+
+            try:
+                segment_changes = await self._api.fetch_segment(segment_name, change_number,
+                                                          fetch_options)
+            except APIException as exc:
+                _LOGGER.error('Exception raised while fetching segment %s', segment_name)
+                _LOGGER.debug('Exception information: ', exc_info=True)
+                raise exc
+
+            if change_number == -1:  # first time fetching the segment
+                new_segment = segments.from_raw(segment_changes)
+                await self._segment_storage.put(new_segment)
+            else:
+                await self._segment_storage.update(
+                    segment_name,
+                    segment_changes['added'],
+                    segment_changes['removed'],
+                    segment_changes['till']
+                )
+
+            if segment_changes['till'] == segment_changes['since']:
+                return segment_changes['till']
+
+    async def _attempt_segment_sync(self, segment_name, fetch_options, till=None):
+        """
+        Hit endpoint, update storage and return True if sync is complete.
+
+        :param segment_name: Name of the segment to update.
+        :type segment_name: str
+
+        :param fetch_options Fetch options for getting feature flag definitions.
+        :type fetch_options splitio.api.FetchOptions
+
+        :param till: Passed till from Streaming.
+        :type till: int
+
+        :return: Flags to check if it should perform bypass or operation ended
+        :rtype: bool, int, int
+        """
+        self._backoff.reset()
+        remaining_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES
+        while True:
+            remaining_attempts -= 1
+            change_number = await self._fetch_until(segment_name, fetch_options, till)
+            if till is None or till <= change_number:
+                return True, remaining_attempts, change_number
+
+            elif remaining_attempts <= 0:
+                return False, remaining_attempts, change_number
+
+            how_long = self._backoff.get()
+            await asyncio.sleep(how_long)
+
+    async def synchronize_segment(self, segment_name, till=None):
+        """
+        Update a segment from queue
+
+        :param segment_name: Name of the segment to update.
+        :type segment_name: str
+
+        :param till: ChangeNumber received.
+        :type till: int
+
+        :return: True if no error occurs. False otherwise.
+        :rtype: bool
+        """
+        fetch_options = FetchOptions(True, spec=None)  # Set Cache-Control to no-cache
+        successful_sync, remaining_attempts, change_number = await self._attempt_segment_sync(segment_name, fetch_options, till)
+        attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
+        if successful_sync:  # succedeed sync
+            _LOGGER.debug('Refresh completed in %d attempts.', attempts)
+            return True
+
+        with_cdn_bypass = FetchOptions(True, change_number, spec=None)  # Set flag for bypassing CDN
+        without_cdn_successful_sync, remaining_attempts, change_number = await self._attempt_segment_sync(segment_name, with_cdn_bypass, till)
+        without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
+        if without_cdn_successful_sync:
+            _LOGGER.debug('Refresh completed bypassing the CDN in %d attempts.',
+                          without_cdn_attempts)
+            return True
+
+        _LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
+                        without_cdn_attempts)
+        return False
+
+    async def synchronize_segments(self, segment_names = None, dont_wait = False):
+        """
+        Submit all current segments and wait for them to finish depend on dont_wait flag, then set the ready flag.
+
+        :param segment_names: Optional, array of segment names to update.
+        :type segment_name: {str}
+
+        :param dont_wait: Optional, instruct the function to not wait for task completion
+        :type segment_name: boolean
+
+        :return: True if no error occurs or dont_wait flag is True. False otherwise.
+        :rtype: bool
+        """
+        if segment_names is None:
+            segment_names = await self._feature_flag_storage.get_segment_names()
+
+        self._jobs = await self._worker_pool.submit_work(segment_names)
+        if (dont_wait):
+            return True
+
+        return await self._jobs.await_completion()
+
+    async def segment_exist_in_storage(self, segment_name):
+        """
+        Check if a segment exists in the storage
+
+        :param segment_name: Name of the segment
+        :type segment_name: str
+
+        :return: True if segment exist. False otherwise.
+        :rtype: bool
+        """
+        return await self._segment_storage.get(segment_name) != None
+
+
+class LocalSegmentSynchronizerBase(object):
+    """Localhost mode segment base synchronizer."""
 
     _DEFAULT_SEGMENT_TILL = -1
 
-    def __init__(self, segment_folder, split_storage, segment_storage):
+    def _sanitize_segment(self, parsed):
+        """
+        Sanitize json elements.
+
+        :param parsed: segment dict
+        :type parsed: Dict
+
+        :return: sanitized segment structure dict
+        :rtype: Dict
+        """
+        if 'name' not in parsed or parsed['name'] is None:
+            _LOGGER.warning("Segment does not have [name] element, skipping")
+            raise Exception("Segment does not have [name] element")
+        if parsed['name'].strip() == '':
+            _LOGGER.warning("Segment [name] element is blank, skipping")
+            raise Exception("Segment [name] element is blank")
+
+        for element in [('till', -1, -1, None, None, [0]),
+                        ('added', [], None, None, None, None),
+                        ('removed', [], None, None, None, None)
+                        ]:
+            parsed = util._sanitize_object_element(parsed, 'segment', element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=None, not_in_list=element[5])
+        parsed = util._sanitize_object_element(parsed, 'segment', 'since', parsed['till'], -1, parsed['till'], None, [0])
+
+        return parsed
+
+
+class LocalSegmentSynchronizer(LocalSegmentSynchronizerBase):
+    """Localhost mode segment synchronizer."""
+
+    def __init__(self, segment_folder, feature_flag_storage, segment_storage):
         """
         Class constructor.
 
         :param segment_folder: patch to the segment folder
         :type segment_folder: str
 
-        :param split_storage: Feature flag Storage.
-        :type split_storage: splitio.storage.InMemorySplitStorage
+        :param feature_flag_storage: Feature flag Storage.
+        :type feature_flag_storage: splitio.storage.InMemorySplitStorage
 
         :param segment_storage: Segment storage reference.
         :type segment_storage: splitio.storage.SegmentStorage
 
         """
         self._segment_folder = segment_folder
-        self._split_storage = split_storage
+        self._feature_flag_storage = feature_flag_storage
         self._segment_storage = segment_storage
         self._segment_sha = {}
 
@@ -231,7 +451,7 @@ class LocalSegmentSynchronizer(object):
         """
         _LOGGER.info('Synchronizing segments now.')
         if segment_names is None:
-            segment_names = self._split_storage.get_segment_names()
+            segment_names = self._feature_flag_storage.get_segment_names()
 
         return_flag = True
         for segment_name in segment_names:
@@ -295,32 +515,6 @@ class LocalSegmentSynchronizer(object):
         except Exception as exc:
             raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc
 
-    def _sanitize_segment(self, parsed):
-        """
-        Sanitize json elements.
-
-        :param parsed: segment dict
-        :type parsed: Dict
-
-        :return: sanitized segment structure dict
-        :rtype: Dict
-        """
-        if 'name' not in parsed or parsed['name'] is None:
-            _LOGGER.warning("Segment does not have [name] element, skipping")
-            raise Exception("Segment does not have [name] element")
-        if parsed['name'].strip() == '':
-            _LOGGER.warning("Segment [name] element is blank, skipping")
-            raise Exception("Segment [name] element is blank")
-
-        for element in [('till', -1, -1, None, None, [0]),
-                        ('added', [], None, None, None, None),
-                        ('removed', [], None, None, None, None)
-                        ]:
-            parsed = util._sanitize_object_element(parsed, 'segment', element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=None, not_in_list=element[5])
-        parsed = util._sanitize_object_element(parsed, 'segment', 'since', parsed['till'], -1, parsed['till'], None, [0])
-
-        return parsed
-
     def segment_exist_in_storage(self, segment_name):
         """
         Check if a segment exists in the storage
@@ -332,3 +526,114 @@ class LocalSegmentSynchronizer(object):
         :rtype: bool
         """
         return self._segment_storage.get(segment_name) != None
+
+
+class LocalSegmentSynchronizerAsync(LocalSegmentSynchronizerBase):
+    """Localhost mode segment async synchronizer."""
+
+    def __init__(self, segment_folder, feature_flag_storage, segment_storage):
+        """
+        Class constructor.
+
+        :param segment_folder: patch to the segment folder
+        :type segment_folder: str
+
+        :param feature_flag_storage: Feature flag Storage.
+        :type feature_flag_storage: splitio.storage.InMemorySplitStorage
+
+        :param segment_storage: Segment storage reference.
+        :type segment_storage: splitio.storage.SegmentStorage
+
+        """
+        self._segment_folder = segment_folder
+        self._feature_flag_storage = feature_flag_storage
+        self._segment_storage = segment_storage
+        self._segment_sha = {}
+
+    async def synchronize_segments(self, segment_names = None):
+        """
+        Loop through given segment names and synchronize each one.
+
+        :param segment_names: Optional, array of segment names to update.
+        :type segment_name: {str}
+
+        :return: True if no error occurs. False otherwise.
+        :rtype: bool
+        """
+        _LOGGER.info('Synchronizing segments now.')
+        if segment_names is None:
+            segment_names = await self._feature_flag_storage.get_segment_names()
+
+        return_flag = True
+        for segment_name in segment_names:
+            if not await self.synchronize_segment(segment_name):
+                return_flag = False
+
+        return return_flag
+
+    async def synchronize_segment(self, segment_name, till=None):
+        """
+        Update a segment from queue
+
+        :param segment_name: Name of the segment to update.
+        :type segment_name: str
+
+        :param till: ChangeNumber received.
+        :type till: int
+
+        :return: True if no error occurs. False otherwise.
+        :rtype: bool
+        """
+        try:
+            fetched = await self._read_segment_from_json_file(segment_name)
+            fetched_sha = util._get_sha(json.dumps(fetched))
+            if not await self.segment_exist_in_storage(segment_name):
+                    self._segment_sha[segment_name] = fetched_sha
+                    await self._segment_storage.put(segments.from_raw(fetched))
+                    _LOGGER.debug("segment %s is added to storage", segment_name)
+                    return True
+
+            if fetched_sha == self._segment_sha[segment_name]:
+                return True
+
+            self._segment_sha[segment_name] = fetched_sha
+            if await self._segment_storage.get_change_number(segment_name) > fetched['till'] and fetched['till'] != self._DEFAULT_SEGMENT_TILL:
+                return True
+
+            await self._segment_storage.update(segment_name, fetched['added'], fetched['removed'], fetched['till'])
+            _LOGGER.debug("segment %s is updated", segment_name)
+        except Exception as e:
+            _LOGGER.error("Could not fetch segment: %s \n" + str(e), segment_name)
+            return False
+
+        return True
+
+    async def _read_segment_from_json_file(self, filename):
+        """
+        Parse a segment and store in segment storage.
+
+        :param filename: Path of the file containing Feature flag
+        :type filename: str.
+
+        :return: Sanitized segment structure
+        :rtype: Dict
+        """
+        try:
+            async with aiofiles.open(os.path.join(self._segment_folder, "%s.json" % filename), 'r') as flo:
+                parsed = json.loads(await flo.read())
+            santitized_segment = self._sanitize_segment(parsed)
+            return santitized_segment
+        except Exception as exc:
+            raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc
+
+    async def segment_exist_in_storage(self, segment_name):
+        """
+        Check if a segment exists in the storage
+
+        :param segment_name: Name of the segment
+        :type segment_name: str
+
+        :return: True if segment exist. False otherwise.
+        :rtype: bool
+        """
+        return await self._segment_storage.get(segment_name) != None

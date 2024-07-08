@@ -5,6 +5,7 @@ def as_int32(value):
     """Handle overflow when working with 32 lower bits of 64 bit ints."""
     if not -2147483649 <= value <= 2147483648:
         return (value + 2147483648) % 4294967296 - 2147483648
+
     return value
 
 

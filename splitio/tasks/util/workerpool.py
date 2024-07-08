@@ -4,9 +4,9 @@ import logging
 from threading import Thread, Event
 import queue
 
+from splitio.optional.loaders import asyncio
 
 _LOGGER = logging.getLogger(__name__)
-
 
 class WorkerPool(object):
     """Worker pool class to implement single producer/multiple consumer."""
@@ -134,3 +134,96 @@ class WorkerPool(object):
             for worker_event in self._worker_events:
                 worker_event.wait()
             event.set()
+
+
+class WorkerPoolAsync(object):
+    """Worker pool async class to implement single producer/multiple consumer."""
+
+    _abort = object()
+
+    def __init__(self, worker_count, worker_func):
+        """
+        Class constructor.
+
+        :param worker_count: Number of workers for the pool.
+        :type worker_func: Function to be executed by the workers whenever a messages is fetched.
+        """
+        self._semaphore = asyncio.Semaphore(worker_count)
+        self._queue = asyncio.Queue()
+        self._handler = worker_func
+        self._aborted = False
+
+    async def _schedule_work(self):
+        """wrap the message handler execution."""
+        while True:
+            message = await self._queue.get()
+            if message == self._abort:
+                self._aborted = True
+                return
+            asyncio.get_running_loop().create_task(self._do_work(message))
+
+    async def _do_work(self, message):
+        """process a single message."""
+        try:
+            await self._semaphore.acquire() # wait until "there's a free worker"
+            if self._aborted: # check in case the pool was shutdown while we were waiting for a worker
+                return
+            await self._handler(message._message)
+        except Exception:
+            _LOGGER.error("Something went wrong when processing message %s", message)
+            _LOGGER.debug('Original traceback: ', exc_info=True)
+            message._failed = True
+        message._complete.set()
+        self._semaphore.release() # signal worker is idle
+
+    def start(self):
+        """Start the workers."""
+        asyncio.get_running_loop().create_task(self._schedule_work())
+
+    async def submit_work(self, jobs):
+        """
+        Add a new message to the work-queue.
+
+        :param message: New message to add.
+        :type message: object.
+        """
+        self.jobs = jobs
+        if len(jobs) == 1:
+            wrapped = TaskCompletionWraper(next(i for i in jobs))
+            await self._queue.put(wrapped)
+            return wrapped
+
+        tasks = [TaskCompletionWraper(job) for job in jobs]
+        for w in tasks:
+            await self._queue.put(w)
+
+        return BatchCompletionWrapper(tasks)
+
+    async def stop(self, event=None):
+        """abort all execution (except currently running handlers)."""
+        await self._queue.put(self._abort)
+
+
+class TaskCompletionWraper:
+    """Task completion class"""
+    def __init__(self, message):
+        self._message = message
+        self._complete = asyncio.Event()
+        self._failed = False
+
+    async def await_completion(self):
+        await self._complete.wait()
+        return not self._failed
+
+    def _mark_as_complete(self):
+        self._complete.set()
+
+
+class BatchCompletionWrapper:
+    """Batch completion class"""
+    def __init__(self, tasks):
+        self._tasks = tasks
+
+    async def await_completion(self):
+        await asyncio.gather(*[task.await_completion() for task in self._tasks])
+        return not any(task._failed for task in self._tasks)
