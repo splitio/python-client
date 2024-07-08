@@ -168,6 +168,7 @@ class HttpClientTests(object):
         get_mock.return_value = response_mock
         mocker.patch('splitio.api.client.requests.get', new=get_mock)
         httpclient = client.HttpClient(sdk_url='https://sdk.com', authentication_scheme=AuthenticateScheme.KERBEROS)
+        httpclient.set_telemetry_data("metric", mocker.Mock())
         response = httpclient.get('sdk', '/test1', 'some_api_key', {'param1': 123}, {'h1': 'abc'})
         call = mocker.call(
             'https://sdk.com/test1',
@@ -178,6 +179,7 @@ class HttpClientTests(object):
         )
 
         httpclient = client.HttpClient(sdk_url='https://sdk.com', authentication_scheme=AuthenticateScheme.KERBEROS, authentication_params=['bilal', 'split'])
+        httpclient.set_telemetry_data("metric", mocker.Mock())
         response = httpclient.get('sdk', '/test1', 'some_api_key', {'param1': 123}, {'h1': 'abc'})
 
     def test_telemetry(self, mocker):

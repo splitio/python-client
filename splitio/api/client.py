@@ -5,7 +5,7 @@ import urllib
 import abc
 import logging
 import json
-from requests_kerberos import HTTPKerberosAuth, OPTIONAL
+from splitio.optional.loaders import HTTPKerberosAuth, OPTIONAL
 
 from splitio.client.config import AuthenticateScheme
 from splitio.optional.loaders import aiohttp
