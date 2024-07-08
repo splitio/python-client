@@ -16,7 +16,8 @@ TESTS_REQUIRES = [
     'attrs==22.1.0',
     'pytest-asyncio==0.21.0',
     'aiohttp>=3.8.4',
-    'aiofiles>=23.1.0'
+    'aiofiles>=23.1.0',
+    'requests-kerberos>=0.14.0'
 ]
 
 INSTALL_REQUIRES = [
