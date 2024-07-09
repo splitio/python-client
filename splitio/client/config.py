@@ -1,12 +1,19 @@
 """Default settings for the Split.IO SDK Python client."""
 import os.path
 import logging
+from enum import Enum
 
 from splitio.engine.impressions import ImpressionsMode
 from splitio.client.input_validator import validate_flag_sets
 
 _LOGGER = logging.getLogger(__name__)
 DEFAULT_DATA_SAMPLING = 1
+
+class AuthenticateScheme(Enum):
+    """Authentication Scheme."""
+    NONE = 'NONE'
+    KERBEROS = 'KERBEROS'
+
 
 DEFAULT_CONFIG = {
     'operationMode': 'standalone',
@@ -59,7 +66,10 @@ DEFAULT_CONFIG = {
     'storageWrapper': None,
     'storagePrefix': None,
     'storageType': None,
-    'flagSetsFilter': None
+    'flagSetsFilter': None,
+    'httpAuthenticateScheme': AuthenticateScheme.NONE,
+    'kerberosPrincipalUser': None,
+    'kerberosPrincipalPassword': None
 }
 
 def _parse_operation_mode(sdk_key, config):
@@ -147,5 +157,15 @@ def sanitize(sdk_key, config):
         _LOGGER.warning('config: FlagSets filter is not applicable for Consumer modes where the SDK does keep rollout data in sync. FlagSet filter was discarded.')
     else:
         processed['flagSetsFilter'] = sorted(validate_flag_sets(processed['flagSetsFilter'], 'SDK Config')) if processed['flagSetsFilter'] is not None else None
+
+    if config.get('httpAuthenticateScheme') is not None:
+        try:
+            authenticate_scheme = AuthenticateScheme(config['httpAuthenticateScheme'].upper())
+        except (ValueError, AttributeError):
+            authenticate_scheme = AuthenticateScheme.NONE
+            _LOGGER.warning('You passed an invalid HttpAuthenticationScheme, HttpAuthenticationScheme should be ' \
+                            'one of the following values: `none` or `kerberos`. '
+                            ' Defaulting to `none` mode.')
+        processed["httpAuthenticateScheme"] = authenticate_scheme
 
     return processed

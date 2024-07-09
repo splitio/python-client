@@ -5,7 +5,9 @@ import urllib
 import abc
 import logging
 import json
+from splitio.optional.loaders import HTTPKerberosAuth, OPTIONAL
 
+from splitio.client.config import AuthenticateScheme
 from splitio.optional.loaders import aiohttp
 from splitio.util.time import get_current_epoch_time_ms
 
@@ -95,7 +97,7 @@ class HttpClientBase(object, metaclass=abc.ABCMeta):
 class HttpClient(HttpClientBase):
     """HttpClient wrapper."""
 
-    def __init__(self, timeout=None, sdk_url=None, events_url=None, auth_url=None, telemetry_url=None):
+    def __init__(self, timeout=None, sdk_url=None, events_url=None, auth_url=None, telemetry_url=None, authentication_scheme=None, authentication_params=None):
         """
         Class constructor.
 
@@ -111,6 +113,8 @@ class HttpClient(HttpClientBase):
         :type telemetry_url: str
         """
         self._timeout = timeout/1000 if timeout else None # Convert ms to seconds.
+        self._authentication_scheme = authentication_scheme
+        self._authentication_params = authentication_params
         self._urls = _construct_urls(sdk_url, events_url, auth_url, telemetry_url)
 
     def get(self, server, path, sdk_key, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
@@ -135,13 +139,15 @@ class HttpClient(HttpClientBase):
         if extra_headers is not None:
             headers.update(extra_headers)
 
+        authentication = self._get_authentication()
         start = get_current_epoch_time_ms()
         try:
             response = requests.get(
                 _build_url(server, path, self._urls),
                 params=query,
                 headers=headers,
-                timeout=self._timeout
+                timeout=self._timeout,
+                auth=authentication
             )
             self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
             return HttpResponse(response.status_code, response.text, response.headers)
@@ -174,6 +180,7 @@ class HttpClient(HttpClientBase):
         if extra_headers is not None:
             headers.update(extra_headers)
 
+        authentication = self._get_authentication()
         start = get_current_epoch_time_ms()
         try:
             response = requests.post(
@@ -181,13 +188,23 @@ class HttpClient(HttpClientBase):
                 json=body,
                 params=query,
                 headers=headers,
-                timeout=self._timeout
+                timeout=self._timeout,
+                auth=authentication
             )
             self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
             return HttpResponse(response.status_code, response.text, response.headers)
 
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException('requests library is throwing exceptions') from exc
+
+    def _get_authentication(self):
+        authentication = None
+        if self._authentication_scheme == AuthenticateScheme.KERBEROS:
+            if self._authentication_params is not None:
+                authentication = HTTPKerberosAuth(principal=self._authentication_params[0], password=self._authentication_params[1], mutual_authentication=OPTIONAL)
+            else:
+                authentication = HTTPKerberosAuth(mutual_authentication=OPTIONAL)
+        return authentication
 
     def _record_telemetry(self, status_code, elapsed):
         """
