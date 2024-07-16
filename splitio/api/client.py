@@ -5,7 +5,6 @@ import urllib
 import abc
 import logging
 import json
-import time
 import threading
 from urllib3.util import parse_url
 
@@ -220,13 +219,13 @@ class HttpClient(HttpClientBase):
     def _set_authentication(self, session):
         if self._authentication_scheme == AuthenticateScheme.KERBEROS_SPNEGO:
             _LOGGER.debug("Using Kerberos Spnego Authentication")
-            if self._authentication_params is not [None, None]:
+            if self._authentication_params != [None, None]:
                 session.auth = HTTPKerberosAuth(principal=self._authentication_params[0], password=self._authentication_params[1], mutual_authentication=OPTIONAL)
             else:
                 session.auth = HTTPKerberosAuth(mutual_authentication=OPTIONAL)
         elif self._authentication_scheme == AuthenticateScheme.KERBEROS_PROXY:
             _LOGGER.debug("Using Kerberos Proxy Authentication")
-            if self._authentication_params is not [None, None]:
+            if self._authentication_params != [None, None]:
                 session.mount('https://', HTTPAdapterWithProxyKerberosAuth(principal=self._authentication_params[0], password=self._authentication_params[1]))
             else:
                 session.mount('https://', HTTPAdapterWithProxyKerberosAuth())
