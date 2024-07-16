@@ -17,7 +17,7 @@ TESTS_REQUIRES = [
     'pytest-asyncio==0.21.0',
     'aiohttp>=3.8.4',
     'aiofiles>=23.1.0',
-    'requests-kerberos>=0.14.0'
+    'requests-kerberos>=0.15.0'
 ]
 
 INSTALL_REQUIRES = [
@@ -48,7 +48,7 @@ setup(
         'uwsgi': ['uwsgi>=2.0.0'],
         'cpphash': ['mmh3cffi==0.2.1'],
         'asyncio': ['aiohttp>=3.8.4', 'aiofiles>=23.1.0'],
-        'kerberos': ['requests-kerberos>=0.14.0']
+        'kerberos': ['requests-kerberos>=0.15.0']
     },
     setup_requires=['pytest-runner', 'pluggy==1.0.0;python_version<"3.8"'],
     classifiers=[

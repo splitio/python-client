@@ -12,8 +12,8 @@ DEFAULT_DATA_SAMPLING = 1
 class AuthenticateScheme(Enum):
     """Authentication Scheme."""
     NONE = 'NONE'
-    KERBEROS = 'KERBEROS'
-
+    KERBEROS_SPNEGO = 'KERBEROS_SPNEGO'
+    KERBEROS_PROXY = 'KERBEROS_PROXY'
 
 DEFAULT_CONFIG = {
     'operationMode': 'standalone',
@@ -164,7 +164,7 @@ def sanitize(sdk_key, config):
         except (ValueError, AttributeError):
             authenticate_scheme = AuthenticateScheme.NONE
             _LOGGER.warning('You passed an invalid HttpAuthenticationScheme, HttpAuthenticationScheme should be ' \
-                            'one of the following values: `none` or `kerberos`. '
+                            'one of the following values: `none`, `kerberos_proxy` or `kerberos_spnego`. '
                             ' Defaulting to `none` mode.')
         processed["httpAuthenticateScheme"] = authenticate_scheme
 
