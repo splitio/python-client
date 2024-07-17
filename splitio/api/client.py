@@ -5,8 +5,10 @@ import urllib
 import abc
 import logging
 import json
-from splitio.optional.loaders import HTTPKerberosAuth, OPTIONAL
+import threading
+from urllib3.util import parse_url
 
+from splitio.optional.loaders import HTTPKerberosAuth, OPTIONAL
 from splitio.client.config import AuthenticateScheme
 from splitio.optional.loaders import aiohttp
 from splitio.util.time import get_current_epoch_time_ms
@@ -69,6 +71,24 @@ class HttpClientException(Exception):
         """
         Exception.__init__(self, message)
 
+class HTTPAdapterWithProxyKerberosAuth(requests.adapters.HTTPAdapter):
+    """HTTPAdapter override for Kerberos Proxy auth"""
+
+    def __init__(self, principal=None, password=None):
+        requests.adapters.HTTPAdapter.__init__(self)
+        self._principal = principal
+        self._password = password
+
+    def proxy_headers(self, proxy):
+        headers = {}
+        if self._principal is not None:
+            auth = HTTPKerberosAuth(principal=self._principal, password=self._password)
+        else:
+            auth = HTTPKerberosAuth()
+        negotiate_details = auth.generate_request_header(None, parse_url(proxy).host, is_preemptive=True)
+        headers['Proxy-Authorization'] = negotiate_details
+        return headers
+
 class HttpClientBase(object, metaclass=abc.ABCMeta):
     """HttpClient wrapper template."""
 
@@ -93,6 +113,11 @@ class HttpClientBase(object, metaclass=abc.ABCMeta):
         self._telemetry_runtime_producer = telemetry_runtime_producer
         self._metric_name = metric_name
 
+    def _get_headers(self, extra_headers, sdk_key):
+        headers = _build_basic_headers(sdk_key)
+        if extra_headers is not None:
+            headers.update(extra_headers)
+        return headers
 
 class HttpClient(HttpClientBase):
     """HttpClient wrapper."""
@@ -112,10 +137,12 @@ class HttpClient(HttpClientBase):
         :param telemetry_url: Optional alternative telemetry URL.
         :type telemetry_url: str
         """
+        _LOGGER.debug("Initializing httpclient")
         self._timeout = timeout/1000 if timeout else None # Convert ms to seconds.
+        self._urls = _construct_urls(sdk_url, events_url, auth_url, telemetry_url)
         self._authentication_scheme = authentication_scheme
         self._authentication_params = authentication_params
-        self._urls = _construct_urls(sdk_url, events_url, auth_url, telemetry_url)
+        self._lock = threading.RLock()
 
     def get(self, server, path, sdk_key, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
@@ -135,25 +162,22 @@ class HttpClient(HttpClientBase):
         :return: Tuple of status_code & response text
         :rtype: HttpResponse
         """
-        headers = _build_basic_headers(sdk_key)
-        if extra_headers is not None:
-            headers.update(extra_headers)
+        with self._lock:
+            start = get_current_epoch_time_ms()
+            with requests.Session() as session:
+                self._set_authentication(session)
+                try:
+                    response = session.get(
+                        _build_url(server, path, self._urls),
+                        params=query,
+                        headers=self._get_headers(extra_headers, sdk_key),
+                        timeout=self._timeout
+                    )
+                    self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
+                    return HttpResponse(response.status_code, response.text, response.headers)
 
-        authentication = self._get_authentication()
-        start = get_current_epoch_time_ms()
-        try:
-            response = requests.get(
-                _build_url(server, path, self._urls),
-                params=query,
-                headers=headers,
-                timeout=self._timeout,
-                auth=authentication
-            )
-            self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
-            return HttpResponse(response.status_code, response.text, response.headers)
-
-        except Exception as exc:  # pylint: disable=broad-except
-            raise HttpClientException('requests library is throwing exceptions') from exc
+                except Exception as exc:  # pylint: disable=broad-except
+                    raise HttpClientException('requests library is throwing exceptions') from exc
 
     def post(self, server, path, sdk_key, body, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
@@ -175,36 +199,37 @@ class HttpClient(HttpClientBase):
         :return: Tuple of status_code & response text
         :rtype: HttpResponse
         """
-        headers = _build_basic_headers(sdk_key)
+        with self._lock:
+            start = get_current_epoch_time_ms()
+            with requests.Session() as session:
+                self._set_authentication(session)
+                try:
+                    response = session.post(
+                        _build_url(server, path, self._urls),
+                        json=body,
+                        params=query,
+                        headers=self._get_headers(extra_headers, sdk_key),
+                        timeout=self._timeout,
+                    )
+                    self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
+                    return HttpResponse(response.status_code, response.text, response.headers)
+                except Exception as exc:  # pylint: disable=broad-except
+                    raise HttpClientException('requests library is throwing exceptions') from exc
 
-        if extra_headers is not None:
-            headers.update(extra_headers)
-
-        authentication = self._get_authentication()
-        start = get_current_epoch_time_ms()
-        try:
-            response = requests.post(
-                _build_url(server, path, self._urls),
-                json=body,
-                params=query,
-                headers=headers,
-                timeout=self._timeout,
-                auth=authentication
-            )
-            self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
-            return HttpResponse(response.status_code, response.text, response.headers)
-
-        except Exception as exc:  # pylint: disable=broad-except
-            raise HttpClientException('requests library is throwing exceptions') from exc
-
-    def _get_authentication(self):
-        authentication = None
-        if self._authentication_scheme == AuthenticateScheme.KERBEROS:
-            if self._authentication_params is not None:
-                authentication = HTTPKerberosAuth(principal=self._authentication_params[0], password=self._authentication_params[1], mutual_authentication=OPTIONAL)
+    def _set_authentication(self, session):
+        if self._authentication_scheme == AuthenticateScheme.KERBEROS_SPNEGO:
+            _LOGGER.debug("Using Kerberos Spnego Authentication")
+            if self._authentication_params != [None, None]:
+                session.auth = HTTPKerberosAuth(principal=self._authentication_params[0], password=self._authentication_params[1], mutual_authentication=OPTIONAL)
             else:
-                authentication = HTTPKerberosAuth(mutual_authentication=OPTIONAL)
-        return authentication
+                session.auth = HTTPKerberosAuth(mutual_authentication=OPTIONAL)
+        elif self._authentication_scheme == AuthenticateScheme.KERBEROS_PROXY:
+            _LOGGER.debug("Using Kerberos Proxy Authentication")
+            if self._authentication_params != [None, None]:
+                session.mount('https://', HTTPAdapterWithProxyKerberosAuth(principal=self._authentication_params[0], password=self._authentication_params[1]))
+            else:
+                session.mount('https://', HTTPAdapterWithProxyKerberosAuth())
+
 
     def _record_telemetry(self, status_code, elapsed):
         """
@@ -220,8 +245,8 @@ class HttpClient(HttpClientBase):
         if 200 <= status_code < 300:
             self._telemetry_runtime_producer.record_successful_sync(self._metric_name, get_current_epoch_time_ms())
             return
-        self._telemetry_runtime_producer.record_sync_error(self._metric_name, status_code)
 
+        self._telemetry_runtime_producer.record_sync_error(self._metric_name, status_code)
 
 class HttpClientAsync(HttpClientBase):
     """HttpClientAsync wrapper."""
@@ -260,10 +285,8 @@ class HttpClientAsync(HttpClientBase):
         :return: Tuple of status_code & response text
         :rtype: HttpResponse
         """
-        headers = _build_basic_headers(apikey)
-        if extra_headers is not None:
-            headers.update(extra_headers)
         start = get_current_epoch_time_ms()
+        headers = self._get_headers(extra_headers, apikey)
         try:
             url = _build_url(server, path, self._urls)
             _LOGGER.debug("GET request: %s", url)
@@ -303,9 +326,7 @@ class HttpClientAsync(HttpClientBase):
         :return: Tuple of status_code & response text
         :rtype: HttpResponse
         """
-        headers = _build_basic_headers(apikey)
-        if extra_headers is not None:
-            headers.update(extra_headers)
+        headers = self._get_headers(extra_headers, apikey)
         start = get_current_epoch_time_ms()
         try:
             headers['Accept-Encoding'] = 'gzip'

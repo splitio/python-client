@@ -509,7 +509,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     telemetry_init_producer = telemetry_producer.get_telemetry_init_producer()
 
     authentication_params = None
-    if cfg.get("httpAuthenticateScheme") == AuthenticateScheme.KERBEROS:
+    if cfg.get("httpAuthenticateScheme") in [AuthenticateScheme.KERBEROS_SPNEGO, AuthenticateScheme.KERBEROS_PROXY]:
         authentication_params = [cfg.get("kerberosPrincipalUser"),
                                  cfg.get("kerberosPrincipalPassword")]
 
