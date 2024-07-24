@@ -33,7 +33,7 @@ from splitio.storage.pluggable import PluggableEventsStorage, PluggableImpressio
     PluggableImpressionsStorageAsync, PluggableSegmentStorageAsync, PluggableSplitStorageAsync
 
 # APIs
-from splitio.api.client import HttpClient, HttpClientAsync
+from splitio.api.client import HttpClient, HttpClientAsync, HttpClientKerberos
 from splitio.api.splits import SplitsAPI, SplitsAPIAsync
 from splitio.api.segments import SegmentsAPI, SegmentsAPIAsync
 from splitio.api.impressions import ImpressionsAPI, ImpressionsAPIAsync
@@ -512,16 +512,23 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     if cfg.get("httpAuthenticateScheme") in [AuthenticateScheme.KERBEROS_SPNEGO, AuthenticateScheme.KERBEROS_PROXY]:
         authentication_params = [cfg.get("kerberosPrincipalUser"),
                                  cfg.get("kerberosPrincipalPassword")]
-
-    http_client = HttpClient(
-        sdk_url=sdk_url,
-        events_url=events_url,
-        auth_url=auth_api_base_url,
-        telemetry_url=telemetry_api_base_url,
-        timeout=cfg.get('connectionTimeout'),
-        authentication_scheme = cfg.get("httpAuthenticateScheme"),
-        authentication_params = authentication_params
-    )
+        http_client = HttpClientKerberos(
+            sdk_url=sdk_url,
+            events_url=events_url,
+            auth_url=auth_api_base_url,
+            telemetry_url=telemetry_api_base_url,
+            timeout=cfg.get('connectionTimeout'),
+            authentication_scheme = cfg.get("httpAuthenticateScheme"),
+            authentication_params = authentication_params
+        )
+    else:
+        http_client = HttpClient(
+            sdk_url=sdk_url,
+            events_url=events_url,
+            auth_url=auth_api_base_url,
+            telemetry_url=telemetry_api_base_url,
+            timeout=cfg.get('connectionTimeout'),
+        )
 
     sdk_metadata = util.get_metadata(cfg)
     apis = {
