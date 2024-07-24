@@ -397,8 +397,8 @@ class HttpClientKerberos(HttpClient):
                 try:
                     response = session.get(
                         _build_url(server, path, self._urls),
-                        params=query,
                         headers=self._get_headers(extra_headers, sdk_key),
+                        params=query,
                         timeout=self._timeout
                     )
                     self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
@@ -434,9 +434,9 @@ class HttpClientKerberos(HttpClient):
                 try:
                     response = session.post(
                         _build_url(server, path, self._urls),
-                        json=body,
                         params=query,
                         headers=self._get_headers(extra_headers, sdk_key),
+                        json=body,
                         timeout=self._timeout,
                     )
                     self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
