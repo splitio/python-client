@@ -160,20 +160,19 @@ class HttpClient(HttpClientBase):
         :return: Tuple of status_code & response text
         :rtype: HttpResponse
         """
-        with self._lock:
-            start = get_current_epoch_time_ms()
-            try:
-                response = requests.get(
-                    _build_url(server, path, self._urls),
-                    params=query,
-                    headers=self._get_headers(extra_headers, sdk_key),
-                    timeout=self._timeout
-                )
-                self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
-                return HttpResponse(response.status_code, response.text, response.headers)
+        start = get_current_epoch_time_ms()
+        try:
+            response = requests.get(
+                _build_url(server, path, self._urls),
+                params=query,
+                headers=self._get_headers(extra_headers, sdk_key),
+                timeout=self._timeout
+            )
+            self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
+            return HttpResponse(response.status_code, response.text, response.headers)
 
-            except Exception as exc:  # pylint: disable=broad-except
-                raise HttpClientException(_EXC_MSG.format(source='request')) from exc
+        except Exception as exc:  # pylint: disable=broad-except
+            raise HttpClientException(_EXC_MSG.format(source='request')) from exc
 
     def post(self, server, path, sdk_key, body, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
@@ -195,20 +194,19 @@ class HttpClient(HttpClientBase):
         :return: Tuple of status_code & response text
         :rtype: HttpResponse
         """
-        with self._lock:
-            start = get_current_epoch_time_ms()
-            try:
-                response = requests.post(
-                    _build_url(server, path, self._urls),
-                    json=body,
-                    params=query,
-                    headers=self._get_headers(extra_headers, sdk_key),
-                    timeout=self._timeout,
-                )
-                self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
-                return HttpResponse(response.status_code, response.text, response.headers)
-            except Exception as exc:  # pylint: disable=broad-except
-                raise HttpClientException(_EXC_MSG.format(source='request')) from exc
+        start = get_current_epoch_time_ms()
+        try:
+            response = requests.post(
+                _build_url(server, path, self._urls),
+                json=body,
+                params=query,
+                headers=self._get_headers(extra_headers, sdk_key),
+                timeout=self._timeout,
+            )
+            self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
+            return HttpResponse(response.status_code, response.text, response.headers)
+        except Exception as exc:  # pylint: disable=broad-except
+            raise HttpClientException(_EXC_MSG.format(source='request')) from exc
 
     def _record_telemetry(self, status_code, elapsed):
         """
@@ -378,7 +376,6 @@ class HttpClientKerberos(HttpClient):
     def get(self, server, path, sdk_key, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
         Issue a get request.
-
         :param server: Whether the request is for SDK server, Events server or Auth server.
         :typee server: str
         :param path: path to append to the host url.
