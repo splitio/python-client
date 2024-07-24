@@ -168,7 +168,6 @@ class HttpClientTests(object):
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
             timeout=None
-#            auth=HTTPKerberosAuth(mutual_authentication=OPTIONAL)
         )
         assert response.status_code == 200
         assert response.body == 'ok'
@@ -183,28 +182,37 @@ class HttpClientTests(object):
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
             timeout=None
-#            auth=HTTPKerberosAuth(principal='bilal', password='split', mutual_authentication=OPTIONAL)
         )
         assert response.status_code == 200
         assert response.body == 'ok'
         assert get_mock.mock_calls == [call]
         get_mock.reset_mock()
 
-        httpclient = client.HttpClientKerberos(sdk_url='https://sdk.com', authentication_scheme=AuthenticateScheme.KERBEROS_PROXY, authentication_params=[None, None])
+        response_mock = mocker.Mock()
+        response_mock.status_code = 200
+        response_mock.headers = {}
+        response_mock.text = 'ok'
+        get_mock = mocker.Mock()
+        get_mock.return_value = response_mock
+        mocker.patch('splitio.api.client.requests.Session.post', new=get_mock)
+
+        httpclient = client.HttpClientKerberos(sdk_url='https://sdk.com', events_url='https://events.com', authentication_scheme=AuthenticateScheme.KERBEROS_PROXY, authentication_params=[None, None])
         httpclient.set_telemetry_data("metric", mocker.Mock())
-        response = httpclient.get('sdk', '/test1', 'some_api_key', {'param1': 123}, {'h1': 'abc'})
+
+        response = httpclient.post('events', 'test1', 'some_api_key', {'p1': 'a'}, {'param1': 123}, {'h1': 'abc'})
         call = mocker.call(
-            'https://sdk.com/test1',
+            'https://events.com/test1',
+            json={'p1': 'a'},
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
             timeout=None
-#            auth=HTTPKerberosAuth(mutual_authentication=OPTIONAL)
         )
         assert response.status_code == 200
         assert response.body == 'ok'
         assert get_mock.mock_calls == [call]
         get_mock.reset_mock()
 
+        mocker.patch('splitio.api.client.requests.Session.get', new=get_mock)
         httpclient = client.HttpClientKerberos(sdk_url='https://sdk.com', authentication_scheme=AuthenticateScheme.KERBEROS_PROXY, authentication_params=['bilal', 'split'])
         httpclient.set_telemetry_data("metric", mocker.Mock())
         response = httpclient.get('sdk', '/test1', 'some_api_key', {'param1': 123}, {'h1': 'abc'})

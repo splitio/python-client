@@ -19,7 +19,7 @@ AUTH_URL = 'https://auth.split.io/api'
 TELEMETRY_URL = 'https://telemetry.split.io/api'
 
 _LOGGER = logging.getLogger(__name__)
-
+_EXC_MSG = '{source} library is throwing exceptions'
 
 HttpResponse = namedtuple('HttpResponse', ['status_code', 'body', 'headers'])
 
@@ -173,7 +173,7 @@ class HttpClient(HttpClientBase):
                 return HttpResponse(response.status_code, response.text, response.headers)
 
             except Exception as exc:  # pylint: disable=broad-except
-                raise HttpClientException('requests library is throwing exceptions') from exc
+                raise HttpClientException(_EXC_MSG.format(source='request')) from exc
 
     def post(self, server, path, sdk_key, body, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
@@ -208,7 +208,7 @@ class HttpClient(HttpClientBase):
                 self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
                 return HttpResponse(response.status_code, response.text, response.headers)
             except Exception as exc:  # pylint: disable=broad-except
-                raise HttpClientException('requests library is throwing exceptions') from exc
+                raise HttpClientException(_EXC_MSG.format(source='request')) from exc
 
     def _record_telemetry(self, status_code, elapsed):
         """
@@ -285,7 +285,7 @@ class HttpClientAsync(HttpClientBase):
                 return HttpResponse(response.status, body, response.headers)
 
         except aiohttp.ClientError as exc:  # pylint: disable=broad-except
-            raise HttpClientException('aiohttp library is throwing exceptions') from exc
+            raise HttpClientException(_EXC_MSG.format(source='aiohttp')) from exc
 
     async def post(self, server, path, apikey, body, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
@@ -329,7 +329,7 @@ class HttpClientAsync(HttpClientBase):
                 return HttpResponse(response.status, body, response.headers)
 
         except aiohttp.ClientError as exc:  # pylint: disable=broad-except
-            raise HttpClientException('aiohttp library is throwing exceptions') from exc
+            raise HttpClientException(_EXC_MSG.format(source='aiohttp')) from exc
 
     async def _record_telemetry(self, status_code, elapsed):
         """
@@ -371,7 +371,7 @@ class HttpClientKerberos(HttpClient):
         :type telemetry_url: str
         """
         _LOGGER.debug("Initializing httpclient for Kerberos auth")
-        HttpClient.__init__(self, timeout, sdk_url, events_url, auth_url, telemetry_url)
+        HttpClient.__init__(self, timeout=timeout, sdk_url=sdk_url, events_url=events_url, auth_url=auth_url, telemetry_url=telemetry_url)
         self._authentication_scheme = authentication_scheme
         self._authentication_params = authentication_params
 
@@ -408,7 +408,7 @@ class HttpClientKerberos(HttpClient):
                     return HttpResponse(response.status_code, response.text, response.headers)
 
                 except Exception as exc:  # pylint: disable=broad-except
-                    raise HttpClientException('requests library is throwing exceptions') from exc
+                    raise HttpClientException(_EXC_MSG.format(source='request')) from exc
 
     def post(self, server, path, sdk_key, body, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
@@ -445,7 +445,7 @@ class HttpClientKerberos(HttpClient):
                     self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
                     return HttpResponse(response.status_code, response.text, response.headers)
                 except Exception as exc:  # pylint: disable=broad-except
-                    raise HttpClientException('requests library is throwing exceptions') from exc
+                    raise HttpClientException(_EXC_MSG.format(source='request')) from exc
 
     def _set_authentication(self, session):
         if self._authentication_scheme == AuthenticateScheme.KERBEROS_SPNEGO:
