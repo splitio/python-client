@@ -381,6 +381,62 @@ class HttpClientKerberosTests(object):
             assert(httpclient4._sessions[server].adapters['https://']._password == None)
             assert(isinstance(httpclient4._sessions[server].adapters['https://'], client.HTTPAdapterWithProxyKerberosAuth))
 
+    def test_proxy_exception(self, mocker):
+        global count
+        count = 0
+        class get_mock(object):
+            def __init__(self, url, params, headers, timeout):
+                pass
+
+            def __enter__(self):
+                global count
+                count += 1
+                if count == 1:
+                    raise requests.exceptions.ProxyError()
+
+                response_mock = mocker.Mock()
+                response_mock.status_code = 200
+                response_mock.text = 'ok'
+                return response_mock
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                pass
+
+        mocker.patch('splitio.api.client.requests.Session.get', new=get_mock)
+        httpclient = client.HttpClientKerberos(sdk_url='https://sdk.com', authentication_scheme=AuthenticateScheme.KERBEROS_SPNEGO, authentication_params=[None, None])
+        httpclient.set_telemetry_data("metric", mocker.Mock())
+        response = httpclient.get('sdk', '/test1', 'some_api_key', {'param1': 123}, {'h1': 'abc'})
+        assert response.status_code == 200
+        assert response.body == 'ok'
+
+        count = 0
+        class post_mock(object):
+            def __init__(self, url, params, headers, json, timeout):
+                pass
+
+            def __enter__(self):
+                global count
+                count += 1
+                if count == 1:
+                    raise requests.exceptions.ProxyError()
+
+                response_mock = mocker.Mock()
+                response_mock.status_code = 200
+                response_mock.text = 'ok'
+                return response_mock
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                pass
+        mocker.patch('splitio.api.client.requests.Session.post', new=post_mock)
+
+        httpclient = client.HttpClientKerberos(timeout=1500, sdk_url='https://sdk.com', events_url='https://events.com', authentication_scheme=AuthenticateScheme.KERBEROS_PROXY, authentication_params=[None, None])
+        httpclient.set_telemetry_data("metric", mocker.Mock())
+        response = httpclient.post('events', 'test1', 'some_api_key', {'p1': 'a'}, {'param1': 123}, {'h1': 'abc'})
+        assert response.status_code == 200
+        assert response.body == 'ok'
+
+
+
     def test_telemetry(self, mocker):
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
