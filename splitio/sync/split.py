@@ -117,11 +117,6 @@ class SplitSynchronizer(SplitSynchronizerBase):
             if feature_flag_changes['till'] == feature_flag_changes['since']:
                 return feature_flag_changes['till'], segment_list
 
-            fetched_feature_flags = [(splits.from_raw(feature_flag)) for feature_flag in feature_flag_changes.get('splits', [])]
-            segment_list = update_feature_flag_storage(self._feature_flag_storage, fetched_feature_flags, feature_flag_changes['till'])
-            if feature_flag_changes['till'] == feature_flag_changes['since']:
-                return feature_flag_changes['till'], segment_list
-
     def _attempt_feature_flag_sync(self, fetch_options, till=None):
         """
         Hit endpoint, update storage and return True if sync is complete.
