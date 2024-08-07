@@ -1,3 +1,6 @@
+10.1.0 (Aug 7, 2024)
+- Added support for Kerberos authentication in Spnego and Proxy Kerberos server instances.
+
 10.0.1 (Jun 28, 2024)
 - Fixed failure to load lib issue in SDK startup for Python versions higher than or equal to 3.10
 

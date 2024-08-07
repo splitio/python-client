@@ -68,9 +68,22 @@ class ConfigSanitizationTests(object):
         processed = config.sanitize('some', configs)
         assert processed['redisLocalCacheEnabled']  # check default is True
         assert processed['flagSetsFilter'] is None
+        assert processed['httpAuthenticateScheme'] is config.AuthenticateScheme.NONE
 
         processed = config.sanitize('some', {'redisHost': 'x', 'flagSetsFilter': ['set']})
         assert processed['flagSetsFilter'] is None
 
         processed = config.sanitize('some', {'storageType': 'pluggable', 'flagSetsFilter': ['set']})
         assert processed['flagSetsFilter'] is None
+
+        processed = config.sanitize('some', {'httpAuthenticateScheme': 'KERBEROS_spnego'})
+        assert processed['httpAuthenticateScheme'] is config.AuthenticateScheme.KERBEROS_SPNEGO
+
+        processed = config.sanitize('some', {'httpAuthenticateScheme': 'kerberos_proxy'})
+        assert processed['httpAuthenticateScheme'] is config.AuthenticateScheme.KERBEROS_PROXY
+
+        processed = config.sanitize('some', {'httpAuthenticateScheme': 'anything'})
+        assert processed['httpAuthenticateScheme'] is config.AuthenticateScheme.NONE
+
+        processed = config.sanitize('some', {'httpAuthenticateScheme': 'NONE'})
+        assert processed['httpAuthenticateScheme'] is config.AuthenticateScheme.NONE

@@ -7,8 +7,8 @@ from enum import Enum
 from splitio.optional.loaders import asyncio
 from splitio.client.client import Client, ClientAsync
 from splitio.client import input_validator
+from splitio.client.config import sanitize as sanitize_config, DEFAULT_DATA_SAMPLING, AuthenticateScheme
 from splitio.client.manager import SplitManager, SplitManagerAsync
-from splitio.client.config import sanitize as sanitize_config, DEFAULT_DATA_SAMPLING
 from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper, ImpressionListenerWrapperAsync
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager
@@ -33,7 +33,7 @@ from splitio.storage.pluggable import PluggableEventsStorage, PluggableImpressio
     PluggableImpressionsStorageAsync, PluggableSegmentStorageAsync, PluggableSplitStorageAsync
 
 # APIs
-from splitio.api.client import HttpClient, HttpClientAsync
+from splitio.api.client import HttpClient, HttpClientAsync, HttpClientKerberos
 from splitio.api.splits import SplitsAPI, SplitsAPIAsync
 from splitio.api.segments import SegmentsAPI, SegmentsAPIAsync
 from splitio.api.impressions import ImpressionsAPI, ImpressionsAPIAsync
@@ -508,13 +508,27 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
     telemetry_init_producer = telemetry_producer.get_telemetry_init_producer()
 
-    http_client = HttpClient(
-        sdk_url=sdk_url,
-        events_url=events_url,
-        auth_url=auth_api_base_url,
-        telemetry_url=telemetry_api_base_url,
-        timeout=cfg.get('connectionTimeout')
-    )
+    authentication_params = None
+    if cfg.get("httpAuthenticateScheme") in [AuthenticateScheme.KERBEROS_SPNEGO, AuthenticateScheme.KERBEROS_PROXY]:
+        authentication_params = [cfg.get("kerberosPrincipalUser"),
+                                 cfg.get("kerberosPrincipalPassword")]
+        http_client = HttpClientKerberos(
+            sdk_url=sdk_url,
+            events_url=events_url,
+            auth_url=auth_api_base_url,
+            telemetry_url=telemetry_api_base_url,
+            timeout=cfg.get('connectionTimeout'),
+            authentication_scheme = cfg.get("httpAuthenticateScheme"),
+            authentication_params = authentication_params
+        )
+    else:
+        http_client = HttpClient(
+            sdk_url=sdk_url,
+            events_url=events_url,
+            auth_url=auth_api_base_url,
+            telemetry_url=telemetry_api_base_url,
+            timeout=cfg.get('connectionTimeout'),
+        )
 
     sdk_metadata = util.get_metadata(cfg)
     apis = {
