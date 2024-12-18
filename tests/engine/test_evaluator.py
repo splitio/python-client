@@ -52,6 +52,7 @@ class EvaluatorTests(object):
         assert result['impression']['change_number'] == 123
         assert result['impression']['label'] == 'some_label'
         assert mocked_split.get_configurations_for.mock_calls == [mocker.call('on')]
+        assert result['track'] == mocked_split.trackImpressions
 
 
     def test_evaluate_treatment_ok_no_config(self, mocker):
