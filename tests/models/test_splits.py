@@ -60,7 +60,8 @@ class SplitTests(object):
         'configurations': {
             'on': '{"color": "blue", "size": 13}'
         },
-        'sets': ['set1', 'set2']
+        'sets': ['set1', 'set2'],
+        'trackImpressions': True
     }
 
     def test_from_raw(self):
@@ -81,6 +82,7 @@ class SplitTests(object):
         assert parsed.get_configurations_for('on') == '{"color": "blue", "size": 13}'
         assert parsed._configurations == {'on': '{"color": "blue", "size": 13}'}
         assert parsed.sets == {'set1', 'set2'}
+        assert parsed.trackImpressions == True
 
     def test_get_segment_names(self, mocker):
         """Test fetching segment names."""
@@ -107,6 +109,7 @@ class SplitTests(object):
         assert as_json['algo'] == 2
         assert len(as_json['conditions']) == 2
         assert sorted(as_json['sets']) == ['set1', 'set2']
+        assert as_json['trackImpressions'] is True
 
     def test_to_split_view(self):
         """Test SplitView creation."""
@@ -118,6 +121,7 @@ class SplitTests(object):
         assert as_split_view.traffic_type == self.raw['trafficTypeName']
         assert set(as_split_view.treatments) == set(['on', 'off'])
         assert sorted(as_split_view.sets) == sorted(list(self.raw['sets']))
+        assert as_split_view.trackImpressions == self.raw['trackImpressions']
 
     def test_incorrect_matcher(self):
         """Test incorrect matcher in split model parsing."""

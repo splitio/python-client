@@ -16,6 +16,14 @@ Impression = namedtuple(
     ]
 )
 
+ImpressionDecorated = namedtuple(
+    'ImpressionDecorated',
+    [
+        'Impression',
+        'track'
+    ]
+)
+
 # pre-python3.7 hack to make previous_time optional
 Impression.__new__.__defaults__ = (None,)
 
