@@ -11,7 +11,7 @@ class ImpressionsMode(Enum):
 class Manager(object):  # pylint:disable=too-few-public-methods
     """Impression manager."""
 
-    def __init__(self, strategy, telemetry_runtime_producer):
+    def __init__(self, strategy, none_strategy, telemetry_runtime_producer):
         """
         Construct a manger to track and forward impressions to the queue.
 
@@ -23,19 +23,33 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         """
 
         self._strategy = strategy
+        self._none_strategy = none_strategy
         self._telemetry_runtime_producer = telemetry_runtime_producer
 
-    def process_impressions(self, impressions):
+    def process_impressions(self, impressions_decorated):
         """
         Process impressions.
 
         Impressions are analyzed to see if they've been seen before and counted.
 
-        :param impressions: List of impression objects with attributes
-        :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
+        :param impressions_decorated: List of impression objects with attributes
+        :type impressions_decorated: list[tuple[splitio.models.impression.ImpressionDecorated, dict]]
 
         :return: processed and deduped impressions.
         :rtype: tuple(list[tuple[splitio.models.impression.Impression, dict]], list(int))
         """
-        for_log, for_listener, for_counter, for_unique_keys_tracker = self._strategy.process_impressions(impressions)
-        return for_log, len(impressions) - len(for_log), for_listener, for_counter, for_unique_keys_tracker
+        for_listener_all = []
+        for_log_all = []
+        for_counter_all = []
+        for_unique_keys_tracker_all = []
+        for impression_decorated, att in impressions_decorated:
+            if not impression_decorated.track:
+                for_log, for_listener, for_counter, for_unique_keys_tracker = self._none_strategy.process_impressions([(impression_decorated.Impression, att)])
+            else:
+                for_log, for_listener, for_counter, for_unique_keys_tracker = self._strategy.process_impressions([(impression_decorated.Impression, att)])
+            for_listener_all.extend(for_listener)
+            for_log_all.extend(for_log)
+            for_counter_all.extend(for_counter)
+            for_unique_keys_tracker_all.extend(for_unique_keys_tracker)
+
+        return for_log_all, len(impressions_decorated) - len(for_log_all), for_listener_all, for_counter_all, for_unique_keys_tracker_all
