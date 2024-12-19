@@ -3,7 +3,7 @@ import logging
 
 from splitio.engine.evaluator import Evaluator, CONTROL, EvaluationDataFactory, AsyncEvaluationDataFactory
 from splitio.engine.splitters import Splitter
-from splitio.models.impressions import Impression, Label
+from splitio.models.impressions import Impression, Label, ImpressionDecorated
 from splitio.models.events import Event, EventWrapper
 from splitio.models.telemetry import get_latency_bucket_index, MethodExceptionsAndLatencies
 from splitio.client import input_validator
@@ -22,7 +22,8 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         'impression': {
             'label': Label.EXCEPTION,
             'change_number': None,
-        }
+        },
+        'track': True
     }
 
     _NON_READY_EVAL_RESULT = {
@@ -31,7 +32,8 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         'impression': {
             'label': Label.NOT_READY,
             'change_number': None
-        }
+        },
+        'track': True
     }
 
     def __init__(self, factory, recorder, labels_enabled=True):
@@ -116,14 +118,15 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
 
     def _build_impression(self, key, bucketing, feature, result):
         """Build an impression based on evaluation data & it's result."""
-        return Impression(
-                matching_key=key,
+        return ImpressionDecorated(
+                Impression(matching_key=key,
                 feature_name=feature,
                 treatment=result['treatment'],
                 label=result['impression']['label'] if self._labels_enabled else None,
                 change_number=result['impression']['change_number'],
                 bucketing_key=bucketing,
-                time=utctime_ms())
+                time=utctime_ms()),
+                track=result['track'])
 
     def _build_impressions(self, key, bucketing, results):
         """Build an impression based on evaluation data & it's result."""
@@ -296,8 +299,8 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
                 result = self._FAILED_EVAL_RESULT
 
         if result['impression']['label'] != Label.SPLIT_NOT_FOUND:
-            impression = self._build_impression(key, bucketing, feature, result)
-            self._record_stats([(impression, attributes)], start, method)
+            impression_decorated = self._build_impression(key, bucketing, feature, result)
+            self._record_stats([(impression_decorated, attributes)], start, method)
 
         return result['treatment'], result['configurations']
 
@@ -571,23 +574,23 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
                 self._telemetry_evaluation_producer.record_exception(method)
                 results = {n: self._FAILED_EVAL_RESULT for n in features}
 
-        imp_attrs = [
+        imp_decorated_attrs = [
             (i, attributes) for i in self._build_impressions(key, bucketing, results)
-            if i.label != Label.SPLIT_NOT_FOUND
+            if i.Impression.label != Label.SPLIT_NOT_FOUND
         ]
-        self._record_stats(imp_attrs, start, method)
+        self._record_stats(imp_decorated_attrs, start, method)
 
         return {
             feature: (results[feature]['treatment'], results[feature]['configurations'])
             for feature in results
         }
 
-    def _record_stats(self, impressions, start, operation):
+    def _record_stats(self, impressions_decorated, start, operation):
         """
         Record impressions.
 
-        :param impressions: Generated impressions
-        :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
+        :param impressions_decorated: Generated impressions
+        :type impressions_decorated: list[tuple[splitio.models.impression.ImpressionDecorated, dict]]
 
         :param start: timestamp when get_treatment or get_treatments was called
         :type start: int
@@ -596,7 +599,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :type operation: str
         """
         end = get_current_epoch_time_ms()
-        self._recorder.record_treatment_stats(impressions, get_latency_bucket_index(end - start),
+        self._recorder.record_treatment_stats(impressions_decorated, get_latency_bucket_index(end - start),
                                               operation, 'get_' + operation.value)
 
     def track(self, key, traffic_type, event_type, value=None, properties=None):
@@ -763,8 +766,8 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
                 result = self._FAILED_EVAL_RESULT
 
         if result['impression']['label'] != Label.SPLIT_NOT_FOUND:
-            impression = self._build_impression(key, bucketing, feature, result)
-            await self._record_stats([(impression, attributes)], start, method)
+            impression_decorated = self._build_impression(key, bucketing, feature, result)
+            await self._record_stats([(impression_decorated, attributes)], start, method)
         return result['treatment'], result['configurations']
 
     async def get_treatments(self, key, feature_flag_names, attributes=None):
@@ -960,23 +963,23 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
                 await self._telemetry_evaluation_producer.record_exception(method)
                 results = {n: self._FAILED_EVAL_RESULT for n in features}
 
-        imp_attrs = [
+        imp_decorated_attrs = [
             (i, attributes) for i in self._build_impressions(key, bucketing, results)
-            if i.label != Label.SPLIT_NOT_FOUND
+            if i.Impression.label != Label.SPLIT_NOT_FOUND
         ]
-        await self._record_stats(imp_attrs, start, method)
+        await self._record_stats(imp_decorated_attrs, start, method)
 
         return {
             feature: (res['treatment'], res['configurations'])
             for feature, res in results.items()
         }
 
-    async def _record_stats(self, impressions, start, operation):
+    async def _record_stats(self, impressions_decorated, start, operation):
         """
         Record impressions for async calls
 
-        :param impressions: Generated impressions
-        :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
+        :param impressions_decorated: Generated impressions decorated
+        :type impressions_decorated: list[tuple[splitio.models.impression.Impression, dict]]
 
         :param start: timestamp when get_treatment or get_treatments was called
         :type start: int
@@ -985,7 +988,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         :type operation: str
         """
         end = get_current_epoch_time_ms()
-        await self._recorder.record_treatment_stats(impressions, get_latency_bucket_index(end - start),
+        await self._recorder.record_treatment_stats(impressions_decorated, get_latency_bucket_index(end - start),
                                               operation, 'get_' + operation.value)
 
     async def track(self, key, traffic_type, event_type, value=None, properties=None):
