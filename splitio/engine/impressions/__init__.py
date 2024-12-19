@@ -118,6 +118,7 @@ def set_classes_async(storage_mode, impressions_mode, api_adapter, imp_counter, 
         api_impressions_adapter = api_adapter['impressions']
         sender_adapter = InMemorySenderAdapterAsync(api_telemetry_adapter)
 
+    none_strategy = StrategyNoneMode()
     unique_keys_synchronizer = UniqueKeysSynchronizerAsync(sender_adapter, unique_keys_tracker)
     unique_keys_task = UniqueKeysSyncTaskAsync(unique_keys_synchronizer.send_all)
     clear_filter_sync = ClearFilterSynchronizerAsync(unique_keys_tracker)
@@ -134,4 +135,4 @@ def set_classes_async(storage_mode, impressions_mode, api_adapter, imp_counter, 
         imp_strategy = StrategyOptimizedMode()
 
     return unique_keys_synchronizer, clear_filter_sync, unique_keys_task, clear_filter_task, \
-            impressions_count_sync, impressions_count_task, imp_strategy
+            impressions_count_sync, impressions_count_task, imp_strategy, none_strategy
