@@ -231,7 +231,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
             treatment, _ = self._get_treatment(MethodExceptionsAndLatencies.TREATMENT, key, feature_flag_name, attributes)
             return treatment
 
-        except Exception as e:
+        except:
             _LOGGER.error('get_treatment failed')
             return CONTROL
 
@@ -698,7 +698,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
             treatment, _ = await self._get_treatment(MethodExceptionsAndLatencies.TREATMENT, key, feature_flag_name, attributes)
             return treatment
 
-        except Exception as e:
+        except:
             _LOGGER.error('get_treatment failed')
             return CONTROL
 
