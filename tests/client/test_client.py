@@ -20,7 +20,7 @@ from splitio.engine.impressions.impressions import Manager as ImpressionManager
 from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.engine.evaluator import Evaluator
 from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
-from splitio.engine.impressions.strategies import StrategyDebugMode
+from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode, StrategyOptimizedMode
 from tests.integration import splits_json
 
 
@@ -43,7 +43,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
@@ -74,6 +74,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 'label': 'some_label',
                 'change_number': 123
             },
+            'track': True
         }
         _logger = mocker.Mock()
         assert client.get_treatment('some_key', 'SPLIT_2') == 'on'
@@ -104,7 +105,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         segment_storage = InMemorySegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10, telemetry_runtime_producer)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
 
         destroyed_property = mocker.PropertyMock()
@@ -141,7 +142,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'impression': {
                 'label': 'some_label',
                 'change_number': 123
-            }
+            },
+            'track': True
         }
         _logger = mocker.Mock()
         client._send_impression_to_listener = mocker.Mock()
@@ -178,7 +180,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         segment_storage = InMemorySegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10, telemetry_runtime_producer)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
         split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0]), from_raw(splits_json['splitChange1_1']['splits'][1])], [], -1)
 
@@ -215,7 +217,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'impression': {
                 'label': 'some_label',
                 'change_number': 123
-            }
+            },
+            'track': True
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_2': evaluation,
@@ -223,7 +226,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         }
         _logger = mocker.Mock()
         client._send_impression_to_listener = mocker.Mock()
-        assert client.get_treatments('key', ['SPLIT_2', 'SPLIT_1']) == {'SPLIT_2': 'on', 'SPLIT_1': 'on'}
+        treatments = client.get_treatments('key', ['SPLIT_2', 'SPLIT_1'])
+        assert treatments == {'SPLIT_2': 'on', 'SPLIT_1': 'on'}
 
         impressions_called = impression_storage.pop_many(100)
         assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000) in impressions_called
@@ -254,7 +258,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         segment_storage = InMemorySegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10, telemetry_runtime_producer)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
         split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0]), from_raw(splits_json['splitChange1_1']['splits'][1])], [], -1)
 
@@ -291,7 +295,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'impression': {
                 'label': 'some_label',
                 'change_number': 123
-            }
+            },
+            'track': True
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_2': evaluation,
@@ -330,7 +335,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         segment_storage = InMemorySegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10, telemetry_runtime_producer)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
         split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0]), from_raw(splits_json['splitChange1_1']['splits'][1])], [], -1)
 
@@ -367,7 +372,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'impression': {
                 'label': 'some_label',
                 'change_number': 123
-            }
+            },
+            'track': True
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_2': evaluation,
@@ -406,7 +412,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         segment_storage = InMemorySegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10, telemetry_runtime_producer)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
         split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0]), from_raw(splits_json['splitChange1_1']['splits'][1])], [], -1)
 
@@ -442,7 +448,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'impression': {
                 'label': 'some_label',
                 'change_number': 123
-            }
+            },
+            'track': True
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_1': evaluation,
@@ -486,7 +493,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         segment_storage = InMemorySegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10, telemetry_runtime_producer)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
         split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0]), from_raw(splits_json['splitChange1_1']['splits'][1])], [], -1)
 
@@ -522,7 +529,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'impression': {
                 'label': 'some_label',
                 'change_number': 123
-            }
+            },
+            'track': True
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_1': evaluation,
@@ -563,7 +571,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         segment_storage = InMemorySegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10, telemetry_runtime_producer)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
         split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0]), from_raw(splits_json['splitChange1_1']['splits'][1])], [], -1)
 
@@ -599,7 +607,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'impression': {
                 'label': 'some_label',
                 'change_number': 123
-            }
+            },
+            'track': True
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_1': evaluation,
@@ -630,6 +639,182 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             raise RuntimeError('something')
         client._evaluator.eval_many_with_context.side_effect = _raise
         assert client.get_treatments_with_config_by_flag_sets('key', ['set_1']) == {'SPLIT_1': ('control', None), 'SPLIT_2': ('control', None)}
+        factory.destroy()
+
+    def test_impression_toggle_optimized(self, mocker):
+        """Test get_treatment execution paths."""
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        impression_storage = InMemoryImpressionStorage(10, telemetry_runtime_producer)
+        event_storage = mocker.Mock(spec=EventStorage)
+
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+
+        impmanager = ImpressionManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+        class TelemetrySubmitterMock():
+            def synchronize_config(*_):
+                pass
+
+        factory = SplitFactory(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            mocker.Mock(),
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            TelemetrySubmitterMock(),
+        )
+
+        factory.block_until_ready(5)
+
+        split_storage.update([
+            from_raw(splits_json['splitChange1_1']['splits'][0]),
+            from_raw(splits_json['splitChange1_1']['splits'][1]),
+            from_raw(splits_json['splitChange1_1']['splits'][2])
+            ], [], -1)
+        client = Client(factory, recorder, True)
+        assert client.get_treatment('some_key', 'SPLIT_1') == 'off'
+        assert client.get_treatment('some_key', 'SPLIT_2') == 'on'
+        assert client.get_treatment('some_key', 'SPLIT_3') == 'on'
+
+        impressions = impression_storage.pop_many(100)
+        assert len(impressions) == 2
+
+        found1 = False
+        found2 = False
+        for impression in impressions:
+            if impression[1] == 'SPLIT_1':
+                found1 = True
+            if impression[1] == 'SPLIT_2':
+                found2 = True
+        assert found1
+        assert found2
+        factory.destroy()
+
+    def test_impression_toggle_debug(self, mocker):
+        """Test get_treatment execution paths."""
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        impression_storage = InMemoryImpressionStorage(10, telemetry_runtime_producer)
+        event_storage = mocker.Mock(spec=EventStorage)
+
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+        class TelemetrySubmitterMock():
+            def synchronize_config(*_):
+                pass
+
+        factory = SplitFactory(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            mocker.Mock(),
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            TelemetrySubmitterMock(),
+        )
+
+        factory.block_until_ready(5)
+
+        split_storage.update([
+            from_raw(splits_json['splitChange1_1']['splits'][0]),
+            from_raw(splits_json['splitChange1_1']['splits'][1]),
+            from_raw(splits_json['splitChange1_1']['splits'][2])
+            ], [], -1)
+        client = Client(factory, recorder, True)
+        assert client.get_treatment('some_key', 'SPLIT_1') == 'off'
+        assert client.get_treatment('some_key', 'SPLIT_2') == 'on'
+        assert client.get_treatment('some_key', 'SPLIT_3') == 'on'
+
+        impressions = impression_storage.pop_many(100)
+        assert len(impressions) == 2
+
+        found1 = False
+        found2 = False
+        for impression in impressions:
+            if impression[1] == 'SPLIT_1':
+                found1 = True
+            if impression[1] == 'SPLIT_2':
+                found2 = True
+        assert found1
+        assert found2
+        factory.destroy()
+
+    def test_impression_toggle_none(self, mocker):
+        """Test get_treatment execution paths."""
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        impression_storage = InMemoryImpressionStorage(10, telemetry_runtime_producer)
+        event_storage = mocker.Mock(spec=EventStorage)
+
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+        non_strategy = StrategyNoneMode()
+        impmanager = ImpressionManager(non_strategy, non_strategy, telemetry_runtime_producer)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+        class TelemetrySubmitterMock():
+            def synchronize_config(*_):
+                pass
+
+        factory = SplitFactory(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            mocker.Mock(),
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            TelemetrySubmitterMock(),
+        )
+
+        factory.block_until_ready(5)
+
+        split_storage.update([
+            from_raw(splits_json['splitChange1_1']['splits'][0]),
+            from_raw(splits_json['splitChange1_1']['splits'][1]),
+            from_raw(splits_json['splitChange1_1']['splits'][2])
+            ], [], -1)
+        client = Client(factory, recorder, True)
+        assert client.get_treatment('some_key', 'SPLIT_1') == 'off'
+        assert client.get_treatment('some_key', 'SPLIT_2') == 'on'
+        assert client.get_treatment('some_key', 'SPLIT_3') == 'on'
+
+        impressions = impression_storage.pop_many(100)
+        assert len(impressions) == 0
         factory.destroy()
 
     @mock.patch('splitio.client.factory.SplitFactory.destroy')
@@ -717,7 +902,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10, telemetry_runtime_producer)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         split_storage = InMemorySplitStorage()
         segment_storage = InMemorySegmentStorage()
         split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0])], [], -1)
@@ -796,7 +981,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10, telemetry_runtime_producer)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         split_storage = InMemorySplitStorage()
         segment_storage = InMemorySegmentStorage()
         split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0])], [], -1)
@@ -930,7 +1115,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         split_storage = InMemorySplitStorage()
         segment_storage = InMemorySegmentStorage()
         split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0])], [], -1)
@@ -1049,7 +1234,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         await split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0])], [], -1)
 
@@ -1085,6 +1270,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
                 'label': 'some_label',
                 'change_number': 123
             },
+            'track': True
         }
         _logger = mocker.Mock()
         assert await client.get_treatment('some_key', 'SPLIT_2') == 'on'
@@ -1117,7 +1303,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         await split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0])], [], -1)
 
@@ -1153,7 +1339,8 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'impression': {
                 'label': 'some_label',
                 'change_number': 123
-            }
+            },
+            'track': True
         }
         _logger = mocker.Mock()
         client._send_impression_to_listener = mocker.Mock()
@@ -1191,7 +1378,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         await split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0]), from_raw(splits_json['splitChange1_1']['splits'][1])], [], -1)
 
@@ -1227,7 +1414,8 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'impression': {
                 'label': 'some_label',
                 'change_number': 123
-            }
+            },
+            'track': True
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_2': evaluation,
@@ -1268,7 +1456,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         await split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0]), from_raw(splits_json['splitChange1_1']['splits'][1])], [], -1)
 
@@ -1304,7 +1492,8 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'impression': {
                 'label': 'some_label',
                 'change_number': 123
-            }
+            },
+            'track': True
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_2': evaluation,
@@ -1345,7 +1534,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         await split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0]), from_raw(splits_json['splitChange1_1']['splits'][1])], [], -1)
 
@@ -1381,7 +1570,8 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'impression': {
                 'label': 'some_label',
                 'change_number': 123
-            }
+            },
+            'track': True
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_2': evaluation,
@@ -1422,7 +1612,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         await split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0]), from_raw(splits_json['splitChange1_1']['splits'][1])], [], -1)
 
@@ -1457,7 +1647,8 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'impression': {
                 'label': 'some_label',
                 'change_number': 123
-            }
+            },
+            'track': True
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_1': evaluation,
@@ -1503,7 +1694,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         await split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0]), from_raw(splits_json['splitChange1_1']['splits'][1])], [], -1)
 
@@ -1538,7 +1729,8 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'impression': {
                 'label': 'some_label',
                 'change_number': 123
-            }
+            },
+            'track': True
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_1': evaluation,
@@ -1584,7 +1776,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         await split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0]), from_raw(splits_json['splitChange1_1']['splits'][1])], [], -1)
 
@@ -1619,7 +1811,8 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'impression': {
                 'label': 'some_label',
                 'change_number': 123
-            }
+            },
+            'track': True
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_1': evaluation,
@@ -1653,6 +1846,173 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'SPLIT_1': ('control', None),
             'SPLIT_2': ('control', None)
         }
+        await factory.destroy()
+
+    @pytest.mark.asyncio
+    async def test_impression_toggle_optimized(self, mocker):
+        """Test get_treatment execution paths."""
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
+        event_storage = mocker.Mock(spec=EventStorage)
+
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+
+        impmanager = ImpressionManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer)
+        recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+        factory = SplitFactoryAsync(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+
+        await factory.block_until_ready(5)
+
+        await split_storage.update([
+            from_raw(splits_json['splitChange1_1']['splits'][0]),
+            from_raw(splits_json['splitChange1_1']['splits'][1]),
+            from_raw(splits_json['splitChange1_1']['splits'][2])
+            ], [], -1)
+        client = ClientAsync(factory, recorder, True)
+        treatment = await client.get_treatment('some_key', 'SPLIT_1')
+        assert  treatment == 'off'
+        treatment = await client.get_treatment('some_key', 'SPLIT_2')
+        assert treatment == 'on'
+        treatment = await client.get_treatment('some_key', 'SPLIT_3')
+        assert treatment == 'on'
+
+        impressions = await impression_storage.pop_many(100)
+        assert len(impressions) == 2
+
+        found1 = False
+        found2 = False
+        for impression in impressions:
+            if impression[1] == 'SPLIT_1':
+                found1 = True
+            if impression[1] == 'SPLIT_2':
+                found2 = True
+        assert found1
+        assert found2
+        await factory.destroy()
+
+    @pytest.mark.asyncio
+    async def test_impression_toggle_debug(self, mocker):
+        """Test get_treatment execution paths."""
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
+        event_storage = mocker.Mock(spec=EventStorage)
+
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
+        recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+        factory = SplitFactoryAsync(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+
+        await factory.block_until_ready(5)
+
+        await split_storage.update([
+            from_raw(splits_json['splitChange1_1']['splits'][0]),
+            from_raw(splits_json['splitChange1_1']['splits'][1]),
+            from_raw(splits_json['splitChange1_1']['splits'][2])
+            ], [], -1)
+        client = ClientAsync(factory, recorder, True)
+        assert await client.get_treatment('some_key', 'SPLIT_1') == 'off'
+        assert await client.get_treatment('some_key', 'SPLIT_2') == 'on'
+        assert await client.get_treatment('some_key', 'SPLIT_3') == 'on'
+
+        impressions = await impression_storage.pop_many(100)
+        assert len(impressions) == 2
+
+        found1 = False
+        found2 = False
+        for impression in impressions:
+            if impression[1] == 'SPLIT_1':
+                found1 = True
+            if impression[1] == 'SPLIT_2':
+                found2 = True
+        assert found1
+        assert found2
+        await factory.destroy()
+
+    @pytest.mark.asyncio
+    async def test_impression_toggle_none(self, mocker):
+        """Test get_treatment execution paths."""
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
+        event_storage = mocker.Mock(spec=EventStorage)
+
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+        non_strategy = StrategyNoneMode()
+        impmanager = ImpressionManager(non_strategy, non_strategy, telemetry_runtime_producer)
+        recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+        factory = SplitFactoryAsync(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+
+        await factory.block_until_ready(5)
+
+        await split_storage.update([
+            from_raw(splits_json['splitChange1_1']['splits'][0]),
+            from_raw(splits_json['splitChange1_1']['splits'][1]),
+            from_raw(splits_json['splitChange1_1']['splits'][2])
+            ], [], -1)
+        client = ClientAsync(factory, recorder, True)
+        assert await client.get_treatment('some_key', 'SPLIT_1') == 'off'
+        assert await client.get_treatment('some_key', 'SPLIT_2') == 'on'
+        assert await client.get_treatment('some_key', 'SPLIT_3') == 'on'
+
+        impressions = await impression_storage.pop_many(100)
+        assert len(impressions) == 0
         await factory.destroy()
 
     @pytest.mark.asyncio
@@ -1712,7 +2072,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = InMemoryEventStorageAsync(10, telemetry_runtime_producer)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         await split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0])], [], -1)
         factory = SplitFactoryAsync('localhost',
@@ -1753,7 +2113,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = InMemoryEventStorageAsync(10, telemetry_runtime_producer)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         await split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0])], [], -1)
         destroyed_property = mocker.PropertyMock()
@@ -1825,7 +2185,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = InMemoryEventStorageAsync(10, telemetry_runtime_producer)
-        impmanager = ImpressionManager(StrategyDebugMode(), telemetry_runtime_producer)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         await split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0])], [], -1)
         destroyed_property = mocker.PropertyMock()
