@@ -68,7 +68,7 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
                 'label': label,
                 'change_number': _change_number
             },
-            'track': feature.trackImpressions
+            'track': feature.trackImpressions if feature else None
         }
 
     def _treatment_for_flag(self, flag, key, bucketing, attributes, ctx):
