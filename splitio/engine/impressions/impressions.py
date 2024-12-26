@@ -43,7 +43,7 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         for_counter_all = []
         for_unique_keys_tracker_all = []
         for impression_decorated, att in impressions_decorated:
-            if not impression_decorated.track:
+            if impression_decorated.disabled:
                 for_log, for_listener, for_counter, for_unique_keys_tracker = self._none_strategy.process_impressions([(impression_decorated.Impression, att)])
             else:
                 for_log, for_listener, for_counter, for_unique_keys_tracker = self._strategy.process_impressions([(impression_decorated.Impression, att)])

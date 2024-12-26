@@ -112,8 +112,8 @@ class ImpressionManagerTests(object):
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), True), None),
-            (ImpressionDecorated(Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), True), None)
+            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), False), None),
+            (ImpressionDecorated(Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), False), None)
         ])
 
         assert for_unique_keys_tracker == []
@@ -123,7 +123,7 @@ class ImpressionManagerTests(object):
 
         # Tracking the same impression a ms later should be empty
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), True), None)
+            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), False), None)
         ])
         assert imps == []
         assert deduped == 1
@@ -131,7 +131,7 @@ class ImpressionManagerTests(object):
 
         # Tracking an impression with a different key makes it to the queue
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), True), None)
+            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), False), None)
         ])
         assert imps == [Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
         assert deduped == 0
@@ -144,8 +144,8 @@ class ImpressionManagerTests(object):
 
         # Track the same impressions but "one hour later"
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), True), None),
-            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), True), None)
+            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), False), None),
+            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), False), None)
         ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1)]
@@ -158,14 +158,14 @@ class ImpressionManagerTests(object):
 
         # Test counting only from the second impression
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k3', 'f3', 'on', 'l1', 123, None, utc_now-1), True), None)
+            (ImpressionDecorated(Impression('k3', 'f3', 'on', 'l1', 123, None, utc_now-1), False), None)
         ])
         assert for_counter == []
         assert deduped == 0
         assert for_unique_keys_tracker == []
 
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k3', 'f3', 'on', 'l1', 123, None, utc_now-1), True), None)
+            (ImpressionDecorated(Impression('k3', 'f3', 'on', 'l1', 123, None, utc_now-1), False), None)
         ])
         assert for_counter == [Impression('k3', 'f3', 'on', 'l1', 123, None, utc_now-1, utc_now-1)]
         assert deduped == 1
@@ -186,8 +186,8 @@ class ImpressionManagerTests(object):
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), True), None),
-            (ImpressionDecorated(Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), True), None)
+            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), False), None),
+            (ImpressionDecorated(Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), False), None)
         ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
@@ -196,7 +196,7 @@ class ImpressionManagerTests(object):
 
         # Tracking the same impression a ms later should return the impression
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1',  'f1', 'on', 'l1', 123, None, utc_now-2), True), None)
+            (ImpressionDecorated(Impression('k1',  'f1', 'on', 'l1', 123, None, utc_now-2), False), None)
         ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2, utc_now-3)]
         assert for_counter == []
@@ -204,7 +204,7 @@ class ImpressionManagerTests(object):
 
         # Tracking a in impression with a different key makes it to the queue
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), True), None)
+            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), False), None)
         ])
         assert imps == [Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
         assert for_counter == []
@@ -218,8 +218,8 @@ class ImpressionManagerTests(object):
 
         # Track the same impressions but "one hour later"
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), True), None),
-            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), True), None)
+            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), False), None),
+            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), False), None)
         ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1)]
@@ -242,8 +242,8 @@ class ImpressionManagerTests(object):
 
         # no impressions are tracked, only counter and mtk
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), True), None),
-            (ImpressionDecorated(Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), True), None)
+            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), False), None),
+            (ImpressionDecorated(Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), False), None)
         ])
         assert imps == []
         assert for_counter == [
@@ -254,13 +254,13 @@ class ImpressionManagerTests(object):
 
         # Tracking the same impression a ms later should not return the impression and no change on mtk cache
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), True), None)
+            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), False), None)
         ])
         assert imps == []
 
         # Tracking an impression with a different key, will only increase mtk
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k3', 'f1', 'on', 'l1', 123, None, utc_now-1), True), None)
+            (ImpressionDecorated(Impression('k3', 'f1', 'on', 'l1', 123, None, utc_now-1), False), None)
         ])
         assert imps == []
         assert for_unique_keys_tracker == [('k3', 'f1')]
@@ -276,8 +276,8 @@ class ImpressionManagerTests(object):
 
         # Track the same impressions but "one hour later", no changes on mtk
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), True), None),
-            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), True), None)
+            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), False), None),
+            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), False), None)
         ])
         assert imps == []
         assert for_counter == [
@@ -301,8 +301,8 @@ class ImpressionManagerTests(object):
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), True), None),
-            (ImpressionDecorated(Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), True), None)
+            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), False), None),
+            (ImpressionDecorated(Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), False), None)
         ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
@@ -313,7 +313,7 @@ class ImpressionManagerTests(object):
 
         # Tracking the same impression a ms later should return empty
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), True), None)
+            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), False), None)
         ])
         assert imps == []
         assert deduped == 1
@@ -322,7 +322,7 @@ class ImpressionManagerTests(object):
 
         # Tracking a in impression with a different key makes it to the queue
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), True), None)
+            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), False), None)
         ])
         assert imps == [Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
         assert deduped == 0
@@ -337,8 +337,8 @@ class ImpressionManagerTests(object):
 
         # Track the same impressions but "one hour later"
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), True), None),
-            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), True), None)
+            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), False), None),
+            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), False), None)
         ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1)]
@@ -356,14 +356,14 @@ class ImpressionManagerTests(object):
 
         # Test counting only from the second impression
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k3', 'f3', 'on', 'l1', 123, None, utc_now-1), True), None)
+            (ImpressionDecorated(Impression('k3', 'f3', 'on', 'l1', 123, None, utc_now-1), False), None)
         ])
         assert for_counter == []
         assert deduped == 0
         assert for_unique_keys_tracker == []
 
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k3', 'f3', 'on', 'l1', 123, None, utc_now-1), True), None)
+            (ImpressionDecorated(Impression('k3', 'f3', 'on', 'l1', 123, None, utc_now-1), False), None)
         ])
         assert for_counter == [
             Impression('k3', 'f3', 'on', 'l1', 123, None, utc_now-1, utc_now-1)
@@ -387,8 +387,8 @@ class ImpressionManagerTests(object):
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), True), None),
-            (ImpressionDecorated(Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), True), None)
+            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), False), None),
+            (ImpressionDecorated(Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), False), None)
         ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3),
                         Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3)]
@@ -398,7 +398,7 @@ class ImpressionManagerTests(object):
 
         # Tracking the same impression a ms later should return the imp
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), True), None)
+            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), False), None)
         ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2, utc_now-3)]
         assert listen == [(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2, utc_now-3), None)]
@@ -407,7 +407,7 @@ class ImpressionManagerTests(object):
 
         # Tracking a in impression with a different key makes it to the queue
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), True), None)
+            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), False), None)
         ])
         assert imps == [Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1)]
         assert listen == [(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)]
@@ -422,8 +422,8 @@ class ImpressionManagerTests(object):
 
         # Track the same impressions but "one hour later"
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), True), None),
-            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), True), None)
+            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), False), None),
+            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), False), None)
         ])
         assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1)]
@@ -449,8 +449,8 @@ class ImpressionManagerTests(object):
 
         # An impression that hasn't happened in the last hour (pt = None) should not be tracked
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), True), None),
-            (ImpressionDecorated(Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), True), None)
+            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), False), None),
+            (ImpressionDecorated(Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), False), None)
         ])
         assert imps == []
         assert listen == [(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), None),
@@ -462,7 +462,7 @@ class ImpressionManagerTests(object):
 
         # Tracking the same impression a ms later should return empty, no updates on mtk
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), True), None)
+            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2), False), None)
         ])
         assert imps == []
         assert listen == [(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-2, None), None)]
@@ -471,7 +471,7 @@ class ImpressionManagerTests(object):
 
         # Tracking a in impression with a different key update mtk
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), True), None)
+            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), False), None)
         ])
         assert imps == []
         assert listen == [(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-1), None)]
@@ -486,8 +486,8 @@ class ImpressionManagerTests(object):
 
         # Track the same impressions but "one hour later"
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), True), None),
-            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), True), None)
+            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1), False), None),
+            (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2), False), None)
         ])
         assert imps == []
         assert for_counter == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1),
@@ -517,8 +517,8 @@ class ImpressionManagerTests(object):
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), False), None),
-            (ImpressionDecorated(Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), True), None)
+            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), True), None),
+            (ImpressionDecorated(Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), False), None)
         ])
 
         assert for_unique_keys_tracker == [('k1', 'f1')]
@@ -542,8 +542,8 @@ class ImpressionManagerTests(object):
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), False), None),
-            (ImpressionDecorated(Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), True), None)
+            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), True), None),
+            (ImpressionDecorated(Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), False), None)
         ])
 
         assert for_unique_keys_tracker == [('k1', 'f1')]
@@ -567,8 +567,8 @@ class ImpressionManagerTests(object):
 
         # An impression that hasn't happened in the last hour (pt = None) should be tracked
         imps, deduped, listen, for_counter, for_unique_keys_tracker = manager.process_impressions([
-            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), False), None),
-            (ImpressionDecorated(Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), True), None)
+            (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-3), True), None),
+            (ImpressionDecorated(Impression('k1', 'f2', 'on', 'l1', 123, None, utc_now-3), False), None)
         ])
 
         assert for_unique_keys_tracker == [('k1', 'f1'), ('k1', 'f2')]

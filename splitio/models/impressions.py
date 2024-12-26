@@ -20,7 +20,7 @@ ImpressionDecorated = namedtuple(
     'ImpressionDecorated',
     [
         'Impression',
-        'track'
+        'disabled'
     ]
 )
 
