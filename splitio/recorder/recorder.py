@@ -174,9 +174,8 @@ class StandardRecorder(StatsRecorderThreadingBase):
                 self._imp_counter.track(for_counter)
             if len(for_unique_keys_tracker) > 0:
                 [self._unique_keys_tracker.track(item[0], item[1]) for item in for_unique_keys_tracker]
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error recording impressions')
-            _LOGGER.error(exc)
             _LOGGER.debug('Error: ', exc_info=True)
 
     def record_track_stats(self, event, latency):

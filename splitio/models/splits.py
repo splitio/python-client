@@ -10,7 +10,7 @@ _LOGGER = logging.getLogger(__name__)
 
 SplitView = namedtuple(
     'SplitView',
-    ['name', 'traffic_type', 'killed', 'treatments', 'change_number', 'configs', 'default_treatment', 'sets', 'ImpressionsDisabled']
+    ['name', 'traffic_type', 'killed', 'treatments', 'change_number', 'configs', 'default_treatment', 'sets', 'impressions_disabled']
 )
 
 _DEFAULT_CONDITIONS_TEMPLATE =   {
@@ -74,7 +74,7 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             traffic_allocation_seed=None,
             configurations=None,
             sets=None,
-            ImpressionsDisabled=None
+            impressionsDisabled=None
     ):
         """
         Class constructor.
@@ -97,8 +97,8 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
         :type traffic_allocation_seed: int
         :pram sets: list of flag sets
         :type sets: list
-        :pram ImpressionsDisabled: track impressions flag
-        :type ImpressionsDisabled: boolean
+        :pram impressionsDisabled: track impressions flag
+        :type impressionsDisabled: boolean
         """
         self._name = name
         self._seed = seed
@@ -128,7 +128,7 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
 
         self._configurations = configurations
         self._sets = set(sets) if sets is not None else set()
-        self._ImpressionsDisabled = ImpressionsDisabled if ImpressionsDisabled is not None else False
+        self._impressionsDisabled = impressionsDisabled if impressionsDisabled is not None else False
 
     @property
     def name(self):
@@ -191,9 +191,9 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
         return self._sets
 
     @property
-    def ImpressionsDisabled(self):
-        """Return ImpressionsDisabled of the split."""
-        return self._ImpressionsDisabled
+    def impressionsDisabled(self):
+        """Return impressionsDisabled of the split."""
+        return self._impressionsDisabled
 
     def get_configurations_for(self, treatment):
         """Return the mapping of treatments to configurations."""
@@ -224,7 +224,7 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             'conditions': [c.to_json() for c in self.conditions],
             'configurations': self._configurations,
             'sets': list(self._sets),
-            'ImpressionsDisabled': self._ImpressionsDisabled
+            'impressionsDisabled': self._impressionsDisabled
         }
 
     def to_split_view(self):
@@ -243,7 +243,7 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             self._configurations if self._configurations is not None else {},
             self._default_treatment,
             list(self._sets) if self._sets is not None else [],
-            self._ImpressionsDisabled
+            self._impressionsDisabled
         )
 
     def local_kill(self, default_treatment, change_number):
@@ -300,5 +300,5 @@ def from_raw(raw_split):
         traffic_allocation_seed=raw_split.get('trafficAllocationSeed'),
         configurations=raw_split.get('configurations'),
         sets=set(raw_split.get('sets')) if raw_split.get('sets') is not None else [],
-        ImpressionsDisabled=raw_split.get('ImpressionsDisabled') if raw_split.get('ImpressionsDisabled') is not None else False
+        impressionsDisabled=raw_split.get('impressionsDisabled') if raw_split.get('impressionsDisabled') is not None else False
     )
