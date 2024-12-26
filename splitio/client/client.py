@@ -23,7 +23,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
             'label': Label.EXCEPTION,
             'change_number': None,
         },
-        'track': True
+        'impressions_disabled': False
     }
 
     _NON_READY_EVAL_RESULT = {
@@ -33,7 +33,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
             'label': Label.NOT_READY,
             'change_number': None
         },
-        'track': True
+        'impressions_disabled': False
     }
 
     def __init__(self, factory, recorder, labels_enabled=True):
@@ -126,7 +126,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
                 change_number=result['impression']['change_number'],
                 bucketing_key=bucketing,
                 time=utctime_ms()),
-                track=result['track'])
+                disabled=result['impressions_disabled'])
 
     def _build_impressions(self, key, bucketing, results):
         """Build an impression based on evaluation data & it's result."""

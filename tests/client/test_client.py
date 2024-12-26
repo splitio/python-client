@@ -17,6 +17,8 @@ from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStora
     InMemoryImpressionStorageAsync, InMemorySegmentStorageAsync, InMemoryTelemetryStorageAsync, InMemoryEventStorageAsync
 from splitio.models.splits import Split, Status, from_raw
 from splitio.engine.impressions.impressions import Manager as ImpressionManager
+from splitio.engine.impressions.manager import Counter as ImpressionsCounter
+from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
 from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.engine.evaluator import Evaluator
 from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
@@ -44,7 +46,9 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
-        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer(),
+                                    unique_keys_tracker=UniqueKeysTracker(),
+                                    imp_counter=ImpressionsCounter())
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -61,7 +65,9 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             telemetry_producer.get_telemetry_init_producer(),
             TelemetrySubmitterMock(),
         )
-
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = True
+        type(factory).ready = ready_property
         factory.block_until_ready(5)
 
         split_storage.update([from_raw(splits_json['splitChange1_1']['splits'][0])], [], -1)
@@ -74,7 +80,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 'label': 'some_label',
                 'change_number': 123
             },
-            'track': True
+            'impressions_disabled': False
         }
         _logger = mocker.Mock()
         assert client.get_treatment('some_key', 'SPLIT_2') == 'on'
@@ -85,6 +91,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         ready_property = mocker.PropertyMock()
         ready_property.return_value = False
         type(factory).ready = ready_property
+       # pytest.set_trace()
         assert client.get_treatment('some_key', 'SPLIT_2', {'some_attribute': 1}) == 'control'
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', Label.NOT_READY, None, None, 1000)]
 
@@ -143,7 +150,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 'label': 'some_label',
                 'change_number': 123
             },
-            'track': True
+            'impressions_disabled': False
         }
         _logger = mocker.Mock()
         client._send_impression_to_listener = mocker.Mock()
@@ -218,7 +225,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 'label': 'some_label',
                 'change_number': 123
             },
-            'track': True
+            'impressions_disabled': False
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_2': evaluation,
@@ -296,7 +303,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 'label': 'some_label',
                 'change_number': 123
             },
-            'track': True
+            'impressions_disabled': False
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_2': evaluation,
@@ -373,7 +380,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 'label': 'some_label',
                 'change_number': 123
             },
-            'track': True
+            'impressions_disabled': False
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_2': evaluation,
@@ -449,7 +456,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 'label': 'some_label',
                 'change_number': 123
             },
-            'track': True
+            'impressions_disabled': False
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_1': evaluation,
@@ -530,7 +537,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 'label': 'some_label',
                 'change_number': 123
             },
-            'track': True
+            'impressions_disabled': False
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_1': evaluation,
@@ -608,7 +615,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 'label': 'some_label',
                 'change_number': 123
             },
-            'track': True
+            'impressions_disabled': False
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_1': evaluation,
@@ -1270,7 +1277,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
                 'label': 'some_label',
                 'change_number': 123
             },
-            'track': True
+            'impressions_disabled': False
         }
         _logger = mocker.Mock()
         assert await client.get_treatment('some_key', 'SPLIT_2') == 'on'
@@ -1340,7 +1347,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
                 'label': 'some_label',
                 'change_number': 123
             },
-            'track': True
+            'impressions_disabled': False
         }
         _logger = mocker.Mock()
         client._send_impression_to_listener = mocker.Mock()
@@ -1415,7 +1422,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
                 'label': 'some_label',
                 'change_number': 123
             },
-            'track': True
+            'impressions_disabled': False
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_2': evaluation,
@@ -1493,7 +1500,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
                 'label': 'some_label',
                 'change_number': 123
             },
-            'track': True
+            'impressions_disabled': False
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_2': evaluation,
@@ -1571,7 +1578,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
                 'label': 'some_label',
                 'change_number': 123
             },
-            'track': True
+            'impressions_disabled': False
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_2': evaluation,
@@ -1648,7 +1655,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
                 'label': 'some_label',
                 'change_number': 123
             },
-            'track': True
+            'impressions_disabled': False
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_1': evaluation,
@@ -1730,7 +1737,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
                 'label': 'some_label',
                 'change_number': 123
             },
-            'track': True
+            'impressions_disabled': False
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_1': evaluation,
@@ -1812,7 +1819,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
                 'label': 'some_label',
                 'change_number': 123
             },
-            'track': True
+            'impressions_disabled': False
         }
         client._evaluator.eval_many_with_context.return_value = {
             'SPLIT_1': evaluation,
