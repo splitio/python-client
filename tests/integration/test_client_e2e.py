@@ -441,7 +441,7 @@ def _manager_methods(factory):
     assert len(manager.split_names()) == 7
     assert len(manager.splits()) == 7
 
-class InMemoryIntegrationTests(object):
+class InMemoryDebugIntegrationTests(object):
     """Inmemory storage-based integration tests."""
 
     def setup_method(self):
@@ -476,7 +476,7 @@ class InMemoryIntegrationTests(object):
             'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
         }
-        impmanager = ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer) # no listener
+        impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer)
         # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
         try:
@@ -632,7 +632,7 @@ class InMemoryOptimizedIntegrationTests(object):
             'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
         }
-        impmanager = ImpressionsManager(StrategyOptimizedMode(), telemetry_runtime_producer) # no listener
+        impmanager = ImpressionsManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer)
         self.factory = SplitFactory('some_api_key',
                                     storages,
@@ -766,7 +766,7 @@ class RedisIntegrationTests(object):
             'impressions': RedisImpressionsStorage(redis_client, metadata),
             'events': RedisEventsStorage(redis_client, metadata),
         }
-        impmanager = ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer) # no listener
+        impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = PipelinedRecorder(redis_client.pipeline, impmanager, storages['events'],
                                     storages['impressions'], telemetry_redis_storage)
         self.factory = SplitFactory('some_api_key',
@@ -946,7 +946,7 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
             'impressions': RedisImpressionsStorage(redis_client, metadata),
             'events': RedisEventsStorage(redis_client, metadata),
         }
-        impmanager = ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer) # no listener
+        impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = PipelinedRecorder(redis_client.pipeline, impmanager,
                                      storages['events'], storages['impressions'], telemetry_redis_storage)
         self.factory = SplitFactory('some_api_key',
@@ -974,103 +974,98 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
 
         # Tests 1
         self.factory._storages['splits'].update([], ['SPLIT_1'], -1)
-#        self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._feature_flag_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange1_1'])
         self._synchronize_now()
 
-        assert sorted(self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert sorted(self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2", "SPLIT_3"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         self._update_temp_file(splits_json['splitChange1_2'])
         self._synchronize_now()
 
-        assert sorted(self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert sorted(self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2", "SPLIT_3"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert client.get_treatment("key", "SPLIT_2", None) == 'off'
 
         self._update_temp_file(splits_json['splitChange1_3'])
         self._synchronize_now()
 
-        assert self.factory.manager().split_names() == ["SPLIT_2"]
+        assert self.factory.manager().split_names() == ["SPLIT_2", "SPLIT_3"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'control'
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         # Tests 3
         self.factory._storages['splits'].update([], ['SPLIT_1'], -1)
-#        self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._feature_flag_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange3_1'])
         self._synchronize_now()
 
-        assert self.factory.manager().split_names() == ["SPLIT_2"]
+        assert self.factory.manager().split_names() == ["SPLIT_2", "SPLIT_3"]
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         self._update_temp_file(splits_json['splitChange3_2'])
         self._synchronize_now()
 
-        assert self.factory.manager().split_names() == ["SPLIT_2"]
+        assert self.factory.manager().split_names() == ["SPLIT_2", "SPLIT_3"]
         assert client.get_treatment("key", "SPLIT_2", None) == 'off'
 
         # Tests 4
         self.factory._storages['splits'].update([], ['SPLIT_2'], -1)
-#        self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._feature_flag_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange4_1'])
         self._synchronize_now()
 
-        assert sorted(self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert sorted(self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2", "SPLIT_3"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         self._update_temp_file(splits_json['splitChange4_2'])
         self._synchronize_now()
 
-        assert sorted(self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert sorted(self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2", "SPLIT_3"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert client.get_treatment("key", "SPLIT_2", None) == 'off'
 
         self._update_temp_file(splits_json['splitChange4_3'])
         self._synchronize_now()
 
-        assert self.factory.manager().split_names() == ["SPLIT_2"]
+        assert sorted(self.factory.manager().split_names()) == ["SPLIT_2", "SPLIT_3"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'control'
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         # Tests 5
         self.factory._storages['splits'].update([], ['SPLIT_1', 'SPLIT_2'], -1)
-#        self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._feature_flag_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange5_1'])
         self._synchronize_now()
 
-        assert self.factory.manager().split_names() == ["SPLIT_2"]
+        assert sorted(self.factory.manager().split_names()) == ["SPLIT_2", "SPLIT_3"]
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         self._update_temp_file(splits_json['splitChange5_2'])
         self._synchronize_now()
 
-        assert self.factory.manager().split_names() == ["SPLIT_2"]
+        assert sorted(self.factory.manager().split_names()) == ["SPLIT_2", "SPLIT_3"]
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         # Tests 6
         self.factory._storages['splits'].update([], ['SPLIT_2'], -1)
-#        self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._feature_flag_storage.set_change_number(-1)
         self._update_temp_file(splits_json['splitChange6_1'])
         self._synchronize_now()
 
-        assert sorted(self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert sorted(self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2", "SPLIT_3"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         self._update_temp_file(splits_json['splitChange6_2'])
         self._synchronize_now()
 
-        assert sorted(self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert sorted(self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2", "SPLIT_3"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert client.get_treatment("key", "SPLIT_2", None) == 'off'
 
         self._update_temp_file(splits_json['splitChange6_3'])
         self._synchronize_now()
 
-        assert self.factory.manager().split_names() == ["SPLIT_2"]
+        assert sorted(self.factory.manager().split_names()) == ["SPLIT_2", "SPLIT_3"]
         assert client.get_treatment("key", "SPLIT_1", None) == 'control'
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
@@ -1165,7 +1160,7 @@ class PluggableIntegrationTests(object):
             'telemetry': telemetry_pluggable_storage
         }
 
-        impmanager = ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer) # no listener
+        impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = StandardRecorder(impmanager, storages['events'],
                                     storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer)
 
@@ -1352,7 +1347,7 @@ class PluggableOptimizedIntegrationTests(object):
             'telemetry': telemetry_pluggable_storage
         }
 
-        impmanager = ImpressionsManager(StrategyOptimizedMode(), telemetry_runtime_producer) # no listener
+        impmanager = ImpressionsManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = StandardRecorder(impmanager, storages['events'],
                                     storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer)
 
@@ -1519,8 +1514,8 @@ class PluggableNoneIntegrationTests(object):
         unique_keys_tracker = UniqueKeysTracker()
         unique_keys_synchronizer, clear_filter_sync, self.unique_keys_task, \
         clear_filter_task, impressions_count_sync, impressions_count_task, \
-        imp_strategy = set_classes('PLUGGABLE', ImpressionsMode.NONE, self.pluggable_storage_adapter, imp_counter, unique_keys_tracker)
-        impmanager = ImpressionsManager(imp_strategy, telemetry_runtime_producer) # no listener
+        imp_strategy, none_strategy = set_classes('PLUGGABLE', ImpressionsMode.NONE, self.pluggable_storage_adapter, imp_counter, unique_keys_tracker)
+        impmanager = ImpressionsManager(imp_strategy, none_strategy, telemetry_runtime_producer) # no listener
 
         recorder = StandardRecorder(impmanager, storages['events'],
                                     storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, unique_keys_tracker=unique_keys_tracker, imp_counter=imp_counter)
@@ -1666,6 +1661,381 @@ class PluggableNoneIntegrationTests(object):
         self.factory.destroy(event)
         event.wait()
 
+class InMemoryImpressionsToggleIntegrationTests(object):
+    """InMemory storage-based impressions toggle integration tests."""
+
+    def test_optimized(self):
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+
+        split_storage.update([splits.from_raw(splits_json['splitChange1_1']['splits'][0]),
+                              splits.from_raw(splits_json['splitChange1_1']['splits'][1]),
+                              splits.from_raw(splits_json['splitChange1_1']['splits'][2])
+                             ], [], -1)
+
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
+
+        storages = {
+            'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
+            'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
+        }
+        impmanager = ImpressionsManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
+        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTracker(), ImpressionsCounter())
+        # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
+        try:
+            factory = SplitFactory('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    None,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    )  # pylint:disable=attribute-defined-outside-init
+        except:
+            pass
+
+        try:
+            client = factory.client()
+        except:
+            pass
+
+        assert client.get_treatment('user1', 'SPLIT_1') == 'off'
+        assert client.get_treatment('user1', 'SPLIT_2') == 'on'
+        assert client.get_treatment('user1', 'SPLIT_3') == 'on'
+        imp_storage = client._factory._get_storage('impressions')
+        impressions = imp_storage.pop_many(10)
+        assert len(impressions) == 2
+        assert impressions[0].feature_name == 'SPLIT_1'
+        assert impressions[1].feature_name == 'SPLIT_2'
+        assert client._recorder._unique_keys_tracker._cache == {'SPLIT_3': {'user1'}}
+        imps_count = client._recorder._imp_counter.pop_all()
+        assert len(imps_count) == 1
+        assert imps_count[0].feature == 'SPLIT_3'
+        assert imps_count[0].count == 1
+
+    def test_debug(self):
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+
+        split_storage.update([splits.from_raw(splits_json['splitChange1_1']['splits'][0]),
+                              splits.from_raw(splits_json['splitChange1_1']['splits'][1]),
+                              splits.from_raw(splits_json['splitChange1_1']['splits'][2])
+                             ], [], -1)
+
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
+
+        storages = {
+            'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
+            'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
+        }
+        impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
+        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTracker(), ImpressionsCounter())
+        # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
+        try:
+            factory = SplitFactory('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    None,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    )  # pylint:disable=attribute-defined-outside-init
+        except:
+            pass
+
+        try:
+            client = factory.client()
+        except:
+            pass
+
+        assert client.get_treatment('user1', 'SPLIT_1') == 'off'
+        assert client.get_treatment('user1', 'SPLIT_2') == 'on'
+        assert client.get_treatment('user1', 'SPLIT_3') == 'on'
+        imp_storage = client._factory._get_storage('impressions')
+        impressions = imp_storage.pop_many(10)
+        assert len(impressions) == 2
+        assert impressions[0].feature_name == 'SPLIT_1'
+        assert impressions[1].feature_name == 'SPLIT_2'
+        assert client._recorder._unique_keys_tracker._cache == {'SPLIT_3': {'user1'}}
+        imps_count = client._recorder._imp_counter.pop_all()
+        assert len(imps_count) == 1
+        assert imps_count[0].feature == 'SPLIT_3'
+        assert imps_count[0].count == 1
+
+    def test_none(self):
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+
+        split_storage.update([splits.from_raw(splits_json['splitChange1_1']['splits'][0]),
+                              splits.from_raw(splits_json['splitChange1_1']['splits'][1]),
+                              splits.from_raw(splits_json['splitChange1_1']['splits'][2])
+                             ], [], -1)
+
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
+
+        storages = {
+            'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
+            'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
+        }
+        impmanager = ImpressionsManager(StrategyNoneMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
+        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTracker(), ImpressionsCounter())
+        # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
+        try:
+            factory = SplitFactory('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    None,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    )  # pylint:disable=attribute-defined-outside-init
+        except:
+            pass
+
+        try:
+            client = factory.client()
+        except:
+            pass
+
+        assert client.get_treatment('user1', 'SPLIT_1') == 'off'
+        assert client.get_treatment('user1', 'SPLIT_2') == 'on'
+        assert client.get_treatment('user1', 'SPLIT_3') == 'on'
+        imp_storage = client._factory._get_storage('impressions')
+        impressions = imp_storage.pop_many(10)
+        assert len(impressions) == 0
+        assert client._recorder._unique_keys_tracker._cache == {'SPLIT_1': {'user1'}, 'SPLIT_2': {'user1'}, 'SPLIT_3': {'user1'}}
+        imps_count = client._recorder._imp_counter.pop_all()
+        assert len(imps_count) == 3
+        assert imps_count[0].feature == 'SPLIT_1'
+        assert imps_count[0].count == 1
+        assert imps_count[1].feature == 'SPLIT_2'
+        assert imps_count[1].count == 1
+        assert imps_count[2].feature == 'SPLIT_3'
+        assert imps_count[2].count == 1
+
+class RedisImpressionsToggleIntegrationTests(object):
+    """Run impression toggle tests for Redis."""
+
+    def test_optimized(self):
+        """Prepare storages with test data."""
+        metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
+        redis_client = build(DEFAULT_CONFIG.copy())
+        split_storage = RedisSplitStorage(redis_client, True)
+        segment_storage = RedisSegmentStorage(redis_client)
+
+        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][0]['name']), json.dumps(splits_json['splitChange1_1']['splits'][0]))
+        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][1]['name']), json.dumps(splits_json['splitChange1_1']['splits'][1]))
+        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][2]['name']), json.dumps(splits_json['splitChange1_1']['splits'][2]))
+        redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, -1)
+
+        telemetry_redis_storage = RedisTelemetryStorage(redis_client, metadata)
+        telemetry_producer = TelemetryStorageProducer(telemetry_redis_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+
+        storages = {
+            'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': RedisImpressionsStorage(redis_client, metadata),
+            'events': RedisEventsStorage(redis_client, metadata),
+        }
+        impmanager = ImpressionsManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
+        recorder = PipelinedRecorder(redis_client.pipeline, impmanager,
+                                     storages['events'], storages['impressions'], telemetry_redis_storage, unique_keys_tracker=UniqueKeysTracker(), imp_counter=ImpressionsCounter())
+        factory = SplitFactory('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    )  # pylint:disable=attribute-defined-outside-init
+
+        try:
+            client = factory.client()
+        except:
+            pass
+
+        assert client.get_treatment('user1', 'SPLIT_1') == 'off'
+        assert client.get_treatment('user2', 'SPLIT_2') == 'on'
+        assert client.get_treatment('user3', 'SPLIT_3') == 'on'
+        time.sleep(0.2)
+
+        imp_storage = factory._storages['impressions']
+        impressions = []
+        while True:
+            impression = redis_client.lpop(imp_storage.IMPRESSIONS_QUEUE_KEY)
+            if impression is None:
+                break
+            impressions.append(json.loads(impression))
+
+        assert len(impressions) == 2
+        assert impressions[0]['i']['f'] == 'SPLIT_1'
+        assert impressions[1]['i']['f'] == 'SPLIT_2'
+        assert client._recorder._unique_keys_tracker._cache == {'SPLIT_3': {'user3'}}
+        imps_count = client._recorder._imp_counter.pop_all()
+        assert len(imps_count) == 1
+        assert imps_count[0].feature == 'SPLIT_3'
+        assert imps_count[0].count == 1
+        self.clear_cache()
+        client.destroy()
+
+    def test_debug(self):
+        """Prepare storages with test data."""
+        metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
+        redis_client = build(DEFAULT_CONFIG.copy())
+        split_storage = RedisSplitStorage(redis_client, True)
+        segment_storage = RedisSegmentStorage(redis_client)
+
+        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][0]['name']), json.dumps(splits_json['splitChange1_1']['splits'][0]))
+        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][1]['name']), json.dumps(splits_json['splitChange1_1']['splits'][1]))
+        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][2]['name']), json.dumps(splits_json['splitChange1_1']['splits'][2]))
+        redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, -1)
+
+        telemetry_redis_storage = RedisTelemetryStorage(redis_client, metadata)
+        telemetry_producer = TelemetryStorageProducer(telemetry_redis_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+
+        storages = {
+            'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': RedisImpressionsStorage(redis_client, metadata),
+            'events': RedisEventsStorage(redis_client, metadata),
+        }
+        impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
+        recorder = PipelinedRecorder(redis_client.pipeline, impmanager,
+                                     storages['events'], storages['impressions'], telemetry_redis_storage, unique_keys_tracker=UniqueKeysTracker(), imp_counter=ImpressionsCounter())
+        factory = SplitFactory('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    )  # pylint:disable=attribute-defined-outside-init
+
+        try:
+            client = factory.client()
+        except:
+            pass
+
+        assert client.get_treatment('user1', 'SPLIT_1') == 'off'
+        assert client.get_treatment('user2', 'SPLIT_2') == 'on'
+        assert client.get_treatment('user3', 'SPLIT_3') == 'on'
+        time.sleep(0.2)
+
+        imp_storage = factory._storages['impressions']
+        impressions = []
+        while True:
+            impression = redis_client.lpop(imp_storage.IMPRESSIONS_QUEUE_KEY)
+            if impression is None:
+                break
+            impressions.append(json.loads(impression))
+
+        assert len(impressions) == 2
+        assert impressions[0]['i']['f'] == 'SPLIT_1'
+        assert impressions[1]['i']['f'] == 'SPLIT_2'
+        assert client._recorder._unique_keys_tracker._cache == {'SPLIT_3': {'user3'}}
+        imps_count = client._recorder._imp_counter.pop_all()
+        assert len(imps_count) == 1
+        assert imps_count[0].feature == 'SPLIT_3'
+        assert imps_count[0].count == 1
+        self.clear_cache()
+        client.destroy()
+
+    def test_none(self):
+        """Prepare storages with test data."""
+        metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
+        redis_client = build(DEFAULT_CONFIG.copy())
+        split_storage = RedisSplitStorage(redis_client, True)
+        segment_storage = RedisSegmentStorage(redis_client)
+
+        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][0]['name']), json.dumps(splits_json['splitChange1_1']['splits'][0]))
+        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][1]['name']), json.dumps(splits_json['splitChange1_1']['splits'][1]))
+        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][2]['name']), json.dumps(splits_json['splitChange1_1']['splits'][2]))
+        redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, -1)
+
+        telemetry_redis_storage = RedisTelemetryStorage(redis_client, metadata)
+        telemetry_producer = TelemetryStorageProducer(telemetry_redis_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+
+        storages = {
+            'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': RedisImpressionsStorage(redis_client, metadata),
+            'events': RedisEventsStorage(redis_client, metadata),
+        }
+        impmanager = ImpressionsManager(StrategyNoneMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
+        recorder = PipelinedRecorder(redis_client.pipeline, impmanager,
+                                     storages['events'], storages['impressions'], telemetry_redis_storage, unique_keys_tracker=UniqueKeysTracker(), imp_counter=ImpressionsCounter())
+        factory = SplitFactory('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    )  # pylint:disable=attribute-defined-outside-init
+
+        try:
+            client = factory.client()
+        except:
+            pass
+
+        assert client.get_treatment('user1', 'SPLIT_1') == 'off'
+        assert client.get_treatment('user2', 'SPLIT_2') == 'on'
+        assert client.get_treatment('user3', 'SPLIT_3') == 'on'
+        time.sleep(0.2)
+
+        imp_storage = factory._storages['impressions']
+        impressions = []
+        while True:
+            impression = redis_client.lpop(imp_storage.IMPRESSIONS_QUEUE_KEY)
+            if impression is None:
+                break
+            impressions.append(json.loads(impression))
+
+        assert len(impressions) == 0
+        assert client._recorder._unique_keys_tracker._cache == {'SPLIT_1': {'user1'}, 'SPLIT_2': {'user2'}, 'SPLIT_3': {'user3'}}
+        imps_count = client._recorder._imp_counter.pop_all()
+        assert len(imps_count) == 3
+        assert imps_count[0].feature == 'SPLIT_1'
+        assert imps_count[0].count == 1
+        assert imps_count[1].feature == 'SPLIT_2'
+        assert imps_count[1].count == 1
+        assert imps_count[2].feature == 'SPLIT_3'
+        assert imps_count[2].count == 1
+        self.clear_cache()
+        client.destroy()
+
+    def clear_cache(self):
+        """Clear redis cache."""
+        keys_to_delete = [
+            "SPLITIO.split.SPLIT_3",
+            "SPLITIO.splits.till",
+            "SPLITIO.split.SPLIT_2",
+            "SPLITIO.split.SPLIT_1",
+            "SPLITIO.telemetry.latencies"
+        ]
+
+        redis_client = RedisAdapter(StrictRedis())
+        for key in keys_to_delete:
+            redis_client.delete(key)
+
 class InMemoryIntegrationAsyncTests(object):
     """Inmemory storage-based integration tests."""
 
@@ -1704,7 +2074,7 @@ class InMemoryIntegrationAsyncTests(object):
             'impressions': InMemoryImpressionStorageAsync(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
         }
-        impmanager = ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer) # no listener
+        impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = StandardRecorderAsync(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer)
         # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
         try:
@@ -1870,7 +2240,7 @@ class InMemoryOptimizedIntegrationAsyncTests(object):
             'impressions': InMemoryImpressionStorageAsync(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
         }
-        impmanager = ImpressionsManager(StrategyOptimizedMode(), telemetry_runtime_producer) # no listener
+        impmanager = ImpressionsManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = StandardRecorderAsync(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer,
                                          imp_counter = ImpressionsCounter())
         # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
@@ -2029,7 +2399,7 @@ class RedisIntegrationAsyncTests(object):
             'impressions': RedisImpressionsStorageAsync(redis_client, metadata),
             'events': RedisEventsStorageAsync(redis_client, metadata),
         }
-        impmanager = ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer) # no listener
+        impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = PipelinedRecorderAsync(redis_client.pipeline, impmanager, storages['events'],
                                     storages['impressions'], telemetry_redis_storage)
         self.factory = SplitFactoryAsync('some_api_key',
@@ -2243,7 +2613,7 @@ class RedisWithCacheIntegrationAsyncTests(RedisIntegrationAsyncTests):
             'impressions': RedisImpressionsStorageAsync(redis_client, metadata),
             'events': RedisEventsStorageAsync(redis_client, metadata),
         }
-        impmanager = ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer) # no listener
+        impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = PipelinedRecorderAsync(redis_client.pipeline, impmanager, storages['events'],
                                     storages['impressions'], telemetry_redis_storage)
         self.factory = SplitFactoryAsync('some_api_key',
@@ -2280,21 +2650,21 @@ class LocalhostIntegrationAsyncTests(object):  # pylint: disable=too-few-public-
         self._update_temp_file(splits_json['splitChange1_1'])
         await self._synchronize_now()
 
-        assert sorted(await self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert sorted(await self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2", "SPLIT_3"]
         assert await client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert await client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         self._update_temp_file(splits_json['splitChange1_2'])
         await self._synchronize_now()
 
-        assert sorted(await self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert sorted(await self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2", "SPLIT_3"]
         assert await client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert await client.get_treatment("key", "SPLIT_2", None) == 'off'
 
         self._update_temp_file(splits_json['splitChange1_3'])
         await self._synchronize_now()
 
-        assert await self.factory.manager().split_names() == ["SPLIT_2"]
+        assert sorted(await self.factory.manager().split_names()) == ["SPLIT_2", "SPLIT_3"]
         assert await client.get_treatment("key", "SPLIT_1", None) == 'control'
         assert await client.get_treatment("key", "SPLIT_2", None) == 'on'
 
@@ -2303,13 +2673,13 @@ class LocalhostIntegrationAsyncTests(object):  # pylint: disable=too-few-public-
         self._update_temp_file(splits_json['splitChange3_1'])
         await self._synchronize_now()
 
-        assert await self.factory.manager().split_names() == ["SPLIT_2"]
+        assert sorted(await self.factory.manager().split_names()) == ["SPLIT_2", "SPLIT_3"]
         assert await client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         self._update_temp_file(splits_json['splitChange3_2'])
         await self._synchronize_now()
 
-        assert await self.factory.manager().split_names() == ["SPLIT_2"]
+        assert sorted(await self.factory.manager().split_names()) == ["SPLIT_2", "SPLIT_3"]
         assert await client.get_treatment("key", "SPLIT_2", None) == 'off'
 
         # Tests 4
@@ -2317,21 +2687,21 @@ class LocalhostIntegrationAsyncTests(object):  # pylint: disable=too-few-public-
         self._update_temp_file(splits_json['splitChange4_1'])
         await self._synchronize_now()
 
-        assert sorted(await self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert sorted(await self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2", "SPLIT_3"]
         assert await client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert await client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         self._update_temp_file(splits_json['splitChange4_2'])
         await self._synchronize_now()
 
-        assert sorted(await self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert sorted(await self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2", "SPLIT_3"]
         assert await client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert await client.get_treatment("key", "SPLIT_2", None) == 'off'
 
         self._update_temp_file(splits_json['splitChange4_3'])
         await self._synchronize_now()
 
-        assert await self.factory.manager().split_names() == ["SPLIT_2"]
+        assert sorted(await self.factory.manager().split_names()) == ["SPLIT_2", "SPLIT_3"]
         assert await client.get_treatment("key", "SPLIT_1", None) == 'control'
         assert await client.get_treatment("key", "SPLIT_2", None) == 'on'
 
@@ -2340,13 +2710,13 @@ class LocalhostIntegrationAsyncTests(object):  # pylint: disable=too-few-public-
         self._update_temp_file(splits_json['splitChange5_1'])
         await self._synchronize_now()
 
-        assert await self.factory.manager().split_names() == ["SPLIT_2"]
+        assert sorted(await self.factory.manager().split_names()) == ["SPLIT_2", "SPLIT_3"]
         assert await client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         self._update_temp_file(splits_json['splitChange5_2'])
         await self._synchronize_now()
 
-        assert await self.factory.manager().split_names() == ["SPLIT_2"]
+        assert sorted(await self.factory.manager().split_names()) == ["SPLIT_2", "SPLIT_3"]
         assert await client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         # Tests 6
@@ -2354,21 +2724,21 @@ class LocalhostIntegrationAsyncTests(object):  # pylint: disable=too-few-public-
         self._update_temp_file(splits_json['splitChange6_1'])
         await self._synchronize_now()
 
-        assert sorted(await self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert sorted(await self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2", "SPLIT_3"]
         assert await client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert await client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         self._update_temp_file(splits_json['splitChange6_2'])
         await self._synchronize_now()
 
-        assert sorted(await self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2"]
+        assert sorted(await self.factory.manager().split_names()) == ["SPLIT_1", "SPLIT_2", "SPLIT_3"]
         assert await client.get_treatment("key", "SPLIT_1", None) == 'off'
         assert await client.get_treatment("key", "SPLIT_2", None) == 'off'
 
         self._update_temp_file(splits_json['splitChange6_3'])
         await self._synchronize_now()
 
-        assert await self.factory.manager().split_names() == ["SPLIT_2"]
+        assert sorted(await self.factory.manager().split_names()) == ["SPLIT_2", "SPLIT_3"]
         assert await client.get_treatment("key", "SPLIT_1", None) == 'control'
         assert await client.get_treatment("key", "SPLIT_2", None) == 'on'
 
@@ -2465,7 +2835,7 @@ class PluggableIntegrationAsyncTests(object):
             'telemetry': telemetry_pluggable_storage
         }
 
-        impmanager = ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer) # no listener
+        impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = StandardRecorderAsync(impmanager, storages['events'],
                                     storages['impressions'],
                                     telemetry_producer.get_telemetry_evaluation_producer(),
@@ -2511,7 +2881,6 @@ class PluggableIntegrationAsyncTests(object):
     async def test_get_treatment(self):
         """Test client.get_treatment()."""
         await self.setup_task
-#        pytest.set_trace()
         await _get_treatment_async(self.factory)
         await self.factory.destroy()
 
@@ -2686,7 +3055,7 @@ class PluggableOptimizedIntegrationAsyncTests(object):
             'telemetry': telemetry_pluggable_storage
         }
 
-        impmanager = ImpressionsManager(StrategyOptimizedMode(), telemetry_runtime_producer) # no listener
+        impmanager = ImpressionsManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = StandardRecorderAsync(impmanager, storages['events'],
                                     storages['impressions'],
                                     telemetry_producer.get_telemetry_evaluation_producer(),
@@ -2896,8 +3265,8 @@ class PluggableNoneIntegrationAsyncTests(object):
         unique_keys_tracker = UniqueKeysTrackerAsync()
         unique_keys_synchronizer, clear_filter_sync, self.unique_keys_task, \
         clear_filter_task, impressions_count_sync, impressions_count_task, \
-        imp_strategy = set_classes_async('PLUGGABLE', ImpressionsMode.NONE, self.pluggable_storage_adapter, imp_counter, unique_keys_tracker)
-        impmanager = ImpressionsManager(imp_strategy, telemetry_runtime_producer) # no listener
+        imp_strategy, none_strategy = set_classes_async('PLUGGABLE', ImpressionsMode.NONE, self.pluggable_storage_adapter, imp_counter, unique_keys_tracker)
+        impmanager = ImpressionsManager(imp_strategy, none_strategy, telemetry_runtime_producer) # no listener
 
         recorder = StandardRecorderAsync(impmanager, storages['events'],
                                     storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, unique_keys_tracker=unique_keys_tracker, imp_counter=imp_counter)
@@ -3097,6 +3466,408 @@ class PluggableNoneIntegrationAsyncTests(object):
 
         for key in keys_to_delete:
             await self.pluggable_storage_adapter.delete(key)
+
+class InMemoryImpressionsToggleIntegrationAsyncTests(object):
+    """InMemory storage-based impressions toggle integration tests."""
+
+    @pytest.mark.asyncio
+    async def test_optimized(self):
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+
+        await split_storage.update([splits.from_raw(splits_json['splitChange1_1']['splits'][0]),
+                              splits.from_raw(splits_json['splitChange1_1']['splits'][1]),
+                              splits.from_raw(splits_json['splitChange1_1']['splits'][2])
+                             ], [], -1)
+
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
+
+        storages = {
+            'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': InMemoryImpressionStorageAsync(5000, telemetry_runtime_producer),
+            'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
+        }
+        impmanager = ImpressionsManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
+        recorder = StandardRecorderAsync(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTrackerAsync(), ImpressionsCounter())
+        # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
+        try:
+            factory = SplitFactoryAsync('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    None,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    )  # pylint:disable=attribute-defined-outside-init
+        except:
+            pass
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = True
+        type(factory).ready = ready_property
+
+        try:
+            client = factory.client()
+        except:
+            pass
+
+        assert await client.get_treatment('user1', 'SPLIT_1') == 'off'
+        assert await client.get_treatment('user1', 'SPLIT_2') == 'on'
+        assert await client.get_treatment('user1', 'SPLIT_3') == 'on'
+        imp_storage = client._factory._get_storage('impressions')
+        impressions = await imp_storage.pop_many(10)
+        assert len(impressions) == 2
+        assert impressions[0].feature_name == 'SPLIT_1'
+        assert impressions[1].feature_name == 'SPLIT_2'
+        assert client._recorder._unique_keys_tracker._cache == {'SPLIT_3': {'user1'}}
+        imps_count = client._recorder._imp_counter.pop_all()
+        assert len(imps_count) == 1
+        assert imps_count[0].feature == 'SPLIT_3'
+        assert imps_count[0].count == 1
+        await factory.destroy()
+
+    @pytest.mark.asyncio
+    async def test_debug(self):
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+
+        await split_storage.update([splits.from_raw(splits_json['splitChange1_1']['splits'][0]),
+                              splits.from_raw(splits_json['splitChange1_1']['splits'][1]),
+                              splits.from_raw(splits_json['splitChange1_1']['splits'][2])
+                             ], [], -1)
+
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
+
+        storages = {
+            'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': InMemoryImpressionStorageAsync(5000, telemetry_runtime_producer),
+            'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
+        }
+        impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
+        recorder = StandardRecorderAsync(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTrackerAsync(), ImpressionsCounter())
+        # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
+        try:
+            factory = SplitFactoryAsync('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    None,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    )  # pylint:disable=attribute-defined-outside-init
+        except:
+            pass
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = True
+        type(factory).ready = ready_property
+
+        try:
+            client = factory.client()
+        except:
+            pass
+
+        assert await client.get_treatment('user1', 'SPLIT_1') == 'off'
+        assert await client.get_treatment('user1', 'SPLIT_2') == 'on'
+        assert await client.get_treatment('user1', 'SPLIT_3') == 'on'
+        imp_storage = client._factory._get_storage('impressions')
+        impressions = await imp_storage.pop_many(10)
+        assert len(impressions) == 2
+        assert impressions[0].feature_name == 'SPLIT_1'
+        assert impressions[1].feature_name == 'SPLIT_2'
+        assert client._recorder._unique_keys_tracker._cache == {'SPLIT_3': {'user1'}}
+        imps_count = client._recorder._imp_counter.pop_all()
+        assert len(imps_count) == 1
+        assert imps_count[0].feature == 'SPLIT_3'
+        assert imps_count[0].count == 1
+        await factory.destroy()
+
+    @pytest.mark.asyncio
+    async def test_none(self):
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+
+        await split_storage.update([splits.from_raw(splits_json['splitChange1_1']['splits'][0]),
+                              splits.from_raw(splits_json['splitChange1_1']['splits'][1]),
+                              splits.from_raw(splits_json['splitChange1_1']['splits'][2])
+                             ], [], -1)
+
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
+
+        storages = {
+            'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': InMemoryImpressionStorageAsync(5000, telemetry_runtime_producer),
+            'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
+        }
+        impmanager = ImpressionsManager(StrategyNoneMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
+        recorder = StandardRecorderAsync(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTrackerAsync(), ImpressionsCounter())
+        # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
+        try:
+            factory = SplitFactoryAsync('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    None,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    )  # pylint:disable=attribute-defined-outside-init
+        except:
+            pass
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = True
+        type(factory).ready = ready_property
+
+        try:
+            client = factory.client()
+        except:
+            pass
+
+        assert await client.get_treatment('user1', 'SPLIT_1') == 'off'
+        assert await client.get_treatment('user1', 'SPLIT_2') == 'on'
+        assert await client.get_treatment('user1', 'SPLIT_3') == 'on'
+        imp_storage = client._factory._get_storage('impressions')
+        impressions = await imp_storage.pop_many(10)
+        assert len(impressions) == 0
+        assert client._recorder._unique_keys_tracker._cache == {'SPLIT_1': {'user1'}, 'SPLIT_2': {'user1'}, 'SPLIT_3': {'user1'}}
+        imps_count = client._recorder._imp_counter.pop_all()
+        assert len(imps_count) == 3
+        assert imps_count[0].feature == 'SPLIT_1'
+        assert imps_count[0].count == 1
+        assert imps_count[1].feature == 'SPLIT_2'
+        assert imps_count[1].count == 1
+        assert imps_count[2].feature == 'SPLIT_3'
+        assert imps_count[2].count == 1
+        await factory.destroy()
+
+class RedisImpressionsToggleIntegrationAsyncTests(object):
+    """Run impression toggle tests for Redis."""
+
+    @pytest.mark.asyncio
+    async def test_optimized(self):
+        """Prepare storages with test data."""
+        metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
+        redis_client = await build_async(DEFAULT_CONFIG.copy())
+        split_storage = RedisSplitStorageAsync(redis_client, True)
+        segment_storage = RedisSegmentStorageAsync(redis_client)
+
+        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][0]['name']), json.dumps(splits_json['splitChange1_1']['splits'][0]))
+        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][1]['name']), json.dumps(splits_json['splitChange1_1']['splits'][1]))
+        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][2]['name']), json.dumps(splits_json['splitChange1_1']['splits'][2]))
+        await redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, -1)
+
+        telemetry_redis_storage = await RedisTelemetryStorageAsync.create(redis_client, metadata)
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_redis_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+
+        storages = {
+            'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': RedisImpressionsStorageAsync(redis_client, metadata),
+            'events': RedisEventsStorageAsync(redis_client, metadata),
+        }
+        impmanager = ImpressionsManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
+        recorder = PipelinedRecorderAsync(redis_client.pipeline, impmanager,
+                                     storages['events'], storages['impressions'], telemetry_redis_storage, unique_keys_tracker=UniqueKeysTracker(), imp_counter=ImpressionsCounter())
+        factory = SplitFactoryAsync('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    )  # pylint:disable=attribute-defined-outside-init
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = True
+        type(factory).ready = ready_property
+
+        try:
+            client = factory.client()
+        except:
+            pass
+
+        assert await client.get_treatment('user1', 'SPLIT_1') == 'off'
+        assert await client.get_treatment('user2', 'SPLIT_2') == 'on'
+        assert await client.get_treatment('user3', 'SPLIT_3') == 'on'
+        await asyncio.sleep(0.2)
+
+        imp_storage = factory._storages['impressions']
+        impressions = []
+        while True:
+            impression = await redis_client.lpop(imp_storage.IMPRESSIONS_QUEUE_KEY)
+            if impression is None:
+                break
+            impressions.append(json.loads(impression))
+
+        assert len(impressions) == 2
+        assert impressions[0]['i']['f'] == 'SPLIT_1'
+        assert impressions[1]['i']['f'] == 'SPLIT_2'
+        assert client._recorder._unique_keys_tracker._cache == {'SPLIT_3': {'user3'}}
+        imps_count = client._recorder._imp_counter.pop_all()
+        assert len(imps_count) == 1
+        assert imps_count[0].feature == 'SPLIT_3'
+        assert imps_count[0].count == 1
+        await self.clear_cache()
+        await factory.destroy()
+
+    @pytest.mark.asyncio
+    async def test_debug(self):
+        """Prepare storages with test data."""
+        metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
+        redis_client = await build_async(DEFAULT_CONFIG.copy())
+        split_storage = RedisSplitStorageAsync(redis_client, True)
+        segment_storage = RedisSegmentStorageAsync(redis_client)
+
+        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][0]['name']), json.dumps(splits_json['splitChange1_1']['splits'][0]))
+        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][1]['name']), json.dumps(splits_json['splitChange1_1']['splits'][1]))
+        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][2]['name']), json.dumps(splits_json['splitChange1_1']['splits'][2]))
+        await redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, -1)
+
+        telemetry_redis_storage = await RedisTelemetryStorageAsync.create(redis_client, metadata)
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_redis_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+
+        storages = {
+            'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': RedisImpressionsStorageAsync(redis_client, metadata),
+            'events': RedisEventsStorageAsync(redis_client, metadata),
+        }
+        impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
+        recorder = PipelinedRecorderAsync(redis_client.pipeline, impmanager,
+                                     storages['events'], storages['impressions'], telemetry_redis_storage, unique_keys_tracker=UniqueKeysTracker(), imp_counter=ImpressionsCounter())
+        factory = SplitFactoryAsync('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    )  # pylint:disable=attribute-defined-outside-init
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = True
+        type(factory).ready = ready_property
+
+        try:
+            client = factory.client()
+        except:
+            pass
+
+        assert await client.get_treatment('user1', 'SPLIT_1') == 'off'
+        assert await client.get_treatment('user2', 'SPLIT_2') == 'on'
+        assert await client.get_treatment('user3', 'SPLIT_3') == 'on'
+        await asyncio.sleep(0.2)
+
+        imp_storage = factory._storages['impressions']
+        impressions = []
+        while True:
+            impression = await redis_client.lpop(imp_storage.IMPRESSIONS_QUEUE_KEY)
+            if impression is None:
+                break
+            impressions.append(json.loads(impression))
+
+        assert len(impressions) == 2
+        assert impressions[0]['i']['f'] == 'SPLIT_1'
+        assert impressions[1]['i']['f'] == 'SPLIT_2'
+        assert client._recorder._unique_keys_tracker._cache == {'SPLIT_3': {'user3'}}
+        imps_count = client._recorder._imp_counter.pop_all()
+        assert len(imps_count) == 1
+        assert imps_count[0].feature == 'SPLIT_3'
+        assert imps_count[0].count == 1
+        await self.clear_cache()
+        await factory.destroy()
+
+    @pytest.mark.asyncio
+    async def test_none(self):
+        """Prepare storages with test data."""
+        metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
+        redis_client = await build_async(DEFAULT_CONFIG.copy())
+        split_storage = RedisSplitStorageAsync(redis_client, True)
+        segment_storage = RedisSegmentStorageAsync(redis_client)
+
+        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][0]['name']), json.dumps(splits_json['splitChange1_1']['splits'][0]))
+        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][1]['name']), json.dumps(splits_json['splitChange1_1']['splits'][1]))
+        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][2]['name']), json.dumps(splits_json['splitChange1_1']['splits'][2]))
+        await redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, -1)
+
+        telemetry_redis_storage = await RedisTelemetryStorageAsync.create(redis_client, metadata)
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_redis_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+
+        storages = {
+            'splits': split_storage,
+            'segments': segment_storage,
+            'impressions': RedisImpressionsStorageAsync(redis_client, metadata),
+            'events': RedisEventsStorageAsync(redis_client, metadata),
+        }
+        impmanager = ImpressionsManager(StrategyNoneMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
+        recorder = PipelinedRecorderAsync(redis_client.pipeline, impmanager,
+                                     storages['events'], storages['impressions'], telemetry_redis_storage, unique_keys_tracker=UniqueKeysTracker(), imp_counter=ImpressionsCounter())
+        factory = SplitFactoryAsync('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    )  # pylint:disable=attribute-defined-outside-init
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = True
+        type(factory).ready = ready_property
+
+        try:
+            client = factory.client()
+        except:
+            pass
+
+        assert await client.get_treatment('user1', 'SPLIT_1') == 'off'
+        assert await client.get_treatment('user2', 'SPLIT_2') == 'on'
+        assert await client.get_treatment('user3', 'SPLIT_3') == 'on'
+        await asyncio.sleep(0.2)
+
+        imp_storage = factory._storages['impressions']
+        impressions = []
+        while True:
+            impression = await redis_client.lpop(imp_storage.IMPRESSIONS_QUEUE_KEY)
+            if impression is None:
+                break
+            impressions.append(json.loads(impression))
+
+        assert len(impressions) == 0
+        assert client._recorder._unique_keys_tracker._cache == {'SPLIT_1': {'user1'}, 'SPLIT_2': {'user2'}, 'SPLIT_3': {'user3'}}
+        imps_count = client._recorder._imp_counter.pop_all()
+        assert len(imps_count) == 3
+        assert imps_count[0].feature == 'SPLIT_1'
+        assert imps_count[0].count == 1
+        assert imps_count[1].feature == 'SPLIT_2'
+        assert imps_count[1].count == 1
+        assert imps_count[2].feature == 'SPLIT_3'
+        assert imps_count[2].count == 1
+        await self.clear_cache()
+        await factory.destroy()
+
+    async def clear_cache(self):
+        """Clear redis cache."""
+        keys_to_delete = [
+            "SPLITIO.split.SPLIT_3",
+            "SPLITIO.splits.till",
+            "SPLITIO.split.SPLIT_2",
+            "SPLITIO.split.SPLIT_1",
+            "SPLITIO.telemetry.latencies"
+        ]
+
+        redis_client = await build_async(DEFAULT_CONFIG.copy())
+        for key in keys_to_delete:
+            await redis_client.delete(key)
 
 async def _validate_last_impressions_async(client, *to_validate):
     """Validate the last N impressions are present disregarding the order."""

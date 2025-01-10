@@ -941,6 +941,6 @@ class SplitFactoryAsyncTests(object):
 
         factory = await get_factory_async("none", config=config)
         await factory.destroy()
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.5)
         assert factory.destroyed
         assert len(build_redis.mock_calls) == 2

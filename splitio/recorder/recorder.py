@@ -151,7 +151,7 @@ class StandardRecorder(StatsRecorderThreadingBase):
         self._telemetry_evaluation_producer = telemetry_evaluation_producer
         self._telemetry_runtime_producer = telemetry_runtime_producer
 
-    def record_treatment_stats(self, impressions, latency, operation, method_name):
+    def record_treatment_stats(self, impressions_decorated, latency, operation, method_name):
         """
         Record stats for treatment evaluation.
 
@@ -165,7 +165,7 @@ class StandardRecorder(StatsRecorderThreadingBase):
         try:
             if method_name is not None:
                 self._telemetry_evaluation_producer.record_latency(operation, latency)
-            impressions, deduped, for_listener, for_counter, for_unique_keys_tracker = self._impressions_manager.process_impressions(impressions)
+            impressions, deduped, for_listener, for_counter, for_unique_keys_tracker = self._impressions_manager.process_impressions(impressions_decorated)
             if deduped > 0:
                 self._telemetry_runtime_producer.record_impression_stats(telemetry.CounterConstants.IMPRESSIONS_DEDUPED, deduped)
             self._impression_storage.put(impressions)
@@ -210,7 +210,7 @@ class StandardRecorderAsync(StatsRecorderAsyncBase):
         self._telemetry_evaluation_producer = telemetry_evaluation_producer
         self._telemetry_runtime_producer = telemetry_runtime_producer
 
-    async def record_treatment_stats(self, impressions, latency, operation, method_name):
+    async def record_treatment_stats(self, impressions_decorated, latency, operation, method_name):
         """
         Record stats for treatment evaluation.
 
@@ -224,7 +224,7 @@ class StandardRecorderAsync(StatsRecorderAsyncBase):
         try:
             if method_name is not None:
                 await self._telemetry_evaluation_producer.record_latency(operation, latency)
-            impressions, deduped, for_listener, for_counter, for_unique_keys_tracker = self._impressions_manager.process_impressions(impressions)
+            impressions, deduped, for_listener, for_counter, for_unique_keys_tracker = self._impressions_manager.process_impressions(impressions_decorated)
             if deduped > 0:
                 await self._telemetry_runtime_producer.record_impression_stats(telemetry.CounterConstants.IMPRESSIONS_DEDUPED, deduped)
 
@@ -277,7 +277,7 @@ class PipelinedRecorder(StatsRecorderThreadingBase):
         self._data_sampling = data_sampling
         self._telemetry_redis_storage = telemetry_redis_storage
 
-    def record_treatment_stats(self, impressions, latency, operation, method_name):
+    def record_treatment_stats(self, impressions_decorated, latency, operation, method_name):
         """
         Record stats for treatment evaluation.
 
@@ -294,7 +294,7 @@ class PipelinedRecorder(StatsRecorderThreadingBase):
                 if self._data_sampling < rnumber:
                     return
 
-            impressions, deduped, for_listener, for_counter, for_unique_keys_tracker = self._impressions_manager.process_impressions(impressions)
+            impressions, deduped, for_listener, for_counter, for_unique_keys_tracker = self._impressions_manager.process_impressions(impressions_decorated)
             if impressions:
                 pipe = self._make_pipe()
                 self._impression_storage.add_impressions_to_pipe(impressions, pipe)
@@ -367,7 +367,7 @@ class PipelinedRecorderAsync(StatsRecorderAsyncBase):
         self._data_sampling = data_sampling
         self._telemetry_redis_storage = telemetry_redis_storage
 
-    async def record_treatment_stats(self, impressions, latency, operation, method_name):
+    async def record_treatment_stats(self, impressions_decorated, latency, operation, method_name):
         """
         Record stats for treatment evaluation.
 
@@ -384,7 +384,7 @@ class PipelinedRecorderAsync(StatsRecorderAsyncBase):
                 if self._data_sampling < rnumber:
                     return
 
-            impressions, deduped, for_listener, for_counter, for_unique_keys_tracker = self._impressions_manager.process_impressions(impressions)
+            impressions, deduped, for_listener, for_counter, for_unique_keys_tracker = self._impressions_manager.process_impressions(impressions_decorated)
             if impressions:
                 pipe = self._make_pipe()
                 self._impression_storage.add_impressions_to_pipe(impressions, pipe)
