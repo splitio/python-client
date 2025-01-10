@@ -74,7 +74,7 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             traffic_allocation_seed=None,
             configurations=None,
             sets=None,
-            impressionsDisabled=None
+            impressions_disabled=None
     ):
         """
         Class constructor.
@@ -97,8 +97,8 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
         :type traffic_allocation_seed: int
         :pram sets: list of flag sets
         :type sets: list
-        :pram impressionsDisabled: track impressions flag
-        :type impressionsDisabled: boolean
+        :pram impressions_disabled: track impressions flag
+        :type impressions_disabled: boolean
         """
         self._name = name
         self._seed = seed
@@ -128,7 +128,7 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
 
         self._configurations = configurations
         self._sets = set(sets) if sets is not None else set()
-        self._impressionsDisabled = impressionsDisabled if impressionsDisabled is not None else False
+        self._impressions_disabled = impressions_disabled if impressions_disabled is not None else False
 
     @property
     def name(self):
@@ -191,9 +191,9 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
         return self._sets
 
     @property
-    def impressionsDisabled(self):
-        """Return impressionsDisabled of the split."""
-        return self._impressionsDisabled
+    def impressions_disabled(self):
+        """Return impressions_disabled of the split."""
+        return self._impressions_disabled
 
     def get_configurations_for(self, treatment):
         """Return the mapping of treatments to configurations."""
@@ -224,7 +224,7 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             'conditions': [c.to_json() for c in self.conditions],
             'configurations': self._configurations,
             'sets': list(self._sets),
-            'impressionsDisabled': self._impressionsDisabled
+            'impressionsDisabled': self._impressions_disabled
         }
 
     def to_split_view(self):
@@ -243,7 +243,7 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             self._configurations if self._configurations is not None else {},
             self._default_treatment,
             list(self._sets) if self._sets is not None else [],
-            self._impressionsDisabled
+            self._impressions_disabled
         )
 
     def local_kill(self, default_treatment, change_number):
@@ -300,5 +300,5 @@ def from_raw(raw_split):
         traffic_allocation_seed=raw_split.get('trafficAllocationSeed'),
         configurations=raw_split.get('configurations'),
         sets=set(raw_split.get('sets')) if raw_split.get('sets') is not None else [],
-        impressionsDisabled=raw_split.get('impressionsDisabled') if raw_split.get('impressionsDisabled') is not None else False
+        impressions_disabled=raw_split.get('impressionsDisabled') if raw_split.get('impressionsDisabled') is not None else False
     )

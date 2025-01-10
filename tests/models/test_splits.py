@@ -82,7 +82,7 @@ class SplitTests(object):
         assert parsed.get_configurations_for('on') == '{"color": "blue", "size": 13}'
         assert parsed._configurations == {'on': '{"color": "blue", "size": 13}'}
         assert parsed.sets == {'set1', 'set2'}
-        assert parsed.impressionsDisabled == False
+        assert parsed.impressions_disabled == False
 
     def test_get_segment_names(self, mocker):
         """Test fetching segment names."""
