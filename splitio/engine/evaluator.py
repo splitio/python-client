@@ -67,7 +67,8 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
             'impression': {
                 'label': label,
                 'change_number': _change_number
-            }
+            },
+            'impressions_disabled': feature.impressions_disabled if feature else None
         }
 
     def _treatment_for_flag(self, flag, key, bucketing, attributes, ctx):

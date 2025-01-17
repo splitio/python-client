@@ -13,7 +13,7 @@ from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper, ImpressionListenerWrapperAsync
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager
 from splitio.engine.impressions import set_classes, set_classes_async
-from splitio.engine.impressions.strategies import StrategyDebugMode
+from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode
 from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageConsumer, \
     TelemetryStorageProducerAsync, TelemetryStorageConsumerAsync
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter
@@ -553,10 +553,10 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     unique_keys_tracker = UniqueKeysTracker(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
     clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy = set_classes('MEMORY', cfg['impressionsMode'], apis, imp_counter, unique_keys_tracker)
+    imp_strategy, none_strategy = set_classes('MEMORY', cfg['impressionsMode'], apis, imp_counter, unique_keys_tracker)
 
     imp_manager = ImpressionsManager(
-        imp_strategy, telemetry_runtime_producer)
+        imp_strategy, none_strategy, telemetry_runtime_producer)
 
     synchronizers = SplitSynchronizers(
         SplitSynchronizer(apis['splits'], storages['splits']),
@@ -681,10 +681,10 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
     unique_keys_tracker = UniqueKeysTrackerAsync(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
     clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy = set_classes_async('MEMORY', cfg['impressionsMode'], apis, imp_counter, unique_keys_tracker)
+    imp_strategy, none_strategy = set_classes_async('MEMORY', cfg['impressionsMode'], apis, imp_counter, unique_keys_tracker)
 
     imp_manager = ImpressionsManager(
-        imp_strategy, telemetry_runtime_producer)
+        imp_strategy, none_strategy, telemetry_runtime_producer)
 
     synchronizers = SplitSynchronizers(
         SplitSynchronizerAsync(apis['splits'], storages['splits']),
@@ -775,10 +775,10 @@ def _build_redis_factory(api_key, cfg):
     unique_keys_tracker = UniqueKeysTracker(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
     clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy = set_classes('REDIS', cfg['impressionsMode'], redis_adapter, imp_counter, unique_keys_tracker)
+    imp_strategy, none_strategy = set_classes('REDIS', cfg['impressionsMode'], redis_adapter, imp_counter, unique_keys_tracker)
 
     imp_manager = ImpressionsManager(
-        imp_strategy,
+        imp_strategy, none_strategy,
         telemetry_runtime_producer)
 
     synchronizers = SplitSynchronizers(None, None, None, None,
@@ -858,10 +858,10 @@ async def _build_redis_factory_async(api_key, cfg):
     unique_keys_tracker = UniqueKeysTrackerAsync(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
     clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy = set_classes_async('REDIS', cfg['impressionsMode'], redis_adapter, imp_counter, unique_keys_tracker)
+    imp_strategy, none_strategy = set_classes_async('REDIS', cfg['impressionsMode'], redis_adapter, imp_counter, unique_keys_tracker)
 
     imp_manager = ImpressionsManager(
-        imp_strategy,
+        imp_strategy, none_strategy,
         telemetry_runtime_producer)
 
     synchronizers = SplitSynchronizers(None, None, None, None,
@@ -936,10 +936,10 @@ def _build_pluggable_factory(api_key, cfg):
     unique_keys_tracker = UniqueKeysTracker(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
     clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy = set_classes('PLUGGABLE', cfg['impressionsMode'], pluggable_adapter, imp_counter, unique_keys_tracker, storage_prefix)
+    imp_strategy, none_strategy = set_classes('PLUGGABLE', cfg['impressionsMode'], pluggable_adapter, imp_counter, unique_keys_tracker, storage_prefix)
 
     imp_manager = ImpressionsManager(
-        imp_strategy,
+        imp_strategy, none_strategy,
         telemetry_runtime_producer)
 
     synchronizers = SplitSynchronizers(None, None, None, None,
@@ -1017,10 +1017,10 @@ async def _build_pluggable_factory_async(api_key, cfg):
     unique_keys_tracker = UniqueKeysTrackerAsync(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
     clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy = set_classes_async('PLUGGABLE', cfg['impressionsMode'], pluggable_adapter, imp_counter, unique_keys_tracker, storage_prefix)
+    imp_strategy, none_strategy = set_classes_async('PLUGGABLE', cfg['impressionsMode'], pluggable_adapter, imp_counter, unique_keys_tracker, storage_prefix)
 
     imp_manager = ImpressionsManager(
-        imp_strategy,
+        imp_strategy, none_strategy,
         telemetry_runtime_producer)
 
     synchronizers = SplitSynchronizers(None, None, None, None,
@@ -1123,7 +1123,7 @@ def _build_localhost_factory(cfg):
         manager.start()
 
     recorder = StandardRecorder(
-        ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer),
+        ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer),
         storages['events'],
         storages['impressions'],
         telemetry_evaluation_producer,
@@ -1192,7 +1192,7 @@ async def _build_localhost_factory_async(cfg):
         await manager.start()
 
     recorder = StandardRecorderAsync(
-        ImpressionsManager(StrategyDebugMode(), telemetry_runtime_producer),
+        ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer),
         storages['events'],
         storages['impressions'],
         telemetry_evaluation_producer,
