@@ -53,24 +53,24 @@ def set_classes(storage_mode, impressions_mode, api_adapter, imp_counter, unique
         api_impressions_adapter = api_adapter['impressions']
         sender_adapter = InMemorySenderAdapter(api_telemetry_adapter)
 
+    none_strategy = StrategyNoneMode()
+    unique_keys_synchronizer = UniqueKeysSynchronizer(sender_adapter, unique_keys_tracker)
+    unique_keys_task = UniqueKeysSyncTask(unique_keys_synchronizer.send_all)
+    clear_filter_sync = ClearFilterSynchronizer(unique_keys_tracker)
+    impressions_count_sync = ImpressionsCountSynchronizer(api_impressions_adapter, imp_counter)
+    impressions_count_task = ImpressionsCountSyncTask(impressions_count_sync.synchronize_counters)
+    clear_filter_task = ClearFilterSyncTask(clear_filter_sync.clear_all)
+    unique_keys_tracker.set_queue_full_hook(unique_keys_task.flush)
+
     if impressions_mode == ImpressionsMode.NONE:
         imp_strategy = StrategyNoneMode()
-        unique_keys_synchronizer = UniqueKeysSynchronizer(sender_adapter, unique_keys_tracker)
-        unique_keys_task = UniqueKeysSyncTask(unique_keys_synchronizer.send_all)
-        clear_filter_sync = ClearFilterSynchronizer(unique_keys_tracker)
-        impressions_count_sync = ImpressionsCountSynchronizer(api_impressions_adapter, imp_counter)
-        impressions_count_task = ImpressionsCountSyncTask(impressions_count_sync.synchronize_counters)
-        clear_filter_task = ClearFilterSyncTask(clear_filter_sync.clear_all)
-        unique_keys_tracker.set_queue_full_hook(unique_keys_task.flush)
     elif impressions_mode == ImpressionsMode.DEBUG:
         imp_strategy = StrategyDebugMode()
     else:
         imp_strategy = StrategyOptimizedMode()
-        impressions_count_sync = ImpressionsCountSynchronizer(api_impressions_adapter, imp_counter)
-        impressions_count_task = ImpressionsCountSyncTask(impressions_count_sync.synchronize_counters)
 
     return unique_keys_synchronizer, clear_filter_sync, unique_keys_task, clear_filter_task, \
-            impressions_count_sync, impressions_count_task, imp_strategy
+            impressions_count_sync, impressions_count_task, imp_strategy, none_strategy
 
 def set_classes_async(storage_mode, impressions_mode, api_adapter, imp_counter, unique_keys_tracker, prefix=None):
     """
@@ -118,21 +118,21 @@ def set_classes_async(storage_mode, impressions_mode, api_adapter, imp_counter, 
         api_impressions_adapter = api_adapter['impressions']
         sender_adapter = InMemorySenderAdapterAsync(api_telemetry_adapter)
 
+    none_strategy = StrategyNoneMode()
+    unique_keys_synchronizer = UniqueKeysSynchronizerAsync(sender_adapter, unique_keys_tracker)
+    unique_keys_task = UniqueKeysSyncTaskAsync(unique_keys_synchronizer.send_all)
+    clear_filter_sync = ClearFilterSynchronizerAsync(unique_keys_tracker)
+    impressions_count_sync = ImpressionsCountSynchronizerAsync(api_impressions_adapter, imp_counter)
+    impressions_count_task = ImpressionsCountSyncTaskAsync(impressions_count_sync.synchronize_counters)
+    clear_filter_task = ClearFilterSyncTaskAsync(clear_filter_sync.clear_all)
+    unique_keys_tracker.set_queue_full_hook(unique_keys_task.flush)
+
     if impressions_mode == ImpressionsMode.NONE:
         imp_strategy = StrategyNoneMode()
-        unique_keys_synchronizer = UniqueKeysSynchronizerAsync(sender_adapter, unique_keys_tracker)
-        unique_keys_task = UniqueKeysSyncTaskAsync(unique_keys_synchronizer.send_all)
-        clear_filter_sync = ClearFilterSynchronizerAsync(unique_keys_tracker)
-        impressions_count_sync = ImpressionsCountSynchronizerAsync(api_impressions_adapter, imp_counter)
-        impressions_count_task = ImpressionsCountSyncTaskAsync(impressions_count_sync.synchronize_counters)
-        clear_filter_task = ClearFilterSyncTaskAsync(clear_filter_sync.clear_all)
-        unique_keys_tracker.set_queue_full_hook(unique_keys_task.flush)
     elif impressions_mode == ImpressionsMode.DEBUG:
         imp_strategy = StrategyDebugMode()
     else:
         imp_strategy = StrategyOptimizedMode()
-        impressions_count_sync = ImpressionsCountSynchronizerAsync(api_impressions_adapter, imp_counter)
-        impressions_count_task = ImpressionsCountSyncTaskAsync(impressions_count_sync.synchronize_counters)
 
     return unique_keys_synchronizer, clear_filter_sync, unique_keys_task, clear_filter_task, \
-            impressions_count_sync, impressions_count_task, imp_strategy
+            impressions_count_sync, impressions_count_task, imp_strategy, none_strategy
