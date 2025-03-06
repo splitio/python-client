@@ -2,6 +2,7 @@
 # pylint: disable=no-self-use
 import random
 import pytest
+import copy
 
 from splitio.models.splits import Split
 from splitio.models.segments import Segment
@@ -13,6 +14,7 @@ from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStora
     InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, InMemoryImpressionStorageAsync, InMemoryEventStorageAsync, \
     InMemoryTelemetryStorageAsync, FlagSets, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 from splitio.models.rule_based_segments import RuleBasedSegment
+from splitio.models import rule_based_segments
 
 class FlagSetsFilterTests(object):
     """Flag sets filter storage tests."""
@@ -1840,6 +1842,31 @@ class InMemoryRuleBasedSegmentStorageTests(object):
         assert storage.get_change_number() == -1
         storage.update([], [], 5)
         assert storage.get_change_number() == 5
+        
+    def test_contains(self):
+        raw = {
+            "changeNumber": 123,
+            "name": "segment1",
+            "status": "ACTIVE",
+            "trafficTypeName": "user",
+            "excluded":{
+            "keys":[],
+            "segments":[]
+            },
+            "conditions": []
+        }
+        segment1 =  rule_based_segments.from_raw(raw)  
+        raw2 = copy.deepcopy(raw)
+        raw2["name"] = "segment2"
+        segment2 =  rule_based_segments.from_raw(raw2)
+        raw3 = copy.deepcopy(raw)
+        raw3["name"] = "segment3"
+        segment3 =  rule_based_segments.from_raw(raw3)
+        storage = InMemoryRuleBasedSegmentStorage()
+        storage.update([segment1, segment2, segment3], [], -1)
+        assert storage.contains(["segment1"])
+        assert storage.contains(["segment1", "segment3"])
+        assert not storage.contains(["segment5"])
 
 class InMemoryRuleBasedSegmentStorageAsyncTests(object):
     """In memory rule based segment storage test cases."""
@@ -1874,3 +1901,29 @@ class InMemoryRuleBasedSegmentStorageAsyncTests(object):
         assert await storage.get_change_number() == -1
         await storage.update([], [], 5)
         assert await storage.get_change_number() == 5
+
+    @pytest.mark.asyncio
+    async def test_contains(self):
+        raw = {
+            "changeNumber": 123,
+            "name": "segment1",
+            "status": "ACTIVE",
+            "trafficTypeName": "user",
+            "excluded":{
+            "keys":[],
+            "segments":[]
+            },
+            "conditions": []
+        }
+        segment1 =  rule_based_segments.from_raw(raw)  
+        raw2 = copy.deepcopy(raw)
+        raw2["name"] = "segment2"
+        segment2 =  rule_based_segments.from_raw(raw2)
+        raw3 = copy.deepcopy(raw)
+        raw3["name"] = "segment3"
+        segment3 =  rule_based_segments.from_raw(raw3)
+        storage = InMemoryRuleBasedSegmentStorageAsync()
+        await storage.update([segment1, segment2, segment3], [], -1)
+        assert await storage.contains(["segment1"])
+        assert await storage.contains(["segment1", "segment3"])
+        assert not await storage.contains(["segment5"])
