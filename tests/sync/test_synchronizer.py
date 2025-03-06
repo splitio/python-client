@@ -1,6 +1,4 @@
 """Synchronizer tests."""
-
-from turtle import clear
 import unittest.mock as mock
 import pytest
 

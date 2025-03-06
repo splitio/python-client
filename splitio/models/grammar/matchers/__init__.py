@@ -10,6 +10,7 @@ from splitio.models.grammar.matchers.string import ContainsStringMatcher, \
 from splitio.models.grammar.matchers.misc import BooleanMatcher, DependencyMatcher
 from splitio.models.grammar.matchers.semver import EqualToSemverMatcher, GreaterThanOrEqualToSemverMatcher, LessThanOrEqualToSemverMatcher, \
         BetweenSemverMatcher, InListSemverMatcher
+from splitio.models.grammar.matchers.rule_based_segment import RuleBasedSegmentMatcher
 
 
 MATCHER_TYPE_ALL_KEYS = 'ALL_KEYS'
@@ -34,6 +35,7 @@ MATCHER_GREATER_THAN_OR_EQUAL_TO_SEMVER = 'GREATER_THAN_OR_EQUAL_TO_SEMVER'
 MATCHER_LESS_THAN_OR_EQUAL_TO_SEMVER = 'LESS_THAN_OR_EQUAL_TO_SEMVER'
 MATCHER_BETWEEN_SEMVER = 'BETWEEN_SEMVER'
 MATCHER_INLIST_SEMVER = 'IN_LIST_SEMVER'
+MATCHER_IN_RULE_BASED_SEGMENT = 'IN_RULE_BASED_SEGMENT'
 
 
 _MATCHER_BUILDERS = {
@@ -58,7 +60,8 @@ _MATCHER_BUILDERS = {
     MATCHER_GREATER_THAN_OR_EQUAL_TO_SEMVER: GreaterThanOrEqualToSemverMatcher,
     MATCHER_LESS_THAN_OR_EQUAL_TO_SEMVER: LessThanOrEqualToSemverMatcher,
     MATCHER_BETWEEN_SEMVER: BetweenSemverMatcher,
-    MATCHER_INLIST_SEMVER: InListSemverMatcher
+    MATCHER_INLIST_SEMVER: InListSemverMatcher,
+    MATCHER_IN_RULE_BASED_SEGMENT: RuleBasedSegmentMatcher
 }
 
 def from_raw(raw_matcher):

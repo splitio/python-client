@@ -11,7 +11,8 @@ import splitio.models.telemetry as ModelTelemetry
 from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, InMemorySegmentStorageAsync, InMemorySplitStorageAsync, \
     InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, InMemoryImpressionStorageAsync, InMemoryEventStorageAsync, \
-    InMemoryTelemetryStorageAsync, FlagSets
+    InMemoryTelemetryStorageAsync, FlagSets, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
+from splitio.models.rule_based_segments import RuleBasedSegment
 
 class FlagSetsFilterTests(object):
     """Flag sets filter storage tests."""
@@ -1807,3 +1808,69 @@ class InMemoryTelemetryStorageAsyncTests(object):
         assert(sync_latency == {'httpLatencies': {'split': [4] + [0] * 22, 'segment': [4] + [0] * 22,
                                 'impression': [2] + [0] * 22, 'impressionCount': [2] + [0] * 22, 'event': [2] + [0] * 22,
                                 'telemetry': [3] + [0] * 22, 'token': [3] + [0] * 22}})
+
+class InMemoryRuleBasedSegmentStorageTests(object):
+    """In memory rule based segment storage test cases."""
+
+    def test_storing_retrieving_segments(self, mocker):
+        """Test storing and retrieving splits works."""
+        rbs_storage = InMemoryRuleBasedSegmentStorage()
+
+        segment1 = mocker.Mock(spec=RuleBasedSegment)
+        name_property = mocker.PropertyMock()
+        name_property.return_value = 'some_segment'
+        type(segment1).name = name_property
+
+        segment2 = mocker.Mock()
+        name2_prop = mocker.PropertyMock()
+        name2_prop.return_value = 'segment2'
+        type(segment2).name = name2_prop
+
+        rbs_storage.update([segment1, segment2], [], -1)
+        assert rbs_storage.get('some_segment') == segment1
+        assert rbs_storage.get_segment_names() == ['some_segment', 'segment2']
+        assert rbs_storage.get('nonexistant_segment') is None
+
+        rbs_storage.update([], ['some_segment'], -1)
+        assert rbs_storage.get('some_segment') is None
+
+    def test_store_get_changenumber(self):
+        """Test that storing and retrieving change numbers works."""
+        storage = InMemoryRuleBasedSegmentStorage()
+        assert storage.get_change_number() == -1
+        storage.update([], [], 5)
+        assert storage.get_change_number() == 5
+
+class InMemoryRuleBasedSegmentStorageAsyncTests(object):
+    """In memory rule based segment storage test cases."""
+
+    @pytest.mark.asyncio
+    async def test_storing_retrieving_segments(self, mocker):
+        """Test storing and retrieving splits works."""
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
+
+        segment1 = mocker.Mock(spec=RuleBasedSegment)
+        name_property = mocker.PropertyMock()
+        name_property.return_value = 'some_segment'
+        type(segment1).name = name_property
+
+        segment2 = mocker.Mock()
+        name2_prop = mocker.PropertyMock()
+        name2_prop.return_value = 'segment2'
+        type(segment2).name = name2_prop
+
+        await rbs_storage.update([segment1, segment2], [], -1)
+        assert await rbs_storage.get('some_segment') == segment1
+        assert await rbs_storage.get_segment_names() == ['some_segment', 'segment2']
+        assert await rbs_storage.get('nonexistant_segment') is None
+
+        await rbs_storage.update([], ['some_segment'], -1)
+        assert await rbs_storage.get('some_segment') is None
+
+    @pytest.mark.asyncio
+    async def test_store_get_changenumber(self):
+        """Test that storing and retrieving change numbers works."""
+        storage = InMemoryRuleBasedSegmentStorageAsync()
+        assert await storage.get_change_number() == -1
+        await storage.update([], [], 5)
+        assert await storage.get_change_number() == 5

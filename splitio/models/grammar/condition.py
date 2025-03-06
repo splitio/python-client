@@ -119,10 +119,12 @@ def from_raw(raw_condition):
     :return: A condition object.
     :rtype: Condition
     """
-    parsed_partitions = [
-        partitions.from_raw(raw_partition)
-        for raw_partition in raw_condition['partitions']
-    ]
+    parsed_partitions = []
+    if raw_condition.get("partitions") is not None:
+        parsed_partitions = [
+            partitions.from_raw(raw_partition)
+            for raw_partition in raw_condition['partitions']
+        ]
 
     matcher_objects = [matchers.from_raw(x) for x in raw_condition['matcherGroup']['matchers']]
 
