@@ -397,12 +397,12 @@ class RuleBasedSegmentsStorage(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def contains(self, segment_names):
         """
-        Return whether the traffic type exists in at least one rule based segment in cache.
+        Return whether the segments exists in rule based segment in cache.
 
-        :param traffic_type_name: Traffic type to validate.
-        :type traffic_type_name: str
+        :param segment_names: segment name to validate.
+        :type segment_names: str
 
-        :return: True if the traffic type is valid. False otherwise.
+        :return: True if segment names exists. False otherwise.
         :rtype: bool
         """
         pass    
