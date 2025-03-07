@@ -201,7 +201,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :rtype: Client
         """
         ClientBase.__init__(self, factory, recorder, labels_enabled)
-        self._context_factory = EvaluationDataFactory(factory._get_storage('splits'), factory._get_storage('segments'), factory._get_storage('rule_based_segments'))
+        self._context_factory = EvaluationDataFactory(factory._get_storage('splits'), factory._get_storage('segments'))
 
     def destroy(self):
         """
@@ -668,7 +668,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         :rtype: Client
         """
         ClientBase.__init__(self, factory, recorder, labels_enabled)
-        self._context_factory = AsyncEvaluationDataFactory(factory._get_storage('splits'), factory._get_storage('segments'), factory._get_storage('rule_based_segments'))
+        self._context_factory = AsyncEvaluationDataFactory(factory._get_storage('splits'), factory._get_storage('segments'))
 
     async def destroy(self):
         """
