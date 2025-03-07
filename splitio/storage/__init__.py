@@ -355,3 +355,74 @@ class FlagSetsFilter(object):
             return False
 
         return any(self.flag_sets.intersection(flag_sets))
+    
+class RuleBasedSegmentsStorage(object, metaclass=abc.ABCMeta):
+    """SplitRule based segment storage interface implemented as an abstract class."""
+ 
+    @abc.abstractmethod
+    def get(self, segment_name):
+        """
+        Retrieve a rule based segment.
+
+        :param segment_name: Name of the segment to fetch.
+        :type segment_name: str
+
+        :rtype: str
+        """
+        pass
+
+    @abc.abstractmethod
+    def update(self, to_add, to_delete, new_change_number):
+        """
+        Update rule based segment..
+
+        :param to_add: List of rule based segment. to add
+        :type to_add: list[splitio.models.rule_based_segments.RuleBasedSegment]
+        :param to_delete: List of rule based segment. to delete
+        :type to_delete: list[splitio.models.rule_based_segments.RuleBasedSegment]
+        :param new_change_number: New change number.
+        :type new_change_number: int
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_change_number(self):
+        """
+        Retrieve latest rule based segment change number.
+
+        :rtype: int
+        """
+        pass
+
+    @abc.abstractmethod
+    def contains(self, segment_names):
+        """
+        Return whether the segments exists in rule based segment in cache.
+
+        :param segment_names: segment name to validate.
+        :type segment_names: str
+
+        :return: True if segment names exists. False otherwise.
+        :rtype: bool
+        """
+        pass    
+
+    @abc.abstractmethod
+    def get_segment_names(self):
+        """
+        Retrieve a list of all excluded segments names.
+
+        :return: List of segment names.
+        :rtype: list(str)
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_large_segment_names(self):
+        """
+        Retrieve a list of all excluded large segments names.
+
+        :return: List of segment names.
+        :rtype: list(str)
+        """
+        pass

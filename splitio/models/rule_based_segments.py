@@ -1,0 +1,113 @@
+"""RuleBasedSegment module."""
+
+import logging
+
+from splitio.models import MatcherNotFoundException
+from splitio.models.splits import _DEFAULT_CONDITIONS_TEMPLATE
+from splitio.models.grammar import condition
+
+_LOGGER = logging.getLogger(__name__)
+
+class RuleBasedSegment(object):
+    """RuleBasedSegment object class."""
+
+    def __init__(self, name, traffic_yype_Name, change_number, status, conditions, excluded):
+        """
+        Class constructor.
+
+        :param name: Segment name.
+        :type name: str
+        :param traffic_yype_Name: traffic type name.
+        :type traffic_yype_Name: str
+        :param change_number: change number.
+        :type change_number: str
+        :param status: status.
+        :type status: str
+        :param conditions: List of conditions belonging to the segment.
+        :type conditions: List
+        :param excluded: excluded objects.
+        :type excluded: Excluded
+        """
+        self._name = name
+        self._traffic_yype_Name = traffic_yype_Name
+        self._change_number = change_number
+        self._status = status
+        self._conditions = conditions
+        self._excluded = excluded
+        
+    @property
+    def name(self):
+        """Return segment name."""
+        return self._name
+    
+    @property
+    def traffic_yype_Name(self):
+        """Return traffic type name."""
+        return self._traffic_yype_Name
+    
+    @property
+    def change_number(self):
+        """Return change number."""
+        return self._change_number
+    
+    @property
+    def status(self):
+        """Return status."""
+        return self._status
+    
+    @property
+    def conditions(self):
+        """Return conditions."""
+        return self._conditions
+    
+    @property
+    def excluded(self):
+        """Return excluded."""
+        return self._excluded
+
+def from_raw(raw_rule_based_segment):
+    """
+    Parse a Rule based segment from a JSON portion of splitChanges.
+
+    :param raw_rule_based_segment: JSON object extracted from a splitChange's response
+    :type raw_rule_based_segment: dict
+
+    :return: A parsed RuleBasedSegment object capable of performing evaluations.
+    :rtype: RuleBasedSegment
+    """
+    try:
+        conditions = [condition.from_raw(c) for c in raw_rule_based_segment['conditions']]
+    except MatcherNotFoundException as e:
+        _LOGGER.error(str(e))
+        _LOGGER.debug("Using default conditions template for feature flag: %s", raw_rule_based_segment['name'])
+        conditions = [condition.from_raw(_DEFAULT_CONDITIONS_TEMPLATE)]
+    return RuleBasedSegment(
+        raw_rule_based_segment['name'],
+        raw_rule_based_segment['trafficTypeName'],        
+        raw_rule_based_segment['changeNumber'],
+        raw_rule_based_segment['status'],
+        conditions,
+        Excluded(raw_rule_based_segment['excluded']['keys'], raw_rule_based_segment['excluded']['segments'])
+    )
+
+class Excluded(object):
+    
+    def __init__(self, keys, segments):
+        """
+        Class constructor.
+
+        :param keys: List of excluded keys in a rule based segment.
+        :type keys: List
+        :param segments: List of excluded segments in a rule based segment.
+        :type segments: List
+        """
+        self._keys = keys
+        self._segments = segments
+
+    def get_excluded_keys(self):
+        """Return excluded keys."""        
+        return self._keys
+
+    def get_excluded_segments(self):
+        """Return excluded segments"""
+        return self._segments
