@@ -57,7 +57,7 @@ def record_telemetry(status_code, elapsed, metric_name, telemetry_runtime_produc
 class FetchOptions(object):
     """Fetch Options object."""
 
-    def __init__(self, cache_control_headers=False, change_number=None, sets=None, spec=SPEC_VERSION):
+    def __init__(self, cache_control_headers=False, change_number=None, rbs_change_number=None, sets=None, spec=SPEC_VERSION):
         """
         Class constructor.
 
@@ -72,6 +72,7 @@ class FetchOptions(object):
         """
         self._cache_control_headers = cache_control_headers
         self._change_number = change_number
+        self._rbs_change_number = rbs_change_number
         self._sets = sets
         self._spec = spec
 
@@ -84,6 +85,11 @@ class FetchOptions(object):
     def change_number(self):
         """Return change number."""
         return self._change_number
+
+    @property
+    def rbs_change_number(self):
+        """Return change number."""
+        return self._rbs_change_number
 
     @property
     def sets(self):
@@ -103,14 +109,19 @@ class FetchOptions(object):
         if self._change_number != other._change_number:
             return False
 
+        if self._rbs_change_number != other._rbs_change_number:
+            return False
+
         if self._sets != other._sets:
             return False
+        
         if self._spec != other._spec:
             return False
+        
         return True
 
 
-def build_fetch(change_number, fetch_options, metadata):
+def build_fetch(change_number, fetch_options, metadata, rbs_change_number=None):
     """
     Build fetch with new flags if that is the case.
 
@@ -123,11 +134,16 @@ def build_fetch(change_number, fetch_options, metadata):
     :param metadata: Metadata Headers.
     :type metadata: dict
 
+    :param rbs_change_number: Last known timestamp of a rule based segment modification.
+    :type rbs_change_number: int
+
     :return: Objects for fetch
     :rtype: dict, dict
     """
     query = {'s': fetch_options.spec} if fetch_options.spec is not None else {}
     query['since'] = change_number
+    if rbs_change_number is not None:
+        query['rbSince'] = rbs_change_number
     extra_headers = metadata
     if fetch_options is None:
         return query, extra_headers
