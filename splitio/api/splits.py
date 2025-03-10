@@ -31,15 +31,12 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
         self._telemetry_runtime_producer = telemetry_runtime_producer
         self._client.set_telemetry_data(HTTPExceptionsAndLatencies.SPLIT, self._telemetry_runtime_producer)
 
-    def fetch_splits(self, change_number, rbs_change_number, fetch_options):
+    def fetch_splits(self, change_number, fetch_options):
         """
         Fetch feature flags from backend.
 
         :param change_number: Last known timestamp of a split modification.
         :type change_number: int
-
-        :param rbs_change_number: Last known timestamp of a rule based segment modification.
-        :type rbs_change_number: int
 
         :param fetch_options: Fetch options for getting feature flag definitions.
         :type fetch_options: splitio.api.commons.FetchOptions
@@ -48,7 +45,7 @@ class SplitsAPI(object):  # pylint: disable=too-few-public-methods
         :rtype: dict
         """
         try:
-            query, extra_headers = build_fetch(change_number, fetch_options, self._metadata, rbs_change_number)
+            query, extra_headers = build_fetch(change_number, fetch_options, self._metadata)
             response = self._client.get(
                 'sdk',
                 'splitChanges',
@@ -89,15 +86,12 @@ class SplitsAPIAsync(object):  # pylint: disable=too-few-public-methods
         self._telemetry_runtime_producer = telemetry_runtime_producer
         self._client.set_telemetry_data(HTTPExceptionsAndLatencies.SPLIT, self._telemetry_runtime_producer)
 
-    async def fetch_splits(self, change_number, rbs_change_number, fetch_options):
+    async def fetch_splits(self, change_number, fetch_options):
         """
         Fetch feature flags from backend.
 
         :param change_number: Last known timestamp of a split modification.
         :type change_number: int
-        
-        :param rbs_change_number: Last known timestamp of a rule based segment modification.
-        :type rbs_change_number: int
 
         :param fetch_options: Fetch options for getting feature flag definitions.
         :type fetch_options: splitio.api.commons.FetchOptions
@@ -106,7 +100,7 @@ class SplitsAPIAsync(object):  # pylint: disable=too-few-public-methods
         :rtype: dict
         """
         try:
-            query, extra_headers = build_fetch(change_number, fetch_options, self._metadata, rbs_change_number)
+            query, extra_headers = build_fetch(change_number, fetch_options, self._metadata)
             response = await self._client.get(
                 'sdk',
                 'splitChanges',
