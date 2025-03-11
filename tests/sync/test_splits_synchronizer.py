@@ -337,7 +337,6 @@ class SplitsSynchronizerTests(object):
         rbs_1 = copy.deepcopy(json_body['rbs']['d'])
         def get_changes(*args, **kwargs):
             get_changes.called += 1
-#            pytest.set_trace()
             if get_changes.called == 1:
                 return { 'ff': { 'd': self.splits, 's': -1, 't': 123 }, 
                         'rbs':  {"t": 555, "s": -1, "d": rbs_1}}
@@ -392,6 +391,8 @@ class SplitsSynchronizerTests(object):
         inserted_split = storage.update.mock_calls[0][1][0][0]
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
+        inserted_rbs = rbs_storage.update.mock_calls[0][1][0][0]
+        assert inserted_rbs.excluded.get_excluded_keys() == ["mauro@split.io","gaston@split.io"]
 
         split_synchronizer._backoff = Backoff(1, 0.1)
         split_synchronizer.synchronize_splits(None, 666)
@@ -664,7 +665,11 @@ class SplitsSynchronizerAsyncTests(object):
             rbs_change_number_mock._calls += 1
             if rbs_change_number_mock._calls == 1:
                 return -1
-            return 12345 # Return proper cn for CDN Bypass
+            elif change_number_mock._calls >= 2 and change_number_mock._calls <= 3:
+                return 555
+            elif change_number_mock._calls <= 9:
+                return 555
+            return 666 # Return proper cn for CDN Bypass
 
         change_number_mock._calls = 0
         rbs_change_number_mock._calls = 0
@@ -677,8 +682,10 @@ class SplitsSynchronizerAsyncTests(object):
                 self.parsed_split = parsed_split
         storage.update = update
 
+        self.parsed_rbs = None
         async def rbs_update(parsed, deleted, change_number):
-            pass
+            if len(parsed) > 0:
+                self.parsed_rbs = parsed
         rbs_storage.update = rbs_update
 
         api = mocker.Mock()
@@ -688,32 +695,38 @@ class SplitsSynchronizerAsyncTests(object):
         self.fetch_options_2 = None
         self.change_number_3 = None
         self.fetch_options_3 = None
+        rbs_1 = copy.deepcopy(json_body['rbs']['d'])
+
         async def get_changes(change_number, rbs_change_number, fetch_options):
             get_changes.called += 1
             if get_changes.called == 1:
                 self.change_number_1 = change_number
                 self.fetch_options_1 = fetch_options
                 return { 'ff': { 'd': self.splits, 's': -1, 't': 123 }, 
-                        'rbs':  {"t": 123, "s": -1, "d": []}}
+                        'rbs':  {"t": 555, "s": -1, "d": rbs_1}}
             elif get_changes.called == 2:
                 self.change_number_2 = change_number
                 self.fetch_options_2 = fetch_options
                 return { 'ff': { 'd': [], 's': 123, 't': 123 },
-                        'rbs':  {"t": 123, "s": 123, "d": []}}
+                        'rbs':  {"t": 555, "s": 555, "d": []}}
             elif get_changes.called == 3:
                 return { 'ff': { 'd': [], 's': 123, 't': 1234 },
-                        'rbs':  {"t": 123, "s": 123, "d": []}}                        
+                        'rbs':  {"t": 555, "s": 555, "d": []}}                    
             elif get_changes.called >= 4 and get_changes.called <= 6:
                 return { 'ff': { 'd': [], 's': 1234, 't': 1234 },
-                        'rbs':  {"t": 123, "s": 123, "d": []}}                        
+                        'rbs':  {"t": 555, "s": 555, "d": []}}                        
             elif get_changes.called == 7:
                 return { 'ff': { 'd': [], 's': 1234, 't': 12345 },
-                        'rbs':  {"t": 123, "s": 123, "d": []}}                        
-            self.change_number_3 = change_number
-            self.fetch_options_3 = fetch_options
+                        'rbs':  {"t": 555, "s": 555, "d": []}}      
+            elif get_changes.called == 8:                                  
+                self.change_number_3 = change_number
+                self.fetch_options_3 = fetch_options
+                return { 'ff': { 'd': [], 's': 12345, 't': 12345 },
+                        'rbs':  {"t": 555, "s": 555, "d": []}}
+            rbs_1[0]['excluded']['keys'] = ['bilal@split.io']
             return { 'ff': { 'd': [], 's': 12345, 't': 12345 },
-                        'rbs':  {"t": 123, "s": 123, "d": []}}                        
-
+                        'rbs':  {"t": 666, "s": 666, "d": rbs_1}}
+    
         get_changes.called = 0
         api.fetch_splits = get_changes
 
@@ -743,7 +756,14 @@ class SplitsSynchronizerAsyncTests(object):
         inserted_split = self.parsed_split[0]
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
+        inserted_rbs = self.parsed_rbs[0]
+        assert inserted_rbs.excluded.get_excluded_keys() == ["mauro@split.io","gaston@split.io"]
 
+        split_synchronizer._backoff = Backoff(1, 0.1)
+        await split_synchronizer.synchronize_splits(None, 666)
+        inserted_rbs = self.parsed_rbs[0]
+        assert inserted_rbs.excluded.get_excluded_keys() == ['bilal@split.io']
+        
     @pytest.mark.asyncio
     async def test_sync_flag_sets_with_config_sets(self, mocker):
         """Test split sync with flag sets."""

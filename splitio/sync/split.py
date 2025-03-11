@@ -42,6 +42,9 @@ class SplitSynchronizerBase(object):
 
         :param feature_flag_storage: Feature Flag Storage.
         :type feature_flag_storage: splitio.storage.InMemorySplitStorage
+
+        :param rule_based_segment_storage: Rule based segment Storage.
+        :type rule_based_segment_storage: splitio.storage.InMemoryRuleBasedStorage
         """
         self._api = feature_flag_api
         self._feature_flag_storage = feature_flag_storage
@@ -83,6 +86,9 @@ class SplitSynchronizer(SplitSynchronizerBase):
 
         :param feature_flag_storage: Feature Flag Storage.
         :type feature_flag_storage: splitio.storage.InMemorySplitStorage
+
+        :param rule_based_segment_storage: Rule based segment Storage.
+        :type rule_based_segment_storage: splitio.storage.InMemoryRuleBasedStorage
         """
         SplitSynchronizerBase.__init__(self, feature_flag_api, feature_flag_storage, rule_based_segment_storage)
 
@@ -95,6 +101,9 @@ class SplitSynchronizer(SplitSynchronizerBase):
 
         :param till: Passed till from Streaming.
         :type till: int
+
+        :param rbs_till: Passed rbs till from Streaming.
+        :type rbs_till: int
 
         :return: last change number
         :rtype: int
@@ -145,6 +154,9 @@ class SplitSynchronizer(SplitSynchronizerBase):
         :param till: Passed till from Streaming.
         :type till: int
 
+        :param rbs_till: Passed rbs till from Streaming.
+        :type rbs_till: int
+
         :return: Flags to check if it should perform bypass or operation ended
         :rtype: bool, int, int
         """
@@ -182,6 +194,9 @@ class SplitSynchronizer(SplitSynchronizerBase):
 
         :param till: Passed till from Streaming.
         :type till: int
+
+        :param rbs_till: Passed rbs till from Streaming.
+        :type rbs_till: int
         """
         final_segment_list = set()
         fetch_options = FetchOptions(True, sets=self._get_config_sets())  # Set Cache-Control to no-cache
@@ -230,6 +245,9 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
 
         :param feature_flag_storage: Feature Flag Storage.
         :type feature_flag_storage: splitio.storage.InMemorySplitStorage
+
+        :param rule_based_segment_storage: Rule based segment Storage.
+        :type rule_based_segment_storage: splitio.storage.InMemoryRuleBasedStorage
         """
         SplitSynchronizerBase.__init__(self, feature_flag_api, feature_flag_storage, rule_based_segment_storage)
 
@@ -242,6 +260,9 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
 
         :param till: Passed till from Streaming.
         :type till: int
+
+        :param rbs_till: Passed rbs till from Streaming.
+        :type rbs_till: int
 
         :return: last change number
         :rtype: int
@@ -256,7 +277,7 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
             if rbs_change_number is None:
                 rbs_change_number = -1
                 
-            if (till is not None and till < change_number) or (rbs_till is not None and till < rbs_change_number):
+            if (till is not None and till < change_number) or (rbs_till is not None and rbs_till < rbs_change_number):
                 # the passed till is less than change_number, no need to perform updates
                 return change_number, rbs_change_number, segment_list
 
@@ -292,6 +313,9 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
         :param till: Passed till from Streaming.
         :type till: int
 
+        :param rbs_till: Passed rbs till from Streaming.
+        :type rbs_till: int
+
         :return: Flags to check if it should perform bypass or operation ended
         :rtype: bool, int, int
         """
@@ -317,6 +341,9 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
 
         :param till: Passed till from Streaming.
         :type till: int
+
+        :param rbs_till: Passed rbs till from Streaming.
+        :type rbs_till: int
         """
         final_segment_list = set()
         fetch_options = FetchOptions(True, sets=self._get_config_sets())  # Set Cache-Control to no-cache
