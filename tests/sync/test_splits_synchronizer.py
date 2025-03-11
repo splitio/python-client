@@ -322,7 +322,11 @@ class SplitsSynchronizerTests(object):
             rbs_change_number_mock._calls += 1
             if rbs_change_number_mock._calls == 1:
                 return -1
-            return 12345 # Return proper cn for CDN Bypass
+            elif change_number_mock._calls >= 2 and change_number_mock._calls <= 3:
+                return 555
+            elif change_number_mock._calls <= 9:
+                return 555
+            return 666 # Return proper cn for CDN Bypass
         
         change_number_mock._calls = 0
         rbs_change_number_mock._calls = 0
@@ -330,26 +334,32 @@ class SplitsSynchronizerTests(object):
         rbs_storage.get_change_number.side_effect = rbs_change_number_mock
 
         api = mocker.Mock()
-
+        rbs_1 = copy.deepcopy(json_body['rbs']['d'])
         def get_changes(*args, **kwargs):
             get_changes.called += 1
+#            pytest.set_trace()
             if get_changes.called == 1:
                 return { 'ff': { 'd': self.splits, 's': -1, 't': 123 }, 
-                        'rbs':  {"t": 123, "s": -1, "d": []}}
+                        'rbs':  {"t": 555, "s": -1, "d": rbs_1}}
             elif get_changes.called == 2:
                 return { 'ff': { 'd': [], 's': 123, 't': 123 },
-                        'rbs':  {"t": 123, "s": 123, "d": []}}
+                        'rbs':  {"t": 555, "s": 555, "d": []}}
             elif get_changes.called == 3:
                 return { 'ff': { 'd': [], 's': 123, 't': 1234 },
-                        'rbs':  {"t": 123, "s": 123, "d": []}}                        
+                        'rbs':  {"t": 555, "s": 555, "d": []}}
             elif get_changes.called >= 4 and get_changes.called <= 6:
                 return { 'ff': { 'd': [], 's': 1234, 't': 1234 },
-                        'rbs':  {"t": 123, "s": 123, "d": []}}                        
+                        'rbs':  {"t": 555, "s": 555, "d": []}}
             elif get_changes.called == 7:
                 return { 'ff': { 'd': [], 's': 1234, 't': 12345 },
-                        'rbs':  {"t": 123, "s": 123, "d": []}}                        
+                        'rbs':  {"t": 555, "s": 555, "d": []}}
+            elif get_changes.called == 8:
+                return { 'ff': { 'd': [], 's': 12345, 't': 12345 },
+                        'rbs':  {"t": 555, "s": 555, "d": []}}
+            rbs_1[0]['excluded']['keys'] = ['bilal@split.io']
             return { 'ff': { 'd': [], 's': 12345, 't': 12345 },
-                        'rbs':  {"t": 123, "s": 123, "d": []}}                        
+                        'rbs':  {"t": 666, "s": 666, "d": rbs_1}}
+
         get_changes.called = 0
         api.fetch_splits.side_effect = get_changes
 
@@ -377,12 +387,17 @@ class SplitsSynchronizerTests(object):
         split_synchronizer.synchronize_splits(12345)
         assert api.fetch_splits.mock_calls[3][1][0] == 1234
         assert api.fetch_splits.mock_calls[3][1][2].cache_control_headers == True
-        assert len(api.fetch_splits.mock_calls) == 10 # 2 ok + BACKOFF(2 since==till + 2 re-attempts) + CDN(2 since==till)
+        assert len(api.fetch_splits.mock_calls) == 8 # 2 ok + BACKOFF(2 since==till + 2 re-attempts) + CDN(2 since==till)
 
         inserted_split = storage.update.mock_calls[0][1][0][0]
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
 
+        split_synchronizer._backoff = Backoff(1, 0.1)
+        split_synchronizer.synchronize_splits(None, 666)
+        inserted_rbs = rbs_storage.update.mock_calls[8][1][0][0]
+        assert inserted_rbs.excluded.get_excluded_keys() == ['bilal@split.io']
+        
     def test_sync_flag_sets_with_config_sets(self, mocker):
         """Test split sync with flag sets."""
         storage = InMemorySplitStorage(['set1', 'set2'])
@@ -723,7 +738,7 @@ class SplitsSynchronizerAsyncTests(object):
         split_synchronizer._backoff = Backoff(1, 0.1)
         await split_synchronizer.synchronize_splits(12345)
         assert (12345, True, 1234) == (self.change_number_3, self.fetch_options_3.cache_control_headers, self.fetch_options_3.change_number)
-        assert get_changes.called == 10 # 2 ok + BACKOFF(2 since==till + 2 re-attempts) + CDN(2 since==till)
+        assert get_changes.called == 8 # 2 ok + BACKOFF(2 since==till + 2 re-attempts) + CDN(2 since==till)
 
         inserted_split = self.parsed_split[0]
         assert isinstance(inserted_split, Split)

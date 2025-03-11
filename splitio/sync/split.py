@@ -86,7 +86,7 @@ class SplitSynchronizer(SplitSynchronizerBase):
         """
         SplitSynchronizerBase.__init__(self, feature_flag_api, feature_flag_storage, rule_based_segment_storage)
 
-    def _fetch_until(self, fetch_options, till=None):
+    def _fetch_until(self, fetch_options, till=None, rbs_till=None):
         """
         Hit endpoint, update storage and return when since==till.
 
@@ -109,7 +109,7 @@ class SplitSynchronizer(SplitSynchronizerBase):
             if rbs_change_number is None:
                 rbs_change_number = -1
                 
-            if till is not None and till < change_number and till < rbs_change_number:
+            if (till is not None and till < change_number) or (rbs_till is not None and rbs_till < rbs_change_number):
                 # the passed till is less than change_number, no need to perform updates
                 return change_number, rbs_change_number, segment_list
 
@@ -135,7 +135,7 @@ class SplitSynchronizer(SplitSynchronizerBase):
             if feature_flag_changes.get('ff')['t'] == feature_flag_changes.get('ff')['s'] and feature_flag_changes.get('rbs')['t'] == feature_flag_changes.get('rbs')['s']:
                 return feature_flag_changes.get('ff')['t'], feature_flag_changes.get('rbs')['t'], segment_list
 
-    def _attempt_feature_flag_sync(self, fetch_options, till=None):
+    def _attempt_feature_flag_sync(self, fetch_options, till=None, rbs_till=None):
         """
         Hit endpoint, update storage and return True if sync is complete.
 
@@ -153,9 +153,9 @@ class SplitSynchronizer(SplitSynchronizerBase):
         remaining_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES
         while True:
             remaining_attempts -= 1
-            change_number, rbs_change_number, segment_list = self._fetch_until(fetch_options, till)
+            change_number, rbs_change_number, segment_list = self._fetch_until(fetch_options, till, rbs_till)
             final_segment_list.update(segment_list)
-            if till is None or (till <= change_number and till <= rbs_change_number):
+            if (till is None or till <= change_number) and (rbs_till is None or rbs_till <= rbs_change_number):
                 return True, remaining_attempts, change_number, rbs_change_number, final_segment_list
 
             elif remaining_attempts <= 0:
@@ -176,7 +176,7 @@ class SplitSynchronizer(SplitSynchronizerBase):
 
         return ','.join(self._feature_flag_storage.flag_set_filter.sorted_flag_sets)
 
-    def synchronize_splits(self, till=None):
+    def synchronize_splits(self, till=None, rbs_till=None):
         """
         Hit endpoint, update storage and return True if sync is complete.
 
@@ -186,7 +186,7 @@ class SplitSynchronizer(SplitSynchronizerBase):
         final_segment_list = set()
         fetch_options = FetchOptions(True, sets=self._get_config_sets())  # Set Cache-Control to no-cache
         successful_sync, remaining_attempts, change_number, rbs_change_number, segment_list = self._attempt_feature_flag_sync(fetch_options,
-                                                                                      till)
+                                                                                      till, rbs_till)
         final_segment_list.update(segment_list)
         attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if successful_sync:  # succedeed sync
@@ -194,7 +194,7 @@ class SplitSynchronizer(SplitSynchronizerBase):
             return final_segment_list
 
         with_cdn_bypass = FetchOptions(True, change_number, rbs_change_number, sets=self._get_config_sets())  # Set flag for bypassing CDN
-        without_cdn_successful_sync, remaining_attempts, change_number, rbs_change_number, segment_list = self._attempt_feature_flag_sync(with_cdn_bypass, till)
+        without_cdn_successful_sync, remaining_attempts, change_number, rbs_change_number, segment_list = self._attempt_feature_flag_sync(with_cdn_bypass, till, rbs_till)
         final_segment_list.update(segment_list)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if without_cdn_successful_sync:
@@ -233,7 +233,7 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
         """
         SplitSynchronizerBase.__init__(self, feature_flag_api, feature_flag_storage, rule_based_segment_storage)
 
-    async def _fetch_until(self, fetch_options, till=None):
+    async def _fetch_until(self, fetch_options, till=None, rbs_till=None):
         """
         Hit endpoint, update storage and return when since==till.
 
@@ -256,7 +256,7 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
             if rbs_change_number is None:
                 rbs_change_number = -1
                 
-            if till is not None and till < change_number and till < rbs_change_number:
+            if (till is not None and till < change_number) or (rbs_till is not None and till < rbs_change_number):
                 # the passed till is less than change_number, no need to perform updates
                 return change_number, rbs_change_number, segment_list
 
@@ -282,7 +282,7 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
             if feature_flag_changes.get('ff')['t'] == feature_flag_changes.get('ff')['s'] and feature_flag_changes.get('rbs')['t'] == feature_flag_changes.get('rbs')['s']:
                 return feature_flag_changes.get('ff')['t'], feature_flag_changes.get('rbs')['t'], segment_list
 
-    async def _attempt_feature_flag_sync(self, fetch_options, till=None):
+    async def _attempt_feature_flag_sync(self, fetch_options, till=None, rbs_till=None):
         """
         Hit endpoint, update storage and return True if sync is complete.
 
@@ -300,9 +300,9 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
         remaining_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES
         while True:
             remaining_attempts -= 1
-            change_number, rbs_change_number, segment_list = await self._fetch_until(fetch_options, till)
+            change_number, rbs_change_number, segment_list = await self._fetch_until(fetch_options, till, rbs_till)
             final_segment_list.update(segment_list)
-            if till is None or (till <= change_number and till <= rbs_change_number):
+            if (till is None or till <= change_number) and (rbs_till is None or rbs_till <= rbs_change_number):
                 return True, remaining_attempts, change_number, rbs_change_number, final_segment_list
 
             elif remaining_attempts <= 0:
@@ -311,7 +311,7 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
             how_long = self._backoff.get()
             await asyncio.sleep(how_long)
 
-    async def synchronize_splits(self, till=None):
+    async def synchronize_splits(self, till=None, rbs_till=None):
         """
         Hit endpoint, update storage and return True if sync is complete.
 
@@ -321,7 +321,7 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
         final_segment_list = set()
         fetch_options = FetchOptions(True, sets=self._get_config_sets())  # Set Cache-Control to no-cache
         successful_sync, remaining_attempts, change_number, rbs_change_number, segment_list = await self._attempt_feature_flag_sync(fetch_options,
-                                                                                      till)
+                                                                                      till, rbs_till)
         final_segment_list.update(segment_list)
         attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if successful_sync:  # succedeed sync
@@ -329,7 +329,7 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
             return final_segment_list
 
         with_cdn_bypass = FetchOptions(True, change_number, rbs_change_number, sets=self._get_config_sets())  # Set flag for bypassing CDN
-        without_cdn_successful_sync, remaining_attempts, change_number, rbs_change_number, segment_list = await self._attempt_feature_flag_sync(with_cdn_bypass, till)
+        without_cdn_successful_sync, remaining_attempts, change_number, rbs_change_number, segment_list = await self._attempt_feature_flag_sync(with_cdn_bypass, till, rbs_till)
         final_segment_list.update(segment_list)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if without_cdn_successful_sync:
