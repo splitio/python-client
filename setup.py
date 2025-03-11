@@ -8,7 +8,7 @@ TESTS_REQUIRES = [
     'flake8',
     'pytest==7.0.1',
     'pytest-mock==3.11.1',
-    'coverage',
+    'coverage==7.0.0',
     'pytest-cov==4.1.0',
     'importlib-metadata==6.7',
     'tomli==1.2.3',
@@ -17,7 +17,8 @@ TESTS_REQUIRES = [
     'pytest-asyncio==0.21.0',
     'aiohttp>=3.8.4',
     'aiofiles>=23.1.0',
-    'requests-kerberos>=0.15.0'
+    'requests-kerberos>=0.15.0',
+    'urllib3==2.2.0'
 ]
 
 INSTALL_REQUIRES = [

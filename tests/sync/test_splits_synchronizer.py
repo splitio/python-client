@@ -9,9 +9,10 @@ from splitio.util.backoff import Backoff
 from splitio.api import APIException
 from splitio.api.commons import FetchOptions
 from splitio.storage import SplitStorage
-from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySplitStorageAsync
+from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySplitStorageAsync, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 from splitio.storage import FlagSetsFilter
 from splitio.models.splits import Split
+from splitio.models.rule_based_segments import RuleBasedSegment
 from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync, LocalSplitSynchronizer, LocalSplitSynchronizerAsync, LocalhostMode
 from splitio.optional.loaders import aiofiles, asyncio
 from tests.integration import splits_json
@@ -52,42 +53,112 @@ splits_raw = [{
     'sets': ['set1', 'set2']
 }]
 
-json_body = {'splits': [{
-    'changeNumber': 123,
-    'trafficTypeName': 'user',
-    'name': 'some_name',
-    'trafficAllocation': 100,
-    'trafficAllocationSeed': 123456,
-    'seed': 321654,
-    'status': 'ACTIVE',
-    'killed': False,
-    'defaultTreatment': 'off',
-    'algo': 2,
-    'conditions': [
-        {
-            'partitions': [
-                {'treatment': 'on', 'size': 50},
-                {'treatment': 'off', 'size': 50}
-            ],
-            'contitionType': 'WHITELIST',
-            'label': 'some_label',
-            'matcherGroup': {
-                'matchers': [
-                    {
-                        'matcherType': 'WHITELIST',
-                        'whitelistMatcherData': {
-                            'whitelist': ['k1', 'k2', 'k3']
-                        },
-                        'negate': False,
-                    }
+json_body = {
+    "ff": {
+        "t":1675095324253,
+        "s":-1,
+        'd': [{
+        'changeNumber': 123,
+        'trafficTypeName': 'user',
+        'name': 'some_name',
+        'trafficAllocation': 100,
+        'trafficAllocationSeed': 123456,
+        'seed': 321654,
+        'status': 'ACTIVE',
+        'killed': False,
+        'defaultTreatment': 'off',
+        'algo': 2,
+        'conditions': [
+            {
+                'partitions': [
+                    {'treatment': 'on', 'size': 50},
+                    {'treatment': 'off', 'size': 50}
                 ],
-                'combiner': 'AND'
+                'contitionType': 'WHITELIST',
+                'label': 'some_label',
+                'matcherGroup': {
+                    'matchers': [
+                        {
+                            'matcherType': 'WHITELIST',
+                            'whitelistMatcherData': {
+                                'whitelist': ['k1', 'k2', 'k3']
+                            },
+                            'negate': False,
+                        }
+                    ],
+                    'combiner': 'AND'
+                }
+          },
+          {
+            "conditionType": "ROLLOUT",
+            "matcherGroup": {
+              "combiner": "AND",
+              "matchers": [
+                {
+                  "keySelector": {
+                    "trafficType": "user"
+                  },
+                  "matcherType": "IN_RULE_BASED_SEGMENT",
+                  "negate": False,
+                  "userDefinedSegmentMatcherData": {
+                    "segmentName": "sample_rule_based_segment"
+                  }
+                }
+              ]
+            },
+            "partitions": [
+              {
+                "treatment": "on",
+                "size": 100
+              },
+              {
+                "treatment": "off",
+                "size": 0
+              }
+            ],
+            "label": "in rule based segment sample_rule_based_segment"
+          },            
+        ],
+        'sets': ['set1', 'set2']}]
+    },
+    "rbs":  {
+    "t": 1675095324253,
+    "s": -1,
+    "d": [
+      {
+        "changeNumber": 5,
+        "name": "sample_rule_based_segment",
+        "status": "ACTIVE",
+        "trafficTypeName": "user",
+        "excluded":{
+          "keys":["mauro@split.io","gaston@split.io"],
+          "segments":[]
+        },
+        "conditions": [
+          {
+            "matcherGroup": {
+              "combiner": "AND",
+              "matchers": [
+                {
+                  "keySelector": {
+                    "trafficType": "user",
+                    "attribute": "email"
+                  },
+                  "matcherType": "ENDS_WITH",
+                  "negate": False,
+                  "whitelistMatcherData": {
+                    "whitelist": [
+                      "@split.io"
+                    ]
+                  }
+                }
+              ]
             }
-        }
-    ],
-    'sets': ['set1', 'set2']}],
-    "till":1675095324253,
-    "since":-1,
+          }
+        ]
+      }
+    ]
+  }
 }
 
 class SplitsSynchronizerTests(object):
@@ -98,13 +169,16 @@ class SplitsSynchronizerTests(object):
     def test_synchronize_splits_error(self, mocker):
         """Test that if fetching splits fails at some_point, the task will continue running."""
         storage = mocker.Mock(spec=InMemorySplitStorage)
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
         api = mocker.Mock()
 
-        def run(x, c):
+        def run(x, y, c):
             raise APIException("something broke")
         run._calls = 0
         api.fetch_splits.side_effect = run
         storage.get_change_number.return_value = -1
+        rbs_storage.get_change_number.return_value = -1
+        
         class flag_set_filter():
             def should_filter():
                 return False
@@ -115,7 +189,7 @@ class SplitsSynchronizerTests(object):
         storage.flag_set_filter.flag_sets = {}
         storage.flag_set_filter.sorted_flag_sets = []
 
-        split_synchronizer = SplitSynchronizer(api, storage)
+        split_synchronizer = SplitSynchronizer(api, storage, rbs_storage)
 
         with pytest.raises(APIException):
             split_synchronizer.synchronize_splits(1)
@@ -123,21 +197,32 @@ class SplitsSynchronizerTests(object):
     def test_synchronize_splits(self, mocker):
         """Test split sync."""
         storage = mocker.Mock(spec=InMemorySplitStorage)
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
 
         def change_number_mock():
             change_number_mock._calls += 1
             if change_number_mock._calls == 1:
                 return -1
             return 123
+        
+        def rbs_change_number_mock():
+            rbs_change_number_mock._calls += 1
+            if rbs_change_number_mock._calls == 1:
+                return -1
+            return 123
+        
         change_number_mock._calls = 0
+        rbs_change_number_mock._calls = 0
         storage.get_change_number.side_effect = change_number_mock
-
+        rbs_storage.get_change_number.side_effect = rbs_change_number_mock
+        
         class flag_set_filter():
             def should_filter():
                 return False
 
             def intersect(sets):
                 return True
+            
         storage.flag_set_filter = flag_set_filter
         storage.flag_set_filter.flag_sets = {}
         storage.flag_set_filter.sorted_flag_sets = []
@@ -147,35 +232,46 @@ class SplitsSynchronizerTests(object):
             get_changes.called += 1
 
             if get_changes.called == 1:
-                return {
-                    'splits': self.splits,
-                    'since': -1,
-                    'till': 123
-                }
+                return json_body
             else:
                 return {
-                    'splits': [],
-                    'since': 123,
-                    'till': 123
+                    "ff": {
+                        "t":123,
+                        "s":123,
+                        'd': []
+                    },
+                    "rbs":  {
+                        "t": 5,
+                        "s": 5,
+                        "d": []
+                    }               
                 }
+                
         get_changes.called = 0
         api.fetch_splits.side_effect = get_changes
 
-        split_synchronizer = SplitSynchronizer(api, storage)
+        split_synchronizer = SplitSynchronizer(api, storage, rbs_storage)
         split_synchronizer.synchronize_splits()
-
+    
         assert api.fetch_splits.mock_calls[0][1][0] == -1
-        assert api.fetch_splits.mock_calls[0][1][1].cache_control_headers == True
+        assert api.fetch_splits.mock_calls[0][1][2].cache_control_headers == True
         assert api.fetch_splits.mock_calls[1][1][0] == 123
-        assert api.fetch_splits.mock_calls[1][1][1].cache_control_headers == True
+        assert api.fetch_splits.mock_calls[1][1][1] == 123
+        assert api.fetch_splits.mock_calls[1][1][2].cache_control_headers == True
 
         inserted_split = storage.update.mock_calls[0][1][0][0]
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
 
+        inserted_rbs = rbs_storage.update.mock_calls[0][1][0][0]
+        assert isinstance(inserted_rbs, RuleBasedSegment)
+        assert inserted_rbs.name == 'sample_rule_based_segment'
+
     def test_not_called_on_till(self, mocker):
         """Test that sync is not called when till is less than previous changenumber"""
         storage = mocker.Mock(spec=InMemorySplitStorage)
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
+
         class flag_set_filter():
             def should_filter():
                 return False
@@ -189,6 +285,7 @@ class SplitsSynchronizerTests(object):
         def change_number_mock():
             return 2
         storage.get_change_number.side_effect = change_number_mock
+        rbs_storage.get_change_number.side_effect = change_number_mock
 
         def get_changes(*args, **kwargs):
             get_changes.called += 1
@@ -199,7 +296,7 @@ class SplitsSynchronizerTests(object):
         api = mocker.Mock()
         api.fetch_splits.side_effect = get_changes
 
-        split_synchronizer = SplitSynchronizer(api, storage)
+        split_synchronizer = SplitSynchronizer(api, storage, rbs_storage)
         split_synchronizer.synchronize_splits(1)
 
         assert get_changes.called == 0
@@ -209,6 +306,7 @@ class SplitsSynchronizerTests(object):
         mocker.patch('splitio.sync.split._ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES', new=3)
 
         storage = mocker.Mock(spec=InMemorySplitStorage)
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
 
         def change_number_mock():
             change_number_mock._calls += 1
@@ -219,24 +317,48 @@ class SplitsSynchronizerTests(object):
             elif change_number_mock._calls <= 7:
                 return 1234
             return 12345 # Return proper cn for CDN Bypass
+
+        def rbs_change_number_mock():
+            rbs_change_number_mock._calls += 1
+            if rbs_change_number_mock._calls == 1:
+                return -1
+            elif change_number_mock._calls >= 2 and change_number_mock._calls <= 3:
+                return 555
+            elif change_number_mock._calls <= 9:
+                return 555
+            return 666 # Return proper cn for CDN Bypass
+        
         change_number_mock._calls = 0
+        rbs_change_number_mock._calls = 0
         storage.get_change_number.side_effect = change_number_mock
+        rbs_storage.get_change_number.side_effect = rbs_change_number_mock
 
         api = mocker.Mock()
-
+        rbs_1 = copy.deepcopy(json_body['rbs']['d'])
         def get_changes(*args, **kwargs):
             get_changes.called += 1
             if get_changes.called == 1:
-                return { 'splits': self.splits, 'since': -1, 'till': 123 }
+                return { 'ff': { 'd': self.splits, 's': -1, 't': 123 }, 
+                        'rbs':  {"t": 555, "s": -1, "d": rbs_1}}
             elif get_changes.called == 2:
-                return { 'splits': [], 'since': 123, 'till': 123 }
+                return { 'ff': { 'd': [], 's': 123, 't': 123 },
+                        'rbs':  {"t": 555, "s": 555, "d": []}}
             elif get_changes.called == 3:
-                return { 'splits': [], 'since': 123, 'till': 1234 }
+                return { 'ff': { 'd': [], 's': 123, 't': 1234 },
+                        'rbs':  {"t": 555, "s": 555, "d": []}}
             elif get_changes.called >= 4 and get_changes.called <= 6:
-                return { 'splits': [], 'since': 1234, 'till': 1234 }
+                return { 'ff': { 'd': [], 's': 1234, 't': 1234 },
+                        'rbs':  {"t": 555, "s": 555, "d": []}}
             elif get_changes.called == 7:
-                return { 'splits': [], 'since': 1234, 'till': 12345 }
-            return { 'splits': [], 'since': 12345, 'till': 12345 }
+                return { 'ff': { 'd': [], 's': 1234, 't': 12345 },
+                        'rbs':  {"t": 555, "s": 555, "d": []}}
+            elif get_changes.called == 8:
+                return { 'ff': { 'd': [], 's': 12345, 't': 12345 },
+                        'rbs':  {"t": 555, "s": 555, "d": []}}
+            rbs_1[0]['excluded']['keys'] = ['bilal@split.io']
+            return { 'ff': { 'd': [], 's': 12345, 't': 12345 },
+                        'rbs':  {"t": 666, "s": 666, "d": rbs_1}}
+
         get_changes.called = 0
         api.fetch_splits.side_effect = get_changes
 
@@ -251,53 +373,65 @@ class SplitsSynchronizerTests(object):
         storage.flag_set_filter.flag_sets = {}
         storage.flag_set_filter.sorted_flag_sets = []
 
-        split_synchronizer = SplitSynchronizer(api, storage)
+        split_synchronizer = SplitSynchronizer(api, storage, rbs_storage)
         split_synchronizer._backoff = Backoff(1, 1)
         split_synchronizer.synchronize_splits()
 
         assert api.fetch_splits.mock_calls[0][1][0] == -1
-        assert api.fetch_splits.mock_calls[0][1][1].cache_control_headers == True
+        assert api.fetch_splits.mock_calls[0][1][2].cache_control_headers == True
         assert api.fetch_splits.mock_calls[1][1][0] == 123
-        assert api.fetch_splits.mock_calls[1][1][1].cache_control_headers == True
+        assert api.fetch_splits.mock_calls[1][1][2].cache_control_headers == True
 
         split_synchronizer._backoff = Backoff(1, 0.1)
         split_synchronizer.synchronize_splits(12345)
         assert api.fetch_splits.mock_calls[3][1][0] == 1234
-        assert api.fetch_splits.mock_calls[3][1][1].cache_control_headers == True
+        assert api.fetch_splits.mock_calls[3][1][2].cache_control_headers == True
         assert len(api.fetch_splits.mock_calls) == 8 # 2 ok + BACKOFF(2 since==till + 2 re-attempts) + CDN(2 since==till)
 
         inserted_split = storage.update.mock_calls[0][1][0][0]
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
+        inserted_rbs = rbs_storage.update.mock_calls[0][1][0][0]
+        assert inserted_rbs.excluded.get_excluded_keys() == ["mauro@split.io","gaston@split.io"]
 
+        split_synchronizer._backoff = Backoff(1, 0.1)
+        split_synchronizer.synchronize_splits(None, 666)
+        inserted_rbs = rbs_storage.update.mock_calls[8][1][0][0]
+        assert inserted_rbs.excluded.get_excluded_keys() == ['bilal@split.io']
+        
     def test_sync_flag_sets_with_config_sets(self, mocker):
         """Test split sync with flag sets."""
         storage = InMemorySplitStorage(['set1', 'set2'])
-
-        split = self.splits[0].copy()
+        rbs_storage = InMemoryRuleBasedSegmentStorage()
+        
+        split = copy.deepcopy(self.splits[0])
         split['name'] = 'second'
         splits1 = [self.splits[0].copy(), split]
-        splits2 = self.splits.copy()
-        splits3 = self.splits.copy()
-        splits4 = self.splits.copy()
+        splits2 = copy.deepcopy(self.splits)
+        splits3 = copy.deepcopy(self.splits)
+        splits4 = copy.deepcopy(self.splits)
         api = mocker.Mock()
         def get_changes(*args, **kwargs):
             get_changes.called += 1
             if get_changes.called == 1:
-                return { 'splits': splits1, 'since': 123, 'till': 123 }
+                return { 'ff': { 'd': splits1, 's': 123, 't': 123 },
+                        'rbs':  {'t': 123, 's': 123, 'd': []}}                        
             elif get_changes.called == 2:
                 splits2[0]['sets'] = ['set3']
-                return { 'splits': splits2, 'since': 124, 'till': 124 }
+                return { 'ff': { 'd': splits2, 's': 124, 't': 124 },
+                        'rbs':  {'t': 124, 's': 124, 'd': []}}                        
             elif get_changes.called == 3:
                 splits3[0]['sets'] = ['set1']
-                return { 'splits': splits3, 'since': 12434, 'till': 12434 }
+                return { 'ff': { 'd': splits3, 's': 12434, 't': 12434 },
+                        'rbs':  {'t': 12434, 's': 12434, 'd': []}}                        
             splits4[0]['sets'] = ['set6']
             splits4[0]['name'] = 'new_split'
-            return { 'splits': splits4, 'since': 12438, 'till': 12438 }
+            return { 'ff': { 'd': splits4, 's': 12438, 't': 12438 },
+                        'rbs':  {'t': 12438, 's': 12438, 'd': []}}                        
         get_changes.called = 0
         api.fetch_splits.side_effect = get_changes
 
-        split_synchronizer = SplitSynchronizer(api, storage)
+        split_synchronizer = SplitSynchronizer(api, storage, rbs_storage)
         split_synchronizer._backoff = Backoff(1, 1)
         split_synchronizer.synchronize_splits()
         assert isinstance(storage.get('some_name'), Split)
@@ -314,40 +448,44 @@ class SplitsSynchronizerTests(object):
     def test_sync_flag_sets_without_config_sets(self, mocker):
         """Test split sync with flag sets."""
         storage = InMemorySplitStorage()
-
-        split = self.splits[0].copy()
+        rbs_storage = InMemoryRuleBasedSegmentStorage()
+        split = copy.deepcopy(self.splits[0])
         split['name'] = 'second'
         splits1 = [self.splits[0].copy(), split]
-        splits2 = self.splits.copy()
-        splits3 = self.splits.copy()
-        splits4 = self.splits.copy()
+        splits2 = copy.deepcopy(self.splits)
+        splits3 = copy.deepcopy(self.splits)
+        splits4 = copy.deepcopy(self.splits)
         api = mocker.Mock()
         def get_changes(*args, **kwargs):
             get_changes.called += 1
             if get_changes.called == 1:
-                return { 'splits': splits1, 'since': 123, 'till': 123 }
+                return { 'ff': { 'd': splits1, 's': 123, 't': 123 },
+                        'rbs':  {"t": 123, "s": 123, "d": []}}                        
             elif get_changes.called == 2:
                 splits2[0]['sets'] = ['set3']
-                return { 'splits': splits2, 'since': 124, 'till': 124 }
+                return { 'ff': { 'd': splits2, 's': 124, 't': 124 },
+                        'rbs':  {"t": 124, "s": 124, "d": []}}                        
             elif get_changes.called == 3:
                 splits3[0]['sets'] = ['set1']
-                return { 'splits': splits3, 'since': 12434, 'till': 12434 }
+                return { 'ff': { 'd': splits3, 's': 12434, 't': 12434 },
+                        'rbs':  {"t": 12434, "s": 12434, "d": []}}                        
             splits4[0]['sets'] = ['set6']
             splits4[0]['name'] = 'third_split'
-            return { 'splits': splits4, 'since': 12438, 'till': 12438 }
+            return { 'ff': { 'd': splits4, 's': 12438, 't': 12438 },
+                        'rbs':  {"t": 12438, "s": 12438, "d": []}}                        
         get_changes.called = 0
         api.fetch_splits.side_effect = get_changes
 
-        split_synchronizer = SplitSynchronizer(api, storage)
+        split_synchronizer = SplitSynchronizer(api, storage, rbs_storage)
         split_synchronizer._backoff = Backoff(1, 1)
         split_synchronizer.synchronize_splits()
-        assert isinstance(storage.get('new_split'), Split)
+        assert isinstance(storage.get('some_name'), Split)
 
         split_synchronizer.synchronize_splits(124)
-        assert isinstance(storage.get('new_split'), Split)
+        assert isinstance(storage.get('some_name'), Split)
 
         split_synchronizer.synchronize_splits(12434)
-        assert isinstance(storage.get('new_split'), Split)
+        assert isinstance(storage.get('some_name'), Split)
 
         split_synchronizer.synchronize_splits(12438)
         assert isinstance(storage.get('third_split'), Split)
@@ -361,17 +499,19 @@ class SplitsSynchronizerAsyncTests(object):
     async def test_synchronize_splits_error(self, mocker):
         """Test that if fetching splits fails at some_point, the task will continue running."""
         storage = mocker.Mock(spec=InMemorySplitStorageAsync)
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
         api = mocker.Mock()
 
-        async def run(x, c):
+        async def run(x, y, c):
             raise APIException("something broke")
         run._calls = 0
         api.fetch_splits = run
 
         async def get_change_number(*args):
             return -1
-        storage.get_change_number = get_change_number
-
+        storage.get_change_number = get_change_number        
+        rbs_storage.get_change_number = get_change_number
+        
         class flag_set_filter():
             def should_filter():
                 return False
@@ -382,7 +522,7 @@ class SplitsSynchronizerAsyncTests(object):
         storage.flag_set_filter.flag_sets = {}
         storage.flag_set_filter.sorted_flag_sets = []
 
-        split_synchronizer = SplitSynchronizerAsync(api, storage)
+        split_synchronizer = SplitSynchronizerAsync(api, storage, rbs_storage)
 
         with pytest.raises(APIException):
             await split_synchronizer.synchronize_splits(1)
@@ -391,15 +531,24 @@ class SplitsSynchronizerAsyncTests(object):
     async def test_synchronize_splits(self, mocker):
         """Test split sync."""
         storage = mocker.Mock(spec=InMemorySplitStorageAsync)
-
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
+        
         async def change_number_mock():
             change_number_mock._calls += 1
             if change_number_mock._calls == 1:
                 return -1
             return 123
-        change_number_mock._calls = 0
-        storage.get_change_number = change_number_mock
+        async def rbs_change_number_mock():
+            rbs_change_number_mock._calls += 1
+            if rbs_change_number_mock._calls == 1:
+                return -1
+            return 123
 
+        change_number_mock._calls = 0
+        rbs_change_number_mock._calls = 0        
+        storage.get_change_number = change_number_mock
+        rbs_storage.get_change_number.side_effect = rbs_change_number_mock
+        
         class flag_set_filter():
             def should_filter():
                 return False
@@ -416,33 +565,42 @@ class SplitsSynchronizerAsyncTests(object):
                 self.parsed_split = parsed_split
         storage.update = update
 
+        self.parsed_rbs = None
+        async def update(parsed_rbs, deleted, chanhe_number):
+            if len(parsed_rbs) > 0:
+                self.parsed_rbs = parsed_rbs
+        rbs_storage.update = update
+
         api = mocker.Mock()
         self.change_number_1 = None
         self.fetch_options_1 = None
         self.change_number_2 = None
         self.fetch_options_2 = None
-        async def get_changes(change_number, fetch_options):
+        async def get_changes(change_number, rbs_change_number, fetch_options):
             get_changes.called += 1
             if get_changes.called == 1:
                 self.change_number_1 = change_number
                 self.fetch_options_1 = fetch_options
-                return {
-                    'splits': self.splits,
-                    'since': -1,
-                    'till': 123
-                }
+                return json_body
             else:
                 self.change_number_2 = change_number
                 self.fetch_options_2 = fetch_options
                 return {
-                    'splits': [],
-                    'since': 123,
-                    'till': 123
+                    "ff": {
+                        "t":123,
+                        "s":123,
+                        'd': []
+                    },
+                    "rbs":  {
+                        "t": 123,
+                        "s": 123,
+                        "d": []
+                    }               
                 }
         get_changes.called = 0
         api.fetch_splits = get_changes
 
-        split_synchronizer = SplitSynchronizerAsync(api, storage)
+        split_synchronizer = SplitSynchronizerAsync(api, storage, rbs_storage)
         await split_synchronizer.synchronize_splits()
 
         assert (-1, FetchOptions(True)._cache_control_headers) == (self.change_number_1, self.fetch_options_1._cache_control_headers)
@@ -451,10 +609,17 @@ class SplitsSynchronizerAsyncTests(object):
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
 
+        inserted_rbs = self.parsed_rbs[0]
+        assert isinstance(inserted_rbs, RuleBasedSegment)
+        assert inserted_rbs.name == 'sample_rule_based_segment'
+
+
     @pytest.mark.asyncio
     async def test_not_called_on_till(self, mocker):
         """Test that sync is not called when till is less than previous changenumber"""
         storage = mocker.Mock(spec=InMemorySplitStorageAsync)
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
+                
         class flag_set_filter():
             def should_filter():
                 return False
@@ -468,7 +633,8 @@ class SplitsSynchronizerAsyncTests(object):
         async def change_number_mock():
             return 2
         storage.get_change_number = change_number_mock
-
+        rbs_storage.get_change_number.side_effect = change_number_mock
+        
         async def get_changes(*args, **kwargs):
             get_changes.called += 1
             return None
@@ -476,7 +642,7 @@ class SplitsSynchronizerAsyncTests(object):
         api = mocker.Mock()
         api.fetch_splits = get_changes
 
-        split_synchronizer = SplitSynchronizerAsync(api, storage)
+        split_synchronizer = SplitSynchronizerAsync(api, storage, rbs_storage)
         await split_synchronizer.synchronize_splits(1)
         assert get_changes.called == 0
 
@@ -485,7 +651,7 @@ class SplitsSynchronizerAsyncTests(object):
         """Test split sync with bypassing cdn."""
         mocker.patch('splitio.sync.split._ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES', new=3)
         storage = mocker.Mock(spec=InMemorySplitStorageAsync)
-
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
         async def change_number_mock():
             change_number_mock._calls += 1
             if change_number_mock._calls == 1:
@@ -495,14 +661,32 @@ class SplitsSynchronizerAsyncTests(object):
             elif change_number_mock._calls <= 7:
                 return 1234
             return 12345 # Return proper cn for CDN Bypass
-        change_number_mock._calls = 0
-        storage.get_change_number = change_number_mock
+        async def rbs_change_number_mock():
+            rbs_change_number_mock._calls += 1
+            if rbs_change_number_mock._calls == 1:
+                return -1
+            elif change_number_mock._calls >= 2 and change_number_mock._calls <= 3:
+                return 555
+            elif change_number_mock._calls <= 9:
+                return 555
+            return 666 # Return proper cn for CDN Bypass
 
+        change_number_mock._calls = 0
+        rbs_change_number_mock._calls = 0
+        storage.get_change_number = change_number_mock
+        rbs_storage.get_change_number = rbs_change_number_mock
+        
         self.parsed_split = None
         async def update(parsed_split, deleted, change_number):
             if len(parsed_split) > 0:
                 self.parsed_split = parsed_split
         storage.update = update
+
+        self.parsed_rbs = None
+        async def rbs_update(parsed, deleted, change_number):
+            if len(parsed) > 0:
+                self.parsed_rbs = parsed
+        rbs_storage.update = rbs_update
 
         api = mocker.Mock()
         self.change_number_1 = None
@@ -511,25 +695,38 @@ class SplitsSynchronizerAsyncTests(object):
         self.fetch_options_2 = None
         self.change_number_3 = None
         self.fetch_options_3 = None
-        async def get_changes(change_number, fetch_options):
+        rbs_1 = copy.deepcopy(json_body['rbs']['d'])
+
+        async def get_changes(change_number, rbs_change_number, fetch_options):
             get_changes.called += 1
             if get_changes.called == 1:
                 self.change_number_1 = change_number
                 self.fetch_options_1 = fetch_options
-                return { 'splits': self.splits, 'since': -1, 'till': 123 }
+                return { 'ff': { 'd': self.splits, 's': -1, 't': 123 }, 
+                        'rbs':  {"t": 555, "s": -1, "d": rbs_1}}
             elif get_changes.called == 2:
                 self.change_number_2 = change_number
                 self.fetch_options_2 = fetch_options
-                return { 'splits': [], 'since': 123, 'till': 123 }
+                return { 'ff': { 'd': [], 's': 123, 't': 123 },
+                        'rbs':  {"t": 555, "s": 555, "d": []}}
             elif get_changes.called == 3:
-                return { 'splits': [], 'since': 123, 'till': 1234 }
+                return { 'ff': { 'd': [], 's': 123, 't': 1234 },
+                        'rbs':  {"t": 555, "s": 555, "d": []}}                    
             elif get_changes.called >= 4 and get_changes.called <= 6:
-                return { 'splits': [], 'since': 1234, 'till': 1234 }
+                return { 'ff': { 'd': [], 's': 1234, 't': 1234 },
+                        'rbs':  {"t": 555, "s": 555, "d": []}}                        
             elif get_changes.called == 7:
-                return { 'splits': [], 'since': 1234, 'till': 12345 }
-            self.change_number_3 = change_number
-            self.fetch_options_3 = fetch_options
-            return { 'splits': [], 'since': 12345, 'till': 12345 }
+                return { 'ff': { 'd': [], 's': 1234, 't': 12345 },
+                        'rbs':  {"t": 555, "s": 555, "d": []}}      
+            elif get_changes.called == 8:                                  
+                self.change_number_3 = change_number
+                self.fetch_options_3 = fetch_options
+                return { 'ff': { 'd': [], 's': 12345, 't': 12345 },
+                        'rbs':  {"t": 555, "s": 555, "d": []}}
+            rbs_1[0]['excluded']['keys'] = ['bilal@split.io']
+            return { 'ff': { 'd': [], 's': 12345, 't': 12345 },
+                        'rbs':  {"t": 666, "s": 666, "d": rbs_1}}
+    
         get_changes.called = 0
         api.fetch_splits = get_changes
 
@@ -544,7 +741,7 @@ class SplitsSynchronizerAsyncTests(object):
         storage.flag_set_filter.flag_sets = {}
         storage.flag_set_filter.sorted_flag_sets = []
 
-        split_synchronizer = SplitSynchronizerAsync(api, storage)
+        split_synchronizer = SplitSynchronizerAsync(api, storage, rbs_storage)
         split_synchronizer._backoff = Backoff(1, 1)
         await split_synchronizer.synchronize_splits()
 
@@ -559,12 +756,20 @@ class SplitsSynchronizerAsyncTests(object):
         inserted_split = self.parsed_split[0]
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
+        inserted_rbs = self.parsed_rbs[0]
+        assert inserted_rbs.excluded.get_excluded_keys() == ["mauro@split.io","gaston@split.io"]
 
+        split_synchronizer._backoff = Backoff(1, 0.1)
+        await split_synchronizer.synchronize_splits(None, 666)
+        inserted_rbs = self.parsed_rbs[0]
+        assert inserted_rbs.excluded.get_excluded_keys() == ['bilal@split.io']
+        
     @pytest.mark.asyncio
     async def test_sync_flag_sets_with_config_sets(self, mocker):
         """Test split sync with flag sets."""
         storage = InMemorySplitStorageAsync(['set1', 'set2'])
-
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
+        
         split = self.splits[0].copy()
         split['name'] = 'second'
         splits1 = [self.splits[0].copy(), split]
@@ -575,20 +780,25 @@ class SplitsSynchronizerAsyncTests(object):
         async def get_changes(*args, **kwargs):
             get_changes.called += 1
             if get_changes.called == 1:
-                return { 'splits': splits1, 'since': 123, 'till': 123 }
+                return { 'ff': { 'd': splits1, 's': 123, 't': 123 },
+                        'rbs':  {'t': 123, 's': 123, 'd': []}}                        
             elif get_changes.called == 2:
                 splits2[0]['sets'] = ['set3']
-                return { 'splits': splits2, 'since': 124, 'till': 124 }
+                return { 'ff': { 'd': splits2, 's': 124, 't': 124 },
+                        'rbs':  {'t': 124, 's': 124, 'd': []}}                        
             elif get_changes.called == 3:
                 splits3[0]['sets'] = ['set1']
-                return { 'splits': splits3, 'since': 12434, 'till': 12434 }
+                return { 'ff': { 'd': splits3, 's': 12434, 't': 12434 },
+                        'rbs':  {'t': 12434, 's': 12434, 'd': []}}                        
             splits4[0]['sets'] = ['set6']
             splits4[0]['name'] = 'new_split'
-            return { 'splits': splits4, 'since': 12438, 'till': 12438 }
+            return { 'ff': { 'd': splits4, 's': 12438, 't': 12438 },
+                        'rbs':  {'t': 12438, 's': 12438, 'd': []}}                        
+
         get_changes.called = 0
         api.fetch_splits = get_changes
 
-        split_synchronizer = SplitSynchronizerAsync(api, storage)
+        split_synchronizer = SplitSynchronizerAsync(api, storage, rbs_storage)
         split_synchronizer._backoff = Backoff(1, 1)
         await split_synchronizer.synchronize_splits()
         assert isinstance(await storage.get('some_name'), Split)
@@ -606,7 +816,7 @@ class SplitsSynchronizerAsyncTests(object):
     async def test_sync_flag_sets_without_config_sets(self, mocker):
         """Test split sync with flag sets."""
         storage = InMemorySplitStorageAsync()
-
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
         split = self.splits[0].copy()
         split['name'] = 'second'
         splits1 = [self.splits[0].copy(), split]
@@ -617,20 +827,24 @@ class SplitsSynchronizerAsyncTests(object):
         async def get_changes(*args, **kwargs):
             get_changes.called += 1
             if get_changes.called == 1:
-                return { 'splits': splits1, 'since': 123, 'till': 123 }
+                return { 'ff': { 'd': splits1, 's': 123, 't': 123 },
+                        'rbs':  {"t": 123, "s": 123, "d": []}}                        
             elif get_changes.called == 2:
                 splits2[0]['sets'] = ['set3']
-                return { 'splits': splits2, 'since': 124, 'till': 124 }
+                return { 'ff': { 'd': splits2, 's': 124, 't': 124 },
+                        'rbs':  {"t": 124, "s": 124, "d": []}}                        
             elif get_changes.called == 3:
                 splits3[0]['sets'] = ['set1']
-                return { 'splits': splits3, 'since': 12434, 'till': 12434 }
+                return { 'ff': { 'd': splits3, 's': 12434, 't': 12434 },
+                        'rbs':  {"t": 12434, "s": 12434, "d": []}}                        
             splits4[0]['sets'] = ['set6']
             splits4[0]['name'] = 'third_split'
-            return { 'splits': splits4, 'since': 12438, 'till': 12438 }
+            return { 'ff': { 'd': splits4, 's': 12438, 't': 12438 },
+                        'rbs':  {"t": 12438, "s": 12438, "d": []}}                        
         get_changes.called = 0
         api.fetch_splits.side_effect = get_changes
 
-        split_synchronizer = SplitSynchronizerAsync(api, storage)
+        split_synchronizer = SplitSynchronizerAsync(api, storage, rbs_storage)
         split_synchronizer._backoff = Backoff(1, 1)
         await split_synchronizer.synchronize_splits()
         assert isinstance(await storage.get('new_split'), Split)
