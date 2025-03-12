@@ -28,6 +28,7 @@ class UpdateType(Enum):
     SPLIT_UPDATE = 'SPLIT_UPDATE'
     SPLIT_KILL = 'SPLIT_KILL'
     SEGMENT_UPDATE = 'SEGMENT_UPDATE'
+    RB_SEGMENT_UPDATE = 'RB_SEGMENT_UPDATE'
 
 
 class ControlType(Enum):
@@ -329,7 +330,7 @@ class SplitChangeUpdate(BaseUpdate):
         """Class constructor."""
         BaseUpdate.__init__(self, channel, timestamp, change_number)
         self._previous_change_number = previous_change_number
-        self._feature_flag_definition = feature_flag_definition
+        self._object_definition = feature_flag_definition
         self._compression = compression
 
     @property
@@ -352,13 +353,13 @@ class SplitChangeUpdate(BaseUpdate):
         return self._previous_change_number
 
     @property
-    def feature_flag_definition(self):  # pylint:disable=no-self-use
+    def object_definition(self):  # pylint:disable=no-self-use
         """
         Return feature flag definition
         :returns: The new feature flag definition
         :rtype: str
         """
-        return self._feature_flag_definition
+        return self._object_definition
 
     @property
     def compression(self):  # pylint:disable=no-self-use
@@ -451,6 +452,56 @@ class SegmentChangeUpdate(BaseUpdate):
         """Return string representation."""
         return "SegmentChange - changeNumber=%d, name=%s" % (self.change_number, self.segment_name)
 
+class RBSChangeUpdate(BaseUpdate):
+    """rbs Change notification."""
+
+    def __init__(self, channel, timestamp, change_number, previous_change_number, rbs_definition, compression):
+        """Class constructor."""
+        BaseUpdate.__init__(self, channel, timestamp, change_number)
+        self._previous_change_number = previous_change_number
+        self._object_definition = rbs_definition
+        self._compression = compression
+
+    @property
+    def update_type(self):  # pylint:disable=no-self-use
+        """
+        Return the message type.
+
+        :returns: The type of this parsed Update.
+        :rtype: UpdateType
+        """
+        return UpdateType.RB_SEGMENT_UPDATE
+
+    @property
+    def previous_change_number(self):  # pylint:disable=no-self-use
+        """
+        Return previous change number
+        :returns: The previous change number
+        :rtype: int
+        """
+        return self._previous_change_number
+
+    @property
+    def object_definition(self):  # pylint:disable=no-self-use
+        """
+        Return rbs definition
+        :returns: The new rbs definition
+        :rtype: str
+        """
+        return self._object_definition
+
+    @property
+    def compression(self):  # pylint:disable=no-self-use
+        """
+        Return previous compression type
+        :returns: The compression type
+        :rtype: int
+        """
+        return self._compression
+
+    def __str__(self):
+        """Return string representation."""
+        return "RBSChange - changeNumber=%d" % (self.change_number)
 
 class ControlMessage(BaseMessage):
     """Control notification."""
@@ -502,6 +553,9 @@ def _parse_update(channel, timestamp, data):
     change_number = data['changeNumber']
     if update_type == UpdateType.SPLIT_UPDATE and change_number is not None:
         return SplitChangeUpdate(channel, timestamp, change_number, data.get('pcn'), data.get('d'), data.get('c'))
+
+    if update_type == UpdateType.RB_SEGMENT_UPDATE and change_number is not None:
+        return RBSChangeUpdate(channel, timestamp, change_number, data.get('pcn'), data.get('d'), data.get('c'))
 
     elif update_type == UpdateType.SPLIT_KILL and change_number is not None:
         return SplitKillUpdate(channel, timestamp, change_number,
