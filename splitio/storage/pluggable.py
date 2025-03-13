@@ -17,7 +17,6 @@ _LOGGER = logging.getLogger(__name__)
 class PluggableRuleBasedSegmentsStorageBase(RuleBasedSegmentsStorage):
     """RedPluggable storage for rule based segments."""
         
-    _RB_SEGMENT_NAME_LENGTH = 23
     _TILL_LENGTH = 4
 
     def __init__(self, pluggable_adapter, prefix=None):
@@ -28,9 +27,11 @@ class PluggableRuleBasedSegmentsStorageBase(RuleBasedSegmentsStorage):
         :type redis_client: splitio.storage.adapters.redis.RedisAdapter
         """
         self._pluggable_adapter = pluggable_adapter
-        self._prefix = "SPLITIO.rbsegment.${segmen_name}"
+        self._prefix = "SPLITIO.rbsegment.{segment_name}"
         self._rb_segments_till_prefix = "SPLITIO.rbsegments.till"
+        self._rb_segment_name_length = 18
         if prefix is not None:
+            self._rb_segment_name_length += len(prefix) + 1
             self._prefix = prefix + "." + self._prefix
             self._rb_segments_till_prefix = prefix + "." + self._rb_segments_till_prefix
 
@@ -163,10 +164,13 @@ class PluggableRuleBasedSegmentsStorage(PluggableRuleBasedSegmentsStorageBase):
         :rtype: list(str)
         """
         try:
+            _LOGGER.error(self._rb_segment_name_length)
+            _LOGGER.error(self._prefix)
+            _LOGGER.error(self._prefix[:self._rb_segment_name_length])
             keys = []
-            for key in self._pluggable_adapter.get_keys_by_prefix(self._prefix[:-self._RB_SEGMENT_NAME_LENGTH]):
+            for key in self._pluggable_adapter.get_keys_by_prefix(self._prefix[:self._rb_segment_name_length]):
                 if key[-self._TILL_LENGTH:] != 'till':
-                    keys.append(key[len(self._prefix[:-self._RB_SEGMENT_NAME_LENGTH]):])
+                    keys.append(key[len(self._prefix[:self._rb_segment_name_length]):])
             return keys
 
         except Exception:
@@ -174,7 +178,7 @@ class PluggableRuleBasedSegmentsStorage(PluggableRuleBasedSegmentsStorageBase):
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
-class PluggableRuleBasedSegmentsStorageAsync(RuleBasedSegmentsStorage):
+class PluggableRuleBasedSegmentsStorageAsync(PluggableRuleBasedSegmentsStorageBase):
     """RedPluggable storage for rule based segments."""
         
     def __init__(self, pluggable_adapter, prefix=None):
@@ -231,7 +235,7 @@ class PluggableRuleBasedSegmentsStorageAsync(RuleBasedSegmentsStorage):
         :return: True if segment names exists. False otherwise.
         :rtype: bool
         """
-        return await set(segment_names).issubset(self.get_segment_names())
+        return set(segment_names).issubset(await self.get_segment_names())
         
     async def get_segment_names(self):
         """
@@ -242,9 +246,9 @@ class PluggableRuleBasedSegmentsStorageAsync(RuleBasedSegmentsStorage):
         """
         try:
             keys = []
-            for key in await self._pluggable_adapter.get_keys_by_prefix(self._prefix[:-self._RB_SEGMENT_NAME_LENGTH]):
+            for key in await self._pluggable_adapter.get_keys_by_prefix(self._prefix[:self._rb_segment_name_length]):
                 if key[-self._TILL_LENGTH:] != 'till':
-                    keys.append(key[len(self._prefix[:-self._RB_SEGMENT_NAME_LENGTH]):])
+                    keys.append(key[len(self._prefix[:self._rb_segment_name_length]):])
             return keys
 
         except Exception:

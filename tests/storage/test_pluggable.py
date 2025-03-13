@@ -1,20 +1,21 @@
 """Pluggable storage test module."""
 import json
 import threading
+import copy
 import pytest
 
 from splitio.optional.loaders import asyncio
 from splitio.models.splits import Split
-from splitio.models import splits, segments
+from splitio.models import splits, segments, rule_based_segments
 from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
 from splitio.models.events import Event, EventWrapper
 from splitio.storage.pluggable import PluggableSplitStorage, PluggableSegmentStorage, PluggableImpressionsStorage, PluggableEventsStorage, \
     PluggableTelemetryStorage, PluggableEventsStorageAsync, PluggableSegmentStorageAsync, PluggableImpressionsStorageAsync,\
-    PluggableSplitStorageAsync, PluggableTelemetryStorageAsync
+    PluggableSplitStorageAsync, PluggableTelemetryStorageAsync, PluggableRuleBasedSegmentsStorage, PluggableRuleBasedSegmentsStorageAsync
 from splitio.client.util import get_metadata, SdkMetadata
 from splitio.models.telemetry import MAX_TAGS, MethodExceptionsAndLatencies, OperationMode
-from tests.integration import splits_json
+from tests.integration import splits_json, rbsegments_json
 
 class StorageMockAdapter(object):
     def __init__(self):
@@ -1372,3 +1373,124 @@ class PluggableTelemetryStorageAsyncTests(object):
             await pluggable_telemetry_storage.record_active_and_redundant_factories(2, 1)
             await pluggable_telemetry_storage.push_config_stats()
             assert(self.mock_adapter._keys[pluggable_telemetry_storage._telemetry_config_key + "::" + pluggable_telemetry_storage._sdk_metadata] == '{"aF": 2, "rF": 1, "sT": "memory", "oM": 0, "t": []}')
+
+class PluggableRuleBasedSegmentStorageTests(object):
+    """In memory rule based segment storage test cases."""
+
+    def setup_method(self):
+        """Prepare storages with test data."""
+        self.mock_adapter = StorageMockAdapter()
+
+    def test_get(self):
+        self.mock_adapter._keys = {}
+        for sprefix in [None, 'myprefix']:
+            pluggable_rbs_storage = PluggableRuleBasedSegmentsStorage(self.mock_adapter, prefix=sprefix)
+
+            rbs1 = rule_based_segments.from_raw(rbsegments_json['segment1'])
+            rbs_name = rbsegments_json['segment1']['name']
+
+            self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs_name), rbs1.to_json())
+            assert(pluggable_rbs_storage.get(rbs_name).to_json() ==  rule_based_segments.from_raw(rbsegments_json['segment1']).to_json())
+            assert(pluggable_rbs_storage.get('not_existing') == None)
+
+    def test_get_change_number(self):
+        self.mock_adapter._keys = {}
+        for sprefix in [None, 'myprefix']:
+            pluggable_rbs_storage = PluggableRuleBasedSegmentsStorage(self.mock_adapter, prefix=sprefix)
+            if sprefix == 'myprefix':
+                prefix = 'myprefix.'
+            else:
+                prefix = ''
+            self.mock_adapter.set(prefix + "SPLITIO.rbsegments.till", 1234)
+            assert(pluggable_rbs_storage.get_change_number() == 1234)
+
+    def test_get_segment_names(self):
+        self.mock_adapter._keys = {}
+        for sprefix in [None, 'myprefix']:
+            pluggable_rbs_storage = PluggableRuleBasedSegmentsStorage(self.mock_adapter, prefix=sprefix)
+            rbs1 = rule_based_segments.from_raw(rbsegments_json['segment1'])
+            rbs2_temp = copy.deepcopy(rbsegments_json['segment1'])
+            rbs2_temp['name'] = 'another_segment'
+            rbs2 = rule_based_segments.from_raw(rbs2_temp)
+            self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs1.name), rbs1.to_json())
+            self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs2.name), rbs2.to_json())
+            assert(pluggable_rbs_storage.get_segment_names() == [rbs1.name, rbs2.name])
+
+    def test_contains(self):
+        self.mock_adapter._keys = {}
+        for sprefix in [None, 'myprefix']:
+            pluggable_rbs_storage = PluggableRuleBasedSegmentsStorage(self.mock_adapter, prefix=sprefix)
+            rbs1 = rule_based_segments.from_raw(rbsegments_json['segment1'])
+            rbs2_temp = copy.deepcopy(rbsegments_json['segment1'])
+            rbs2_temp['name'] = 'another_segment'
+            rbs2 = rule_based_segments.from_raw(rbs2_temp)
+            self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs1.name), rbs1.to_json())
+            self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs2.name), rbs2.to_json())
+            
+            assert(pluggable_rbs_storage.contains([rbs1.name, rbs2.name]))
+            assert(pluggable_rbs_storage.contains([rbs2.name]))
+            assert(not pluggable_rbs_storage.contains(['none-exists', rbs2.name]))
+            assert(not pluggable_rbs_storage.contains(['none-exists', 'none-exists2']))
+
+class PluggableRuleBasedSegmentStorageAsyncTests(object):
+    """In memory rule based segment storage test cases."""
+
+    def setup_method(self):
+        """Prepare storages with test data."""
+        self.mock_adapter = StorageMockAdapterAsync()
+
+    @pytest.mark.asyncio
+    async def test_get(self):
+        self.mock_adapter._keys = {}
+        for sprefix in [None, 'myprefix']:
+            pluggable_rbs_storage = PluggableRuleBasedSegmentsStorageAsync(self.mock_adapter, prefix=sprefix)
+
+            rbs1 = rule_based_segments.from_raw(rbsegments_json['segment1'])
+            rbs_name = rbsegments_json['segment1']['name']
+
+            await self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs_name), rbs1.to_json())
+            rbs = await pluggable_rbs_storage.get(rbs_name)
+            assert(rbs.to_json() ==  rule_based_segments.from_raw(rbsegments_json['segment1']).to_json())
+            assert(await pluggable_rbs_storage.get('not_existing') == None)
+
+    @pytest.mark.asyncio
+    async def test_get_change_number(self):
+        self.mock_adapter._keys = {}
+        for sprefix in [None, 'myprefix']:
+            pluggable_rbs_storage = PluggableRuleBasedSegmentsStorageAsync(self.mock_adapter, prefix=sprefix)
+            if sprefix == 'myprefix':
+                prefix = 'myprefix.'
+            else:
+                prefix = ''
+            await self.mock_adapter.set(prefix + "SPLITIO.rbsegments.till", 1234)
+            assert(await pluggable_rbs_storage.get_change_number() == 1234)
+
+    @pytest.mark.asyncio
+    async def test_get_segment_names(self):
+        self.mock_adapter._keys = {}
+        for sprefix in [None, 'myprefix']:
+            pluggable_rbs_storage = PluggableRuleBasedSegmentsStorageAsync(self.mock_adapter, prefix=sprefix)
+            rbs1 = rule_based_segments.from_raw(rbsegments_json['segment1'])
+            rbs2_temp = copy.deepcopy(rbsegments_json['segment1'])
+            rbs2_temp['name'] = 'another_segment'
+            rbs2 = rule_based_segments.from_raw(rbs2_temp)
+            await self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs1.name), rbs1.to_json())
+            await self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs2.name), rbs2.to_json())
+            assert(await pluggable_rbs_storage.get_segment_names() == [rbs1.name, rbs2.name])
+
+    @pytest.mark.asyncio
+    async def test_contains(self):
+        self.mock_adapter._keys = {}
+        for sprefix in [None, 'myprefix']:
+            pluggable_rbs_storage = PluggableRuleBasedSegmentsStorageAsync(self.mock_adapter, prefix=sprefix)
+            rbs1 = rule_based_segments.from_raw(rbsegments_json['segment1'])
+            rbs2_temp = copy.deepcopy(rbsegments_json['segment1'])
+            rbs2_temp['name'] = 'another_segment'
+            rbs2 = rule_based_segments.from_raw(rbs2_temp)
+            await self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs1.name), rbs1.to_json())
+            await self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs2.name), rbs2.to_json())
+            
+            assert(await pluggable_rbs_storage.contains([rbs1.name, rbs2.name]))
+            assert(await pluggable_rbs_storage.contains([rbs2.name]))
+            assert(not await pluggable_rbs_storage.contains(['none-exists', rbs2.name]))
+            assert(not await pluggable_rbs_storage.contains(['none-exists', 'none-exists2']))

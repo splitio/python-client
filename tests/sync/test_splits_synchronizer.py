@@ -8,14 +8,14 @@ import copy
 from splitio.util.backoff import Backoff
 from splitio.api import APIException
 from splitio.api.commons import FetchOptions
-from splitio.storage import SplitStorage
+from splitio.storage import SplitStorage, RuleBasedSegmentsStorage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySplitStorageAsync, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 from splitio.storage import FlagSetsFilter
 from splitio.models.splits import Split
 from splitio.models.rule_based_segments import RuleBasedSegment
 from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync, LocalSplitSynchronizer, LocalSplitSynchronizerAsync, LocalhostMode
 from splitio.optional.loaders import aiofiles, asyncio
-from tests.integration import splits_json
+from tests.integration import splits_json, rbsegments_json
 
 splits_raw = [{
     'changeNumber': 123,
@@ -861,12 +861,13 @@ class SplitsSynchronizerAsyncTests(object):
 class LocalSplitsSynchronizerTests(object):
     """Split synchronizer test cases."""
 
-    splits = copy.deepcopy(splits_raw)
+    payload = copy.deepcopy(json_body)
 
     def test_synchronize_splits_error(self, mocker):
         """Test that if fetching splits fails at some_point, the task will continue running."""
         storage = mocker.Mock(spec=SplitStorage)
-        split_synchronizer = LocalSplitSynchronizer("/incorrect_file", storage)
+        rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
+        split_synchronizer = LocalSplitSynchronizer("/incorrect_file", storage, rbs_storage)
 
         with pytest.raises(Exception):
             split_synchronizer.synchronize_splits(1)
@@ -874,74 +875,75 @@ class LocalSplitsSynchronizerTests(object):
     def test_synchronize_splits(self, mocker):
         """Test split sync."""
         storage = InMemorySplitStorage()
+        rbs_storage = InMemoryRuleBasedSegmentStorage()
 
-        till = 123
         def read_splits_from_json_file(*args, **kwargs):
-                return self.splits, till
+                return self.payload
 
-        split_synchronizer = LocalSplitSynchronizer("split.json", storage, LocalhostMode.JSON)
+        split_synchronizer = LocalSplitSynchronizer("split.json", storage, rbs_storage, LocalhostMode.JSON)
         split_synchronizer._read_feature_flags_from_json_file = read_splits_from_json_file
 
         split_synchronizer.synchronize_splits()
-        inserted_split = storage.get(self.splits[0]['name'])
+        inserted_split = storage.get(self.payload["ff"]["d"][0]['name'])
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
 
         # Should sync when changenumber is not changed
-        self.splits[0]['killed'] = True
+        self.payload["ff"]["d"][0]['killed'] = True
         split_synchronizer.synchronize_splits()
-        inserted_split = storage.get(self.splits[0]['name'])
+        inserted_split = storage.get(self.payload["ff"]["d"][0]['name'])
         assert inserted_split.killed
 
         # Should not sync when changenumber is less than stored
-        till = 122
-        self.splits[0]['killed'] = False
+        self.payload["ff"]["t"] = 122
+        self.payload["ff"]["d"][0]['killed'] = False
         split_synchronizer.synchronize_splits()
-        inserted_split = storage.get(self.splits[0]['name'])
+        inserted_split = storage.get(self.payload["ff"]["d"][0]['name'])
         assert inserted_split.killed
 
         # Should sync when changenumber is higher than stored
-        till = 124
+        self.payload["ff"]["t"] = 1675095324999
         split_synchronizer._current_json_sha = "-1"
         split_synchronizer.synchronize_splits()
-        inserted_split = storage.get(self.splits[0]['name'])
+        inserted_split = storage.get(self.payload["ff"]["d"][0]['name'])
         assert inserted_split.killed == False
 
         # Should sync when till is default (-1)
-        till = -1
+        self.payload["ff"]["t"] = -1
         split_synchronizer._current_json_sha = "-1"
-        self.splits[0]['killed'] = True
+        self.payload["ff"]["d"][0]['killed'] = True
         split_synchronizer.synchronize_splits()
-        inserted_split = storage.get(self.splits[0]['name'])
+        inserted_split = storage.get(self.payload["ff"]["d"][0]['name'])
         assert inserted_split.killed == True
 
     def test_sync_flag_sets_with_config_sets(self, mocker):
         """Test split sync with flag sets."""
         storage = InMemorySplitStorage(['set1', 'set2'])
-
-        split = self.splits[0].copy()
+        rbs_storage = InMemoryRuleBasedSegmentStorage()
+        
+        split = self.payload["ff"]["d"][0].copy()
         split['name'] = 'second'
-        splits1 = [self.splits[0].copy(), split]
-        splits2 = self.splits.copy()
-        splits3 = self.splits.copy()
-        splits4 = self.splits.copy()
+        splits1 = [self.payload["ff"]["d"][0].copy(), split]
+        splits2 = self.payload["ff"]["d"].copy()
+        splits3 = self.payload["ff"]["d"].copy()
+        splits4 = self.payload["ff"]["d"].copy()
 
         self.called = 0
         def read_feature_flags_from_json_file(*args, **kwargs):
             self.called += 1
             if self.called == 1:
-                return splits1, 123
+                return {"ff": {"d": splits1, "t": 123, "s": -1}, "rbs": {"d": [], "t": -1, "s": -1}}
             elif self.called == 2:
                 splits2[0]['sets'] = ['set3']
-                return splits2, 124
+                return {"ff": {"d": splits2, "t": 124, "s": -1}, "rbs": {"d": [], "t": -1, "s": -1}}
             elif self.called == 3:
                 splits3[0]['sets'] = ['set1']
-                return splits3, 12434
+                return {"ff": {"d": splits3, "t": 12434, "s": -1}, "rbs": {"d": [], "t": -1, "s": -1}}
             splits4[0]['sets'] = ['set6']
             splits4[0]['name'] = 'new_split'
-            return splits4, 12438
+            return {"ff": {"d": splits4, "t": 12438, "s": -1}, "rbs": {"d": [], "t": -1, "s": -1}}
 
-        split_synchronizer = LocalSplitSynchronizer("split.json", storage, LocalhostMode.JSON)
+        split_synchronizer = LocalSplitSynchronizer("split.json", storage, rbs_storage, LocalhostMode.JSON)
         split_synchronizer._read_feature_flags_from_json_file = read_feature_flags_from_json_file
 
         split_synchronizer.synchronize_splits()
@@ -959,30 +961,31 @@ class LocalSplitsSynchronizerTests(object):
     def test_sync_flag_sets_without_config_sets(self, mocker):
         """Test split sync with flag sets."""
         storage = InMemorySplitStorage()
+        rbs_storage = InMemoryRuleBasedSegmentStorage()
 
-        split = self.splits[0].copy()
+        split = self.payload["ff"]["d"][0].copy()
         split['name'] = 'second'
-        splits1 = [self.splits[0].copy(), split]
-        splits2 = self.splits.copy()
-        splits3 = self.splits.copy()
-        splits4 = self.splits.copy()
+        splits1 = [self.payload["ff"]["d"][0].copy(), split]
+        splits2 = self.payload["ff"]["d"].copy()
+        splits3 = self.payload["ff"]["d"].copy()
+        splits4 = self.payload["ff"]["d"].copy()
 
         self.called = 0
         def read_feature_flags_from_json_file(*args, **kwargs):
             self.called += 1
             if self.called == 1:
-                return splits1, 123
+                return {"ff": {"d": splits1, "t": 123, "s": -1}, "rbs": {"d": [], "t": -1, "s": -1}}
             elif self.called == 2:
                 splits2[0]['sets'] = ['set3']
-                return splits2, 124
+                return {"ff": {"d": splits2, "t": 124, "s": -1}, "rbs": {"d": [], "t": -1, "s": -1}}
             elif self.called == 3:
                 splits3[0]['sets'] = ['set1']
-                return splits3, 12434
+                return {"ff": {"d": splits3, "t": 12434, "s": -1}, "rbs": {"d": [], "t": -1, "s": -1}}
             splits4[0]['sets'] = ['set6']
             splits4[0]['name'] = 'third_split'
-            return splits4, 12438
+            return {"ff": {"d": splits4, "t": 12438, "s": -1}, "rbs": {"d": [], "t": -1, "s": -1}}
 
-        split_synchronizer = LocalSplitSynchronizer("split.json", storage, LocalhostMode.JSON)
+        split_synchronizer = LocalSplitSynchronizer("split.json", storage, rbs_storage, LocalhostMode.JSON)
         split_synchronizer._read_feature_flags_from_json_file = read_feature_flags_from_json_file
 
         split_synchronizer.synchronize_splits()
@@ -1000,95 +1003,73 @@ class LocalSplitsSynchronizerTests(object):
     def test_reading_json(self, mocker):
         """Test reading json file."""
         f = open("./splits.json", "w")
-        json_body = {'splits': [{
-           'changeNumber': 123,
-           'trafficTypeName': 'user',
-           'name': 'some_name',
-           'trafficAllocation': 100,
-           'trafficAllocationSeed': 123456,
-           'seed': 321654,
-           'status': 'ACTIVE',
-           'killed': False,
-           'defaultTreatment': 'off',
-           'algo': 2,
-           'conditions': [
-               {
-                   'partitions': [
-                       {'treatment': 'on', 'size': 50},
-                       {'treatment': 'off', 'size': 50}
-                   ],
-                   'contitionType': 'WHITELIST',
-                   'label': 'some_label',
-                   'matcherGroup': {
-                       'matchers': [
-                           {
-                               'matcherType': 'WHITELIST',
-                               'whitelistMatcherData': {
-                                   'whitelist': ['k1', 'k2', 'k3']
-                               },
-                               'negate': False,
-                           }
-                       ],
-                       'combiner': 'AND'
-                   }
-               }
-            ],
-            'sets': ['set1']
-        }],
-        "till":1675095324253,
-        "since":-1,
-        }
-
-        f.write(json.dumps(json_body))
+        f.write(json.dumps(self.payload))
         f.close()
         storage = InMemorySplitStorage()
-        split_synchronizer = LocalSplitSynchronizer("./splits.json", storage, LocalhostMode.JSON)
+        rbs_storage = InMemoryRuleBasedSegmentStorage()
+        split_synchronizer = LocalSplitSynchronizer("./splits.json", storage, rbs_storage, LocalhostMode.JSON)
         split_synchronizer.synchronize_splits()
 
-        inserted_split = storage.get(json_body['splits'][0]['name'])
+        inserted_split = storage.get(self.payload['ff']['d'][0]['name'])
         assert isinstance(inserted_split, Split)
-        assert inserted_split.name == 'some_name'
+        assert inserted_split.name == self.payload['ff']['d'][0]['name']
+
+        inserted_rbs = rbs_storage.get(self.payload['rbs']['d'][0]['name'])
+        assert isinstance(inserted_rbs, RuleBasedSegment)
+        assert inserted_rbs.name == self.payload['rbs']['d'][0]['name']
 
         os.remove("./splits.json")
 
     def test_json_elements_sanitization(self, mocker):
         """Test sanitization."""
-        split_synchronizer = LocalSplitSynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock())
+        split_synchronizer = LocalSplitSynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
 
         # check no changes if all elements exist with valid values
-        parsed = {"splits": [], "since": -1, "till": -1}
+        parsed = {"ff": {"d": [], "s": -1, "t": -1}, "rbs": {"d": [], "s": -1, "t": -1}}
         assert (split_synchronizer._sanitize_json_elements(parsed) == parsed)
 
         # check set since to -1 when is None
         parsed2 = parsed.copy()
-        parsed2['since'] = None
+        parsed2['ff']['s'] = None
         assert (split_synchronizer._sanitize_json_elements(parsed2) == parsed)
 
         # check no changes if since > -1
         parsed2 = parsed.copy()
-        parsed2['since'] = 12
+        parsed2['ff']['s'] = 12
         assert (split_synchronizer._sanitize_json_elements(parsed2) == parsed)
 
         # check set till to -1 when is None
         parsed2 = parsed.copy()
-        parsed2['till'] = None
+        parsed2['ff']['t'] = None
         assert (split_synchronizer._sanitize_json_elements(parsed2) == parsed)
 
         # check add since when missing
-        parsed2 = {"splits": [], "till": -1}
+        parsed2 = {"ff": {"d": [], "t": -1}, "rbs": {"d": [], "s": -1, "t": -1}}
         assert (split_synchronizer._sanitize_json_elements(parsed2) == parsed)
 
         # check add till when missing
-        parsed2 = {"splits": [], "since": -1}
+        parsed2 = {"ff": {"d": [], "s": -1}, "rbs": {"d": [], "s": -1, "t": -1}}
         assert (split_synchronizer._sanitize_json_elements(parsed2) == parsed)
 
         # check add splits when missing
-        parsed2 = {"since": -1, "till": -1}
+        parsed2 = {"ff": {"s": -1, "t": -1}, "rbs": {"d": [], "s": -1, "t": -1}}
         assert (split_synchronizer._sanitize_json_elements(parsed2) == parsed)
 
-    def test_split_elements_sanitization(self, mocker):
+        # check add since when missing
+        parsed2 = {"ff": {"d": [], "t": -1}, "rbs": {"d": [], "t": -1}}
+        assert (split_synchronizer._sanitize_json_elements(parsed2) == parsed)
+
+        # check add till when missing
+        parsed2 = {"ff": {"d": [], "s": -1}, "rbs": {"d": [], "s": -1}}
+        assert (split_synchronizer._sanitize_json_elements(parsed2) == parsed)
+
+        # check add splits when missing
+        parsed2 = {"ff": {"s": -1, "t": -1}, "rbs": {"s": -1, "t": -1}}
+        assert (split_synchronizer._sanitize_json_elements(parsed2) == parsed)
+
+    def test_elements_sanitization(self, mocker):
         """Test sanitization."""
-        split_synchronizer = LocalSplitSynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock())
+        split_synchronizer = LocalSplitSynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
 
         # No changes when split structure is good
         assert (split_synchronizer._sanitize_feature_flag_elements(splits_json["splitChange1_1"]["splits"]) == splits_json["splitChange1_1"]["splits"])
@@ -1183,7 +1164,21 @@ class LocalSplitsSynchronizerTests(object):
         split[0]['algo'] = 1
         assert (split_synchronizer._sanitize_feature_flag_elements(split)[0]['algo'] == 2)
 
-    def test_split_condition_sanitization(self, mocker):
+        # test 'status' is set to ACTIVE when None
+        rbs = copy.deepcopy(json_body["rbs"]["d"])
+        rbs[0]['status'] = None
+        assert (split_synchronizer._sanitize_rb_segment_elements(rbs)[0]['status'] == 'ACTIVE')
+
+        # test 'changeNumber' is set to 0 when invalid
+        rbs = copy.deepcopy(json_body["rbs"]["d"])
+        rbs[0]['changeNumber'] = -2
+        assert (split_synchronizer._sanitize_rb_segment_elements(rbs)[0]['changeNumber'] == 0)
+
+        rbs = copy.deepcopy(json_body["rbs"]["d"])
+        del rbs[0]['conditions']
+        assert (len(split_synchronizer._sanitize_rb_segment_elements(rbs)[0]['conditions']) == 1)
+
+    def test_condition_sanitization(self, mocker):
         """Test sanitization."""
         split_synchronizer = LocalSplitSynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock())
 
@@ -1218,13 +1213,14 @@ class LocalSplitsSynchronizerTests(object):
 class LocalSplitsSynchronizerAsyncTests(object):
     """Split synchronizer test cases."""
 
-    splits = copy.deepcopy(splits_raw)
+    payload = copy.deepcopy(json_body)
 
     @pytest.mark.asyncio
     async def test_synchronize_splits_error(self, mocker):
         """Test that if fetching splits fails at some_point, the task will continue running."""
         storage = mocker.Mock(spec=SplitStorage)
-        split_synchronizer = LocalSplitSynchronizerAsync("/incorrect_file", storage)
+        rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
+        split_synchronizer = LocalSplitSynchronizerAsync("/incorrect_file", storage, rbs_storage)
 
         with pytest.raises(Exception):
             await split_synchronizer.synchronize_splits(1)
@@ -1233,75 +1229,76 @@ class LocalSplitsSynchronizerAsyncTests(object):
     async def test_synchronize_splits(self, mocker):
         """Test split sync."""
         storage = InMemorySplitStorageAsync()
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
 
-        till = 123
         async def read_splits_from_json_file(*args, **kwargs):
-                return self.splits, till
+            return self.payload
 
-        split_synchronizer = LocalSplitSynchronizerAsync("split.json", storage, LocalhostMode.JSON)
+        split_synchronizer = LocalSplitSynchronizerAsync("split.json", storage, rbs_storage, LocalhostMode.JSON)
         split_synchronizer._read_feature_flags_from_json_file = read_splits_from_json_file
 
         await split_synchronizer.synchronize_splits()
-        inserted_split = await storage.get(self.splits[0]['name'])
+        inserted_split = await storage.get(self.payload["ff"]["d"][0]['name'])
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
 
         # Should sync when changenumber is not changed
-        self.splits[0]['killed'] = True
+        self.payload["ff"]["d"][0]['killed'] = True
         await split_synchronizer.synchronize_splits()
-        inserted_split = await storage.get(self.splits[0]['name'])
+        inserted_split = await storage.get(self.payload["ff"]["d"][0]['name'])
         assert inserted_split.killed
 
         # Should not sync when changenumber is less than stored
-        till = 122
-        self.splits[0]['killed'] = False
+        self.payload["ff"]["t"] = 122
+        self.payload["ff"]["d"][0]['killed'] = False
         await split_synchronizer.synchronize_splits()
-        inserted_split = await storage.get(self.splits[0]['name'])
+        inserted_split = await storage.get(self.payload["ff"]["d"][0]['name'])
         assert inserted_split.killed
 
         # Should sync when changenumber is higher than stored
-        till = 124
+        self.payload["ff"]["t"] = 1675095324999
         split_synchronizer._current_json_sha = "-1"
         await split_synchronizer.synchronize_splits()
-        inserted_split = await storage.get(self.splits[0]['name'])
+        inserted_split = await storage.get(self.payload["ff"]["d"][0]['name'])
         assert inserted_split.killed == False
 
         # Should sync when till is default (-1)
-        till = -1
+        self.payload["ff"]["t"] = -1
         split_synchronizer._current_json_sha = "-1"
-        self.splits[0]['killed'] = True
+        self.payload["ff"]["d"][0]['killed'] = True
         await split_synchronizer.synchronize_splits()
-        inserted_split = await storage.get(self.splits[0]['name'])
+        inserted_split = await storage.get(self.payload["ff"]["d"][0]['name'])
         assert inserted_split.killed == True
 
     @pytest.mark.asyncio
     async def test_sync_flag_sets_with_config_sets(self, mocker):
         """Test split sync with flag sets."""
         storage = InMemorySplitStorageAsync(['set1', 'set2'])
-
-        split = self.splits[0].copy()
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
+        
+        split = self.payload["ff"]["d"][0].copy()
         split['name'] = 'second'
-        splits1 = [self.splits[0].copy(), split]
-        splits2 = self.splits.copy()
-        splits3 = self.splits.copy()
-        splits4 = self.splits.copy()
+        splits1 = [self.payload["ff"]["d"][0].copy(), split]
+        splits2 = self.payload["ff"]["d"].copy()
+        splits3 = self.payload["ff"]["d"].copy()
+        splits4 = self.payload["ff"]["d"].copy()
 
         self.called = 0
         async def read_feature_flags_from_json_file(*args, **kwargs):
             self.called += 1
             if self.called == 1:
-                return splits1, 123
+                return {"ff": {"d": splits1, "t": 123, "s": -1}, "rbs": {"d": [], "t": -1, "s": -1}}
             elif self.called == 2:
                 splits2[0]['sets'] = ['set3']
-                return splits2, 124
+                return {"ff": {"d": splits2, "t": 124, "s": -1}, "rbs": {"d": [], "t": -1, "s": -1}}
             elif self.called == 3:
                 splits3[0]['sets'] = ['set1']
-                return splits3, 12434
+                return {"ff": {"d": splits3, "t": 12434, "s": -1}, "rbs": {"d": [], "t": -1, "s": -1}}            
             splits4[0]['sets'] = ['set6']
             splits4[0]['name'] = 'new_split'
-            return splits4, 12438
+            return {"ff": {"d": splits4, "t": 12438, "s": -1}, "rbs": {"d": [], "t": -1, "s": -1}}
 
-        split_synchronizer = LocalSplitSynchronizerAsync("split.json", storage, LocalhostMode.JSON)
+        split_synchronizer = LocalSplitSynchronizerAsync("split.json", storage, rbs_storage, LocalhostMode.JSON)
         split_synchronizer._read_feature_flags_from_json_file = read_feature_flags_from_json_file
 
         await split_synchronizer.synchronize_splits()
@@ -1320,30 +1317,30 @@ class LocalSplitsSynchronizerAsyncTests(object):
     async def test_sync_flag_sets_without_config_sets(self, mocker):
         """Test split sync with flag sets."""
         storage = InMemorySplitStorageAsync()
-
-        split = self.splits[0].copy()
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
+        
+        split = self.payload["ff"]["d"][0].copy()
         split['name'] = 'second'
-        splits1 = [self.splits[0].copy(), split]
-        splits2 = self.splits.copy()
-        splits3 = self.splits.copy()
-        splits4 = self.splits.copy()
+        splits1 = [self.payload["ff"]["d"][0].copy(), split]
+        splits2 = self.payload["ff"]["d"].copy()
+        splits3 = self.payload["ff"]["d"].copy()
+        splits4 = self.payload["ff"]["d"].copy()
 
         self.called = 0
         async def read_feature_flags_from_json_file(*args, **kwargs):
             self.called += 1
             if self.called == 1:
-                return splits1, 123
+                return {"ff": {"d": splits1, "t": 123, "s": -1}, "rbs": {"d": [], "t": -1, "s": -1}}
             elif self.called == 2:
-                splits2[0]['sets'] = ['set3']
-                return splits2, 124
+                return {"ff": {"d": splits2, "t": 124, "s": -1}, "rbs": {"d": [], "t": -1, "s": -1}}
             elif self.called == 3:
                 splits3[0]['sets'] = ['set1']
-                return splits3, 12434
+                return {"ff": {"d": splits3, "t": 12434, "s": -1}, "rbs": {"d": [], "t": -1, "s": -1}}
             splits4[0]['sets'] = ['set6']
             splits4[0]['name'] = 'third_split'
-            return splits4, 12438
+            return {"ff": {"d": splits4, "t": 12438, "s": -1}, "rbs": {"d": [], "t": -1, "s": -1}}
 
-        split_synchronizer = LocalSplitSynchronizerAsync("split.json", storage, LocalhostMode.JSON)
+        split_synchronizer = LocalSplitSynchronizerAsync("split.json", storage, rbs_storage, LocalhostMode.JSON)
         split_synchronizer._read_feature_flags_from_json_file = read_feature_flags_from_json_file
 
         await split_synchronizer.synchronize_splits()
@@ -1362,13 +1359,18 @@ class LocalSplitsSynchronizerAsyncTests(object):
     async def test_reading_json(self, mocker):
         """Test reading json file."""
         async with aiofiles.open("./splits.json", "w") as f:
-            await f.write(json.dumps(json_body))
+            await f.write(json.dumps(self.payload))
         storage = InMemorySplitStorageAsync()
-        split_synchronizer = LocalSplitSynchronizerAsync("./splits.json", storage, LocalhostMode.JSON)
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()        
+        split_synchronizer = LocalSplitSynchronizerAsync("./splits.json", storage, rbs_storage, LocalhostMode.JSON)
         await split_synchronizer.synchronize_splits()
 
-        inserted_split = await storage.get(json_body['splits'][0]['name'])
+        inserted_split = await storage.get(self.payload['ff']['d'][0]['name'])
         assert isinstance(inserted_split, Split)
-        assert inserted_split.name == 'some_name'
+        assert inserted_split.name == self.payload['ff']['d'][0]['name']
+
+        inserted_rbs = await rbs_storage.get(self.payload['rbs']['d'][0]['name'])
+        assert isinstance(inserted_rbs, RuleBasedSegment)
+        assert inserted_rbs.name == self.payload['rbs']['d'][0]['name']
 
         os.remove("./splits.json")

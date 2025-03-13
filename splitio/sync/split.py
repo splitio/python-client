@@ -545,6 +545,7 @@ class LocalSplitSynchronizerBase(object):
                             ('changeNumber', 0, 0, None, None, None)]:
                 rb_segment = util._sanitize_object_element(rb_segment, 'rule based segment', element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=element[4], not_in_list=element[5])
             rb_segment = self._sanitize_condition(rb_segment)
+            rb_segment = self._remove_partition(rb_segment)
             sanitized_rb_segments.append(rb_segment)
         return sanitized_rb_segments
 
@@ -599,6 +600,15 @@ class LocalSplitSynchronizerBase(object):
         })
 
         return feature_flag
+    
+    def _remove_partition(self, rb_segment):
+        sanitized = []
+        for condition in rb_segment['conditions']:
+            if 'partition' in condition:
+                del condition['partition']
+            sanitized.append(condition)
+        rb_segment['conditions'] = sanitized
+        return rb_segment
 
     @classmethod
     def _convert_yaml_to_feature_flag(cls, parsed):
@@ -769,8 +779,8 @@ class LocalSplitSynchronizer(LocalSplitSynchronizerBase):
             with open(filename, 'r') as flo:
                 parsed = json.load(flo)
             santitized = self._sanitize_json_elements(parsed)
-            santitized['ff'] = self._sanitize_feature_flag_elements(santitized['ff'])
-            santitized['rbs'] = self._sanitize_rb_segment_elements(santitized['rbs'])
+            santitized['ff']['d'] = self._sanitize_feature_flag_elements(santitized['ff']['d'])
+            santitized['rbs']['d'] = self._sanitize_rb_segment_elements(santitized['rbs']['d'])
             return santitized
         
         except Exception as exc:
@@ -903,7 +913,7 @@ class LocalSplitSynchronizerAsync(LocalSplitSynchronizerBase):
             
             if await self._rule_based_segment_storage.get_change_number() <= parsed['rbs']['t'] or parsed['rbs']['t'] == self._DEFAULT_FEATURE_FLAG_TILL:
                 fetched_rb_segments = [rule_based_segments.from_raw(rb_segment) for rb_segment in parsed['rbs']['d']]
-                segment_list.update(await update_rule_based_segment_storage(self._rule_based_segment_storage, fetched_rb_segments, parsed['rbs']['t']))
+                segment_list.update(await update_rule_based_segment_storage_async(self._rule_based_segment_storage, fetched_rb_segments, parsed['rbs']['t']))
 
             return segment_list
 
@@ -925,8 +935,8 @@ class LocalSplitSynchronizerAsync(LocalSplitSynchronizerBase):
             async with aiofiles.open(filename, 'r') as flo:
                 parsed = json.loads(await flo.read())
             santitized = self._sanitize_json_elements(parsed)
-            santitized['ff'] = self._sanitize_feature_flag_elements(santitized['ff'])
-            santitized['rbs'] = self._sanitize_rb_segment_elements(santitized['rbs'])
+            santitized['ff']['d'] = self._sanitize_feature_flag_elements(santitized['ff']['d'])
+            santitized['rbs']['d'] = self._sanitize_rb_segment_elements(santitized['rbs']['d'])
             return santitized
         except Exception as exc:
             _LOGGER.debug('Exception: ', exc_info=True)

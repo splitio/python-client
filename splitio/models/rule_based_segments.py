@@ -11,14 +11,14 @@ _LOGGER = logging.getLogger(__name__)
 class RuleBasedSegment(object):
     """RuleBasedSegment object class."""
 
-    def __init__(self, name, traffic_yype_Name, change_number, status, conditions, excluded):
+    def __init__(self, name, traffic_type_name, change_number, status, conditions, excluded):
         """
         Class constructor.
 
         :param name: Segment name.
         :type name: str
-        :param traffic_yype_Name: traffic type name.
-        :type traffic_yype_Name: str
+        :param traffic_type_name: traffic type name.
+        :type traffic_type_name: str
         :param change_number: change number.
         :type change_number: str
         :param status: status.
@@ -29,7 +29,7 @@ class RuleBasedSegment(object):
         :type excluded: Excluded
         """
         self._name = name
-        self._traffic_yype_Name = traffic_yype_Name
+        self._traffic_type_name = traffic_type_name
         self._change_number = change_number
         self._status = status
         self._conditions = conditions
@@ -41,9 +41,9 @@ class RuleBasedSegment(object):
         return self._name
     
     @property
-    def traffic_yype_Name(self):
+    def traffic_type_name(self):
         """Return traffic type name."""
-        return self._traffic_yype_Name
+        return self._traffic_type_name
     
     @property
     def change_number(self):
@@ -65,6 +65,17 @@ class RuleBasedSegment(object):
         """Return excluded."""
         return self._excluded
 
+    def to_json(self):
+        """Return a JSON representation of this rule based segment."""
+        return {
+            'changeNumber': self.change_number,
+            'trafficTypeName': self.traffic_type_name,
+            'name': self.name,
+            'status': self.status,
+            'conditions': [c.to_json() for c in self.conditions],
+            'excluded': self.excluded.to_json()
+        }
+        
 def from_raw(raw_rule_based_segment):
     """
     Parse a Rule based segment from a JSON portion of splitChanges.
@@ -111,3 +122,10 @@ class Excluded(object):
     def get_excluded_segments(self):
         """Return excluded segments"""
         return self._segments
+
+    def to_json(self):
+        """Return a JSON representation of this object."""
+        return {
+            'keys': self._keys,
+            'segments': self._segments
+        }

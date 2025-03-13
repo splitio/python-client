@@ -19,7 +19,7 @@ MAX_TAGS = 10
 class RedisRuleBasedSegmentsStorage(RuleBasedSegmentsStorage):
     """Redis-based storage for rule based segments."""
     
-    _RB_SEGMENT_KEY = 'SPLITIO.rbsegment.${segmen_name}'
+    _RB_SEGMENT_KEY = 'SPLITIO.rbsegment.{segment_name}'
     _RB_SEGMENT_TILL_KEY = 'SPLITIO.rbsegments.till'
     
     def __init__(self, redis_client):
@@ -134,7 +134,7 @@ class RedisRuleBasedSegmentsStorage(RuleBasedSegmentsStorage):
 class RedisRuleBasedSegmentsStorageAsync(RuleBasedSegmentsStorage):
     """Redis-based storage for rule based segments."""
     
-    _RB_SEGMENT_KEY = 'SPLITIO.rbsegment.${segmen_name}'
+    _RB_SEGMENT_KEY = 'SPLITIO.rbsegment.{segment_name}'
     _RB_SEGMENT_TILL_KEY = 'SPLITIO.rbsegments.till'
     
     def __init__(self, redis_client):
