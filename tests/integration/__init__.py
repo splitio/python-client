@@ -47,3 +47,7 @@ splits_json = {
     "splitChange6_2": split62,
     "splitChange6_3": split63,
 }
+
+rbsegments_json = {
+    "segment1": {"changeNumber": 12, "name": "some_segment", "status": "ACTIVE","trafficTypeName": "user","excluded":{"keys":[],"segments":[]},"conditions": []}
+}
