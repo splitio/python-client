@@ -179,7 +179,7 @@ class PluggableRuleBasedSegmentsStorage(PluggableRuleBasedSegmentsStorageBase):
             return None
 
 class PluggableRuleBasedSegmentsStorageAsync(PluggableRuleBasedSegmentsStorageBase):
-    """RedPluggable storage for rule based segments."""
+    """Pluggable storage for rule based segments."""
         
     def __init__(self, pluggable_adapter, prefix=None):
         """
