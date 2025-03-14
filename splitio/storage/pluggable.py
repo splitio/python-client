@@ -98,7 +98,7 @@ class PluggableRuleBasedSegmentsStorageBase(RuleBasedSegmentsStorage):
         pass    
 
 class PluggableRuleBasedSegmentsStorage(PluggableRuleBasedSegmentsStorageBase):
-    """RedPluggable storage for rule based segments."""
+    """Pluggable storage for rule based segments."""
         
     def __init__(self, pluggable_adapter, prefix=None):
         """
