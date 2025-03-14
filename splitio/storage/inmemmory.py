@@ -109,6 +109,7 @@ class FlagSets(object):
 
 class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
     """InMemory implementation of a feature flag storage base."""    
+
     def __init__(self):
         """Constructor."""
         self._lock = threading.RLock()
@@ -192,7 +193,7 @@ class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
 
     def get_segment_names(self):
         """
-        Retrieve a list of all excluded segments names.
+        Retrieve a list of all rule based segments names.
 
         :return: List of segment names.
         :rtype: list(str)

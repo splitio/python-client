@@ -671,7 +671,6 @@ class SynchronizerAsyncTests(object):
         assert len(impression_count_task.start.mock_calls) == 1
         assert len(event_task.start.mock_calls) == 1
 
-
 class RedisSynchronizerTests(object):
     def test_start_periodic_data_recording(self, mocker):
         impression_count_task = mocker.Mock(spec=ImpressionsCountSyncTask)
@@ -743,7 +742,6 @@ class RedisSynchronizerTests(object):
         assert len(impression_count_task.stop.mock_calls) == 1
         assert len(unique_keys_task.stop.mock_calls) == 1
         assert len(clear_filter_task.stop.mock_calls) == 1
-
 
 class RedisSynchronizerAsyncTests(object):
     @pytest.mark.asyncio

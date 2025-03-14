@@ -12,7 +12,8 @@ from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterAsync, Redi
 from splitio.optional.loaders import asyncio
 from splitio.storage import FlagSetsFilter
 from splitio.storage.redis import RedisEventsStorage, RedisEventsStorageAsync, RedisImpressionsStorage, RedisImpressionsStorageAsync, \
-    RedisSegmentStorage, RedisSegmentStorageAsync, RedisSplitStorage, RedisSplitStorageAsync, RedisTelemetryStorage, RedisTelemetryStorageAsync
+    RedisSegmentStorage, RedisSegmentStorageAsync, RedisSplitStorage, RedisSplitStorageAsync, RedisTelemetryStorage, RedisTelemetryStorageAsync, \
+    RedisRuleBasedSegmentsStorage, RedisRuleBasedSegmentsStorageAsync
 from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterException, build
 from redis.asyncio.client import Redis as aioredis
 from splitio.storage.adapters import redis
@@ -1230,3 +1231,163 @@ class RedisTelemetryStorageAsyncTests(object):
 
         await redis_telemetry.expire_keys('key', 12, 2, 2)
         assert(self.called)
+
+class RedisRuleBasedSegmentStorageTests(object):
+    """Redis rule based segment storage test cases."""
+
+    def test_get_segment(self, mocker):
+        """Test retrieving a rule based segment works."""
+        adapter = mocker.Mock(spec=RedisAdapter)
+        adapter.get.return_value = '{"name": "some_segment"}'
+        from_raw = mocker.Mock()
+        mocker.patch('splitio.storage.redis.rule_based_segments.from_raw', new=from_raw)
+
+        storage = RedisRuleBasedSegmentsStorage(adapter)
+        storage.get('some_segment')
+
+        assert adapter.get.mock_calls == [mocker.call('SPLITIO.rbsegment.some_segment')]
+        assert from_raw.mock_calls == [mocker.call({"name": "some_segment"})]
+
+        # Test that a missing split returns None and doesn't call from_raw
+        adapter.reset_mock()
+        from_raw.reset_mock()
+        adapter.get.return_value = None
+        result = storage.get('some_segment')
+        assert result is None
+        assert adapter.get.mock_calls == [mocker.call('SPLITIO.rbsegment.some_segment')]
+        assert not from_raw.mock_calls
+
+    def test_get_changenumber(self, mocker):
+        """Test fetching changenumber."""
+        adapter = mocker.Mock(spec=RedisAdapter)
+        storage = RedisRuleBasedSegmentsStorage(adapter)
+        adapter.get.return_value = '-1'
+        assert storage.get_change_number() == -1
+        assert adapter.get.mock_calls == [mocker.call('SPLITIO.rbsegments.till')]
+
+    def test_get_segment_names(self, mocker):
+        """Test getching rule based segment names."""
+        adapter = mocker.Mock(spec=RedisAdapter)
+        storage = RedisRuleBasedSegmentsStorage(adapter)
+        adapter.keys.return_value = [
+            'SPLITIO.rbsegment.segment1',
+            'SPLITIO.rbsegment.segment2',
+            'SPLITIO.rbsegment.segment3'
+        ]
+        assert storage.get_segment_names() == ['segment1', 'segment2', 'segment3']
+
+    def test_contains(self, mocker):
+        """Test storage containing rule based segment names."""
+        adapter = mocker.Mock(spec=RedisAdapter)
+        storage = RedisRuleBasedSegmentsStorage(adapter)
+        adapter.keys.return_value = [
+            'SPLITIO.rbsegment.segment1',
+            'SPLITIO.rbsegment.segment2',
+            'SPLITIO.rbsegment.segment3'
+        ]
+        assert storage.contains(['segment1', 'segment3']) 
+        assert not storage.contains(['segment1', 'segment4']) 
+        assert storage.contains(['segment1']) 
+        assert not storage.contains(['segment4', 'segment5'])
+
+class RedisRuleBasedSegmentStorageAsyncTests(object):
+    """Redis rule based segment storage test cases."""
+
+    @pytest.mark.asyncio
+    async def test_get_segment(self, mocker):
+        """Test retrieving a rule based segment works."""
+        redis_mock = await aioredis.from_url("redis://localhost")
+        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
+
+        self.redis_ret = None
+        self.name = None
+        async def get(sel, name):
+            self.name = name
+            self.redis_ret = '{"changeNumber": "12", "name": "some_segment", "status": "ACTIVE","trafficTypeName": "user","excluded":{"keys":[],"segments":[]},"conditions": []}'         
+            return self.redis_ret
+        mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.get', new=get)
+
+        storage = RedisRuleBasedSegmentsStorageAsync(adapter)
+        await storage.get('some_segment')
+
+        assert self.name == 'SPLITIO.rbsegment.some_segment'
+        assert self.redis_ret == '{"changeNumber": "12", "name": "some_segment", "status": "ACTIVE","trafficTypeName": "user","excluded":{"keys":[],"segments":[]},"conditions": []}'
+
+        # Test that a missing split returns None and doesn't call from_raw
+
+        self.name = None
+        async def get2(sel, name):
+            self.name = name
+            return None
+        mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.get', new=get2)
+
+        result = await storage.get('some_segment')
+        assert result is None
+        assert self.name == 'SPLITIO.rbsegment.some_segment'
+
+        # Test that a missing split returns None and doesn't call from_raw
+        result = await storage.get('some_segment2')
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_changenumber(self, mocker):
+        """Test fetching changenumber."""
+        redis_mock = await aioredis.from_url("redis://localhost")
+        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
+        storage = RedisRuleBasedSegmentsStorageAsync(adapter)
+
+        self.redis_ret = None
+        self.name = None
+        async def get(sel, name):
+            self.name = name
+            self.redis_ret = '-1'
+            return self.redis_ret
+        mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.get', new=get)
+
+        assert await storage.get_change_number() == -1
+        assert self.name == 'SPLITIO.rbsegments.till'
+
+    @pytest.mark.asyncio
+    async def test_get_segment_names(self, mocker):
+        """Test getching rule based segment names."""
+        redis_mock = await aioredis.from_url("redis://localhost")
+        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
+        storage = RedisRuleBasedSegmentsStorageAsync(adapter)
+
+        self.key = None
+        self.keys_ret = None
+        async def keys(sel, key):
+            self.key = key
+            self.keys_ret = [
+            'SPLITIO.rbsegment.segment1',
+            'SPLITIO.rbsegment.segment2',
+            'SPLITIO.rbsegment.segment3'
+            ]
+            return self.keys_ret
+        mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.keys', new=keys)
+
+        assert await storage.get_segment_names() == ['segment1', 'segment2', 'segment3']
+
+    @pytest.mark.asyncio
+    async  def test_contains(self, mocker):
+        """Test storage containing rule based segment names."""
+        redis_mock = await aioredis.from_url("redis://localhost")
+        adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
+        storage = RedisRuleBasedSegmentsStorageAsync(adapter)
+
+        self.key = None
+        self.keys_ret = None
+        async def keys(sel, key):
+            self.key = key
+            self.keys_ret = [
+            'SPLITIO.rbsegment.segment1',
+            'SPLITIO.rbsegment.segment2',
+            'SPLITIO.rbsegment.segment3'
+            ]
+            return self.keys_ret
+        mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.keys', new=keys)
+
+        assert await storage.contains(['segment1', 'segment3']) 
+        assert not await storage.contains(['segment1', 'segment4']) 
+        assert await storage.contains(['segment1']) 
+        assert not await storage.contains(['segment4', 'segment5'])
