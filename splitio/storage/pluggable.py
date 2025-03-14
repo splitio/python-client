@@ -15,7 +15,7 @@ from splitio.util.storage_helper import get_valid_flag_sets, combine_valid_flag_
 _LOGGER = logging.getLogger(__name__)
 
 class PluggableRuleBasedSegmentsStorageBase(RuleBasedSegmentsStorage):
-    """RedPluggable storage for rule based segments."""
+    """Pluggable storage for rule based segments."""
         
     _TILL_LENGTH = 4
 
