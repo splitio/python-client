@@ -1,53 +1,57 @@
-split11 = {"splits": [
+import copy
+
+rbsegments_json = [{
+    "segment1": {"changeNumber": 12, "name": "some_segment", "status": "ACTIVE","trafficTypeName": "user","excluded":{"keys":[],"segments":[]},"conditions": []}
+}]
+
+split11 = {"ff": {"t": 1675443569027, "s": -1, "d": [
     {"trafficTypeName": "user", "name": "SPLIT_2","trafficAllocation": 100,"trafficAllocationSeed": 1057590779, "seed": -113875324, "status": "ACTIVE","killed": False, "defaultTreatment": "off", "changeNumber": 1675443569027,"algo": 2, "configurations": {},"conditions": [{"conditionType": "ROLLOUT","matcherGroup": {"combiner": "AND","matchers": [{"keySelector": { "trafficType": "user", "attribute": None },"matcherType": "ALL_KEYS","negate": False,"userDefinedSegmentMatcherData": None,"whitelistMatcherData": None,"unaryNumericMatcherData": None,"betweenMatcherData": None,"booleanMatcherData": None,"dependencyMatcherData": None,"stringMatcherData": None}]},"partitions": [{ "treatment": "on", "size": 100 },{ "treatment": "off", "size": 0 }],"label": "default rule"}], "sets": ["set_1"], "impressionsDisabled": False},
     {"trafficTypeName": "user", "name": "SPLIT_1", "trafficAllocation": 100, "trafficAllocationSeed": -1780071202,"seed": -1442762199, "status": "ACTIVE","killed": False, "defaultTreatment": "off", "changeNumber": 1675443537882,"algo": 2, "configurations": {},"conditions": [{"conditionType": "ROLLOUT", "matcherGroup": {"combiner": "AND","matchers": [{"keySelector": { "trafficType": "user", "attribute": None },"matcherType": "ALL_KEYS","negate": False,"userDefinedSegmentMatcherData": None,"whitelistMatcherData": None,"unaryNumericMatcherData": None,"betweenMatcherData": None,"booleanMatcherData": None,"dependencyMatcherData": None,"stringMatcherData": None}]},"partitions": [{ "treatment": "on", "size": 0 },{ "treatment": "off", "size": 100 }],"label": "default rule"}], "sets": ["set_1", "set_2"]},
     {"trafficTypeName": "user", "name": "SPLIT_3","trafficAllocation": 100,"trafficAllocationSeed": 1057590779, "seed": -113875324, "status": "ACTIVE","killed": False, "defaultTreatment": "off", "changeNumber": 1675443569027,"algo": 2, "configurations": {},"conditions": [{"conditionType": "ROLLOUT","matcherGroup": {"combiner": "AND","matchers": [{"keySelector": { "trafficType": "user", "attribute": None },"matcherType": "ALL_KEYS","negate": False,"userDefinedSegmentMatcherData": None,"whitelistMatcherData": None,"unaryNumericMatcherData": None,"betweenMatcherData": None,"booleanMatcherData": None,"dependencyMatcherData": None,"stringMatcherData": None}]},"partitions": [{ "treatment": "on", "size": 100 },{ "treatment": "off", "size": 0 }],"label": "default rule"}], "sets": ["set_1"], "impressionsDisabled": True}
-    ],"since": -1,"till": 1675443569027}
-split12 = {"splits": [{"trafficTypeName": "user","name": "SPLIT_2","trafficAllocation": 100,"trafficAllocationSeed": 1057590779,"seed": -113875324,"status": "ACTIVE","killed": True,"defaultTreatment": "off","changeNumber": 1675443767288,"algo": 2,"configurations": {},"conditions": [{"conditionType": "ROLLOUT","matcherGroup": {"combiner": "AND","matchers": [{"keySelector": { "trafficType": "user", "attribute": None },"matcherType": "ALL_KEYS","negate": False,"userDefinedSegmentMatcherData": None,"whitelistMatcherData": None,"unaryNumericMatcherData": None,"betweenMatcherData": None,"booleanMatcherData": None,"dependencyMatcherData": None,"stringMatcherData": None}]},"partitions": [{ "treatment": "on", "size": 100 },{ "treatment": "off", "size": 0 }],"label": "default rule"}]}],"since": 1675443569027,"till": 167544376728}
-split13 = {"splits": [
+    ]}, "rbs": {"t": -1, "s": -1, "d": rbsegments_json}}
+split12 = {"ff": {"s": 1675443569027,"t": 167544376728, "d": [{"trafficTypeName": "user","name": "SPLIT_2","trafficAllocation": 100,"trafficAllocationSeed": 1057590779,"seed": -113875324,"status": "ACTIVE","killed": True,"defaultTreatment": "off","changeNumber": 1675443767288,"algo": 2,"configurations": {},"conditions": [{"conditionType": "ROLLOUT","matcherGroup": {"combiner": "AND","matchers": [{"keySelector": { "trafficType": "user", "attribute": None },"matcherType": "ALL_KEYS","negate": False,"userDefinedSegmentMatcherData": None,"whitelistMatcherData": None,"unaryNumericMatcherData": None,"betweenMatcherData": None,"booleanMatcherData": None,"dependencyMatcherData": None,"stringMatcherData": None}]},"partitions": [{ "treatment": "on", "size": 100 },{ "treatment": "off", "size": 0 }],"label": "default rule"}]}]}, "rbs": {"t": -1, "s": -1, "d": rbsegments_json}}
+split13 = {"ff": {"s": 1675443767288,"t": 1675443984594, "d": [
     {"trafficTypeName": "user","name": "SPLIT_1","trafficAllocation": 100,"trafficAllocationSeed": -1780071202,"seed": -1442762199,"status": "ARCHIVED","killed": False,"defaultTreatment": "off","changeNumber": 1675443984594,"algo": 2,"configurations": {},"conditions": [{"conditionType": "ROLLOUT","matcherGroup": {"combiner": "AND","matchers": [{"keySelector": { "trafficType": "user", "attribute": None },"matcherType": "ALL_KEYS","negate": False,"userDefinedSegmentMatcherData": None,"whitelistMatcherData": None,"unaryNumericMatcherData": None,"betweenMatcherData": None,"booleanMatcherData": None,"dependencyMatcherData": None,"stringMatcherData": None}]},"partitions": [{ "treatment": "on", "size": 0 },{ "treatment": "off", "size": 100 }],"label": "default rule"}]},
     {"trafficTypeName": "user","name": "SPLIT_2","trafficAllocation": 100,"trafficAllocationSeed": 1057590779,"seed": -113875324,"status": "ACTIVE","killed": False,"defaultTreatment": "off","changeNumber": 1675443954220,"algo": 2,"configurations": {},"conditions": [{"conditionType": "ROLLOUT","matcherGroup": {"combiner": "AND","matchers": [{"keySelector": { "trafficType": "user", "attribute": None },"matcherType": "ALL_KEYS","negate": False,"userDefinedSegmentMatcherData": None,"whitelistMatcherData": None,"unaryNumericMatcherData": None,"betweenMatcherData": None,"booleanMatcherData": None,"dependencyMatcherData": None,"stringMatcherData": None}]},"partitions": [{ "treatment": "on", "size": 100 },{ "treatment": "off", "size": 0 }],"label": "default rule"}]}
-    ],"since": 1675443767288,"till": 1675443984594}
+    ]}, "rbs": {"t": -1, "s": -1, "d": rbsegments_json}}
 
-split41 = split11
-split42 = split12
-split43 = split13
 
-split41["since"] = None
-split41["till"] = None
-split42["since"] = None
-split42["till"] = None
-split43["since"] = None
-split43["till"] = None
+split41 = {"ff": {"t": None, "s": None, "d": split11['ff']['d']}, "rbs": {"t": -1, "s": -1, "d": rbsegments_json}}
+split42 = {"ff": {"t": None, "s": None, "d": split12['ff']['d']}, "rbs": {"t": -1, "s": -1, "d": rbsegments_json}}
+split43 = {"ff": {"t": None, "s": None, "d": split13['ff']['d']}, "rbs": {"t": -1, "s": -1, "d": rbsegments_json}}
 
-split61 = split11
-split62 = split12
-split63 = split13
-
-split61["since"] = -1
-split61["till"] = -1
-split62["since"] = -1
-split62["till"] = -1
-split63["since"] = -1
-split63["till"] = -1
+split61 = {"ff": {"t": -1, "s": -1, "d": split11['ff']['d']}, "rbs": {"t": -1, "s": -1, "d": rbsegments_json}}
+split62 = {"ff": {"t": -1, "s": -1, "d": split12['ff']['d']}, "rbs": {"t": -1, "s": -1, "d": rbsegments_json}}
+split63 = {"ff": {"t": -1, "s": -1, "d": split13['ff']['d']}, "rbs": {"t": -1, "s": -1, "d": rbsegments_json}}
 
 splits_json = {
     "splitChange1_1": split11,
     "splitChange1_2": split12,
     "splitChange1_3": split13,
-    "splitChange2_1": {"splits": [{"name": "SPLIT_1","status": "ACTIVE","killed": False,"defaultTreatment": "off","configurations": {},"conditions": []}]},
-    "splitChange3_1": {"splits": [{"trafficTypeName": "user","name": "SPLIT_2","trafficAllocation": 100,"trafficAllocationSeed": 1057590779,"seed": -113875324,"status": "ACTIVE","killed": False,"defaultTreatment": "off","changeNumber": 1675443569027,"algo": 2,"configurations": {},"conditions": [{"conditionType": "ROLLOUT","matcherGroup": {"combiner": "AND","matchers": [{"keySelector": { "trafficType": "user", "attribute": None },"matcherType": "ALL_KEYS","negate": False,"userDefinedSegmentMatcherData": None,"whitelistMatcherData": None,"unaryNumericMatcherData": None,"betweenMatcherData": None,"booleanMatcherData": None,"dependencyMatcherData": None,"stringMatcherData": None}]},"partitions": [{ "treatment": "on", "size": 100 },{ "treatment": "off", "size": 0 }],"label": "default rule"}]}],"since": -1,"till": 1675443569027},
-    "splitChange3_2": {"splits": [{"trafficTypeName": "user","name": "SPLIT_2","trafficAllocation": 100,"trafficAllocationSeed": 1057590779,"seed": -113875324,"status": "ACTIVE","killed": True,"defaultTreatment": "off","changeNumber": 1675443767288,"algo": 2,"configurations": {},"conditions": [{"conditionType": "ROLLOUT","matcherGroup": {"combiner": "AND","matchers": [{"keySelector": { "trafficType": "user", "attribute": None },"matcherType": "ALL_KEYS","negate": False,"userDefinedSegmentMatcherData": None,"whitelistMatcherData": None,"unaryNumericMatcherData": None,"betweenMatcherData": None,"booleanMatcherData": None,"dependencyMatcherData": None,"stringMatcherData": None}]},"partitions": [{ "treatment": "on", "size": 100 },{ "treatment": "off", "size": 0 }],"label": "default rule"}]}],"since": 1675443569027,"till": 1675443569027},
+    "splitChange2_1": {"ff": {"t": -1, "s": -1, "d": [{"name": "SPLIT_1","status": "ACTIVE","killed": False,"defaultTreatment": "off","configurations": {},"conditions": []}]}, "rbs": {"t": -1, "s": -1, "d": rbsegments_json}},
+    "splitChange3_1": {"ff": {"t": -1, "s": -1, "d": [{"trafficTypeName": "user","name": "SPLIT_2","trafficAllocation": 100,"trafficAllocationSeed": 1057590779,"seed": -113875324,"status": "ACTIVE","killed": False,"defaultTreatment": "off","changeNumber": 1675443569027,"algo": 2,"configurations": {},"conditions": [{"conditionType": "ROLLOUT","matcherGroup": {"combiner": "AND","matchers": [{"keySelector": { "trafficType": "user", "attribute": None },"matcherType": "ALL_KEYS","negate": False,"userDefinedSegmentMatcherData": None,"whitelistMatcherData": None,"unaryNumericMatcherData": None,"betweenMatcherData": None,"booleanMatcherData": None,"dependencyMatcherData": None,"stringMatcherData": None}]},"partitions": [{ "treatment": "on", "size": 100 },{ "treatment": "off", "size": 0 }],"label": "default rule"}]}],"since": -1,"till": 1675443569027}, "rbs": {"t": -1, "s": -1, "d": rbsegments_json}},
+    "splitChange3_2": {"ff": {"t": -1, "s": -1, "d": [{"trafficTypeName": "user","name": "SPLIT_2","trafficAllocation": 100,"trafficAllocationSeed": 1057590779,"seed": -113875324,"status": "ACTIVE","killed": True,"defaultTreatment": "off","changeNumber": 1675443767288,"algo": 2,"configurations": {},"conditions": [{"conditionType": "ROLLOUT","matcherGroup": {"combiner": "AND","matchers": [{"keySelector": { "trafficType": "user", "attribute": None },"matcherType": "ALL_KEYS","negate": False,"userDefinedSegmentMatcherData": None,"whitelistMatcherData": None,"unaryNumericMatcherData": None,"betweenMatcherData": None,"booleanMatcherData": None,"dependencyMatcherData": None,"stringMatcherData": None}]},"partitions": [{ "treatment": "on", "size": 100 },{ "treatment": "off", "size": 0 }],"label": "default rule"}]}],"since": 1675443569027,"till": 1675443569027}, "rbs": {"t": -1, "s": -1, "d": rbsegments_json}},
     "splitChange4_1": split41,
     "splitChange4_2": split42,
     "splitChange4_3": split43,
-    "splitChange5_1": {"splits": [{"trafficTypeName": "user","name": "SPLIT_2","trafficAllocation": 100,"trafficAllocationSeed": 1057590779,"seed": -113875324,"status": "ACTIVE","killed": False,"defaultTreatment": "off","changeNumber": 1675443569027,"algo": 2,"configurations": {},"conditions": [{"conditionType": "ROLLOUT","matcherGroup": {"combiner": "AND","matchers": [{"keySelector": { "trafficType": "user", "attribute": None },"matcherType": "ALL_KEYS","negate": False,"userDefinedSegmentMatcherData": None,"whitelistMatcherData": None,"unaryNumericMatcherData": None,"betweenMatcherData": None,"booleanMatcherData": None,"dependencyMatcherData": None,"stringMatcherData": None}]},"partitions": [{ "treatment": "on", "size": 100 },{ "treatment": "off", "size": 0 }],"label": "default rule"}]}],"since": -1,"till": 1675443569027},
-    "splitChange5_2": {"splits": [{"trafficTypeName": "user","name": "SPLIT_2","trafficAllocation": 100,"trafficAllocationSeed": 1057590779,"seed": -113875324,"status": "ACTIVE","killed": True,"defaultTreatment": "off","changeNumber": 1675443767288,"algo": 2,"configurations": {},"conditions": [{"conditionType": "ROLLOUT","matcherGroup": {"combiner": "AND","matchers": [{"keySelector": { "trafficType": "user", "attribute": None },"matcherType": "ALL_KEYS","negate": False,"userDefinedSegmentMatcherData": None,"whitelistMatcherData": None,"unaryNumericMatcherData": None,"betweenMatcherData": None,"booleanMatcherData": None,"dependencyMatcherData": None,"stringMatcherData": None}]},"partitions": [{ "treatment": "on", "size": 100 },{ "treatment": "off", "size": 0 }],"label": "default rule"}]}],"since": 1675443569026,"till": 1675443569026},
+    "splitChange5_1": {"ff": {"t": -1, "s": -1, "d": [{"trafficTypeName": "user","name": "SPLIT_2","trafficAllocation": 100,"trafficAllocationSeed": 1057590779,"seed": -113875324,"status": "ACTIVE","killed": False,"defaultTreatment": "off","changeNumber": 1675443569027,"algo": 2,"configurations": {},"conditions": [{"conditionType": "ROLLOUT","matcherGroup": {"combiner": "AND","matchers": [{"keySelector": { "trafficType": "user", "attribute": None },"matcherType": "ALL_KEYS","negate": False,"userDefinedSegmentMatcherData": None,"whitelistMatcherData": None,"unaryNumericMatcherData": None,"betweenMatcherData": None,"booleanMatcherData": None,"dependencyMatcherData": None,"stringMatcherData": None}]},"partitions": [{ "treatment": "on", "size": 100 },{ "treatment": "off", "size": 0 }],"label": "default rule"}]}],"since": -1,"till": 1675443569027}, "rbs": {"t": -1, "s": -1, "d": rbsegments_json}},
+    "splitChange5_2": {"ff": {"t": -1, "s": -1, "d": [{"trafficTypeName": "user","name": "SPLIT_2","trafficAllocation": 100,"trafficAllocationSeed": 1057590779,"seed": -113875324,"status": "ACTIVE","killed": True,"defaultTreatment": "off","changeNumber": 1675443767288,"algo": 2,"configurations": {},"conditions": [{"conditionType": "ROLLOUT","matcherGroup": {"combiner": "AND","matchers": [{"keySelector": { "trafficType": "user", "attribute": None },"matcherType": "ALL_KEYS","negate": False,"userDefinedSegmentMatcherData": None,"whitelistMatcherData": None,"unaryNumericMatcherData": None,"betweenMatcherData": None,"booleanMatcherData": None,"dependencyMatcherData": None,"stringMatcherData": None}]},"partitions": [{ "treatment": "on", "size": 100 },{ "treatment": "off", "size": 0 }],"label": "default rule"}]}],"since": 1675443569026,"till": 1675443569026}, "rbs": {"t": -1, "s": -1, "d": rbsegments_json}},
     "splitChange6_1": split61,
     "splitChange6_2": split62,
     "splitChange6_3": split63,
-}
-
-rbsegments_json = {
-    "segment1": {"changeNumber": 12, "name": "some_segment", "status": "ACTIVE","trafficTypeName": "user","excluded":{"keys":[],"segments":[]},"conditions": []}
+    "splitChange7_1": {"ff": {
+        "t": -1,
+        "s": -1,
+        "d": [{"changeNumber": 10,"trafficTypeName": "user","name": "rbs_feature_flag","trafficAllocation": 100,"trafficAllocationSeed": 1828377380,"seed": -286617921,"status": "ACTIVE","killed": False,"defaultTreatment": "off","algo": 2,
+            "conditions": [{"conditionType": "ROLLOUT","matcherGroup": {"combiner": "AND","matchers": [{"keySelector": {"trafficType": "user"},"matcherType": "IN_RULE_BASED_SEGMENT","negate": False,"userDefinedSegmentMatcherData": {"segmentName": "sample_rule_based_segment"}}]},"partitions": [{"treatment": "on","size": 100},{"treatment": "off","size": 0}],"label": "in rule based segment sample_rule_based_segment"},{"conditionType": "ROLLOUT","matcherGroup": {"combiner": "AND","matchers": [{"keySelector": {"trafficType": "user"},"matcherType": "ALL_KEYS","negate": False}]},"partitions": [{"treatment": "on","size": 0},{"treatment": "off","size": 100}],"label": "default rule"}],
+            "configurations": {},
+            "sets": [],
+            "impressionsDisabled": False
+        }]
+    }, "rbs":  {
+        "t": 1675259356568,
+        "s": -1,
+        "d": [{"changeNumber": 5,"name": "sample_rule_based_segment","status": "ACTIVE","trafficTypeName": "user","excluded":{"keys":["mauro@split.io","gaston@split.io"],"segments":[]},
+            "conditions": [{"matcherGroup": {"combiner": "AND","matchers": [{"keySelector": {"trafficType": "user","attribute": "email"},"matcherType": "ENDS_WITH","negate": False,"whitelistMatcherData": {"whitelist": ["@split.io"]}}]}}]}
+    ]}}
 }

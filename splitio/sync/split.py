@@ -597,7 +597,7 @@ class LocalSplitSynchronizerBase(object):
                     { "treatment": "off", "size": 100 }
                 ],
             "label": "default rule"
-        })
+            })
 
         return feature_flag
     

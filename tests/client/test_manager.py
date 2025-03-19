@@ -26,8 +26,8 @@ class SplitManagerTests(object):  # pylint: disable=too-few-public-methods
         factory.ready = True
 
         manager = SplitManager(factory)
-        split1 =  splits.from_raw(splits_json["splitChange1_1"]["splits"][0])
-        split2 =  splits.from_raw(splits_json["splitChange1_3"]["splits"][0])
+        split1 =  splits.from_raw(splits_json["splitChange1_1"]['ff']['d'][0])
+        split2 =  splits.from_raw(splits_json["splitChange1_3"]['ff']['d'][0])
         storage.update([split1, split2], [], -1)
         manager._storage = storage
 
@@ -98,8 +98,8 @@ class SplitManagerAsyncTests(object):  # pylint: disable=too-few-public-methods
         factory.ready = True
 
         manager = SplitManagerAsync(factory)
-        split1 =  splits.from_raw(splits_json["splitChange1_1"]["splits"][0])
-        split2 =  splits.from_raw(splits_json["splitChange1_3"]["splits"][0])
+        split1 =  splits.from_raw(splits_json["splitChange1_1"]['ff']['d'][0])
+        split2 =  splits.from_raw(splits_json["splitChange1_3"]['ff']['d'][0])
         await storage.update([split1, split2], [], -1)
         manager._storage = storage
 

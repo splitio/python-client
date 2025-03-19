@@ -404,9 +404,9 @@ class UserDefinedSegmentMatcherTests(MatcherTestsBase):
         matcher = matchers.UserDefinedSegmentMatcher(self.raw)
 
         # Test that if the key if the storage wrapper finds the key in the segment, it matches.
-        assert matcher.evaluate('some_key', {}, {'evaluator': None, 'ec': EvaluationContext([],{'some_segment': True})}) is True
+        assert matcher.evaluate('some_key', {}, {'evaluator': None, 'ec': EvaluationContext([],{'some_segment': True}, {}, {})}) is True
         # Test that if the key if the storage wrapper doesn't find the key in the segment, it fails.
-        assert matcher.evaluate('some_key', {}, {'evaluator': None, 'ec': EvaluationContext([], {'some_segment': False})}) is False
+        assert matcher.evaluate('some_key', {}, {'evaluator': None, 'ec': EvaluationContext([], {'some_segment': False}, {}, {})}) is False
 
     def test_to_json(self):
         """Test that the object serializes to JSON properly."""
@@ -778,8 +778,8 @@ class DependencyMatcherTests(MatcherTestsBase):
         parsed = matchers.DependencyMatcher(cond_raw)
         evaluator = mocker.Mock(spec=Evaluator)
 
-        cond = condition.from_raw(splits_json["splitChange1_1"]["splits"][0]['conditions'][0])
-        split = splits.from_raw(splits_json["splitChange1_1"]["splits"][0])
+        cond = condition.from_raw(splits_json["splitChange1_1"]['ff']['d'][0]['conditions'][0])
+        split = splits.from_raw(splits_json["splitChange1_1"]['ff']['d'][0])
 
         evaluator.eval_with_context.return_value = {'treatment': 'on'}
         assert parsed.evaluate('SPLIT_2', {}, {'evaluator': evaluator, 'ec': [{'flags': [split], 'segment_memberships': {}}]}) is True

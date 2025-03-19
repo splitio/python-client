@@ -275,19 +275,19 @@ class PluggableSplitStorageTests(object):
         for sprefix in [None, 'myprefix']:
             pluggable_split_storage = PluggableSplitStorage(self.mock_adapter, prefix=sprefix)
 
-            split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
-            split_name = splits_json['splitChange1_2']['splits'][0]['name']
+            split1 = splits.from_raw(splits_json['splitChange1_2']['ff']['d'][0])
+            split_name = splits_json['splitChange1_2']['ff']['d'][0]['name']
 
             self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split_name), split1.to_json())
-            assert(pluggable_split_storage.get(split_name).to_json() ==  splits.from_raw(splits_json['splitChange1_2']['splits'][0]).to_json())
+            assert(pluggable_split_storage.get(split_name).to_json() ==  splits.from_raw(splits_json['splitChange1_2']['ff']['d'][0]).to_json())
             assert(pluggable_split_storage.get('not_existing') == None)
 
     def test_fetch_many(self):
         self.mock_adapter._keys = {}
         for sprefix in [None, 'myprefix']:
             pluggable_split_storage = PluggableSplitStorage(self.mock_adapter, prefix=sprefix)
-            split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
-            split2_temp = splits_json['splitChange1_2']['splits'][0].copy()
+            split1 = splits.from_raw(splits_json['splitChange1_2']['ff']['d'][0])
+            split2_temp = splits_json['splitChange1_2']['ff']['d'][0].copy()
             split2_temp['name'] = 'another_split'
             split2 = splits.from_raw(split2_temp)
 
@@ -326,8 +326,8 @@ class PluggableSplitStorageTests(object):
         self.mock_adapter._keys = {}
         for sprefix in [None, 'myprefix']:
             pluggable_split_storage = PluggableSplitStorage(self.mock_adapter, prefix=sprefix)
-            split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
-            split2_temp = splits_json['splitChange1_2']['splits'][0].copy()
+            split1 = splits.from_raw(splits_json['splitChange1_2']['ff']['d'][0])
+            split2_temp = splits_json['splitChange1_2']['ff']['d'][0].copy()
             split2_temp['name'] = 'another_split'
             split2 = splits.from_raw(split2_temp)
             self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split1.name), split1.to_json())
@@ -411,12 +411,12 @@ class PluggableSplitStorageAsyncTests(object):
         for sprefix in [None, 'myprefix']:
             pluggable_split_storage = PluggableSplitStorageAsync(self.mock_adapter, prefix=sprefix)
 
-            split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
-            split_name = splits_json['splitChange1_2']['splits'][0]['name']
+            split1 = splits.from_raw(splits_json['splitChange1_2']['ff']['d'][0])
+            split_name = splits_json['splitChange1_2']['ff']['d'][0]['name']
 
             await self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split_name), split1.to_json())
             split = await pluggable_split_storage.get(split_name)
-            assert(split.to_json() ==  splits.from_raw(splits_json['splitChange1_2']['splits'][0]).to_json())
+            assert(split.to_json() ==  splits.from_raw(splits_json['splitChange1_2']['ff']['d'][0]).to_json())
             assert(await pluggable_split_storage.get('not_existing') == None)
 
     @pytest.mark.asyncio
@@ -424,8 +424,8 @@ class PluggableSplitStorageAsyncTests(object):
         self.mock_adapter._keys = {}
         for sprefix in [None, 'myprefix']:
             pluggable_split_storage = PluggableSplitStorageAsync(self.mock_adapter, prefix=sprefix)
-            split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
-            split2_temp = splits_json['splitChange1_2']['splits'][0].copy()
+            split1 = splits.from_raw(splits_json['splitChange1_2']['ff']['d'][0])
+            split2_temp = splits_json['splitChange1_2']['ff']['d'][0].copy()
             split2_temp['name'] = 'another_split'
             split2 = splits.from_raw(split2_temp)
 
@@ -452,8 +452,8 @@ class PluggableSplitStorageAsyncTests(object):
         self.mock_adapter._keys = {}
         for sprefix in [None, 'myprefix']:
             pluggable_split_storage = PluggableSplitStorageAsync(self.mock_adapter, prefix=sprefix)
-            split1 = splits.from_raw(splits_json['splitChange1_2']['splits'][0])
-            split2_temp = splits_json['splitChange1_2']['splits'][0].copy()
+            split1 = splits.from_raw(splits_json['splitChange1_2']['ff']['d'][0])
+            split2_temp = splits_json['splitChange1_2']['ff']['d'][0].copy()
             split2_temp['name'] = 'another_split'
             split2 = splits.from_raw(split2_temp)
             await self.mock_adapter.set(pluggable_split_storage._prefix.format(feature_flag_name=split1.name), split1.to_json())
@@ -1386,11 +1386,11 @@ class PluggableRuleBasedSegmentStorageTests(object):
         for sprefix in [None, 'myprefix']:
             pluggable_rbs_storage = PluggableRuleBasedSegmentsStorage(self.mock_adapter, prefix=sprefix)
 
-            rbs1 = rule_based_segments.from_raw(rbsegments_json['segment1'])
-            rbs_name = rbsegments_json['segment1']['name']
+            rbs1 = rule_based_segments.from_raw(rbsegments_json[0]['segment1'])
+            rbs_name = rbsegments_json[0]['segment1']['name']
 
             self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs_name), rbs1.to_json())
-            assert(pluggable_rbs_storage.get(rbs_name).to_json() ==  rule_based_segments.from_raw(rbsegments_json['segment1']).to_json())
+            assert(pluggable_rbs_storage.get(rbs_name).to_json() ==  rule_based_segments.from_raw(rbsegments_json[0]['segment1']).to_json())
             assert(pluggable_rbs_storage.get('not_existing') == None)
 
     def test_get_change_number(self):
@@ -1408,8 +1408,8 @@ class PluggableRuleBasedSegmentStorageTests(object):
         self.mock_adapter._keys = {}
         for sprefix in [None, 'myprefix']:
             pluggable_rbs_storage = PluggableRuleBasedSegmentsStorage(self.mock_adapter, prefix=sprefix)
-            rbs1 = rule_based_segments.from_raw(rbsegments_json['segment1'])
-            rbs2_temp = copy.deepcopy(rbsegments_json['segment1'])
+            rbs1 = rule_based_segments.from_raw(rbsegments_json[0]['segment1'])
+            rbs2_temp = copy.deepcopy(rbsegments_json[0]['segment1'])
             rbs2_temp['name'] = 'another_segment'
             rbs2 = rule_based_segments.from_raw(rbs2_temp)
             self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs1.name), rbs1.to_json())
@@ -1420,8 +1420,8 @@ class PluggableRuleBasedSegmentStorageTests(object):
         self.mock_adapter._keys = {}
         for sprefix in [None, 'myprefix']:
             pluggable_rbs_storage = PluggableRuleBasedSegmentsStorage(self.mock_adapter, prefix=sprefix)
-            rbs1 = rule_based_segments.from_raw(rbsegments_json['segment1'])
-            rbs2_temp = copy.deepcopy(rbsegments_json['segment1'])
+            rbs1 = rule_based_segments.from_raw(rbsegments_json[0]['segment1'])
+            rbs2_temp = copy.deepcopy(rbsegments_json[0]['segment1'])
             rbs2_temp['name'] = 'another_segment'
             rbs2 = rule_based_segments.from_raw(rbs2_temp)
             self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs1.name), rbs1.to_json())
@@ -1445,12 +1445,12 @@ class PluggableRuleBasedSegmentStorageAsyncTests(object):
         for sprefix in [None, 'myprefix']:
             pluggable_rbs_storage = PluggableRuleBasedSegmentsStorageAsync(self.mock_adapter, prefix=sprefix)
 
-            rbs1 = rule_based_segments.from_raw(rbsegments_json['segment1'])
-            rbs_name = rbsegments_json['segment1']['name']
+            rbs1 = rule_based_segments.from_raw(rbsegments_json[0]['segment1'])
+            rbs_name = rbsegments_json[0]['segment1']['name']
 
             await self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs_name), rbs1.to_json())
             rbs = await pluggable_rbs_storage.get(rbs_name)
-            assert(rbs.to_json() ==  rule_based_segments.from_raw(rbsegments_json['segment1']).to_json())
+            assert(rbs.to_json() ==  rule_based_segments.from_raw(rbsegments_json[0]['segment1']).to_json())
             assert(await pluggable_rbs_storage.get('not_existing') == None)
 
     @pytest.mark.asyncio
@@ -1470,8 +1470,8 @@ class PluggableRuleBasedSegmentStorageAsyncTests(object):
         self.mock_adapter._keys = {}
         for sprefix in [None, 'myprefix']:
             pluggable_rbs_storage = PluggableRuleBasedSegmentsStorageAsync(self.mock_adapter, prefix=sprefix)
-            rbs1 = rule_based_segments.from_raw(rbsegments_json['segment1'])
-            rbs2_temp = copy.deepcopy(rbsegments_json['segment1'])
+            rbs1 = rule_based_segments.from_raw(rbsegments_json[0]['segment1'])
+            rbs2_temp = copy.deepcopy(rbsegments_json[0]['segment1'])
             rbs2_temp['name'] = 'another_segment'
             rbs2 = rule_based_segments.from_raw(rbs2_temp)
             await self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs1.name), rbs1.to_json())
@@ -1483,8 +1483,8 @@ class PluggableRuleBasedSegmentStorageAsyncTests(object):
         self.mock_adapter._keys = {}
         for sprefix in [None, 'myprefix']:
             pluggable_rbs_storage = PluggableRuleBasedSegmentsStorageAsync(self.mock_adapter, prefix=sprefix)
-            rbs1 = rule_based_segments.from_raw(rbsegments_json['segment1'])
-            rbs2_temp = copy.deepcopy(rbsegments_json['segment1'])
+            rbs1 = rule_based_segments.from_raw(rbsegments_json[0]['segment1'])
+            rbs2_temp = copy.deepcopy(rbsegments_json[0]['segment1'])
             rbs2_temp['name'] = 'another_segment'
             rbs2 = rule_based_segments.from_raw(rbs2_temp)
             await self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs1.name), rbs1.to_json())
