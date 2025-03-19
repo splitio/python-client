@@ -24,7 +24,7 @@ class SplitAPITests(object):
                                                              'SplitSDKMachineIP': '1.2.3.4',
                                                              'SplitSDKMachineName': 'some'
                                                          },
-                                                         query={'s': '1.1', 'since': 123, 'rbSince': -1, 'sets': 'set1,set2'})]
+                                                         query={'s': '1.3', 'since': 123, 'rbSince': -1, 'sets': 'set1,set2'})]
 
         httpclient.reset_mock()
         response = split_api.fetch_splits(123, 1, FetchOptions(True, 123, None,'set3'))
@@ -36,7 +36,7 @@ class SplitAPITests(object):
                                                              'SplitSDKMachineName': 'some',
                                                              'Cache-Control': 'no-cache'
                                                          },
-                                                         query={'s': '1.1', 'since': 123, 'rbSince': 1, 'till': 123, 'sets': 'set3'})]
+                                                         query={'s': '1.3', 'since': 123, 'rbSince': 1, 'till': 123, 'sets': 'set3'})]
 
         httpclient.reset_mock()
         response = split_api.fetch_splits(123, 122, FetchOptions(True, 123, None, 'set3'))
@@ -48,7 +48,7 @@ class SplitAPITests(object):
                                                              'SplitSDKMachineName': 'some',
                                                              'Cache-Control': 'no-cache'
                                                          },
-                                                         query={'s': '1.1', 'since': 123, 'rbSince': 122, 'till': 123, 'sets': 'set3'})]
+                                                         query={'s': '1.3', 'since': 123, 'rbSince': 122, 'till': 123, 'sets': 'set3'})]
 
         httpclient.reset_mock()
         def raise_exception(*args, **kwargs):
@@ -92,7 +92,7 @@ class SplitAPIAsyncTests(object):
             'SplitSDKMachineIP': '1.2.3.4',
             'SplitSDKMachineName': 'some'
         }
-        assert self.query == {'s': '1.1', 'since': 123, 'rbSince': -1, 'sets': 'set1,set2'}
+        assert self.query == {'s': '1.3', 'since': 123, 'rbSince': -1, 'sets': 'set1,set2'}
 
         httpclient.reset_mock()
         response = await split_api.fetch_splits(123, 1, FetchOptions(True, 123, None, 'set3'))
@@ -106,7 +106,7 @@ class SplitAPIAsyncTests(object):
             'SplitSDKMachineName': 'some',
             'Cache-Control': 'no-cache'
         }
-        assert self.query == {'s': '1.1', 'since': 123, 'rbSince': 1, 'till': 123, 'sets': 'set3'}
+        assert self.query == {'s': '1.3', 'since': 123, 'rbSince': 1, 'till': 123, 'sets': 'set3'}
 
         httpclient.reset_mock()
         response = await split_api.fetch_splits(123, 122, FetchOptions(True, 123, None))
@@ -120,7 +120,7 @@ class SplitAPIAsyncTests(object):
             'SplitSDKMachineName': 'some',
             'Cache-Control': 'no-cache'
         }
-        assert self.query == {'s': '1.1', 'since': 123, 'rbSince': 122, 'till': 123}
+        assert self.query == {'s': '1.3', 'since': 123, 'rbSince': 122, 'till': 123}
 
         httpclient.reset_mock()
         def raise_exception(*args, **kwargs):

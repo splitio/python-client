@@ -6,7 +6,7 @@ from splitio.client.factory import SplitFactory, get_factory, SplitFactoryAsync,
 from splitio.client.client import CONTROL, Client, _LOGGER as _logger, ClientAsync
 from splitio.client.manager import SplitManager, SplitManagerAsync
 from splitio.client.key import Key
-from splitio.storage import SplitStorage, EventStorage, ImpressionStorage, SegmentStorage
+from splitio.storage import SplitStorage, EventStorage, ImpressionStorage, SegmentStorage, RuleBasedSegmentsStorage
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync, \
     InMemorySplitStorage, InMemorySplitStorageAsync
 from splitio.models.splits import Split
@@ -40,6 +40,7 @@ class ClientInputValidationTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
+                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -277,6 +278,7 @@ class ClientInputValidationTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
+                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -551,6 +553,7 @@ class ClientInputValidationTests(object):
             {
                 'splits': split_storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
+                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': events_storage_mock,
             },
@@ -825,6 +828,7 @@ class ClientInputValidationTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
+                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -969,6 +973,7 @@ class ClientInputValidationTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
+                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -1113,6 +1118,7 @@ class ClientInputValidationTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
+                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -1228,6 +1234,7 @@ class ClientInputValidationTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
+                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -1353,6 +1360,7 @@ class ClientInputValidationTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
+                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -1472,6 +1480,7 @@ class ClientInputValidationTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
+                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -1624,6 +1633,7 @@ class ClientInputValidationAsyncTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
+                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -1880,6 +1890,7 @@ class ClientInputValidationAsyncTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
+                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -2123,6 +2134,7 @@ class ClientInputValidationAsyncTests(object):
             {
                 'splits': split_storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
+                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': events_storage_mock,
             },
@@ -2407,6 +2419,7 @@ class ClientInputValidationAsyncTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
+                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -2565,6 +2578,7 @@ class ClientInputValidationAsyncTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
+                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -2726,6 +2740,7 @@ class ClientInputValidationAsyncTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
+                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -2865,6 +2880,7 @@ class ClientInputValidationAsyncTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
+                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -3014,6 +3030,7 @@ class ClientInputValidationAsyncTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
+                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -3156,6 +3173,7 @@ class ClientInputValidationAsyncTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
+                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -3312,6 +3330,7 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
+                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -3388,6 +3407,7 @@ class ManagerInputValidationAsyncTests(object):  #pylint: disable=too-few-public
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
+                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },

@@ -23,12 +23,12 @@ class PluggableSplitStorageIntegrationTests(object):
             split_fn = os.path.join(os.path.dirname(__file__), 'files', 'split_changes.json')
             with open(split_fn, 'r') as flo:
                 data = json.loads(flo.read())
-                for split in data['splits']:
+                for split in data['ff']['d']:
                     adapter.set(storage._prefix.format(feature_flag_name=split['name']), split)
                     adapter.increment(storage._traffic_type_prefix.format(traffic_type_name=split['trafficTypeName']), 1)
-                adapter.set(storage._feature_flag_till_prefix, data['till'])
+                adapter.set(storage._feature_flag_till_prefix, data['ff']['t'])
 
-            split_objects = [splits.from_raw(raw) for raw in data['splits']]
+            split_objects = [splits.from_raw(raw) for raw in data['ff']['d']]
             for split_object in split_objects:
                 raw = split_object.to_json()
 
@@ -53,8 +53,8 @@ class PluggableSplitStorageIntegrationTests(object):
                     assert len(original_condition.matchers) == len(fetched_condition.matchers)
                     assert len(original_condition.partitions) == len(fetched_condition.partitions)
 
-            adapter.set(storage._feature_flag_till_prefix, data['till'])
-            assert storage.get_change_number() == data['till']
+            adapter.set(storage._feature_flag_till_prefix, data['ff']['t'])
+            assert storage.get_change_number() == data['ff']['t']
 
             assert storage.is_valid_traffic_type('user') is True
             assert storage.is_valid_traffic_type('account') is True
@@ -89,12 +89,12 @@ class PluggableSplitStorageIntegrationTests(object):
             split_fn = os.path.join(os.path.dirname(__file__), 'files', 'split_changes.json')
             with open(split_fn, 'r') as flo:
                 data = json.loads(flo.read())
-                for split in data['splits']:
+                for split in data['ff']['d']:
                     adapter.set(storage._prefix.format(feature_flag_name=split['name']), split)
                     adapter.increment(storage._traffic_type_prefix.format(traffic_type_name=split['trafficTypeName']), 1)
-                adapter.set(storage._feature_flag_till_prefix, data['till'])
+                adapter.set(storage._feature_flag_till_prefix, data['ff']['t'])
 
-            split_objects = [splits.from_raw(raw) for raw in data['splits']]
+            split_objects = [splits.from_raw(raw) for raw in data['ff']['d']]
             original_splits = {split.name: split for split in split_objects}
             fetched_names = storage.get_split_names()
             fetched_splits = {split.name: split for split in storage.get_all_splits()}
@@ -260,12 +260,12 @@ class PluggableSplitStorageIntegrationAsyncTests(object):
             split_fn = os.path.join(os.path.dirname(__file__), 'files', 'split_changes.json')
             with open(split_fn, 'r') as flo:
                 data = json.loads(flo.read())
-                for split in data['splits']:
+                for split in data['ff']['d']:
                     await adapter.set(storage._prefix.format(feature_flag_name=split['name']), split)
                     await adapter.increment(storage._traffic_type_prefix.format(traffic_type_name=split['trafficTypeName']), 1)
-                await adapter.set(storage._feature_flag_till_prefix, data['till'])
+                await adapter.set(storage._feature_flag_till_prefix, data['ff']['t'])
 
-            split_objects = [splits.from_raw(raw) for raw in data['splits']]
+            split_objects = [splits.from_raw(raw) for raw in data['ff']['d']]
             for split_object in split_objects:
                 raw = split_object.to_json()
 
@@ -290,8 +290,8 @@ class PluggableSplitStorageIntegrationAsyncTests(object):
                     assert len(original_condition.matchers) == len(fetched_condition.matchers)
                     assert len(original_condition.partitions) == len(fetched_condition.partitions)
 
-            await adapter.set(storage._feature_flag_till_prefix, data['till'])
-            assert await storage.get_change_number() == data['till']
+            await adapter.set(storage._feature_flag_till_prefix, data['ff']['t'])
+            assert await storage.get_change_number() == data['ff']['t']
 
             assert await storage.is_valid_traffic_type('user') is True
             assert await storage.is_valid_traffic_type('account') is True
@@ -327,12 +327,12 @@ class PluggableSplitStorageIntegrationAsyncTests(object):
             split_fn = os.path.join(os.path.dirname(__file__), 'files', 'split_changes.json')
             with open(split_fn, 'r') as flo:
                 data = json.loads(flo.read())
-                for split in data['splits']:
+                for split in data['ff']['d']:
                     await adapter.set(storage._prefix.format(feature_flag_name=split['name']), split)
                     await adapter.increment(storage._traffic_type_prefix.format(traffic_type_name=split['trafficTypeName']), 1)
-                await adapter.set(storage._feature_flag_till_prefix, data['till'])
+                await adapter.set(storage._feature_flag_till_prefix, data['ff']['t'])
 
-            split_objects = [splits.from_raw(raw) for raw in data['splits']]
+            split_objects = [splits.from_raw(raw) for raw in data['ff']['d']]
             original_splits = {split.name: split for split in split_objects}
             fetched_names = await storage.get_split_names()
             fetched_splits = {split.name: split for split in await storage.get_all_splits()}
