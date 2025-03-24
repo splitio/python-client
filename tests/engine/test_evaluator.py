@@ -1,6 +1,7 @@
 """Evaluator tests module."""
 import logging
 import pytest
+import copy
 
 from splitio.models.splits import Split, Status
 from splitio.models.grammar.condition import Condition, ConditionType
@@ -243,7 +244,7 @@ class EvaluatorTests(object):
         ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set(), segment_rbs_memberships={'sample_rule_based_segment': True}, segment_rbs_conditions={'sample_rule_based_segment': []})
         result = e.eval_with_context('bilal@split.io', 'bilal@split.io', 'some', {'email': 'bilal@split.io'}, ctx)
         assert result['treatment'] == 'off'
-
+        
 class EvaluationDataFactoryTests(object):
     """Test evaluation factory class."""
     
@@ -254,37 +255,75 @@ class EvaluationDataFactoryTests(object):
         segment_storage = InMemorySegmentStorage()
         rbs_segment_storage = InMemoryRuleBasedSegmentStorage()
         flag_storage.update([mocked_split], [], -1)
-        rbs = rule_based_segments.from_raw(rbs_raw)
+        rbs = copy.deepcopy(rbs_raw)
+        rbs['conditions'].append(
+        {"matcherGroup": {
+              "combiner": "AND",
+              "matchers": [
+                  {
+                      "matcherType": "IN_SEGMENT",
+                      "negate": False,
+                      "userDefinedSegmentMatcherData": {
+                          "segmentName": "employees"
+                      },
+                      "whitelistMatcherData": None
+                  }
+              ]
+          },
+        })
+        rbs = rule_based_segments.from_raw(rbs)
         rbs_segment_storage.update([rbs], [], -1)
         
         eval_factory = EvaluationDataFactory(flag_storage, segment_storage, rbs_segment_storage)
         ec = eval_factory.context_for('bilal@split.io', ['some'])
         assert ec.segment_rbs_conditions == {'sample_rule_based_segment': rbs.conditions}
         assert ec.segment_rbs_memberships == {'sample_rule_based_segment': False}
+        assert ec.segment_memberships == {"employees": False}
         
+        segment_storage.update("employees", {"mauro@split.io"}, {}, 1234)
         ec = eval_factory.context_for('mauro@split.io', ['some'])
         assert ec.segment_rbs_conditions == {}
         assert ec.segment_rbs_memberships == {'sample_rule_based_segment': True}
-
+        assert ec.segment_memberships == {"employees": True}
+        
 class EvaluationDataFactoryAsyncTests(object):
     """Test evaluation factory class."""
     
     @pytest.mark.asyncio
     async def test_get_context(self):
         """Test context."""
-        mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False)
+        mocked_split = Split('some', 123, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False)
         flag_storage = InMemorySplitStorageAsync([])
         segment_storage = InMemorySegmentStorageAsync()
         rbs_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
         await flag_storage.update([mocked_split], [], -1)
-        rbs = rule_based_segments.from_raw(rbs_raw)
+        rbs = copy.deepcopy(rbs_raw)
+        rbs['conditions'].append(
+        {"matcherGroup": {
+              "combiner": "AND",
+              "matchers": [
+                  {
+                      "matcherType": "IN_SEGMENT",
+                      "negate": False,
+                      "userDefinedSegmentMatcherData": {
+                          "segmentName": "employees"
+                      },
+                      "whitelistMatcherData": None
+                  }
+              ]
+          },
+        })
+        rbs = rule_based_segments.from_raw(rbs)
         await rbs_segment_storage.update([rbs], [], -1)
         
         eval_factory = AsyncEvaluationDataFactory(flag_storage, segment_storage, rbs_segment_storage)
         ec = await eval_factory.context_for('bilal@split.io', ['some'])
         assert ec.segment_rbs_conditions == {'sample_rule_based_segment': rbs.conditions}
         assert ec.segment_rbs_memberships == {'sample_rule_based_segment': False}
+        assert ec.segment_memberships == {"employees": False}
         
+        await segment_storage.update("employees", {"mauro@split.io"}, {}, 1234)
         ec = await eval_factory.context_for('mauro@split.io', ['some'])
         assert ec.segment_rbs_conditions == {}
         assert ec.segment_rbs_memberships == {'sample_rule_based_segment': True}
+        assert ec.segment_memberships == {"employees": True}

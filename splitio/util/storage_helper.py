@@ -53,6 +53,7 @@ def update_rule_based_segment_storage(rule_based_segment_storage, rule_based_seg
         if rule_based_segment.status == "ACTIVE":
             to_add.append(rule_based_segment)
             segment_list.update(set(rule_based_segment.excluded.get_excluded_segments()))
+            segment_list.update(rule_based_segment.get_condition_segment_names())
         else:
             if rule_based_segment_storage.get(rule_based_segment.name) is not None:
                 to_delete.append(rule_based_segment.name)
@@ -109,6 +110,7 @@ async def update_rule_based_segment_storage_async(rule_based_segment_storage, ru
         if rule_based_segment.status == "ACTIVE":
             to_add.append(rule_based_segment)
             segment_list.update(set(rule_based_segment.excluded.get_excluded_segments()))
+            segment_list.update(rule_based_segment.get_condition_segment_names())
         else:
             if await rule_based_segment_storage.get(rule_based_segment.name) is not None:
                 to_delete.append(rule_based_segment.name)

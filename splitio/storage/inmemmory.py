@@ -200,7 +200,7 @@ class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
         """
         with self._lock:
             return list(self._rule_based_segments.keys())
-    
+            
     def get_large_segment_names(self):
         """
         Retrieve a list of all excluded large segments names.

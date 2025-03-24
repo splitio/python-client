@@ -1,6 +1,6 @@
 """Split model tests module."""
 import copy
-
+import pytest
 from splitio.models import rule_based_segments
 from splitio.models import splits
 from splitio.models.grammar.condition import Condition
@@ -80,3 +80,25 @@ class RuleBasedSegmentModelTests(object):
         rbs['conditions'][0]['matcherGroup']['matchers'][0]['matcherType'] = 'INVALID_MATCHER'
         parsed = rule_based_segments.from_raw(rbs)
         assert parsed.conditions[0].to_json() == splits._DEFAULT_CONDITIONS_TEMPLATE
+        
+    def test_get_condition_segment_names(self):
+        rbs = copy.deepcopy(self.raw)
+        rbs['conditions'].append(
+        {"matcherGroup": {
+              "combiner": "AND",
+              "matchers": [
+                  {
+                      "matcherType": "IN_SEGMENT",
+                      "negate": False,
+                      "userDefinedSegmentMatcherData": {
+                          "segmentName": "employees"
+                      },
+                      "whitelistMatcherData": None
+                  }
+              ]
+          },
+        })
+        rbs = rule_based_segments.from_raw(rbs)
+        
+        assert rbs.get_condition_segment_names() == {"employees"}
+      

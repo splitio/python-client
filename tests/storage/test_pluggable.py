@@ -1386,11 +1386,11 @@ class PluggableRuleBasedSegmentStorageTests(object):
         for sprefix in [None, 'myprefix']:
             pluggable_rbs_storage = PluggableRuleBasedSegmentsStorage(self.mock_adapter, prefix=sprefix)
 
-            rbs1 = rule_based_segments.from_raw(rbsegments_json[0]['segment1'])
-            rbs_name = rbsegments_json[0]['segment1']['name']
+            rbs1 = rule_based_segments.from_raw(rbsegments_json[0])
+            rbs_name = rbsegments_json[0]['name']
 
             self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs_name), rbs1.to_json())
-            assert(pluggable_rbs_storage.get(rbs_name).to_json() ==  rule_based_segments.from_raw(rbsegments_json[0]['segment1']).to_json())
+            assert(pluggable_rbs_storage.get(rbs_name).to_json() ==  rule_based_segments.from_raw(rbsegments_json[0]).to_json())
             assert(pluggable_rbs_storage.get('not_existing') == None)
 
     def test_get_change_number(self):
@@ -1408,8 +1408,8 @@ class PluggableRuleBasedSegmentStorageTests(object):
         self.mock_adapter._keys = {}
         for sprefix in [None, 'myprefix']:
             pluggable_rbs_storage = PluggableRuleBasedSegmentsStorage(self.mock_adapter, prefix=sprefix)
-            rbs1 = rule_based_segments.from_raw(rbsegments_json[0]['segment1'])
-            rbs2_temp = copy.deepcopy(rbsegments_json[0]['segment1'])
+            rbs1 = rule_based_segments.from_raw(rbsegments_json[0])
+            rbs2_temp = copy.deepcopy(rbsegments_json[0])
             rbs2_temp['name'] = 'another_segment'
             rbs2 = rule_based_segments.from_raw(rbs2_temp)
             self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs1.name), rbs1.to_json())
@@ -1420,8 +1420,8 @@ class PluggableRuleBasedSegmentStorageTests(object):
         self.mock_adapter._keys = {}
         for sprefix in [None, 'myprefix']:
             pluggable_rbs_storage = PluggableRuleBasedSegmentsStorage(self.mock_adapter, prefix=sprefix)
-            rbs1 = rule_based_segments.from_raw(rbsegments_json[0]['segment1'])
-            rbs2_temp = copy.deepcopy(rbsegments_json[0]['segment1'])
+            rbs1 = rule_based_segments.from_raw(rbsegments_json[0])
+            rbs2_temp = copy.deepcopy(rbsegments_json[0])
             rbs2_temp['name'] = 'another_segment'
             rbs2 = rule_based_segments.from_raw(rbs2_temp)
             self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs1.name), rbs1.to_json())
@@ -1445,12 +1445,12 @@ class PluggableRuleBasedSegmentStorageAsyncTests(object):
         for sprefix in [None, 'myprefix']:
             pluggable_rbs_storage = PluggableRuleBasedSegmentsStorageAsync(self.mock_adapter, prefix=sprefix)
 
-            rbs1 = rule_based_segments.from_raw(rbsegments_json[0]['segment1'])
-            rbs_name = rbsegments_json[0]['segment1']['name']
+            rbs1 = rule_based_segments.from_raw(rbsegments_json[0])
+            rbs_name = rbsegments_json[0]['name']
 
             await self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs_name), rbs1.to_json())
             rbs = await pluggable_rbs_storage.get(rbs_name)
-            assert(rbs.to_json() ==  rule_based_segments.from_raw(rbsegments_json[0]['segment1']).to_json())
+            assert(rbs.to_json() ==  rule_based_segments.from_raw(rbsegments_json[0]).to_json())
             assert(await pluggable_rbs_storage.get('not_existing') == None)
 
     @pytest.mark.asyncio
@@ -1470,8 +1470,8 @@ class PluggableRuleBasedSegmentStorageAsyncTests(object):
         self.mock_adapter._keys = {}
         for sprefix in [None, 'myprefix']:
             pluggable_rbs_storage = PluggableRuleBasedSegmentsStorageAsync(self.mock_adapter, prefix=sprefix)
-            rbs1 = rule_based_segments.from_raw(rbsegments_json[0]['segment1'])
-            rbs2_temp = copy.deepcopy(rbsegments_json[0]['segment1'])
+            rbs1 = rule_based_segments.from_raw(rbsegments_json[0])
+            rbs2_temp = copy.deepcopy(rbsegments_json[0])
             rbs2_temp['name'] = 'another_segment'
             rbs2 = rule_based_segments.from_raw(rbs2_temp)
             await self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs1.name), rbs1.to_json())
@@ -1483,8 +1483,8 @@ class PluggableRuleBasedSegmentStorageAsyncTests(object):
         self.mock_adapter._keys = {}
         for sprefix in [None, 'myprefix']:
             pluggable_rbs_storage = PluggableRuleBasedSegmentsStorageAsync(self.mock_adapter, prefix=sprefix)
-            rbs1 = rule_based_segments.from_raw(rbsegments_json[0]['segment1'])
-            rbs2_temp = copy.deepcopy(rbsegments_json[0]['segment1'])
+            rbs1 = rule_based_segments.from_raw(rbsegments_json[0])
+            rbs2_temp = copy.deepcopy(rbsegments_json[0])
             rbs2_temp['name'] = 'another_segment'
             rbs2 = rule_based_segments.from_raw(rbs2_temp)
             await self.mock_adapter.set(pluggable_rbs_storage._prefix.format(segment_name=rbs1.name), rbs1.to_json())
