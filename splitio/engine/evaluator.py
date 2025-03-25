@@ -133,16 +133,19 @@ class EvaluationDataFactory:
         key_membership = False
         segment_memberhsip = False
         for rbs_segment in pending_rbs_memberships:
-            key_membership = key in self._rbs_segment_storage.get(rbs_segment).excluded.get_excluded_keys()
+            rbs_segment_obj = self._rbs_segment_storage.get(rbs_segment)
+            pending_memberships.update(rbs_segment_obj.get_condition_segment_names())
+            
+            key_membership = key in rbs_segment_obj.excluded.get_excluded_keys()
             segment_memberhsip = False
-            for segment_name in self._rbs_segment_storage.get(rbs_segment).excluded.get_excluded_segments():
+            for segment_name in rbs_segment_obj.excluded.get_excluded_segments():
                 if self._segment_storage.segment_contains(segment_name, key):
                     segment_memberhsip = True
                     break
                 
             rbs_segment_memberships.update({rbs_segment: segment_memberhsip or key_membership})
             if not (segment_memberhsip or key_membership):
-                rbs_segment_conditions.update({rbs_segment: [condition for condition in self._rbs_segment_storage.get(rbs_segment).conditions]})
+                rbs_segment_conditions.update({rbs_segment: [condition for condition in rbs_segment_obj.conditions]})
             
         return EvaluationContext(
             splits, 
@@ -184,18 +187,14 @@ class AsyncEvaluationDataFactory:
                 pending_memberships.update(cs)
                 pending_rbs_memberships.update(crbs)
                 
-        segment_names = list(pending_memberships)
-        segment_memberships = await asyncio.gather(*[
-            self._segment_storage.segment_contains(segment, key)
-            for segment in segment_names
-        ])
-
         rbs_segment_memberships = {}
         rbs_segment_conditions = {}
         key_membership = False
         segment_memberhsip = False
         for rbs_segment in pending_rbs_memberships:
             rbs_segment_obj = await self._rbs_segment_storage.get(rbs_segment)
+            pending_memberships.update(rbs_segment_obj.get_condition_segment_names())
+            
             key_membership = key in rbs_segment_obj.excluded.get_excluded_keys()
             segment_memberhsip = False
             for segment_name in rbs_segment_obj.excluded.get_excluded_segments():
@@ -207,6 +206,11 @@ class AsyncEvaluationDataFactory:
             if not (segment_memberhsip or key_membership):
                 rbs_segment_conditions.update({rbs_segment: [condition for condition in rbs_segment_obj.conditions]})
 
+        segment_names = list(pending_memberships)
+        segment_memberships = await asyncio.gather(*[
+            self._segment_storage.segment_contains(segment, key)
+            for segment in segment_names
+        ])
         return EvaluationContext(
             splits, 
             dict(zip(segment_names, segment_memberships)),

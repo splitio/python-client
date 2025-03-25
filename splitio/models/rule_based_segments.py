@@ -76,6 +76,14 @@ class RuleBasedSegment(object):
             'excluded': self.excluded.to_json()
         }
         
+    def get_condition_segment_names(self):
+        segments = set()
+        for condition in self._conditions:
+            for matcher in condition.matchers:
+                if matcher._matcher_type == 'IN_SEGMENT':
+                    segments.add(matcher.to_json()['userDefinedSegmentMatcherData']['segmentName'])
+        return segments
+        
 def from_raw(raw_rule_based_segment):
     """
     Parse a Rule based segment from a JSON portion of splitChanges.
