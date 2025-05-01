@@ -5,6 +5,7 @@ import logging
 from splitio.models import MatcherNotFoundException
 from splitio.models.splits import _DEFAULT_CONDITIONS_TEMPLATE
 from splitio.models.grammar import condition
+from splitio.models.splits import Status
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,9 +32,12 @@ class RuleBasedSegment(object):
         self._name = name
         self._traffic_type_name = traffic_type_name
         self._change_number = change_number
-        self._status = status
         self._conditions = conditions
         self._excluded = excluded
+        try:
+            self._status = Status(status)
+        except ValueError:
+            self._status = Status.ARCHIVED
         
     @property
     def name(self):
@@ -71,7 +75,7 @@ class RuleBasedSegment(object):
             'changeNumber': self.change_number,
             'trafficTypeName': self.traffic_type_name,
             'name': self.name,
-            'status': self.status,
+            'status': self.status.value,
             'conditions': [c.to_json() for c in self.conditions],
             'excluded': self.excluded.to_json()
         }

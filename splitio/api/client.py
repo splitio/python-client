@@ -92,6 +92,25 @@ class HTTPAdapterWithProxyKerberosAuth(requests.adapters.HTTPAdapter):
 class HttpClientBase(object, metaclass=abc.ABCMeta):
     """HttpClient wrapper template."""
 
+    def __init__(self, timeout=None, sdk_url=None, events_url=None, auth_url=None, telemetry_url=None):
+        """
+        Class constructor.
+
+        :param timeout: How many milliseconds to wait until the server responds.
+        :type timeout: int
+        :param sdk_url: Optional alternative sdk URL.
+        :type sdk_url: str
+        :param events_url: Optional alternative events URL.
+        :type events_url: str
+        :param auth_url: Optional alternative auth URL.
+        :type auth_url: str
+        :param telemetry_url: Optional alternative telemetry URL.
+        :type telemetry_url: str
+        """
+        _LOGGER.debug("Initializing httpclient")
+        self._timeout = timeout/1000 if timeout else None # Convert ms to seconds.
+        self._urls = _construct_urls(sdk_url, events_url, auth_url, telemetry_url)
+
     @abc.abstractmethod
     def get(self, server, path, apikey):
         """http get request"""
@@ -112,6 +131,9 @@ class HttpClientBase(object, metaclass=abc.ABCMeta):
         """
         self._telemetry_runtime_producer = telemetry_runtime_producer
         self._metric_name = metric_name
+
+    def is_sdk_endpoint_overridden(self):
+        return self._urls['sdk'] == SDK_URL
 
     def _get_headers(self, extra_headers, sdk_key):
         headers = _build_basic_headers(sdk_key)
@@ -154,10 +176,8 @@ class HttpClient(HttpClientBase):
         :param telemetry_url: Optional alternative telemetry URL.
         :type telemetry_url: str
         """
-        _LOGGER.debug("Initializing httpclient")
-        self._timeout = timeout/1000 if timeout else None # Convert ms to seconds.
-        self._urls = _construct_urls(sdk_url, events_url, auth_url, telemetry_url)
-
+        HttpClientBase.__init__(self, timeout, sdk_url, events_url, auth_url, telemetry_url)
+        
     def get(self, server, path, sdk_key, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
         Issue a get request.
@@ -241,8 +261,7 @@ class HttpClientAsync(HttpClientBase):
         :param telemetry_url: Optional alternative telemetry URL.
         :type telemetry_url: str
         """
-        self._timeout = timeout/1000 if timeout else None  # Convert ms to seconds.
-        self._urls = _construct_urls(sdk_url, events_url, auth_url, telemetry_url)
+        HttpClientBase.__init__(self, timeout, sdk_url, events_url, auth_url, telemetry_url)
         self._session = aiohttp.ClientSession()
 
     async def get(self, server, path, apikey, query=None, extra_headers=None):  # pylint: disable=too-many-arguments

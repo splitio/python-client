@@ -4,7 +4,7 @@ from splitio.models import splits
 
 _LOGGER = logging.getLogger(__name__)
 
-def update_feature_flag_storage(feature_flag_storage, feature_flags, change_number):
+def update_feature_flag_storage(feature_flag_storage, feature_flags, change_number, clear_storage=False):
     """
     Update feature flag storage from given list of feature flags while checking the flag set logic
 
@@ -21,6 +21,9 @@ def update_feature_flag_storage(feature_flag_storage, feature_flags, change_numb
     segment_list = set()
     to_add = []
     to_delete = []
+    if clear_storage:
+        feature_flag_storage.clear()
+        
     for feature_flag in feature_flags:
         if feature_flag_storage.flag_set_filter.intersect(feature_flag.sets) and feature_flag.status == splits.Status.ACTIVE:
             to_add.append(feature_flag)
@@ -32,7 +35,7 @@ def update_feature_flag_storage(feature_flag_storage, feature_flags, change_numb
     feature_flag_storage.update(to_add, to_delete, change_number)
     return segment_list
 
-def update_rule_based_segment_storage(rule_based_segment_storage, rule_based_segments, change_number):
+def update_rule_based_segment_storage(rule_based_segment_storage, rule_based_segments, change_number, clear_storage=False):
     """
     Update rule based segment storage from given list of rule based segments
 
@@ -46,11 +49,14 @@ def update_rule_based_segment_storage(rule_based_segment_storage, rule_based_seg
     :return: segments list from excluded segments list
     :rtype: list(str)
     """
+    if clear_storage:
+        rule_based_segment_storage.clear()
+
     segment_list = set()
     to_add = []
     to_delete = []
     for rule_based_segment in rule_based_segments:
-        if rule_based_segment.status == "ACTIVE":
+        if rule_based_segment.status == splits.Status.ACTIVE:
             to_add.append(rule_based_segment)
             segment_list.update(set(rule_based_segment.excluded.get_excluded_segments()))
             segment_list.update(rule_based_segment.get_condition_segment_names())
@@ -61,7 +67,7 @@ def update_rule_based_segment_storage(rule_based_segment_storage, rule_based_seg
     rule_based_segment_storage.update(to_add, to_delete, change_number)
     return segment_list
 
-async def update_feature_flag_storage_async(feature_flag_storage, feature_flags, change_number):
+async def update_feature_flag_storage_async(feature_flag_storage, feature_flags, change_number, clear_storage=False):
     """
     Update feature flag storage from given list of feature flags while checking the flag set logic
 
@@ -75,6 +81,9 @@ async def update_feature_flag_storage_async(feature_flag_storage, feature_flags,
     :return: segments list from feature flags list
     :rtype: list(str)
     """
+    if clear_storage:
+        await feature_flag_storage.clear()
+    
     segment_list = set()
     to_add = []
     to_delete = []
@@ -89,7 +98,7 @@ async def update_feature_flag_storage_async(feature_flag_storage, feature_flags,
     await feature_flag_storage.update(to_add, to_delete, change_number)
     return segment_list
 
-async def update_rule_based_segment_storage_async(rule_based_segment_storage, rule_based_segments, change_number):
+async def update_rule_based_segment_storage_async(rule_based_segment_storage, rule_based_segments, change_number, clear_storage=False):
     """
     Update rule based segment storage from given list of rule based segments
 
@@ -103,11 +112,14 @@ async def update_rule_based_segment_storage_async(rule_based_segment_storage, ru
     :return: segments list from excluded segments list
     :rtype: list(str)
     """
+    if clear_storage:
+        await rule_based_segment_storage.clear()
+    
     segment_list = set()
     to_add = []
     to_delete = []
     for rule_based_segment in rule_based_segments:
-        if rule_based_segment.status == "ACTIVE":
+        if rule_based_segment.status == splits.Status.ACTIVE:
             to_add.append(rule_based_segment)
             segment_list.update(set(rule_based_segment.excluded.get_excluded_segments()))
             segment_list.update(rule_based_segment.get_condition_segment_names())
