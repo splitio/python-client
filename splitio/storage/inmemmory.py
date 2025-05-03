@@ -243,7 +243,7 @@ class InMemoryRuleBasedSegmentStorageAsync(RuleBasedSegmentsStorage):
         """
         Clear storage
         """
-        with self._lock:
+        async with self._lock:
             self._rule_based_segments = {}
             self._change_number = -1
 
@@ -702,7 +702,7 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
         """
         Clear storage
         """
-        with self._lock:
+        async with self._lock:
             self._feature_flags = {}
             self._change_number = -1
             self._traffic_types = Counter()

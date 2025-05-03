@@ -18,7 +18,7 @@ class StorageHelperTests(object):
         "trafficTypeName": "user",
         "excluded":{
         "keys":["mauro@split.io","gaston@split.io"],
-        "segments":['excluded_segment']
+        "segments":[{"name":"excluded_segment", "type": "standard"}]
         },
         "conditions": [
             {"matcherGroup": {

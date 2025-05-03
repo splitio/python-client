@@ -9,6 +9,7 @@ from splitio.api.client import HttpClientException
 from splitio.models.telemetry import HTTPExceptionsAndLatencies
 from splitio.util.time import utctime_ms
 from splitio.spec import SPEC_VERSION
+from splitio.sync import util
 
 _LOGGER = logging.getLogger(__name__)
 _SPEC_1_1 = "1.1"
@@ -36,10 +37,6 @@ class SplitsAPIBase(object):  # pylint: disable=too-few-public-methods
         self._spec_version = SPEC_VERSION
         self._last_proxy_check_timestamp = 0
         self.clear_storage = False
-
-    def _convert_to_new_spec(self, body):
-        return {"ff": {"d": body["splits"], "s": body["since"], "t": body["till"]}, 
-                "rbs": {"d": [], "s": -1, "t": -1}}
 
     def _check_last_proxy_check_timestamp(self):
         if self._spec_version == _SPEC_1_1 and ((utctime_ms() - self._last_proxy_check_timestamp) >= _PROXY_CHECK_INTERVAL_MILLISECONDS_SS):
@@ -91,7 +88,7 @@ class SplitsAPI(SplitsAPIBase):  # pylint: disable=too-few-public-methods
             )
             if 200 <= response.status_code < 300:
                 if self._spec_version == _SPEC_1_1:
-                    return self._convert_to_new_spec(json.loads(response.body))
+                    return util.convert_to_new_spec(json.loads(response.body))
                 
                 self.clear_storage = self._last_proxy_check_timestamp != 0
                 self._last_proxy_check_timestamp = 0
@@ -159,7 +156,7 @@ class SplitsAPIAsync(SplitsAPIBase):  # pylint: disable=too-few-public-methods
             )
             if 200 <= response.status_code < 300:
                 if self._spec_version == _SPEC_1_1:
-                    return self._convert_to_new_spec(json.loads(response.body))
+                    return util.convert_to_new_spec(json.loads(response.body))
                 
                 self.clear_storage = self._last_proxy_check_timestamp != 0
                 self._last_proxy_check_timestamp = 0

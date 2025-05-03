@@ -58,7 +58,7 @@ def update_rule_based_segment_storage(rule_based_segment_storage, rule_based_seg
     for rule_based_segment in rule_based_segments:
         if rule_based_segment.status == splits.Status.ACTIVE:
             to_add.append(rule_based_segment)
-            segment_list.update(set(rule_based_segment.excluded.get_excluded_segments()))
+            segment_list.update(set(_get_segment_names(rule_based_segment.excluded.get_excluded_segments())))
             segment_list.update(rule_based_segment.get_condition_segment_names())
         else:
             if rule_based_segment_storage.get(rule_based_segment.name) is not None:
@@ -67,6 +67,9 @@ def update_rule_based_segment_storage(rule_based_segment_storage, rule_based_seg
     rule_based_segment_storage.update(to_add, to_delete, change_number)
     return segment_list
 
+def _get_segment_names(excluded_segments):
+    return [excluded_segment.name for excluded_segment in excluded_segments]
+    
 async def update_feature_flag_storage_async(feature_flag_storage, feature_flags, change_number, clear_storage=False):
     """
     Update feature flag storage from given list of feature flags while checking the flag set logic
@@ -121,7 +124,7 @@ async def update_rule_based_segment_storage_async(rule_based_segment_storage, ru
     for rule_based_segment in rule_based_segments:
         if rule_based_segment.status == splits.Status.ACTIVE:
             to_add.append(rule_based_segment)
-            segment_list.update(set(rule_based_segment.excluded.get_excluded_segments()))
+            segment_list.update(set(_get_segment_names(rule_based_segment.excluded.get_excluded_segments())))
             segment_list.update(rule_based_segment.get_condition_segment_names())
         else:
             if await rule_based_segment_storage.get(rule_based_segment.name) is not None:

@@ -499,7 +499,7 @@ class SplitsSynchronizerAsyncTests(object):
     async def test_synchronize_splits_error(self, mocker):
         """Test that if fetching splits fails at some_point, the task will continue running."""
         storage = mocker.Mock(spec=InMemorySplitStorageAsync)
-        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
         api = mocker.Mock()
 
         async def run(x, y, c):
@@ -531,7 +531,7 @@ class SplitsSynchronizerAsyncTests(object):
     async def test_synchronize_splits(self, mocker):
         """Test split sync."""
         storage = mocker.Mock(spec=InMemorySplitStorageAsync)
-        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
         
         async def change_number_mock():
             change_number_mock._calls += 1
@@ -571,6 +571,16 @@ class SplitsSynchronizerAsyncTests(object):
                 self.parsed_rbs = parsed_rbs
         rbs_storage.update = update
 
+        self.clear = False
+        async def clear():
+            self.clear = True
+        storage.clear = clear
+
+        self.clear2 = False
+        async def clear():
+            self.clear2 = True
+        rbs_storage.clear = clear
+        
         api = mocker.Mock()
         self.change_number_1 = None
         self.fetch_options_1 = None
@@ -599,6 +609,7 @@ class SplitsSynchronizerAsyncTests(object):
                 }
         get_changes.called = 0
         api.fetch_splits = get_changes
+        api.clear_storage.return_value = False
 
         split_synchronizer = SplitSynchronizerAsync(api, storage, rbs_storage)
         await split_synchronizer.synchronize_splits()
@@ -618,7 +629,7 @@ class SplitsSynchronizerAsyncTests(object):
     async def test_not_called_on_till(self, mocker):
         """Test that sync is not called when till is less than previous changenumber"""
         storage = mocker.Mock(spec=InMemorySplitStorageAsync)
-        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
                 
         class flag_set_filter():
             def should_filter():
@@ -651,7 +662,7 @@ class SplitsSynchronizerAsyncTests(object):
         """Test split sync with bypassing cdn."""
         mocker.patch('splitio.sync.split._ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES', new=3)
         storage = mocker.Mock(spec=InMemorySplitStorageAsync)
-        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
         async def change_number_mock():
             change_number_mock._calls += 1
             if change_number_mock._calls == 1:
@@ -740,6 +751,16 @@ class SplitsSynchronizerAsyncTests(object):
         storage.flag_set_filter = flag_set_filter
         storage.flag_set_filter.flag_sets = {}
         storage.flag_set_filter.sorted_flag_sets = []
+
+        self.clear = False
+        async def clear():
+            self.clear = True
+        storage.clear = clear
+
+        self.clear2 = False
+        async def clear():
+            self.clear2 = True
+        rbs_storage.clear = clear
 
         split_synchronizer = SplitSynchronizerAsync(api, storage, rbs_storage)
         split_synchronizer._backoff = Backoff(1, 1)

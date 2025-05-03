@@ -1,5 +1,6 @@
 """RuleBasedSegment module."""
 
+from enum import Enum
 import logging
 
 from splitio.models import MatcherNotFoundException
@@ -8,6 +9,12 @@ from splitio.models.grammar import condition
 from splitio.models.splits import Status
 
 _LOGGER = logging.getLogger(__name__)
+
+class SegmentType(Enum):
+    """Segment type."""
+    
+    STANDARD = "standard"
+    RULE_BASED = "rule-based"
 
 class RuleBasedSegment(object):
     """RuleBasedSegment object class."""
@@ -125,7 +132,7 @@ class Excluded(object):
         :type segments: List
         """
         self._keys = keys
-        self._segments = segments
+        self._segments = [ExcludedSegment(segment['name'], segment['type']) for segment in segments]
 
     def get_excluded_keys(self):
         """Return excluded keys."""        
@@ -141,3 +148,30 @@ class Excluded(object):
             'keys': self._keys,
             'segments': self._segments
         }
+
+class ExcludedSegment(object):
+    
+    def __init__(self, name, type):
+        """
+        Class constructor.
+
+        :param name: rule based segment name
+        :type name: str
+        :param type: segment type 
+        :type type: str
+        """
+        self._name = name
+        try:
+            self._type = SegmentType(type)
+        except ValueError:
+            self._type = SegmentType.STANDARD
+
+    @property
+    def name(self):
+        """Return name."""
+        return self._name
+
+    @property
+    def type(self):
+        """Return type."""
+        return self._type

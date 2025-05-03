@@ -203,6 +203,13 @@ class SynchronizerTests(object):
                                                  mocker.Mock(), mocker.Mock())
 
         synchronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
+#        pytest.set_trace()
+        self.clear = False
+        def clear():
+            self.clear = True
+        split_storage.clear = clear
+        rbs_storage.clear = clear
+        
         synchronizer.sync_all()
 
         inserted_split = split_storage.update.mock_calls[0][1][0][0]

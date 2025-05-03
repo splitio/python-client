@@ -32,11 +32,14 @@ class RuleBasedSegmentMatcher(Matcher):
         # Check if rbs segment has exclusions
         if context['ec'].segment_rbs_memberships.get(self._rbs_segment_name):
             return False
-                
-        for parsed_condition in context['ec'].segment_rbs_conditions.get(self._rbs_segment_name):
-            if parsed_condition.matches(key, attributes, context):
+        
+        for rbs_segment in context['ec'].excluded_rbs_segments:
+            if self._match_conditions(rbs_segment, key, attributes, context):
                 return True
-                
+        
+        if self._match_conditions(context['ec'].segment_rbs_conditions.get(self._rbs_segment_name), key, attributes, context):
+            return True
+                                
         return False
     
     def _add_matcher_specific_properties_to_json(self):
@@ -46,3 +49,8 @@ class RuleBasedSegmentMatcher(Matcher):
                 'segmentName': self._rbs_segment_name
             }
         }
+        
+    def _match_conditions(self, rbs_segment, key, attributes, context):
+        for parsed_condition in rbs_segment:
+            if parsed_condition.matches(key, attributes, context):
+                return True

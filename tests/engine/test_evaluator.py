@@ -124,7 +124,7 @@ class EvaluatorTests(object):
         mocked_split.killed = True
         mocked_split.change_number = 123
         mocked_split.get_configurations_for.return_value = '{"some_property": 123}'
-        ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set(), segment_rbs_memberships={}, segment_rbs_conditions={})
+        ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set(), segment_rbs_memberships={}, segment_rbs_conditions={}, excluded_rbs_segments={})
         result = e.eval_with_context('some_key', 'some_bucketing_key', 'some', {}, ctx)
         assert result['treatment'] == 'off'
         assert result['configurations'] == '{"some_property": 123}'
@@ -142,7 +142,7 @@ class EvaluatorTests(object):
         mocked_split.killed = False
         mocked_split.change_number = 123
         mocked_split.get_configurations_for.return_value = '{"some_property": 123}'
-        ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set(), segment_rbs_memberships={}, segment_rbs_conditions={})
+        ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set(), segment_rbs_memberships={}, segment_rbs_conditions={}, excluded_rbs_segments={})
         result = e.eval_with_context('some_key', 'some_bucketing_key', 'some', {}, ctx)
         assert result['treatment'] == 'on'
         assert result['configurations'] == '{"some_property": 123}'
@@ -161,7 +161,7 @@ class EvaluatorTests(object):
         mocked_split.killed = False
         mocked_split.change_number = 123
         mocked_split.get_configurations_for.return_value = None
-        ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set(), segment_rbs_memberships={}, segment_rbs_conditions={})
+        ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set(), segment_rbs_memberships={}, segment_rbs_conditions={}, excluded_rbs_segments={})
         result = e.eval_with_context('some_key', 'some_bucketing_key', 'some', {}, ctx)
         assert result['treatment'] == 'on'
         assert result['configurations'] == None
@@ -188,7 +188,7 @@ class EvaluatorTests(object):
         mocked_split2.change_number = 123
         mocked_split2.get_configurations_for.return_value = None
 
-        ctx = EvaluationContext(flags={'feature2': mocked_split, 'feature4': mocked_split2}, segment_memberships=set(), segment_rbs_memberships={}, segment_rbs_conditions={})
+        ctx = EvaluationContext(flags={'feature2': mocked_split, 'feature4': mocked_split2}, segment_memberships=set(), segment_rbs_memberships={}, segment_rbs_conditions={}, excluded_rbs_segments={})
         results = e.eval_many_with_context('some_key', 'some_bucketing_key', ['feature2', 'feature4'], {}, ctx)
         result = results['feature4']
         assert result['configurations'] == None
@@ -211,7 +211,7 @@ class EvaluatorTests(object):
         mocked_split.change_number = '123'
         mocked_split.conditions = []
         mocked_split.get_configurations_for = None
-        ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set(), segment_rbs_memberships={}, segment_rbs_conditions={})
+        ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set(), segment_rbs_memberships={}, segment_rbs_conditions={}, excluded_rbs_segments={})
         assert e._treatment_for_flag(mocked_split, 'some_key', 'some_bucketing', {}, ctx) == (
             'off',
             Label.NO_CONDITION_MATCHED
@@ -228,7 +228,7 @@ class EvaluatorTests(object):
         mocked_split = mocker.Mock(spec=Split)
         mocked_split.killed = False
         mocked_split.conditions = [mocked_condition_1]
-        treatment, label = e._treatment_for_flag(mocked_split, 'some_key', 'some_bucketing', {}, EvaluationContext(None, None, None, None))
+        treatment, label = e._treatment_for_flag(mocked_split, 'some_key', 'some_bucketing', {}, EvaluationContext(None, None, None, None, None))
         assert treatment == 'on'
         assert label == 'some_label'
 
@@ -237,11 +237,11 @@ class EvaluatorTests(object):
         e = evaluator.Evaluator(splitters.Splitter())
 
         mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False)
-        ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set(), segment_rbs_memberships={'sample_rule_based_segment': False}, segment_rbs_conditions={'sample_rule_based_segment': rule_based_segments.from_raw(rbs_raw).conditions})
+        ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set(), segment_rbs_memberships={'sample_rule_based_segment': False}, segment_rbs_conditions={'sample_rule_based_segment': rule_based_segments.from_raw(rbs_raw).conditions}, excluded_rbs_segments={})
         result = e.eval_with_context('bilal@split.io', 'bilal@split.io', 'some', {'email': 'bilal@split.io'}, ctx)
         assert result['treatment'] == 'on'
 
-        ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set(), segment_rbs_memberships={'sample_rule_based_segment': True}, segment_rbs_conditions={'sample_rule_based_segment': []})
+        ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set(), segment_rbs_memberships={'sample_rule_based_segment': True}, segment_rbs_conditions={'sample_rule_based_segment': []}, excluded_rbs_segments={})
         result = e.eval_with_context('bilal@split.io', 'bilal@split.io', 'some', {'email': 'bilal@split.io'}, ctx)
         assert result['treatment'] == 'off'
         

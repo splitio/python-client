@@ -6,11 +6,12 @@ from splitio.models.impressions import Label
 from splitio.models.grammar.condition import ConditionType
 from splitio.models.grammar.matchers.misc import DependencyMatcher
 from splitio.models.grammar.matchers.keys import UserDefinedSegmentMatcher
-from splitio.models.grammar.matchers.rule_based_segment import RuleBasedSegmentMatcher
+from splitio.models.grammar.matchers import RuleBasedSegmentMatcher
+from splitio.models.rule_based_segments import SegmentType
 from splitio.optional.loaders import asyncio
 
 CONTROL = 'control'
-EvaluationContext = namedtuple('EvaluationContext', ['flags', 'segment_memberships', 'segment_rbs_memberships', 'segment_rbs_conditions'])
+EvaluationContext = namedtuple('EvaluationContext', ['flags', 'segment_memberships', 'segment_rbs_memberships', 'segment_rbs_conditions', 'excluded_rbs_segments'])
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -130,6 +131,7 @@ class EvaluationDataFactory:
         
         rbs_segment_memberships = {}
         rbs_segment_conditions = {}
+        excluded_rbs_segments = {}
         key_membership = False
         segment_memberhsip = False
         for rbs_segment in pending_rbs_memberships:
@@ -138,10 +140,14 @@ class EvaluationDataFactory:
             
             key_membership = key in rbs_segment_obj.excluded.get_excluded_keys()
             segment_memberhsip = False
-            for segment_name in rbs_segment_obj.excluded.get_excluded_segments():
-                if self._segment_storage.segment_contains(segment_name, key):
+            for excluded_segment in rbs_segment_obj.excluded.get_excluded_segments():
+                if excluded_segment.type == SegmentType.STANDARD and self._segment_storage.segment_contains(excluded_segment.name, key):
                     segment_memberhsip = True
-                    break
+
+                if excluded_segment.type == SegmentType.RULE_BASED:
+                    rbs_segment = self._rbs_segment_storage.get(excluded_segment.name)
+                    if rbs_segment is not None:
+                        excluded_rbs_segments.update()
                 
             rbs_segment_memberships.update({rbs_segment: segment_memberhsip or key_membership})
             if not (segment_memberhsip or key_membership):
@@ -153,7 +159,8 @@ class EvaluationDataFactory:
                 for segment in pending_memberships
             },
             rbs_segment_memberships,
-            rbs_segment_conditions        
+            rbs_segment_conditions,
+            excluded_rbs_segments        
         )
 
 class AsyncEvaluationDataFactory:
@@ -189,6 +196,7 @@ class AsyncEvaluationDataFactory:
                 
         rbs_segment_memberships = {}
         rbs_segment_conditions = {}
+        excluded_rbs_segments = {}
         key_membership = False
         segment_memberhsip = False
         for rbs_segment in pending_rbs_memberships:
@@ -197,11 +205,15 @@ class AsyncEvaluationDataFactory:
             
             key_membership = key in rbs_segment_obj.excluded.get_excluded_keys()
             segment_memberhsip = False
-            for segment_name in rbs_segment_obj.excluded.get_excluded_segments():
-                if await self._segment_storage.segment_contains(segment_name, key):
+            for excluded_segment in rbs_segment_obj.excluded.get_excluded_segments():
+                if excluded_segment.type == SegmentType.STANDARD and await self._segment_storage.segment_contains(excluded_segment.name, key):
                     segment_memberhsip = True
-                    break
-                
+
+                if excluded_segment.type == SegmentType.RULE_BASED:
+                    rbs_segment = await self._rbs_segment_storage.get(excluded_segment.name)
+                    if rbs_segment is not None:
+                        excluded_rbs_segments.update()
+                            
             rbs_segment_memberships.update({rbs_segment: segment_memberhsip or key_membership})
             if not (segment_memberhsip or key_membership):
                 rbs_segment_conditions.update({rbs_segment: [condition for condition in rbs_segment_obj.conditions]})
@@ -215,7 +227,8 @@ class AsyncEvaluationDataFactory:
             splits, 
             dict(zip(segment_names, segment_memberships)),
             rbs_segment_memberships,
-            rbs_segment_conditions                
+            rbs_segment_conditions,
+            excluded_rbs_segments        
         )
 
 
