@@ -1,9 +1,9 @@
 """Split model tests module."""
 import copy
-import pytest
 from splitio.models import rule_based_segments
 from splitio.models import splits
 from splitio.models.grammar.condition import Condition
+from splitio.models.grammar.matchers.rule_based_segment import RuleBasedSegmentMatcher
 
 class RuleBasedSegmentModelTests(object):
     """Rule based segment model tests."""
@@ -101,4 +101,3 @@ class RuleBasedSegmentModelTests(object):
         rbs = rule_based_segments.from_raw(rbs)
         
         assert rbs.get_condition_segment_names() == {"employees"}
-      

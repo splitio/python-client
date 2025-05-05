@@ -1,9 +1,12 @@
 """Evaluator tests module."""
+import json
 import logging
+import os
 import pytest
 import copy
 
 from splitio.models.splits import Split, Status
+from splitio.models import segments
 from splitio.models.grammar.condition import Condition, ConditionType
 from splitio.models.impressions import Label
 from splitio.models.grammar import condition
@@ -244,6 +247,74 @@ class EvaluatorTests(object):
         ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set(), segment_rbs_memberships={'sample_rule_based_segment': True}, segment_rbs_conditions={'sample_rule_based_segment': []}, excluded_rbs_segments={})
         result = e.eval_with_context('bilal@split.io', 'bilal@split.io', 'some', {'email': 'bilal@split.io'}, ctx)
         assert result['treatment'] == 'off'
+        
+    def test_evaluate_treatment_with_rbs_in_condition(self):
+        e = evaluator.Evaluator(splitters.Splitter())
+        splits_storage = InMemorySplitStorage()
+        rbs_storage = InMemoryRuleBasedSegmentStorage()
+        segment_storage = InMemorySegmentStorage()
+        evaluation_facctory = EvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
+        
+        rbs_segments = os.path.join(os.path.dirname(__file__), 'files', 'rule_base_segments.json')
+        with open(rbs_segments, 'r') as flo:
+            data = json.loads(flo.read())
+            
+        mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False)
+        rbs = rule_based_segments.from_raw(data["rbs"]["d"][0])
+        rbs2 = rule_based_segments.from_raw(data["rbs"]["d"][1])
+        rbs_storage.update([rbs, rbs2], [], 12)
+        splits_storage.update([mocked_split], [], 12)
+        
+        ctx = evaluation_facctory.context_for('bilal@split.io', ['some'])
+        assert e.eval_with_context('bilal@split.io', 'bilal@split.io', 'some', {'email': 'bilal@split.io'}, ctx)['treatment'] == "on"
+        ctx = evaluation_facctory.context_for('mauro@split.io', ['some'])
+        assert e.eval_with_context('mauro@split.io', 'mauro@split.io', 'some', {'email': 'mauro@split.io'}, ctx)['treatment'] == "off"
+        
+
+    def test_using_segment_in_excluded(self):
+        rbs_segments = os.path.join(os.path.dirname(__file__), 'files', 'rule_base_segments3.json')
+        with open(rbs_segments, 'r') as flo:
+            data = json.loads(flo.read())
+        e = evaluator.Evaluator(splitters.Splitter())
+        splits_storage = InMemorySplitStorage()
+        rbs_storage = InMemoryRuleBasedSegmentStorage()
+        segment_storage = InMemorySegmentStorage()
+        evaluation_facctory = EvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
+                    
+        mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False)
+        rbs = rule_based_segments.from_raw(data["rbs"]["d"][0])
+        rbs_storage.update([rbs], [], 12)
+        splits_storage.update([mocked_split], [], 12)
+        segment = segments.from_raw({'name': 'segment1', 'added': ['pato@split.io'], 'removed': [], 'till': 123})
+        segment_storage.put(segment)
+        
+        ctx = evaluation_facctory.context_for('bilal@split.io', ['some'])
+        assert e.eval_with_context('bilal@split.io', 'bilal@split.io', 'some', {'email': 'bilal@split.io'}, ctx)['treatment'] == "on"
+        ctx = evaluation_facctory.context_for('mauro@split.io', ['some'])
+        assert e.eval_with_context('mauro@split.io', 'mauro@split.io', 'some', {'email': 'mauro@split.io'}, ctx)['treatment'] == "off"
+        ctx = evaluation_facctory.context_for('pato@split.io', ['some'])
+        assert e.eval_with_context('pato@split.io', 'pato@split.io', 'some', {'email': 'pato@split.io'}, ctx)['treatment'] == "off"
+        
+    def test_using_rbs_in_excluded(self):
+        rbs_segments = os.path.join(os.path.dirname(__file__), 'files', 'rule_base_segments2.json')
+        with open(rbs_segments, 'r') as flo:
+            data = json.loads(flo.read())
+        e = evaluator.Evaluator(splitters.Splitter())
+        splits_storage = InMemorySplitStorage()
+        rbs_storage = InMemoryRuleBasedSegmentStorage()
+        segment_storage = InMemorySegmentStorage()
+        evaluation_facctory = EvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
+                    
+        mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False)
+        rbs = rule_based_segments.from_raw(data["rbs"]["d"][0])
+        rbs2 = rule_based_segments.from_raw(data["rbs"]["d"][1])
+        rbs_storage.update([rbs, rbs2], [], 12)
+        splits_storage.update([mocked_split], [], 12)
+        
+        ctx = evaluation_facctory.context_for('bilal@split.io', ['some'])
+        assert e.eval_with_context('bilal@split.io', 'bilal@split.io', 'some', {'email': 'bilal@split.io'}, ctx)['treatment'] == "on"
+        ctx = evaluation_facctory.context_for('mauro@split.io', ['some'])
+        assert e.eval_with_context('mauro@split.io', 'mauro@split.io', 'some', {'email': 'mauro@split.io'}, ctx)['treatment'] == "on"
         
 class EvaluationDataFactoryTests(object):
     """Test evaluation factory class."""

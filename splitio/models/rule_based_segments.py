@@ -111,6 +111,16 @@ def from_raw(raw_rule_based_segment):
         _LOGGER.error(str(e))
         _LOGGER.debug("Using default conditions template for feature flag: %s", raw_rule_based_segment['name'])
         conditions = [condition.from_raw(_DEFAULT_CONDITIONS_TEMPLATE)]
+    
+    if raw_rule_based_segment.get('excluded') == None:
+        raw_rule_based_segment['excluded'] = {'keys': [], 'segments': []}
+        
+    if raw_rule_based_segment['excluded'].get('keys') == None:
+        raw_rule_based_segment['excluded']['keys'] = []
+
+    if raw_rule_based_segment['excluded'].get('segments') == None:
+        raw_rule_based_segment['excluded']['segments'] = []
+        
     return RuleBasedSegment(
         raw_rule_based_segment['name'],
         raw_rule_based_segment['trafficTypeName'],        
