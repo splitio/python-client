@@ -195,14 +195,20 @@ class AsyncEvaluationDataFactory:
             splits.update(features)
             pending = set()
             for feature in features.values():
-                cf, cs, crbs = get_dependencies(feature)                    
+                cf, cs, crbs = get_dependencies(feature)     
+                for rbs in crbs:
+                    rbs_cf, rbs_cs, rbs_crbs = get_dependencies(await self._rbs_segment_storage.get(rbs))                
+                    cf.extend(rbs_cf)
+                    cs.extend(rbs_cs)
+                    crbs.extend(rbs_crbs)
+               
                 pending.update(filter(lambda f: f not in splits, cf))
                 pending_memberships.update(cs)
                 pending_rbs_memberships.update(crbs)
                 
         rbs_segment_memberships = {}
         rbs_segment_conditions = {}
-        excluded_rbs_segments = {}
+        excluded_rbs_segments = set()
         key_membership = False
         segment_memberhsip = False
         for rbs_segment in pending_rbs_memberships:
@@ -218,7 +224,7 @@ class AsyncEvaluationDataFactory:
                 if excluded_segment.type == SegmentType.RULE_BASED:
                     rbs_segment = await self._rbs_segment_storage.get(excluded_segment.name)
                     if rbs_segment is not None:
-                        excluded_rbs_segments.update()
+                        excluded_rbs_segments.add(rbs_segment)
                             
             rbs_segment_memberships.update({rbs_segment: segment_memberhsip or key_membership})
             if not (segment_memberhsip or key_membership):

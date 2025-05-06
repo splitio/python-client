@@ -315,6 +315,76 @@ class EvaluatorTests(object):
         assert e.eval_with_context('bilal@split.io', 'bilal@split.io', 'some', {'email': 'bilal@split.io'}, ctx)['treatment'] == "on"
         ctx = evaluation_facctory.context_for('mauro@split.io', ['some'])
         assert e.eval_with_context('mauro@split.io', 'mauro@split.io', 'some', {'email': 'mauro@split.io'}, ctx)['treatment'] == "on"
+
+    @pytest.mark.asyncio
+    async def test_evaluate_treatment_with_rbs_in_condition_async(self):
+        e = evaluator.Evaluator(splitters.Splitter())
+        splits_storage = InMemorySplitStorageAsync()
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        evaluation_facctory = AsyncEvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
+        
+        rbs_segments = os.path.join(os.path.dirname(__file__), 'files', 'rule_base_segments.json')
+        with open(rbs_segments, 'r') as flo:
+            data = json.loads(flo.read())
+            
+        mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False)
+        rbs = rule_based_segments.from_raw(data["rbs"]["d"][0])
+        rbs2 = rule_based_segments.from_raw(data["rbs"]["d"][1])
+        await rbs_storage.update([rbs, rbs2], [], 12)
+        await splits_storage.update([mocked_split], [], 12)
+        
+        ctx = await evaluation_facctory.context_for('bilal@split.io', ['some'])
+        assert e.eval_with_context('bilal@split.io', 'bilal@split.io', 'some', {'email': 'bilal@split.io'}, ctx)['treatment'] == "on"
+        ctx = await evaluation_facctory.context_for('mauro@split.io', ['some'])
+        assert e.eval_with_context('mauro@split.io', 'mauro@split.io', 'some', {'email': 'mauro@split.io'}, ctx)['treatment'] == "off"
+        
+    @pytest.mark.asyncio
+    async def test_using_segment_in_excluded_async(self):
+        rbs_segments = os.path.join(os.path.dirname(__file__), 'files', 'rule_base_segments3.json')
+        with open(rbs_segments, 'r') as flo:
+            data = json.loads(flo.read())
+        e = evaluator.Evaluator(splitters.Splitter())
+        splits_storage = InMemorySplitStorageAsync()
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        evaluation_facctory = AsyncEvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
+                    
+        mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False)
+        rbs = rule_based_segments.from_raw(data["rbs"]["d"][0])
+        await rbs_storage.update([rbs], [], 12)
+        await splits_storage.update([mocked_split], [], 12)
+        segment = segments.from_raw({'name': 'segment1', 'added': ['pato@split.io'], 'removed': [], 'till': 123})
+        await segment_storage.put(segment)
+        
+        ctx = await evaluation_facctory.context_for('bilal@split.io', ['some'])
+        assert e.eval_with_context('bilal@split.io', 'bilal@split.io', 'some', {'email': 'bilal@split.io'}, ctx)['treatment'] == "on"
+        ctx = await evaluation_facctory.context_for('mauro@split.io', ['some'])
+        assert e.eval_with_context('mauro@split.io', 'mauro@split.io', 'some', {'email': 'mauro@split.io'}, ctx)['treatment'] == "off"
+        ctx = await evaluation_facctory.context_for('pato@split.io', ['some'])
+        assert e.eval_with_context('pato@split.io', 'pato@split.io', 'some', {'email': 'pato@split.io'}, ctx)['treatment'] == "off"
+        
+    @pytest.mark.asyncio
+    async def test_using_rbs_in_excluded_async(self):
+        rbs_segments = os.path.join(os.path.dirname(__file__), 'files', 'rule_base_segments2.json')
+        with open(rbs_segments, 'r') as flo:
+            data = json.loads(flo.read())
+        e = evaluator.Evaluator(splitters.Splitter())
+        splits_storage = InMemorySplitStorageAsync()
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        evaluation_facctory = AsyncEvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
+                    
+        mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False)
+        rbs = rule_based_segments.from_raw(data["rbs"]["d"][0])
+        rbs2 = rule_based_segments.from_raw(data["rbs"]["d"][1])
+        await rbs_storage.update([rbs, rbs2], [], 12)
+        await splits_storage.update([mocked_split], [], 12)
+        
+        ctx = await evaluation_facctory.context_for('bilal@split.io', ['some'])
+        assert e.eval_with_context('bilal@split.io', 'bilal@split.io', 'some', {'email': 'bilal@split.io'}, ctx)['treatment'] == "on"
+        ctx = await evaluation_facctory.context_for('mauro@split.io', ['some'])
+        assert e.eval_with_context('mauro@split.io', 'mauro@split.io', 'some', {'email': 'mauro@split.io'}, ctx)['treatment'] == "on"
         
 class EvaluationDataFactoryTests(object):
     """Test evaluation factory class."""
