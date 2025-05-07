@@ -47,7 +47,7 @@ class RuleBasedSegmentModelTests(object):
         assert isinstance(parsed, rule_based_segments.RuleBasedSegment)
         assert parsed.change_number == 123
         assert parsed.name == 'sample_rule_based_segment'
-        assert parsed.status == 'ACTIVE'
+        assert parsed.status == splits.Status.ACTIVE
         assert len(parsed.conditions) == 1
         assert parsed.excluded.get_excluded_keys() == ["mauro@split.io","gaston@split.io"]
         assert parsed.excluded.get_excluded_segments() == []

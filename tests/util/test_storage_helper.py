@@ -63,10 +63,16 @@ class StorageHelperTests(object):
         storage.flag_set_filter = flag_set_filter
         storage.flag_set_filter.flag_sets = {}
 
-        update_feature_flag_storage(storage, [split], 123)
+        self.clear = 0
+        def clear():
+            self.clear += 1
+        storage.clear = clear    
+
+        update_feature_flag_storage(storage, [split], 123, True)
         assert self.added[0] == split
         assert self.deleted == []
         assert self.change_number == 123
+        assert self.clear == 1
 
         class flag_set_filter2():
             def should_filter():
@@ -76,9 +82,11 @@ class StorageHelperTests(object):
         storage.flag_set_filter = flag_set_filter2
         storage.flag_set_filter.flag_sets = set({'set1', 'set2'})
 
+        self.clear = 0
         update_feature_flag_storage(storage, [split], 123)
         assert self.added == []
         assert self.deleted[0] == split.name
+        assert self.clear == 0
 
         class flag_set_filter3():
             def should_filter():
@@ -167,12 +175,21 @@ class StorageHelperTests(object):
             self.deleted = to_delete
             self.change_number = change_number
         storage.update = update
-
+        
+        self.clear = 0
+        def clear():
+            self.clear += 1
+        storage.clear = clear    
+        
         segments = update_rule_based_segment_storage(storage, [self.rbs], 123)
         assert self.added[0] == self.rbs
         assert self.deleted == []
         assert self.change_number == 123
         assert segments == {'excluded_segment', 'employees'}
+        assert self.clear == 0
+        
+        segments = update_rule_based_segment_storage(storage, [self.rbs], 123, True)
+        assert self.clear == 1
         
     @pytest.mark.asyncio
     async def test_update_rule_base_segment_storage_async(self, mocker):
@@ -186,12 +203,20 @@ class StorageHelperTests(object):
             self.change_number = change_number
         storage.update = update
 
+        self.clear = 0
+        async def clear():
+            self.clear += 1
+        storage.clear = clear    
+
         segments = await update_rule_based_segment_storage_async(storage, [self.rbs], 123)
         assert self.added[0] == self.rbs
         assert self.deleted == []
         assert self.change_number == 123
         assert segments == {'excluded_segment', 'employees'}        
-        
+                        
+        segments = await update_rule_based_segment_storage_async(storage, [self.rbs], 123, True)
+        assert self.clear == 1
+
     @pytest.mark.asyncio
     async def test_update_feature_flag_storage_async(self, mocker):
         storage = mocker.Mock(spec=InMemorySplitStorageAsync)
@@ -222,10 +247,16 @@ class StorageHelperTests(object):
         storage.flag_set_filter = flag_set_filter
         storage.flag_set_filter.flag_sets = {}
 
-        await update_feature_flag_storage_async(storage, [split], 123)
+        self.clear = 0
+        async def clear():
+            self.clear += 1
+        storage.clear = clear    
+
+        await update_feature_flag_storage_async(storage, [split], 123, True)
         assert self.added[0] == split
         assert self.deleted == []
         assert self.change_number == 123
+        assert self.clear == 1
 
         class flag_set_filter2():
             def should_filter():
@@ -239,9 +270,11 @@ class StorageHelperTests(object):
             return split
         storage.get = get
 
+        self.clear = 0
         await update_feature_flag_storage_async(storage, [split], 123)
         assert self.added == []
         assert self.deleted[0] == split.name
+        assert self.clear == 0
 
         class flag_set_filter3():
             def should_filter():

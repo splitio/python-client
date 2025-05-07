@@ -116,6 +116,14 @@ class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
         self._rule_based_segments = {}
         self._change_number = -1
 
+    def clear(self):
+        """
+        Clear storage
+        """
+        with self._lock:
+            self._rule_based_segments = {}
+            self._change_number = -1
+
     def get(self, segment_name):
         """
         Retrieve a rule based segment.
@@ -230,6 +238,14 @@ class InMemoryRuleBasedSegmentStorageAsync(RuleBasedSegmentsStorage):
         self._lock = asyncio.Lock()
         self._rule_based_segments = {}
         self._change_number = -1
+
+    async def clear(self):
+        """
+        Clear storage
+        """
+        with self._lock:
+            self._rule_based_segments = {}
+            self._change_number = -1
 
     async def get(self, segment_name):
         """
@@ -466,6 +482,16 @@ class InMemorySplitStorage(InMemorySplitStorageBase):
         self.flag_set = FlagSets(flag_sets)
         self.flag_set_filter = FlagSetsFilter(flag_sets)
 
+    def clear(self):
+        """
+        Clear storage
+        """
+        with self._lock:
+            self._feature_flags = {}
+            self._change_number = -1
+            self._traffic_types = Counter()
+            self.flag_set = FlagSets(self.flag_set_filter.flag_sets)
+        
     def get(self, feature_flag_name):
         """
         Retrieve a feature flag.
@@ -671,6 +697,16 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
         self._traffic_types = Counter()
         self.flag_set = FlagSets(flag_sets)
         self.flag_set_filter = FlagSetsFilter(flag_sets)
+
+    async def clear(self):
+        """
+        Clear storage
+        """
+        with self._lock:
+            self._feature_flags = {}
+            self._change_number = -1
+            self._traffic_types = Counter()
+            self.flag_set = FlagSets(self.flag_set_filter.flag_sets)
 
     async def get(self, feature_flag_name):
         """
