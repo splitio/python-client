@@ -37,10 +37,7 @@ class RuleBasedSegmentMatcher(Matcher):
             if self._match_conditions(rbs_segment.conditions, key, attributes, context):
                 return True
         
-        if self._match_conditions(context['ec'].segment_rbs_conditions.get(self._rbs_segment_name), key, attributes, context):
-            return True
-                                
-        return False
+        return self._match_conditions(context['ec'].segment_rbs_conditions.get(self._rbs_segment_name), key, attributes, context):
     
     def _add_matcher_specific_properties_to_json(self):
         """Return UserDefinedSegment specific properties."""
