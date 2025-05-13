@@ -230,6 +230,9 @@ class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
         """
         with self._lock:
             return set(segment_names).issubset(self._rule_based_segments.keys())
+        
+    def fetch_many(self, segment_names):
+        return {rb_segment_name: self.get(rb_segment_name) for rb_segment_name in segment_names}
 
 class InMemoryRuleBasedSegmentStorageAsync(RuleBasedSegmentsStorage):
     """InMemory implementation of a feature flag storage base."""    
@@ -353,6 +356,9 @@ class InMemoryRuleBasedSegmentStorageAsync(RuleBasedSegmentsStorage):
         """
         async with self._lock:
             return set(segment_names).issubset(self._rule_based_segments.keys())
+
+    async def fetch_many(self, segment_names):
+        return {rb_segment_name: await self.get(rb_segment_name) for rb_segment_name in segment_names}
 
 class InMemorySplitStorageBase(SplitStorage):
     """InMemory implementation of a feature flag storage base."""

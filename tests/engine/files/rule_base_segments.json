@@ -8,6 +8,7 @@
   "excluded":{"keys":["mauro@split.io","gaston@split.io"],"segments":[]},
   "conditions": [
     {
+      "conditionType": "WHITELIST",
       "matcherGroup": {
         "combiner": "AND",
         "matchers": [

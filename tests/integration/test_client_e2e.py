@@ -4343,7 +4343,7 @@ class RedisImpressionsToggleIntegrationAsyncTests(object):
         redis_client = await build_async(DEFAULT_CONFIG.copy())
         for key in keys_to_delete:
             await redis_client.delete(key)
-
+                    
 async def _validate_last_impressions_async(client, *to_validate):
     """Validate the last N impressions are present disregarding the order."""
     imp_storage = client._factory._get_storage('impressions')

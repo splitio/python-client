@@ -11,7 +11,7 @@ from splitio.models.rule_based_segments import SegmentType
 from splitio.optional.loaders import asyncio
 
 CONTROL = 'control'
-EvaluationContext = namedtuple('EvaluationContext', ['flags', 'segment_memberships', 'segment_rbs_memberships', 'segment_rbs_conditions', 'excluded_rbs_segments'])
+EvaluationContext = namedtuple('EvaluationContext', ['flags', 'segment_memberships', 'rbs_segments'])
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -115,59 +115,24 @@ class EvaluationDataFactory:
         :rtype: EvaluationContext
         """
         pending = set(feature_names)
+        pending_rbs = set()
         splits = {}
+        rb_segments = {}
         pending_memberships = set()
-        pending_rbs_memberships = set()
-        while pending:
+        while pending or pending_rbs:
             fetched = self._flag_storage.fetch_many(list(pending))
-            features = filter_missing(fetched)
-            splits.update(features)
-            pending = set()
-            for feature in features.values():
-                cf, cs, crbs = get_dependencies(feature)
-                for rbs in crbs:
-                    rbs_cf, rbs_cs, rbs_crbs = get_dependencies(self._rbs_segment_storage.get(rbs))                
-                    cf.extend(rbs_cf)
-                    cs.extend(rbs_cs)
-                    crbs.extend(rbs_crbs)
-
-                pending.update(filter(lambda f: f not in splits, cf))
-                pending_memberships.update(cs)
-                pending_rbs_memberships.update(crbs)
-        
-        rbs_segment_memberships = {}
-        rbs_segment_conditions = {}
-        excluded_rbs_segments = set()
-        key_membership = False
-        segment_memberhsip = False
-        for rbs_segment in pending_rbs_memberships:
-            rbs_segment_obj = self._rbs_segment_storage.get(rbs_segment)
-            pending_memberships.update(rbs_segment_obj.get_condition_segment_names())
-            
-            key_membership = key in rbs_segment_obj.excluded.get_excluded_keys()
-            segment_memberhsip = False
-            for excluded_segment in rbs_segment_obj.excluded.get_excluded_segments():
-                if excluded_segment.type == SegmentType.STANDARD and self._segment_storage.segment_contains(excluded_segment.name, key):
-                    segment_memberhsip = True
-
-                if excluded_segment.type == SegmentType.RULE_BASED:
-                    rbs_segment = self._rbs_segment_storage.get(excluded_segment.name)
-                    if rbs_segment is not None:
-                        excluded_rbs_segments.add(rbs_segment)
-                
-            rbs_segment_memberships.update({rbs_segment: segment_memberhsip or key_membership})
-            if not (segment_memberhsip or key_membership):
-                rbs_segment_conditions.update({rbs_segment: [condition for condition in rbs_segment_obj.conditions]})
-            
+            fetched_rbs = self._rbs_segment_storage.fetch_many(list(pending_rbs))
+            features, rbsegments, splits, rb_segments = update_objects(fetched, fetched_rbs, splits, rb_segments)
+            pending, pending_memberships, pending_rbs = get_pending_objects(features, splits, rbsegments, rb_segments, pending_memberships)
+                        
         return EvaluationContext(
             splits, 
             { segment: self._segment_storage.segment_contains(segment, key)
                 for segment in pending_memberships
             },
-            rbs_segment_memberships,
-            rbs_segment_conditions,
-            excluded_rbs_segments        
+            rb_segments
         )
+        
 
 class AsyncEvaluationDataFactory:
 
@@ -186,72 +151,36 @@ class AsyncEvaluationDataFactory:
         :rtype: EvaluationContext
         """
         pending = set(feature_names)
+        pending_rbs = set()
         splits = {}
+        rb_segments = {}
         pending_memberships = set()
-        pending_rbs_memberships = set()
-        while pending:
+        while pending or pending_rbs:
             fetched = await self._flag_storage.fetch_many(list(pending))
-            features = filter_missing(fetched)
-            splits.update(features)
-            pending = set()
-            for feature in features.values():
-                cf, cs, crbs = get_dependencies(feature)     
-                for rbs in crbs:
-                    rbs_cf, rbs_cs, rbs_crbs = get_dependencies(await self._rbs_segment_storage.get(rbs))                
-                    cf.extend(rbs_cf)
-                    cs.extend(rbs_cs)
-                    crbs.extend(rbs_crbs)
-               
-                pending.update(filter(lambda f: f not in splits, cf))
-                pending_memberships.update(cs)
-                pending_rbs_memberships.update(crbs)
-                
-        rbs_segment_memberships = {}
-        rbs_segment_conditions = {}
-        excluded_rbs_segments = set()
-        key_membership = False
-        segment_memberhsip = False
-        for rbs_segment in pending_rbs_memberships:
-            rbs_segment_obj = await self._rbs_segment_storage.get(rbs_segment)
-            pending_memberships.update(rbs_segment_obj.get_condition_segment_names())
-            
-            key_membership = key in rbs_segment_obj.excluded.get_excluded_keys()
-            segment_memberhsip = False
-            for excluded_segment in rbs_segment_obj.excluded.get_excluded_segments():
-                if excluded_segment.type == SegmentType.STANDARD and await self._segment_storage.segment_contains(excluded_segment.name, key):
-                    segment_memberhsip = True
-
-                if excluded_segment.type == SegmentType.RULE_BASED:
-                    rbs_segment = await self._rbs_segment_storage.get(excluded_segment.name)
-                    if rbs_segment is not None:
-                        excluded_rbs_segments.add(rbs_segment)
-                            
-            rbs_segment_memberships.update({rbs_segment: segment_memberhsip or key_membership})
-            if not (segment_memberhsip or key_membership):
-                rbs_segment_conditions.update({rbs_segment: [condition for condition in rbs_segment_obj.conditions]})
+            fetched_rbs = await self._rbs_segment_storage.fetch_many(list(pending_rbs))
+            features, rbsegments, splits, rb_segments = update_objects(fetched, fetched_rbs, splits, rb_segments)
+            pending, pending_memberships, pending_rbs = get_pending_objects(features, splits, rbsegments, rb_segments, pending_memberships)
 
         segment_names = list(pending_memberships)
         segment_memberships = await asyncio.gather(*[
             self._segment_storage.segment_contains(segment, key)
             for segment in segment_names
         ])
+        
         return EvaluationContext(
             splits, 
             dict(zip(segment_names, segment_memberships)),
-            rbs_segment_memberships,
-            rbs_segment_conditions,
-            excluded_rbs_segments        
+            rb_segments
         )
 
-
-def get_dependencies(feature):
+def get_dependencies(object):
     """
     :rtype: tuple(list, list)
     """
     feature_names = []
     segment_names = []
     rbs_segment_names = []
-    for condition in feature.conditions:
+    for condition in object.conditions:
         for matcher in condition.matchers:
             if isinstance(matcher,RuleBasedSegmentMatcher):
                 rbs_segment_names.append(matcher._rbs_segment_name)
@@ -264,3 +193,34 @@ def get_dependencies(feature):
 
 def filter_missing(features):
     return {k: v for (k, v) in features.items() if v is not None}
+
+def get_pending_objects(features, splits, rbsegments, rb_segments, pending_memberships):
+    pending = set()
+    pending_rbs = set()
+    for feature in features.values():
+        cf, cs, crbs = get_dependencies(feature)
+        pending.update(filter(lambda f: f not in splits, cf))
+        pending_memberships.update(cs)
+        pending_rbs.update(filter(lambda f: f not in rb_segments, crbs))
+
+    for rb_segment in rbsegments.values():
+        cf, cs, crbs = get_dependencies(rb_segment)
+        pending.update(filter(lambda f: f not in splits, cf))
+        pending_memberships.update(cs)
+        for excluded_segment in rb_segment.excluded.get_excluded_segments():
+            if excluded_segment.type == SegmentType.STANDARD:
+                pending_memberships.add(excluded_segment.name)
+            else:
+                pending_rbs.update(filter(lambda f: f not in rb_segments, [excluded_segment.name]))
+        pending_rbs.update(filter(lambda f: f not in rb_segments, crbs))
+    
+    return pending, pending_memberships, pending_rbs
+    
+def update_objects(fetched, fetched_rbs, splits, rb_segments):
+    features = filter_missing(fetched)
+    rbsegments = filter_missing(fetched_rbs)
+    splits.update(features)
+    rb_segments.update(rbsegments)
+    
+    return features, rbsegments, splits, rb_segments
+    

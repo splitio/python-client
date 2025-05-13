@@ -405,9 +405,9 @@ class UserDefinedSegmentMatcherTests(MatcherTestsBase):
         matcher = matchers.UserDefinedSegmentMatcher(self.raw)
 
         # Test that if the key if the storage wrapper finds the key in the segment, it matches.
-        assert matcher.evaluate('some_key', {}, {'evaluator': None, 'ec': EvaluationContext([],{'some_segment': True}, {}, {}, {})}) is True
+        assert matcher.evaluate('some_key', {}, {'evaluator': None, 'ec': EvaluationContext([],{'some_segment': True}, {})}) is True
         # Test that if the key if the storage wrapper doesn't find the key in the segment, it fails.
-        assert matcher.evaluate('some_key', {}, {'evaluator': None, 'ec': EvaluationContext([], {'some_segment': False}, {}, {}, {})}) is False
+        assert matcher.evaluate('some_key', {}, {'evaluator': None, 'ec': EvaluationContext([], {'some_segment': False}, {})}) is False
 
     def test_to_json(self):
         """Test that the object serializes to JSON properly."""
@@ -1130,11 +1130,9 @@ class RuleBasedMatcherTests(MatcherTestsBase):
         rbs = rule_based_segments.from_raw(data["rbs"]["d"][0])
         matcher = matchers.RuleBasedSegmentMatcher(self.raw)
         ec ={'ec': EvaluationContext(
-                    {}, 
                     {},
-                    {},
-                    {"sample_rule_based_segment": rbs.conditions},
-                    {}    
+                    {"segment1": False},
+                    {"sample_rule_based_segment": rbs}
                 )}
         assert matcher._match(None, context=ec) is False
         assert matcher._match('bilal@split.io', context=ec) is False

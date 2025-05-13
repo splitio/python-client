@@ -19,11 +19,11 @@
                 "trafficType": "user",
                 "attribute": "email"
               },
-              "matcherType": "ENDS_WITH",
+              "matcherType": "START_WITH",
               "negate": false,
               "whitelistMatcherData": {
                 "whitelist": [
-                  "@split.io"
+                  "bilal"
                 ]
               }
             }

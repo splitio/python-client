@@ -1289,6 +1289,25 @@ class RedisRuleBasedSegmentStorageTests(object):
         assert not storage.contains(['segment1', 'segment4']) 
         assert storage.contains(['segment1']) 
         assert not storage.contains(['segment4', 'segment5'])
+        
+    def test_fetch_many(self, mocker):
+        """Test retrieving a list of passed splits."""
+        adapter = mocker.Mock(spec=RedisAdapter)
+        storage = RedisRuleBasedSegmentsStorage(adapter)
+        from_raw = mocker.Mock()
+        mocker.patch('splitio.storage.redis.rule_based_segments.from_raw', new=from_raw)
+
+        adapter.mget.return_value = ['{"name": "rbs1"}', '{"name": "rbs2"}', None]
+
+        result = storage.fetch_many(['rbs1', 'rbs2', 'rbs3'])
+        assert len(result) == 3
+
+        assert mocker.call({'name': 'rbs1'}) in from_raw.mock_calls
+        assert mocker.call({'name': 'rbs2'}) in from_raw.mock_calls
+
+        assert result['rbs1'] is not None
+        assert result['rbs2'] is not None
+        assert 'rbs3' in result
 
 class RedisRuleBasedSegmentStorageAsyncTests(object):
     """Redis rule based segment storage test cases."""
@@ -1391,3 +1410,25 @@ class RedisRuleBasedSegmentStorageAsyncTests(object):
         assert not await storage.contains(['segment1', 'segment4']) 
         assert await storage.contains(['segment1']) 
         assert not await storage.contains(['segment4', 'segment5'])
+        
+    @pytest.mark.asyncio
+    async def test_fetch_many(self, mocker):
+        """Test retrieving a list of passed splits."""
+        adapter = mocker.Mock(spec=RedisAdapter)
+        storage = RedisRuleBasedSegmentsStorageAsync(adapter)
+        from_raw = mocker.Mock()
+        mocker.patch('splitio.storage.redis.rule_based_segments.from_raw', new=from_raw)
+        async def mget(*_):
+            return ['{"name": "rbs1"}', '{"name": "rbs2"}', None]
+        adapter.mget = mget
+
+        result = await storage.fetch_many(['rbs1', 'rbs2', 'rbs3'])
+        assert len(result) == 3
+
+        assert mocker.call({'name': 'rbs1'}) in from_raw.mock_calls
+        assert mocker.call({'name': 'rbs2'}) in from_raw.mock_calls
+
+        assert result['rbs1'] is not None
+        assert result['rbs2'] is not None
+        assert 'rbs3' in result
+        

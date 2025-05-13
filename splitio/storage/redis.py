@@ -131,6 +131,35 @@ class RedisRuleBasedSegmentsStorage(RuleBasedSegmentsStorage):
         """
         pass    
 
+    def fetch_many(self, segment_names):
+        """
+        Retrieve rule based segment.
+
+        :param segment_names: Names of the rule based segments to fetch.
+        :type segment_names: list(str)
+
+        :return: A dict with rule based segment objects parsed from redis.
+        :rtype: dict(segment_name, splitio.models.rule_based_segment.RuleBasedSegment)
+        """
+        to_return = dict()
+        try:
+            keys = [self._get_key(segment_name) for segment_name in segment_names]
+            raw_rbs_segments = self._redis.mget(keys)
+            _LOGGER.debug("Fetchting rule based segment [%s] from redis" % segment_names)
+            _LOGGER.debug(raw_rbs_segments)
+            for i in range(len(raw_rbs_segments)):
+                rbs_segment = None
+                try:
+                    rbs_segment = rule_based_segments.from_raw(json.loads(raw_rbs_segments[i]))
+                except (ValueError, TypeError):
+                    _LOGGER.error('Could not parse rule based segment.')
+                    _LOGGER.debug("Raw rule based segment that failed parsing attempt: %s", raw_rbs_segments[i])
+                to_return[segment_names[i]] = rbs_segment
+        except RedisAdapterException:
+            _LOGGER.error('Error fetching rule based segments from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+        return to_return
+
 class RedisRuleBasedSegmentsStorageAsync(RuleBasedSegmentsStorage):
     """Redis-based storage for rule based segments."""
     
@@ -245,6 +274,35 @@ class RedisRuleBasedSegmentsStorageAsync(RuleBasedSegmentsStorage):
         :rtype: list(str)
         """
         pass    
+
+    async def fetch_many(self, segment_names):
+        """
+        Retrieve rule based segment.
+
+        :param segment_names: Names of the rule based segments to fetch.
+        :type segment_names: list(str)
+
+        :return: A dict with rule based segment objects parsed from redis.
+        :rtype: dict(segment_name, splitio.models.rule_based_segment.RuleBasedSegment)
+        """
+        to_return = dict()
+        try:
+            keys = [self._get_key(segment_name) for segment_name in segment_names]
+            raw_rbs_segments = await self._redis.mget(keys)
+            _LOGGER.debug("Fetchting rule based segment [%s] from redis" % segment_names)
+            _LOGGER.debug(raw_rbs_segments)
+            for i in range(len(raw_rbs_segments)):
+                rbs_segment = None
+                try:
+                    rbs_segment = rule_based_segments.from_raw(json.loads(raw_rbs_segments[i]))
+                except (ValueError, TypeError):
+                    _LOGGER.error('Could not parse rule based segment.')
+                    _LOGGER.debug("Raw rule based segment that failed parsing attempt: %s", raw_rbs_segments[i])
+                to_return[segment_names[i]] = rbs_segment
+        except RedisAdapterException:
+            _LOGGER.error('Error fetching rule based segments from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+        return to_return
 
 class RedisSplitStorageBase(SplitStorage):
     """Redis-based storage base for feature flags."""

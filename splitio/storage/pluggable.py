@@ -177,6 +177,25 @@ class PluggableRuleBasedSegmentsStorage(PluggableRuleBasedSegmentsStorageBase):
             _LOGGER.error('Error getting rule based segments names from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
+        
+    def fetch_many(self, rb_segment_names):
+        """
+        Retrieve rule based segments.
+
+        :param rb_segment_names: Names of the rule based segments to fetch.
+        :type rb_segment_names: list(str)
+
+        :return: A dict with rule based segment objects parsed from queue.
+        :rtype: dict(rb_segment_names, splitio.models.rile_based_segment.RuleBasedSegment)
+        """
+        try:
+            prefix_added = [self._prefix.format(segment_name=rb_segment_name) for rb_segment_name in rb_segment_names]
+            return {rb_segment['name']: rule_based_segments.from_raw(rb_segment) for rb_segment in self._pluggable_adapter.get_many(prefix_added)}
+
+        except Exception:
+            _LOGGER.error('Error getting rule based segments from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None        
 
 class PluggableRuleBasedSegmentsStorageAsync(PluggableRuleBasedSegmentsStorageBase):
     """Pluggable storage for rule based segments."""
@@ -255,6 +274,25 @@ class PluggableRuleBasedSegmentsStorageAsync(PluggableRuleBasedSegmentsStorageBa
             _LOGGER.error('Error getting rule based segments names from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
+
+    async def fetch_many(self, rb_segment_names):
+        """
+        Retrieve rule based segments.
+
+        :param rb_segment_names: Names of the rule based segments to fetch.
+        :type rb_segment_names: list(str)
+
+        :return: A dict with rule based segment objects parsed from queue.
+        :rtype: dict(rb_segment_names, splitio.models.rile_based_segment.RuleBasedSegment)
+        """
+        try:
+            prefix_added = [self._prefix.format(segment_name=rb_segment_name) for rb_segment_name in rb_segment_names]
+            return {rb_segment['name']: rule_based_segments.from_raw(rb_segment) for rb_segment in await self._pluggable_adapter.get_many(prefix_added)}
+
+        except Exception:
+            _LOGGER.error('Error getting rule based segments from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None        
 
 class PluggableSplitStorageBase(SplitStorage):
     """InMemory implementation of a feature flag storage."""
