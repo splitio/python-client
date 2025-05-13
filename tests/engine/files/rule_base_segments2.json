@@ -37,6 +37,10 @@
     "name": "no_excludes",
     "status": "ACTIVE",
     "trafficTypeName": "user",
+    "excluded":{
+      "keys":["bilal2"],
+      "segments":[]
+    },
     "conditions": [
       {
         "matcherGroup": {

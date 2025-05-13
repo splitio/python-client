@@ -313,6 +313,8 @@ class EvaluatorTests(object):
         assert e.eval_with_context('bilal@split.io', 'bilal@split.io', 'some', {'email': 'bilal@split.io'}, ctx)['treatment'] == "off"
         ctx = evaluation_facctory.context_for('bilal', ['some'])
         assert e.eval_with_context('bilal', 'bilal', 'some', {'email': 'bilal'}, ctx)['treatment'] == "on"
+        ctx = evaluation_facctory.context_for('bilal2', ['some'])
+        assert e.eval_with_context('bilal2', 'bilal2', 'some', {'email': 'bilal2'}, ctx)['treatment'] == "off"
         
     @pytest.mark.asyncio
     async def test_evaluate_treatment_with_rbs_in_condition_async(self):
