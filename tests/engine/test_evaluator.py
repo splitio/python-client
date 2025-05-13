@@ -385,6 +385,8 @@ class EvaluatorTests(object):
         assert e.eval_with_context('bilal@split.io', 'bilal@split.io', 'some', {'email': 'bilal@split.io'}, ctx)['treatment'] == "off"
         ctx = await evaluation_facctory.context_for('bilal', ['some'])
         assert e.eval_with_context('bilal', 'bilal', 'some', {'email': 'bilal'}, ctx)['treatment'] == "on"
+        ctx = await evaluation_facctory.context_for('bilal2', ['some'])
+        assert e.eval_with_context('bilal2', 'bilal2', 'some', {'email': 'bilal2'}, ctx)['treatment'] == "off"
         
 class EvaluationDataFactoryTests(object):
     """Test evaluation factory class."""
