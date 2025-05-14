@@ -63,7 +63,7 @@ class RuleBasedSegmentMatcher(Matcher):
             else:
                 excluded_segment = context['ec'].rbs_segments.get(excluded_rb_segment.name)
                 if key in excluded_segment.excluded.get_excluded_keys():
-                    return True
+                    return False
 
                 if self._match_dep_rb_segments(excluded_segment.excluded.get_excluded_segments(), key, attributes, context):
                     return True

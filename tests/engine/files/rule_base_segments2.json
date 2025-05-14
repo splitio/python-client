@@ -38,7 +38,7 @@
     "status": "ACTIVE",
     "trafficTypeName": "user",
     "excluded":{
-      "keys":["bilal2"],
+      "keys":["bilal2@split.io"],
       "segments":[]
     },
     "conditions": [
