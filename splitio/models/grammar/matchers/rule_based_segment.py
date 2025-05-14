@@ -68,7 +68,4 @@ class RuleBasedSegmentMatcher(Matcher):
                 if self._match_dep_rb_segments(excluded_segment.excluded.get_excluded_segments(), key, attributes, context):
                     return True
                     
-                if self._match_conditions(excluded_segment.conditions, key, attributes, context):
-                    return True 
-
-        return False
+        return self._match_conditions(excluded_segment.conditions, key, attributes, context)
