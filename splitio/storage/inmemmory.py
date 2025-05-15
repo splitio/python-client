@@ -233,7 +233,7 @@ class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
         
     def fetch_many(self, segment_names):
         return {rb_segment_name: self.get(rb_segment_name) for rb_segment_name in segment_names}
-
+        
 class InMemoryRuleBasedSegmentStorageAsync(RuleBasedSegmentsStorage):
     """InMemory implementation of a feature flag storage base."""    
     def __init__(self):

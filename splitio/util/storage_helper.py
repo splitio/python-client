@@ -70,6 +70,21 @@ def update_rule_based_segment_storage(rule_based_segment_storage, rule_based_seg
 def _get_segment_names(excluded_segments):
     return [excluded_segment.name for excluded_segment in excluded_segments]
     
+def get_standard_segment_names_in_rbs_storage(rule_based_segment_storage):
+    """
+    Retrieve a list of all standard segments names.
+
+    :return: Set of segment names.
+    :rtype: Set(str)
+    """
+    segment_list = set()
+    for rb_segment in rule_based_segment_storage.get_segment_names():
+        rb_segment_obj = rule_based_segment_storage.get(rb_segment)
+        segment_list.update(set(_get_segment_names(rb_segment_obj.excluded.get_excluded_segments())))
+        segment_list.update(rb_segment_obj.get_condition_segment_names())
+        
+    return segment_list
+    
 async def update_feature_flag_storage_async(feature_flag_storage, feature_flags, change_number, clear_storage=False):
     """
     Update feature flag storage from given list of feature flags while checking the flag set logic

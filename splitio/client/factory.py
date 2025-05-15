@@ -564,7 +564,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
 
     synchronizers = SplitSynchronizers(
         SplitSynchronizer(apis['splits'], storages['splits'], storages['rule_based_segments']),
-        SegmentSynchronizer(apis['segments'], storages['splits'], storages['segments']),
+        SegmentSynchronizer(apis['segments'], storages['splits'], storages['segments'], storages['rule_based_segments']),
         ImpressionSynchronizer(apis['impressions'], storages['impressions'],
                                cfg['impressionsBulkSize']),
         EventSynchronizer(apis['events'], storages['events'], cfg['eventsBulkSize']),
