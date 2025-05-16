@@ -2,7 +2,8 @@
 import pytest
 
 from splitio.util.storage_helper import update_feature_flag_storage, get_valid_flag_sets, combine_valid_flag_sets, \
-    update_rule_based_segment_storage, update_rule_based_segment_storage_async, update_feature_flag_storage_async 
+    update_rule_based_segment_storage, update_rule_based_segment_storage_async, update_feature_flag_storage_async, \
+    get_standard_segment_names_in_rbs_storage_async, get_standard_segment_names_in_rbs_storage 
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync, \
     InMemorySplitStorageAsync
 from splitio.models import splits, rule_based_segments
@@ -190,6 +191,17 @@ class StorageHelperTests(object):
         
         segments = update_rule_based_segment_storage(storage, [self.rbs], 123, True)
         assert self.clear == 1
+
+    def test_get_standard_segment_in_rbs_storage(self, mocker):
+        storage = InMemoryRuleBasedSegmentStorage()
+        segments = update_rule_based_segment_storage(storage, [self.rbs], 123)
+        assert get_standard_segment_names_in_rbs_storage(storage) == {'excluded_segment', 'employees'}
+
+    @pytest.mark.asyncio
+    async def test_get_standard_segment_in_rbs_storage(self, mocker):
+        storage = InMemoryRuleBasedSegmentStorageAsync()
+        segments = await update_rule_based_segment_storage_async(storage, [self.rbs], 123)
+        assert await get_standard_segment_names_in_rbs_storage_async(storage) == {'excluded_segment', 'employees'}
         
     @pytest.mark.asyncio
     async def test_update_rule_base_segment_storage_async(self, mocker):

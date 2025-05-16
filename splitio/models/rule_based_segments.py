@@ -152,6 +152,14 @@ class Excluded(object):
         """Return excluded segments"""
         return self._segments
 
+    def get_excluded_standard_segments(self):
+        """Return excluded segments"""
+        to_return = []
+        for segment in self._segments:
+            if segment.type == SegmentType.STANDARD:
+                to_return.append(segment.name)
+        return to_return
+
     def to_json(self):
         """Return a JSON representation of this object."""
         return {

@@ -693,7 +693,7 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
 
     synchronizers = SplitSynchronizers(
         SplitSynchronizerAsync(apis['splits'], storages['splits'], storages['rule_based_segments']),
-        SegmentSynchronizerAsync(apis['segments'], storages['splits'], storages['segments']),
+        SegmentSynchronizerAsync(apis['segments'], storages['splits'], storages['segments'], storages['rule_based_segments']),
         ImpressionSynchronizerAsync(apis['impressions'], storages['impressions'],
                                cfg['impressionsBulkSize']),
         EventSynchronizerAsync(apis['events'], storages['events'], cfg['eventsBulkSize']),

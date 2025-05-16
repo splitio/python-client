@@ -1,6 +1,7 @@
 """Storage Helper."""
 import logging
 from splitio.models import splits
+from splitio.models import rule_based_segments
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,7 +59,7 @@ def update_rule_based_segment_storage(rule_based_segment_storage, rule_based_seg
     for rule_based_segment in rule_based_segments:
         if rule_based_segment.status == splits.Status.ACTIVE:
             to_add.append(rule_based_segment)
-            segment_list.update(set(_get_segment_names(rule_based_segment.excluded.get_excluded_segments())))
+            segment_list.update(set(rule_based_segment.excluded.get_excluded_standard_segments()))
             segment_list.update(rule_based_segment.get_condition_segment_names())
         else:
             if rule_based_segment_storage.get(rule_based_segment.name) is not None:
@@ -66,9 +67,6 @@ def update_rule_based_segment_storage(rule_based_segment_storage, rule_based_seg
 
     rule_based_segment_storage.update(to_add, to_delete, change_number)
     return segment_list
-
-def _get_segment_names(excluded_segments):
-    return [excluded_segment.name for excluded_segment in excluded_segments]
     
 def get_standard_segment_names_in_rbs_storage(rule_based_segment_storage):
     """
@@ -80,7 +78,7 @@ def get_standard_segment_names_in_rbs_storage(rule_based_segment_storage):
     segment_list = set()
     for rb_segment in rule_based_segment_storage.get_segment_names():
         rb_segment_obj = rule_based_segment_storage.get(rb_segment)
-        segment_list.update(set(_get_segment_names(rb_segment_obj.excluded.get_excluded_segments())))
+        segment_list.update(set(rb_segment_obj.excluded.get_excluded_standard_segments()))
         segment_list.update(rb_segment_obj.get_condition_segment_names())
         
     return segment_list
@@ -139,13 +137,29 @@ async def update_rule_based_segment_storage_async(rule_based_segment_storage, ru
     for rule_based_segment in rule_based_segments:
         if rule_based_segment.status == splits.Status.ACTIVE:
             to_add.append(rule_based_segment)
-            segment_list.update(set(_get_segment_names(rule_based_segment.excluded.get_excluded_segments())))
+            segment_list.update(set(rule_based_segment.excluded.get_excluded_standard_segments()))
             segment_list.update(rule_based_segment.get_condition_segment_names())
         else:
             if await rule_based_segment_storage.get(rule_based_segment.name) is not None:
                 to_delete.append(rule_based_segment.name)
 
     await rule_based_segment_storage.update(to_add, to_delete, change_number)
+    return segment_list
+
+async def get_standard_segment_names_in_rbs_storage_async(rule_based_segment_storage):
+    """
+    Retrieve a list of all standard segments names.
+
+    :return: Set of segment names.
+    :rtype: Set(str)
+    """
+    segment_list = set()
+    segment_names = await rule_based_segment_storage.get_segment_names()
+    for rb_segment in segment_names:
+        rb_segment_obj = await rule_based_segment_storage.get(rb_segment)
+        segment_list.update(set(rb_segment_obj.excluded.get_excluded_standard_segments()))
+        segment_list.update(rb_segment_obj.get_condition_segment_names())
+        
     return segment_list
 
 def get_valid_flag_sets(flag_sets, flag_set_filter):

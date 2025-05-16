@@ -10,7 +10,7 @@ from splitio.models import segments
 from splitio.util.backoff import Backoff
 from splitio.optional.loaders import asyncio, aiofiles
 from splitio.sync import util
-from splitio.util.storage_helper import get_standard_segment_names_in_rbs_storage
+from splitio.util.storage_helper import get_standard_segment_names_in_rbs_storage, get_standard_segment_names_in_rbs_storage_async
 from splitio.optional.loaders import asyncio
 
 _LOGGER = logging.getLogger(__name__)
@@ -183,7 +183,7 @@ class SegmentSynchronizer(object):
         :rtype: bool
         """
         if segment_names is None:
-            segment_names = self._feature_flag_storage.get_segment_names()
+            segment_names = set(self._feature_flag_storage.get_segment_names())
             segment_names.update(get_standard_segment_names_in_rbs_storage(self._rule_based_segment_storage))
 
         for segment_name in segment_names:
@@ -209,7 +209,7 @@ class SegmentSynchronizer(object):
 
 
 class SegmentSynchronizerAsync(object):
-    def __init__(self, segment_api, feature_flag_storage, segment_storage):
+    def __init__(self, segment_api, feature_flag_storage, segment_storage, rule_based_segment_storage):
         """
         Class constructor.
 
@@ -226,6 +226,7 @@ class SegmentSynchronizerAsync(object):
         self._api = segment_api
         self._feature_flag_storage = feature_flag_storage
         self._segment_storage = segment_storage
+        self._rule_based_segment_storage = rule_based_segment_storage
         self._worker_pool = workerpool.WorkerPoolAsync(_MAX_WORKERS, self.synchronize_segment)
         self._worker_pool.start()
         self._backoff = Backoff(
@@ -369,7 +370,8 @@ class SegmentSynchronizerAsync(object):
         :rtype: bool
         """
         if segment_names is None:
-            segment_names = await self._feature_flag_storage.get_segment_names()
+            segment_names = set(await self._feature_flag_storage.get_segment_names())
+            segment_names.update(await get_standard_segment_names_in_rbs_storage_async(self._rule_based_segment_storage))
 
         self._jobs = await self._worker_pool.submit_work(segment_names)
         if (dont_wait):
