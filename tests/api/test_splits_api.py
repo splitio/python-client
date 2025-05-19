@@ -122,6 +122,41 @@ class SplitAPITests(object):
         assert self.query[2] == {'s': '1.3', 'since': 123, 'rbSince': -1}
         assert response == {"ff": {"d": [], "s": 123, "t": 456}, "rbs": {"d": [], "s": 123, "t": -1}}
         assert split_api.clear_storage
+
+    def test_using_old_spec_since(self, mocker):
+        """Test using old_spec_since variable."""
+        httpclient = mocker.Mock(spec=client.HttpClient)
+        self.counter = 0
+        self.query = []
+        def get(sdk, splitChanges, sdk_key, extra_headers, query):
+            self.counter += 1
+            self.query.append(query)
+            if self.counter == 1:
+                return client.HttpResponse(400, 'error', {})
+            if self.counter == 2:
+                return client.HttpResponse(200, '{"splits": [], "since": 123, "till": 456}', {})
+            if self.counter == 3:
+                return client.HttpResponse(400, 'error', {})
+            if self.counter == 4:
+                return client.HttpResponse(200, '{"splits": [], "since": 456, "till": 456}', {})
+            
+        httpclient.is_sdk_endpoint_overridden.return_value = True
+        httpclient.get = get
+        split_api = splits.SplitsAPI(httpclient, 'some_api_key', SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
+        response = split_api.fetch_splits(123, -1, FetchOptions(False, None, None, None))
+        assert response == {"ff": {"d": [], "s": 123, "t": 456}, "rbs": {"d": [], "s": -1, "t": -1}}
+        assert self.query == [{'s': '1.3', 'since': 123, 'rbSince': -1}, {'s': '1.1', 'since': 123}]
+        assert not split_api.clear_storage
+
+        time.sleep(1)
+        splits._PROXY_CHECK_INTERVAL_MILLISECONDS_SS = 10
+        
+        response = split_api.fetch_splits(456, -1, FetchOptions(False, None, None, None))
+        time.sleep(1)        
+        splits._PROXY_CHECK_INTERVAL_MILLISECONDS_SS = 1000000
+        assert self.query[2] == {'s': '1.3', 'since': 456, 'rbSince': -1}
+        assert self.query[3] == {'s': '1.1', 'since': 456}
+        assert response == {"ff": {"d": [], "s": 456, "t": 456}, "rbs": {"d": [], "s": -1, "t": -1}}
         
 class SplitAPIAsyncTests(object):
     """Split async API test cases."""
@@ -253,9 +288,45 @@ class SplitAPIAsyncTests(object):
         assert self.query == [{'s': '1.3', 'since': 123, 'rbSince': -1}, {'s': '1.1', 'since': 123}]
         assert not split_api.clear_storage
 
-        time.sleep(1)
+        time.sleep(1) 
         splits._PROXY_CHECK_INTERVAL_MILLISECONDS_SS = 10
         response = await split_api.fetch_splits(123, -1, FetchOptions(False, None, None, None))
         assert self.query[2] == {'s': '1.3', 'since': 123, 'rbSince': -1}
         assert response == {"ff": {"d": [], "s": 123, "t": 456}, "rbs": {"d": [], "s": 123, "t": -1}}
         assert split_api.clear_storage
+
+    @pytest.mark.asyncio
+    async def test_using_old_spec_since(self, mocker):
+        """Test using old_spec_since variable."""
+        httpclient = mocker.Mock(spec=client.HttpClient)
+        self.counter = 0
+        self.query = []
+        async def get(sdk, splitChanges, sdk_key, extra_headers, query):
+            self.counter += 1
+            self.query.append(query)
+            if self.counter == 1:
+                return client.HttpResponse(400, 'error', {})
+            if self.counter == 2:
+                return client.HttpResponse(200, '{"splits": [], "since": 123, "till": 456}', {})
+            if self.counter == 3:
+                return client.HttpResponse(400, 'error', {})
+            if self.counter == 4:
+                return client.HttpResponse(200, '{"splits": [], "since": 456, "till": 456}', {})
+            
+        httpclient.is_sdk_endpoint_overridden.return_value = True
+        httpclient.get = get
+        split_api = splits.SplitsAPIAsync(httpclient, 'some_api_key', SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
+        response = await split_api.fetch_splits(123, -1, FetchOptions(False, None, None, None))
+        assert response == {"ff": {"d": [], "s": 123, "t": 456}, "rbs": {"d": [], "s": -1, "t": -1}}
+        assert self.query == [{'s': '1.3', 'since': 123, 'rbSince': -1}, {'s': '1.1', 'since': 123}]
+        assert not split_api.clear_storage
+
+        time.sleep(1)
+        splits._PROXY_CHECK_INTERVAL_MILLISECONDS_SS = 10
+        
+        response = await split_api.fetch_splits(456, -1, FetchOptions(False, None, None, None))
+        time.sleep(1)        
+        splits._PROXY_CHECK_INTERVAL_MILLISECONDS_SS = 1000000
+        assert self.query[2] == {'s': '1.3', 'since': 456, 'rbSince': -1}
+        assert self.query[3] == {'s': '1.1', 'since': 456}
+        assert response == {"ff": {"d": [], "s": 456, "t": 456}, "rbs": {"d": [], "s": -1, "t": -1}}

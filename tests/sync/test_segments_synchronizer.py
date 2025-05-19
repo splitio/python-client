@@ -5,10 +5,11 @@ import os
 from splitio.util.backoff import Backoff
 from splitio.api import APIException
 from splitio.api.commons import FetchOptions
-from splitio.storage import SplitStorage, SegmentStorage
+from splitio.storage import SplitStorage, SegmentStorage, RuleBasedSegmentsStorage
 from splitio.storage.inmemmory import InMemorySegmentStorage, InMemorySegmentStorageAsync, InMemorySplitStorage, InMemorySplitStorageAsync
 from splitio.sync.segment import SegmentSynchronizer, SegmentSynchronizerAsync, LocalSegmentSynchronizer, LocalSegmentSynchronizerAsync
 from splitio.models.segments import Segment
+from splitio.models import rule_based_segments
 from splitio.optional.loaders import aiofiles, asyncio
 
 import pytest
@@ -23,6 +24,8 @@ class SegmentsSynchronizerTests(object):
 
         storage = mocker.Mock(spec=SegmentStorage)
         storage.get_change_number.return_value = -1
+        rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
+        rbs_storage.get_segment_names.return_value = []
 
         api = mocker.Mock()
 
@@ -30,13 +33,17 @@ class SegmentsSynchronizerTests(object):
             raise APIException("something broke")
 
         api.fetch_segment.side_effect = run
-        segments_synchronizer = SegmentSynchronizer(api, split_storage, storage)
+        segments_synchronizer = SegmentSynchronizer(api, split_storage, storage, rbs_storage)
         assert not segments_synchronizer.synchronize_segments()
 
     def test_synchronize_segments(self, mocker):
         """Test the normal operation flow."""
         split_storage = mocker.Mock(spec=SplitStorage)
         split_storage.get_segment_names.return_value = ['segmentA', 'segmentB', 'segmentC']
+
+        rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
+        rbs_storage.get_segment_names.return_value = ['rbs']
+        rbs_storage.get.return_value = rule_based_segments.from_raw({'name': 'rbs', 'conditions': [], 'trafficTypeName': 'user', 'changeNumber': 123, 'status': 'ACTIVE', 'excluded': {'keys': [], 'segments': [{'type': 'standard', 'name': 'segmentD'}]}})
 
         # Setup a mocked segment storage whose changenumber returns -1 on first fetch and
         # 123 afterwards.
@@ -52,10 +59,14 @@ class SegmentsSynchronizerTests(object):
             if segment_name == 'segmentC' and change_number_mock._count_c == 0:
                 change_number_mock._count_c = 1
                 return -1
+            if segment_name == 'segmentD' and change_number_mock._count_d == 0:
+                change_number_mock._count_d = 1
+                return -1
             return 123
         change_number_mock._count_a = 0
         change_number_mock._count_b = 0
         change_number_mock._count_c = 0
+        change_number_mock._count_d = 0
         storage.get_change_number.side_effect = change_number_mock
 
         # Setup a mocked segment api to return segments mentioned before.
@@ -72,27 +83,35 @@ class SegmentsSynchronizerTests(object):
                 fetch_segment_mock._count_c = 1
                 return {'name': 'segmentC', 'added': ['key7', 'key8', 'key9'], 'removed': [],
                         'since': -1, 'till': 123}
+            if segment_name == 'segmentD' and fetch_segment_mock._count_d == 0:
+                fetch_segment_mock._count_d = 1
+                return {'name': 'segmentD', 'added': ['key10'], 'removed': [],
+                        'since': -1, 'till': 123}
             return {'added': [], 'removed': [], 'since': 123, 'till': 123}
         fetch_segment_mock._count_a = 0
         fetch_segment_mock._count_b = 0
         fetch_segment_mock._count_c = 0
+        fetch_segment_mock._count_d = 0
 
         api = mocker.Mock()
         api.fetch_segment.side_effect = fetch_segment_mock
 
-        segments_synchronizer = SegmentSynchronizer(api, split_storage, storage)
+        segments_synchronizer = SegmentSynchronizer(api, split_storage, storage, rbs_storage)
         assert segments_synchronizer.synchronize_segments()
 
         api_calls = [call for call in api.fetch_segment.mock_calls]
+
         assert mocker.call('segmentA', -1, FetchOptions(True, None, None, None, None)) in api_calls
         assert mocker.call('segmentB', -1, FetchOptions(True, None, None, None, None)) in api_calls
         assert mocker.call('segmentC', -1, FetchOptions(True, None, None, None, None)) in api_calls
+        assert mocker.call('segmentD', -1, FetchOptions(True, None, None, None, None)) in api_calls
         assert mocker.call('segmentA', 123, FetchOptions(True, None, None, None, None)) in api_calls
         assert mocker.call('segmentB', 123, FetchOptions(True, None, None, None, None)) in api_calls
         assert mocker.call('segmentC', 123, FetchOptions(True, None, None, None, None)) in api_calls
+        assert mocker.call('segmentD', 123, FetchOptions(True, None, None, None, None)) in api_calls
 
         segment_put_calls = storage.put.mock_calls
-        segments_to_validate = set(['segmentA', 'segmentB', 'segmentC'])
+        segments_to_validate = set(['segmentA', 'segmentB', 'segmentC', 'segmentD'])
         for call in segment_put_calls:
             _, positional_args, _ = call
             segment = positional_args[0]
@@ -104,6 +123,8 @@ class SegmentsSynchronizerTests(object):
         """Test particular segment update."""
         split_storage = mocker.Mock(spec=SplitStorage)
         storage = mocker.Mock(spec=SegmentStorage)
+        rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
+        rbs_storage.get_segment_names.return_value = []
 
         def change_number_mock(segment_name):
             if change_number_mock._count_a == 0:
@@ -124,7 +145,7 @@ class SegmentsSynchronizerTests(object):
         api = mocker.Mock()
         api.fetch_segment.side_effect = fetch_segment_mock
 
-        segments_synchronizer = SegmentSynchronizer(api, split_storage, storage)
+        segments_synchronizer = SegmentSynchronizer(api, split_storage, storage, rbs_storage)
         segments_synchronizer.synchronize_segment('segmentA')
 
         api_calls = [call for call in api.fetch_segment.mock_calls]
@@ -137,6 +158,8 @@ class SegmentsSynchronizerTests(object):
 
         split_storage = mocker.Mock(spec=SplitStorage)
         storage = mocker.Mock(spec=SegmentStorage)
+        rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
+        rbs_storage.get_segment_names.return_value = []
 
         def change_number_mock(segment_name):
             change_number_mock._count_a += 1
@@ -170,7 +193,7 @@ class SegmentsSynchronizerTests(object):
         api = mocker.Mock()
         api.fetch_segment.side_effect = fetch_segment_mock
 
-        segments_synchronizer = SegmentSynchronizer(api, split_storage, storage)
+        segments_synchronizer = SegmentSynchronizer(api, split_storage, storage, rbs_storage)
         segments_synchronizer.synchronize_segment('segmentA')
 
         assert mocker.call('segmentA', -1, FetchOptions(True, None, None, None, None)) in api.fetch_segment.mock_calls
@@ -183,7 +206,7 @@ class SegmentsSynchronizerTests(object):
 
     def test_recreate(self, mocker):
         """Test recreate logic."""
-        segments_synchronizer = SegmentSynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock())
+        segments_synchronizer = SegmentSynchronizer(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
         current_pool = segments_synchronizer._worker_pool
         segments_synchronizer.recreate()
         assert segments_synchronizer._worker_pool != current_pool
@@ -196,6 +219,11 @@ class SegmentsSynchronizerAsyncTests(object):
     async def test_synchronize_segments_error(self, mocker):
         """On error."""
         split_storage = mocker.Mock(spec=SplitStorage)
+        rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
+
+        async def get_segment_names_rbs():
+            return []
+        rbs_storage.get_segment_names = get_segment_names_rbs
 
         async def get_segment_names():
             return ['segmentA', 'segmentB', 'segmentC']
@@ -215,7 +243,7 @@ class SegmentsSynchronizerAsyncTests(object):
             raise APIException("something broke")
         api.fetch_segment = run
 
-        segments_synchronizer = SegmentSynchronizerAsync(api, split_storage, storage)
+        segments_synchronizer = SegmentSynchronizerAsync(api, split_storage, storage, rbs_storage)
         assert not await segments_synchronizer.synchronize_segments()
         await segments_synchronizer.shutdown()
 
@@ -226,6 +254,15 @@ class SegmentsSynchronizerAsyncTests(object):
         async def get_segment_names():
             return ['segmentA', 'segmentB', 'segmentC']
         split_storage.get_segment_names = get_segment_names
+
+        rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
+        async def get_segment_names_rbs():
+            return ['rbs']
+        rbs_storage.get_segment_names = get_segment_names_rbs
+        
+        async def get_rbs(segment_name):
+            return rule_based_segments.from_raw({'name': 'rbs', 'conditions': [], 'trafficTypeName': 'user', 'changeNumber': 123, 'status': 'ACTIVE', 'excluded': {'keys': [], 'segments': [{'type': 'standard', 'name': 'segmentD'}]}})
+        rbs_storage.get = get_rbs
 
         # Setup a mocked segment storage whose changenumber returns -1 on first fetch and
         # 123 afterwards.
@@ -241,10 +278,14 @@ class SegmentsSynchronizerAsyncTests(object):
             if segment_name == 'segmentC' and change_number_mock._count_c == 0:
                 change_number_mock._count_c = 1
                 return -1
+            if segment_name == 'segmentD' and change_number_mock._count_d == 0:
+                change_number_mock._count_d = 1
+                return -1
             return 123
         change_number_mock._count_a = 0
         change_number_mock._count_b = 0
         change_number_mock._count_c = 0
+        change_number_mock._count_d = 0
         storage.get_change_number = change_number_mock
 
         self.segment_put = []
@@ -276,25 +317,36 @@ class SegmentsSynchronizerAsyncTests(object):
                 fetch_segment_mock._count_c = 1
                 return {'name': 'segmentC', 'added': ['key7', 'key8', 'key9'], 'removed': [],
                         'since': -1, 'till': 123}
+            if segment_name == 'segmentD' and fetch_segment_mock._count_d == 0:
+                fetch_segment_mock._count_d = 1
+                return {'name': 'segmentD', 'added': ['key10'], 'removed': [],
+                        'since': -1, 'till': 123}
             return {'added': [], 'removed': [], 'since': 123, 'till': 123}
         fetch_segment_mock._count_a = 0
         fetch_segment_mock._count_b = 0
         fetch_segment_mock._count_c = 0
+        fetch_segment_mock._count_d = 0
 
         api = mocker.Mock()
         api.fetch_segment = fetch_segment_mock
 
-        segments_synchronizer = SegmentSynchronizerAsync(api, split_storage, storage)
+        segments_synchronizer = SegmentSynchronizerAsync(api, split_storage, storage, rbs_storage)
         assert await segments_synchronizer.synchronize_segments()
 
-        assert (self.segment[0], self.change[0], self.options[0]) == ('segmentA', -1, FetchOptions(True, None, None, None, None))
-        assert (self.segment[1], self.change[1], self.options[1]) == ('segmentA', 123, FetchOptions(True, None, None, None, None))
-        assert (self.segment[2], self.change[2], self.options[2]) == ('segmentB', -1, FetchOptions(True, None, None, None, None))
-        assert (self.segment[3], self.change[3], self.options[3]) == ('segmentB', 123, FetchOptions(True, None, None, None, None))
-        assert (self.segment[4], self.change[4], self.options[4]) == ('segmentC', -1, FetchOptions(True, None, None, None, None))
-        assert (self.segment[5], self.change[5], self.options[5]) == ('segmentC', 123, FetchOptions(True, None, None, None, None))
+        api_calls = []
+        for i in range(8):
+            api_calls.append((self.segment[i], self.change[i], self.options[i]))
+        
+        assert ('segmentD', -1, FetchOptions(True, None, None, None, None)) in api_calls
+        assert ('segmentD', 123, FetchOptions(True, None, None, None, None)) in api_calls
+        assert ('segmentA', -1, FetchOptions(True, None, None, None, None)) in api_calls
+        assert ('segmentA', 123, FetchOptions(True, None, None, None, None)) in api_calls
+        assert ('segmentB', -1, FetchOptions(True, None, None, None, None)) in api_calls
+        assert ('segmentB', 123, FetchOptions(True, None, None, None, None)) in api_calls
+        assert ('segmentC', -1, FetchOptions(True, None, None, None, None)) in api_calls
+        assert ('segmentC', 123, FetchOptions(True, None, None, None, None)) in api_calls
 
-        segments_to_validate = set(['segmentA', 'segmentB', 'segmentC'])
+        segments_to_validate = set(['segmentA', 'segmentB', 'segmentC', 'segmentD'])
         for segment in self.segment_put:
             assert isinstance(segment, Segment)
             assert segment.name in segments_to_validate
@@ -307,6 +359,11 @@ class SegmentsSynchronizerAsyncTests(object):
         """Test particular segment update."""
         split_storage = mocker.Mock(spec=SplitStorage)
         storage = mocker.Mock(spec=SegmentStorage)
+        rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
+
+        async def get_segment_names_rbs():
+            return []
+        rbs_storage.get_segment_names = get_segment_names_rbs
 
         async def change_number_mock(segment_name):
             if change_number_mock._count_a == 0:
@@ -340,7 +397,7 @@ class SegmentsSynchronizerAsyncTests(object):
         api = mocker.Mock()
         api.fetch_segment = fetch_segment_mock
 
-        segments_synchronizer = SegmentSynchronizerAsync(api, split_storage, storage)
+        segments_synchronizer = SegmentSynchronizerAsync(api, split_storage, storage, rbs_storage)
         await segments_synchronizer.synchronize_segment('segmentA')
 
         assert (self.segment[0], self.change[0], self.options[0]) == ('segmentA', -1, FetchOptions(True, None, None, None, None))
@@ -355,6 +412,11 @@ class SegmentsSynchronizerAsyncTests(object):
 
         split_storage = mocker.Mock(spec=SplitStorage)
         storage = mocker.Mock(spec=SegmentStorage)
+        rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
+
+        async def get_segment_names_rbs():
+            return []
+        rbs_storage.get_segment_names = get_segment_names_rbs
 
         async def change_number_mock(segment_name):
             change_number_mock._count_a += 1
@@ -400,7 +462,7 @@ class SegmentsSynchronizerAsyncTests(object):
         api = mocker.Mock()
         api.fetch_segment = fetch_segment_mock
 
-        segments_synchronizer = SegmentSynchronizerAsync(api, split_storage, storage)
+        segments_synchronizer = SegmentSynchronizerAsync(api, split_storage, storage, rbs_storage)
         await segments_synchronizer.synchronize_segment('segmentA')
 
         assert (self.segment[0], self.change[0], self.options[0]) == ('segmentA', -1, FetchOptions(True, None, None, None, None))
@@ -415,7 +477,7 @@ class SegmentsSynchronizerAsyncTests(object):
     @pytest.mark.asyncio
     async def test_recreate(self, mocker):
         """Test recreate logic."""
-        segments_synchronizer = SegmentSynchronizerAsync(mocker.Mock(), mocker.Mock(), mocker.Mock())
+        segments_synchronizer = SegmentSynchronizerAsync(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
         current_pool = segments_synchronizer._worker_pool
         await segments_synchronizer.shutdown()
         segments_synchronizer.recreate()
