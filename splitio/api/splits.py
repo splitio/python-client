@@ -9,6 +9,7 @@ from splitio.api.client import HttpClientException
 from splitio.models.telemetry import HTTPExceptionsAndLatencies
 from splitio.util.time import utctime_ms
 from splitio.spec import SPEC_VERSION
+from splitio.sync import util
 
 _LOGGER = logging.getLogger(__name__)
 _SPEC_1_1 = "1.1"
@@ -36,15 +37,20 @@ class SplitsAPIBase(object):  # pylint: disable=too-few-public-methods
         self._spec_version = SPEC_VERSION
         self._last_proxy_check_timestamp = 0
         self.clear_storage = False
+        self._old_spec_since = None
 
-    def _convert_to_new_spec(self, body):
-        return {"ff": {"d": body["splits"], "s": body["since"], "t": body["till"]}, 
-                "rbs": {"d": [], "s": -1, "t": -1}}
-
-    def _check_last_proxy_check_timestamp(self):
+    def _check_last_proxy_check_timestamp(self, since):
         if self._spec_version == _SPEC_1_1 and ((utctime_ms() - self._last_proxy_check_timestamp) >= _PROXY_CHECK_INTERVAL_MILLISECONDS_SS):
             _LOGGER.info("Switching to new Feature flag spec (%s) and fetching.", SPEC_VERSION);
             self._spec_version = SPEC_VERSION
+            self._old_spec_since = since
+    
+    def _check_old_spec_since(self, change_number):
+        if self._spec_version == _SPEC_1_1 and self._old_spec_since is not None:
+            since = self._old_spec_since
+            self._old_spec_since = None
+            return since
+        return change_number
     
 
 class SplitsAPI(SplitsAPIBase):  # pylint: disable=too-few-public-methods
@@ -80,7 +86,9 @@ class SplitsAPI(SplitsAPIBase):  # pylint: disable=too-few-public-methods
         :rtype: dict
         """
         try:
-            self._check_last_proxy_check_timestamp()
+            self._check_last_proxy_check_timestamp(change_number)
+            change_number = self._check_old_spec_since(change_number)
+
             query, extra_headers = build_fetch(change_number, fetch_options, self._metadata, rbs_change_number)
             response = self._client.get(
                 'sdk',
@@ -91,7 +99,7 @@ class SplitsAPI(SplitsAPIBase):  # pylint: disable=too-few-public-methods
             )
             if 200 <= response.status_code < 300:
                 if self._spec_version == _SPEC_1_1:
-                    return self._convert_to_new_spec(json.loads(response.body))
+                    return util.convert_to_new_spec(json.loads(response.body))
                 
                 self.clear_storage = self._last_proxy_check_timestamp != 0
                 self._last_proxy_check_timestamp = 0
@@ -148,7 +156,9 @@ class SplitsAPIAsync(SplitsAPIBase):  # pylint: disable=too-few-public-methods
         :rtype: dict
         """
         try:
-            self._check_last_proxy_check_timestamp()            
+            self._check_last_proxy_check_timestamp(change_number)
+            change_number = self._check_old_spec_since(change_number)
+            
             query, extra_headers = build_fetch(change_number, fetch_options, self._metadata, rbs_change_number)
             response = await self._client.get(
                 'sdk',
@@ -159,7 +169,7 @@ class SplitsAPIAsync(SplitsAPIBase):  # pylint: disable=too-few-public-methods
             )
             if 200 <= response.status_code < 300:
                 if self._spec_version == _SPEC_1_1:
-                    return self._convert_to_new_spec(json.loads(response.body))
+                    return util.convert_to_new_spec(json.loads(response.body))
                 
                 self.clear_storage = self._last_proxy_check_timestamp != 0
                 self._last_proxy_check_timestamp = 0

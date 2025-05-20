@@ -12,6 +12,7 @@ from datetime import datetime
 
 from splitio.models.grammar import matchers
 from splitio.models import splits
+from splitio.models import rule_based_segments
 from splitio.models.grammar import condition
 from splitio.models.grammar.matchers.utils.utils import Semver
 from splitio.storage import SegmentStorage
@@ -404,9 +405,9 @@ class UserDefinedSegmentMatcherTests(MatcherTestsBase):
         matcher = matchers.UserDefinedSegmentMatcher(self.raw)
 
         # Test that if the key if the storage wrapper finds the key in the segment, it matches.
-        assert matcher.evaluate('some_key', {}, {'evaluator': None, 'ec': EvaluationContext([],{'some_segment': True}, {}, {})}) is True
+        assert matcher.evaluate('some_key', {}, {'evaluator': None, 'ec': EvaluationContext([],{'some_segment': True}, {})}) is True
         # Test that if the key if the storage wrapper doesn't find the key in the segment, it fails.
-        assert matcher.evaluate('some_key', {}, {'evaluator': None, 'ec': EvaluationContext([], {'some_segment': False}, {}, {})}) is False
+        assert matcher.evaluate('some_key', {}, {'evaluator': None, 'ec': EvaluationContext([], {'some_segment': False}, {})}) is False
 
     def test_to_json(self):
         """Test that the object serializes to JSON properly."""
@@ -1095,3 +1096,44 @@ class InListSemverMatcherTests(MatcherTestsBase):
         """Test that the object serializes to str properly."""
         as_str = matchers.InListSemverMatcher(self.raw)
         assert str(as_str) == "in list semver ['2.1.8', '2.1.11']"
+
+class RuleBasedMatcherTests(MatcherTestsBase):
+    """Rule based segment matcher test cases."""
+
+    raw ={
+        "keySelector": {
+        "trafficType": "user"
+        },
+        "matcherType": "IN_RULE_BASED_SEGMENT",
+        "negate": False,
+        "userDefinedSegmentMatcherData": {
+        "segmentName": "sample_rule_based_segment"
+        }
+    }
+
+    def test_from_raw(self, mocker):
+        """Test parsing from raw json/dict."""
+        parsed = matchers.from_raw(self.raw)
+        assert isinstance(parsed, matchers.RuleBasedSegmentMatcher)
+
+    def test_to_json(self):
+        """Test that the object serializes to JSON properly."""
+        as_json = matchers.AllKeysMatcher(self.raw).to_json()
+        assert as_json['matcherType'] == 'IN_RULE_BASED_SEGMENT'
+
+    def test_matcher_behaviour(self, mocker):
+        """Test if the matcher works properly."""
+        rbs_segments = os.path.join(os.path.dirname(__file__), '../../engine/files', 'rule_base_segments3.json')
+        with open(rbs_segments, 'r') as flo:
+            data = json.loads(flo.read())
+
+        rbs = rule_based_segments.from_raw(data["rbs"]["d"][0])
+        matcher = matchers.RuleBasedSegmentMatcher(self.raw)
+        ec ={'ec': EvaluationContext(
+                    {},
+                    {"segment1": False},
+                    {"sample_rule_based_segment": rbs}
+                )}
+        assert matcher._match(None, context=ec) is False
+        assert matcher._match('bilal@split.io', context=ec) is False
+        assert matcher._match('bilal@split.io', {'email': 'bilal@split.io'}, context=ec) is True

@@ -73,6 +73,12 @@ class SplitSynchronizationTests(object):
         storage.flag_set_filter.flag_sets = {}
         storage.flag_set_filter.sorted_flag_sets = []
 
+        self.clear = False
+        def clear():
+            self.clear = True
+        storage.clear = clear
+        rbs_storage.clear = clear
+            
         api = mocker.Mock()
 
         def get_changes(*args, **kwargs):
@@ -172,6 +178,12 @@ class SplitSynchronizationAsyncTests(object):
             pass
         change_number_mock._calls = 0
         storage.set_change_number = set_change_number
+
+        self.clear = False
+        async def clear():
+            self.clear = True
+        storage.clear = clear
+        rbs_storage.clear = clear
         
         api = mocker.Mock()
         self.change_number = []

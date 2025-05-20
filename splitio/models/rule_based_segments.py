@@ -1,5 +1,6 @@
 """RuleBasedSegment module."""
 
+from enum import Enum
 import logging
 
 from splitio.models import MatcherNotFoundException
@@ -8,6 +9,12 @@ from splitio.models.grammar import condition
 from splitio.models.splits import Status
 
 _LOGGER = logging.getLogger(__name__)
+
+class SegmentType(Enum):
+    """Segment type."""
+    
+    STANDARD = "standard"
+    RULE_BASED = "rule-based"
 
 class RuleBasedSegment(object):
     """RuleBasedSegment object class."""
@@ -104,6 +111,16 @@ def from_raw(raw_rule_based_segment):
         _LOGGER.error(str(e))
         _LOGGER.debug("Using default conditions template for feature flag: %s", raw_rule_based_segment['name'])
         conditions = [condition.from_raw(_DEFAULT_CONDITIONS_TEMPLATE)]
+    
+    if raw_rule_based_segment.get('excluded') == None:
+        raw_rule_based_segment['excluded'] = {'keys': [], 'segments': []}
+        
+    if raw_rule_based_segment['excluded'].get('keys') == None:
+        raw_rule_based_segment['excluded']['keys'] = []
+
+    if raw_rule_based_segment['excluded'].get('segments') == None:
+        raw_rule_based_segment['excluded']['segments'] = []
+        
     return RuleBasedSegment(
         raw_rule_based_segment['name'],
         raw_rule_based_segment['trafficTypeName'],        
@@ -125,7 +142,7 @@ class Excluded(object):
         :type segments: List
         """
         self._keys = keys
-        self._segments = segments
+        self._segments = [ExcludedSegment(segment['name'], segment['type']) for segment in segments]
 
     def get_excluded_keys(self):
         """Return excluded keys."""        
@@ -135,9 +152,44 @@ class Excluded(object):
         """Return excluded segments"""
         return self._segments
 
+    def get_excluded_standard_segments(self):
+        """Return excluded segments"""
+        to_return = []
+        for segment in self._segments:
+            if segment.type == SegmentType.STANDARD:
+                to_return.append(segment.name)
+        return to_return
+
     def to_json(self):
         """Return a JSON representation of this object."""
         return {
             'keys': self._keys,
             'segments': self._segments
         }
+
+class ExcludedSegment(object):
+    
+    def __init__(self, name, type):
+        """
+        Class constructor.
+
+        :param name: rule based segment name
+        :type name: str
+        :param type: segment type 
+        :type type: str
+        """
+        self._name = name
+        try:
+            self._type = SegmentType(type)
+        except ValueError:
+            self._type = SegmentType.STANDARD
+
+    @property
+    def name(self):
+        """Return name."""
+        return self._name
+
+    @property
+    def type(self):
+        """Return type."""
+        return self._type

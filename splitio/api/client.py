@@ -133,7 +133,7 @@ class HttpClientBase(object, metaclass=abc.ABCMeta):
         self._metric_name = metric_name
 
     def is_sdk_endpoint_overridden(self):
-        return self._urls['sdk'] == SDK_URL
+        return self._urls['sdk'] != SDK_URL
 
     def _get_headers(self, extra_headers, sdk_key):
         headers = _build_basic_headers(sdk_key)

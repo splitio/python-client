@@ -8,7 +8,7 @@ from splitio.client.manager import SplitManager, SplitManagerAsync
 from splitio.client.key import Key
 from splitio.storage import SplitStorage, EventStorage, ImpressionStorage, SegmentStorage, RuleBasedSegmentsStorage
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync, \
-    InMemorySplitStorage, InMemorySplitStorageAsync
+    InMemorySplitStorage, InMemorySplitStorageAsync, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 from splitio.models.splits import Split
 from splitio.client import input_validator
 from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
@@ -30,6 +30,8 @@ class ClientInputValidationTests(object):
         type(split_mock).conditions = conditions_mock
         storage_mock = mocker.Mock(spec=SplitStorage)
         storage_mock.fetch_many.return_value = {'some_feature': split_mock}
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
+        rbs_storage.fetch_many.return_value = {}
 
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
@@ -40,7 +42,7 @@ class ClientInputValidationTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
+                'rule_based_segments': rbs_storage,
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -268,6 +270,8 @@ class ClientInputValidationTests(object):
         split_mock.get_configurations_for.side_effect = _configs
         storage_mock = mocker.Mock(spec=SplitStorage)
         storage_mock.fetch_many.return_value = {'some_feature': split_mock}
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
+        rbs_storage.fetch_many.return_value = {}
 
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
@@ -278,7 +282,7 @@ class ClientInputValidationTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
+                'rule_based_segments': rbs_storage,
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -819,6 +823,9 @@ class ClientInputValidationTests(object):
         storage_mock.fetch_many.return_value = {
             'some_feature': split_mock
         }
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
+        rbs_storage.fetch_many.return_value = {}
+
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
@@ -828,7 +835,7 @@ class ClientInputValidationTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
+                'rule_based_segments': rbs_storage,
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -963,6 +970,8 @@ class ClientInputValidationTests(object):
         storage_mock.fetch_many.return_value = {
             'some_feature': split_mock
         }
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
+        rbs_storage.fetch_many.return_value = {}
 
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
@@ -973,7 +982,7 @@ class ClientInputValidationTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
+                'rule_based_segments': rbs_storage,
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -1108,6 +1117,8 @@ class ClientInputValidationTests(object):
         storage_mock.fetch_many.return_value = {
             'some_feature': split_mock
         }
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
+        rbs_storage.fetch_many.return_value = {}
         storage_mock.get_feature_flags_by_sets.return_value = ['some_feature']
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
@@ -1118,7 +1129,7 @@ class ClientInputValidationTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
+                'rule_based_segments': rbs_storage,
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -1224,6 +1235,8 @@ class ClientInputValidationTests(object):
         storage_mock.fetch_many.return_value = {
             'some_feature': split_mock
         }
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
+        rbs_storage.fetch_many.return_value = {}
         storage_mock.get_feature_flags_by_sets.return_value = ['some_feature']
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
@@ -1234,7 +1247,7 @@ class ClientInputValidationTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
+                'rule_based_segments': rbs_storage,
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -1349,6 +1362,9 @@ class ClientInputValidationTests(object):
         storage_mock.fetch_many.return_value = {
             'some_feature': split_mock
         }
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
+        rbs_storage.fetch_many.return_value = {}
+        
         storage_mock.get_feature_flags_by_sets.return_value = ['some_feature']
 
         impmanager = mocker.Mock(spec=ImpressionManager)
@@ -1360,7 +1376,7 @@ class ClientInputValidationTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
+                'rule_based_segments': rbs_storage,
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -1469,6 +1485,9 @@ class ClientInputValidationTests(object):
         storage_mock.fetch_many.return_value = {
             'some_feature': split_mock
         }
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
+        rbs_storage.fetch_many.return_value = {}
+        
         storage_mock.get_feature_flags_by_sets.return_value = ['some_feature']
 
         impmanager = mocker.Mock(spec=ImpressionManager)
@@ -1480,7 +1499,7 @@ class ClientInputValidationTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
+                'rule_based_segments': rbs_storage,
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -1619,6 +1638,10 @@ class ClientInputValidationAsyncTests(object):
             'some_feature': split_mock
             }
         storage_mock.fetch_many = fetch_many
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
+        async def fetch_many_rbs(*_):
+            return {}
+        rbs_storage.fetch_many = fetch_many_rbs
 
         async def get_change_number(*_):
             return 1
@@ -1633,7 +1656,7 @@ class ClientInputValidationAsyncTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
+                'rule_based_segments': rbs_storage,
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -1876,6 +1899,10 @@ class ClientInputValidationAsyncTests(object):
             'some_feature': split_mock
             }
         storage_mock.fetch_many = fetch_many
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
+        async def fetch_many_rbs(*_):
+            return {}
+        rbs_storage.fetch_many = fetch_many_rbs
 
         async def get_change_number(*_):
             return 1
@@ -1890,7 +1917,7 @@ class ClientInputValidationAsyncTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
+                'rule_based_segments': rbs_storage,
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -2409,6 +2436,10 @@ class ClientInputValidationAsyncTests(object):
             'some': split_mock,
         }
         storage_mock.fetch_many = fetch_many
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
+        async def fetch_many_rbs(*_):
+            return {}
+        rbs_storage.fetch_many = fetch_many_rbs
 
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
@@ -2419,7 +2450,7 @@ class ClientInputValidationAsyncTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
+                'rule_based_segments': rbs_storage,
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -2568,6 +2599,10 @@ class ClientInputValidationAsyncTests(object):
             'some_feature': split_mock
         }
         storage_mock.fetch_many = fetch_many
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
+        async def fetch_many_rbs(*_):
+            return {}
+        rbs_storage.fetch_many = fetch_many_rbs
 
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
@@ -2578,7 +2613,7 @@ class ClientInputValidationAsyncTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
+                'rule_based_segments': rbs_storage,
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -2730,6 +2765,10 @@ class ClientInputValidationAsyncTests(object):
         async def get_feature_flags_by_sets(*_):
             return ['some_feature']
         storage_mock.get_feature_flags_by_sets = get_feature_flags_by_sets
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
+        async def fetch_many_rbs(*_):
+            return {}
+        rbs_storage.fetch_many = fetch_many_rbs
 
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
@@ -2740,7 +2779,7 @@ class ClientInputValidationAsyncTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
+                'rule_based_segments': rbs_storage,
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -2867,6 +2906,11 @@ class ClientInputValidationAsyncTests(object):
             'some': split_mock,
         }
         storage_mock.fetch_many = fetch_many
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
+        async def fetch_many_rbs(*_):
+            return {}
+        rbs_storage.fetch_many = fetch_many_rbs
+        
         async def get_feature_flags_by_sets(*_):
             return ['some_feature']
         storage_mock.get_feature_flags_by_sets = get_feature_flags_by_sets
@@ -2880,7 +2924,7 @@ class ClientInputValidationAsyncTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
+                'rule_based_segments': rbs_storage,
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -3017,6 +3061,10 @@ class ClientInputValidationAsyncTests(object):
             'some': split_mock,
         }
         storage_mock.fetch_many = fetch_many
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
+        async def fetch_many_rbs(*_):
+            return {}
+        rbs_storage.fetch_many = fetch_many_rbs
         async def get_feature_flags_by_sets(*_):
             return ['some_feature']
         storage_mock.get_feature_flags_by_sets = get_feature_flags_by_sets
@@ -3030,7 +3078,7 @@ class ClientInputValidationAsyncTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
+                'rule_based_segments': rbs_storage,
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },
@@ -3160,6 +3208,11 @@ class ClientInputValidationAsyncTests(object):
             'some': split_mock,
         }
         storage_mock.fetch_many = fetch_many
+        rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
+        async def fetch_many_rbs(*_):
+            return {}
+        rbs_storage.fetch_many = fetch_many_rbs
+        
         async def get_feature_flags_by_sets(*_):
             return ['some_feature']
         storage_mock.get_feature_flags_by_sets = get_feature_flags_by_sets
@@ -3173,7 +3226,7 @@ class ClientInputValidationAsyncTests(object):
             {
                 'splits': storage_mock,
                 'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
+                'rule_based_segments': rbs_storage,
                 'impressions': mocker.Mock(spec=ImpressionStorage),
                 'events': mocker.Mock(spec=EventStorage),
             },

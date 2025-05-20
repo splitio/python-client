@@ -1054,7 +1054,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         split_storage = InMemorySplitStorage()
         split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
         segment_storage = mocker.Mock(spec=SegmentStorage)
-        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)        
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
         destroyed_property = mocker.PropertyMock()
