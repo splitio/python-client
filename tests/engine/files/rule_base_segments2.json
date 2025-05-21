@@ -19,7 +19,7 @@
                 "trafficType": "user",
                 "attribute": "email"
               },
-              "matcherType": "START_WITH",
+              "matcherType": "STARTS_WITH",
               "negate": false,
               "whitelistMatcherData": {
                 "whitelist": [
