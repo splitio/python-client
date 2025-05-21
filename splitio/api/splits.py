@@ -89,6 +89,10 @@ class SplitsAPI(SplitsAPIBase):  # pylint: disable=too-few-public-methods
             self._check_last_proxy_check_timestamp(change_number)
             change_number = self._check_old_spec_since(change_number)
 
+            if self._spec_version == _SPEC_1_1:
+                fetch_options = FetchOptions(fetch_options.cache_control_headers, fetch_options.change_number,
+                                                                               None, fetch_options.sets, self._spec_version)
+                rbs_change_number = None
             query, extra_headers = build_fetch(change_number, fetch_options, self._metadata, rbs_change_number)
             response = self._client.get(
                 'sdk',
@@ -158,6 +162,10 @@ class SplitsAPIAsync(SplitsAPIBase):  # pylint: disable=too-few-public-methods
         try:
             self._check_last_proxy_check_timestamp(change_number)
             change_number = self._check_old_spec_since(change_number)
+            if self._spec_version == _SPEC_1_1:
+                fetch_options = FetchOptions(fetch_options.cache_control_headers, fetch_options.change_number,
+                                                                               None, fetch_options.sets, self._spec_version)
+                rbs_change_number = None
             
             query, extra_headers = build_fetch(change_number, fetch_options, self._metadata, rbs_change_number)
             response = await self._client.get(

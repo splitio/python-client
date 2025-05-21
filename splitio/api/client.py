@@ -207,7 +207,11 @@ class HttpClient(HttpClientBase):
             self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
             return HttpResponse(response.status_code, response.text, response.headers)
 
-        except Exception as exc:  # pylint: disable=broad-except
+        except requests.exceptions.ChunkedEncodingError as exc:
+            _LOGGER.error("IncompleteRead exception detected: %s", exc)
+            return HttpResponse(400, "", {})      
+            
+        except Exception as exc:  # pylint: disable=broad-except            
             raise HttpClientException(_EXC_MSG.format(source='request')) from exc
 
     def post(self, server, path, sdk_key, body, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
@@ -300,6 +304,10 @@ class HttpClientAsync(HttpClientBase):
                 await self._record_telemetry(response.status, get_current_epoch_time_ms() - start)
                 return HttpResponse(response.status, body, response.headers)
 
+        except aiohttp.ClientPayloadError as exc:
+                _LOGGER.error("ContentLengthError exception detected: %s", exc)
+                return HttpResponse(400, "", {})      
+            
         except aiohttp.ClientError as exc:  # pylint: disable=broad-except
             raise HttpClientException(_EXC_MSG.format(source='aiohttp')) from exc
 
