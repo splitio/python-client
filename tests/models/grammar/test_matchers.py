@@ -11,6 +11,7 @@ import pytest
 from datetime import datetime
 
 from splitio.models.grammar import matchers
+from splitio.models.grammar.matchers.prerequisites import PrerequisitesMatcher
 from splitio.models import splits
 from splitio.models import rule_based_segments
 from splitio.models.grammar import condition
@@ -1137,3 +1138,37 @@ class RuleBasedMatcherTests(MatcherTestsBase):
         assert matcher._match(None, context=ec) is False
         assert matcher._match('bilal@split.io', context=ec) is False
         assert matcher._match('bilal@split.io', {'email': 'bilal@split.io'}, context=ec) is True
+        
+class PrerequisitesMatcherTests(MatcherTestsBase):
+    """tests for prerequisites matcher."""
+
+    def test_init(self, mocker):
+        """Test init."""
+        split_load = os.path.join(os.path.dirname(__file__), 'files', 'splits_prereq.json')
+        with open(split_load, 'r') as flo:
+            data = json.loads(flo.read())
+
+        prereq = splits.from_raw_prerequisites(data['ff']['d'][0]['prerequisites'])
+        parsed = PrerequisitesMatcher(prereq)
+        assert parsed._prerequisites == prereq
+
+    def test_matcher_behaviour(self, mocker):
+        """Test if the matcher works properly."""
+        split_load = os.path.join(os.path.dirname(__file__), 'files', 'splits_prereq.json')
+        with open(split_load, 'r') as flo:
+            data = json.loads(flo.read())
+        prereq = splits.from_raw_prerequisites(data['ff']['d'][3]['prerequisites'])
+        parsed = PrerequisitesMatcher(prereq)
+        evaluator = mocker.Mock(spec=Evaluator)
+
+
+        evaluator.eval_with_context.return_value = {'treatment': 'on'}
+        assert parsed.match('SPLIT_2', {}, {'evaluator': evaluator, 'ec': [{'flags': ['prereq_chain'], 'segment_memberships': {}}]}) is True
+
+        evaluator.eval_with_context.return_value = {'treatment': 'off'}
+        assert parsed.match('SPLIT_2', {}, {'evaluator': evaluator, 'ec': [{'flags': ['prereq_chain'], 'segment_memberships': {}}]}) is False
+
+        assert parsed.match([], {}, {'evaluator': evaluator, 'ec': [{'flags': ['prereq_chain'], 'segment_memberships': {}}]}) is False
+        assert parsed.match({}, {}, {'evaluator': evaluator, 'ec': [{'flags': ['prereq_chain'], 'segment_memberships': {}}]}) is False
+        assert parsed.match(123, {}, {'evaluator': evaluator, 'ec': [{'flags': ['prereq_chain'], 'segment_memberships': {}}]}) is False
+        assert parsed.match(object(), {}, {'evaluator': evaluator, 'ec': [{'flags': ['prereq_chain'], 'segment_memberships': {}}]}) is False
