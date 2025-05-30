@@ -28,9 +28,6 @@ class PrerequisitesMatcher(object):
         if self._prerequisites == None:
             return True
 
-        if not isinstance(key, str):
-            return False
-        
         evaluator = context.get('evaluator')
         bucketing_key = context.get('bucketing_key')
         for prerequisite in self._prerequisites:

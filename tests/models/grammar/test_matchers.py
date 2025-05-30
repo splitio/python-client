@@ -1167,8 +1167,3 @@ class PrerequisitesMatcherTests(MatcherTestsBase):
 
         evaluator.eval_with_context.return_value = {'treatment': 'off'}
         assert parsed.match('SPLIT_2', {}, {'evaluator': evaluator, 'ec': [{'flags': ['prereq_chain'], 'segment_memberships': {}}]}) is False
-
-        assert parsed.match([], {}, {'evaluator': evaluator, 'ec': [{'flags': ['prereq_chain'], 'segment_memberships': {}}]}) is False
-        assert parsed.match({}, {}, {'evaluator': evaluator, 'ec': [{'flags': ['prereq_chain'], 'segment_memberships': {}}]}) is False
-        assert parsed.match(123, {}, {'evaluator': evaluator, 'ec': [{'flags': ['prereq_chain'], 'segment_memberships': {}}]}) is False
-        assert parsed.match(object(), {}, {'evaluator': evaluator, 'ec': [{'flags': ['prereq_chain'], 'segment_memberships': {}}]}) is False
