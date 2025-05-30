@@ -7,6 +7,7 @@ from splitio.models.grammar.condition import ConditionType
 from splitio.models.grammar.matchers.misc import DependencyMatcher
 from splitio.models.grammar.matchers.keys import UserDefinedSegmentMatcher
 from splitio.models.grammar.matchers import RuleBasedSegmentMatcher
+from splitio.models.grammar.matchers.prerequisites import PrerequisitesMatcher
 from splitio.models.rule_based_segments import SegmentType
 from splitio.optional.loaders import asyncio
 
@@ -56,12 +57,22 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
                 label = Label.KILLED
                 _treatment = feature.default_treatment
             else:
-                treatment, label = self._treatment_for_flag(feature, key, bucketing, attrs, ctx)
-                if treatment is None:
-                    label = Label.NO_CONDITION_MATCHED
-                    _treatment = feature.default_treatment
-                else:
-                    _treatment = treatment
+                if feature.prerequisites is not None:
+                    prerequisites_matcher = PrerequisitesMatcher(feature.prerequisites)
+                    if not prerequisites_matcher.match(key, attrs, {
+                                                                    'evaluator': self,
+                                                                    'bucketing_key': bucketing,
+                                                                    'ec': ctx}):                        
+                        label = Label.PREREQUISITES_NOT_MET
+                        _treatment = feature.default_treatment
+                    
+                if _treatment == CONTROL:
+                    treatment, label = self._treatment_for_flag(feature, key, bucketing, attrs, ctx)
+                    if treatment is None:
+                        label = Label.NO_CONDITION_MATCHED
+                        _treatment = feature.default_treatment
+                    else:
+                        _treatment = treatment
 
         return {
             'treatment': _treatment,
@@ -133,7 +144,6 @@ class EvaluationDataFactory:
             rb_segments
         )
         
-
 class AsyncEvaluationDataFactory:
 
     def __init__(self, split_storage, segment_storage, rbs_segment_storage):
@@ -199,6 +209,7 @@ def get_pending_objects(features, splits, rbsegments, rb_segments, pending_membe
     pending_rbs = set()
     for feature in features.values():
         cf, cs, crbs = get_dependencies(feature)
+        cf.extend(get_prerequisites(feature))
         pending.update(filter(lambda f: f not in splits, cf))
         pending_memberships.update(cs)
         pending_rbs.update(filter(lambda f: f not in rb_segments, crbs))
@@ -224,3 +235,5 @@ def update_objects(fetched, fetched_rbs, splits, rb_segments):
     
     return features, rbsegments, splits, rb_segments
     
+def get_prerequisites(feature):
+    return [prerequisite.feature_flag_name for prerequisite in feature.prerequisites]

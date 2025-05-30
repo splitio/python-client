@@ -60,3 +60,8 @@ class Label(object):  # pylint: disable=too-few-public-methods
     # Treatment: control
     # Label: not ready
     NOT_READY = 'not ready'
+
+    # Condition: Prerequisites not met
+    # Treatment: Default treatment
+    # Label: prerequisites not met
+    PREREQUISITES_NOT_MET = "prerequisites not met"
