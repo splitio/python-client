@@ -5,7 +5,7 @@ import os
 import pytest
 import copy
 
-from splitio.models.splits import Split, Status
+from splitio.models.splits import Split, Status, from_raw, Prerequisites
 from splitio.models import segments
 from splitio.models.grammar.condition import Condition, ConditionType
 from splitio.models.impressions import Label
@@ -127,6 +127,7 @@ class EvaluatorTests(object):
         mocked_split.killed = True
         mocked_split.change_number = 123
         mocked_split.get_configurations_for.return_value = '{"some_property": 123}'
+        mocked_split.prerequisites = []
 
         ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set(), rbs_segments={})
         result = e.eval_with_context('some_key', 'some_bucketing_key', 'some', {}, ctx)
@@ -146,6 +147,8 @@ class EvaluatorTests(object):
         mocked_split.killed = False
         mocked_split.change_number = 123
         mocked_split.get_configurations_for.return_value = '{"some_property": 123}'
+        mocked_split.prerequisites = []
+
         ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set(), rbs_segments={})
         result = e.eval_with_context('some_key', 'some_bucketing_key', 'some', {}, ctx)
         assert result['treatment'] == 'on'
@@ -165,6 +168,8 @@ class EvaluatorTests(object):
         mocked_split.killed = False
         mocked_split.change_number = 123
         mocked_split.get_configurations_for.return_value = None
+        mocked_split.prerequisites = []
+        
         ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set(), rbs_segments={})
         result = e.eval_with_context('some_key', 'some_bucketing_key', 'some', {}, ctx)
         assert result['treatment'] == 'on'
@@ -184,6 +189,7 @@ class EvaluatorTests(object):
         mocked_split.killed = False
         mocked_split.change_number = 123
         mocked_split.get_configurations_for.return_value = '{"some_property": 123}'
+        mocked_split.prerequisites = []
 
         mocked_split2 = mocker.Mock(spec=Split)
         mocked_split2.name = 'feature4'
@@ -191,6 +197,7 @@ class EvaluatorTests(object):
         mocked_split2.killed = False
         mocked_split2.change_number = 123
         mocked_split2.get_configurations_for.return_value = None
+        mocked_split2.prerequisites = []
 
         ctx = EvaluationContext(flags={'feature2': mocked_split, 'feature4': mocked_split2}, segment_memberships=set(), rbs_segments={})
         results = e.eval_many_with_context('some_key', 'some_bucketing_key', ['feature2', 'feature4'], {}, ctx)
@@ -215,6 +222,8 @@ class EvaluatorTests(object):
         mocked_split.change_number = '123'
         mocked_split.conditions = []
         mocked_split.get_configurations_for = None
+        mocked_split.prerequisites = []
+        
         ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set(), rbs_segments={})
         assert e._treatment_for_flag(mocked_split, 'some_key', 'some_bucketing', {}, ctx) == (
             'off',
@@ -232,6 +241,8 @@ class EvaluatorTests(object):
         mocked_split = mocker.Mock(spec=Split)
         mocked_split.killed = False
         mocked_split.conditions = [mocked_condition_1]
+        mocked_split.prerequisites = []
+        
         treatment, label = e._treatment_for_flag(mocked_split, 'some_key', 'some_bucketing', {}, EvaluationContext(None, None, None))
         assert treatment == 'on'
         assert label == 'some_label'
@@ -240,7 +251,7 @@ class EvaluatorTests(object):
         """Test that a non-killed split returns the appropriate treatment."""
         e = evaluator.Evaluator(splitters.Splitter())
 
-        mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False)
+        mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False, [])
         
         ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set(), rbs_segments={'sample_rule_based_segment': rule_based_segments.from_raw(rbs_raw)})
         result = e.eval_with_context('bilal@split.io', 'bilal@split.io', 'some', {'email': 'bilal@split.io'}, ctx)
@@ -257,7 +268,7 @@ class EvaluatorTests(object):
         with open(rbs_segments, 'r') as flo:
             data = json.loads(flo.read())
             
-        mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False)
+        mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False, [])
         rbs = rule_based_segments.from_raw(data["rbs"]["d"][0])
         rbs2 = rule_based_segments.from_raw(data["rbs"]["d"][1])
         rbs_storage.update([rbs, rbs2], [], 12)
@@ -279,7 +290,7 @@ class EvaluatorTests(object):
         segment_storage = InMemorySegmentStorage()
         evaluation_facctory = EvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
                     
-        mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False)
+        mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False, [])
         rbs = rule_based_segments.from_raw(data["rbs"]["d"][0])
         rbs_storage.update([rbs], [], 12)
         splits_storage.update([mocked_split], [], 12)
@@ -303,7 +314,7 @@ class EvaluatorTests(object):
         segment_storage = InMemorySegmentStorage()
         evaluation_facctory = EvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
                     
-        mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False)
+        mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False, [])
         rbs = rule_based_segments.from_raw(data["rbs"]["d"][0])
         rbs2 = rule_based_segments.from_raw(data["rbs"]["d"][1])
         rbs_storage.update([rbs, rbs2], [], 12)
@@ -315,7 +326,52 @@ class EvaluatorTests(object):
         assert e.eval_with_context('bilal', 'bilal', 'some', {'email': 'bilal'}, ctx)['treatment'] == "on"
         ctx = evaluation_facctory.context_for('bilal2@split.io', ['some'])
         assert e.eval_with_context('bilal2@split.io', 'bilal2@split.io', 'some', {'email': 'bilal2@split.io'}, ctx)['treatment'] == "off"
-        
+
+    def test_prerequisites(self):
+        splits_load = os.path.join(os.path.dirname(__file__), '../models/grammar/files', 'splits_prereq.json')
+        with open(splits_load, 'r') as flo:
+            data = json.loads(flo.read())
+        e = evaluator.Evaluator(splitters.Splitter())
+        splits_storage = InMemorySplitStorage()
+        rbs_storage = InMemoryRuleBasedSegmentStorage()
+        segment_storage = InMemorySegmentStorage()
+        evaluation_facctory = EvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
+                    
+        rbs = rule_based_segments.from_raw(data["rbs"]["d"][0])
+        split1 = from_raw(data["ff"]["d"][0])
+        split2 = from_raw(data["ff"]["d"][1])
+        split3 = from_raw(data["ff"]["d"][2])
+        split4 = from_raw(data["ff"]["d"][3])
+        rbs_storage.update([rbs], [], 12)
+        splits_storage.update([split1, split2, split3, split4], [], 12)
+        segment = segments.from_raw({'name': 'segment-test', 'added': ['pato@split.io'], 'removed': [], 'till': 123})
+        segment_storage.put(segment)
+
+        ctx = evaluation_facctory.context_for('bilal@split.io', ['test_prereq'])
+        assert e.eval_with_context('bilal@split.io', 'bilal@split.io', 'test_prereq', {'email': 'bilal@split.io'}, ctx)['treatment'] == "on"
+        assert e.eval_with_context('bilal@split.io', 'bilal@split.io', 'test_prereq', {}, ctx)['treatment'] == "def_treatment"
+
+        ctx = evaluation_facctory.context_for('mauro@split.io', ['test_prereq'])
+        assert e.eval_with_context('mauro@split.io', 'mauro@split.io', 'test_prereq', {'email': 'mauro@split.io'}, ctx)['treatment'] == "def_treatment"
+
+        ctx = evaluation_facctory.context_for('pato@split.io', ['test_prereq'])        
+        assert e.eval_with_context('pato@split.io', 'pato@split.io', 'test_prereq', {'email': 'pato@split.io'}, ctx)['treatment'] == "def_treatment"
+
+        ctx = evaluation_facctory.context_for('nico@split.io', ['test_prereq'])        
+        assert e.eval_with_context('nico@split.io', 'nico@split.io', 'test_prereq', {'email': 'nico@split.io'}, ctx)['treatment'] == "on"
+
+        ctx = evaluation_facctory.context_for('bilal@split.io', ['prereq_chain'])
+        assert e.eval_with_context('bilal@split.io', 'bilal@split.io', 'prereq_chain', {'email': 'bilal@split.io'}, ctx)['treatment'] == "on_whitelist"
+
+        ctx = evaluation_facctory.context_for('nico@split.io', ['prereq_chain'])        
+        assert e.eval_with_context('nico@split.io', 'nico@split.io', 'test_prereq', {'email': 'nico@split.io'}, ctx)['treatment'] == "on"
+
+        ctx = evaluation_facctory.context_for('pato@split.io', ['prereq_chain'])
+        assert e.eval_with_context('pato@split.io', 'pato@split.io', 'prereq_chain', {'email': 'pato@split.io'}, ctx)['treatment'] == "on_default"
+
+        ctx = evaluation_facctory.context_for('mauro@split.io', ['prereq_chain'])
+        assert e.eval_with_context('mauro@split.io', 'mauro@split.io', 'prereq_chain', {'email': 'mauro@split.io'}, ctx)['treatment'] == "on_default"
+                
     @pytest.mark.asyncio
     async def test_evaluate_treatment_with_rbs_in_condition_async(self):
         e = evaluator.Evaluator(splitters.Splitter())
@@ -388,16 +444,63 @@ class EvaluatorTests(object):
         ctx = await evaluation_facctory.context_for('bilal2@split.io', ['some'])
         assert e.eval_with_context('bilal2@split.io', 'bilal2@split.io', 'some', {'email': 'bilal2@split.io'}, ctx)['treatment'] == "off"
         
+    @pytest.mark.asyncio
+    async def test_prerequisites(self):
+        splits_load = os.path.join(os.path.dirname(__file__), '../models/grammar/files', 'splits_prereq.json')
+        with open(splits_load, 'r') as flo:
+            data = json.loads(flo.read())
+        e = evaluator.Evaluator(splitters.Splitter())
+        splits_storage = InMemorySplitStorageAsync()
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        evaluation_facctory = AsyncEvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
+                    
+        rbs = rule_based_segments.from_raw(data["rbs"]["d"][0])
+        split1 = from_raw(data["ff"]["d"][0])
+        split2 = from_raw(data["ff"]["d"][1])
+        split3 = from_raw(data["ff"]["d"][2])
+        split4 = from_raw(data["ff"]["d"][3])
+        await rbs_storage.update([rbs], [], 12)
+        await splits_storage.update([split1, split2, split3, split4], [], 12)
+        segment = segments.from_raw({'name': 'segment-test', 'added': ['pato@split.io'], 'removed': [], 'till': 123})
+        await segment_storage.put(segment)
+
+        ctx = await evaluation_facctory.context_for('bilal@split.io', ['test_prereq'])
+        assert e.eval_with_context('bilal@split.io', 'bilal@split.io', 'test_prereq', {'email': 'bilal@split.io'}, ctx)['treatment'] == "on"
+        assert e.eval_with_context('bilal@split.io', 'bilal@split.io', 'test_prereq', {}, ctx)['treatment'] == "def_treatment"
+
+        ctx = await evaluation_facctory.context_for('mauro@split.io', ['test_prereq'])
+        assert e.eval_with_context('mauro@split.io', 'mauro@split.io', 'test_prereq', {'email': 'mauro@split.io'}, ctx)['treatment'] == "def_treatment"
+
+        ctx = await evaluation_facctory.context_for('pato@split.io', ['test_prereq'])        
+        assert e.eval_with_context('pato@split.io', 'pato@split.io', 'test_prereq', {'email': 'pato@split.io'}, ctx)['treatment'] == "def_treatment"
+
+        ctx = await evaluation_facctory.context_for('nico@split.io', ['test_prereq'])        
+        assert e.eval_with_context('nico@split.io', 'nico@split.io', 'test_prereq', {'email': 'nico@split.io'}, ctx)['treatment'] == "on"
+
+        ctx = await evaluation_facctory.context_for('bilal@split.io', ['prereq_chain'])
+        assert e.eval_with_context('bilal@split.io', 'bilal@split.io', 'prereq_chain', {'email': 'bilal@split.io'}, ctx)['treatment'] == "on_whitelist"
+
+        ctx = await evaluation_facctory.context_for('nico@split.io', ['prereq_chain'])        
+        assert e.eval_with_context('nico@split.io', 'nico@split.io', 'test_prereq', {'email': 'nico@split.io'}, ctx)['treatment'] == "on"
+
+        ctx = await evaluation_facctory.context_for('pato@split.io', ['prereq_chain'])
+        assert e.eval_with_context('pato@split.io', 'pato@split.io', 'prereq_chain', {'email': 'pato@split.io'}, ctx)['treatment'] == "on_default"
+
+        ctx = await evaluation_facctory.context_for('mauro@split.io', ['prereq_chain'])
+        assert e.eval_with_context('mauro@split.io', 'mauro@split.io', 'prereq_chain', {'email': 'mauro@split.io'}, ctx)['treatment'] == "on_default"
+                        
 class EvaluationDataFactoryTests(object):
     """Test evaluation factory class."""
     
     def test_get_context(self):
         """Test context."""
-        mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False)
+        mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False, [Prerequisites('split2', ['on'])])
+        split2 = Split('split2', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False, [])
         flag_storage = InMemorySplitStorage([])
         segment_storage = InMemorySegmentStorage()
         rbs_segment_storage = InMemoryRuleBasedSegmentStorage()
-        flag_storage.update([mocked_split], [], -1)
+        flag_storage.update([mocked_split, split2], [], -1)
         rbs = copy.deepcopy(rbs_raw)
         rbs['conditions'].append(
         {"matcherGroup": {
@@ -421,6 +524,7 @@ class EvaluationDataFactoryTests(object):
         ec = eval_factory.context_for('bilal@split.io', ['some'])
         assert ec.rbs_segments == {'sample_rule_based_segment': rbs}
         assert ec.segment_memberships == {"employees": False}
+        assert ec.flags.get("split2").name == "split2"
         
         segment_storage.update("employees", {"mauro@split.io"}, {}, 1234)
         ec = eval_factory.context_for('mauro@split.io', ['some'])
@@ -433,11 +537,12 @@ class EvaluationDataFactoryAsyncTests(object):
     @pytest.mark.asyncio
     async def test_get_context(self):
         """Test context."""
-        mocked_split = Split('some', 123, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False)
+        mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False, [Prerequisites('split2', ['on'])])
+        split2 = Split('split2', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False, [])
         flag_storage = InMemorySplitStorageAsync([])
         segment_storage = InMemorySegmentStorageAsync()
         rbs_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
-        await flag_storage.update([mocked_split], [], -1)
+        await flag_storage.update([mocked_split, split2], [], -1)
         rbs = copy.deepcopy(rbs_raw)
         rbs['conditions'].append(
         {"matcherGroup": {
@@ -461,6 +566,7 @@ class EvaluationDataFactoryAsyncTests(object):
         ec = await eval_factory.context_for('bilal@split.io', ['some'])
         assert ec.rbs_segments == {'sample_rule_based_segment': rbs}
         assert ec.segment_memberships == {"employees": False}
+        assert ec.flags.get("split2").name == "split2"
         
         await segment_storage.update("employees", {"mauro@split.io"}, {}, 1234)
         ec = await eval_factory.context_for('mauro@split.io', ['some'])
