@@ -23,7 +23,8 @@
                                 "userDefinedSegmentMatcherData": null,
                                 "whitelistMatcherData": {
                                     "whitelist": [
-                                        "whitelisted_user"
+                                        "whitelisted_user",
+                                        "user1234"
                                     ]
                                 }
                             }
@@ -394,7 +395,50 @@
             "configurations": {},
             "sets": [],
             "impressionsDisabled": false
-          }        
+          },
+        {
+            "orgId": null,
+            "environment": null,
+            "trafficTypeId": null,
+            "trafficTypeName": null,
+            "name": "prereq_feature",
+            "seed": 1699838640,
+            "status": "ACTIVE",
+            "killed": false,
+            "changeNumber": 123,
+            "defaultTreatment": "off_default",
+            "conditions": [
+                {
+                    "conditionType": "ROLLOUT",
+                    "matcherGroup": {
+                        "combiner": "AND",
+                        "matchers": [
+                            {
+                                "matcherType": "ALL_KEYS",
+                                "negate": false,
+                                "userDefinedSegmentMatcherData": null,
+                                "whitelistMatcherData": null
+                            }
+                        ]
+                    },
+                    "partitions": [
+                        {
+                            "treatment": "on",
+                            "size": 100
+                        },
+                        {
+                            "treatment": "off",
+                            "size": 0
+                        }
+                    ]
+                }
+            ],
+            "sets": [],
+            "prerequisites": [
+                {"n": "regex_test", "ts": ["on"]},
+                {"n": "whitelist_feature", "ts": ["off"]}
+            ]
+        }
     ],
     "s": -1,
     "t": 1457726098069

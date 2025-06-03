@@ -171,6 +171,16 @@ def _get_treatment(factory, skip_rbs=False):
     if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
         _validate_last_impressions(client, ('rbs_feature_flag', 'mauro@split.io', 'off'))
 
+    # test prerequisites matcher
+    assert client.get_treatment('abc4', 'prereq_feature') == 'on'
+    if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
+        _validate_last_impressions(client, ('prereq_feature', 'abc4', 'on'))
+
+    # test prerequisites matcher
+    assert client.get_treatment('user1234', 'prereq_feature') == 'off_default'
+    if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
+        _validate_last_impressions(client, ('prereq_feature', 'user1234', 'off_default'))
+
 def _get_treatment_with_config(factory):
     """Test client.get_treatment_with_config()."""
     try:
@@ -460,8 +470,8 @@ def _manager_methods(factory, skip_rbs=False):
         assert len(manager.splits()) == 7
         return
 
-    assert len(manager.split_names()) == 8
-    assert len(manager.splits()) == 8
+    assert len(manager.split_names()) == 9
+    assert len(manager.splits()) == 9
 
 class InMemoryDebugIntegrationTests(object):
     """Inmemory storage-based integration tests."""
@@ -4458,6 +4468,16 @@ async def _get_treatment_async(factory, skip_rbs=False):
 
     if skip_rbs:
         return
+
+    # test prerequisites matcher
+    assert await client.get_treatment('abc4', 'prereq_feature') == 'on'
+    if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
+        await _validate_last_impressions_async(client, ('prereq_feature', 'abc4', 'on'))
+
+    # test prerequisites matcher
+    assert await client.get_treatment('user1234', 'prereq_feature') == 'off_default'
+    if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
+        await _validate_last_impressions_async(client, ('prereq_feature', 'user1234', 'off_default'))
     
     # test rule based segment matcher
     assert await client.get_treatment('bilal@split.io', 'rbs_feature_flag', {'email': 'bilal@split.io'}) == 'on'
@@ -4758,5 +4778,5 @@ async def _manager_methods_async(factory, skip_rbs=False):
         assert len(await manager.splits()) == 7
         return
     
-    assert len(await manager.split_names()) == 8
-    assert len(await manager.splits()) == 8
+    assert len(await manager.split_names()) == 9
+    assert len(await manager.splits()) == 9
