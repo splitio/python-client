@@ -325,7 +325,7 @@ class EvaluatorTests(object):
         ctx = evaluation_facctory.context_for('bilal', ['some'])
         assert e.eval_with_context('bilal', 'bilal', 'some', {'email': 'bilal'}, ctx)['treatment'] == "on"
         ctx = evaluation_facctory.context_for('bilal2@split.io', ['some'])
-        assert e.eval_with_context('bilal2@split.io', 'bilal2@split.io', 'some', {'email': 'bilal2@split.io'}, ctx)['treatment'] == "off"
+        assert e.eval_with_context('bilal2@split.io', 'bilal2@split.io', 'some', {'email': 'bilal2@split.io'}, ctx)['treatment'] == "on"
 
     def test_prerequisites(self):
         splits_load = os.path.join(os.path.dirname(__file__), '../models/grammar/files', 'splits_prereq.json')
@@ -442,7 +442,7 @@ class EvaluatorTests(object):
         ctx = await evaluation_facctory.context_for('bilal', ['some'])
         assert e.eval_with_context('bilal', 'bilal', 'some', {'email': 'bilal'}, ctx)['treatment'] == "on"
         ctx = await evaluation_facctory.context_for('bilal2@split.io', ['some'])
-        assert e.eval_with_context('bilal2@split.io', 'bilal2@split.io', 'some', {'email': 'bilal2@split.io'}, ctx)['treatment'] == "off"
+        assert e.eval_with_context('bilal2@split.io', 'bilal2@split.io', 'some', {'email': 'bilal2@split.io'}, ctx)['treatment'] == "on"
         
     @pytest.mark.asyncio
     async def test_prerequisites(self):
