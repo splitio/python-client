@@ -16,7 +16,7 @@ concurrency:
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     services:
       redis:
         image: redis
@@ -31,11 +31,10 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v3
         with:
-          python-version: '3.8.18'
+          python-version: '3.7.16'
 
       - name: Install dependencies
         run: |
-            sudo apt-get install -y libkrb5-dev
             pip install -U setuptools pip wheel
             pip install -e .[cpphash,redis,uwsgi]
 
