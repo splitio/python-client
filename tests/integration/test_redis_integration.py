@@ -28,7 +28,7 @@ class RedisSplitStorageTests(object):
             with open(os.path.join(os.path.dirname(__file__), 'files', 'split_changes.json'), 'r') as flo:
                 split_changes = json.load(flo)
 
-            split_objects = [splits.from_raw(raw) for raw in split_changes['splits']]
+            split_objects = [splits.from_raw(raw) for raw in split_changes['ff']['d']]
             for split_object in split_objects:
                 raw = split_object.to_json()
                 adapter.set(RedisSplitStorage._FEATURE_FLAG_KEY.format(feature_flag_name=split_object.name), json.dumps(raw))
@@ -55,8 +55,8 @@ class RedisSplitStorageTests(object):
                     assert len(original_condition.matchers) == len(fetched_condition.matchers)
                     assert len(original_condition.partitions) == len(fetched_condition.partitions)
 
-            adapter.set(RedisSplitStorage._FEATURE_FLAG_TILL_KEY, split_changes['till'])
-            assert storage.get_change_number() == split_changes['till']
+            adapter.set(RedisSplitStorage._FEATURE_FLAG_TILL_KEY, split_changes['ff']['t'])
+            assert storage.get_change_number() == split_changes['ff']['t']
 
             assert storage.is_valid_traffic_type('user') is True
             assert storage.is_valid_traffic_type('account') is True
@@ -93,7 +93,7 @@ class RedisSplitStorageTests(object):
             with open(os.path.join(os.path.dirname(__file__), 'files', 'split_changes.json'), 'r') as flo:
                 split_changes = json.load(flo)
 
-            split_objects = [splits.from_raw(raw) for raw in split_changes['splits']]
+            split_objects = [splits.from_raw(raw) for raw in split_changes['ff']['d']]
             for split_object in split_objects:
                 raw = split_object.to_json()
                 adapter.set(RedisSplitStorage._FEATURE_FLAG_KEY.format(feature_flag_name=split_object.name), json.dumps(raw))
@@ -262,7 +262,7 @@ class RedisSplitStorageAsyncTests(object):
             with open(os.path.join(os.path.dirname(__file__), 'files', 'split_changes.json'), 'r') as flo:
                 split_changes = json.load(flo)
 
-            split_objects = [splits.from_raw(raw) for raw in split_changes['splits']]
+            split_objects = [splits.from_raw(raw) for raw in split_changes['ff']['d']]
             for split_object in split_objects:
                 raw = split_object.to_json()
                 await adapter.set(RedisSplitStorage._FEATURE_FLAG_KEY.format(feature_flag_name=split_object.name), json.dumps(raw))
@@ -289,8 +289,8 @@ class RedisSplitStorageAsyncTests(object):
                     assert len(original_condition.matchers) == len(fetched_condition.matchers)
                     assert len(original_condition.partitions) == len(fetched_condition.partitions)
 
-            await adapter.set(RedisSplitStorageAsync._FEATURE_FLAG_TILL_KEY, split_changes['till'])
-            assert await storage.get_change_number() == split_changes['till']
+            await adapter.set(RedisSplitStorageAsync._FEATURE_FLAG_TILL_KEY, split_changes['ff']['t'])
+            assert await storage.get_change_number() == split_changes['ff']['t']
 
             assert await storage.is_valid_traffic_type('user') is True
             assert await storage.is_valid_traffic_type('account') is True
@@ -326,7 +326,7 @@ class RedisSplitStorageAsyncTests(object):
             with open(os.path.join(os.path.dirname(__file__), 'files', 'split_changes.json'), 'r') as flo:
                 split_changes = json.load(flo)
 
-            split_objects = [splits.from_raw(raw) for raw in split_changes['splits']]
+            split_objects = [splits.from_raw(raw) for raw in split_changes['ff']['d']]
             for split_object in split_objects:
                 raw = split_object.to_json()
                 await adapter.set(RedisSplitStorageAsync._FEATURE_FLAG_KEY.format(feature_flag_name=split_object.name), json.dumps(raw))

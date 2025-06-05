@@ -1,5 +1,6 @@
 """Client integration tests."""
 # pylint: disable=protected-access,line-too-long,no-self-use
+from asyncio import Queue
 import json
 import os
 import threading
@@ -15,15 +16,17 @@ from splitio.client.util import SdkMetadata
 from splitio.storage.inmemmory import InMemoryEventStorage, InMemoryImpressionStorage, \
     InMemorySegmentStorage, InMemorySplitStorage, InMemoryTelemetryStorage, InMemorySplitStorageAsync,\
     InMemoryEventStorageAsync, InMemoryImpressionStorageAsync, InMemorySegmentStorageAsync, \
-    InMemoryTelemetryStorageAsync
+    InMemoryTelemetryStorageAsync, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync 
 from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \
     RedisSplitStorage, RedisSegmentStorage, RedisTelemetryStorage, RedisEventsStorageAsync,\
-    RedisImpressionsStorageAsync, RedisSegmentStorageAsync, RedisSplitStorageAsync, RedisTelemetryStorageAsync
+    RedisImpressionsStorageAsync, RedisSegmentStorageAsync, RedisSplitStorageAsync, RedisTelemetryStorageAsync, \
+    RedisRuleBasedSegmentsStorage, RedisRuleBasedSegmentsStorageAsync
 from splitio.storage.pluggable import PluggableEventsStorage, PluggableImpressionsStorage, PluggableSegmentStorage, \
     PluggableTelemetryStorage, PluggableSplitStorage, PluggableEventsStorageAsync, PluggableImpressionsStorageAsync, \
-    PluggableSegmentStorageAsync, PluggableSplitStorageAsync, PluggableTelemetryStorageAsync
+    PluggableSegmentStorageAsync, PluggableSplitStorageAsync, PluggableTelemetryStorageAsync, \
+    PluggableRuleBasedSegmentsStorage, PluggableRuleBasedSegmentsStorageAsync
 from splitio.storage.adapters.redis import build, RedisAdapter, RedisAdapterAsync, build_async
-from splitio.models import splits, segments
+from splitio.models import splits, segments, rule_based_segments
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager, ImpressionsMode
 from splitio.engine.impressions import set_classes, set_classes_async
 from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyOptimizedMode, StrategyNoneMode
@@ -39,6 +42,7 @@ from splitio.sync.manager import Manager, RedisManager, ManagerAsync, RedisManag
 from splitio.sync.synchronizer import PluggableSynchronizer, PluggableSynchronizerAsync
 from splitio.sync.telemetry import RedisTelemetrySubmitter, RedisTelemetrySubmitterAsync
 
+from tests.helpers.mockserver import SplitMockServer
 from tests.integration import splits_json
 from tests.storage.test_pluggable import StorageMockAdapter, StorageMockAdapterAsync
 
@@ -97,7 +101,7 @@ def _validate_last_events(client, *to_validate):
         as_tup_set = set((i.key, i.traffic_type_name, i.event_type_id, i.value, str(i.properties)) for i in events)
         assert as_tup_set == set(to_validate)
 
-def _get_treatment(factory):
+def _get_treatment(factory, skip_rbs=False):
     """Test client.get_treatment()."""
     try:
         client = factory.client()
@@ -153,6 +157,29 @@ def _get_treatment(factory):
     assert client.get_treatment('abc4', 'regex_test') == 'on'
     if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
         _validate_last_impressions(client, ('regex_test', 'abc4', 'on'))
+
+    if skip_rbs: 
+        return
+
+    # test rule based segment matcher
+    assert client.get_treatment('bilal@split.io', 'rbs_feature_flag', {'email': 'bilal@split.io'}) == 'on'
+    if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
+        _validate_last_impressions(client, ('rbs_feature_flag', 'bilal@split.io', 'on'))
+
+    # test rule based segment matcher
+    assert client.get_treatment('mauro@split.io', 'rbs_feature_flag', {'email': 'mauro@split.io'}) == 'off'
+    if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
+        _validate_last_impressions(client, ('rbs_feature_flag', 'mauro@split.io', 'off'))
+
+    # test prerequisites matcher
+    assert client.get_treatment('abc4', 'prereq_feature') == 'on'
+    if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
+        _validate_last_impressions(client, ('prereq_feature', 'abc4', 'on'))
+
+    # test prerequisites matcher
+    assert client.get_treatment('user1234', 'prereq_feature') == 'off_default'
+    if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
+        _validate_last_impressions(client, ('prereq_feature', 'user1234', 'off_default'))
 
 def _get_treatment_with_config(factory):
     """Test client.get_treatment_with_config()."""
@@ -407,7 +434,7 @@ def _track(factory):
         ('user1', 'user', 'conversion', 1, "{'prop1': 'value1'}")
     )
 
-def _manager_methods(factory):
+def _manager_methods(factory, skip_rbs=False):
     """Test manager.split/splits."""
     try:
         manager = factory.manager()
@@ -438,8 +465,13 @@ def _manager_methods(factory):
     assert result.change_number == 123
     assert result.configs['on'] == '{"size":15,"test":20}'
 
-    assert len(manager.split_names()) == 7
-    assert len(manager.splits()) == 7
+    if skip_rbs: 
+        assert len(manager.split_names()) == 7
+        assert len(manager.splits()) == 7
+        return
+
+    assert len(manager.split_names()) == 9
+    assert len(manager.splits()) == 9
 
 class InMemoryDebugIntegrationTests(object):
     """Inmemory storage-based integration tests."""
@@ -448,12 +480,16 @@ class InMemoryDebugIntegrationTests(object):
         """Prepare storages with test data."""
         split_storage = InMemorySplitStorage()
         segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
 
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
             data = json.loads(flo.read())
-        for split in data['splits']:
+        for split in data['ff']['d']:
             split_storage.update([splits.from_raw(split)], [], 0)
+
+        for rbs in data['rbs']['d']:
+            rb_segment_storage.update([rule_based_segments.from_raw(rbs)], [], 0)
 
         segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
         with open(segment_fn, 'r') as flo:
@@ -473,6 +509,7 @@ class InMemoryDebugIntegrationTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
             'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
         }
@@ -604,12 +641,15 @@ class InMemoryOptimizedIntegrationTests(object):
         """Prepare storages with test data."""
         split_storage = InMemorySplitStorage()
         segment_storage = InMemorySegmentStorage()
-
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
             data = json.loads(flo.read())
-        for split in data['splits']:
+        for split in data['ff']['d']:
             split_storage.update([splits.from_raw(split)], [], 0)
+
+        for rbs in data['rbs']['d']:
+            rb_segment_storage.update([rule_based_segments.from_raw(rbs)], [], 0)
 
         segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
         with open(segment_fn, 'r') as flo:
@@ -629,6 +669,7 @@ class InMemoryOptimizedIntegrationTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
             'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
         }
@@ -724,6 +765,159 @@ class InMemoryOptimizedIntegrationTests(object):
         """Test client.track()."""
         _track(self.factory)
 
+class InMemoryOldSpecIntegrationTests(object):
+    """Inmemory storage-based integration tests."""
+
+    def setup_method(self):
+        """Prepare storages with test data."""
+
+        split_fn = os.path.join(os.path.dirname(__file__), 'files', 'split_old_spec.json')
+        with open(split_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        
+        split_changes = {
+            -1: data,
+            1457726098069: {"splits": [], "till": 1457726098069, "since": 1457726098069}
+        }
+
+        segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
+        with open(segment_fn, 'r') as flo:
+            segment_employee = json.loads(flo.read())
+
+        segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentHumanBeignsChanges.json')
+        with open(segment_fn, 'r') as flo:
+            segment_human = json.loads(flo.read())
+            
+        segment_changes = {
+            ("employees", -1): segment_employee,
+            ("employees", 1457474612832): {"name": "employees","added": [],"removed": [],"since": 1457474612832,"till": 1457474612832},
+            ("human_beigns", -1): segment_human,
+            ("human_beigns", 1457102183278): {"name": "employees","added": [],"removed": [],"since": 1457102183278,"till": 1457102183278},
+        }
+
+        split_backend_requests = Queue()
+        self.split_backend = SplitMockServer(split_changes, segment_changes, split_backend_requests,
+                                        {'auth_response': {'pushEnabled': False}}, True)
+        self.split_backend.start()
+
+        kwargs = {
+            'sdk_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
+            'events_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
+            'auth_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
+            'config': {'connectTimeout': 10000, 'streamingEnabled': False, 'impressionsMode': 'debug'}
+        }
+
+        self.factory = get_factory('some_apikey', **kwargs)
+        self.factory.block_until_ready(1)
+        assert self.factory.ready
+
+    def teardown_method(self):
+        """Shut down the factory."""
+        event = threading.Event()
+        self.factory.destroy(event)
+        event.wait()
+        self.split_backend.stop()
+        time.sleep(1)
+
+    def test_get_treatment(self):
+        """Test client.get_treatment()."""
+        _get_treatment(self.factory, True)
+
+    def test_get_treatment_with_config(self):
+        """Test client.get_treatment_with_config()."""
+        _get_treatment_with_config(self.factory)
+
+    def test_get_treatments(self):
+        _get_treatments(self.factory)
+            # testing multiple splitNames
+        client = self.factory.client()
+        result = client.get_treatments('invalidKey', [
+            'all_feature',
+            'killed_feature',
+            'invalid_feature',
+            'sample_feature'
+        ])
+        assert len(result) == 4
+        assert result['all_feature'] == 'on'
+        assert result['killed_feature'] == 'defTreatment'
+        assert result['invalid_feature'] == 'control'
+        assert result['sample_feature'] == 'off'
+        _validate_last_impressions(
+            client,
+            ('all_feature', 'invalidKey', 'on'),
+            ('killed_feature', 'invalidKey', 'defTreatment'),
+            ('sample_feature', 'invalidKey', 'off')
+        )
+
+    def test_get_treatments_with_config(self):
+        """Test client.get_treatments_with_config()."""
+        _get_treatments_with_config(self.factory)
+        # testing multiple splitNames
+        client = self.factory.client()
+        result = client.get_treatments_with_config('invalidKey', [
+            'all_feature',
+            'killed_feature',
+            'invalid_feature',
+            'sample_feature'
+        ])
+        assert len(result) == 4
+        assert result['all_feature'] == ('on', None)
+        assert result['killed_feature'] == ('defTreatment', '{"size":15,"defTreatment":true}')
+        assert result['invalid_feature'] == ('control', None)
+        assert result['sample_feature'] == ('off', None)
+        _validate_last_impressions(
+            client,
+            ('all_feature', 'invalidKey', 'on'),
+            ('killed_feature', 'invalidKey', 'defTreatment'),
+            ('sample_feature', 'invalidKey', 'off'),
+        )
+
+    def test_get_treatments_by_flag_set(self):
+        """Test client.get_treatments_by_flag_set()."""
+        _get_treatments_by_flag_set(self.factory)
+
+    def test_get_treatments_by_flag_sets(self):
+        """Test client.get_treatments_by_flag_sets()."""
+        _get_treatments_by_flag_sets(self.factory)
+        client = self.factory.client()
+        result = client.get_treatments_by_flag_sets('user1', ['set1', 'set2', 'set4'])
+        assert len(result) == 3
+        assert result == {'sample_feature': 'on',
+                            'whitelist_feature': 'off',
+                            'all_feature': 'on'
+                            }
+        _validate_last_impressions(client, ('sample_feature', 'user1', 'on'),
+                                        ('whitelist_feature', 'user1', 'off'),
+                                        ('all_feature', 'user1', 'on')
+                                        )
+
+    def test_get_treatments_with_config_by_flag_set(self):
+        """Test client.get_treatments_with_config_by_flag_set()."""
+        _get_treatments_with_config_by_flag_set(self.factory)
+
+    def test_get_treatments_with_config_by_flag_sets(self):
+        """Test client.get_treatments_with_config_by_flag_sets()."""
+        _get_treatments_with_config_by_flag_sets(self.factory)
+        client = self.factory.client()
+        result = client.get_treatments_with_config_by_flag_sets('user1', ['set1', 'set2', 'set4'])
+        assert len(result) == 3
+        assert result == {'sample_feature': ('on', '{"size":15,"test":20}'),
+                            'whitelist_feature': ('off', None),
+                            'all_feature': ('on', None)
+                            }
+        _validate_last_impressions(client, ('sample_feature', 'user1', 'on'),
+                                        ('whitelist_feature', 'user1', 'off'),
+                                        ('all_feature', 'user1', 'on')
+                                        )
+
+    def test_track(self):
+        """Test client.track()."""
+        _track(self.factory)
+
+    def test_manager_methods(self):
+        """Test manager.split/splits."""
+        _manager_methods(self.factory, True)
+        
 class RedisIntegrationTests(object):
     """Redis storage-based integration tests."""
 
@@ -733,16 +927,20 @@ class RedisIntegrationTests(object):
         redis_client = build(DEFAULT_CONFIG.copy())
         split_storage = RedisSplitStorage(redis_client)
         segment_storage = RedisSegmentStorage(redis_client)
+        rb_segment_storage = RedisRuleBasedSegmentsStorage(redis_client)
 
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
             data = json.loads(flo.read())
-        for split in data['splits']:
+        for split in data['ff']['d']:
             redis_client.set(split_storage._get_key(split['name']), json.dumps(split))
             if split.get('sets') is not None:
                 for flag_set in split.get('sets'):
                     redis_client.sadd(split_storage._get_flag_set_key(flag_set), split['name'])
-        redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, data['till'])
+        redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, data['ff']['t'])
+
+        for rbs in data['rbs']['d']:
+            redis_client.set(rb_segment_storage._get_key(rbs['name']), json.dumps(rbs))
 
         segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
         with open(segment_fn, 'r') as flo:
@@ -763,6 +961,7 @@ class RedisIntegrationTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
             'impressions': RedisImpressionsStorage(redis_client, metadata),
             'events': RedisEventsStorage(redis_client, metadata),
         }
@@ -899,7 +1098,10 @@ class RedisIntegrationTests(object):
             "SPLITIO.split.set.set1",
             "SPLITIO.split.set.set2",
             "SPLITIO.split.set.set3",
-            "SPLITIO.split.set.set4"
+            "SPLITIO.split.set.set4",
+            "SPLITIO.split.rbs_feature_flag",
+            "SPLITIO.rbsegments.till",
+            "SPLITIO.rbsegments.sample_rule_based_segment"
         ]
 
         redis_client = RedisAdapter(StrictRedis())
@@ -915,13 +1117,17 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
         redis_client = build(DEFAULT_CONFIG.copy())
         split_storage = RedisSplitStorage(redis_client, True)
         segment_storage = RedisSegmentStorage(redis_client)
+        rb_segment_storage = RedisRuleBasedSegmentsStorage(redis_client)
 
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
             data = json.loads(flo.read())
-        for split in data['splits']:
+        for split in data['ff']['d']:
             redis_client.set(split_storage._get_key(split['name']), json.dumps(split))
-        redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, data['till'])
+        redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, data['ff']['t'])
+
+        for rbs in data['rbs']['d']:
+            redis_client.set(rb_segment_storage._get_key(rbs['name']), json.dumps(rbs))
 
         segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
         with open(segment_fn, 'r') as flo:
@@ -943,6 +1149,7 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
             'impressions': RedisImpressionsStorage(redis_client, metadata),
             'events': RedisEventsStorage(redis_client, metadata),
         }
@@ -1069,6 +1276,12 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
         assert client.get_treatment("key", "SPLIT_1", None) == 'control'
         assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
+        # rule based segment test
+        self._update_temp_file(splits_json['splitChange7_1'])
+        self._synchronize_now()
+        assert client.get_treatment('bilal@split.io', 'rbs_feature_flag', {'email': 'bilal@split.io'}) == 'on'
+        assert client.get_treatment('mauro@split.io', 'rbs_feature_flag', {'email': 'mauro@split.io'}) == 'off'
+
     def _update_temp_file(self, json_body):
         f = open(os.path.join(os.path.dirname(__file__), 'files','split_changes_temp.json'), 'w')
         f.write(json.dumps(json_body))
@@ -1106,7 +1319,6 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
         factory.destroy(event)
         event.wait()
 
-
     def test_localhost_e2e(self):
         """Instantiate a client with a YAML file and issue get_treatment() calls."""
         filename = os.path.join(os.path.dirname(__file__), 'files', 'file2.yaml')
@@ -1136,7 +1348,6 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
         factory.destroy(event)
         event.wait()
 
-
 class PluggableIntegrationTests(object):
     """Pluggable storage-based integration tests."""
 
@@ -1146,6 +1357,7 @@ class PluggableIntegrationTests(object):
         self.pluggable_storage_adapter = StorageMockAdapter()
         split_storage = PluggableSplitStorage(self.pluggable_storage_adapter)
         segment_storage = PluggableSegmentStorage(self.pluggable_storage_adapter)
+        rb_segment_storage = PluggableRuleBasedSegmentsStorage(self.pluggable_storage_adapter)
 
         telemetry_pluggable_storage = PluggableTelemetryStorage(self.pluggable_storage_adapter, metadata)
         telemetry_producer = TelemetryStorageProducer(telemetry_pluggable_storage)
@@ -1155,6 +1367,7 @@ class PluggableIntegrationTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
             'impressions': PluggableImpressionsStorage(self.pluggable_storage_adapter, metadata),
             'events': PluggableEventsStorage(self.pluggable_storage_adapter, metadata),
             'telemetry': telemetry_pluggable_storage
@@ -1178,12 +1391,15 @@ class PluggableIntegrationTests(object):
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
             data = json.loads(flo.read())
-        for split in data['splits']:
+        for split in data['ff']['d']:
             self.pluggable_storage_adapter.set(split_storage._prefix.format(feature_flag_name=split['name']), split)
             if split.get('sets') is not None:
                 for flag_set in split.get('sets'):
                     self.pluggable_storage_adapter.push_items(split_storage._flag_set_prefix.format(flag_set=flag_set), split['name'])
-        self.pluggable_storage_adapter.set(split_storage._feature_flag_till_prefix, data['till'])
+        self.pluggable_storage_adapter.set(split_storage._feature_flag_till_prefix, data['ff']['t'])
+
+        for rbs in data['rbs']['d']:
+            self.pluggable_storage_adapter.set(rb_segment_storage._prefix.format(segment_name=rbs['name']), rbs)
 
         segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
         with open(segment_fn, 'r') as flo:
@@ -1319,7 +1535,10 @@ class PluggableIntegrationTests(object):
             "SPLITIO.split.set.set1",
             "SPLITIO.split.set.set2",
             "SPLITIO.split.set.set3",
-            "SPLITIO.split.set.set4"
+            "SPLITIO.split.set.set4",
+            "SPLITIO.split.rbs_feature_flag",
+            "SPLITIO.rbsegments.till",
+            "SPLITIO.rbsegments.sample_rule_based_segment"            
         ]
         for key in keys_to_delete:
             self.pluggable_storage_adapter.delete(key)
@@ -1333,6 +1552,7 @@ class PluggableOptimizedIntegrationTests(object):
         self.pluggable_storage_adapter = StorageMockAdapter()
         split_storage = PluggableSplitStorage(self.pluggable_storage_adapter)
         segment_storage = PluggableSegmentStorage(self.pluggable_storage_adapter)
+        rb_segment_storage = PluggableRuleBasedSegmentsStorage(self.pluggable_storage_adapter)
 
         telemetry_pluggable_storage = PluggableTelemetryStorage(self.pluggable_storage_adapter, metadata)
         telemetry_producer = TelemetryStorageProducer(telemetry_pluggable_storage)
@@ -1342,6 +1562,7 @@ class PluggableOptimizedIntegrationTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage, 
             'impressions': PluggableImpressionsStorage(self.pluggable_storage_adapter, metadata),
             'events': PluggableEventsStorage(self.pluggable_storage_adapter, metadata),
             'telemetry': telemetry_pluggable_storage
@@ -1365,12 +1586,15 @@ class PluggableOptimizedIntegrationTests(object):
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
             data = json.loads(flo.read())
-        for split in data['splits']:
+        for split in data['ff']['d']:
             if split.get('sets') is not None:
                 for flag_set in split.get('sets'):
                     self.pluggable_storage_adapter.push_items(split_storage._flag_set_prefix.format(flag_set=flag_set), split['name'])
             self.pluggable_storage_adapter.set(split_storage._prefix.format(feature_flag_name=split['name']), split)
-        self.pluggable_storage_adapter.set(split_storage._feature_flag_till_prefix, data['till'])
+        self.pluggable_storage_adapter.set(split_storage._feature_flag_till_prefix, data['ff']['t'])
+
+        for rbs in data['rbs']['d']:
+            self.pluggable_storage_adapter.set(rb_segment_storage._prefix.format(segment_name=rbs['name']), rbs)
 
         segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
         with open(segment_fn, 'r') as flo:
@@ -1483,7 +1707,10 @@ class PluggableOptimizedIntegrationTests(object):
             "SPLITIO.split.set.set1",
             "SPLITIO.split.set.set2",
             "SPLITIO.split.set.set3",
-            "SPLITIO.split.set.set4"
+            "SPLITIO.split.set.set4",
+            "SPLITIO.split.rbs_feature_flag",
+            "SPLITIO.rbsegments.till",
+            "SPLITIO.rbsegments.sample_rule_based_segment"            
         ]
         for key in keys_to_delete:
             self.pluggable_storage_adapter.delete(key)
@@ -1497,7 +1724,7 @@ class PluggableNoneIntegrationTests(object):
         self.pluggable_storage_adapter = StorageMockAdapter()
         split_storage = PluggableSplitStorage(self.pluggable_storage_adapter)
         segment_storage = PluggableSegmentStorage(self.pluggable_storage_adapter)
-
+        rb_segment_storage = PluggableRuleBasedSegmentsStorage(self.pluggable_storage_adapter)
         telemetry_pluggable_storage = PluggableTelemetryStorage(self.pluggable_storage_adapter, metadata)
         telemetry_producer = TelemetryStorageProducer(telemetry_pluggable_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
@@ -1506,6 +1733,7 @@ class PluggableNoneIntegrationTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
             'impressions': PluggableImpressionsStorage(self.pluggable_storage_adapter, metadata),
             'events': PluggableEventsStorage(self.pluggable_storage_adapter, metadata),
             'telemetry': telemetry_pluggable_storage
@@ -1552,12 +1780,15 @@ class PluggableNoneIntegrationTests(object):
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
             data = json.loads(flo.read())
-        for split in data['splits']:
+        for split in data['ff']['d']:
             if split.get('sets') is not None:
                 for flag_set in split.get('sets'):
                     self.pluggable_storage_adapter.push_items(split_storage._flag_set_prefix.format(flag_set=flag_set), split['name'])
             self.pluggable_storage_adapter.set(split_storage._prefix.format(feature_flag_name=split['name']), split)
-        self.pluggable_storage_adapter.set(split_storage._feature_flag_till_prefix, data['till'])
+        self.pluggable_storage_adapter.set(split_storage._feature_flag_till_prefix, data['ff']['t'])
+
+        for rbs in data['rbs']['d']:
+            self.pluggable_storage_adapter.set(rb_segment_storage._prefix.format(segment_name=rbs['name']), rbs)
 
         segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
         with open(segment_fn, 'r') as flo:
@@ -1668,9 +1899,9 @@ class InMemoryImpressionsToggleIntegrationTests(object):
         split_storage = InMemorySplitStorage()
         segment_storage = InMemorySegmentStorage()
 
-        split_storage.update([splits.from_raw(splits_json['splitChange1_1']['splits'][0]),
-                              splits.from_raw(splits_json['splitChange1_1']['splits'][1]),
-                              splits.from_raw(splits_json['splitChange1_1']['splits'][2])
+        split_storage.update([splits.from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
+                              splits.from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
+                              splits.from_raw(splits_json['splitChange1_1']['ff']['d'][2])
                              ], [], -1)
 
         telemetry_storage = InMemoryTelemetryStorage()
@@ -1681,6 +1912,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': InMemoryRuleBasedSegmentStorage(),
             'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
         }
@@ -1722,9 +1954,9 @@ class InMemoryImpressionsToggleIntegrationTests(object):
         split_storage = InMemorySplitStorage()
         segment_storage = InMemorySegmentStorage()
 
-        split_storage.update([splits.from_raw(splits_json['splitChange1_1']['splits'][0]),
-                              splits.from_raw(splits_json['splitChange1_1']['splits'][1]),
-                              splits.from_raw(splits_json['splitChange1_1']['splits'][2])
+        split_storage.update([splits.from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
+                              splits.from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
+                              splits.from_raw(splits_json['splitChange1_1']['ff']['d'][2])
                              ], [], -1)
 
         telemetry_storage = InMemoryTelemetryStorage()
@@ -1735,6 +1967,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': InMemoryRuleBasedSegmentStorage(),
             'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
         }
@@ -1776,9 +2009,9 @@ class InMemoryImpressionsToggleIntegrationTests(object):
         split_storage = InMemorySplitStorage()
         segment_storage = InMemorySegmentStorage()
 
-        split_storage.update([splits.from_raw(splits_json['splitChange1_1']['splits'][0]),
-                              splits.from_raw(splits_json['splitChange1_1']['splits'][1]),
-                              splits.from_raw(splits_json['splitChange1_1']['splits'][2])
+        split_storage.update([splits.from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
+                              splits.from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
+                              splits.from_raw(splits_json['splitChange1_1']['ff']['d'][2])
                              ], [], -1)
 
         telemetry_storage = InMemoryTelemetryStorage()
@@ -1789,6 +2022,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': InMemoryRuleBasedSegmentStorage(),
             'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
         }
@@ -1838,9 +2072,9 @@ class RedisImpressionsToggleIntegrationTests(object):
         split_storage = RedisSplitStorage(redis_client, True)
         segment_storage = RedisSegmentStorage(redis_client)
 
-        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][0]['name']), json.dumps(splits_json['splitChange1_1']['splits'][0]))
-        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][1]['name']), json.dumps(splits_json['splitChange1_1']['splits'][1]))
-        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][2]['name']), json.dumps(splits_json['splitChange1_1']['splits'][2]))
+        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['ff']['d'][0]['name']), json.dumps(splits_json['splitChange1_1']['ff']['d'][0]))
+        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['ff']['d'][1]['name']), json.dumps(splits_json['splitChange1_1']['ff']['d'][1]))
+        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['ff']['d'][2]['name']), json.dumps(splits_json['splitChange1_1']['ff']['d'][2]))
         redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, -1)
 
         telemetry_redis_storage = RedisTelemetryStorage(redis_client, metadata)
@@ -1851,6 +2085,7 @@ class RedisImpressionsToggleIntegrationTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': RedisRuleBasedSegmentsStorage(redis_client),
             'impressions': RedisImpressionsStorage(redis_client, metadata),
             'events': RedisEventsStorage(redis_client, metadata),
         }
@@ -1901,9 +2136,9 @@ class RedisImpressionsToggleIntegrationTests(object):
         split_storage = RedisSplitStorage(redis_client, True)
         segment_storage = RedisSegmentStorage(redis_client)
 
-        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][0]['name']), json.dumps(splits_json['splitChange1_1']['splits'][0]))
-        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][1]['name']), json.dumps(splits_json['splitChange1_1']['splits'][1]))
-        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][2]['name']), json.dumps(splits_json['splitChange1_1']['splits'][2]))
+        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['ff']['d'][0]['name']), json.dumps(splits_json['splitChange1_1']['ff']['d'][0]))
+        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['ff']['d'][1]['name']), json.dumps(splits_json['splitChange1_1']['ff']['d'][1]))
+        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['ff']['d'][2]['name']), json.dumps(splits_json['splitChange1_1']['ff']['d'][2]))
         redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, -1)
 
         telemetry_redis_storage = RedisTelemetryStorage(redis_client, metadata)
@@ -1914,6 +2149,7 @@ class RedisImpressionsToggleIntegrationTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': RedisRuleBasedSegmentsStorage(redis_client),
             'impressions': RedisImpressionsStorage(redis_client, metadata),
             'events': RedisEventsStorage(redis_client, metadata),
         }
@@ -1964,9 +2200,9 @@ class RedisImpressionsToggleIntegrationTests(object):
         split_storage = RedisSplitStorage(redis_client, True)
         segment_storage = RedisSegmentStorage(redis_client)
 
-        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][0]['name']), json.dumps(splits_json['splitChange1_1']['splits'][0]))
-        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][1]['name']), json.dumps(splits_json['splitChange1_1']['splits'][1]))
-        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][2]['name']), json.dumps(splits_json['splitChange1_1']['splits'][2]))
+        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['ff']['d'][0]['name']), json.dumps(splits_json['splitChange1_1']['ff']['d'][0]))
+        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['ff']['d'][1]['name']), json.dumps(splits_json['splitChange1_1']['ff']['d'][1]))
+        redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['ff']['d'][2]['name']), json.dumps(splits_json['splitChange1_1']['ff']['d'][2]))
         redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, -1)
 
         telemetry_redis_storage = RedisTelemetryStorage(redis_client, metadata)
@@ -1977,6 +2213,7 @@ class RedisImpressionsToggleIntegrationTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': RedisRuleBasedSegmentsStorage(redis_client),
             'impressions': RedisImpressionsStorage(redis_client, metadata),
             'events': RedisEventsStorage(redis_client, metadata),
         }
@@ -2046,12 +2283,16 @@ class InMemoryIntegrationAsyncTests(object):
         """Prepare storages with test data."""
         split_storage = InMemorySplitStorageAsync()
         segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
 
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
             data = json.loads(flo.read())
-        for split in data['splits']:
+        for split in data['ff']['d']:
             await split_storage.update([splits.from_raw(split)], [], -1)
+
+        for rbs in data['rbs']['d']:
+            await rb_segment_storage.update([rule_based_segments.from_raw(rbs)], [], 0)
 
         segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
         with open(segment_fn, 'r') as flo:
@@ -2071,6 +2312,7 @@ class InMemoryIntegrationAsyncTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
             'impressions': InMemoryImpressionStorageAsync(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
         }
@@ -2212,12 +2454,15 @@ class InMemoryOptimizedIntegrationAsyncTests(object):
         """Prepare storages with test data."""
         split_storage = InMemorySplitStorageAsync()
         segment_storage = InMemorySegmentStorageAsync()
-
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
             data = json.loads(flo.read())
-        for split in data['splits']:
+        for split in data['ff']['d']:
             await split_storage.update([splits.from_raw(split)], [], -1)
+
+        for rbs in data['rbs']['d']:
+            await rb_segment_storage.update([rule_based_segments.from_raw(rbs)], [], 0)
 
         segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
         with open(segment_fn, 'r') as flo:
@@ -2237,6 +2482,7 @@ class InMemoryOptimizedIntegrationAsyncTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
             'impressions': InMemoryImpressionStorageAsync(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
         }
@@ -2350,6 +2596,194 @@ class InMemoryOptimizedIntegrationAsyncTests(object):
         await _track_async(self.factory)
         await self.factory.destroy()
 
+class InMemoryOldSpecIntegrationAsyncTests(object):
+    """Inmemory storage-based integration tests."""
+
+    def setup_method(self):
+        self.setup_task = asyncio.get_event_loop().create_task(self._setup_method())
+
+    async def _setup_method(self):
+        """Prepare storages with test data."""
+
+        split_fn = os.path.join(os.path.dirname(__file__), 'files', 'split_old_spec.json')
+        with open(split_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        
+        split_changes = {
+            -1: data,
+            1457726098069: {"splits": [], "till": 1457726098069, "since": 1457726098069}
+        }
+
+        segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
+        with open(segment_fn, 'r') as flo:
+            segment_employee = json.loads(flo.read())
+
+        segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentHumanBeignsChanges.json')
+        with open(segment_fn, 'r') as flo:
+            segment_human = json.loads(flo.read())
+            
+        segment_changes = {
+            ("employees", -1): segment_employee,
+            ("employees", 1457474612832): {"name": "employees","added": [],"removed": [],"since": 1457474612832,"till": 1457474612832},
+            ("human_beigns", -1): segment_human,
+            ("human_beigns", 1457102183278): {"name": "employees","added": [],"removed": [],"since": 1457102183278,"till": 1457102183278},
+        }
+
+        split_backend_requests = Queue()
+        self.split_backend = SplitMockServer(split_changes, segment_changes, split_backend_requests,
+                                        {'auth_response': {'pushEnabled': False}}, True)
+        self.split_backend.start()
+
+        kwargs = {
+            'sdk_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
+            'events_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
+            'auth_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
+            'config': {'connectTimeout': 10000, 'streamingEnabled': False, 'impressionsMode': 'debug'}
+        }
+
+        self.factory = await get_factory_async('some_apikey', **kwargs)
+        await self.factory.block_until_ready(1)
+        assert self.factory.ready
+
+    @pytest.mark.asyncio
+    async def test_get_treatment(self):
+        """Test client.get_treatment()."""
+        await self.setup_task
+        await _get_treatment_async(self.factory, True)
+        await self.factory.destroy()
+        self.split_backend.stop()
+
+    @pytest.mark.asyncio
+    async def test_get_treatment_with_config(self):
+        """Test client.get_treatment_with_config()."""
+        await self.setup_task
+        await _get_treatment_with_config_async(self.factory)
+        await self.factory.destroy()
+        self.split_backend.stop()
+
+    @pytest.mark.asyncio
+    async def test_get_treatments(self):
+        await self.setup_task
+        await _get_treatments_async(self.factory)
+            # testing multiple splitNames
+        client = self.factory.client()
+        result = await client.get_treatments('invalidKey', [
+            'all_feature',
+            'killed_feature',
+            'invalid_feature',
+            'sample_feature'
+        ])
+        assert len(result) == 4
+        assert result['all_feature'] == 'on'
+        assert result['killed_feature'] == 'defTreatment'
+        assert result['invalid_feature'] == 'control'
+        assert result['sample_feature'] == 'off'
+        await _validate_last_impressions_async(
+            client,
+            ('all_feature', 'invalidKey', 'on'),
+            ('killed_feature', 'invalidKey', 'defTreatment'),
+            ('sample_feature', 'invalidKey', 'off')
+        )
+        await self.factory.destroy()
+        self.split_backend.stop()
+
+    @pytest.mark.asyncio
+    async def test_get_treatments_with_config(self):
+        """Test client.get_treatments_with_config()."""
+        await self.setup_task
+        await _get_treatments_with_config_async(self.factory)
+        # testing multiple splitNames
+        client = self.factory.client()
+        result = await client.get_treatments_with_config('invalidKey', [
+            'all_feature',
+            'killed_feature',
+            'invalid_feature',
+            'sample_feature'
+        ])
+        assert len(result) == 4
+        assert result['all_feature'] == ('on', None)
+        assert result['killed_feature'] == ('defTreatment', '{"size":15,"defTreatment":true}')
+        assert result['invalid_feature'] == ('control', None)
+        assert result['sample_feature'] == ('off', None)
+        await _validate_last_impressions_async(
+            client,
+            ('all_feature', 'invalidKey', 'on'),
+            ('killed_feature', 'invalidKey', 'defTreatment'),
+            ('sample_feature', 'invalidKey', 'off'),
+        )
+        await self.factory.destroy()
+        self.split_backend.stop()
+
+    @pytest.mark.asyncio
+    async def test_get_treatments_by_flag_set(self):
+        """Test client.get_treatments_by_flag_set()."""
+        await self.setup_task
+        await _get_treatments_by_flag_set_async(self.factory)
+        await self.factory.destroy()
+        self.split_backend.stop()
+
+    @pytest.mark.asyncio
+    async def test_get_treatments_by_flag_sets(self):
+        """Test client.get_treatments_by_flag_sets()."""
+        await self.setup_task
+        await _get_treatments_by_flag_sets_async(self.factory)
+        client = self.factory.client()
+        result = await client.get_treatments_by_flag_sets('user1', ['set1', 'set2', 'set4'])
+        assert len(result) == 3
+        assert result == {'sample_feature': 'on',
+                            'whitelist_feature': 'off',
+                            'all_feature': 'on'
+                            }
+        await _validate_last_impressions_async(client, ('sample_feature', 'user1', 'on'),
+                                        ('whitelist_feature', 'user1', 'off'),
+                                        ('all_feature', 'user1', 'on')
+                                        )
+        await self.factory.destroy()
+        self.split_backend.stop()
+
+    @pytest.mark.asyncio
+    async def test_get_treatments_with_config_by_flag_set(self):
+        """Test client.get_treatments_with_config_by_flag_set()."""
+        await self.setup_task
+        await _get_treatments_with_config_by_flag_set_async(self.factory)
+        await self.factory.destroy()
+        self.split_backend.stop()
+
+    @pytest.mark.asyncio
+    async def test_get_treatments_with_config_by_flag_sets(self):
+        """Test client.get_treatments_with_config_by_flag_sets()."""
+        await self.setup_task
+        await _get_treatments_with_config_by_flag_sets_async(self.factory)
+        client = self.factory.client()
+        result = await client.get_treatments_with_config_by_flag_sets('user1', ['set1', 'set2', 'set4'])
+        assert len(result) == 3
+        assert result == {'sample_feature': ('on', '{"size":15,"test":20}'),
+                            'whitelist_feature': ('off', None),
+                            'all_feature': ('on', None)
+                            }
+        await _validate_last_impressions_async(client, ('sample_feature', 'user1', 'on'),
+                                        ('whitelist_feature', 'user1', 'off'),
+                                        ('all_feature', 'user1', 'on')
+                                        )
+        await self.factory.destroy()
+        self.split_backend.stop()
+
+    @pytest.mark.asyncio
+    async def test_track(self):
+        """Test client.track()."""
+        await self.setup_task
+        await _track_async(self.factory)
+        await self.factory.destroy()
+        self.split_backend.stop()
+
+    @pytest.mark.asyncio
+    async def test_manager_methods(self):
+        """Test manager.split/splits."""
+        await self.setup_task
+        await _manager_methods_async(self.factory, True)
+        await self.factory.destroy()
+        self.split_backend.stop()
+        
 class RedisIntegrationAsyncTests(object):
     """Redis storage-based integration tests."""
 
@@ -2364,17 +2798,20 @@ class RedisIntegrationAsyncTests(object):
 
         split_storage = RedisSplitStorageAsync(redis_client)
         segment_storage = RedisSegmentStorageAsync(redis_client)
+        rb_segment_storage = RedisRuleBasedSegmentsStorageAsync(redis_client)  
 
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
             data = json.loads(flo.read())
-        for split in data['splits']:
+        for split in data['ff']['d']:
             await redis_client.set(split_storage._get_key(split['name']), json.dumps(split))
             if split.get('sets') is not None:
                 for flag_set in split.get('sets'):
                     await redis_client.sadd(split_storage._get_flag_set_key(flag_set), split['name'])
+        await redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, data['ff']['t'])
 
-        await redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, data['till'])
+        for rbs in data['rbs']['d']:
+            await redis_client.set(rb_segment_storage._get_key(rbs['name']), json.dumps(rbs))
 
         segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
         with open(segment_fn, 'r') as flo:
@@ -2396,6 +2833,7 @@ class RedisIntegrationAsyncTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
             'impressions': RedisImpressionsStorageAsync(redis_client, metadata),
             'events': RedisEventsStorageAsync(redis_client, metadata),
         }
@@ -2560,7 +2998,10 @@ class RedisIntegrationAsyncTests(object):
             "SPLITIO.segment.employees.till",
             "SPLITIO.split.whitelist_feature",
             "SPLITIO.telemetry.latencies",
-            "SPLITIO.split.dependency_test"
+            "SPLITIO.split.dependency_test",
+            "SPLITIO.split.rbs_feature_flag",
+            "SPLITIO.rbsegments.till",
+            "SPLITIO.rbsegments.sample_rule_based_segment"                        
         ]
         for key in keys_to_delete:
             await redis_client.delete(key)
@@ -2579,16 +3020,20 @@ class RedisWithCacheIntegrationAsyncTests(RedisIntegrationAsyncTests):
 
         split_storage = RedisSplitStorageAsync(redis_client, True)
         segment_storage = RedisSegmentStorageAsync(redis_client)
+        rb_segment_storage = RedisRuleBasedSegmentsStorageAsync(redis_client)
 
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
             data = json.loads(flo.read())
-        for split in data['splits']:
+        for split in data['ff']['d']:
             await redis_client.set(split_storage._get_key(split['name']), json.dumps(split))
             if split.get('sets') is not None:
                 for flag_set in split.get('sets'):
                     await redis_client.sadd(split_storage._get_flag_set_key(flag_set), split['name'])
-        await redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, data['till'])
+        await redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, data['ff']['t'])
+
+        for rbs in data['rbs']['d']:
+            await redis_client.set(rb_segment_storage._get_key(rbs['name']), json.dumps(rbs))
 
         segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
         with open(segment_fn, 'r') as flo:
@@ -2610,6 +3055,7 @@ class RedisWithCacheIntegrationAsyncTests(RedisIntegrationAsyncTests):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
             'impressions': RedisImpressionsStorageAsync(redis_client, metadata),
             'events': RedisEventsStorageAsync(redis_client, metadata),
         }
@@ -2742,6 +3188,12 @@ class LocalhostIntegrationAsyncTests(object):  # pylint: disable=too-few-public-
         assert await client.get_treatment("key", "SPLIT_1", None) == 'control'
         assert await client.get_treatment("key", "SPLIT_2", None) == 'on'
 
+        # rule based segment test
+        self._update_temp_file(splits_json['splitChange7_1'])
+        await self._synchronize_now()
+        assert await client.get_treatment('bilal@split.io', 'rbs_feature_flag', {'email': 'bilal@split.io'}) == 'on'
+        assert await client.get_treatment('mauro@split.io', 'rbs_feature_flag', {'email': 'mauro@split.io'}) == 'off'
+
     def _update_temp_file(self, json_body):
         f = open(os.path.join(os.path.dirname(__file__), 'files','split_changes_temp.json'), 'w')
         f.write(json.dumps(json_body))
@@ -2821,6 +3273,7 @@ class PluggableIntegrationAsyncTests(object):
         self.pluggable_storage_adapter = StorageMockAdapterAsync()
         split_storage = PluggableSplitStorageAsync(self.pluggable_storage_adapter, 'myprefix')
         segment_storage = PluggableSegmentStorageAsync(self.pluggable_storage_adapter, 'myprefix')
+        rb_segment_storage = PluggableRuleBasedSegmentsStorageAsync(self.pluggable_storage_adapter, 'myprefix')
 
         telemetry_pluggable_storage = await PluggableTelemetryStorageAsync.create(self.pluggable_storage_adapter, metadata, 'myprefix')
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_pluggable_storage)
@@ -2830,6 +3283,7 @@ class PluggableIntegrationAsyncTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
             'impressions': PluggableImpressionsStorageAsync(self.pluggable_storage_adapter, metadata),
             'events': PluggableEventsStorageAsync(self.pluggable_storage_adapter, metadata),
             'telemetry': telemetry_pluggable_storage
@@ -2858,11 +3312,14 @@ class PluggableIntegrationAsyncTests(object):
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
             data = json.loads(flo.read())
-        for split in data['splits']:
+        for split in data['ff']['d']:
             await self.pluggable_storage_adapter.set(split_storage._prefix.format(feature_flag_name=split['name']), split)
             for flag_set in split.get('sets'):
                 await self.pluggable_storage_adapter.push_items(split_storage._flag_set_prefix.format(flag_set=flag_set), split['name'])
-        await self.pluggable_storage_adapter.set(split_storage._feature_flag_till_prefix, data['till'])
+        await self.pluggable_storage_adapter.set(split_storage._feature_flag_till_prefix, data['ff']['d'])
+
+        for rbs in data['rbs']['d']:
+            await self.pluggable_storage_adapter.set(rb_segment_storage._prefix.format(segment_name=rbs['name']), rbs)
 
         segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
         with open(segment_fn, 'r') as flo:
@@ -3023,7 +3480,10 @@ class PluggableIntegrationAsyncTests(object):
             "SPLITIO.split.regex_test",
             "SPLITIO.segment.human_beigns.till",
             "SPLITIO.split.boolean_test",
-            "SPLITIO.split.dependency_test"
+            "SPLITIO.split.dependency_test",            
+            "SPLITIO.split.rbs_feature_flag",
+            "SPLITIO.rbsegments.till",
+            "SPLITIO.rbsegments.sample_rule_based_segment"                        
         ]
 
         for key in keys_to_delete:
@@ -3041,6 +3501,7 @@ class PluggableOptimizedIntegrationAsyncTests(object):
         self.pluggable_storage_adapter = StorageMockAdapterAsync()
         split_storage = PluggableSplitStorageAsync(self.pluggable_storage_adapter)
         segment_storage = PluggableSegmentStorageAsync(self.pluggable_storage_adapter)
+        rb_segment_storage = PluggableRuleBasedSegmentsStorageAsync(self.pluggable_storage_adapter, 'myprefix')
 
         telemetry_pluggable_storage = await PluggableTelemetryStorageAsync.create(self.pluggable_storage_adapter, metadata)
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_pluggable_storage)
@@ -3050,6 +3511,7 @@ class PluggableOptimizedIntegrationAsyncTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
             'impressions': PluggableImpressionsStorageAsync(self.pluggable_storage_adapter, metadata),
             'events': PluggableEventsStorageAsync(self.pluggable_storage_adapter, metadata),
             'telemetry': telemetry_pluggable_storage
@@ -3080,11 +3542,14 @@ class PluggableOptimizedIntegrationAsyncTests(object):
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
             data = json.loads(flo.read())
-        for split in data['splits']:
+        for split in data['ff']['d']:
             await self.pluggable_storage_adapter.set(split_storage._prefix.format(feature_flag_name=split['name']), split)
             for flag_set in split.get('sets'):
                 await self.pluggable_storage_adapter.push_items(split_storage._flag_set_prefix.format(flag_set=flag_set), split['name'])
-        await self.pluggable_storage_adapter.set(split_storage._feature_flag_till_prefix, data['till'])
+        await self.pluggable_storage_adapter.set(split_storage._feature_flag_till_prefix, data['ff']['t'])
+
+        for rbs in data['rbs']['d']:
+            await self.pluggable_storage_adapter.set(rb_segment_storage._prefix.format(segment_name=rbs['name']), rbs)
 
         segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
         with open(segment_fn, 'r') as flo:
@@ -3230,7 +3695,10 @@ class PluggableOptimizedIntegrationAsyncTests(object):
             "SPLITIO.split.regex_test",
             "SPLITIO.segment.human_beigns.till",
             "SPLITIO.split.boolean_test",
-            "SPLITIO.split.dependency_test"
+            "SPLITIO.split.dependency_test",
+            "SPLITIO.split.rbs_feature_flag",
+            "SPLITIO.rbsegments.till",
+            "SPLITIO.rbsegments.sample_rule_based_segment"                        
         ]
 
         for key in keys_to_delete:
@@ -3248,6 +3716,7 @@ class PluggableNoneIntegrationAsyncTests(object):
         self.pluggable_storage_adapter = StorageMockAdapterAsync()
         split_storage = PluggableSplitStorageAsync(self.pluggable_storage_adapter)
         segment_storage = PluggableSegmentStorageAsync(self.pluggable_storage_adapter)
+        rb_segment_storage = PluggableRuleBasedSegmentsStorageAsync(self.pluggable_storage_adapter, 'myprefix')
 
         telemetry_pluggable_storage = await PluggableTelemetryStorageAsync.create(self.pluggable_storage_adapter, metadata)
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_pluggable_storage)
@@ -3257,6 +3726,7 @@ class PluggableNoneIntegrationAsyncTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
             'impressions': PluggableImpressionsStorageAsync(self.pluggable_storage_adapter, metadata),
             'events': PluggableEventsStorageAsync(self.pluggable_storage_adapter, metadata),
             'telemetry': telemetry_pluggable_storage
@@ -3302,11 +3772,14 @@ class PluggableNoneIntegrationAsyncTests(object):
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
             data = json.loads(flo.read())
-        for split in data['splits']:
+        for split in data['ff']['d']:
             await self.pluggable_storage_adapter.set(split_storage._prefix.format(feature_flag_name=split['name']), split)
             for flag_set in split.get('sets'):
                 await self.pluggable_storage_adapter.push_items(split_storage._flag_set_prefix.format(flag_set=flag_set), split['name'])
-        await self.pluggable_storage_adapter.set(split_storage._feature_flag_till_prefix, data['till'])
+        await self.pluggable_storage_adapter.set(split_storage._feature_flag_till_prefix, data['ff']['t'])
+
+        for rbs in data['rbs']['d']:
+            await self.pluggable_storage_adapter.set(rb_segment_storage._prefix.format(segment_name=rbs['name']), rbs)
 
         segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
         with open(segment_fn, 'r') as flo:
@@ -3461,7 +3934,10 @@ class PluggableNoneIntegrationAsyncTests(object):
             "SPLITIO.split.regex_test",
             "SPLITIO.segment.human_beigns.till",
             "SPLITIO.split.boolean_test",
-            "SPLITIO.split.dependency_test"
+            "SPLITIO.split.dependency_test",
+            "SPLITIO.split.rbs_feature_flag",
+            "SPLITIO.rbsegments.till",
+            "SPLITIO.rbsegments.sample_rule_based_segment"                        
         ]
 
         for key in keys_to_delete:
@@ -3475,9 +3951,9 @@ class InMemoryImpressionsToggleIntegrationAsyncTests(object):
         split_storage = InMemorySplitStorageAsync()
         segment_storage = InMemorySegmentStorageAsync()
 
-        await split_storage.update([splits.from_raw(splits_json['splitChange1_1']['splits'][0]),
-                              splits.from_raw(splits_json['splitChange1_1']['splits'][1]),
-                              splits.from_raw(splits_json['splitChange1_1']['splits'][2])
+        await split_storage.update([splits.from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
+                              splits.from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
+                              splits.from_raw(splits_json['splitChange1_1']['ff']['d'][2])
                              ], [], -1)
 
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
@@ -3488,6 +3964,7 @@ class InMemoryImpressionsToggleIntegrationAsyncTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': InMemoryRuleBasedSegmentStorageAsync(),
             'impressions': InMemoryImpressionStorageAsync(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
         }
@@ -3534,9 +4011,9 @@ class InMemoryImpressionsToggleIntegrationAsyncTests(object):
         split_storage = InMemorySplitStorageAsync()
         segment_storage = InMemorySegmentStorageAsync()
 
-        await split_storage.update([splits.from_raw(splits_json['splitChange1_1']['splits'][0]),
-                              splits.from_raw(splits_json['splitChange1_1']['splits'][1]),
-                              splits.from_raw(splits_json['splitChange1_1']['splits'][2])
+        await split_storage.update([splits.from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
+                              splits.from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
+                              splits.from_raw(splits_json['splitChange1_1']['ff']['d'][2])
                              ], [], -1)
 
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
@@ -3547,6 +4024,7 @@ class InMemoryImpressionsToggleIntegrationAsyncTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': InMemoryRuleBasedSegmentStorageAsync(),
             'impressions': InMemoryImpressionStorageAsync(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
         }
@@ -3593,9 +4071,9 @@ class InMemoryImpressionsToggleIntegrationAsyncTests(object):
         split_storage = InMemorySplitStorageAsync()
         segment_storage = InMemorySegmentStorageAsync()
 
-        await split_storage.update([splits.from_raw(splits_json['splitChange1_1']['splits'][0]),
-                              splits.from_raw(splits_json['splitChange1_1']['splits'][1]),
-                              splits.from_raw(splits_json['splitChange1_1']['splits'][2])
+        await split_storage.update([splits.from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
+                              splits.from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
+                              splits.from_raw(splits_json['splitChange1_1']['ff']['d'][2])
                              ], [], -1)
 
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
@@ -3606,6 +4084,7 @@ class InMemoryImpressionsToggleIntegrationAsyncTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': InMemoryRuleBasedSegmentStorageAsync(),
             'impressions': InMemoryImpressionStorageAsync(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
         }
@@ -3659,10 +4138,11 @@ class RedisImpressionsToggleIntegrationAsyncTests(object):
         redis_client = await build_async(DEFAULT_CONFIG.copy())
         split_storage = RedisSplitStorageAsync(redis_client, True)
         segment_storage = RedisSegmentStorageAsync(redis_client)
+        rb_segment_storage = RedisRuleBasedSegmentsStorageAsync(redis_client)
 
-        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][0]['name']), json.dumps(splits_json['splitChange1_1']['splits'][0]))
-        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][1]['name']), json.dumps(splits_json['splitChange1_1']['splits'][1]))
-        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][2]['name']), json.dumps(splits_json['splitChange1_1']['splits'][2]))
+        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['ff']['d'][0]['name']), json.dumps(splits_json['splitChange1_1']['ff']['d'][0]))
+        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['ff']['d'][1]['name']), json.dumps(splits_json['splitChange1_1']['ff']['d'][1]))
+        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['ff']['d'][2]['name']), json.dumps(splits_json['splitChange1_1']['ff']['d'][2]))
         await redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, -1)
 
         telemetry_redis_storage = await RedisTelemetryStorageAsync.create(redis_client, metadata)
@@ -3673,6 +4153,7 @@ class RedisImpressionsToggleIntegrationAsyncTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
             'impressions': RedisImpressionsStorageAsync(redis_client, metadata),
             'events': RedisEventsStorageAsync(redis_client, metadata),
         }
@@ -3726,10 +4207,11 @@ class RedisImpressionsToggleIntegrationAsyncTests(object):
         redis_client = await build_async(DEFAULT_CONFIG.copy())
         split_storage = RedisSplitStorageAsync(redis_client, True)
         segment_storage = RedisSegmentStorageAsync(redis_client)
+        rb_segment_storage = RedisRuleBasedSegmentsStorageAsync(redis_client)
 
-        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][0]['name']), json.dumps(splits_json['splitChange1_1']['splits'][0]))
-        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][1]['name']), json.dumps(splits_json['splitChange1_1']['splits'][1]))
-        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][2]['name']), json.dumps(splits_json['splitChange1_1']['splits'][2]))
+        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['ff']['d'][0]['name']), json.dumps(splits_json['splitChange1_1']['ff']['d'][0]))
+        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['ff']['d'][1]['name']), json.dumps(splits_json['splitChange1_1']['ff']['d'][1]))
+        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['ff']['d'][2]['name']), json.dumps(splits_json['splitChange1_1']['ff']['d'][2]))
         await redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, -1)
 
         telemetry_redis_storage = await RedisTelemetryStorageAsync.create(redis_client, metadata)
@@ -3740,6 +4222,7 @@ class RedisImpressionsToggleIntegrationAsyncTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
             'impressions': RedisImpressionsStorageAsync(redis_client, metadata),
             'events': RedisEventsStorageAsync(redis_client, metadata),
         }
@@ -3793,10 +4276,11 @@ class RedisImpressionsToggleIntegrationAsyncTests(object):
         redis_client = await build_async(DEFAULT_CONFIG.copy())
         split_storage = RedisSplitStorageAsync(redis_client, True)
         segment_storage = RedisSegmentStorageAsync(redis_client)
+        rb_segment_storage = RedisRuleBasedSegmentsStorageAsync(redis_client)
 
-        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][0]['name']), json.dumps(splits_json['splitChange1_1']['splits'][0]))
-        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][1]['name']), json.dumps(splits_json['splitChange1_1']['splits'][1]))
-        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['splits'][2]['name']), json.dumps(splits_json['splitChange1_1']['splits'][2]))
+        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['ff']['d'][0]['name']), json.dumps(splits_json['splitChange1_1']['ff']['d'][0]))
+        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['ff']['d'][1]['name']), json.dumps(splits_json['splitChange1_1']['ff']['d'][1]))
+        await redis_client.set(split_storage._get_key(splits_json['splitChange1_1']['ff']['d'][2]['name']), json.dumps(splits_json['splitChange1_1']['ff']['d'][2]))
         await redis_client.set(split_storage._FEATURE_FLAG_TILL_KEY, -1)
 
         telemetry_redis_storage = await RedisTelemetryStorageAsync.create(redis_client, metadata)
@@ -3807,6 +4291,7 @@ class RedisImpressionsToggleIntegrationAsyncTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
             'impressions': RedisImpressionsStorageAsync(redis_client, metadata),
             'events': RedisEventsStorageAsync(redis_client, metadata),
         }
@@ -3868,7 +4353,7 @@ class RedisImpressionsToggleIntegrationAsyncTests(object):
         redis_client = await build_async(DEFAULT_CONFIG.copy())
         for key in keys_to_delete:
             await redis_client.delete(key)
-
+                    
 async def _validate_last_impressions_async(client, *to_validate):
     """Validate the last N impressions are present disregarding the order."""
     imp_storage = client._factory._get_storage('impressions')
@@ -3924,7 +4409,7 @@ async def _validate_last_events_async(client, *to_validate):
         as_tup_set = set((i.key, i.traffic_type_name, i.event_type_id, i.value, str(i.properties)) for i in events)
         assert as_tup_set == set(to_validate)
 
-async def _get_treatment_async(factory):
+async def _get_treatment_async(factory, skip_rbs=False):
     """Test client.get_treatment()."""
     try:
         client = factory.client()
@@ -3980,6 +4465,29 @@ async def _get_treatment_async(factory):
     assert await client.get_treatment('abc4', 'regex_test') == 'on'
     if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
         await _validate_last_impressions_async(client, ('regex_test', 'abc4', 'on'))
+
+    if skip_rbs:
+        return
+
+    # test prerequisites matcher
+    assert await client.get_treatment('abc4', 'prereq_feature') == 'on'
+    if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
+        await _validate_last_impressions_async(client, ('prereq_feature', 'abc4', 'on'))
+
+    # test prerequisites matcher
+    assert await client.get_treatment('user1234', 'prereq_feature') == 'off_default'
+    if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
+        await _validate_last_impressions_async(client, ('prereq_feature', 'user1234', 'off_default'))
+    
+    # test rule based segment matcher
+    assert await client.get_treatment('bilal@split.io', 'rbs_feature_flag', {'email': 'bilal@split.io'}) == 'on'
+    if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
+       await _validate_last_impressions_async(client, ('rbs_feature_flag', 'bilal@split.io', 'on'))
+
+    # test rule based segment matcher
+    assert await client.get_treatment('mauro@split.io', 'rbs_feature_flag', {'email': 'mauro@split.io'}) == 'off'
+    if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
+        await _validate_last_impressions_async(client, ('rbs_feature_flag', 'mauro@split.io', 'off'))
 
 async def _get_treatment_with_config_async(factory):
     """Test client.get_treatment_with_config()."""
@@ -4234,7 +4742,7 @@ async def _track_async(factory):
         ('user1', 'user', 'conversion', 1, "{'prop1': 'value1'}")
     )
 
-async def _manager_methods_async(factory):
+async def _manager_methods_async(factory, skip_rbs=False):
     """Test manager.split/splits."""
     try:
         manager = factory.manager()
@@ -4265,5 +4773,10 @@ async def _manager_methods_async(factory):
     assert result.change_number == 123
     assert result.configs['on'] == '{"size":15,"test":20}'
 
-    assert len(await manager.split_names()) == 7
-    assert len(await manager.splits()) == 7
+    if skip_rbs:
+        assert len(await manager.split_names()) == 7
+        assert len(await manager.splits()) == 7
+        return
+    
+    assert len(await manager.split_names()) == 9
+    assert len(await manager.splits()) == 9

@@ -24,7 +24,7 @@ from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSync
 from splitio.sync.event import EventSynchronizer
 from splitio.sync.synchronizer import Synchronizer, SynchronizerAsync, SplitTasks, SplitSynchronizers, RedisSynchronizer, RedisSynchronizerAsync
 from splitio.sync.manager import Manager, ManagerAsync, RedisManager, RedisManagerAsync
-from splitio.storage import SplitStorage
+from splitio.storage import SplitStorage, RuleBasedSegmentsStorage
 from splitio.api import APIException
 from splitio.client.util import SdkMetadata
 
@@ -38,6 +38,7 @@ class SyncManagerTests(object):
                                  mocker.Mock(), mocker.Mock())
 
         storage = mocker.Mock(spec=SplitStorage)
+        rb_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         api = mocker.Mock()
 
         def run(x):
@@ -46,7 +47,7 @@ class SyncManagerTests(object):
         api.fetch_splits.side_effect = run
         storage.get_change_number.return_value = -1
 
-        split_sync = SplitSynchronizer(api, storage)
+        split_sync = SplitSynchronizer(api, storage, rb_storage)
         synchronizers = SplitSynchronizers(split_sync, mocker.Mock(), mocker.Mock(),
                                            mocker.Mock(), mocker.Mock(), mocker.Mock())
 
@@ -102,6 +103,7 @@ class SyncManagerAsyncTests(object):
                                  mocker.Mock(), mocker.Mock())
 
         storage = mocker.Mock(spec=SplitStorage)
+        rb_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         api = mocker.Mock()
 
         async def run(x):
@@ -112,7 +114,7 @@ class SyncManagerAsyncTests(object):
             return -1
         storage.get_change_number = get_change_number
 
-        split_sync = SplitSynchronizerAsync(api, storage)
+        split_sync = SplitSynchronizerAsync(api, storage, rb_storage)
         synchronizers = SplitSynchronizers(split_sync, mocker.Mock(), mocker.Mock(),
                                            mocker.Mock(), mocker.Mock(), mocker.Mock())
 

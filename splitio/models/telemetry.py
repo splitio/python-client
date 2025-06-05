@@ -140,6 +140,7 @@ class OperationMode(Enum):
 class UpdateFromSSE(Enum):
     """Update from sse constants"""
     SPLIT_UPDATE = 'sp'
+    RBS_UPDATE = 'rbs'
 
 def get_latency_bucket_index(micros):
     """

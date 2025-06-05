@@ -7,7 +7,7 @@ from collections import Counter
 from splitio.models.segments import Segment
 from splitio.models.telemetry import HTTPErrors, HTTPLatencies, MethodExceptions, MethodLatencies, LastSynchronization, StreamingEvents, TelemetryConfig, TelemetryCounters, CounterConstants, \
     HTTPErrorsAsync, HTTPLatenciesAsync, MethodExceptionsAsync, MethodLatenciesAsync, LastSynchronizationAsync, StreamingEventsAsync, TelemetryConfigAsync, TelemetryCountersAsync
-from splitio.storage import FlagSetsFilter, SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
+from splitio.storage import FlagSetsFilter, SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage, RuleBasedSegmentsStorage
 from splitio.optional.loaders import asyncio
 
 MAX_SIZE_BYTES = 5 * 1024 * 1024
@@ -106,6 +106,259 @@ class FlagSets(object):
                 self.remove_feature_flag_to_flag_set(flag_set, feature_flag_name)
                 if self.flag_set_exist(flag_set) and len(self.get_flag_set(flag_set)) == 0 and not should_filter:
                     self._remove_flag_set(flag_set)
+
+class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
+    """InMemory implementation of a feature flag storage base."""    
+
+    def __init__(self):
+        """Constructor."""
+        self._lock = threading.RLock()
+        self._rule_based_segments = {}
+        self._change_number = -1
+
+    def clear(self):
+        """
+        Clear storage
+        """
+        with self._lock:
+            self._rule_based_segments = {}
+            self._change_number = -1
+
+    def get(self, segment_name):
+        """
+        Retrieve a rule based segment.
+
+        :param segment_name: Name of the segment to fetch.
+        :type segment_name: str
+
+        :rtype: splitio.models.rule_based_segments.RuleBasedSegment
+        """
+        with self._lock:
+            return self._rule_based_segments.get(segment_name)
+
+    def update(self, to_add, to_delete, new_change_number):
+        """
+        Update rule based segment.
+
+        :param to_add: List of rule based segment. to add
+        :type to_add: list[splitio.models.rule_based_segments.RuleBasedSegment]
+        :param to_delete: List of rule based segment. to delete
+        :type to_delete: list[splitio.models.rule_based_segments.RuleBasedSegment]
+        :param new_change_number: New change number.
+        :type new_change_number: int
+        """
+        [self._put(add_segment) for add_segment in to_add]
+        [self._remove(delete_segment) for delete_segment in to_delete]
+        self._set_change_number(new_change_number)
+
+    def _put(self, rule_based_segment):
+        """
+        Store a rule based segment.
+
+        :param rule_based_segment: RuleBasedSegment object.
+        :type rule_based_segment: splitio.models.rule_based_segments.RuleBasedSegment
+        """
+        with self._lock:
+            self._rule_based_segments[rule_based_segment.name] = rule_based_segment
+
+    def _remove(self, segment_name):
+        """
+        Remove a rule based segment.
+
+        :param segment_name: Name of the rule based segment to remove.
+        :type segment_name: str
+
+        :return: True if the rule based segment was found and removed. False otherwise.
+        :rtype: bool
+        """
+        with self._lock:
+            rule_based_segment = self._rule_based_segments.get(segment_name)
+            if not rule_based_segment:
+                _LOGGER.warning("Tried to delete nonexistant Rule based segment %s. Skipping", segment_name)
+                return False
+
+            self._rule_based_segments.pop(segment_name)
+            return True
+
+    def get_change_number(self):
+        """
+        Retrieve latest rule based segment change number.
+
+        :rtype: int
+        """
+        with self._lock:
+            return self._change_number
+
+    def _set_change_number(self, new_change_number):
+        """
+        Set the latest change number.
+
+        :param new_change_number: New change number.
+        :type new_change_number: int
+        """
+        with self._lock:
+            self._change_number = new_change_number
+
+    def get_segment_names(self):
+        """
+        Retrieve a list of all rule based segments names.
+
+        :return: List of segment names.
+        :rtype: list(str)
+        """
+        with self._lock:
+            return list(self._rule_based_segments.keys())
+            
+    def get_large_segment_names(self):
+        """
+        Retrieve a list of all excluded large segments names.
+
+        :return: List of segment names.
+        :rtype: list(str)
+        """
+        pass
+
+    def contains(self, segment_names):
+        """
+        Return whether the segment exists in storage
+
+        :param segment_names: rule based segment name
+        :type segment_names: str
+
+        :return: True if the segment exists. False otherwise.
+        :rtype: bool
+        """
+        with self._lock:
+            return set(segment_names).issubset(self._rule_based_segments.keys())
+        
+    def fetch_many(self, segment_names):
+        return {rb_segment_name: self.get(rb_segment_name) for rb_segment_name in segment_names}
+        
+class InMemoryRuleBasedSegmentStorageAsync(RuleBasedSegmentsStorage):
+    """InMemory implementation of a feature flag storage base."""    
+    def __init__(self):
+        """Constructor."""
+        self._lock = asyncio.Lock()
+        self._rule_based_segments = {}
+        self._change_number = -1
+
+    async def clear(self):
+        """
+        Clear storage
+        """
+        async with self._lock:
+            self._rule_based_segments = {}
+            self._change_number = -1
+
+    async def get(self, segment_name):
+        """
+        Retrieve a rule based segment.
+
+        :param segment_name: Name of the segment to fetch.
+        :type segment_name: str
+
+        :rtype: splitio.models.rule_based_segments.RuleBasedSegment
+        """
+        async with self._lock:
+            return self._rule_based_segments.get(segment_name)
+
+    async def update(self, to_add, to_delete, new_change_number):
+        """
+        Update rule based segment.
+
+        :param to_add: List of rule based segment. to add
+        :type to_add: list[splitio.models.rule_based_segments.RuleBasedSegment]
+        :param to_delete: List of rule based segment. to delete
+        :type to_delete: list[splitio.models.rule_based_segments.RuleBasedSegment]
+        :param new_change_number: New change number.
+        :type new_change_number: int
+        """
+        [await self._put(add_segment) for add_segment in to_add]
+        [await self._remove(delete_segment) for delete_segment in to_delete]
+        await self._set_change_number(new_change_number)
+
+    async def _put(self, rule_based_segment):
+        """
+        Store a rule based segment.
+
+        :param rule_based_segment: RuleBasedSegment object.
+        :type rule_based_segment: splitio.models.rule_based_segments.RuleBasedSegment
+        """
+        async with self._lock:
+            self._rule_based_segments[rule_based_segment.name] = rule_based_segment
+
+    async def _remove(self, segment_name):
+        """
+        Remove a rule based segment.
+
+        :param segment_name: Name of the rule based segment to remove.
+        :type segment_name: str
+
+        :return: True if the rule based segment was found and removed. False otherwise.
+        :rtype: bool
+        """
+        async with self._lock:
+            rule_based_segment = self._rule_based_segments.get(segment_name)
+            if not rule_based_segment:
+                _LOGGER.warning("Tried to delete nonexistant Rule based segment %s. Skipping", segment_name)
+                return False
+
+            self._rule_based_segments.pop(segment_name)
+            return True
+
+    async def get_change_number(self):
+        """
+        Retrieve latest rule based segment change number.
+
+        :rtype: int
+        """
+        async with self._lock:
+            return self._change_number
+
+    async def _set_change_number(self, new_change_number):
+        """
+        Set the latest change number.
+
+        :param new_change_number: New change number.
+        :type new_change_number: int
+        """
+        async with self._lock:
+            self._change_number = new_change_number
+
+    async def get_segment_names(self):
+        """
+        Retrieve a list of all excluded segments names.
+
+        :return: List of segment names.
+        :rtype: list(str)
+        """
+        async with self._lock:
+            return list(self._rule_based_segments.keys())
+    
+    async def get_large_segment_names(self):
+        """
+        Retrieve a list of all excluded large segments names.
+
+        :return: List of segment names.
+        :rtype: list(str)
+        """
+        pass
+
+    async def contains(self, segment_names):
+        """
+        Return whether the segment exists in storage
+
+        :param segment_names: rule based segment name
+        :type segment_names: str
+
+        :return: True if the segment exists. False otherwise.
+        :rtype: bool
+        """
+        async with self._lock:
+            return set(segment_names).issubset(self._rule_based_segments.keys())
+
+    async def fetch_many(self, segment_names):
+        return {rb_segment_name: await self.get(rb_segment_name) for rb_segment_name in segment_names}
 
 class InMemorySplitStorageBase(SplitStorage):
     """InMemory implementation of a feature flag storage base."""
@@ -235,6 +488,16 @@ class InMemorySplitStorage(InMemorySplitStorageBase):
         self.flag_set = FlagSets(flag_sets)
         self.flag_set_filter = FlagSetsFilter(flag_sets)
 
+    def clear(self):
+        """
+        Clear storage
+        """
+        with self._lock:
+            self._feature_flags = {}
+            self._change_number = -1
+            self._traffic_types = Counter()
+            self.flag_set = FlagSets(self.flag_set_filter.flag_sets)
+        
     def get(self, feature_flag_name):
         """
         Retrieve a feature flag.
@@ -440,6 +703,16 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
         self._traffic_types = Counter()
         self.flag_set = FlagSets(flag_sets)
         self.flag_set_filter = FlagSetsFilter(flag_sets)
+
+    async def clear(self):
+        """
+        Clear storage
+        """
+        async with self._lock:
+            self._feature_flags = {}
+            self._change_number = -1
+            self._traffic_types = Counter()
+            self.flag_set = FlagSets(self.flag_set_filter.flag_sets)
 
     async def get(self, feature_flag_name):
         """

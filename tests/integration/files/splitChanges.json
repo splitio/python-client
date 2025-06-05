@@ -1,5 +1,6 @@
 {
-    "splits": [
+    "ff": {
+    "d": [
         {
             "orgId": null,
             "environment": null,
@@ -22,7 +23,8 @@
                                 "userDefinedSegmentMatcherData": null,
                                 "whitelistMatcherData": {
                                     "whitelist": [
-                                        "whitelisted_user"
+                                        "whitelisted_user",
+                                        "user1234"
                                     ]
                                 }
                             }
@@ -321,8 +323,154 @@
                 }
             ],
             "sets": []
+        },
+        {
+            "changeNumber": 10,
+            "trafficTypeName": "user",
+            "name": "rbs_feature_flag",
+            "trafficAllocation": 100,
+            "trafficAllocationSeed": 1828377380,
+            "seed": -286617921,
+            "status": "ACTIVE",
+            "killed": false,
+            "defaultTreatment": "off",
+            "algo": 2,
+            "conditions": [
+              {
+                "conditionType": "ROLLOUT",
+                "matcherGroup": {
+                  "combiner": "AND",
+                  "matchers": [
+                    {
+                      "keySelector": {
+                        "trafficType": "user"
+                      },
+                      "matcherType": "IN_RULE_BASED_SEGMENT",
+                      "negate": false,
+                      "userDefinedSegmentMatcherData": {
+                        "segmentName": "sample_rule_based_segment"
+                      }
+                    }
+                  ]
+                },
+                "partitions": [
+                  {
+                    "treatment": "on",
+                    "size": 100
+                  },
+                  {
+                    "treatment": "off",
+                    "size": 0
+                  }
+                ],
+                "label": "in rule based segment sample_rule_based_segment"
+              },
+              {
+                "conditionType": "ROLLOUT",
+                "matcherGroup": {
+                  "combiner": "AND",
+                  "matchers": [
+                    {
+                      "keySelector": {
+                        "trafficType": "user"
+                      },
+                      "matcherType": "ALL_KEYS",
+                      "negate": false
+                    }
+                  ]
+                },
+                "partitions": [
+                  {
+                    "treatment": "on",
+                    "size": 0
+                  },
+                  {
+                    "treatment": "off",
+                    "size": 100
+                  }
+                ],
+                "label": "default rule"
+              }
+            ],
+            "configurations": {},
+            "sets": [],
+            "impressionsDisabled": false
+          },
+        {
+            "orgId": null,
+            "environment": null,
+            "trafficTypeId": null,
+            "trafficTypeName": null,
+            "name": "prereq_feature",
+            "seed": 1699838640,
+            "status": "ACTIVE",
+            "killed": false,
+            "changeNumber": 123,
+            "defaultTreatment": "off_default",
+            "conditions": [
+                {
+                    "conditionType": "ROLLOUT",
+                    "matcherGroup": {
+                        "combiner": "AND",
+                        "matchers": [
+                            {
+                                "matcherType": "ALL_KEYS",
+                                "negate": false,
+                                "userDefinedSegmentMatcherData": null,
+                                "whitelistMatcherData": null
+                            }
+                        ]
+                    },
+                    "partitions": [
+                        {
+                            "treatment": "on",
+                            "size": 100
+                        },
+                        {
+                            "treatment": "off",
+                            "size": 0
+                        }
+                    ]
+                }
+            ],
+            "sets": [],
+            "prerequisites": [
+                {"n": "regex_test", "ts": ["on"]},
+                {"n": "whitelist_feature", "ts": ["off"]}
+            ]
         }
     ],
-    "since": -1,
-    "till": 1457726098069
-}
+    "s": -1,
+    "t": 1457726098069
+}, "rbs": {"t": -1, "s": -1, "d": [{
+    "changeNumber": 123,
+    "name": "sample_rule_based_segment",
+    "status": "ACTIVE",
+    "trafficTypeName": "user",
+    "excluded":{
+      "keys":["mauro@split.io","gaston@split.io"],
+      "segments":[]
+    },
+    "conditions": [
+      {
+        "matcherGroup": {
+          "combiner": "AND",
+          "matchers": [
+            {
+              "keySelector": {
+                "trafficType": "user",
+                "attribute": "email"
+              },
+              "matcherType": "ENDS_WITH",
+              "negate": false,
+              "whitelistMatcherData": {
+                "whitelist": [
+                  "@split.io"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+}]}}

@@ -11,6 +11,10 @@ class SplitTests(object):
         'changeNumber': 123,
         'trafficTypeName': 'user',
         'name': 'some_name',
+        'prerequisites': [
+            { 'n': 'flag1', 'ts': ['on','v1'] }, 
+            { 'n': 'flag2', 'ts': ['off'] }
+        ],
         'trafficAllocation': 100,
         'trafficAllocationSeed': 123456,
         'seed': 321654,
@@ -83,14 +87,26 @@ class SplitTests(object):
         assert parsed._configurations == {'on': '{"color": "blue", "size": 13}'}
         assert parsed.sets == {'set1', 'set2'}
         assert parsed.impressions_disabled == False
-
+        assert len(parsed.prerequisites) == 2
+        flag1 = False
+        flag2 = False
+        for prerequisite in parsed.prerequisites:
+            if prerequisite.feature_flag_name == 'flag1':
+                flag1 = True
+                assert prerequisite.treatments == ['on','v1']
+            if prerequisite.feature_flag_name == 'flag2':
+                flag2 = True
+                assert prerequisite.treatments == ['off']
+        assert flag1
+        assert flag2
+            
     def test_get_segment_names(self, mocker):
         """Test fetching segment names."""
         cond1 = mocker.Mock(spec=Condition)
         cond2 = mocker.Mock(spec=Condition)
         cond1.get_segment_names.return_value = ['segment1', 'segment2']
         cond2.get_segment_names.return_value = ['segment3', 'segment4']
-        split1 = splits.Split( 'some_split', 123, False, 'off', 'user', 'ACTIVE', 123, [cond1, cond2])
+        split1 = splits.Split( 'some_split', 123, False, 'off', 'user', 'ACTIVE', 123, [cond1, cond2], None)
         assert split1.get_segment_names() == ['segment%d' % i for i in range(1, 5)]
 
     def test_to_json(self):

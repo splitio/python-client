@@ -5,14 +5,294 @@ import json
 import threading
 
 from splitio.optional.loaders import asyncio
-from splitio.models import splits, segments
+from splitio.models import splits, segments, rule_based_segments
 from splitio.models.impressions import Impression
 from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MAX_TAGS,\
     MethodLatenciesAsync, MethodExceptionsAsync, TelemetryConfigAsync
-from splitio.storage import FlagSetsFilter, SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage
+from splitio.storage import FlagSetsFilter, SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage, RuleBasedSegmentsStorage
 from splitio.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
 
 _LOGGER = logging.getLogger(__name__)
+
+class PluggableRuleBasedSegmentsStorageBase(RuleBasedSegmentsStorage):
+    """Pluggable storage for rule based segments."""
+        
+    _TILL_LENGTH = 4
+
+    def __init__(self, pluggable_adapter, prefix=None):
+        """
+        Class constructor.
+
+        :param redis_client: Redis client or compliant interface.
+        :type redis_client: splitio.storage.adapters.redis.RedisAdapter
+        """
+        self._pluggable_adapter = pluggable_adapter
+        self._prefix = "SPLITIO.rbsegment.{segment_name}"
+        self._rb_segments_till_prefix = "SPLITIO.rbsegments.till"
+        self._rb_segment_name_length = 18
+        if prefix is not None:
+            self._rb_segment_name_length += len(prefix) + 1
+            self._prefix = prefix + "." + self._prefix
+            self._rb_segments_till_prefix = prefix + "." + self._rb_segments_till_prefix
+
+    def get(self, segment_name):
+        """
+        Retrieve a rule based segment.
+
+        :param segment_name: Name of the segment to fetch.
+        :type segment_name: str
+
+        :rtype: str
+        """
+        pass
+
+    def get_change_number(self):
+        """
+        Retrieve latest rule based segment change number.
+
+        :rtype: int
+        """
+        pass
+
+    def contains(self, segment_names):
+        """
+        Return whether the segments exists in rule based segment in cache.
+
+        :param segment_names: segment name to validate.
+        :type segment_names: str
+
+        :return: True if segment names exists. False otherwise.
+        :rtype: bool
+        """
+        pass    
+
+    def get_segment_names(self):
+        """
+        Retrieve a list of all excluded segments names.
+
+        :return: List of segment names.
+        :rtype: list(str)
+        """
+        pass
+
+    def update(self, to_add, to_delete, new_change_number):
+        """
+        Update rule based segment..
+
+        :param to_add: List of rule based segment. to add
+        :type to_add: list[splitio.models.rule_based_segments.RuleBasedSegment]
+        :param to_delete: List of rule based segment. to delete
+        :type to_delete: list[splitio.models.rule_based_segments.RuleBasedSegment]
+        :param new_change_number: New change number.
+        :type new_change_number: int
+        """
+        raise NotImplementedError('Only redis-consumer mode is supported.')
+
+    def get_large_segment_names(self):
+        """
+        Retrieve a list of all excluded large segments names.
+
+        :return: List of segment names.
+        :rtype: list(str)
+        """
+        pass    
+
+class PluggableRuleBasedSegmentsStorage(PluggableRuleBasedSegmentsStorageBase):
+    """Pluggable storage for rule based segments."""
+        
+    def __init__(self, pluggable_adapter, prefix=None):
+        """
+        Class constructor.
+
+        :param redis_client: Redis client or compliant interface.
+        :type redis_client: splitio.storage.adapters.redis.RedisAdapter
+        """
+        PluggableRuleBasedSegmentsStorageBase.__init__(self, pluggable_adapter, prefix)
+    
+    def get(self, segment_name):
+        """
+        Retrieve a rule based segment.
+
+        :param segment_name: Name of the segment to fetch.
+        :type segment_name: str
+
+        :rtype: str
+        """
+        try:
+            rb_segment = self._pluggable_adapter.get(self._prefix.format(segment_name=segment_name))
+            if not rb_segment:
+                return None
+
+            return rule_based_segments.from_raw(rb_segment)
+
+        except Exception:
+            _LOGGER.error('Error getting rule based segment from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+
+    def get_change_number(self):
+        """
+        Retrieve latest rule based segment change number.
+
+        :rtype: int
+        """
+        try:
+            return self._pluggable_adapter.get(self._rb_segments_till_prefix)
+
+        except Exception:
+            _LOGGER.error('Error getting change number in rule based segment storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+        
+    def contains(self, segment_names):
+        """
+        Return whether the segments exists in rule based segment in cache.
+
+        :param segment_names: segment name to validate.
+        :type segment_names: str
+
+        :return: True if segment names exists. False otherwise.
+        :rtype: bool
+        """
+        return set(segment_names).issubset(self.get_segment_names())
+        
+    def get_segment_names(self):
+        """
+        Retrieve a list of all rule based segments names.
+
+        :return: List of segment names.
+        :rtype: list(str)
+        """
+        try:
+            _LOGGER.error(self._rb_segment_name_length)
+            _LOGGER.error(self._prefix)
+            _LOGGER.error(self._prefix[:self._rb_segment_name_length])
+            keys = []
+            for key in self._pluggable_adapter.get_keys_by_prefix(self._prefix[:self._rb_segment_name_length]):
+                if key[-self._TILL_LENGTH:] != 'till':
+                    keys.append(key[len(self._prefix[:self._rb_segment_name_length]):])
+            return keys
+
+        except Exception:
+            _LOGGER.error('Error getting rule based segments names from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+        
+    def fetch_many(self, rb_segment_names):
+        """
+        Retrieve rule based segments.
+
+        :param rb_segment_names: Names of the rule based segments to fetch.
+        :type rb_segment_names: list(str)
+
+        :return: A dict with rule based segment objects parsed from queue.
+        :rtype: dict(rb_segment_names, splitio.models.rile_based_segment.RuleBasedSegment)
+        """
+        try:
+            prefix_added = [self._prefix.format(segment_name=rb_segment_name) for rb_segment_name in rb_segment_names]
+            return {rb_segment['name']: rule_based_segments.from_raw(rb_segment) for rb_segment in self._pluggable_adapter.get_many(prefix_added)}
+
+        except Exception:
+            _LOGGER.error('Error getting rule based segments from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None        
+
+class PluggableRuleBasedSegmentsStorageAsync(PluggableRuleBasedSegmentsStorageBase):
+    """Pluggable storage for rule based segments."""
+        
+    def __init__(self, pluggable_adapter, prefix=None):
+        """
+        Class constructor.
+
+        :param redis_client: Redis client or compliant interface.
+        :type redis_client: splitio.storage.adapters.redis.RedisAdapter
+        """
+        PluggableRuleBasedSegmentsStorageBase.__init__(self, pluggable_adapter, prefix)
+    
+    async def get(self, segment_name):
+        """
+        Retrieve a rule based segment.
+
+        :param segment_name: Name of the segment to fetch.
+        :type segment_name: str
+
+        :rtype: str
+        """
+        try:
+            rb_segment = await self._pluggable_adapter.get(self._prefix.format(segment_name=segment_name))
+            if not rb_segment:
+                return None
+
+            return rule_based_segments.from_raw(rb_segment)
+
+        except Exception:
+            _LOGGER.error('Error getting rule based segment from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+
+    async def get_change_number(self):
+        """
+        Retrieve latest rule based segment change number.
+
+        :rtype: int
+        """
+        try:
+            return await self._pluggable_adapter.get(self._rb_segments_till_prefix)
+
+        except Exception:
+            _LOGGER.error('Error getting change number in rule based segment storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+        
+    async def contains(self, segment_names):
+        """
+        Return whether the segments exists in rule based segment in cache.
+
+        :param segment_names: segment name to validate.
+        :type segment_names: str
+
+        :return: True if segment names exists. False otherwise.
+        :rtype: bool
+        """
+        return set(segment_names).issubset(await self.get_segment_names())
+        
+    async def get_segment_names(self):
+        """
+        Retrieve a list of all rule based segments names.
+
+        :return: List of segment names.
+        :rtype: list(str)
+        """
+        try:
+            keys = []
+            for key in await self._pluggable_adapter.get_keys_by_prefix(self._prefix[:self._rb_segment_name_length]):
+                if key[-self._TILL_LENGTH:] != 'till':
+                    keys.append(key[len(self._prefix[:self._rb_segment_name_length]):])
+            return keys
+
+        except Exception:
+            _LOGGER.error('Error getting rule based segments names from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+
+    async def fetch_many(self, rb_segment_names):
+        """
+        Retrieve rule based segments.
+
+        :param rb_segment_names: Names of the rule based segments to fetch.
+        :type rb_segment_names: list(str)
+
+        :return: A dict with rule based segment objects parsed from queue.
+        :rtype: dict(rb_segment_names, splitio.models.rile_based_segment.RuleBasedSegment)
+        """
+        try:
+            prefix_added = [self._prefix.format(segment_name=rb_segment_name) for rb_segment_name in rb_segment_names]
+            return {rb_segment['name']: rule_based_segments.from_raw(rb_segment) for rb_segment in await self._pluggable_adapter.get_many(prefix_added)}
+
+        except Exception:
+            _LOGGER.error('Error getting rule based segments from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None        
 
 class PluggableSplitStorageBase(SplitStorage):
     """InMemory implementation of a feature flag storage."""
@@ -90,7 +370,7 @@ class PluggableSplitStorageBase(SplitStorage):
         :param new_change_number: New change number.
         :type new_change_number: int
         """
-#        pass
+        pass
 #        try:
 #            split = self.get(feature_flag_name)
 #            if not split:

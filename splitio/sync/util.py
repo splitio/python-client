@@ -62,3 +62,7 @@ def _sanitize_object_element(object, object_name, element_name, default_value, l
             _LOGGER.debug("Sanitized element [%s] to '%s' in %s: %s.", element_name, default_value, object_name, object['name'])
 
     return object
+
+def convert_to_new_spec(body):
+    return {"ff": {"d": body["splits"], "s": body["since"], "t": body["till"]}, 
+            "rbs": {"d": [], "s": -1, "t": -1}}

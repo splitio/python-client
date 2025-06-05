@@ -4,10 +4,10 @@ import logging
 import threading
 
 from splitio.models.impressions import Impression
-from splitio.models import splits, segments
+from splitio.models import splits, segments, rule_based_segments
 from splitio.models.telemetry import TelemetryConfig, TelemetryConfigAsync
 from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, \
-    ImpressionPipelinedStorage, TelemetryStorage, FlagSetsFilter
+    ImpressionPipelinedStorage, TelemetryStorage, FlagSetsFilter, RuleBasedSegmentsStorage
 from splitio.storage.adapters.redis import RedisAdapterException
 from splitio.storage.adapters.cache_trait import decorate as add_cache, DEFAULT_MAX_AGE
 from splitio.storage.adapters.cache_trait import LocalMemoryCache, LocalMemoryCacheAsync
@@ -16,8 +16,296 @@ from splitio.util.storage_helper import get_valid_flag_sets, combine_valid_flag_
 _LOGGER = logging.getLogger(__name__)
 MAX_TAGS = 10
 
+class RedisRuleBasedSegmentsStorage(RuleBasedSegmentsStorage):
+    """Redis-based storage for rule based segments."""
+    
+    _RB_SEGMENT_KEY = 'SPLITIO.rbsegment.{segment_name}'
+    _RB_SEGMENT_TILL_KEY = 'SPLITIO.rbsegments.till'
+    
+    def __init__(self, redis_client):
+        """
+        Class constructor.
+
+        :param redis_client: Redis client or compliant interface.
+        :type redis_client: splitio.storage.adapters.redis.RedisAdapter
+        """
+        self._redis = redis_client
+        self._pipe = self._redis.pipeline
+
+    def _get_key(self, segment_name):
+        """
+        Use the provided feature_flag_name to build the appropriate redis key.
+
+        :param feature_flag_name: Name of the feature flag to interact with in redis.
+        :type feature_flag_name: str
+
+        :return: Redis key.
+        :rtype: str.
+        """
+        return self._RB_SEGMENT_KEY.format(segment_name=segment_name)
+    
+    def get(self, segment_name):
+        """
+        Retrieve a rule based segment.
+
+        :param segment_name: Name of the segment to fetch.
+        :type segment_name: str
+
+        :rtype: str
+        """
+        try:
+            raw = self._redis.get(self._get_key(segment_name))
+            _LOGGER.debug("Fetchting rule based segment [%s] from redis" % segment_name)
+            _LOGGER.debug(raw)
+            return rule_based_segments.from_raw(json.loads(raw)) if raw is not None else None
+
+        except RedisAdapterException:
+            _LOGGER.error('Error fetching rule based segment from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None        
+
+    def update(self, to_add, to_delete, new_change_number):
+        """
+        Update rule based segment..
+
+        :param to_add: List of rule based segment. to add
+        :type to_add: list[splitio.models.rule_based_segments.RuleBasedSegment]
+        :param to_delete: List of rule based segment. to delete
+        :type to_delete: list[splitio.models.rule_based_segments.RuleBasedSegment]
+        :param new_change_number: New change number.
+        :type new_change_number: int
+        """
+        raise NotImplementedError('Only redis-consumer mode is supported.')
+
+    def get_change_number(self):
+        """
+        Retrieve latest rule based segment change number.
+
+        :rtype: int
+        """
+        try:
+            stored_value = self._redis.get(self._RB_SEGMENT_TILL_KEY)
+            _LOGGER.debug("Fetching rule based segment Change Number from redis: %s" % stored_value)
+            return json.loads(stored_value) if stored_value is not None else None
+
+        except RedisAdapterException:
+            _LOGGER.error('Error fetching rule based segment change number from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+        
+    def contains(self, segment_names):
+        """
+        Return whether the segments exists in rule based segment in cache.
+
+        :param segment_names: segment name to validate.
+        :type segment_names: str
+
+        :return: True if segment names exists. False otherwise.
+        :rtype: bool
+        """
+        return set(segment_names).issubset(self.get_segment_names())
+        
+    def get_segment_names(self):
+        """
+        Retrieve a list of all rule based segments names.
+
+        :return: List of segment names.
+        :rtype: list(str)
+        """
+        try:
+            keys = self._redis.keys(self._get_key('*'))
+            _LOGGER.debug("Fetchting rule based segments names from redis: %s" % keys)
+            return [key.replace(self._get_key(''), '') for key in keys]
+
+        except RedisAdapterException:
+            _LOGGER.error('Error fetching rule based segments names from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return []
+
+    def get_large_segment_names(self):
+        """
+        Retrieve a list of all excluded large segments names.
+
+        :return: List of segment names.
+        :rtype: list(str)
+        """
+        pass    
+
+    def fetch_many(self, segment_names):
+        """
+        Retrieve rule based segment.
+
+        :param segment_names: Names of the rule based segments to fetch.
+        :type segment_names: list(str)
+
+        :return: A dict with rule based segment objects parsed from redis.
+        :rtype: dict(segment_name, splitio.models.rule_based_segment.RuleBasedSegment)
+        """
+        to_return = dict()
+        try:
+            keys = [self._get_key(segment_name) for segment_name in segment_names]
+            raw_rbs_segments = self._redis.mget(keys)
+            _LOGGER.debug("Fetchting rule based segment [%s] from redis" % segment_names)
+            _LOGGER.debug(raw_rbs_segments)
+            for i in range(len(raw_rbs_segments)):
+                rbs_segment = None
+                try:
+                    rbs_segment = rule_based_segments.from_raw(json.loads(raw_rbs_segments[i]))
+                except (ValueError, TypeError):
+                    _LOGGER.error('Could not parse rule based segment.')
+                    _LOGGER.debug("Raw rule based segment that failed parsing attempt: %s", raw_rbs_segments[i])
+                to_return[segment_names[i]] = rbs_segment
+        except RedisAdapterException:
+            _LOGGER.error('Error fetching rule based segments from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+        return to_return
+
+class RedisRuleBasedSegmentsStorageAsync(RuleBasedSegmentsStorage):
+    """Redis-based storage for rule based segments."""
+    
+    _RB_SEGMENT_KEY = 'SPLITIO.rbsegment.{segment_name}'
+    _RB_SEGMENT_TILL_KEY = 'SPLITIO.rbsegments.till'
+    
+    def __init__(self, redis_client):
+        """
+        Class constructor.
+
+        :param redis_client: Redis client or compliant interface.
+        :type redis_client: splitio.storage.adapters.redis.RedisAdapter
+        """
+        self._redis = redis_client
+        self._pipe = self._redis.pipeline
+
+    def _get_key(self, segment_name):
+        """
+        Use the provided feature_flag_name to build the appropriate redis key.
+
+        :param feature_flag_name: Name of the feature flag to interact with in redis.
+        :type feature_flag_name: str
+
+        :return: Redis key.
+        :rtype: str.
+        """
+        return self._RB_SEGMENT_KEY.format(segment_name=segment_name)
+    
+    async def get(self, segment_name):
+        """
+        Retrieve a rule based segment.
+
+        :param segment_name: Name of the segment to fetch.
+        :type segment_name: str
+
+        :rtype: str
+        """
+        try:
+            raw = await self._redis.get(self._get_key(segment_name))
+            _LOGGER.debug("Fetchting rule based segment [%s] from redis" % segment_name)
+            _LOGGER.debug(raw)
+            return rule_based_segments.from_raw(json.loads(raw)) if raw is not None else None
+
+        except RedisAdapterException:
+            _LOGGER.error('Error fetching rule based segment from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None        
+
+    async def update(self, to_add, to_delete, new_change_number):
+        """
+        Update rule based segment..
+
+        :param to_add: List of rule based segment. to add
+        :type to_add: list[splitio.models.rule_based_segments.RuleBasedSegment]
+        :param to_delete: List of rule based segment. to delete
+        :type to_delete: list[splitio.models.rule_based_segments.RuleBasedSegment]
+        :param new_change_number: New change number.
+        :type new_change_number: int
+        """
+        raise NotImplementedError('Only redis-consumer mode is supported.')
+
+    async def get_change_number(self):
+        """
+        Retrieve latest rule based segment change number.
+
+        :rtype: int
+        """
+        try:
+            stored_value = await self._redis.get(self._RB_SEGMENT_TILL_KEY)
+            _LOGGER.debug("Fetching rule based segment Change Number from redis: %s" % stored_value)
+            return json.loads(stored_value) if stored_value is not None else None
+
+        except RedisAdapterException:
+            _LOGGER.error('Error fetching rule based segment change number from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return None
+        
+    async def contains(self, segment_names):
+        """
+        Return whether the segments exists in rule based segment in cache.
+
+        :param segment_names: segment name to validate.
+        :type segment_names: str
+
+        :return: True if segment names exists. False otherwise.
+        :rtype: bool
+        """
+        return set(segment_names).issubset(await self.get_segment_names())
+        
+    async def get_segment_names(self):
+        """
+        Retrieve a list of all rule based segments names.
+
+        :return: List of segment names.
+        :rtype: list(str)
+        """
+        try:
+            keys = await self._redis.keys(self._get_key('*'))
+            _LOGGER.debug("Fetchting rule based segments names from redis: %s" % keys)
+            return [key.replace(self._get_key(''), '') for key in keys]
+
+        except RedisAdapterException:
+            _LOGGER.error('Error fetching rule based segments names from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+            return []
+
+    async def get_large_segment_names(self):
+        """
+        Retrieve a list of all excluded large segments names.
+
+        :return: List of segment names.
+        :rtype: list(str)
+        """
+        pass    
+
+    async def fetch_many(self, segment_names):
+        """
+        Retrieve rule based segment.
+
+        :param segment_names: Names of the rule based segments to fetch.
+        :type segment_names: list(str)
+
+        :return: A dict with rule based segment objects parsed from redis.
+        :rtype: dict(segment_name, splitio.models.rule_based_segment.RuleBasedSegment)
+        """
+        to_return = dict()
+        try:
+            keys = [self._get_key(segment_name) for segment_name in segment_names]
+            raw_rbs_segments = await self._redis.mget(keys)
+            _LOGGER.debug("Fetchting rule based segment [%s] from redis" % segment_names)
+            _LOGGER.debug(raw_rbs_segments)
+            for i in range(len(raw_rbs_segments)):
+                rbs_segment = None
+                try:
+                    rbs_segment = rule_based_segments.from_raw(json.loads(raw_rbs_segments[i]))
+                except (ValueError, TypeError):
+                    _LOGGER.error('Could not parse rule based segment.')
+                    _LOGGER.debug("Raw rule based segment that failed parsing attempt: %s", raw_rbs_segments[i])
+                to_return[segment_names[i]] = rbs_segment
+        except RedisAdapterException:
+            _LOGGER.error('Error fetching rule based segments from storage')
+            _LOGGER.debug('Error: ', exc_info=True)
+        return to_return
+
 class RedisSplitStorageBase(SplitStorage):
-    """Redis-based storage base for     s."""
+    """Redis-based storage base for feature flags."""
 
     _FEATURE_FLAG_KEY = 'SPLITIO.split.{feature_flag_name}'
     _FEATURE_FLAG_TILL_KEY = 'SPLITIO.splits.till'

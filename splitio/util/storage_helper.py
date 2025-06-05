@@ -1,11 +1,11 @@
 """Storage Helper."""
 import logging
-
 from splitio.models import splits
+from splitio.models import rule_based_segments
 
 _LOGGER = logging.getLogger(__name__)
 
-def update_feature_flag_storage(feature_flag_storage, feature_flags, change_number):
+def update_feature_flag_storage(feature_flag_storage, feature_flags, change_number, clear_storage=False):
     """
     Update feature flag storage from given list of feature flags while checking the flag set logic
 
@@ -22,6 +22,9 @@ def update_feature_flag_storage(feature_flag_storage, feature_flags, change_numb
     segment_list = set()
     to_add = []
     to_delete = []
+    if clear_storage:
+        feature_flag_storage.clear()
+        
     for feature_flag in feature_flags:
         if feature_flag_storage.flag_set_filter.intersect(feature_flag.sets) and feature_flag.status == splits.Status.ACTIVE:
             to_add.append(feature_flag)
@@ -33,7 +36,54 @@ def update_feature_flag_storage(feature_flag_storage, feature_flags, change_numb
     feature_flag_storage.update(to_add, to_delete, change_number)
     return segment_list
 
-async def update_feature_flag_storage_async(feature_flag_storage, feature_flags, change_number):
+def update_rule_based_segment_storage(rule_based_segment_storage, rule_based_segments, change_number, clear_storage=False):
+    """
+    Update rule based segment storage from given list of rule based segments
+
+    :param rule_based_segment_storage: rule based segment storage instance
+    :type rule_based_segment_storage: splitio.storage.RuleBasedSegmentStorage
+    :param rule_based_segments: rule based segment instance to validate.
+    :type rule_based_segments: splitio.models.rule_based_segments.RuleBasedSegment
+    :param: last change number
+    :type: int
+
+    :return: segments list from excluded segments list
+    :rtype: list(str)
+    """
+    if clear_storage:
+        rule_based_segment_storage.clear()
+
+    segment_list = set()
+    to_add = []
+    to_delete = []
+    for rule_based_segment in rule_based_segments:
+        if rule_based_segment.status == splits.Status.ACTIVE:
+            to_add.append(rule_based_segment)
+            segment_list.update(set(rule_based_segment.excluded.get_excluded_standard_segments()))
+            segment_list.update(rule_based_segment.get_condition_segment_names())
+        else:
+            if rule_based_segment_storage.get(rule_based_segment.name) is not None:
+                to_delete.append(rule_based_segment.name)
+
+    rule_based_segment_storage.update(to_add, to_delete, change_number)
+    return segment_list
+    
+def get_standard_segment_names_in_rbs_storage(rule_based_segment_storage):
+    """
+    Retrieve a list of all standard segments names.
+
+    :return: Set of segment names.
+    :rtype: Set(str)
+    """
+    segment_list = set()
+    for rb_segment in rule_based_segment_storage.get_segment_names():
+        rb_segment_obj = rule_based_segment_storage.get(rb_segment)
+        segment_list.update(set(rb_segment_obj.excluded.get_excluded_standard_segments()))
+        segment_list.update(rb_segment_obj.get_condition_segment_names())
+        
+    return segment_list
+    
+async def update_feature_flag_storage_async(feature_flag_storage, feature_flags, change_number, clear_storage=False):
     """
     Update feature flag storage from given list of feature flags while checking the flag set logic
 
@@ -47,6 +97,9 @@ async def update_feature_flag_storage_async(feature_flag_storage, feature_flags,
     :return: segments list from feature flags list
     :rtype: list(str)
     """
+    if clear_storage:
+        await feature_flag_storage.clear()
+    
     segment_list = set()
     to_add = []
     to_delete = []
@@ -59,6 +112,54 @@ async def update_feature_flag_storage_async(feature_flag_storage, feature_flags,
                 to_delete.append(feature_flag.name)
 
     await feature_flag_storage.update(to_add, to_delete, change_number)
+    return segment_list
+
+async def update_rule_based_segment_storage_async(rule_based_segment_storage, rule_based_segments, change_number, clear_storage=False):
+    """
+    Update rule based segment storage from given list of rule based segments
+
+    :param rule_based_segment_storage: rule based segment storage instance
+    :type rule_based_segment_storage: splitio.storage.RuleBasedSegmentStorage
+    :param rule_based_segments: rule based segment instance to validate.
+    :type rule_based_segments: splitio.models.rule_based_segments.RuleBasedSegment
+    :param: last change number
+    :type: int
+
+    :return: segments list from excluded segments list
+    :rtype: list(str)
+    """
+    if clear_storage:
+        await rule_based_segment_storage.clear()
+    
+    segment_list = set()
+    to_add = []
+    to_delete = []
+    for rule_based_segment in rule_based_segments:
+        if rule_based_segment.status == splits.Status.ACTIVE:
+            to_add.append(rule_based_segment)
+            segment_list.update(set(rule_based_segment.excluded.get_excluded_standard_segments()))
+            segment_list.update(rule_based_segment.get_condition_segment_names())
+        else:
+            if await rule_based_segment_storage.get(rule_based_segment.name) is not None:
+                to_delete.append(rule_based_segment.name)
+
+    await rule_based_segment_storage.update(to_add, to_delete, change_number)
+    return segment_list
+
+async def get_standard_segment_names_in_rbs_storage_async(rule_based_segment_storage):
+    """
+    Retrieve a list of all standard segments names.
+
+    :return: Set of segment names.
+    :rtype: Set(str)
+    """
+    segment_list = set()
+    segment_names = await rule_based_segment_storage.get_segment_names()
+    for rb_segment in segment_names:
+        rb_segment_obj = await rule_based_segment_storage.get(rb_segment)
+        segment_list.update(set(rb_segment_obj.excluded.get_excluded_standard_segments()))
+        segment_list.update(rb_segment_obj.get_condition_segment_names())
+        
     return segment_list
 
 def get_valid_flag_sets(flag_sets, flag_set_filter):
