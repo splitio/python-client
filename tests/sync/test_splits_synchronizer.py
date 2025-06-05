@@ -1185,6 +1185,10 @@ class LocalSplitsSynchronizerTests(object):
         split[0]['algo'] = 1
         assert (split_synchronizer._sanitize_feature_flag_elements(split)[0]['algo'] == 2)
 
+        split = splits_json["splitChange1_1"]['ff']['d'].copy()
+        del split[0]['prerequisites']
+        assert (split_synchronizer._sanitize_feature_flag_elements(split)[0]['prerequisites'] == [])
+
         # test 'status' is set to ACTIVE when None
         rbs = copy.deepcopy(json_body["rbs"]["d"])
         rbs[0]['status'] = None

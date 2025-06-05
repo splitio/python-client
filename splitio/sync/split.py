@@ -433,7 +433,8 @@ class LocalSplitSynchronizerBase(object):
             'defaultTreatment': 'control',
             'algo': 2,
             'conditions': conditions,
-            'configurations': configs
+            'configurations': configs,
+            'prerequisites': []
         })
 
     @staticmethod
@@ -542,6 +543,8 @@ class LocalSplitSynchronizerBase(object):
             if 'sets' not in feature_flag:
                 feature_flag['sets'] = []
             feature_flag['sets'] = validate_flag_sets(feature_flag['sets'], 'Localhost Validator')
+            if 'prerequisites' not in feature_flag:
+                feature_flag['prerequisites'] = []
             sanitized_feature_flags.append(feature_flag)
         return sanitized_feature_flags
 
@@ -560,6 +563,7 @@ class LocalSplitSynchronizerBase(object):
             if 'name' not in rb_segment or rb_segment['name'].strip() == '':
                 _LOGGER.warning("A rule based segment in json file does not have (Name) or property is empty, skipping.")
                 continue
+            
             for element in [('trafficTypeName', 'user', None, None, None, None),
                             ('status', splits.Status.ACTIVE.value, None, None, [e.value for e in splits.Status], None),
                             ('changeNumber', 0, 0, None, None, None)]:
