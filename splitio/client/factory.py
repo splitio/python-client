@@ -23,14 +23,17 @@ from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, Un
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
     InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, LocalhostTelemetryStorage, \
     InMemorySplitStorageAsync, InMemorySegmentStorageAsync, InMemoryImpressionStorageAsync, \
-    InMemoryEventStorageAsync, InMemoryTelemetryStorageAsync, LocalhostTelemetryStorageAsync
+    InMemoryEventStorageAsync, InMemoryTelemetryStorageAsync, LocalhostTelemetryStorageAsync, \
+    InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 from splitio.storage.adapters import redis
 from splitio.storage.redis import RedisSplitStorage, RedisSegmentStorage, RedisImpressionsStorage, \
     RedisEventsStorage, RedisTelemetryStorage, RedisSplitStorageAsync, RedisEventsStorageAsync,\
-    RedisSegmentStorageAsync, RedisImpressionsStorageAsync, RedisTelemetryStorageAsync
+    RedisSegmentStorageAsync, RedisImpressionsStorageAsync, RedisTelemetryStorageAsync, \
+    RedisRuleBasedSegmentsStorage, RedisRuleBasedSegmentsStorageAsync
 from splitio.storage.pluggable import PluggableEventsStorage, PluggableImpressionsStorage, PluggableSegmentStorage, \
     PluggableSplitStorage, PluggableTelemetryStorage, PluggableTelemetryStorageAsync, PluggableEventsStorageAsync, \
-    PluggableImpressionsStorageAsync, PluggableSegmentStorageAsync, PluggableSplitStorageAsync
+    PluggableImpressionsStorageAsync, PluggableSegmentStorageAsync, PluggableSplitStorageAsync, \
+    PluggableRuleBasedSegmentsStorage, PluggableRuleBasedSegmentsStorageAsync
 
 # APIs
 from splitio.api.client import HttpClient, HttpClientAsync, HttpClientKerberos
@@ -543,6 +546,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     storages = {
         'splits': InMemorySplitStorage(cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
         'segments': InMemorySegmentStorage(),
+        'rule_based_segments': InMemoryRuleBasedSegmentStorage(),
         'impressions': InMemoryImpressionStorage(cfg['impressionsQueueSize'], telemetry_runtime_producer),
         'events': InMemoryEventStorage(cfg['eventsQueueSize'], telemetry_runtime_producer),
     }
@@ -559,8 +563,8 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         imp_strategy, none_strategy, telemetry_runtime_producer)
 
     synchronizers = SplitSynchronizers(
-        SplitSynchronizer(apis['splits'], storages['splits']),
-        SegmentSynchronizer(apis['segments'], storages['splits'], storages['segments']),
+        SplitSynchronizer(apis['splits'], storages['splits'], storages['rule_based_segments']),
+        SegmentSynchronizer(apis['segments'], storages['splits'], storages['segments'], storages['rule_based_segments']),
         ImpressionSynchronizer(apis['impressions'], storages['impressions'],
                                cfg['impressionsBulkSize']),
         EventSynchronizer(apis['events'], storages['events'], cfg['eventsBulkSize']),
@@ -671,6 +675,7 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
     storages = {
         'splits': InMemorySplitStorageAsync(cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
         'segments': InMemorySegmentStorageAsync(),
+        'rule_based_segments': InMemoryRuleBasedSegmentStorageAsync(),
         'impressions': InMemoryImpressionStorageAsync(cfg['impressionsQueueSize'], telemetry_runtime_producer),
         'events': InMemoryEventStorageAsync(cfg['eventsQueueSize'], telemetry_runtime_producer),
     }
@@ -687,8 +692,8 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
         imp_strategy, none_strategy, telemetry_runtime_producer)
 
     synchronizers = SplitSynchronizers(
-        SplitSynchronizerAsync(apis['splits'], storages['splits']),
-        SegmentSynchronizerAsync(apis['segments'], storages['splits'], storages['segments']),
+        SplitSynchronizerAsync(apis['splits'], storages['splits'], storages['rule_based_segments']),
+        SegmentSynchronizerAsync(apis['segments'], storages['splits'], storages['segments'], storages['rule_based_segments']),
         ImpressionSynchronizerAsync(apis['impressions'], storages['impressions'],
                                cfg['impressionsBulkSize']),
         EventSynchronizerAsync(apis['events'], storages['events'], cfg['eventsBulkSize']),
@@ -756,6 +761,7 @@ def _build_redis_factory(api_key, cfg):
     storages = {
         'splits': RedisSplitStorage(redis_adapter, cache_enabled, cache_ttl, []),
         'segments': RedisSegmentStorage(redis_adapter),
+        'rule_based_segments': RedisRuleBasedSegmentsStorage(redis_adapter),        
         'impressions': RedisImpressionsStorage(redis_adapter, sdk_metadata),
         'events': RedisEventsStorage(redis_adapter, sdk_metadata),
         'telemetry': RedisTelemetryStorage(redis_adapter, sdk_metadata)
@@ -839,6 +845,7 @@ async def _build_redis_factory_async(api_key, cfg):
     storages = {
         'splits': RedisSplitStorageAsync(redis_adapter, cache_enabled, cache_ttl),
         'segments': RedisSegmentStorageAsync(redis_adapter),
+        'rule_based_segments': RedisRuleBasedSegmentsStorageAsync(redis_adapter),        
         'impressions': RedisImpressionsStorageAsync(redis_adapter, sdk_metadata),
         'events': RedisEventsStorageAsync(redis_adapter, sdk_metadata),
         'telemetry': await RedisTelemetryStorageAsync.create(redis_adapter, sdk_metadata)
@@ -922,6 +929,7 @@ def _build_pluggable_factory(api_key, cfg):
     storages = {
         'splits': PluggableSplitStorage(pluggable_adapter, storage_prefix, []),
         'segments': PluggableSegmentStorage(pluggable_adapter, storage_prefix),
+        'rule_based_segments': PluggableRuleBasedSegmentsStorage(pluggable_adapter, storage_prefix),                
         'impressions': PluggableImpressionsStorage(pluggable_adapter, sdk_metadata, storage_prefix),
         'events': PluggableEventsStorage(pluggable_adapter, sdk_metadata, storage_prefix),
         'telemetry': PluggableTelemetryStorage(pluggable_adapter, sdk_metadata, storage_prefix)
@@ -1003,6 +1011,7 @@ async def _build_pluggable_factory_async(api_key, cfg):
     storages = {
         'splits': PluggableSplitStorageAsync(pluggable_adapter, storage_prefix),
         'segments': PluggableSegmentStorageAsync(pluggable_adapter, storage_prefix),
+        'rule_based_segments': PluggableRuleBasedSegmentsStorageAsync(pluggable_adapter, storage_prefix),   
         'impressions': PluggableImpressionsStorageAsync(pluggable_adapter, sdk_metadata, storage_prefix),
         'events': PluggableEventsStorageAsync(pluggable_adapter, sdk_metadata, storage_prefix),
         'telemetry': await PluggableTelemetryStorageAsync.create(pluggable_adapter, sdk_metadata, storage_prefix)
@@ -1081,6 +1090,7 @@ def _build_localhost_factory(cfg):
     storages = {
         'splits': InMemorySplitStorage(cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
         'segments': InMemorySegmentStorage(),  # not used, just to avoid possible future errors.
+        'rule_based_segments': InMemoryRuleBasedSegmentStorage(),   
         'impressions': LocalhostImpressionsStorage(),
         'events': LocalhostEventsStorage(),
     }
@@ -1088,6 +1098,7 @@ def _build_localhost_factory(cfg):
     synchronizers = SplitSynchronizers(
         LocalSplitSynchronizer(cfg['splitFile'],
                                storages['splits'],
+                               storages['rule_based_segments'],
                                localhost_mode),
         LocalSegmentSynchronizer(cfg['segmentDirectory'], storages['splits'], storages['segments']),
         None, None, None,
@@ -1151,6 +1162,7 @@ async def _build_localhost_factory_async(cfg):
     storages = {
         'splits': InMemorySplitStorageAsync(),
         'segments': InMemorySegmentStorageAsync(),  # not used, just to avoid possible future errors.
+        'rule_based_segments': InMemoryRuleBasedSegmentStorageAsync(),
         'impressions': LocalhostImpressionsStorageAsync(),
         'events': LocalhostEventsStorageAsync(),
     }
@@ -1158,6 +1170,7 @@ async def _build_localhost_factory_async(cfg):
     synchronizers = SplitSynchronizers(
         LocalSplitSynchronizerAsync(cfg['splitFile'],
                                storages['splits'],
+                               storages['rule_based_segments'],
                                localhost_mode),
         LocalSegmentSynchronizerAsync(cfg['segmentDirectory'], storages['splits'], storages['segments']),
         None, None, None,

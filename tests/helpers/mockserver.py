@@ -3,12 +3,13 @@ import json
 from collections import namedtuple
 import queue
 import threading
+import pytest
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 
 Request = namedtuple('Request', ['method', 'path', 'headers', 'body'])
-
+OLD_SPEC = False
 
 class SSEMockServer(object):
     """SSE server for testing purposes."""
@@ -102,19 +103,22 @@ class SplitMockServer(object):
     protocol_version = 'HTTP/1.1'
 
     def __init__(self, split_changes=None, segment_changes=None, req_queue=None,
-                 auth_response=None):
+                 auth_response=None, old_spec=False):
         """
         Consruct a mock server.
 
         :param changes: mapping of changeNumbers to splitChanges responses
         :type changes: dict
         """
+        global OLD_SPEC
+        OLD_SPEC = old_spec
         split_changes = split_changes if split_changes is not None else {}
         segment_changes = segment_changes if segment_changes is not None else {}
         self._server = HTTPServer(('localhost', 0),
                                   lambda *xs: SDKHandler(split_changes, segment_changes, *xs,
                                                          req_queue=req_queue,
-                                                         auth_response=auth_response))
+                                                         auth_response=auth_response,
+                                                         ))
         self._server_thread = threading.Thread(target=self._blocking_run, name="SplitMockServer", daemon=True)
         self._done_event = threading.Event()
 
@@ -148,7 +152,7 @@ class SDKHandler(BaseHTTPRequestHandler):
         self._req_queue = kwargs.get('req_queue')
         self._auth_response = kwargs.get('auth_response')
         self._split_changes = split_changes
-        self._segment_changes = segment_changes
+        self._segment_changes = segment_changes      
         BaseHTTPRequestHandler.__init__(self, *args)
 
     def _parse_qs(self):
@@ -180,6 +184,15 @@ class SDKHandler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(to_send).encode('utf-8'))
 
     def _handle_split_changes(self):
+        global OLD_SPEC
+        if OLD_SPEC:
+            self.send_response(400)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write('{}'.encode('utf-8'))
+            OLD_SPEC = False
+            return
+            
         qstring = self._parse_qs()
         since = int(qstring.get('since', -1))
         to_send = self._split_changes.get(since)

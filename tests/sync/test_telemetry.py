@@ -169,7 +169,7 @@ class TelemetrySubmitterTests(object):
             "spC": 1,
             "seC": 1,
             "skC": 0,
-            "ufs": {"sp": 3},
+            "ufs": {"rbs": 0, "sp": 3},
             "t": ['tag1']
         })
 
@@ -294,6 +294,6 @@ class TelemetrySubmitterAsyncTests(object):
             "spC": 1,
             "seC": 1,
             "skC": 0,
-            "ufs": {"sp": 3},
+            "ufs": {"rbs": 0, "sp": 3},
             "t": ['tag1']
         })

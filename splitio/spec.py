@@ -1,1 +1,1 @@
-SPEC_VERSION = '1.1'
+SPEC_VERSION = '1.3'

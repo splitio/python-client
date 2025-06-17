@@ -10,7 +10,7 @@ _LOGGER = logging.getLogger(__name__)
 
 SplitView = namedtuple(
     'SplitView',
-    ['name', 'traffic_type', 'killed', 'treatments', 'change_number', 'configs', 'default_treatment', 'sets', 'impressions_disabled']
+    ['name', 'traffic_type', 'killed', 'treatments', 'change_number', 'configs', 'default_treatment', 'sets', 'impressions_disabled', 'prerequisites']
 )
 
 _DEFAULT_CONDITIONS_TEMPLATE =   {
@@ -40,7 +40,28 @@ _DEFAULT_CONDITIONS_TEMPLATE =   {
     "label": "targeting rule type unsupported by sdk"
 }
 
+class Prerequisites(object):
+    """Prerequisites."""
+    def __init__(self, feature_flag_name, treatments):
+        self._feature_flag_name = feature_flag_name
+        self._treatments = treatments
+    
+    @property
+    def feature_flag_name(self):
+        """Return featur eflag name."""
+        return self._feature_flag_name
 
+    @property
+    def treatments(self):
+        """Return treatments."""
+        return self._treatments
+    
+    def to_json(self):
+        to_return = []
+        for feature_flag_name in self._feature_flag_name:
+            to_return.append({"n": feature_flag_name, "ts": [treatment for treatment in self._treatments]})
+        
+        return to_return
 
 class Status(Enum):
     """Split status."""
@@ -74,7 +95,8 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             traffic_allocation_seed=None,
             configurations=None,
             sets=None,
-            impressions_disabled=None
+            impressions_disabled=None,
+            prerequisites = None
     ):
         """
         Class constructor.
@@ -99,6 +121,8 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
         :type sets: list
         :pram impressions_disabled: track impressions flag
         :type impressions_disabled: boolean
+        :pram prerequisites: prerequisites
+        :type prerequisites: List of Preqreuisites
         """
         self._name = name
         self._seed = seed
@@ -129,6 +153,7 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
         self._configurations = configurations
         self._sets = set(sets) if sets is not None else set()
         self._impressions_disabled = impressions_disabled if impressions_disabled is not None else False
+        self._prerequisites = prerequisites if prerequisites is not None else []
 
     @property
     def name(self):
@@ -194,6 +219,11 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
     def impressions_disabled(self):
         """Return impressions_disabled of the split."""
         return self._impressions_disabled
+    
+    @property
+    def prerequisites(self):
+        """Return prerequisites of the split."""
+        return self._prerequisites
 
     def get_configurations_for(self, treatment):
         """Return the mapping of treatments to configurations."""
@@ -224,7 +254,8 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             'conditions': [c.to_json() for c in self.conditions],
             'configurations': self._configurations,
             'sets': list(self._sets),
-            'impressionsDisabled': self._impressions_disabled
+            'impressionsDisabled': self._impressions_disabled,
+            'prerequisites': [prerequisite.to_json() for prerequisite in self._prerequisites]
         }
 
     def to_split_view(self):
@@ -243,7 +274,8 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             self._configurations if self._configurations is not None else {},
             self._default_treatment,
             list(self._sets) if self._sets is not None else [],
-            self._impressions_disabled
+            self._impressions_disabled,
+            self._prerequisites
         )
 
     def local_kill(self, default_treatment, change_number):
@@ -300,5 +332,13 @@ def from_raw(raw_split):
         traffic_allocation_seed=raw_split.get('trafficAllocationSeed'),
         configurations=raw_split.get('configurations'),
         sets=set(raw_split.get('sets')) if raw_split.get('sets') is not None else [],
-        impressions_disabled=raw_split.get('impressionsDisabled') if raw_split.get('impressionsDisabled') is not None else False
+        impressions_disabled=raw_split.get('impressionsDisabled') if raw_split.get('impressionsDisabled') is not None else False,
+        prerequisites=from_raw_prerequisites(raw_split.get('prerequisites')) if raw_split.get('prerequisites') is not None else []
     )
+
+def from_raw_prerequisites(raw_prerequisites):
+    to_return = []
+    for prerequisite in raw_prerequisites:
+        to_return.append(Prerequisites(prerequisite['n'], prerequisite['ts']))
+    
+    return to_return

@@ -6,7 +6,7 @@ from splitio.client import localhost
 from splitio.sync.split import LocalSplitSynchronizer
 from splitio.models.splits import Split
 from splitio.models.grammar.matchers import AllKeysMatcher
-from splitio.storage import SplitStorage
+from splitio.storage import SplitStorage, RuleBasedSegmentsStorage
 
 
 class LocalHostStoragesTests(object):
@@ -112,10 +112,10 @@ class SplitFetchingTaskTests(object):
         parse_yaml.return_value = {}
         storage_mock = mocker.Mock(spec=SplitStorage)
         storage_mock.get_split_names.return_value = []
-
+        rbs =  mocker.Mock(spec=RuleBasedSegmentsStorage)
         parse_legacy.reset_mock()
         parse_yaml.reset_mock()
-        sync = LocalSplitSynchronizer('something', storage_mock)
+        sync = LocalSplitSynchronizer('something', storage_mock, rbs)
         sync._read_feature_flags_from_legacy_file = parse_legacy
         sync._read_feature_flags_from_yaml_file = parse_yaml
         sync.synchronize_splits()
@@ -124,7 +124,7 @@ class SplitFetchingTaskTests(object):
 
         parse_legacy.reset_mock()
         parse_yaml.reset_mock()
-        sync = LocalSplitSynchronizer('something.yaml', storage_mock)
+        sync = LocalSplitSynchronizer('something.yaml', storage_mock, rbs)
         sync._read_feature_flags_from_legacy_file = parse_legacy
         sync._read_feature_flags_from_yaml_file = parse_yaml
         sync.synchronize_splits()
@@ -133,7 +133,7 @@ class SplitFetchingTaskTests(object):
 
         parse_legacy.reset_mock()
         parse_yaml.reset_mock()
-        sync = LocalSplitSynchronizer('something.yml', storage_mock)
+        sync = LocalSplitSynchronizer('something.yml', storage_mock, rbs)
         sync._read_feature_flags_from_legacy_file = parse_legacy
         sync._read_feature_flags_from_yaml_file = parse_yaml
         sync.synchronize_splits()
@@ -142,7 +142,7 @@ class SplitFetchingTaskTests(object):
 
         parse_legacy.reset_mock()
         parse_yaml.reset_mock()
-        sync = LocalSplitSynchronizer('something.YAML', storage_mock)
+        sync = LocalSplitSynchronizer('something.YAML', storage_mock, rbs)
         sync._read_feature_flags_from_legacy_file = parse_legacy
         sync._read_feature_flags_from_yaml_file = parse_yaml
         sync.synchronize_splits()
@@ -151,7 +151,7 @@ class SplitFetchingTaskTests(object):
 
         parse_legacy.reset_mock()
         parse_yaml.reset_mock()
-        sync = LocalSplitSynchronizer('yaml', storage_mock)
+        sync = LocalSplitSynchronizer('yaml', storage_mock, rbs)
         sync._read_feature_flags_from_legacy_file = parse_legacy
         sync._read_feature_flags_from_yaml_file = parse_yaml
         sync.synchronize_splits()
