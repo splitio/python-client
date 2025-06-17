@@ -78,6 +78,9 @@ class SplitSynchronizerBase(object):
     def _check_exit_conditions(self, till, rbs_till, change_number, rbs_change_number):
         return (till is not None and till < change_number) or (rbs_till is not None and rbs_till < rbs_change_number)
 
+    def _check_return_conditions(self, feature_flag_changes):
+        return feature_flag_changes.get('ff')['t'] == feature_flag_changes.get('ff')['s'] and feature_flag_changes.get('rbs')['t'] == feature_flag_changes.get('rbs')['s']        
+
 class SplitSynchronizer(SplitSynchronizerBase):
     """Feature Flag changes synchronizer."""
 
@@ -145,7 +148,7 @@ class SplitSynchronizer(SplitSynchronizerBase):
             segment_list.update(update_feature_flag_storage(self._feature_flag_storage, fetched_feature_flags, feature_flag_changes.get('ff')['t'], self._api.clear_storage))
             segment_list.update(rbs_segment_list)
             
-            if feature_flag_changes.get('ff')['t'] == feature_flag_changes.get('ff')['s'] and feature_flag_changes.get('rbs')['t'] == feature_flag_changes.get('rbs')['s']:
+            if self._check_return_conditions(feature_flag_changes):
                 return feature_flag_changes.get('ff')['t'], feature_flag_changes.get('rbs')['t'], segment_list
 
     def _attempt_feature_flag_sync(self, fetch_options, till=None, rbs_till=None):
@@ -304,7 +307,7 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
             segment_list = await update_feature_flag_storage_async(self._feature_flag_storage, fetched_feature_flags, feature_flag_changes.get('ff')['t'], self._api.clear_storage)
             segment_list.update(rbs_segment_list)
 
-            if feature_flag_changes.get('ff')['t'] == feature_flag_changes.get('ff')['s'] and feature_flag_changes.get('rbs')['t'] == feature_flag_changes.get('rbs')['s']:
+            if self._check_return_conditions(feature_flag_changes):
                 return feature_flag_changes.get('ff')['t'], feature_flag_changes.get('rbs')['t'], segment_list
 
     async def _attempt_feature_flag_sync(self, fetch_options, till=None, rbs_till=None):
