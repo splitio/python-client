@@ -75,6 +75,9 @@ class SplitSynchronizerBase(object):
 
         return ','.join(self._feature_flag_storage.flag_set_filter.sorted_flag_sets)
 
+    def _check_exit_conditions(self, till, rbs_till, change_number, rbs_change_number):
+        return (till is not None and till < change_number) or (rbs_till is not None and rbs_till < rbs_change_number)
+
 class SplitSynchronizer(SplitSynchronizerBase):
     """Feature Flag changes synchronizer."""
 
@@ -119,7 +122,7 @@ class SplitSynchronizer(SplitSynchronizerBase):
             if rbs_change_number is None:
                 rbs_change_number = -1
                 
-            if (till is not None and till < change_number) or (rbs_till is not None and rbs_till < rbs_change_number):
+            if self._check_exit_conditions(till, rbs_till, change_number, rbs_change_number):
                 # the passed till is less than change_number, no need to perform updates
                 return change_number, rbs_change_number, segment_list
 
@@ -278,7 +281,7 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
             if rbs_change_number is None:
                 rbs_change_number = -1
                 
-            if (till is not None and till < change_number) or (rbs_till is not None and rbs_till < rbs_change_number):
+            if self._check_exit_conditions(till, rbs_till, change_number, rbs_change_number):
                 # the passed till is less than change_number, no need to perform updates
                 return change_number, rbs_change_number, segment_list
 

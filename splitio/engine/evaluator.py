@@ -57,23 +57,9 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
                 label = Label.KILLED
                 _treatment = feature.default_treatment
             else:
-                if feature.prerequisites is not None:
-                    prerequisites_matcher = PrerequisitesMatcher(feature.prerequisites)
-                    if not prerequisites_matcher.match(key, attrs, {
-                                                                    'evaluator': self,
-                                                                    'bucketing_key': bucketing,
-                                                                    'ec': ctx}):                        
-                        label = Label.PREREQUISITES_NOT_MET
-                        _treatment = feature.default_treatment
+                label, _treatment = self._check_prerequisites(feature, bucketing, key, attrs, ctx, label, _treatment)
+                label, _treatment = self._get_treatment(feature, bucketing, key, attrs, ctx, label, _treatment)
                     
-                if _treatment == CONTROL:
-                    treatment, label = self._treatment_for_flag(feature, key, bucketing, attrs, ctx)
-                    if treatment is None:
-                        label = Label.NO_CONDITION_MATCHED
-                        _treatment = feature.default_treatment
-                    else:
-                        _treatment = treatment
-
         return {
             'treatment': _treatment,
             'configurations': feature.get_configurations_for(_treatment) if feature else None,
@@ -83,6 +69,30 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
             },
             'impressions_disabled': feature.impressions_disabled if feature else None
         }
+
+    def _get_treatment(self, feature, bucketing, key, attrs, ctx, label, _treatment):
+        if _treatment == CONTROL:
+            treatment, label = self._treatment_for_flag(feature, key, bucketing, attrs, ctx)
+            if treatment is None:
+                label = Label.NO_CONDITION_MATCHED
+                _treatment = feature.default_treatment
+            else:
+                _treatment = treatment
+        
+        return label, _treatment                
+
+    def _check_prerequisites(self, feature, bucketing, key, attrs, ctx, label, _treatment):
+        if feature.prerequisites is not None:
+            prerequisites_matcher = PrerequisitesMatcher(feature.prerequisites)
+            if not prerequisites_matcher.match(key, attrs, {
+                                                            'evaluator': self,
+                                                            'bucketing_key': bucketing,
+                                                            'ec': ctx}):
+                label = Label.PREREQUISITES_NOT_MET
+                _treatment = feature.default_treatment
+       
+        return label, _treatment
+        
 
     def _treatment_for_flag(self, flag, key, bucketing, attributes, ctx):
         """
