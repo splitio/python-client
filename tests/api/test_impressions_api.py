@@ -14,9 +14,9 @@ from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageP
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
 
 impressions_mock = [
-    Impression('k1', 'f1', 'on', 'l1', 123456, 'b1', 321654),
-    Impression('k2', 'f2', 'off', 'l1', 123456, 'b1', 321654),
-    Impression('k3', 'f1', 'on', 'l1', 123456, 'b1', 321654)
+    Impression('k1', 'f1', 'on', 'l1', 123456, 'b1', 321654, {}),
+    Impression('k2', 'f2', 'off', 'l1', 123456, 'b1', 321654, {}),
+    Impression('k3', 'f1', 'on', 'l1', 123456, 'b1', 321654, {})
 ]
 expectedImpressions = [{
     'f': 'f1',

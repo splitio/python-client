@@ -38,7 +38,13 @@ class StrategyDebugMode(BaseStrategy):
         :returns: Tuple of to be stored, observed and counted impressions, and unique keys tuple
         :rtype: list[tuple[splitio.models.impression.Impression, dict]], list[], list[], list[]
         """
-        imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions]
+        imps = []
+        for imp, attrs in impressions:
+            if imp.properties is not None:
+                continue
+            
+            imps.append((self._observer.test_and_set(imp), attrs))
+            
         return [i for i, _ in imps], imps, [], []
 
 class StrategyNoneMode(BaseStrategy):
@@ -85,7 +91,13 @@ class StrategyOptimizedMode(BaseStrategy):
         :returns: Tuple of to be stored, observed and counted impressions, and unique keys tuple
         :rtype: list[tuple[splitio.models.impression.Impression, dict]], list[splitio.models.impression.Impression], list[splitio.models.impression.Impression], list[]
         """
-        imps = [(self._observer.test_and_set(imp), attrs) for imp, attrs in impressions]
+        imps = []
+        for imp, attrs in impressions:
+            if imp.properties is not None:
+                continue
+
+            imps.append((self._observer.test_and_set(imp), attrs))
+        
         counter_imps = [imp for imp, _ in imps if imp.previous_time != None]
         this_hour = truncate_time(utctime_ms())
         return [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour], imps, counter_imps, []
