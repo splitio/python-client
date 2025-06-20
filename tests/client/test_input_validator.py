@@ -499,17 +499,17 @@ class ClientInputValidationTests(object):
 
     def test_valid_properties(self, mocker):
         """Test valid_properties() method."""
-        assert input_validator.valid_properties(None) == (True, None, 1024)
-        assert input_validator.valid_properties([]) == (False, None, 0)
-        assert input_validator.valid_properties(True) == (False, None, 0)
-        assert input_validator.valid_properties(dict()) == (True, None, 1024)
-        assert input_validator.valid_properties({2: 123}) == (True, None, 1024)
+        assert input_validator.valid_properties(None, '') == (True, None, 1024)
+        assert input_validator.valid_properties([], '') == (False, None, 0)
+        assert input_validator.valid_properties(True, '') == (False, None, 0)
+        assert input_validator.valid_properties(dict(), '') == (True, None, 1024)
+        assert input_validator.valid_properties({2: 123}, '') == (True, None, 1024)
 
         class Test:
             pass
         assert input_validator.valid_properties({
             "test": Test()
-        }) == (True, {"test": None}, 1028)
+        }, '') == (True, {"test": None}, 1028)
 
         props1 = {
             "test1": "test",
@@ -519,7 +519,7 @@ class ClientInputValidationTests(object):
             "test5": [],
             2: "t",
         }
-        r1, r2, r3 = input_validator.valid_properties(props1)
+        r1, r2, r3 = input_validator.valid_properties(props1, '')
         assert r1 is True
         assert len(r2.keys()) == 5
         assert r2["test1"] == "test"
@@ -532,12 +532,12 @@ class ClientInputValidationTests(object):
         props2 = dict()
         for i in range(301):
             props2[str(i)] = i
-        assert input_validator.valid_properties(props2) == (True, props2, 1817)
+        assert input_validator.valid_properties(props2, '') == (True, props2, 1817)
 
         props3 = dict()
         for i in range(100, 210):
             props3["prop" + str(i)] = "a" * 300
-        r1, r2, r3 = input_validator.valid_properties(props3)
+        r1, r2, r3 = input_validator.valid_properties(props3, '')
         assert r1 is False
         assert r3 == 32952
 

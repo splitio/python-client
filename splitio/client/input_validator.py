@@ -564,7 +564,7 @@ def validate_factory_instantiation(sdk_key):
     return True
 
 
-def valid_properties(properties):
+def valid_properties(properties, source):
     """
     Check if properties is a valid dict and returns the properties
     that will be sent to the track method, avoiding unexpected types.
@@ -580,7 +580,7 @@ def valid_properties(properties):
         return True, None, size
 
     if not isinstance(properties, dict):
-        _LOGGER.error('track: properties must be of type dictionary.')
+        _LOGGER.error('%s: properties must be of type dictionary.', source)
         return False, None, 0
 
     valid_properties = dict()
@@ -597,7 +597,7 @@ def valid_properties(properties):
 
         if not isinstance(element, str) and not isinstance(element, Number) \
            and not isinstance(element, bool):
-            _LOGGER.warning('Property %s is of invalid type. Setting value to None', element)
+            _LOGGER.warning('%s: Property %s is of invalid type. Setting value to None', source, element)
             element = None
 
         valid_properties[property] = element
@@ -607,14 +607,13 @@ def valid_properties(properties):
 
         if size > MAX_PROPERTIES_LENGTH_BYTES:
             _LOGGER.error(
-                'The maximum size allowed for the properties is 32768 bytes. ' +
-                'Current one is ' + str(size) + ' bytes. Event not queued'
-            )
+                '%s: The maximum size allowed for the properties is 32768 bytes. ' +
+                'Current one is ' + str(size) + ' bytes. Event not queued', source)
             return False, None, size
 
     if len(valid_properties.keys()) > 300:
-        _LOGGER.warning('Event has more than 300 properties. Some of them will be trimmed' +
-                        ' when processed')
+        _LOGGER.warning('%s: Event has more than 300 properties. Some of them will be trimmed' +
+                        ' when processed', source)
     return True, valid_properties if len(valid_properties) else None, size
 
 def validate_pluggable_adapter(config):

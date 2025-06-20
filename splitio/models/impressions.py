@@ -12,7 +12,8 @@ Impression = namedtuple(
         'change_number',
         'bucketing_key',
         'time',
-        'previous_time'
+        'previous_time',
+        'impression_properties'
     ]
 )
 
