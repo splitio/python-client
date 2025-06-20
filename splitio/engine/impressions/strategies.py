@@ -41,6 +41,7 @@ class StrategyDebugMode(BaseStrategy):
         imps = []
         for imp, attrs in impressions:
             if imp.properties is not None:
+                imps.append((imp, attrs))
                 continue
             
             imps.append((self._observer.test_and_set(imp), attrs))
@@ -94,6 +95,7 @@ class StrategyOptimizedMode(BaseStrategy):
         imps = []
         for imp, attrs in impressions:
             if imp.properties is not None:
+                imps.append((imp, attrs))
                 continue
 
             imps.append((self._observer.test_and_set(imp), attrs))
