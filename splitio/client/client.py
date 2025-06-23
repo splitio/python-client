@@ -1,5 +1,6 @@
 """A module for Split.io SDK API clients."""
 import logging
+import json
 
 from splitio.engine.evaluator import Evaluator, CONTROL, EvaluationDataFactory, AsyncEvaluationDataFactory
 from splitio.engine.splitters import Splitter
@@ -135,13 +136,14 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
                 change_number=result['impression']['change_number'],
                 bucketing_key=bucketing,
                 time=utctime_ms(),
-                impression_properties=properties),
+                previous_time=None,
+                properties=json.dumps(properties)),
                 disabled=result['impressions_disabled'])
 
-    def _build_impressions(self, key, bucketing, results):
+    def _build_impressions(self, key, bucketing, results, properties=None):
         """Build an impression based on evaluation data & it's result."""
         return [
-            self._build_impression(key, bucketing, feature, result)
+            self._build_impression(key, bucketing, feature, result, properties)
             for feature, result in results.items()
         ]
 
@@ -568,7 +570,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
             self._telemetry_init_producer.record_not_ready_usage()
 
         try:
-            key, bucketing, features, attributes = self._validate_treatments_input(key, features, attributes, method, impressions_properties)
+            key, bucketing, features, attributes, impressions_properties = self._validate_treatments_input(key, features, attributes, method, impressions_properties)
         except _InvalidInputError:
             return input_validator.generate_control_treatments(features)
 
@@ -957,7 +959,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
             await self._telemetry_init_producer.record_not_ready_usage()
 
         try:
-            key, bucketing, features, attributes = self._validate_treatments_input(key, features, attributes, method, impressions_properties)
+            key, bucketing, features, attributes, impressions_properties = self._validate_treatments_input(key, features, attributes, method, impressions_properties)
         except _InvalidInputError:
             return input_validator.generate_control_treatments(features)
 
