@@ -37,7 +37,8 @@ class ImpressionsAPIBase(object):  # pylint: disable=too-few-public-methods
                         'c': impression.change_number,
                         'r': impression.label,
                         'b': impression.bucketing_key,
-                        'pt': impression.previous_time
+                        'pt': impression.previous_time,
+                        'properties': impression.properties
                     }
                     for impression in imps
                 ]

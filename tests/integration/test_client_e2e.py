@@ -49,6 +49,7 @@ from tests.storage.test_pluggable import StorageMockAdapter, StorageMockAdapterA
 def _validate_last_impressions(client, *to_validate):
     """Validate the last N impressions are present disregarding the order."""
     imp_storage = client._factory._get_storage('impressions')
+    as_tup_set = set()
     if isinstance(client._factory._get_storage('splits'), RedisSplitStorage) or isinstance(client._factory._get_storage('splits'), PluggableSplitStorage):
         if isinstance(client._factory._get_storage('splits'), RedisSplitStorage):
             redis_client = imp_storage._redis
@@ -64,15 +65,28 @@ def _validate_last_impressions(client, *to_validate):
                 json.loads(i)
                 for i in results
             ]
-        as_tup_set = set(
-            (i['i']['f'], i['i']['k'], i['i']['t'])
-            for i in impressions_raw
-        )
+        if to_validate != ():
+            if len(to_validate[0]) == 3:
+                as_tup_set = set(
+                    (i['i']['f'], i['i']['k'], i['i']['t'])
+                    for i in impressions_raw
+                )
+            else:
+                as_tup_set = set(
+                    (i['i']['f'], i['i']['k'], i['i']['t'], i['i']['properties'])
+                    for i in impressions_raw
+                )
+            
         assert as_tup_set == set(to_validate)
         time.sleep(0.2) # delay for redis to sync
     else:
         impressions = imp_storage.pop_many(len(to_validate))
-        as_tup_set = set((i.feature_name, i.matching_key, i.treatment) for i in impressions)
+        if to_validate != ():
+            if len(to_validate[0]) == 3:
+                as_tup_set = set((i.feature_name, i.matching_key, i.treatment) for i in impressions)
+            else:
+                as_tup_set = set((i.feature_name, i.matching_key, i.treatment, i.properties) for i in impressions)
+                
         assert as_tup_set == set(to_validate)
 
 def _validate_last_events(client, *to_validate):
@@ -108,9 +122,9 @@ def _get_treatment(factory, skip_rbs=False):
     except:
         pass
 
-    assert client.get_treatment('user1', 'sample_feature') == 'on'
+    assert client.get_treatment('user1', 'sample_feature', impressions_properties={'prop':'value'}) == 'on'
     if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
-        _validate_last_impressions(client, ('sample_feature', 'user1', 'on'))
+        _validate_last_impressions(client, ('sample_feature', 'user1', 'on', '{"prop": "value"}'))
 
     assert client.get_treatment('invalidKey', 'sample_feature') == 'off'
     if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
@@ -514,7 +528,7 @@ class InMemoryDebugIntegrationTests(object):
             'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
         }
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer)
+        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
         # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
         try:
             self.factory = SplitFactory('some_api_key',
@@ -674,7 +688,7 @@ class InMemoryOptimizedIntegrationTests(object):
             'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
         }
         impmanager = ImpressionsManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer)
+        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
         self.factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
@@ -967,7 +981,7 @@ class RedisIntegrationTests(object):
         }
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = PipelinedRecorder(redis_client.pipeline, impmanager, storages['events'],
-                                    storages['impressions'], telemetry_redis_storage)
+                                    storages['impressions'], telemetry_redis_storage, imp_counter=ImpressionsCounter())
         self.factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
@@ -1155,7 +1169,7 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
         }
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = PipelinedRecorder(redis_client.pipeline, impmanager,
-                                     storages['events'], storages['impressions'], telemetry_redis_storage)
+                                     storages['events'], storages['impressions'], telemetry_redis_storage, imp_counter=ImpressionsCounter())
         self.factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
@@ -1375,7 +1389,7 @@ class PluggableIntegrationTests(object):
 
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = StandardRecorder(impmanager, storages['events'],
-                                    storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer)
+                                    storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
 
         self.factory = SplitFactory('some_api_key',
                                     storages,
@@ -1570,7 +1584,7 @@ class PluggableOptimizedIntegrationTests(object):
 
         impmanager = ImpressionsManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = StandardRecorder(impmanager, storages['events'],
-                                    storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer)
+                                    storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
 
         self.factory = SplitFactory('some_api_key',
                                     storages,
@@ -1617,7 +1631,7 @@ class PluggableOptimizedIntegrationTests(object):
         client.get_treatment('user1', 'sample_feature')
         client.get_treatment('user1', 'sample_feature')
         client.get_treatment('user1', 'sample_feature')
-        assert self.pluggable_storage_adapter._keys['SPLITIO.impressions'] == []
+        assert len(self.pluggable_storage_adapter._keys['SPLITIO.impressions']) == 1
 
     def test_get_treatment_with_config(self):
         """Test client.get_treatment_with_config()."""
@@ -2317,7 +2331,7 @@ class InMemoryIntegrationAsyncTests(object):
             'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
         }
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorderAsync(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer)
+        recorder = StandardRecorderAsync(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
         # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
         try:
             self.factory = SplitFactoryAsync('some_api_key',
@@ -2839,7 +2853,7 @@ class RedisIntegrationAsyncTests(object):
         }
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = PipelinedRecorderAsync(redis_client.pipeline, impmanager, storages['events'],
-                                    storages['impressions'], telemetry_redis_storage)
+                                    storages['impressions'], telemetry_redis_storage, imp_counter=ImpressionsCounter())
         self.factory = SplitFactoryAsync('some_api_key',
                                     storages,
                                     True,
@@ -3061,7 +3075,7 @@ class RedisWithCacheIntegrationAsyncTests(RedisIntegrationAsyncTests):
         }
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = PipelinedRecorderAsync(redis_client.pipeline, impmanager, storages['events'],
-                                    storages['impressions'], telemetry_redis_storage)
+                                    storages['impressions'], telemetry_redis_storage, imp_counter=ImpressionsCounter())
         self.factory = SplitFactoryAsync('some_api_key',
                                     storages,
                                     True,
@@ -3293,7 +3307,7 @@ class PluggableIntegrationAsyncTests(object):
         recorder = StandardRecorderAsync(impmanager, storages['events'],
                                     storages['impressions'],
                                     telemetry_producer.get_telemetry_evaluation_producer(),
-                                    telemetry_runtime_producer)
+                                    telemetry_runtime_producer, imp_counter=ImpressionsCounter())
 
         self.factory = SplitFactoryAsync('some_api_key',
                                     storages,

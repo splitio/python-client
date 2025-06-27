@@ -766,14 +766,14 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.track("some_key", "traffic_type", "event_type", 1, []) is False
         assert _logger.error.mock_calls == [
-            mocker.call("track: properties must be of type dictionary.")
+            mocker.call("%s: properties must be of type dictionary.", "track")
         ]
 
         # Test track with invalid properties
         _logger.reset_mock()
         assert client.track("some_key", "traffic_type", "event_type", 1, True) is False
         assert _logger.error.mock_calls == [
-            mocker.call("track: properties must be of type dictionary.")
+            mocker.call("%s: properties must be of type dictionary.", "track")
         ]
 
         # Test track with properties
@@ -788,7 +788,7 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.track("some_key", "traffic_type", "event_type", 1, props1) is True
         assert _logger.warning.mock_calls == [
-            mocker.call("Property %s is of invalid type. Setting value to None", [])
+            mocker.call("%s: Property %s is of invalid type. Setting value to None", "track", [])
         ]
 
         # Test track with more than 300 properties
@@ -798,7 +798,7 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert client.track("some_key", "traffic_type", "event_type", 1, props2) is True
         assert _logger.warning.mock_calls == [
-            mocker.call("Event has more than 300 properties. Some of them will be trimmed when processed")
+            mocker.call("%s: Event has more than 300 properties. Some of them will be trimmed when processed", "track")
         ]
 
         # Test track with properties higher than 32kb
@@ -808,7 +808,7 @@ class ClientInputValidationTests(object):
             props3["prop" + str(i)] = "a" * 300
         assert client.track("some_key", "traffic_type", "event_type", 1, props3) is False
         assert _logger.error.mock_calls == [
-            mocker.call("The maximum size allowed for the properties is 32768 bytes. Current one is 32952 bytes. Event not queued")
+            mocker.call("%s: The maximum size allowed for the properties is 32768 bytes. Current one is 32952 bytes. Event not queued", "track")
         ]
         factory.destroy
 
@@ -2378,14 +2378,14 @@ class ClientInputValidationAsyncTests(object):
         _logger.reset_mock()
         assert await client.track("some_key", "traffic_type", "event_type", 1, []) is False
         assert _logger.error.mock_calls == [
-            mocker.call("track: properties must be of type dictionary.")
+            mocker.call("%s: properties must be of type dictionary.", "track")
         ]
 
         # Test track with invalid properties
         _logger.reset_mock()
         assert await client.track("some_key", "traffic_type", "event_type", 1, True) is False
         assert _logger.error.mock_calls == [
-            mocker.call("track: properties must be of type dictionary.")
+            mocker.call("%s: properties must be of type dictionary.", "track")
         ]
 
         # Test track with properties
@@ -2400,7 +2400,7 @@ class ClientInputValidationAsyncTests(object):
         _logger.reset_mock()
         assert await client.track("some_key", "traffic_type", "event_type", 1, props1) is True
         assert _logger.warning.mock_calls == [
-            mocker.call("Property %s is of invalid type. Setting value to None", [])
+            mocker.call("%s: Property %s is of invalid type. Setting value to None", "track", [])
         ]
 
         # Test track with more than 300 properties
@@ -2410,7 +2410,7 @@ class ClientInputValidationAsyncTests(object):
         _logger.reset_mock()
         assert await client.track("some_key", "traffic_type", "event_type", 1, props2) is True
         assert _logger.warning.mock_calls == [
-            mocker.call("Event has more than 300 properties. Some of them will be trimmed when processed")
+            mocker.call("%s: Event has more than 300 properties. Some of them will be trimmed when processed", "track")
         ]
 
         # Test track with properties higher than 32kb
@@ -2420,7 +2420,7 @@ class ClientInputValidationAsyncTests(object):
             props3["prop" + str(i)] = "a" * 300
         assert await client.track("some_key", "traffic_type", "event_type", 1, props3) is False
         assert _logger.error.mock_calls == [
-            mocker.call("The maximum size allowed for the properties is 32768 bytes. Current one is 32952 bytes. Event not queued")
+            mocker.call("%s: The maximum size allowed for the properties is 32768 bytes. Current one is 32952 bytes. Event not queued", "track")
         ]
         await factory.destroy()
 

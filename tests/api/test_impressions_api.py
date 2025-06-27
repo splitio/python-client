@@ -14,20 +14,20 @@ from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageP
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
 
 impressions_mock = [
-    Impression('k1', 'f1', 'on', 'l1', 123456, 'b1', 321654, {}),
-    Impression('k2', 'f2', 'off', 'l1', 123456, 'b1', 321654, {}),
-    Impression('k3', 'f1', 'on', 'l1', 123456, 'b1', 321654, {})
+    Impression('k1', 'f1', 'on', 'l1', 123456, 'b1', 321654, None, {'prop': 'val'}),
+    Impression('k2', 'f2', 'off', 'l1', 123456, 'b1', 321654, None, None),
+    Impression('k3', 'f1', 'on', 'l1', 123456, 'b1', 321654, None, None)
 ]
 expectedImpressions = [{
     'f': 'f1',
     'i': [
-        {'k': 'k1', 'b': 'b1', 't': 'on', 'r': 'l1', 'm': 321654, 'c': 123456, 'pt': None},
-        {'k': 'k3', 'b': 'b1', 't': 'on', 'r': 'l1', 'm': 321654, 'c': 123456, 'pt': None},
+        {'k': 'k1', 'b': 'b1', 't': 'on', 'r': 'l1', 'm': 321654, 'c': 123456, 'pt': None, 'properties': {"prop": "val"}},
+        {'k': 'k3', 'b': 'b1', 't': 'on', 'r': 'l1', 'm': 321654, 'c': 123456, 'pt': None, 'properties': None},
     ],
 }, {
     'f': 'f2',
     'i': [
-        {'k': 'k2', 'b': 'b1', 't': 'off', 'r': 'l1', 'm': 321654, 'c': 123456, 'pt': None},
+        {'k': 'k2', 'b': 'b1', 't': 'off', 'r': 'l1', 'm': 321654, 'c': 123456, 'pt': None, 'properties': None},
     ]
 }]
 
