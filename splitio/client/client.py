@@ -137,7 +137,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
                 bucketing_key=bucketing,
                 time=utctime_ms(),
                 previous_time=None,
-                properties=json.dumps(properties)),
+                properties=json.dumps(properties) if properties is not None else None),
                 disabled=result['impressions_disabled'])
 
     def _build_impressions(self, key, bucketing, results, properties=None):

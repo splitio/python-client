@@ -587,10 +587,10 @@ class RedisImpressionsStorageTests(object):  # pylint: disable=too-few-public-me
         storage = RedisImpressionsStorage(adapter, metadata)
 
         impressions = [
-            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654)
+            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654, None, None)
         ]
 
         to_validate = [json.dumps({
@@ -607,6 +607,7 @@ class RedisImpressionsStorageTests(object):  # pylint: disable=too-few-public-me
                 'r': impression.label,
                 'c': impression.change_number,
                 'm': impression.time,
+                'properties': None
             }
         }) for impression in impressions]
 
@@ -619,10 +620,10 @@ class RedisImpressionsStorageTests(object):  # pylint: disable=too-few-public-me
         storage = RedisImpressionsStorage(adapter, metadata)
 
         impressions = [
-            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654)
+            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654, None, None)
         ]
 
         assert storage.put(impressions) is True
@@ -641,6 +642,7 @@ class RedisImpressionsStorageTests(object):  # pylint: disable=too-few-public-me
                 'r': impression.label,
                 'c': impression.change_number,
                 'm': impression.time,
+                'properties': None
             }
         }) for impression in impressions]
 
@@ -661,10 +663,10 @@ class RedisImpressionsStorageTests(object):  # pylint: disable=too-few-public-me
         storage = RedisImpressionsStorage(adapter, metadata)
 
         impressions = [
-            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654)
+            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654, None, None)
         ]
 
         to_validate = [json.dumps({
@@ -681,6 +683,7 @@ class RedisImpressionsStorageTests(object):  # pylint: disable=too-few-public-me
                 'r': impression.label,
                 'c': impression.change_number,
                 'm': impression.time,
+                'properties': None
             }
         }) for impression in impressions]
 
@@ -718,10 +721,10 @@ class RedisImpressionsStorageAsyncTests(object):  # pylint: disable=too-few-publ
         storage = RedisImpressionsStorageAsync(adapter, metadata)
 
         impressions = [
-            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654)
+            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654, None, None)
         ]
 
         to_validate = [json.dumps({
@@ -738,6 +741,7 @@ class RedisImpressionsStorageAsyncTests(object):  # pylint: disable=too-few-publ
                 'r': impression.label,
                 'c': impression.change_number,
                 'm': impression.time,
+                'properties': None
             }
         }) for impression in impressions]
 
@@ -751,10 +755,10 @@ class RedisImpressionsStorageAsyncTests(object):  # pylint: disable=too-few-publ
         storage = RedisImpressionsStorageAsync(adapter, metadata)
 
         impressions = [
-            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654)
+            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654, None, None)
         ]
         self.key = None
         self.imps = None
@@ -779,6 +783,7 @@ class RedisImpressionsStorageAsyncTests(object):  # pylint: disable=too-few-publ
                 'r': impression.label,
                 'c': impression.change_number,
                 'm': impression.time,
+                'properties': None
             }
         }) for impression in impressions]
 
@@ -800,10 +805,10 @@ class RedisImpressionsStorageAsyncTests(object):  # pylint: disable=too-few-publ
         storage = RedisImpressionsStorageAsync(adapter, metadata)
 
         impressions = [
-            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
-            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654)
+            Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+            Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+            Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+            Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654, None, None)
         ]
 
         to_validate = [json.dumps({
@@ -820,6 +825,7 @@ class RedisImpressionsStorageAsyncTests(object):  # pylint: disable=too-few-publ
                 'r': impression.label,
                 'c': impression.change_number,
                 'm': impression.time,
+                'properties': None
             }
         }) for impression in impressions]
 

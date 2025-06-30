@@ -794,39 +794,39 @@ class InMemoryImpressionsStorageTests(object):
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         storage = InMemoryImpressionStorage(100, telemetry_runtime_producer)
-        storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
-        storage.put([Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
-        storage.put([Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
+        storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
+        storage.put([Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
+        storage.put([Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
         assert(telemetry_storage._counters._impressions_queued == 3)
 
         # Assert impressions are retrieved in the same order they are inserted.
         assert storage.pop_many(1) == [
-            Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)
+            Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
         ]
         assert storage.pop_many(1) == [
-            Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654)
+            Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
         ]
         assert storage.pop_many(1) == [
-            Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654)
+            Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
         ]
 
         # Assert inserting multiple impressions at once works and maintains order.
         impressions = [
-            Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654),
-            Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654),
-            Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654)
+            Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None),
+            Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None),
+            Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
         ]
         assert storage.put(impressions)
 
         # Assert impressions are retrieved in the same order they are inserted.
         assert storage.pop_many(1) == [
-            Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)
+            Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
         ]
         assert storage.pop_many(1) == [
-            Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654)
+            Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
         ]
         assert storage.pop_many(1) == [
-            Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654)
+            Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
         ]
 
     def test_queue_full_hook(self, mocker):
@@ -835,7 +835,7 @@ class InMemoryImpressionsStorageTests(object):
         queue_full_hook = mocker.Mock()
         storage.set_queue_full_hook(queue_full_hook)
         impressions = [
-            Impression('key%d' % i, 'feature1', 'on', 'l1', 123456, 'b1', 321654)
+            Impression('key%d' % i, 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
             for i in range(0, 101)
         ]
         storage.put(impressions)
@@ -844,7 +844,7 @@ class InMemoryImpressionsStorageTests(object):
     def test_clear(self, mocker):
         """Test clear method."""
         storage = InMemoryImpressionStorage(100, mocker.Mock())
-        storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
+        storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
 
         assert storage._impressions.qsize() == 1
         storage.clear()
@@ -856,9 +856,9 @@ class InMemoryImpressionsStorageTests(object):
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         storage = InMemoryImpressionStorage(2, telemetry_runtime_producer)
-        storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
-        storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
-        storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
+        storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
+        storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
+        storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
         assert(telemetry_storage._counters._impressions_dropped == 1)
         assert(telemetry_storage._counters._impressions_queued == 2)
 
@@ -873,39 +873,39 @@ class InMemoryImpressionsStorageAsyncTests(object):
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         storage = InMemoryImpressionStorageAsync(100, telemetry_runtime_producer)
-        await storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
-        await storage.put([Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
-        await storage.put([Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
+        await storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
+        await storage.put([Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
+        await storage.put([Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
         assert(telemetry_storage._counters._impressions_queued == 3)
 
         # Assert impressions are retrieved in the same order they are inserted.
         assert await storage.pop_many(1) == [
-            Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)
+            Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
         ]
         assert await storage.pop_many(1) == [
-            Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654)
+            Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
         ]
         assert await storage.pop_many(1) == [
-            Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654)
+            Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
         ]
 
         # Assert inserting multiple impressions at once works and maintains order.
         impressions = [
-            Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654),
-            Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654),
-            Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654)
+            Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None),
+            Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None),
+            Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
         ]
         assert await storage.put(impressions)
 
         # Assert impressions are retrieved in the same order they are inserted.
         assert await storage.pop_many(1) == [
-            Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)
+            Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
         ]
         assert await storage.pop_many(1) == [
-            Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654)
+            Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
         ]
         assert await storage.pop_many(1) == [
-            Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654)
+            Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
         ]
 
     @pytest.mark.asyncio
@@ -921,7 +921,7 @@ class InMemoryImpressionsStorageAsyncTests(object):
 
         storage.set_queue_full_hook(queue_full_hook)
         impressions = [
-            Impression('key%d' % i, 'feature1', 'on', 'l1', 123456, 'b1', 321654)
+            Impression('key%d' % i, 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
             for i in range(0, 101)
         ]
         await storage.put(impressions)
@@ -935,7 +935,7 @@ class InMemoryImpressionsStorageAsyncTests(object):
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         storage = InMemoryImpressionStorageAsync(100, telemetry_runtime_producer)
-        await storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
+        await storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
         assert storage._impressions.qsize() == 1
         await storage.clear()
         assert storage._impressions.qsize() == 0
@@ -947,9 +947,9 @@ class InMemoryImpressionsStorageAsyncTests(object):
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         storage = InMemoryImpressionStorageAsync(2, telemetry_runtime_producer)
-        await storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
-        await storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
-        await storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654)])
+        await storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
+        await storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
+        await storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
         assert(telemetry_storage._counters._impressions_dropped == 1)
         assert(telemetry_storage._counters._impressions_queued == 2)
 
