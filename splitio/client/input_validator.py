@@ -595,8 +595,7 @@ def valid_properties(properties, source):
         if element is None:
             continue
 
-        if not isinstance(element, str) and not isinstance(element, Number) \
-           and not isinstance(element, bool):
+        if not _check_element_type(element):
             _LOGGER.warning('%s: Property %s is of invalid type. Setting value to None', source, element)
             element = None
 
@@ -616,6 +615,13 @@ def valid_properties(properties, source):
                         ' when processed', source)
     return True, valid_properties if len(valid_properties) else None, size
 
+def _check_element_type(element):
+    if not isinstance(element, str) and not isinstance(element, Number) \
+        and not isinstance(element, bool):
+            return False
+    
+    return True
+    
 def validate_pluggable_adapter(config):
     """
     Check if pluggable adapter contains the expected method signature
