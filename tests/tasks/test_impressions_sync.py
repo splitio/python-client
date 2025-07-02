@@ -20,11 +20,11 @@ class ImpressionsSyncTaskTests(object):
         """Test that the task works properly under normal circumstances."""
         storage = mocker.Mock(spec=ImpressionStorage)
         impressions = [
-            Impression('key1', 'split1', 'on', 'l1', 123456, 'b1', 321654),
-            Impression('key2', 'split1', 'on', 'l1', 123456, 'b1', 321654),
-            Impression('key3', 'split2', 'off', 'l1', 123456, 'b1', 321654),
-            Impression('key4', 'split2', 'on', 'l1', 123456, 'b1', 321654),
-            Impression('key5', 'split3', 'off', 'l1', 123456, 'b1', 321654)
+            Impression('key1', 'split1', 'on', 'l1', 123456, 'b1', 321654, None, None),
+            Impression('key2', 'split1', 'on', 'l1', 123456, 'b1', 321654, None, None),
+            Impression('key3', 'split2', 'off', 'l1', 123456, 'b1', 321654, None, None),
+            Impression('key4', 'split2', 'on', 'l1', 123456, 'b1', 321654, None, None),
+            Impression('key5', 'split3', 'off', 'l1', 123456, 'b1', 321654, None, None)
         ]
         storage.pop_many.return_value = impressions
         api = mocker.Mock(spec=ImpressionsAPI)
@@ -55,11 +55,11 @@ class ImpressionsSyncTaskAsyncTests(object):
         """Test that the task works properly under normal circumstances."""
         storage = mocker.Mock(spec=ImpressionStorage)
         impressions = [
-            Impression('key1', 'split1', 'on', 'l1', 123456, 'b1', 321654),
-            Impression('key2', 'split1', 'on', 'l1', 123456, 'b1', 321654),
-            Impression('key3', 'split2', 'off', 'l1', 123456, 'b1', 321654),
-            Impression('key4', 'split2', 'on', 'l1', 123456, 'b1', 321654),
-            Impression('key5', 'split3', 'off', 'l1', 123456, 'b1', 321654)
+            Impression('key1', 'split1', 'on', 'l1', 123456, 'b1', 321654, None, None),
+            Impression('key2', 'split1', 'on', 'l1', 123456, 'b1', 321654, None, None),
+            Impression('key3', 'split2', 'off', 'l1', 123456, 'b1', 321654, None, None),
+            Impression('key4', 'split2', 'on', 'l1', 123456, 'b1', 321654, None, None),
+            Impression('key5', 'split3', 'off', 'l1', 123456, 'b1', 321654, None, None)
         ]
         self.pop_called = 0
         async def pop_many(*args):

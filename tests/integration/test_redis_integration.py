@@ -161,9 +161,9 @@ class RedisImpressionsStorageTests(object):
     def _put_impressions(self, adapter, metadata):
         storage = RedisImpressionsStorage(adapter, metadata)
         storage.put([
-            impressions.Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654),
-            impressions.Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654),
-            impressions.Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654)
+            impressions.Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None),
+            impressions.Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None),
+            impressions.Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
         ])
 
 
@@ -394,9 +394,9 @@ class RedisImpressionsStorageAsyncTests(object):
     async def _put_impressions(self, adapter, metadata):
         storage = RedisImpressionsStorageAsync(adapter, metadata)
         await storage.put([
-            impressions.Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654),
-            impressions.Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654),
-            impressions.Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654)
+            impressions.Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None),
+            impressions.Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None),
+            impressions.Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
         ])
 
 

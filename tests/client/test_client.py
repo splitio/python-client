@@ -87,7 +87,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         }
         _logger = mocker.Mock()
         assert client.get_treatment('some_key', 'SPLIT_2') == 'on'
-        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000)]
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None)]
         assert _logger.mock_calls == []
 
         # Test with client not ready
@@ -96,7 +96,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         type(factory).ready = ready_property
        # pytest.set_trace()
         assert client.get_treatment('some_key', 'SPLIT_2', {'some_attribute': 1}) == 'control'
-        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', Label.NOT_READY, None, None, 1000)]
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', Label.NOT_READY, None, None, 1000, None, None)]
 
         # Test with exception:
         ready_property.return_value = True
@@ -104,7 +104,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             raise RuntimeError('something')
         client._evaluator.eval_with_context.side_effect = _raise
         assert client.get_treatment('some_key', 'SPLIT_2') == 'control'
-        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', 'exception', None, None, 1000)]
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', 'exception', None, None, 1000, None, None)]
         factory.destroy()
 
     def test_get_treatment_with_config(self, mocker):
@@ -164,7 +164,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'some_key',
             'SPLIT_2'
         ) == ('on', '{"some_config": True}')
-        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000)]
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None)]
         assert _logger.mock_calls == []
 
         # Test with client not ready
@@ -172,7 +172,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         ready_property.return_value = False
         type(factory).ready = ready_property
         assert client.get_treatment_with_config('some_key', 'SPLIT_2', {'some_attribute': 1}) == ('control', None)
-        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY)]
 
         # Test with exception:
         ready_property.return_value = True
@@ -181,7 +181,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             raise RuntimeError('something')
         client._evaluator.eval_with_context.side_effect = _raise
         assert client.get_treatment_with_config('some_key', 'SPLIT_2') == ('control', None)
-        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', 'exception', None, None, 1000)]
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', 'exception', None, None, 1000, None, None)]
         factory.destroy()
 
     def test_get_treatments(self, mocker):
@@ -244,8 +244,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert treatments == {'SPLIT_2': 'on', 'SPLIT_1': 'on'}
 
         impressions_called = impression_storage.pop_many(100)
-        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000) in impressions_called
-        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000) in impressions_called
+        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
+        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
         assert _logger.mock_calls == []
 
         # Test with client not ready
@@ -253,7 +253,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         ready_property.return_value = False
         type(factory).ready = ready_property
         assert client.get_treatments('some_key', ['SPLIT_2'], {'some_attribute': 1}) == {'SPLIT_2': 'control'}
-        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY)]
 
         # Test with exception:
         ready_property.return_value = True
@@ -323,8 +323,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert client.get_treatments_by_flag_set('key', 'set_1') == {'SPLIT_2': 'on', 'SPLIT_1': 'on'}
 
         impressions_called = impression_storage.pop_many(100)
-        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000) in impressions_called
-        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000) in impressions_called
+        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
+        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
         assert _logger.mock_calls == []
 
         # Test with client not ready
@@ -332,7 +332,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         ready_property.return_value = False
         type(factory).ready = ready_property
         assert client.get_treatments_by_flag_set('some_key', 'set_2', {'some_attribute': 1}) == {'SPLIT_1': 'control'}
-        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY)]
 
         # Test with exception:
         ready_property.return_value = True
@@ -402,8 +402,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert client.get_treatments_by_flag_sets('key', ['set_1']) == {'SPLIT_2': 'on', 'SPLIT_1': 'on'}
 
         impressions_called = impression_storage.pop_many(100)
-        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000) in impressions_called
-        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000) in impressions_called
+        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
+        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
         assert _logger.mock_calls == []
 
         # Test with client not ready
@@ -411,7 +411,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         ready_property.return_value = False
         type(factory).ready = ready_property
         assert client.get_treatments_by_flag_sets('some_key', ['set_2'], {'some_attribute': 1}) == {'SPLIT_1': 'control'}
-        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY)]
 
         # Test with exception:
         ready_property.return_value = True
@@ -482,8 +482,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         }
 
         impressions_called = impression_storage.pop_many(100)
-        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000) in impressions_called
-        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000) in impressions_called
+        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
+        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
         assert _logger.mock_calls == []
 
         # Test with client not ready
@@ -491,7 +491,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         ready_property.return_value = False
         type(factory).ready = ready_property
         assert client.get_treatments_with_config('some_key', ['SPLIT_1'], {'some_attribute': 1}) == {'SPLIT_1': ('control', None)}
-        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY)]
 
         # Test with exception:
         ready_property.return_value = True
@@ -565,8 +565,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         }
 
         impressions_called = impression_storage.pop_many(100)
-        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000) in impressions_called
-        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000) in impressions_called
+        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
+        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
         assert _logger.mock_calls == []
 
         # Test with client not ready
@@ -574,7 +574,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         ready_property.return_value = False
         type(factory).ready = ready_property
         assert client.get_treatments_with_config_by_flag_set('some_key', 'set_2', {'some_attribute': 1}) == {'SPLIT_1': ('control', None)}
-        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY)]
 
         # Test with exception:
         ready_property.return_value = True
@@ -645,8 +645,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         }
 
         impressions_called = impression_storage.pop_many(100)
-        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000) in impressions_called
-        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000) in impressions_called
+        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
+        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
         assert _logger.mock_calls == []
 
         # Test with client not ready
@@ -654,7 +654,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         ready_property.return_value = False
         type(factory).ready = ready_property
         assert client.get_treatments_with_config_by_flag_sets('some_key', ['set_2'], {'some_attribute': 1}) == {'SPLIT_1': ('control', None)}
-        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY)]
 
         # Test with exception:
         ready_property.return_value = True
@@ -1264,6 +1264,111 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert(telemetry_storage._method_exceptions._track == 1)
         factory.destroy()
 
+    def test_impressions_properties(self, mocker):
+        """Test get_treatment execution paths."""
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        impression_storage = InMemoryImpressionStorage(10, telemetry_runtime_producer)
+        event_storage = mocker.Mock(spec=EventStorage)
+
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer(),
+                                    unique_keys_tracker=UniqueKeysTracker(),
+                                    imp_counter=ImpressionsCounter())
+        class TelemetrySubmitterMock():
+            def synchronize_config(*_):
+                pass
+            
+        factory = SplitFactory(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            mocker.Mock(),
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            TelemetrySubmitterMock(),
+        )
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = True
+        type(factory).ready = ready_property
+        factory.block_until_ready(5)
+
+        split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
+        client = Client(factory, recorder, True)
+        client._evaluator = mocker.Mock(spec=Evaluator)
+        evaluation = {
+            'treatment': 'on',
+            'configurations': None,
+            'impression': {
+                'label': 'some_label',
+                'change_number': 123
+            },
+            'impressions_disabled': False
+        }
+        client._evaluator.eval_with_context.return_value = evaluation
+        client._evaluator.eval_many_with_context.return_value = {
+            'SPLIT_2': evaluation
+        }
+
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
+        assert client.get_treatment('some_key', 'SPLIT_2', impressions_properties={"prop": "value"}) == 'on'
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
+
+        assert client.get_treatment('some_key', 'SPLIT_2', impressions_properties=12) == 'on'
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None)]
+        assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatment')]
+        
+        _logger.reset_mock()
+        assert client.get_treatment('some_key', 'SPLIT_2', impressions_properties='12') == 'on'
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
+        assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatment')]
+
+        assert client.get_treatment_with_config('some_key', 'SPLIT_2', impressions_properties={"prop": "value"}) == ('on', None)
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
+
+        assert client.get_treatments('some_key', ['SPLIT_2'], impressions_properties={"prop": "value"}) ==  {'SPLIT_2': 'on'}
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
+
+        _logger.reset_mock()
+        assert client.get_treatments('some_key', ['SPLIT_2'], impressions_properties="prop") ==  {'SPLIT_2': 'on'}
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
+        assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatments')]
+
+        _logger.reset_mock()
+        assert client.get_treatments('some_key', ['SPLIT_2'], impressions_properties=123) ==  {'SPLIT_2': 'on'}
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
+        assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatments')]
+
+        assert client.get_treatments_with_config('some_key', ['SPLIT_2'], impressions_properties={"prop": "value"}) ==  {'SPLIT_2': ('on', None)}
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
+
+        assert client.get_treatments_by_flag_set('some_key', 'set_1', impressions_properties={"prop": "value"}) == {'SPLIT_2': 'on'}
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
+
+        assert client.get_treatments_by_flag_sets('some_key', ['set_1'], impressions_properties={"prop": "value"}) == {'SPLIT_2': 'on'}
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
+
+        assert client.get_treatments_with_config_by_flag_set('some_key', 'set_1', impressions_properties={"prop": "value"}) == {'SPLIT_2': ('on', None)}
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
+
+        assert client.get_treatments_with_config_by_flag_sets('some_key', ['set_1'], impressions_properties={"prop": "value"}) == {'SPLIT_2': ('on', None)}
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
 class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     """Split client async test cases."""
@@ -1320,7 +1425,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         }
         _logger = mocker.Mock()
         assert await client.get_treatment('some_key', 'SPLIT_2') == 'on'
-        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000)]
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None)]
         assert _logger.mock_calls == []
 
         # Test with client not ready
@@ -1328,7 +1433,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         ready_property.return_value = False
         type(factory).ready = ready_property
         assert await client.get_treatment('some_key', 'SPLIT_2', {'some_attribute': 1}) == 'control'
-        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', Label.NOT_READY, None, None, 1000)]
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', Label.NOT_READY, None, None, 1000, None, None)]
 
         # Test with exception:
         ready_property.return_value = True
@@ -1336,7 +1441,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             raise RuntimeError('something')
         client._evaluator.eval_with_context.side_effect = _raise
         assert await client.get_treatment('some_key', 'SPLIT_2') == 'control'
-        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', 'exception', None, None, 1000)]
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', 'exception', None, None, 1000, None, None)]
         await factory.destroy()
 
     @pytest.mark.asyncio
@@ -1396,7 +1501,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'some_key',
             'SPLIT_2'
         ) == ('on', '{"some_config": True}')
-        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000)]
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None)]
         assert _logger.mock_calls == []
 
         # Test with client not ready
@@ -1404,7 +1509,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         ready_property.return_value = False
         type(factory).ready = ready_property
         assert await client.get_treatment_with_config('some_key', 'SPLIT_2', {'some_attribute': 1}) == ('control', None)
-        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY)]
 
         # Test with exception:
         ready_property.return_value = True
@@ -1413,7 +1518,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             raise RuntimeError('something')
         client._evaluator.eval_with_context.side_effect = _raise
         assert await client.get_treatment_with_config('some_key', 'SPLIT_2') == ('control', None)
-        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', 'exception', None, None, 1000)]
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', 'exception', None, None, 1000, None, None)]
         await factory.destroy()
 
     @pytest.mark.asyncio
@@ -1476,8 +1581,8 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         assert await client.get_treatments('key', ['SPLIT_2', 'SPLIT_1']) == {'SPLIT_2': 'on', 'SPLIT_1': 'on'}
 
         impressions_called = await impression_storage.pop_many(100)
-        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000) in impressions_called
-        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000) in impressions_called
+        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
+        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
         assert _logger.mock_calls == []
 
         # Test with client not ready
@@ -1485,7 +1590,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         ready_property.return_value = False
         type(factory).ready = ready_property
         assert await client.get_treatments('some_key', ['SPLIT_2'], {'some_attribute': 1}) == {'SPLIT_2': 'control'}
-        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY)]
 
         # Test with exception:
         ready_property.return_value = True
@@ -1556,8 +1661,8 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         assert await client.get_treatments_by_flag_set('key', 'set_1') == {'SPLIT_2': 'on', 'SPLIT_1': 'on'}
 
         impressions_called = await impression_storage.pop_many(100)
-        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000) in impressions_called
-        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000) in impressions_called
+        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
+        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
         assert _logger.mock_calls == []
 
         # Test with client not ready
@@ -1565,7 +1670,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         ready_property.return_value = False
         type(factory).ready = ready_property
         assert await client.get_treatments_by_flag_set('some_key', 'set_2', {'some_attribute': 1}) == {'SPLIT_1': 'control'}
-        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY)]
 
         # Test with exception:
         ready_property.return_value = True
@@ -1636,8 +1741,8 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         assert await client.get_treatments_by_flag_sets('key', ['set_1']) == {'SPLIT_2': 'on', 'SPLIT_1': 'on'}
 
         impressions_called = await impression_storage.pop_many(100)
-        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000) in impressions_called
-        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000) in impressions_called
+        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
+        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
         assert _logger.mock_calls == []
 
         # Test with client not ready
@@ -1645,7 +1750,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         ready_property.return_value = False
         type(factory).ready = ready_property
         assert await client.get_treatments_by_flag_sets('some_key', ['set_2'], {'some_attribute': 1}) == {'SPLIT_1': 'control'}
-        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY)]
 
         # Test with exception:
         ready_property.return_value = True
@@ -1717,8 +1822,8 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         }
 
         impressions_called = await impression_storage.pop_many(100)
-        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000) in impressions_called
-        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000) in impressions_called
+        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
+        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
         assert _logger.mock_calls == []
 
         # Test with client not ready
@@ -1726,7 +1831,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         ready_property.return_value = False
         type(factory).ready = ready_property
         assert await client.get_treatments_with_config('some_key', ['SPLIT_1'], {'some_attribute': 1}) == {'SPLIT_1': ('control', None)}
-        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY)]
 
         # Test with exception:
         ready_property.return_value = True
@@ -1801,8 +1906,8 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         }
 
         impressions_called = await impression_storage.pop_many(100)
-        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000) in impressions_called
-        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000) in impressions_called
+        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
+        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
         assert _logger.mock_calls == []
 
         # Test with client not ready
@@ -1810,7 +1915,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         ready_property.return_value = False
         type(factory).ready = ready_property
         assert await client.get_treatments_with_config_by_flag_set('some_key', 'set_2', {'some_attribute': 1}) == {'SPLIT_1': ('control', None)}
-        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY)]
 
         # Test with exception:
         ready_property.return_value = True
@@ -1885,8 +1990,8 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         }
 
         impressions_called = await impression_storage.pop_many(100)
-        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000) in impressions_called
-        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000) in impressions_called
+        assert Impression('key', 'SPLIT_1', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
+        assert Impression('key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None) in impressions_called
         assert _logger.mock_calls == []
 
         # Test with client not ready
@@ -1894,7 +1999,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         ready_property.return_value = False
         type(factory).ready = ready_property
         assert await client.get_treatments_with_config_by_flag_sets('some_key', ['set_2'], {'some_attribute': 1}) == {'SPLIT_1': ('control', None)}
-        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY)]
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_1', 'control', Label.NOT_READY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY, mocker.ANY)]
 
         # Test with exception:
         ready_property.return_value = True
@@ -2370,3 +2475,103 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             pass
         assert(telemetry_storage._method_exceptions._track == 1)
         await factory.destroy()
+
+    @pytest.mark.asyncio
+    async def test_impressions_properties_async(self, mocker):
+        """Test get_treatment_async execution paths."""
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()        
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
+        event_storage = mocker.Mock(spec=EventStorage)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
+        recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer(), imp_counter=ImpressionsCounter())
+        await split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
+
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+
+        class TelemetrySubmitterMock():
+            async def synchronize_config(*_):
+                pass
+        factory = SplitFactoryAsync(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            TelemetrySubmitterMock(),
+        )
+
+        await factory.block_until_ready(1)
+        client = ClientAsync(factory, recorder, True)
+        client._evaluator = mocker.Mock(spec=Evaluator)
+        evaluation = {
+            'treatment': 'on',
+            'configurations': None,
+            'impression': {
+                'label': 'some_label',
+                'change_number': 123
+            },
+            'impressions_disabled': False
+        }
+        client._evaluator.eval_with_context.return_value = evaluation
+        client._evaluator.eval_many_with_context.return_value = {
+            'SPLIT_2': evaluation
+        }
+
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
+        assert await client.get_treatment('some_key', 'SPLIT_2', impressions_properties={"prop": "value"}) == 'on'
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
+
+        assert await client.get_treatment('some_key', 'SPLIT_2', impressions_properties=12) == 'on'
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None)]
+        assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatment')]
+        
+        _logger.reset_mock()
+        assert await client.get_treatment('some_key', 'SPLIT_2', impressions_properties='12') == 'on'
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
+        assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatment')]
+
+        assert await client.get_treatment_with_config('some_key', 'SPLIT_2', impressions_properties={"prop": "value"}) == ('on', None)
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
+
+        assert await client.get_treatments('some_key', ['SPLIT_2'], impressions_properties={"prop": "value"}) ==  {'SPLIT_2': 'on'}
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
+
+        _logger.reset_mock()
+        assert await client.get_treatments('some_key', ['SPLIT_2'], impressions_properties="prop") ==  {'SPLIT_2': 'on'}
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
+        assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatments')]
+
+        _logger.reset_mock()
+        assert await client.get_treatments('some_key', ['SPLIT_2'], impressions_properties=123) ==  {'SPLIT_2': 'on'}
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
+        assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatments')]
+
+        assert await client.get_treatments_with_config('some_key', ['SPLIT_2'], impressions_properties={"prop": "value"}) ==  {'SPLIT_2': ('on', None)}
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
+
+        assert await client.get_treatments_by_flag_set('some_key', 'set_1', impressions_properties={"prop": "value"}) == {'SPLIT_2': 'on'}
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
+
+        assert await client.get_treatments_by_flag_sets('some_key', ['set_1'], impressions_properties={"prop": "value"}) == {'SPLIT_2': 'on'}
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
+
+        assert await client.get_treatments_with_config_by_flag_set('some_key', 'set_1', impressions_properties={"prop": "value"}) == {'SPLIT_2': ('on', None)}
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
+
+        assert await client.get_treatments_with_config_by_flag_sets('some_key', ['set_1'], impressions_properties={"prop": "value"}) == {'SPLIT_2': ('on', None)}
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
