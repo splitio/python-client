@@ -22,12 +22,12 @@ expectedImpressions = [{
     'f': 'f1',
     'i': [
         {'k': 'k1', 'b': 'b1', 't': 'on', 'r': 'l1', 'm': 321654, 'c': 123456, 'pt': None, 'properties': {"prop": "val"}},
-        {'k': 'k3', 'b': 'b1', 't': 'on', 'r': 'l1', 'm': 321654, 'c': 123456, 'pt': None, 'properties': None},
+        {'k': 'k3', 'b': 'b1', 't': 'on', 'r': 'l1', 'm': 321654, 'c': 123456, 'pt': None},
     ],
 }, {
     'f': 'f2',
     'i': [
-        {'k': 'k2', 'b': 'b1', 't': 'off', 'r': 'l1', 'm': 321654, 'c': 123456, 'pt': None, 'properties': None},
+        {'k': 'k2', 'b': 'b1', 't': 'off', 'r': 'l1', 'm': 321654, 'c': 123456, 'pt': None},
     ]
 }]
 
