@@ -122,7 +122,7 @@ def _get_treatment(factory, skip_rbs=False):
     except:
         pass
 
-    assert client.get_treatment('user1', 'sample_feature', impressions_properties={'prop':'value'}) == 'on'
+    assert client.get_treatment('user1', 'sample_feature', evaluation_options={"properties":{"prop": "value"}}) == 'on'
     if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
         _validate_last_impressions(client, ('sample_feature', 'user1', 'on', '{"prop": "value"}'))
 

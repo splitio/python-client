@@ -1327,47 +1327,52 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
-        assert client.get_treatment('some_key', 'SPLIT_2', impressions_properties={"prop": "value"}) == 'on'
+        assert client.get_treatment('some_key', 'SPLIT_2', evaluation_options={"properties":{"prop": "value"}}) == 'on'
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
-        assert client.get_treatment('some_key', 'SPLIT_2', impressions_properties=12) == 'on'
+        assert client.get_treatment('some_key', 'SPLIT_2', evaluation_options=12) == 'on'
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None)]
-        assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatment')]
+        assert _logger.error.mock_calls == [mocker.call('%s: evaluaiton option should be dictionary, setting its value to None.', 'get_treatment')]
         
         _logger.reset_mock()
-        assert client.get_treatment('some_key', 'SPLIT_2', impressions_properties='12') == 'on'
+        assert client.get_treatment('some_key', 'SPLIT_2', evaluation_options='12') == 'on'
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
-        assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatment')]
+        assert _logger.error.mock_calls == [mocker.call('%s: evaluaiton option should be dictionary, setting its value to None.', 'get_treatment')]
 
-        assert client.get_treatment_with_config('some_key', 'SPLIT_2', impressions_properties={"prop": "value"}) == ('on', None)
+        _logger.reset_mock()
+        assert client.get_treatment('some_key', 'SPLIT_2', evaluation_options={"property":{"prop": "value"}}) == 'on'
+        assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
+        assert _logger.error.mock_calls == [mocker.call('%s: evaluaiton option must have `properties` key, setting its value to None.', 'get_treatment')]
+
+        assert client.get_treatment_with_config('some_key', 'SPLIT_2', evaluation_options={"properties":{"prop": "value"}}) == ('on', None)
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
-        assert client.get_treatments('some_key', ['SPLIT_2'], impressions_properties={"prop": "value"}) ==  {'SPLIT_2': 'on'}
+        assert client.get_treatments('some_key', ['SPLIT_2'], evaluation_options={"properties":{"prop": "value"}}) ==  {'SPLIT_2': 'on'}
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
         _logger.reset_mock()
-        assert client.get_treatments('some_key', ['SPLIT_2'], impressions_properties="prop") ==  {'SPLIT_2': 'on'}
+        assert client.get_treatments('some_key', ['SPLIT_2'], evaluation_options="prop") ==  {'SPLIT_2': 'on'}
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
-        assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatments')]
+        assert _logger.error.mock_calls == [mocker.call('%s: evaluaiton option should be dictionary, setting its value to None.', 'get_treatments')]
 
         _logger.reset_mock()
-        assert client.get_treatments('some_key', ['SPLIT_2'], impressions_properties=123) ==  {'SPLIT_2': 'on'}
+        assert client.get_treatments('some_key', ['SPLIT_2'], evaluation_options=123) ==  {'SPLIT_2': 'on'}
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
-        assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatments')]
+        assert _logger.error.mock_calls == [mocker.call('%s: evaluaiton option should be dictionary, setting its value to None.', 'get_treatments')]
 
-        assert client.get_treatments_with_config('some_key', ['SPLIT_2'], impressions_properties={"prop": "value"}) ==  {'SPLIT_2': ('on', None)}
+        assert client.get_treatments_with_config('some_key', ['SPLIT_2'], evaluation_options={"properties":{"prop": "value"}}) ==  {'SPLIT_2': ('on', None)}
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
-        assert client.get_treatments_by_flag_set('some_key', 'set_1', impressions_properties={"prop": "value"}) == {'SPLIT_2': 'on'}
+        assert client.get_treatments_by_flag_set('some_key', 'set_1', evaluation_options={"properties":{"prop": "value"}}) == {'SPLIT_2': 'on'}
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
-        assert client.get_treatments_by_flag_sets('some_key', ['set_1'], impressions_properties={"prop": "value"}) == {'SPLIT_2': 'on'}
+        assert client.get_treatments_by_flag_sets('some_key', ['set_1'], evaluation_options={"properties":{"prop": "value"}}) == {'SPLIT_2': 'on'}
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
-        assert client.get_treatments_with_config_by_flag_set('some_key', 'set_1', impressions_properties={"prop": "value"}) == {'SPLIT_2': ('on', None)}
+        assert client.get_treatments_with_config_by_flag_set('some_key', 'set_1', evaluation_options={"properties":{"prop": "value"}}) == {'SPLIT_2': ('on', None)}
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
-        assert client.get_treatments_with_config_by_flag_sets('some_key', ['set_1'], impressions_properties={"prop": "value"}) == {'SPLIT_2': ('on', None)}
+        assert client.get_treatments_with_config_by_flag_sets('some_key', ['set_1'], evaluation_options={"properties":{"prop": "value"}}) == {'SPLIT_2': ('on', None)}
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
 class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
@@ -2533,45 +2538,50 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
 
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
-        assert await client.get_treatment('some_key', 'SPLIT_2', impressions_properties={"prop": "value"}) == 'on'
+        assert await client.get_treatment('some_key', 'SPLIT_2', evaluation_options={"properties":{"prop": "value"}}) == 'on'
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
-        assert await client.get_treatment('some_key', 'SPLIT_2', impressions_properties=12) == 'on'
+        assert await client.get_treatment('some_key', 'SPLIT_2', evaluation_options=12) == 'on'
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None)]
-        assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatment')]
+        assert _logger.error.mock_calls == [mocker.call('%s: evaluaiton option should be dictionary, setting its value to None.', 'get_treatment')]
         
         _logger.reset_mock()
-        assert await client.get_treatment('some_key', 'SPLIT_2', impressions_properties='12') == 'on'
+        assert await client.get_treatment('some_key', 'SPLIT_2', evaluation_options='12') == 'on'
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
-        assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatment')]
+        assert _logger.error.mock_calls == [mocker.call('%s: evaluaiton option should be dictionary, setting its value to None.', 'get_treatment')]
 
-        assert await client.get_treatment_with_config('some_key', 'SPLIT_2', impressions_properties={"prop": "value"}) == ('on', None)
+        _logger.reset_mock()
+        assert await client.get_treatment('some_key', 'SPLIT_2', evaluation_options={"property":{"prop": "value"}}) == 'on'
+        assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
+        assert _logger.error.mock_calls == [mocker.call('%s: evaluaiton option must have `properties` key, setting its value to None.', 'get_treatment')]
+
+        assert await client.get_treatment_with_config('some_key', 'SPLIT_2', evaluation_options={"properties":{"prop": "value"}}) == ('on', None)
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
-        assert await client.get_treatments('some_key', ['SPLIT_2'], impressions_properties={"prop": "value"}) ==  {'SPLIT_2': 'on'}
+        assert await client.get_treatments('some_key', ['SPLIT_2'], evaluation_options={"properties":{"prop": "value"}}) ==  {'SPLIT_2': 'on'}
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
         _logger.reset_mock()
-        assert await client.get_treatments('some_key', ['SPLIT_2'], impressions_properties="prop") ==  {'SPLIT_2': 'on'}
+        assert await client.get_treatments('some_key', ['SPLIT_2'], evaluation_options="prop") ==  {'SPLIT_2': 'on'}
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
-        assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatments')]
+        assert _logger.error.mock_calls == [mocker.call('%s: evaluaiton option should be dictionary, setting its value to None.', 'get_treatments')]
 
         _logger.reset_mock()
-        assert await client.get_treatments('some_key', ['SPLIT_2'], impressions_properties=123) ==  {'SPLIT_2': 'on'}
+        assert await client.get_treatments('some_key', ['SPLIT_2'], evaluation_options=123) ==  {'SPLIT_2': 'on'}
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
-        assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatments')]
+        assert _logger.error.mock_calls == [mocker.call('%s: evaluaiton option should be dictionary, setting its value to None.', 'get_treatments')]
 
-        assert await client.get_treatments_with_config('some_key', ['SPLIT_2'], impressions_properties={"prop": "value"}) ==  {'SPLIT_2': ('on', None)}
+        assert await client.get_treatments_with_config('some_key', ['SPLIT_2'], evaluation_options={"properties":{"prop": "value"}}) ==  {'SPLIT_2': ('on', None)}
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
-        assert await client.get_treatments_by_flag_set('some_key', 'set_1', impressions_properties={"prop": "value"}) == {'SPLIT_2': 'on'}
+        assert await client.get_treatments_by_flag_set('some_key', 'set_1', evaluation_options={"properties":{"prop": "value"}}) == {'SPLIT_2': 'on'}
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
-        assert await client.get_treatments_by_flag_sets('some_key', ['set_1'], impressions_properties={"prop": "value"}) == {'SPLIT_2': 'on'}
+        assert await client.get_treatments_by_flag_sets('some_key', ['set_1'], evaluation_options={"properties":{"prop": "value"}}) == {'SPLIT_2': 'on'}
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
-        assert await client.get_treatments_with_config_by_flag_set('some_key', 'set_1', impressions_properties={"prop": "value"}) == {'SPLIT_2': ('on', None)}
+        assert await client.get_treatments_with_config_by_flag_set('some_key', 'set_1', evaluation_options={"properties":{"prop": "value"}}) == {'SPLIT_2': ('on', None)}
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
-        assert await client.get_treatments_with_config_by_flag_sets('some_key', ['set_1'], impressions_properties={"prop": "value"}) == {'SPLIT_2': ('on', None)}
+        assert await client.get_treatments_with_config_by_flag_sets('some_key', ['set_1'], evaluation_options={"properties":{"prop": "value"}}) == {'SPLIT_2': ('on', None)}
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]

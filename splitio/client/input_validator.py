@@ -538,6 +538,19 @@ def validate_attributes(attributes, method_name):
 
     return True
 
+def validate_evaluation_options(evaluation_options, method_name):
+    if evaluation_options == None:
+        return None
+    
+    if not isinstance(evaluation_options, dict):
+        _LOGGER.error("%s: evaluaiton option should be dictionary, setting its value to None.", method_name)
+        return None
+
+    if evaluation_options.get("properties") == None:
+        _LOGGER.error("%s: evaluaiton option must have `properties` key, setting its value to None.", method_name)            
+        return None
+    
+    return evaluation_options    
 
 class _ApiLogFilter(logging.Filter):  # pylint: disable=too-few-public-methods
     def filter(self, record):
