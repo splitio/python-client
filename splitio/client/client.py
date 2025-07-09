@@ -128,9 +128,9 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         
         if evaluation_options.properties is not None:
             valid, properties, size = input_validator.valid_properties(evaluation_options.properties, method_name)
+            evaluation_options = EvaluationOptions(properties)
             if not valid:
                 evaluation_options = EvaluationOptions(None)
-            evaluation_options = EvaluationOptions(properties)
         return evaluation_options
         
     def _build_impression(self, key, bucketing, feature, result, properties=None):
