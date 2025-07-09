@@ -1,6 +1,7 @@
 """A module for Split.io SDK API clients."""
 import logging
 import json
+from collections import namedtuple
 
 from splitio.engine.evaluator import Evaluator, CONTROL, EvaluationDataFactory, AsyncEvaluationDataFactory
 from splitio.engine.splitters import Splitter
@@ -12,6 +13,7 @@ from splitio.util.time import get_current_epoch_time_ms, utctime_ms
 
 
 _LOGGER = logging.getLogger(__name__)
+EvaluationOptions = namedtuple('EvaluationOptions', ['properties'])
 
 
 class ClientBase(object):  # pylint: disable=too-many-instance-attributes
@@ -124,10 +126,11 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         if evaluation_options == None:
             return None
         
-        if evaluation_options["properties"] is not None:
-            valid, evaluation_options["properties"], size = input_validator.valid_properties(evaluation_options["properties"], method_name)
+        if evaluation_options.properties is not None:
+            valid, properties, size = input_validator.valid_properties(evaluation_options.properties, method_name)
             if not valid:
-                evaluation_options["properties"] = None
+                evaluation_options = EvaluationOptions(None)
+            evaluation_options = EvaluationOptions(properties)
         return evaluation_options
         
     def _build_impression(self, key, bucketing, feature, result, properties=None):
@@ -198,7 +201,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         return True, event, size
 
     def _get_properties(self, evaluation_options):
-        return evaluation_options["properties"] if evaluation_options != None and evaluation_options.get("properties") != None else None
+        return evaluation_options.properties if evaluation_options != None else None
         
 
 class Client(ClientBase):  # pylint: disable=too-many-instance-attributes

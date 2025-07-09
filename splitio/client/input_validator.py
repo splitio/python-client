@@ -6,6 +6,7 @@ import math
 import inspect
 
 from splitio.client.key import Key
+from splitio.client import client
 from splitio.engine.evaluator import CONTROL
 
 
@@ -542,12 +543,8 @@ def validate_evaluation_options(evaluation_options, method_name):
     if evaluation_options == None:
         return None
     
-    if not isinstance(evaluation_options, dict):
-        _LOGGER.error("%s: evaluaiton option should be dictionary, setting its value to None.", method_name)
-        return None
-
-    if evaluation_options.get("properties") == None:
-        _LOGGER.error("%s: evaluaiton option must have `properties` key, setting its value to None.", method_name)            
+    if not isinstance(evaluation_options, client.EvaluationOptions):
+        _LOGGER.error("%s: evaluaiton option should be an instance of EvaluationOptions, setting its value to None.", method_name)
         return None
     
     return evaluation_options    

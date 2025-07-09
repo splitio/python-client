@@ -13,6 +13,8 @@ from splitio.optional.loaders import asyncio
 from splitio.exceptions import TimeoutException
 from splitio.client.factory import get_factory, SplitFactory, get_factory_async, SplitFactoryAsync
 from splitio.client.util import SdkMetadata
+from splitio.client.config import DEFAULT_CONFIG
+from splitio.client.client import EvaluationOptions
 from splitio.storage.inmemmory import InMemoryEventStorage, InMemoryImpressionStorage, \
     InMemorySegmentStorage, InMemorySplitStorage, InMemoryTelemetryStorage, InMemorySplitStorageAsync,\
     InMemoryEventStorageAsync, InMemoryImpressionStorageAsync, InMemorySegmentStorageAsync, \
@@ -35,7 +37,6 @@ from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageP
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder, StandardRecorderAsync, PipelinedRecorderAsync
-from splitio.client.config import DEFAULT_CONFIG
 from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, RedisSynchronizer, SynchronizerAsync,\
 RedisSynchronizerAsync
 from splitio.sync.manager import Manager, RedisManager, ManagerAsync, RedisManagerAsync
@@ -122,7 +123,7 @@ def _get_treatment(factory, skip_rbs=False):
     except:
         pass
 
-    assert client.get_treatment('user1', 'sample_feature', evaluation_options={"properties":{"prop": "value"}}) == 'on'
+    assert client.get_treatment('user1', 'sample_feature', evaluation_options=EvaluationOptions({"prop": "value"})) == 'on'
     if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
         _validate_last_impressions(client, ('sample_feature', 'user1', 'on', '{"prop": "value"}'))
 
