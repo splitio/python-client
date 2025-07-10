@@ -2569,7 +2569,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         _logger.reset_mock()
         assert await client.get_treatments('some_key', ['SPLIT_2'], evaluation_options=123) ==  {'SPLIT_2': 'on'}
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
-        assert _logger.error.mock_calls == [mocker.call('%s: evaluaiton option should be an instance of EvaluationOptions, setting its value to None.', 'get_treatments')]
+        assert _logger.error.mock_calls == [mocker.call('%s: evaluation options should be an instance of EvaluationOptions. Setting its value to None.', 'get_treatments')]
 
         assert await client.get_treatments_with_config('some_key', ['SPLIT_2'], evaluation_options=EvaluationOptions({"prop": "value"})) ==  {'SPLIT_2': ('on', None)}
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
