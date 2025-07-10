@@ -544,7 +544,7 @@ def validate_evaluation_options(evaluation_options, method_name):
         return None
     
     if not isinstance(evaluation_options, client.EvaluationOptions):
-        _LOGGER.error("%s: evaluaiton option should be an instance of EvaluationOptions, setting its value to None.", method_name)
+        _LOGGER.error("%s: evaluation options should be an instance of EvaluationOptions. Setting its value to None.", method_name)
         return None
     
     return evaluation_options    
