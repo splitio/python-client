@@ -6,6 +6,7 @@ import math
 import inspect
 
 from splitio.client.key import Key
+from splitio.client import client
 from splitio.engine.evaluator import CONTROL
 
 
@@ -538,6 +539,15 @@ def validate_attributes(attributes, method_name):
 
     return True
 
+def validate_evaluation_options(evaluation_options, method_name):
+    if evaluation_options == None:
+        return None
+    
+    if not isinstance(evaluation_options, client.EvaluationOptions):
+        _LOGGER.error("%s: evaluation options should be an instance of EvaluationOptions. Setting its value to None.", method_name)
+        return None
+    
+    return evaluation_options    
 
 class _ApiLogFilter(logging.Filter):  # pylint: disable=too-few-public-methods
     def filter(self, record):
