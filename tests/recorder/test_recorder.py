@@ -20,13 +20,13 @@ class StandardRecorderTests(object):
 
     def test_standard_recorder(self, mocker):
         impressions = [
-            Impression('k1', 'f1', 'on', 'l1', 123, None, None),
-            Impression('k1', 'f2', 'on', 'l1', 123, None, None)
+            Impression('k1', 'f1', 'on', 'l1', 123, None, None, None, None),
+            Impression('k1', 'f2', 'on', 'l1', 123, None, None, None, None)
         ]
         impmanager = mocker.Mock(spec=ImpressionsManager)
         impmanager.process_impressions.return_value = impressions, 0, [
-            (Impression('k1', 'f1', 'on', 'l1', 123, None, None), None),
-            (Impression('k1', 'f2', 'on', 'l1', 123, None, None), None)], \
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, None, None, None), None),
+            (Impression('k1', 'f2', 'on', 'l1', 123, None, None, None, None), None)], \
             [{"f": "f1", "ks": ["l1"]}, {"f": "f2", "ks": ["l1"]}], [('k1', 'f1'), ('k1', 'f2')]
         event = mocker.Mock(spec=EventStorage)
         impression = mocker.Mock(spec=ImpressionStorage)
@@ -49,16 +49,16 @@ class StandardRecorderTests(object):
         assert(self.passed_args[0] == MethodExceptionsAndLatencies.TREATMENT)
         assert(self.passed_args[1] == 1)
         assert listener.log_impression.mock_calls == [
-            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, None), None),
-            mocker.call(Impression('k1', 'f2', 'on', 'l1', 123, None, None), None)
+            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, None, None, None), None),
+            mocker.call(Impression('k1', 'f2', 'on', 'l1', 123, None, None, None, None), None)
         ]
         assert recorder._imp_counter.track.mock_calls == [mocker.call([{"f": "f1", "ks": ["l1"]}, {"f": "f2", "ks": ["l1"]}])]
         assert recorder._unique_keys_tracker.track.mock_calls == [mocker.call('k1', 'f1'), mocker.call('k1', 'f2')]
 
     def test_pipelined_recorder(self, mocker):
         impressions = [
-            Impression('k1', 'f1', 'on', 'l1', 123, None, None),
-            Impression('k1', 'f2', 'on', 'l1', 123, None, None)
+            Impression('k1', 'f1', 'on', 'l1', 123, None, None, None, None),
+            Impression('k1', 'f2', 'on', 'l1', 123, None, None, None, None)
         ]
         redis = mocker.Mock(spec=RedisAdapter)
         def execute():
@@ -67,8 +67,8 @@ class StandardRecorderTests(object):
 
         impmanager = mocker.Mock(spec=ImpressionsManager)
         impmanager.process_impressions.return_value = impressions, 0, [
-            (Impression('k1', 'f1', 'on', 'l1', 123, None, None), None),
-            (Impression('k1', 'f2', 'on', 'l1', 123, None, None), None)], \
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, None, None, None), None),
+            (Impression('k1', 'f2', 'on', 'l1', 123, None, None, None, None), None)], \
             [{"f": "f1", "ks": ["l1"]}, {"f": "f2", "ks": ["l1"]}], [('k1', 'f1'), ('k1', 'f2')]
         event = mocker.Mock(spec=RedisEventsStorage)
         impression = mocker.Mock(spec=RedisImpressionsStorage)
@@ -83,22 +83,22 @@ class StandardRecorderTests(object):
         assert recorder._telemetry_redis_storage.add_latency_to_pipe.mock_calls[0][1][0] == MethodExceptionsAndLatencies.TREATMENT
         assert recorder._telemetry_redis_storage.add_latency_to_pipe.mock_calls[0][1][1] == 1
         assert listener.log_impression.mock_calls == [
-            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, None), None),
-            mocker.call(Impression('k1', 'f2', 'on', 'l1', 123, None, None), None)
+            mocker.call(Impression('k1', 'f1', 'on', 'l1', 123, None, None, None, None), None),
+            mocker.call(Impression('k1', 'f2', 'on', 'l1', 123, None, None, None, None), None)
         ]
         assert recorder._imp_counter.track.mock_calls == [mocker.call([{"f": "f1", "ks": ["l1"]}, {"f": "f2", "ks": ["l1"]}])]
         assert recorder._unique_keys_tracker.track.mock_calls == [mocker.call('k1', 'f1'), mocker.call('k1', 'f2')]
 
     def test_sampled_recorder(self, mocker):
         impressions = [
-            Impression('k1', 'f1', 'on', 'l1', 123, None, None),
-            Impression('k1', 'f2', 'on', 'l1', 123, None, None)
+            Impression('k1', 'f1', 'on', 'l1', 123, None, None, None, None),
+            Impression('k1', 'f2', 'on', 'l1', 123, None, None, None, None)
         ]
         redis = mocker.Mock(spec=RedisAdapter)
         impmanager = mocker.Mock(spec=ImpressionsManager)
         impmanager.process_impressions.return_value = impressions, 0, [
-            (Impression('k1', 'f1', 'on', 'l1', 123, None, None), None),
-            (Impression('k1', 'f2', 'on', 'l1', 123, None, None), None)
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, None, None, None), None),
+            (Impression('k1', 'f2', 'on', 'l1', 123, None, None, None, None), None)
         ], [], []
 
         event = mocker.Mock(spec=EventStorage)
@@ -124,13 +124,13 @@ class StandardRecorderAsyncTests(object):
     @pytest.mark.asyncio
     async def test_standard_recorder(self, mocker):
         impressions = [
-            Impression('k1', 'f1', 'on', 'l1', 123, None, None),
-            Impression('k1', 'f2', 'on', 'l1', 123, None, None)
+            Impression('k1', 'f1', 'on', 'l1', 123, None, None, None, None),
+            Impression('k1', 'f2', 'on', 'l1', 123, None, None, None, None)
         ]
         impmanager = mocker.Mock(spec=ImpressionsManager)
         impmanager.process_impressions.return_value = impressions, 0, [
-            (Impression('k1', 'f1', 'on', 'l1', 123, None, None), {'att1': 'val'}),
-            (Impression('k1', 'f2', 'on', 'l1', 123, None, None), None)], \
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, None, None, None), {'att1': 'val'}),
+            (Impression('k1', 'f2', 'on', 'l1', 123, None, None, None, None), None)], \
             [{"f": "f1", "ks": ["l1"]}, {"f": "f2", "ks": ["l1"]}], [('k1', 'f1'), ('k1', 'f2')]
         event = mocker.Mock(spec=InMemoryEventStorageAsync)
         impression = mocker.Mock(spec=InMemoryImpressionStorageAsync)
@@ -175,8 +175,8 @@ class StandardRecorderAsyncTests(object):
         assert(self.passed_args[0] == MethodExceptionsAndLatencies.TREATMENT)
         assert(self.passed_args[1] == 1)
         assert self.listener_impressions == [
-            Impression('k1', 'f1', 'on', 'l1', 123, None, None),
-            Impression('k1', 'f2', 'on', 'l1', 123, None, None),
+            Impression('k1', 'f1', 'on', 'l1', 123, None, None, None, None),
+            Impression('k1', 'f2', 'on', 'l1', 123, None, None, None, None),
         ]
         assert self.listener_attributes == [{'att1': 'val'}, None]
         assert self.count == [{"f": "f1", "ks": ["l1"]}, {"f": "f2", "ks": ["l1"]}]
@@ -185,8 +185,8 @@ class StandardRecorderAsyncTests(object):
     @pytest.mark.asyncio
     async def test_pipelined_recorder(self, mocker):
         impressions = [
-            Impression('k1', 'f1', 'on', 'l1', 123, None, None),
-            Impression('k1', 'f2', 'on', 'l1', 123, None, None)
+            Impression('k1', 'f1', 'on', 'l1', 123, None, None, None, None),
+            Impression('k1', 'f2', 'on', 'l1', 123, None, None, None, None)
         ]
         redis = mocker.Mock(spec=RedisAdapterAsync)
         async def execute():
@@ -194,8 +194,8 @@ class StandardRecorderAsyncTests(object):
         redis().execute = execute
         impmanager = mocker.Mock(spec=ImpressionsManager)
         impmanager.process_impressions.return_value = impressions, 0, [
-            (Impression('k1', 'f1', 'on', 'l1', 123, None, None), {'att1': 'val'}),
-            (Impression('k1', 'f2', 'on', 'l1', 123, None, None), None)], \
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, None, None, None), {'att1': 'val'}),
+            (Impression('k1', 'f2', 'on', 'l1', 123, None, None, None, None), None)], \
             [{"f": "f1", "ks": ["l1"]}, {"f": "f2", "ks": ["l1"]}], [('k1', 'f1'), ('k1', 'f2')]
         event = mocker.Mock(spec=RedisEventsStorageAsync)
         impression = mocker.Mock(spec=RedisImpressionsStorageAsync)
@@ -227,8 +227,8 @@ class StandardRecorderAsyncTests(object):
         assert recorder._telemetry_redis_storage.add_latency_to_pipe.mock_calls[0][1][0] == MethodExceptionsAndLatencies.TREATMENT
         assert recorder._telemetry_redis_storage.add_latency_to_pipe.mock_calls[0][1][1] == 1
         assert self.listener_impressions == [
-            Impression('k1', 'f1', 'on', 'l1', 123, None, None),
-            Impression('k1', 'f2', 'on', 'l1', 123, None, None),
+            Impression('k1', 'f1', 'on', 'l1', 123, None, None, None, None),
+            Impression('k1', 'f2', 'on', 'l1', 123, None, None, None, None),
         ]
         assert self.listener_attributes == [{'att1': 'val'}, None]
         assert self.count == [{"f": "f1", "ks": ["l1"]}, {"f": "f2", "ks": ["l1"]}]
@@ -237,14 +237,14 @@ class StandardRecorderAsyncTests(object):
     @pytest.mark.asyncio
     async def test_sampled_recorder(self, mocker):
         impressions = [
-            Impression('k1', 'f1', 'on', 'l1', 123, None, None),
-            Impression('k1', 'f2', 'on', 'l1', 123, None, None)
+            Impression('k1', 'f1', 'on', 'l1', 123, None, None, None, None),
+            Impression('k1', 'f2', 'on', 'l1', 123, None, None, None, None)
         ]
         redis = mocker.Mock(spec=RedisAdapterAsync)
         impmanager = mocker.Mock(spec=ImpressionsManager)
         impmanager.process_impressions.return_value = impressions, 0, [
-            (Impression('k1', 'f1', 'on', 'l1', 123, None, None), None),
-            (Impression('k1', 'f2', 'on', 'l1', 123, None, None), None)
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, None, None, None), None),
+            (Impression('k1', 'f2', 'on', 'l1', 123, None, None, None, None), None)
         ], [], []
         event = mocker.Mock(spec=RedisEventsStorageAsync)
         impression = mocker.Mock(spec=RedisImpressionsStorageAsync)

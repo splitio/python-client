@@ -89,6 +89,9 @@ class InMemorySenderAdapterAsync(InMemorySenderAdapterBase):
         :param uniques: unique keys disctionary
         :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
+        if len(uniques) == 0:
+            return
+
         await self._telemtry_http_client.record_unique_keys({'keys': self._uniques_formatter(uniques)})
 
 
@@ -184,6 +187,9 @@ class RedisSenderAdapterAsync(ImpressionsSenderAdapter):
         :param uniques: unique keys disctionary
         :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
+        if len(uniques) == 0:
+            return True
+
         bulk_mtks = _uniques_formatter(uniques)
         try:
             inserted = await self._redis_client.rpush(_MTK_QUEUE_KEY, *bulk_mtks)
@@ -202,6 +208,9 @@ class RedisSenderAdapterAsync(ImpressionsSenderAdapter):
         :param to_send: unique keys disctionary
         :type to_send: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
+        if len(to_send) == 0:
+            return True
+
         try:
             resulted = 0
             counted = 0
@@ -277,6 +286,7 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
         """
         if len(to_send) == 0:
             return
+
         try:
             resulted = 0
             for pf_count in to_send:
@@ -325,6 +335,9 @@ class PluggableSenderAdapterAsync(ImpressionsSenderAdapter):
         :param uniques: unique keys disctionary
         :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
+        if len(uniques) == 0:
+            return True
+        
         bulk_mtks = _uniques_formatter(uniques)
         try:
             inserted = await self._adapter_client.push_items(self._prefix + _MTK_QUEUE_KEY, *bulk_mtks)
@@ -343,6 +356,9 @@ class PluggableSenderAdapterAsync(ImpressionsSenderAdapter):
         :param to_send: unique keys disctionary
         :type to_send: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
+        if len(to_send) == 0:
+            return True
+
         try:
             resulted = 0
             for pf_count in to_send:

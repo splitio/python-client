@@ -17,8 +17,8 @@ class ImpressionsSynchronizerTests(object):
     def test_synchronize_impressions_error(self, mocker):
         storage = mocker.Mock(spec=ImpressionStorage)
         storage.pop_many.return_value = [
-            Impression('key1', 'split1', 'on', 'l1', 123456, 'b1', 321654),
-            Impression('key2', 'split1', 'on', 'l1', 123456, 'b1', 321654),
+            Impression('key1', 'split1', 'on', 'l1', 123456, 'b1', 321654, None, None),
+            Impression('key2', 'split1', 'on', 'l1', 123456, 'b1', 321654, None, None),
         ]
 
         api = mocker.Mock()
@@ -49,8 +49,8 @@ class ImpressionsSynchronizerTests(object):
     def test_synchronize_impressions(self, mocker):
         storage = mocker.Mock(spec=ImpressionStorage)
         storage.pop_many.return_value = [
-            Impression('key1', 'split1', 'on', 'l1', 123456, 'b1', 321654),
-            Impression('key2', 'split1', 'on', 'l1', 123456, 'b1', 321654),
+            Impression('key1', 'split1', 'on', 'l1', 123456, 'b1', 321654, None, None),
+            Impression('key2', 'split1', 'on', 'l1', 123456, 'b1', 321654, None, None),
         ]
 
         api = mocker.Mock()
@@ -76,8 +76,8 @@ class ImpressionsSynchronizerAsyncTests(object):
         storage = mocker.Mock(spec=ImpressionStorage)
         async def pop_many(*args):
             return [
-                Impression('key1', 'split1', 'on', 'l1', 123456, 'b1', 321654),
-                Impression('key2', 'split1', 'on', 'l1', 123456, 'b1', 321654),
+                Impression('key1', 'split1', 'on', 'l1', 123456, 'b1', 321654, None, None),
+                Impression('key2', 'split1', 'on', 'l1', 123456, 'b1', 321654, None, None),
             ]
         storage.pop_many = pop_many
         api = mocker.Mock()
@@ -113,8 +113,8 @@ class ImpressionsSynchronizerAsyncTests(object):
         storage = mocker.Mock(spec=ImpressionStorage)
         async def pop_many(*args):
             return [
-                Impression('key1', 'split1', 'on', 'l1', 123456, 'b1', 321654),
-                Impression('key2', 'split1', 'on', 'l1', 123456, 'b1', 321654),
+                Impression('key1', 'split1', 'on', 'l1', 123456, 'b1', 321654, None, None),
+                Impression('key2', 'split1', 'on', 'l1', 123456, 'b1', 321654, None, None),
             ]
         storage.pop_many = pop_many
 

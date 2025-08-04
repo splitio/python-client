@@ -646,10 +646,10 @@ class PluggableImpressionsStorageTests(object):
                 prefix = ''
             pluggable_imp_storage = PluggableImpressionsStorage(self.mock_adapter, self.metadata, prefix=sprefix)
             impressions = [
-                Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
-                Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
-                Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
-                Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654)
+                Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+                Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+                Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+                Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654, None, None)
             ]
             assert(pluggable_imp_storage.put(impressions))
             assert(pluggable_imp_storage._impressions_queue_key in self.mock_adapter._keys)
@@ -657,8 +657,8 @@ class PluggableImpressionsStorageTests(object):
             assert(self.mock_adapter._expire[prefix + "SPLITIO.impressions"] == PluggableImpressionsStorage.IMPRESSIONS_KEY_DEFAULT_TTL)
 
             impressions2 = [
-                Impression('key5', 'feature1', 'off', 'some_label', 123456, 'buck1', 321654),
-                Impression('key6', 'feature2', 'off', 'some_label', 123456, 'buck1', 321654),
+                Impression('key5', 'feature1', 'off', 'some_label', 123456, 'buck1', 321654, None, None),
+                Impression('key6', 'feature2', 'off', 'some_label', 123456, 'buck1', 321654, None, None),
             ]
             assert(pluggable_imp_storage.put(impressions2))
             assert(self.mock_adapter._keys[prefix + "SPLITIO.impressions"] == pluggable_imp_storage._wrap_impressions(impressions + impressions2))
@@ -667,8 +667,8 @@ class PluggableImpressionsStorageTests(object):
         for sprefix in [None, 'myprefix']:
             pluggable_imp_storage = PluggableImpressionsStorage(self.mock_adapter, self.metadata, prefix=sprefix)
             impressions = [
-                Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
-                Impression('key2', 'feature2', 'off', 'some_label', 123456, 'buck1', 321654),
+                Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+                Impression('key2', 'feature2', 'off', 'some_label', 123456, 'buck1', 321654, None, None),
             ]
             assert(pluggable_imp_storage._wrap_impressions(impressions) == [
                 json.dumps({
@@ -685,6 +685,7 @@ class PluggableImpressionsStorageTests(object):
                         'r': 'some_label',
                         'c': 123456,
                         'm': 321654,
+                        'properties': None
                     }
                 }),
                 json.dumps({
@@ -701,6 +702,7 @@ class PluggableImpressionsStorageTests(object):
                         'r': 'some_label',
                         'c': 123456,
                         'm': 321654,
+                        'properties': None
                     }
                 })
             ])
@@ -763,10 +765,10 @@ class PluggableImpressionsStorageAsyncTests(object):
                 prefix = ''
             pluggable_imp_storage = PluggableImpressionsStorageAsync(self.mock_adapter, self.metadata, prefix=sprefix)
             impressions = [
-                Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
-                Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
-                Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654),
-                Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654)
+                Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+                Impression('key2', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+                Impression('key3', 'feature2', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+                Impression('key4', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654, None, None)
             ]
             assert(await pluggable_imp_storage.put(impressions))
             assert(pluggable_imp_storage._impressions_queue_key in self.mock_adapter._keys)
@@ -774,8 +776,8 @@ class PluggableImpressionsStorageAsyncTests(object):
             assert(self.mock_adapter._expire[prefix + "SPLITIO.impressions"] == PluggableImpressionsStorageAsync.IMPRESSIONS_KEY_DEFAULT_TTL)
 
             impressions2 = [
-                Impression('key5', 'feature1', 'off', 'some_label', 123456, 'buck1', 321654),
-                Impression('key6', 'feature2', 'off', 'some_label', 123456, 'buck1', 321654),
+                Impression('key5', 'feature1', 'off', 'some_label', 123456, 'buck1', 321654, None, None),
+                Impression('key6', 'feature2', 'off', 'some_label', 123456, 'buck1', 321654, None, None),
             ]
             assert(await pluggable_imp_storage.put(impressions2))
             assert(self.mock_adapter._keys[prefix + "SPLITIO.impressions"] == pluggable_imp_storage._wrap_impressions(impressions + impressions2))
@@ -784,8 +786,8 @@ class PluggableImpressionsStorageAsyncTests(object):
         for sprefix in [None, 'myprefix']:
             pluggable_imp_storage = PluggableImpressionsStorageAsync(self.mock_adapter, self.metadata, prefix=sprefix)
             impressions = [
-                Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654),
-                Impression('key2', 'feature2', 'off', 'some_label', 123456, 'buck1', 321654),
+                Impression('key1', 'feature1', 'on', 'some_label', 123456, 'buck1', 321654, None, None),
+                Impression('key2', 'feature2', 'off', 'some_label', 123456, 'buck1', 321654, None, None),
             ]
             assert(pluggable_imp_storage._wrap_impressions(impressions) == [
                 json.dumps({
@@ -802,6 +804,7 @@ class PluggableImpressionsStorageAsyncTests(object):
                         'r': 'some_label',
                         'c': 123456,
                         'm': 321654,
+                        'properties': None
                     }
                 }),
                 json.dumps({
@@ -818,6 +821,7 @@ class PluggableImpressionsStorageAsyncTests(object):
                         'r': 'some_label',
                         'c': 123456,
                         'm': 321654,
+                        'properties': None
                     }
                 })
             ])

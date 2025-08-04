@@ -1100,6 +1100,7 @@ class RedisImpressionsStorageBase(ImpressionStorage, ImpressionPipelinedStorage)
                         'r': impression.label,
                         'c': impression.change_number,
                         'm': impression.time,
+                        'properties': impression.properties
                     }
                 }
             bulk_impressions.append(json.dumps(to_store))

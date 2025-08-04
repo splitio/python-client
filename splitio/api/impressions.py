@@ -30,15 +30,7 @@ class ImpressionsAPIBase(object):  # pylint: disable=too-few-public-methods
             {
                 'f': test_name,
                 'i': [
-                    {
-                        'k': impression.matching_key,
-                        't': impression.treatment,
-                        'm': impression.time,
-                        'c': impression.change_number,
-                        'r': impression.label,
-                        'b': impression.bucketing_key,
-                        'pt': impression.previous_time
-                    }
+                    ImpressionsAPIBase._filter_out_null_prop(impression)
                     for impression in imps
                 ]
             }
@@ -47,6 +39,30 @@ class ImpressionsAPIBase(object):  # pylint: disable=too-few-public-methods
                 lambda i: i.feature_name
             )
         ]
+
+    @staticmethod
+    def _filter_out_null_prop(impression):
+        if impression.properties == None:
+            return {
+                    'k': impression.matching_key,
+                    't': impression.treatment,
+                    'm': impression.time,
+                    'c': impression.change_number,
+                    'r': impression.label,
+                    'b': impression.bucketing_key,
+                    'pt': impression.previous_time
+                    }
+            
+        return {
+                'k': impression.matching_key,
+                't': impression.treatment,
+                'm': impression.time,
+                'c': impression.change_number,
+                'r': impression.label,
+                'b': impression.bucketing_key,
+                'pt': impression.previous_time,
+                'properties': impression.properties
+                }
 
     @staticmethod
     def _build_counters(counters):
