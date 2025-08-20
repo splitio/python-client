@@ -247,7 +247,7 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         try:
             await self._event_source_ended.wait()
         except asyncio.CancelledError as e:
-            _LOGGER.error("Exception waiting for event source ended")
+            _LOGGER.debug("Exception waiting for event source ended")
             _LOGGER.debug('stack trace: ', exc_info=True)
             pass
 
