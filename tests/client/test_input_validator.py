@@ -1,10 +1,8 @@
 """Unit tests for the input_validator module."""
-import logging
 import pytest
 
 from splitio.client.factory import SplitFactory, get_factory, SplitFactoryAsync, get_factory_async
 from splitio.client.client import CONTROL, Client, _LOGGER as _logger, ClientAsync
-from splitio.client.manager import SplitManager, SplitManagerAsync
 from splitio.client.key import Key
 from splitio.storage import SplitStorage, EventStorage, ImpressionStorage, SegmentStorage, RuleBasedSegmentsStorage
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync, \
@@ -14,7 +12,7 @@ from splitio.client import input_validator
 from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
 from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.engine.impressions.impressions import Manager as ImpressionManager
-from splitio.engine.evaluator import EvaluationDataFactory
+from splitio.models.fallback_treatment import FallbackTreatment
 
 class ClientInputValidationTests(object):
     """Input validation test cases."""
@@ -1627,7 +1625,42 @@ class ClientInputValidationTests(object):
         flag_sets = input_validator.validate_flag_sets([12, 33], 'method')
         assert flag_sets == []
 
+    def test_fallback_treatments(self, mocker):
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
+        assert input_validator.validate_fallback_treatment(FallbackTreatment("on", {"prop":"val"}))
+        assert input_validator.validate_fallback_treatment(FallbackTreatment("on"))
+        
+        _logger.reset_mock()
+        assert not input_validator.validate_fallback_treatment(FallbackTreatment("on" * 100))
+        assert _logger.warning.mock_calls == [
+            mocker.call("Config: Fallback treatment size should not exceed %s characters", 100)
+        ]
+        
+        assert input_validator.validate_fallback_treatment(FallbackTreatment("on", {"prop" * 500:"val" * 500}))
+
+        _logger.reset_mock()
+        assert not input_validator.validate_fallback_treatment(FallbackTreatment("on/c"))
+        assert _logger.warning.mock_calls == [
+            mocker.call("Config: Fallback treatment should match regex %s", "^[a-zA-Z][a-zA-Z0-9-_;]+$")
+        ]
+
+        _logger.reset_mock()
+        assert not input_validator.validate_fallback_treatment(FallbackTreatment("9on"))
+        assert _logger.warning.mock_calls == [
+            mocker.call("Config: Fallback treatment should match regex %s", "^[a-zA-Z][a-zA-Z0-9-_;]+$")
+        ]
+
+        _logger.reset_mock()
+        assert not input_validator.validate_fallback_treatment(FallbackTreatment("on$as"))
+        assert _logger.warning.mock_calls == [
+            mocker.call("Config: Fallback treatment should match regex %s", "^[a-zA-Z][a-zA-Z0-9-_;]+$")
+        ]
+
+        assert input_validator.validate_fallback_treatment(FallbackTreatment("on_c"))
+        assert input_validator.validate_fallback_treatment(FallbackTreatment("on_45-c"))
+        
 class ClientInputValidationAsyncTests(object):
     """Input validation test cases."""
 

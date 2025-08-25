@@ -15,7 +15,8 @@ MAX_LENGTH = 250
 EVENT_TYPE_PATTERN = r'^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$'
 MAX_PROPERTIES_LENGTH_BYTES = 32768
 _FLAG_SETS_REGEX = '^[a-z0-9][_a-z0-9]{0,49}$'
-
+_FALLBACK_TREATMENT_REGEX = '^[a-zA-Z][a-zA-Z0-9-_;]+$'
+_FALLBACK_TREATMENT_SIZE = 100
 
 def _check_not_null(value, name, operation):
     """
@@ -712,3 +713,20 @@ def validate_flag_sets(flag_sets, method_name):
         sanitized_flag_sets.add(flag_set)
 
     return list(sanitized_flag_sets)
+
+def validate_fallback_treatment(fallback_treatment):
+    if not validate_regex_name(fallback_treatment.treatment):
+        _LOGGER.warning("Config: Fallback treatment should match regex %s", _FALLBACK_TREATMENT_REGEX)
+        return False
+        
+    if len(fallback_treatment.treatment) > _FALLBACK_TREATMENT_SIZE:
+        _LOGGER.warning("Config: Fallback treatment size should not exceed %s characters", _FALLBACK_TREATMENT_SIZE)
+        return False
+                
+    return True
+
+def validate_regex_name(name):
+    if re.match(_FALLBACK_TREATMENT_REGEX, name) == None:
+        return False
+    
+    return True
