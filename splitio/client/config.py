@@ -5,7 +5,7 @@ from enum import Enum
 
 from splitio.engine.impressions import ImpressionsMode
 from splitio.client.input_validator import validate_flag_sets, validate_fallback_treatment, validate_regex_name
-from splitio.models.fallback_config import FallbackConfig
+from splitio.models.fallback_config import FallbackConfig, FallbackTreatmentsConfiguration
 
 _LOGGER = logging.getLogger(__name__)
 DEFAULT_DATA_SAMPLING = 1
@@ -71,7 +71,7 @@ DEFAULT_CONFIG = {
     'httpAuthenticateScheme': AuthenticateScheme.NONE,
     'kerberosPrincipalUser': None,
     'kerberosPrincipalPassword': None,
-    'fallbackConfig': FallbackConfig(None, None)
+    'fallbackTreatmentsConfiguration': FallbackTreatmentsConfiguration(None)
 }
 
 def _parse_operation_mode(sdk_key, config):
@@ -170,26 +170,37 @@ def sanitize(sdk_key, config):
                             ' Defaulting to `none` mode.')
         processed["httpAuthenticateScheme"] = authenticate_scheme
 
-    if config.get('fallbackConfig') is not None:
-        if not isinstance(config['fallbackConfig'], FallbackConfig):
-            _LOGGER.warning('Config: fallbackConfig parameter should be of `FallbackConfig` structure.')
-            processed['fallbackConfig'] = FallbackConfig(None, None)
-            return processed        
+    processed = _sanitize_fallback_config(config, processed)    
         
-        if config['fallbackConfig'].global_fallback_treatment is not None and not validate_fallback_treatment(config['fallbackConfig'].global_fallback_treatment):
-            _LOGGER.warning('Config: global fallbacktreatment parameter is discarded.')
-            processed['fallbackConfig'].global_fallback_treatment = None
-            return processed
-        
-        if config['fallbackConfig'].by_flag_fallback_treatment is not None:
-            sanitized_flag_fallback_treatments = {}
-            for feature_name in config['fallbackConfig'].by_flag_fallback_treatment.keys():
-                if not validate_regex_name(feature_name) or not validate_fallback_treatment(config['fallbackConfig'].by_flag_fallback_treatment[feature_name]):
-                    _LOGGER.warning('Config: fallback treatment parameter for feature flag %s is discarded.', feature_name)
-                    continue
-                                
-                sanitized_flag_fallback_treatments[feature_name] = config['fallbackConfig'].by_flag_fallback_treatment[feature_name]
+    return processed
 
-            processed['fallbackConfig'] = FallbackConfig(config['fallbackConfig'].global_fallback_treatment, sanitized_flag_fallback_treatments)
-        
+def _sanitize_fallback_config(config, processed):
+    if config.get('fallbackTreatmentsConfiguration') is not None:
+        if not isinstance(config['fallbackTreatmentsConfiguration'], FallbackTreatmentsConfiguration):
+            _LOGGER.warning('Config: fallbackTreatmentsConfiguration parameter should be of `FallbackTreatmentsConfiguration` class.')
+            processed['fallbackTreatmentsConfiguration'] = FallbackTreatmentsConfiguration(None)
+            return processed        
+    
+        if config['fallbackTreatmentsConfiguration'].fallback_config != None:
+            if not isinstance(config['fallbackTreatmentsConfiguration'].fallback_config, FallbackConfig):
+                _LOGGER.warning('Config: fallback_config parameter should be of `FallbackConfig` class.')
+                processed['fallbackTreatmentsConfiguration'].fallback_config = FallbackConfig(None, None)
+                return processed        
+            
+            if config['fallbackTreatmentsConfiguration'].fallback_config.global_fallback_treatment is not None and not validate_fallback_treatment(config['fallbackTreatmentsConfiguration'].fallback_config.global_fallback_treatment):
+                _LOGGER.warning('Config: global fallbacktreatment parameter is discarded.')
+                processed['fallbackTreatmentsConfiguration'].fallback_config.global_fallback_treatment = None
+                return processed
+            
+            if config['fallbackTreatmentsConfiguration'].fallback_config.by_flag_fallback_treatment is not None:
+                sanitized_flag_fallback_treatments = {}
+                for feature_name in config['fallbackTreatmentsConfiguration'].fallback_config.by_flag_fallback_treatment.keys():
+                    if not validate_regex_name(feature_name) or not validate_fallback_treatment(config['fallbackTreatmentsConfiguration'].fallback_config.by_flag_fallback_treatment[feature_name]):
+                        _LOGGER.warning('Config: fallback treatment parameter for feature flag %s is discarded.', feature_name)
+                        continue
+                                    
+                    sanitized_flag_fallback_treatments[feature_name] = config['fallbackTreatmentsConfiguration'].fallback_config.by_flag_fallback_treatment[feature_name]
+
+                processed['fallbackTreatmentsConfiguration'].fallback_config = FallbackConfig(config['fallbackTreatmentsConfiguration'].fallback_config.global_fallback_treatment, sanitized_flag_fallback_treatments)
+    
     return processed
