@@ -39,7 +39,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         'impressions_disabled': False
     }
 
-    def __init__(self, factory, recorder, labels_enabled=True, fallback_treatments_configuration=None):
+    def __init__(self, factory, recorder, labels_enabled=True):
         """
         Construct a Client instance.
 
@@ -64,7 +64,6 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         self._evaluator = Evaluator(self._splitter)
         self._telemetry_evaluation_producer = self._factory._telemetry_evaluation_producer
         self._telemetry_init_producer = self._factory._telemetry_init_producer
-        self._fallback_treatments_configuration = fallback_treatments_configuration
 
     @property
     def ready(self):
