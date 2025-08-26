@@ -18,6 +18,7 @@ class FallbackTreatment(object):
         self._config = None
         if config != None:
             self._config = json.dumps(config)
+        self._label_prefix = "fallback - "
 
     @property
     def treatment(self):
@@ -28,3 +29,8 @@ class FallbackTreatment(object):
     def config(self):
         """Return config."""
         return self._config
+    
+    @property
+    def label_prefix(self):
+        """Return label prefix."""
+        return self._label_prefix

@@ -109,11 +109,13 @@ class ConfigSanitizationTests(object):
         fb = FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment('on')))
         processed = config.sanitize('some', {'fallbackTreatmentsConfiguration': fb})
         assert processed['fallbackTreatmentsConfiguration'].fallback_config.global_fallback_treatment.treatment == fb.fallback_config.global_fallback_treatment.treatment
+        assert processed['fallbackTreatmentsConfiguration'].fallback_config.global_fallback_treatment.label_prefix == "fallback - "
 
         fb = FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment('on'), {"flag": FallbackTreatment("off")}))
         processed = config.sanitize('some', {'fallbackTreatmentsConfiguration': fb})
         assert processed['fallbackTreatmentsConfiguration'].fallback_config.global_fallback_treatment.treatment == fb.fallback_config.global_fallback_treatment.treatment
         assert processed['fallbackTreatmentsConfiguration'].fallback_config.by_flag_fallback_treatment["flag"] == fb.fallback_config.by_flag_fallback_treatment["flag"]
+        assert processed['fallbackTreatmentsConfiguration'].fallback_config.by_flag_fallback_treatment["flag"].label_prefix == "fallback - "
 
         _logger.reset_mock()
         fb = FallbackTreatmentsConfiguration(FallbackConfig(None, {"flag#%": FallbackTreatment("off"), "flag2": FallbackTreatment("on")}))
