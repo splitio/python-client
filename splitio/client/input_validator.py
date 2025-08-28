@@ -7,6 +7,7 @@ import inspect
 
 from splitio.client.key import Key
 from splitio.client import client
+from splitio.client.util import get_fallback_treatment_and_label
 from splitio.engine.evaluator import CONTROL
 
 
@@ -501,7 +502,7 @@ def validate_feature_flags_get_treatments(  # pylint: disable=invalid-name
         valid_feature_flags.append(ff)
     return valid_feature_flags
 
-def generate_control_treatments(feature_flags):
+def generate_control_treatments(feature_flags, fallback_treatments_configuration):
     """
     Generate valid feature flags to control.
 
@@ -516,7 +517,13 @@ def generate_control_treatments(feature_flags):
     to_return = {}
     for feature_flag in feature_flags:
         if isinstance(feature_flag, str) and len(feature_flag.strip())> 0:
-            to_return[feature_flag] = (CONTROL, None)
+            treatment = CONTROL
+            config = None
+            label = ""
+            label, treatment, config = get_fallback_treatment_and_label(fallback_treatments_configuration, 
+                                                                         feature_flag, treatment, label, _LOGGER)
+            
+            to_return[feature_flag] = (treatment, config)
     return to_return
 
 

@@ -2,6 +2,7 @@
 import logging
 from collections import namedtuple
 
+from splitio.client.util import get_fallback_treatment_and_label
 from splitio.models.impressions import Label
 from splitio.models.grammar.condition import ConditionType
 from splitio.models.grammar.matchers.misc import DependencyMatcher
@@ -52,7 +53,8 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
         if not feature:
             _LOGGER.warning('Unknown or invalid feature: %s', feature)
             label = Label.SPLIT_NOT_FOUND
-            label, _treatment, config = self._get_fallback_treatment_and_label(feature_name, _treatment, label)            
+            label, _treatment, config = get_fallback_treatment_and_label(self._fallback_treatments_configuration, 
+                                                                         feature_name, _treatment, label, _LOGGER)            
         else:
             _change_number = feature.change_number
             if feature.killed:
@@ -72,25 +74,6 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
             },
             'impressions_disabled': feature.impressions_disabled if feature else None
         }
-
-    def _get_fallback_treatment_and_label(self, feature_name, treatment, label):
-        if self._fallback_treatments_configuration == None or self._fallback_treatments_configuration.fallback_config == None:
-            return label, treatment, None
-        
-        if self._fallback_treatments_configuration.fallback_config.by_flag_fallback_treatment != None and \
-            self._fallback_treatments_configuration.fallback_config.by_flag_fallback_treatment.get(feature_name) != None:
-            _LOGGER.debug('Using Fallback Treatment for feature: %s', feature_name)            
-            return self._fallback_treatments_configuration.fallback_config.by_flag_fallback_treatment.get(feature_name).label_prefix + label, \
-                self._fallback_treatments_configuration.fallback_config.by_flag_fallback_treatment.get(feature_name).treatment,  \
-                self._fallback_treatments_configuration.fallback_config.by_flag_fallback_treatment.get(feature_name).config
-
-        if self._fallback_treatments_configuration.fallback_config.global_fallback_treatment != None:
-            _LOGGER.debug('Using Global Fallback Treatment.')            
-            return  self._fallback_treatments_configuration.fallback_config.global_fallback_treatment.label_prefix + label, \
-                self._fallback_treatments_configuration.fallback_config.global_fallback_treatment.treatment,  \
-                self._fallback_treatments_configuration.fallback_config.global_fallback_treatment.config
-        
-        return label, treatment, None
     
     def _get_treatment(self, feature, bucketing, key, attrs, ctx, label, _treatment):
         if _treatment == CONTROL:
