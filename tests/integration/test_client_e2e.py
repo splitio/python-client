@@ -29,6 +29,8 @@ from splitio.storage.pluggable import PluggableEventsStorage, PluggableImpressio
     PluggableRuleBasedSegmentsStorage, PluggableRuleBasedSegmentsStorageAsync
 from splitio.storage.adapters.redis import build, RedisAdapter, RedisAdapterAsync, build_async
 from splitio.models import splits, segments, rule_based_segments
+from splitio.models.fallback_config import FallbackConfig, FallbackTreatmentsConfiguration
+from splitio.models.fallback_treatment import FallbackTreatment
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager, ImpressionsMode
 from splitio.engine.impressions import set_classes, set_classes_async
 from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyOptimizedMode, StrategyNoneMode
@@ -196,6 +198,11 @@ def _get_treatment(factory, skip_rbs=False):
     if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
         _validate_last_impressions(client, ('prereq_feature', 'user1234', 'off_default'))
 
+    # test fallback treatment
+    assert client.get_treatment('user4321', 'fallback_feature') == 'on-local'
+    if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
+        _validate_last_impressions(client)  # No impressions should be present
+
 def _get_treatment_with_config(factory):
     """Test client.get_treatment_with_config()."""
     try:
@@ -228,6 +235,11 @@ def _get_treatment_with_config(factory):
     assert result == ('on', None)
     if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
         _validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
+
+    # test fallback treatment
+    assert client.get_treatment_with_config('user4321', 'fallback_feature') == ('on-local', '{"prop": "val"}')
+    if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
+        _validate_last_impressions(client)  # No impressions should be present
 
 def _get_treatments(factory):
     """Test client.get_treatments()."""
@@ -267,6 +279,11 @@ def _get_treatments(factory):
     if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
         _validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
 
+    # test fallback treatment
+    assert client.get_treatments('user4321', ['fallback_feature']) == {'fallback_feature': 'on-local'}
+    if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
+        _validate_last_impressions(client)  # No impressions should be present
+
 def _get_treatments_with_config(factory):
     """Test client.get_treatments_with_config()."""
     try:
@@ -305,6 +322,11 @@ def _get_treatments_with_config(factory):
     assert result['all_feature'] == ('on', None)
     if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
         _validate_last_impressions(client, ('all_feature', 'invalidKey', 'on'))
+
+    # test fallback treatment
+    assert client.get_treatments_with_config('user4321', ['fallback_feature']) == {'fallback_feature': ('on-local', '{"prop": "val"}')}
+    if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
+        _validate_last_impressions(client)  # No impressions should be present
 
 def _get_treatments_by_flag_set(factory):
     """Test client.get_treatments_by_flag_set()."""
@@ -539,6 +561,7 @@ class InMemoryDebugIntegrationTests(object):
                                     None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
                                     )  # pylint:disable=attribute-defined-outside-init
         except:
             pass
@@ -697,6 +720,7 @@ class InMemoryOptimizedIntegrationTests(object):
                                     None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
                                     )  # pylint:disable=attribute-defined-outside-init
 
     def test_get_treatment(self):
@@ -819,7 +843,11 @@ class InMemoryOldSpecIntegrationTests(object):
             'sdk_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
             'events_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
-            'config': {'connectTimeout': 10000, 'streamingEnabled': False, 'impressionsMode': 'debug'}
+            'config': {'connectTimeout': 10000, 
+                       'streamingEnabled': False, 
+                       'impressionsMode': 'debug',
+                       'fallbackTreatmentsConfiguration': FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+            }
         }
 
         self.factory = get_factory('some_apikey', **kwargs)
@@ -989,6 +1017,7 @@ class RedisIntegrationTests(object):
                                     recorder,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
                                     )  # pylint:disable=attribute-defined-outside-init
 
     def test_get_treatment(self):
@@ -1177,6 +1206,7 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
                                     recorder,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
                                     )  # pylint:disable=attribute-defined-outside-init
 
 class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-methods
@@ -1400,6 +1430,7 @@ class PluggableIntegrationTests(object):
                                     sdk_ready_flag=None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
                                     )  # pylint:disable=attribute-defined-outside-init
 
         # Adding data to storage
@@ -1595,6 +1626,7 @@ class PluggableOptimizedIntegrationTests(object):
                                     sdk_ready_flag=None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
                                     )  # pylint:disable=attribute-defined-outside-init
 
         # Adding data to storage
@@ -1789,6 +1821,7 @@ class PluggableNoneIntegrationTests(object):
                                     sdk_ready_flag=None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
                                     )  # pylint:disable=attribute-defined-outside-init
 
         # Adding data to storage
@@ -1942,6 +1975,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
                                     None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
                                     )  # pylint:disable=attribute-defined-outside-init
         except:
             pass
@@ -1964,6 +1998,8 @@ class InMemoryImpressionsToggleIntegrationTests(object):
         assert len(imps_count) == 1
         assert imps_count[0].feature == 'SPLIT_3'
         assert imps_count[0].count == 1
+        assert client.get_treatment('user1', 'incorrect_feature') == 'on-global'
+        assert client.get_treatment('user1', 'fallback_feature') == 'on-local'
 
     def test_debug(self):
         split_storage = InMemorySplitStorage()
@@ -1997,6 +2033,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
                                     None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
                                     )  # pylint:disable=attribute-defined-outside-init
         except:
             pass
@@ -2019,6 +2056,8 @@ class InMemoryImpressionsToggleIntegrationTests(object):
         assert len(imps_count) == 1
         assert imps_count[0].feature == 'SPLIT_3'
         assert imps_count[0].count == 1
+        assert client.get_treatment('user1', 'incorrect_feature') == 'on-global'
+        assert client.get_treatment('user1', 'fallback_feature') == 'on-local'
 
     def test_none(self):
         split_storage = InMemorySplitStorage()
@@ -2052,6 +2091,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
                                     None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
                                     )  # pylint:disable=attribute-defined-outside-init
         except:
             pass
@@ -2076,6 +2116,8 @@ class InMemoryImpressionsToggleIntegrationTests(object):
         assert imps_count[1].count == 1
         assert imps_count[2].feature == 'SPLIT_3'
         assert imps_count[2].count == 1
+        assert client.get_treatment('user1', 'incorrect_feature') == 'on-global'
+        assert client.get_treatment('user1', 'fallback_feature') == 'on-local'
 
 class RedisImpressionsToggleIntegrationTests(object):
     """Run impression toggle tests for Redis."""
@@ -2113,6 +2155,7 @@ class RedisImpressionsToggleIntegrationTests(object):
                                     recorder,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
                                     )  # pylint:disable=attribute-defined-outside-init
 
         try:
@@ -2141,6 +2184,8 @@ class RedisImpressionsToggleIntegrationTests(object):
         assert len(imps_count) == 1
         assert imps_count[0].feature == 'SPLIT_3'
         assert imps_count[0].count == 1
+        assert client.get_treatment('user1', 'incorrect_feature') == 'on-global'
+        assert client.get_treatment('user1', 'fallback_feature') == 'on-local'
         self.clear_cache()
         client.destroy()
 
@@ -2177,6 +2222,7 @@ class RedisImpressionsToggleIntegrationTests(object):
                                     recorder,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
                                     )  # pylint:disable=attribute-defined-outside-init
 
         try:
@@ -2205,6 +2251,8 @@ class RedisImpressionsToggleIntegrationTests(object):
         assert len(imps_count) == 1
         assert imps_count[0].feature == 'SPLIT_3'
         assert imps_count[0].count == 1
+        assert client.get_treatment('user1', 'incorrect_feature') == 'on-global'
+        assert client.get_treatment('user1', 'fallback_feature') == 'on-local'
         self.clear_cache()
         client.destroy()
 
@@ -2241,6 +2289,7 @@ class RedisImpressionsToggleIntegrationTests(object):
                                     recorder,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
                                     )  # pylint:disable=attribute-defined-outside-init
 
         try:
@@ -2271,6 +2320,8 @@ class RedisImpressionsToggleIntegrationTests(object):
         assert imps_count[1].count == 1
         assert imps_count[2].feature == 'SPLIT_3'
         assert imps_count[2].count == 1
+        assert client.get_treatment('user1', 'incorrect_feature') == 'on-global'
+        assert client.get_treatment('user1', 'fallback_feature') == 'on-local'
         self.clear_cache()
         client.destroy()
 
@@ -2342,6 +2393,7 @@ class InMemoryIntegrationAsyncTests(object):
                                     None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
                                     )  # pylint:disable=attribute-defined-outside-init
         except:
             pass
@@ -2513,6 +2565,7 @@ class InMemoryOptimizedIntegrationAsyncTests(object):
                                     None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
                                     )  # pylint:disable=attribute-defined-outside-init
         except:
             pass
@@ -2653,7 +2706,11 @@ class InMemoryOldSpecIntegrationAsyncTests(object):
             'sdk_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
             'events_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
-            'config': {'connectTimeout': 10000, 'streamingEnabled': False, 'impressionsMode': 'debug'}
+            'config': {'connectTimeout': 10000, 
+                       'streamingEnabled': False, 
+                       'impressionsMode': 'debug',
+                       'fallbackTreatmentsConfiguration': FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+            }
         }
 
         self.factory = await get_factory_async('some_apikey', **kwargs)
@@ -2861,7 +2918,8 @@ class RedisIntegrationAsyncTests(object):
                                     recorder,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
-                                    telemetry_submitter=telemetry_submitter
+                                    telemetry_submitter=telemetry_submitter,
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
                                     )  # pylint:disable=attribute-defined-outside-init
         ready_property = mocker.PropertyMock()
         ready_property.return_value = True
@@ -3083,7 +3141,8 @@ class RedisWithCacheIntegrationAsyncTests(RedisIntegrationAsyncTests):
                                     recorder,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
-                                    telemetry_submitter=telemetry_submitter
+                                    telemetry_submitter=telemetry_submitter,
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
                                     )  # pylint:disable=attribute-defined-outside-init
         ready_property = mocker.PropertyMock()
         ready_property.return_value = True
@@ -3317,7 +3376,8 @@ class PluggableIntegrationAsyncTests(object):
                                     RedisManagerAsync(PluggableSynchronizerAsync()),
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
-                                    telemetry_submitter=telemetry_submitter
+                                    telemetry_submitter=telemetry_submitter,
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
                                     )  # pylint:disable=attribute-defined-outside-init
         ready_property = mocker.PropertyMock()
         ready_property.return_value = True
@@ -3546,7 +3606,8 @@ class PluggableOptimizedIntegrationAsyncTests(object):
                                     RedisManagerAsync(PluggableSynchronizerAsync()),
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
-                                    telemetry_submitter=telemetry_submitter
+                                    telemetry_submitter=telemetry_submitter,
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
                                     )  # pylint:disable=attribute-defined-outside-init
 
         ready_property = mocker.PropertyMock()
@@ -3781,6 +3842,7 @@ class PluggableNoneIntegrationAsyncTests(object):
                                     manager,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
                                     )  # pylint:disable=attribute-defined-outside-init
 
         # Adding data to storage
@@ -4481,6 +4543,11 @@ async def _get_treatment_async(factory, skip_rbs=False):
     if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
         await _validate_last_impressions_async(client, ('regex_test', 'abc4', 'on'))
 
+    # test fallback treatment
+    assert await client.get_treatment('user4321', 'fallback_feature') == 'on-local'
+    if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
+        await _validate_last_impressions_async(client)  # No impressions should be present
+
     if skip_rbs:
         return
 
@@ -4537,6 +4604,11 @@ async def _get_treatment_with_config_async(factory):
     if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
         await _validate_last_impressions_async(client, ('all_feature', 'invalidKey', 'on'))
 
+    # test fallback treatment
+    assert await client.get_treatment_with_config('user4321', 'fallback_feature') == ('on-local', '{"prop": "val"}')
+    if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
+        await _validate_last_impressions_async(client)  # No impressions should be present
+
 async def _get_treatments_async(factory):
     """Test client.get_treatments()."""
     try:
@@ -4574,6 +4646,11 @@ async def _get_treatments_async(factory):
     assert result['all_feature'] == 'on'
     if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
         await _validate_last_impressions_async(client, ('all_feature', 'invalidKey', 'on'))
+
+    # test fallback treatment
+    assert await client.get_treatments('user4321', ['fallback_feature']) == {'fallback_feature': 'on-local'}
+    if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
+        await _validate_last_impressions_async(client)  # No impressions should be present
 
 async def _get_treatments_with_config_async(factory):
     """Test client.get_treatments_with_config()."""
@@ -4613,6 +4690,11 @@ async def _get_treatments_with_config_async(factory):
     assert result['all_feature'] == ('on', None)
     if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
         await _validate_last_impressions_async(client, ('all_feature', 'invalidKey', 'on'))
+
+    # test fallback treatment
+    assert await client.get_treatments_with_config('user4321', ['fallback_feature']) == {'fallback_feature': ('on-local', '{"prop": "val"}')}
+    if not isinstance(factory._recorder._impressions_manager._strategy, StrategyNoneMode):
+        await _validate_last_impressions_async(client)  # No impressions should be present
 
 async def _get_treatments_by_flag_set_async(factory):
     """Test client.get_treatments_by_flag_set()."""

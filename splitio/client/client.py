@@ -63,7 +63,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         self._feature_flag_storage = factory._get_storage('splits')  # pylint: disable=protected-access
         self._segment_storage = factory._get_storage('segments')  # pylint: disable=protected-access
         self._events_storage = factory._get_storage('events')  # pylint: disable=protected-access
-        self._evaluator = Evaluator(self._splitter)
+        self._evaluator = Evaluator(self._splitter, fallback_treatments_configuration)
         self._telemetry_evaluation_producer = self._factory._telemetry_evaluation_producer
         self._telemetry_init_producer = self._factory._telemetry_init_producer
         self._fallback_treatments_configuration = fallback_treatments_configuration
@@ -344,7 +344,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
                 result = self._get_fallback_eval_results(self._FAILED_EVAL_RESULT, feature)
 
         properties = self._get_properties(evaluation_options)
-        if result['impression']['label'].find(Label.SPLIT_NOT_FOUND) == -1:
+        if result['impression']['label'] == None or (result['impression']['label'] != None and result['impression']['label'].find(Label.SPLIT_NOT_FOUND) == -1):
             impression_decorated = self._build_impression(key, bucketing, feature, result, properties)
             self._record_stats([(impression_decorated, attributes)], start, method)
 
@@ -647,7 +647,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         properties = self._get_properties(evaluation_options)
         imp_decorated_attrs = [
             (i, attributes) for i in self._build_impressions(key, bucketing, results, properties)
-            if i.Impression.label.find(Label.SPLIT_NOT_FOUND) == -1
+            if i.Impression.label == None or (i.Impression.label != None and i.Impression.label.find(Label.SPLIT_NOT_FOUND)) == -1
         ]
         self._record_stats(imp_decorated_attrs, start, method)
 
@@ -844,7 +844,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
                 result = self._get_fallback_eval_results(self._FAILED_EVAL_RESULT, feature)
 
         properties = self._get_properties(evaluation_options)
-        if result['impression']['label'].find(Label.SPLIT_NOT_FOUND) == -1:
+        if result['impression']['label'] == None or (result['impression']['label'] != None and result['impression']['label'].find(Label.SPLIT_NOT_FOUND) == -1):
             impression_decorated = self._build_impression(key, bucketing, feature, result, properties)
             await self._record_stats([(impression_decorated, attributes)], start, method)
         return result['treatment'], result['configurations']
@@ -1060,7 +1060,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         properties = self._get_properties(evaluation_options)
         imp_decorated_attrs = [
             (i, attributes) for i in self._build_impressions(key, bucketing, results, properties)
-            if i.Impression.label != Label.SPLIT_NOT_FOUND
+            if i.Impression.label == None or (i.Impression.label != None and i.Impression.label.find(Label.SPLIT_NOT_FOUND)) == -1
         ]
         await self._record_stats(imp_decorated_attrs, start, method)
 
