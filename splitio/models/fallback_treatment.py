@@ -2,7 +2,7 @@
 import json
 
 class FallbackTreatment(object):
-    """Segment object class."""
+    """FallbackTreatment object class."""
 
     def __init__(self, treatment, config=None):
         """
