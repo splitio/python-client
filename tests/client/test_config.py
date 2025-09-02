@@ -102,7 +102,7 @@ class ConfigSanitizationTests(object):
         assert _logger.warning.mock_calls[1] == mocker.call("Config: global fallbacktreatment parameter is discarded.")
 
         _logger.reset_mock()
-        processed = config.sanitize('some', {'fallbackTreatments': FallbackTreatmentsConfiguration(FallbackTreatment("123"))})
+        processed = config.sanitize('some', {'fallbackTreatments': FallbackTreatmentsConfiguration(FallbackTreatment(123))})
         assert processed['fallbackTreatments'].global_fallback_treatment == None
         assert _logger.warning.mock_calls[1] == mocker.call("Config: global fallbacktreatment parameter is discarded.")
         

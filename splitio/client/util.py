@@ -51,3 +51,22 @@ def get_metadata(config):
     version = 'python-%s' % __version__
     ip_address, hostname = _get_hostname_and_ip(config)
     return SdkMetadata(version, hostname, ip_address)
+
+def get_fallback_treatment_and_label(fallback_treatments_configuration, feature_name, treatment, label, _logger):
+    if fallback_treatments_configuration == None:
+        return label, treatment, None
+    
+    if fallback_treatments_configuration.by_flag_fallback_treatment != None and \
+        fallback_treatments_configuration.by_flag_fallback_treatment.get(feature_name) != None:
+        _logger.debug('Using Fallback Treatment for feature: %s', feature_name)            
+        return fallback_treatments_configuration.by_flag_fallback_treatment.get(feature_name).label_prefix + label, \
+            fallback_treatments_configuration.by_flag_fallback_treatment.get(feature_name).treatment,  \
+            fallback_treatments_configuration.by_flag_fallback_treatment.get(feature_name).config
+
+    if fallback_treatments_configuration.global_fallback_treatment != None:
+        _logger.debug('Using Global Fallback Treatment.')            
+        return  fallback_treatments_configuration.global_fallback_treatment.label_prefix + label, \
+            fallback_treatments_configuration.global_fallback_treatment.treatment,  \
+            fallback_treatments_configuration.global_fallback_treatment.config
+    
+    return label, treatment, None

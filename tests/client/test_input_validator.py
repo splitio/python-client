@@ -1,5 +1,6 @@
 """Unit tests for the input_validator module."""
 import pytest
+import logging
 
 from splitio.client.factory import SplitFactory, get_factory, SplitFactoryAsync, get_factory_async
 from splitio.client.client import CONTROL, Client, _LOGGER as _logger, ClientAsync
@@ -9,6 +10,7 @@ from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetr
     InMemorySplitStorage, InMemorySplitStorageAsync, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 from splitio.models.splits import Split
 from splitio.client import input_validator
+from splitio.client.manager import SplitManager, SplitManagerAsync 
 from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
 from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.engine.impressions.impressions import Manager as ImpressionManager
@@ -1643,19 +1645,13 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert not input_validator.validate_fallback_treatment(FallbackTreatment("on/c"))
         assert _logger.warning.mock_calls == [
-            mocker.call("Config: Fallback treatment should match regex %s", "^[a-zA-Z][a-zA-Z0-9-_;]+$")
-        ]
-
-        _logger.reset_mock()
-        assert not input_validator.validate_fallback_treatment(FallbackTreatment("9on"))
-        assert _logger.warning.mock_calls == [
-            mocker.call("Config: Fallback treatment should match regex %s", "^[a-zA-Z][a-zA-Z0-9-_;]+$")
+            mocker.call("Config: Fallback treatment should match regex %s", "^[0-9]+[.a-zA-Z0-9_-]*$|^[a-zA-Z]+[a-zA-Z0-9_-]*$")
         ]
 
         _logger.reset_mock()
         assert not input_validator.validate_fallback_treatment(FallbackTreatment("on$as"))
         assert _logger.warning.mock_calls == [
-            mocker.call("Config: Fallback treatment should match regex %s", "^[a-zA-Z][a-zA-Z0-9-_;]+$")
+            mocker.call("Config: Fallback treatment should match regex %s", "^[0-9]+[.a-zA-Z0-9_-]*$|^[a-zA-Z]+[a-zA-Z0-9_-]*$")
         ]
 
         assert input_validator.validate_fallback_treatment(FallbackTreatment("on_c"))

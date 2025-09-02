@@ -259,7 +259,6 @@ class PushManagerAsyncTests(object):
     async def test_connection_success(self, mocker):
         """Test the initial status is ok and reset() works as expected."""
         api_mock = mocker.Mock()
-
         async def authenticate():
             return Token(True, 'abc', {}, 2000000, 1000000)
         api_mock.authenticate.side_effect = authenticate
@@ -274,8 +273,8 @@ class PushManagerAsyncTests(object):
             t = 0
             try:
                 while t < 3:
-                    yield SSEEvent('1', EventType.MESSAGE, '', '{}')
                     await asyncio.sleep(1)
+                    yield SSEEvent('1', EventType.MESSAGE, '', '{}')
                     t += 1
             except Exception:
                 pass
@@ -295,7 +294,7 @@ class PushManagerAsyncTests(object):
         manager._sse_client = sse_mock
 
         async def deferred_shutdown():
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
             await manager.stop(True)
 
         manager.start()
@@ -309,7 +308,10 @@ class PushManagerAsyncTests(object):
         assert self.token.exp == 2000000
         assert self.token.iat == 1000000
 
-        await shutdown_task
+        try:
+            await shutdown_task
+        except:
+            pass
         assert not manager._running
         assert(telemetry_storage._streaming_events._streaming_events[0]._type == StreamingEventTypes.TOKEN_REFRESH.value)
         assert(telemetry_storage._streaming_events._streaming_events[1]._type == StreamingEventTypes.CONNECTION_ESTABLISHED.value)

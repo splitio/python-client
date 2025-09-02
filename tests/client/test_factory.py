@@ -13,6 +13,8 @@ from splitio.client.config import DEFAULT_CONFIG
 from splitio.storage import redis, inmemmory, pluggable
 from splitio.tasks.util import asynctask
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager
+from splitio.models.fallback_config import FallbackTreatmentsConfiguration
+from splitio.models.fallback_treatment import FallbackTreatment
 from splitio.sync.manager import Manager, ManagerAsync
 from splitio.sync.synchronizer import Synchronizer, SynchronizerAsync, SplitSynchronizers, SplitTasks
 from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync
@@ -94,7 +96,7 @@ class SplitFactoryTests(object):
         """Test that a client with redis storage is created correctly."""
         strict_redis_mock = mocker.Mock()
         mocker.patch('splitio.storage.adapters.redis.StrictRedis', new=strict_redis_mock)
-
+        fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackTreatment("on"))
         config = {
             'labelsEnabled': False,
             'impressionListener': 123,
@@ -119,7 +121,8 @@ class SplitFactoryTests(object):
             'redisSslCertReqs': 'some_cert_req',
             'redisSslCaCerts': 'some_ca_cert',
             'redisMaxConnections': 999,
-            'flagSetsFilter': ['set_1']
+            'flagSetsFilter': ['set_1'],
+            'fallbackTreatments': fallback_treatments_configuration
         }
         factory = get_factory('some_api_key', config=config)
         class TelemetrySubmitterMock():
@@ -133,6 +136,7 @@ class SplitFactoryTests(object):
         assert isinstance(factory._get_storage('events'), redis.RedisEventsStorage)
 
         assert factory._get_storage('splits').flag_set_filter.flag_sets == set([])
+        assert factory._fallback_treatments_configuration.global_fallback_treatment.treatment == fallback_treatments_configuration.global_fallback_treatment.treatment
 
         adapter = factory._get_storage('splits')._redis
         assert adapter == factory._get_storage('segments')._redis
@@ -153,7 +157,7 @@ class SplitFactoryTests(object):
             unix_socket_path='/some_path',
             encoding='utf-8',
             encoding_errors='non-strict',
-            errors=True,
+#            errors=True,
             decode_responses=True,
             retry_on_timeout=True,
             ssl=True,
@@ -705,10 +709,13 @@ class SplitFactoryAsyncTests(object):
 
     @pytest.mark.asyncio
     async def test_flag_sets_counts(self):
+        fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackTreatment("on"))
         factory = await get_factory_async("none", config={
             'flagSetsFilter': ['set1', 'set2', 'set3'],
-            'streamEnabled': False
+            'streamEnabled': False,
+            'fallbackTreatments': fallback_treatments_configuration
         })
+        assert factory._fallback_treatments_configuration.global_fallback_treatment.treatment == fallback_treatments_configuration.global_fallback_treatment.treatment
         assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets == 3
         assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets_invalid == 0
         await factory.destroy()

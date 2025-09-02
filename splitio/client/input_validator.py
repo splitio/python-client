@@ -7,6 +7,7 @@ import inspect
 
 from splitio.client.key import Key
 from splitio.client import client
+from splitio.client.util import get_fallback_treatment_and_label
 from splitio.engine.evaluator import CONTROL
 from splitio.models.fallback_treatment import FallbackTreatment
 
@@ -16,7 +17,7 @@ MAX_LENGTH = 250
 EVENT_TYPE_PATTERN = r'^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$'
 MAX_PROPERTIES_LENGTH_BYTES = 32768
 _FLAG_SETS_REGEX = '^[a-z0-9][_a-z0-9]{0,49}$'
-_FALLBACK_TREATMENT_REGEX = '^[a-zA-Z][a-zA-Z0-9-_;]+$'
+_FALLBACK_TREATMENT_REGEX = '^[0-9]+[.a-zA-Z0-9_-]*$|^[a-zA-Z]+[a-zA-Z0-9_-]*$'
 _FALLBACK_TREATMENT_SIZE = 100
 
 def _check_not_null(value, name, operation):
@@ -502,7 +503,7 @@ def validate_feature_flags_get_treatments(  # pylint: disable=invalid-name
         valid_feature_flags.append(ff)
     return valid_feature_flags
 
-def generate_control_treatments(feature_flags):
+def generate_control_treatments(feature_flags, fallback_treatments_configuration):
     """
     Generate valid feature flags to control.
 
@@ -517,7 +518,13 @@ def generate_control_treatments(feature_flags):
     to_return = {}
     for feature_flag in feature_flags:
         if isinstance(feature_flag, str) and len(feature_flag.strip())> 0:
-            to_return[feature_flag] = (CONTROL, None)
+            treatment = CONTROL
+            config = None
+            label = ""
+            label, treatment, config = get_fallback_treatment_and_label(fallback_treatments_configuration, 
+                                                                         feature_flag, treatment, label, _LOGGER)
+            
+            to_return[feature_flag] = (treatment, config)
     return to_return
 
 
@@ -718,6 +725,10 @@ def validate_flag_sets(flag_sets, method_name):
 def validate_fallback_treatment(fallback_treatment):
     if not isinstance(fallback_treatment, FallbackTreatment):
         _LOGGER.warning("Config: Fallback treatment instance should be FallbackTreatment, input is discarded")
+        return False
+
+    if not isinstance(fallback_treatment.treatment, str):
+        _LOGGER.warning("Config: Fallback treatment value should be str type, input is discarded")
         return False
         
     if not validate_regex_name(fallback_treatment.treatment):
