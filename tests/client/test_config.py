@@ -3,7 +3,8 @@
 import pytest
 from splitio.client import config
 from splitio.engine.impressions.impressions import ImpressionsMode
-
+from splitio.models.fallback_treatment import FallbackTreatment
+from splitio.models.fallback_config import FallbackTreatmentsConfiguration
 
 class ConfigSanitizationTests(object):
     """Inmemory storage-based integration tests."""
@@ -62,8 +63,10 @@ class ConfigSanitizationTests(object):
         assert mode == ImpressionsMode.DEBUG
         assert rate == 60
 
-    def test_sanitize(self):
+    def test_sanitize(self, mocker):
         """Test sanitization."""
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.config._LOGGER', new=_logger)
         configs = {}
         processed = config.sanitize('some', configs)
         assert processed['redisLocalCacheEnabled']  # check default is True
@@ -87,3 +90,36 @@ class ConfigSanitizationTests(object):
 
         processed = config.sanitize('some', {'httpAuthenticateScheme': 'NONE'})
         assert processed['httpAuthenticateScheme'] is config.AuthenticateScheme.NONE
+        
+        _logger.reset_mock()
+        processed = config.sanitize('some', {'fallbackTreatments': 'NONE'})
+        assert processed['fallbackTreatments'] == None
+        assert _logger.warning.mock_calls[1] == mocker.call("Config: fallbackTreatments parameter should be of `FallbackTreatmentsConfiguration` class.")
+
+        _logger.reset_mock()
+        processed = config.sanitize('some', {'fallbackTreatments': FallbackTreatmentsConfiguration(123)})
+        assert processed['fallbackTreatments'].global_fallback_treatment == None
+        assert _logger.warning.mock_calls[1] == mocker.call("Config: global fallbacktreatment parameter is discarded.")
+
+        _logger.reset_mock()
+        processed = config.sanitize('some', {'fallbackTreatments': FallbackTreatmentsConfiguration(FallbackTreatment("123"))})
+        assert processed['fallbackTreatments'].global_fallback_treatment == None
+        assert _logger.warning.mock_calls[1] == mocker.call("Config: global fallbacktreatment parameter is discarded.")
+        
+        fb = FallbackTreatmentsConfiguration(FallbackTreatment('on'))
+        processed = config.sanitize('some', {'fallbackTreatments': fb})
+        assert processed['fallbackTreatments'].global_fallback_treatment.treatment == fb.global_fallback_treatment.treatment
+        assert processed['fallbackTreatments'].global_fallback_treatment.label_prefix == "fallback - "
+
+        fb = FallbackTreatmentsConfiguration(FallbackTreatment('on'), {"flag": FallbackTreatment("off")})
+        processed = config.sanitize('some', {'fallbackTreatments': fb})
+        assert processed['fallbackTreatments'].global_fallback_treatment.treatment == fb.global_fallback_treatment.treatment
+        assert processed['fallbackTreatments'].by_flag_fallback_treatment["flag"] == fb.by_flag_fallback_treatment["flag"]
+        assert processed['fallbackTreatments'].by_flag_fallback_treatment["flag"].label_prefix == "fallback - "
+
+        _logger.reset_mock()
+        fb = FallbackTreatmentsConfiguration(None, {"flag#%": FallbackTreatment("off"), "flag2": FallbackTreatment("on")})
+        processed = config.sanitize('some', {'fallbackTreatments': fb})
+        assert len(processed['fallbackTreatments'].by_flag_fallback_treatment) == 1
+        assert processed['fallbackTreatments'].by_flag_fallback_treatment.get("flag2") == fb.by_flag_fallback_treatment["flag2"]
+        assert _logger.warning.mock_calls[1] == mocker.call('Config: fallback treatment parameter for feature flag %s is discarded.', 'flag#%')
