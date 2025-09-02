@@ -74,21 +74,21 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
         }
 
     def _get_fallback_treatment_and_label(self, feature_name, treatment, label):
-        if self._fallback_treatments_configuration == None or self._fallback_treatments_configuration.fallback_config == None:
+        if self._fallback_treatments_configuration == None:
             return label, treatment, None
         
-        if self._fallback_treatments_configuration.fallback_config.by_flag_fallback_treatment != None and \
-            self._fallback_treatments_configuration.fallback_config.by_flag_fallback_treatment.get(feature_name) != None:
+        if self._fallback_treatments_configuration.by_flag_fallback_treatment != None and \
+            self._fallback_treatments_configuration.by_flag_fallback_treatment.get(feature_name) != None:
             _LOGGER.debug('Using Fallback Treatment for feature: %s', feature_name)            
-            return self._fallback_treatments_configuration.fallback_config.by_flag_fallback_treatment.get(feature_name).label_prefix + label, \
-                self._fallback_treatments_configuration.fallback_config.by_flag_fallback_treatment.get(feature_name).treatment,  \
-                self._fallback_treatments_configuration.fallback_config.by_flag_fallback_treatment.get(feature_name).config
+            return self._fallback_treatments_configuration.by_flag_fallback_treatment.get(feature_name).label_prefix + label, \
+                self._fallback_treatments_configuration.by_flag_fallback_treatment.get(feature_name).treatment,  \
+                self._fallback_treatments_configuration.by_flag_fallback_treatment.get(feature_name).config
 
-        if self._fallback_treatments_configuration.fallback_config.global_fallback_treatment != None:
+        if self._fallback_treatments_configuration.global_fallback_treatment != None:
             _LOGGER.debug('Using Global Fallback Treatment.')            
-            return  self._fallback_treatments_configuration.fallback_config.global_fallback_treatment.label_prefix + label, \
-                self._fallback_treatments_configuration.fallback_config.global_fallback_treatment.treatment,  \
-                self._fallback_treatments_configuration.fallback_config.global_fallback_treatment.config
+            return  self._fallback_treatments_configuration.global_fallback_treatment.label_prefix + label, \
+                self._fallback_treatments_configuration.global_fallback_treatment.treatment,  \
+                self._fallback_treatments_configuration.global_fallback_treatment.config
         
         return label, treatment, None
     
