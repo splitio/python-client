@@ -1645,19 +1645,19 @@ class ClientInputValidationTests(object):
         _logger.reset_mock()
         assert not input_validator.validate_fallback_treatment(FallbackTreatment("on/c"))
         assert _logger.warning.mock_calls == [
-            mocker.call("Config: Fallback treatment should match regex %s", "^[a-zA-Z][a-zA-Z0-9-_;]+$")
+            mocker.call("Config: Fallback treatment should match regex %s", "^[0-9]+[.a-zA-Z0-9_-]*$|^[a-zA-Z]+[a-zA-Z0-9_-]*$")
         ]
 
         _logger.reset_mock()
         assert not input_validator.validate_fallback_treatment(FallbackTreatment("9on"))
         assert _logger.warning.mock_calls == [
-            mocker.call("Config: Fallback treatment should match regex %s", "^[a-zA-Z][a-zA-Z0-9-_;]+$")
+            mocker.call("Config: Fallback treatment should match regex %s", "^[0-9]+[.a-zA-Z0-9_-]*$|^[a-zA-Z]+[a-zA-Z0-9_-]*$")
         ]
 
         _logger.reset_mock()
         assert not input_validator.validate_fallback_treatment(FallbackTreatment("on$as"))
         assert _logger.warning.mock_calls == [
-            mocker.call("Config: Fallback treatment should match regex %s", "^[a-zA-Z][a-zA-Z0-9-_;]+$")
+            mocker.call("Config: Fallback treatment should match regex %s", "^[0-9]+[.a-zA-Z0-9_-]*$|^[a-zA-Z]+[a-zA-Z0-9_-]*$")
         ]
 
         assert input_validator.validate_fallback_treatment(FallbackTreatment("on_c"))

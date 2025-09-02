@@ -16,7 +16,7 @@ MAX_LENGTH = 250
 EVENT_TYPE_PATTERN = r'^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$'
 MAX_PROPERTIES_LENGTH_BYTES = 32768
 _FLAG_SETS_REGEX = '^[a-z0-9][_a-z0-9]{0,49}$'
-_FALLBACK_TREATMENT_REGEX = '^[a-zA-Z][a-zA-Z0-9-_;]+$'
+_FALLBACK_TREATMENT_REGEX = '^[0-9]+[.a-zA-Z0-9_-]*$|^[a-zA-Z]+[a-zA-Z0-9_-]*$'
 _FALLBACK_TREATMENT_SIZE = 100
 
 def _check_not_null(value, name, operation):
