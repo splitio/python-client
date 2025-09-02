@@ -219,6 +219,9 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
                                                                          feature, result["treatment"], result["impression"]["label"], _LOGGER)
         return result
 
+    def _check_impression_label(self, result):
+        return result['impression']['label'] == None or (result['impression']['label'] != None and result['impression']['label'].find(Label.SPLIT_NOT_FOUND) == -1)
+    
 class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
     """Entry point for the split sdk."""
 
@@ -344,7 +347,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
                 result = self._get_fallback_eval_results(self._FAILED_EVAL_RESULT, feature)
 
         properties = self._get_properties(evaluation_options)
-        if result['impression']['label'] == None or (result['impression']['label'] != None and result['impression']['label'].find(Label.SPLIT_NOT_FOUND) == -1):
+        if self._check_impression_label(result):
             impression_decorated = self._build_impression(key, bucketing, feature, result, properties)
             self._record_stats([(impression_decorated, attributes)], start, method)
 
@@ -844,7 +847,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
                 result = self._get_fallback_eval_results(self._FAILED_EVAL_RESULT, feature)
 
         properties = self._get_properties(evaluation_options)
-        if result['impression']['label'] == None or (result['impression']['label'] != None and result['impression']['label'].find(Label.SPLIT_NOT_FOUND) == -1):
+        if self._check_impression_label(result):
             impression_decorated = self._build_impression(key, bucketing, feature, result, properties)
             await self._record_stats([(impression_decorated, attributes)], start, method)
         return result['treatment'], result['configurations']

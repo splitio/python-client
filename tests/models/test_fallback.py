@@ -1,5 +1,5 @@
 from splitio.models.fallback_treatment import FallbackTreatment
-from splitio.models.fallback_config import FallbackConfig
+from splitio.models.fallback_config import FallbackTreatmentsConfiguration
 
 class FallbackTreatmentModelTests(object):
     """Fallback treatment model tests."""
@@ -13,13 +13,13 @@ class FallbackTreatmentModelTests(object):
         assert fallback_treatment.config == None
         assert fallback_treatment.treatment == 'off'
         
-class FallbackConfigModelTests(object):
+class FallbackTreatmentsConfigModelTests(object):
     """Fallback treatment model tests."""
 
     def test_working(self):
         global_fb = FallbackTreatment("on")
         flag_fb = FallbackTreatment("off")
-        fallback_config = FallbackConfig(global_fb, {"flag1": flag_fb})
+        fallback_config = FallbackTreatmentsConfiguration(global_fb, {"flag1": flag_fb})
         assert fallback_config.global_fallback_treatment == global_fb
         assert fallback_config.by_flag_fallback_treatment == {"flag1": flag_fb}
 

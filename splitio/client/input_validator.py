@@ -9,6 +9,7 @@ from splitio.client.key import Key
 from splitio.client import client
 from splitio.client.util import get_fallback_treatment_and_label
 from splitio.engine.evaluator import CONTROL
+from splitio.models.fallback_treatment import FallbackTreatment
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -722,6 +723,14 @@ def validate_flag_sets(flag_sets, method_name):
     return list(sanitized_flag_sets)
 
 def validate_fallback_treatment(fallback_treatment):
+    if not isinstance(fallback_treatment, FallbackTreatment):
+        _LOGGER.warning("Config: Fallback treatment instance should be FallbackTreatment, input is discarded")
+        return False
+
+    if not isinstance(fallback_treatment.treatment, str):
+        _LOGGER.warning("Config: Fallback treatment value should be str type, input is discarded")
+        return False
+        
     if not validate_regex_name(fallback_treatment.treatment):
         _LOGGER.warning("Config: Fallback treatment should match regex %s", _FALLBACK_TREATMENT_REGEX)
         return False

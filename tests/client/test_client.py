@@ -9,7 +9,7 @@ import pytest
 
 from splitio.client.client import Client, _LOGGER as _logger, CONTROL, ClientAsync, EvaluationOptions
 from splitio.client.factory import SplitFactory, Status as FactoryStatus, SplitFactoryAsync
-from splitio.models.fallback_config import FallbackConfig, FallbackTreatmentsConfiguration
+from splitio.models.fallback_config import FallbackTreatmentsConfiguration
 from splitio.models.fallback_treatment import FallbackTreatment
 from splitio.models.impressions import Impression, Label
 from splitio.models.events import Event, EventWrapper
@@ -1419,7 +1419,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             def synchronize_config(*_):
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
-        client = Client(factory, recorder, True, FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global", {"prop":"val"}))))
+        client = Client(factory, recorder, True, FallbackTreatmentsConfiguration(FallbackTreatment("on-global", {"prop":"val"})))
 
         def get_feature_flag_names_by_flag_sets(*_):
             return ["some", "some2"]
@@ -1446,7 +1446,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert(client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-global", '{"prop": "val"}'), "some2": ("on-global", '{"prop": "val"}')})
         
         self.imps = None
-        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global", {"prop":"val"}), {'some': FallbackTreatment("on-local")}))
+        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackTreatment("on-global", {"prop":"val"}), {'some': FallbackTreatment("on-local")})
         treatment = client.get_treatment("key2", "some")
         assert(treatment == "on-local")
         assert(self.imps[0].treatment == "on-local")
@@ -1475,7 +1475,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert(client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-local", None), "some2": ("on-global", '{"prop": "val"}')})
         
         self.imps = None
-        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackConfig(None, {'some': FallbackTreatment("on-local", {"prop":"val"})}))
+        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(None, {'some': FallbackTreatment("on-local", {"prop":"val"})})
         treatment = client.get_treatment("key3", "some")
         assert(treatment == "on-local")
         assert(self.imps[0].treatment == "on-local")
@@ -1504,7 +1504,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert(client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-local", '{"prop": "val"}'), "some2": ("control", None)})
 
         self.imps = None
-        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackConfig(None, {'some2': FallbackTreatment("on-local")}))
+        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(None, {'some2': FallbackTreatment("on-local")})
         treatment = client.get_treatment("key4", "some")
         assert(treatment == "control")
         assert(self.imps[0].treatment == "control")
@@ -1557,25 +1557,25 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             def synchronize_config(*_):
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
-        client = Client(factory, recorder, True, FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global"))))
+        client = Client(factory, recorder, True, FallbackTreatmentsConfiguration(FallbackTreatment("on-global")))
         treatment = client.get_treatment("key", "some")
         assert(treatment == "on-global")
         assert(self.imps == None)
         
         self.imps = None
-        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global"), {'some': FallbackTreatment("on-local")}))
+        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'some': FallbackTreatment("on-local")})
         treatment = client.get_treatment("key2", "some")
         assert(treatment == "on-local")
         assert(self.imps == None)
         
         self.imps = None
-        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackConfig(None, {'some': FallbackTreatment("on-local")}))
+        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(None, {'some': FallbackTreatment("on-local")})
         treatment = client.get_treatment("key3", "some")
         assert(treatment == "on-local")
         assert(self.imps == None)
 
         self.imps = None
-        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackConfig(None, {'some2': FallbackTreatment("on-local")}))
+        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(None, {'some2': FallbackTreatment("on-local")})
         treatment = client.get_treatment("key4", "some")
         assert(treatment == "control")
         assert(self.imps == None)
@@ -1625,7 +1625,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             def synchronize_config(*_):
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
-        client = Client(factory, recorder, True, FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global"))))
+        client = Client(factory, recorder, True, FallbackTreatmentsConfiguration(FallbackTreatment("on-global")))
         client.ready = False
 
         treatment = client.get_treatment("key", "some")
@@ -1633,21 +1633,21 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert(self.imps[0].label == "fallback - not ready")
         
         self.imps = None
-        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global"), {'some': FallbackTreatment("on-local")}))
+        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'some': FallbackTreatment("on-local")})
         treatment = client.get_treatment("key2", "some")
         assert(treatment == "on-local")
         assert(self.imps[0].treatment == "on-local")
         assert(self.imps[0].label == "fallback - not ready")
         
         self.imps = None
-        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackConfig(None, {'some': FallbackTreatment("on-local")}))
+        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(None, {'some': FallbackTreatment("on-local")})
         treatment = client.get_treatment("key3", "some")
         assert(treatment == "on-local")
         assert(self.imps[0].treatment == "on-local")
         assert(self.imps[0].label == "fallback - not ready")
 
         self.imps = None
-        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackConfig(None, {'some2': FallbackTreatment("on-local")}))
+        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(None, {'some2': FallbackTreatment("on-local")})
         treatment = client.get_treatment("key4", "some")
         assert(treatment == "control")
         assert(self.imps[0].treatment == "control")
@@ -2914,7 +2914,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             async def synchronize_config(*_):
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
-        client = ClientAsync(factory, recorder, True, FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global", {"prop":"val"}))))
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentsConfiguration(FallbackTreatment("on-global", {"prop":"val"})))
 
         async def get_feature_flag_names_by_flag_sets(*_):
             return ["some", "some2"]
@@ -2949,7 +2949,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         assert(await client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-global", '{"prop": "val"}'), "some2": ("on-global", '{"prop": "val"}')})
         
         self.imps = None
-        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global", {"prop":"val"}), {'some': FallbackTreatment("on-local")}))
+        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackTreatment("on-global", {"prop":"val"}), {'some': FallbackTreatment("on-local")})
         treatment = await client.get_treatment("key2", "some")
         assert(treatment == "on-local")
         assert(self.imps[0].treatment == "on-local")
@@ -2978,7 +2978,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         assert(await client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-local", None), "some2": ("on-global", '{"prop": "val"}')})
         
         self.imps = None
-        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackConfig(None, {'some': FallbackTreatment("on-local", {"prop":"val"})}))
+        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(None, {'some': FallbackTreatment("on-local", {"prop":"val"})})
         treatment = await client.get_treatment("key3", "some")
         assert(treatment == "on-local")
         assert(self.imps[0].treatment == "on-local")
@@ -3007,7 +3007,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         assert(await client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-local", '{"prop": "val"}'), "some2": ("control", None)})
 
         self.imps = None
-        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackConfig(None, {'some2': FallbackTreatment("on-local")}))
+        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(None, {'some2': FallbackTreatment("on-local")})
         treatment = await client.get_treatment("key4", "some")
         assert(treatment == "control")
         assert(self.imps[0].treatment == "control")
@@ -3061,25 +3061,25 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             def synchronize_config(*_):
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
-        client = Client(factory, recorder, True, FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global"))))
+        client = Client(factory, recorder, True, FallbackTreatmentsConfiguration(FallbackTreatment("on-global")))
         treatment = client.get_treatment("key", "some")
         assert(treatment == "on-global")
         assert(self.imps == None)
         
         self.imps = None
-        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global"), {'some': FallbackTreatment("on-local")}))
+        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'some': FallbackTreatment("on-local")})
         treatment = client.get_treatment("key2", "some")
         assert(treatment == "on-local")
         assert(self.imps == None)
         
         self.imps = None
-        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackConfig(None, {'some': FallbackTreatment("on-local")}))
+        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(None, {'some': FallbackTreatment("on-local")})
         treatment = client.get_treatment("key3", "some")
         assert(treatment == "on-local")
         assert(self.imps == None)
 
         self.imps = None
-        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackConfig(None, {'some2': FallbackTreatment("on-local")}))
+        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(None, {'some2': FallbackTreatment("on-local")})
         treatment = client.get_treatment("key4", "some")
         assert(treatment == "control")
         assert(self.imps == None)
@@ -3130,7 +3130,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             def synchronize_config(*_):
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
-        client = Client(factory, recorder, True, FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global"))))
+        client = Client(factory, recorder, True, FallbackTreatmentsConfiguration(FallbackTreatment("on-global")))
         client.ready = False
 
         treatment = client.get_treatment("key", "some")
@@ -3138,21 +3138,21 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         assert(self.imps[0].label == "fallback - not ready")
         
         self.imps = None
-        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global"), {'some': FallbackTreatment("on-local")}))
+        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'some': FallbackTreatment("on-local")})
         treatment = client.get_treatment("key2", "some")
         assert(treatment == "on-local")
         assert(self.imps[0].treatment == "on-local")
         assert(self.imps[0].label == "fallback - not ready")
         
         self.imps = None
-        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackConfig(None, {'some': FallbackTreatment("on-local")}))
+        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(None, {'some': FallbackTreatment("on-local")})
         treatment = client.get_treatment("key3", "some")
         assert(treatment == "on-local")
         assert(self.imps[0].treatment == "on-local")
         assert(self.imps[0].label == "fallback - not ready")
 
         self.imps = None
-        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackConfig(None, {'some2': FallbackTreatment("on-local")}))
+        client._fallback_treatments_configuration = FallbackTreatmentsConfiguration(None, {'some2': FallbackTreatment("on-local")})
         treatment = client.get_treatment("key4", "some")
         assert(treatment == "control")
         assert(self.imps[0].treatment == "control")

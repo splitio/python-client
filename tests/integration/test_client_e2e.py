@@ -29,7 +29,7 @@ from splitio.storage.pluggable import PluggableEventsStorage, PluggableImpressio
     PluggableRuleBasedSegmentsStorage, PluggableRuleBasedSegmentsStorageAsync
 from splitio.storage.adapters.redis import build, RedisAdapter, RedisAdapterAsync, build_async
 from splitio.models import splits, segments, rule_based_segments
-from splitio.models.fallback_config import FallbackConfig, FallbackTreatmentsConfiguration
+from splitio.models.fallback_config import FallbackTreatmentsConfiguration
 from splitio.models.fallback_treatment import FallbackTreatment
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager, ImpressionsMode
 from splitio.engine.impressions import set_classes, set_classes_async
@@ -561,7 +561,7 @@ class InMemoryDebugIntegrationTests(object):
                                     None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
-                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
                                     )  # pylint:disable=attribute-defined-outside-init
         except:
             pass
@@ -720,7 +720,7 @@ class InMemoryOptimizedIntegrationTests(object):
                                     None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
-                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
                                     )  # pylint:disable=attribute-defined-outside-init
 
     def test_get_treatment(self):
@@ -846,7 +846,7 @@ class InMemoryOldSpecIntegrationTests(object):
             'config': {'connectTimeout': 10000, 
                        'streamingEnabled': False, 
                        'impressionsMode': 'debug',
-                       'fallbackTreatmentsConfiguration': FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                       'fallbackTreatments': FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
             }
         }
 
@@ -1017,7 +1017,7 @@ class RedisIntegrationTests(object):
                                     recorder,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
-                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
                                     )  # pylint:disable=attribute-defined-outside-init
 
     def test_get_treatment(self):
@@ -1206,7 +1206,7 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
                                     recorder,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
-                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
                                     )  # pylint:disable=attribute-defined-outside-init
 
 class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-methods
@@ -1430,7 +1430,7 @@ class PluggableIntegrationTests(object):
                                     sdk_ready_flag=None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
-                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
                                     )  # pylint:disable=attribute-defined-outside-init
 
         # Adding data to storage
@@ -1626,7 +1626,7 @@ class PluggableOptimizedIntegrationTests(object):
                                     sdk_ready_flag=None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
-                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
                                     )  # pylint:disable=attribute-defined-outside-init
 
         # Adding data to storage
@@ -1821,7 +1821,7 @@ class PluggableNoneIntegrationTests(object):
                                     sdk_ready_flag=None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
-                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
                                     )  # pylint:disable=attribute-defined-outside-init
 
         # Adding data to storage
@@ -1975,7 +1975,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
                                     None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
-                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
                                     )  # pylint:disable=attribute-defined-outside-init
         except:
             pass
@@ -2033,7 +2033,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
                                     None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
-                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
                                     )  # pylint:disable=attribute-defined-outside-init
         except:
             pass
@@ -2091,7 +2091,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
                                     None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
-                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
                                     )  # pylint:disable=attribute-defined-outside-init
         except:
             pass
@@ -2155,7 +2155,7 @@ class RedisImpressionsToggleIntegrationTests(object):
                                     recorder,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
-                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
                                     )  # pylint:disable=attribute-defined-outside-init
 
         try:
@@ -2222,7 +2222,7 @@ class RedisImpressionsToggleIntegrationTests(object):
                                     recorder,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
-                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
                                     )  # pylint:disable=attribute-defined-outside-init
 
         try:
@@ -2289,7 +2289,7 @@ class RedisImpressionsToggleIntegrationTests(object):
                                     recorder,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
-                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
                                     )  # pylint:disable=attribute-defined-outside-init
 
         try:
@@ -2393,7 +2393,7 @@ class InMemoryIntegrationAsyncTests(object):
                                     None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
-                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
                                     )  # pylint:disable=attribute-defined-outside-init
         except:
             pass
@@ -2565,7 +2565,7 @@ class InMemoryOptimizedIntegrationAsyncTests(object):
                                     None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
-                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
                                     )  # pylint:disable=attribute-defined-outside-init
         except:
             pass
@@ -2709,7 +2709,7 @@ class InMemoryOldSpecIntegrationAsyncTests(object):
             'config': {'connectTimeout': 10000, 
                        'streamingEnabled': False, 
                        'impressionsMode': 'debug',
-                       'fallbackTreatmentsConfiguration': FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                       'fallbackTreatments': FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
             }
         }
 
@@ -2919,7 +2919,7 @@ class RedisIntegrationAsyncTests(object):
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     telemetry_submitter=telemetry_submitter,
-                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
                                     )  # pylint:disable=attribute-defined-outside-init
         ready_property = mocker.PropertyMock()
         ready_property.return_value = True
@@ -3142,7 +3142,7 @@ class RedisWithCacheIntegrationAsyncTests(RedisIntegrationAsyncTests):
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     telemetry_submitter=telemetry_submitter,
-                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
                                     )  # pylint:disable=attribute-defined-outside-init
         ready_property = mocker.PropertyMock()
         ready_property.return_value = True
@@ -3377,7 +3377,7 @@ class PluggableIntegrationAsyncTests(object):
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     telemetry_submitter=telemetry_submitter,
-                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
                                     )  # pylint:disable=attribute-defined-outside-init
         ready_property = mocker.PropertyMock()
         ready_property.return_value = True
@@ -3607,7 +3607,7 @@ class PluggableOptimizedIntegrationAsyncTests(object):
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     telemetry_submitter=telemetry_submitter,
-                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
                                     )  # pylint:disable=attribute-defined-outside-init
 
         ready_property = mocker.PropertyMock()
@@ -3842,7 +3842,7 @@ class PluggableNoneIntegrationAsyncTests(object):
                                     manager,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
-                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(FallbackConfig(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})}))
+                                    fallback_treatments_configuration=FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", {"prop":"val"})})
                                     )  # pylint:disable=attribute-defined-outside-init
 
         # Adding data to storage
