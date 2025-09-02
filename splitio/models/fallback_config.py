@@ -1,32 +1,7 @@
 """Segment module."""
 
 class FallbackTreatmentsConfiguration(object):
-    """FallbackConfiguration object class."""
-
-    def __init__(self, fallback_config):
-        """
-        Class constructor.
-
-        :param fallback_config: fallback config object.
-        :type fallback_config: FallbackConfig
-
-        :param by_flag_fallback_treatment: Dict of flags and their fallback treatment
-        :type by_flag_fallback_treatment: {str: FallbackTreatment}
-        """
-        self._fallback_config = fallback_config
-        
-    @property
-    def fallback_config(self):
-        """Return fallback config."""
-        return self._fallback_config
-    
-    @fallback_config.setter
-    def fallback_config(self, new_value):
-        """Set fallback config."""
-        self._fallback_config = new_value
-
-class FallbackConfig(object):
-    """FallbackConfig object class."""
+    """FallbackTreatmentsConfiguration object class."""
 
     def __init__(self, global_fallback_treatment=None, by_flag_fallback_treatment=None):
         """
