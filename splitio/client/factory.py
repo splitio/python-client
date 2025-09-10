@@ -18,7 +18,7 @@ from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageC
     TelemetryStorageProducerAsync, TelemetryStorageConsumerAsync
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
-
+from splitio.models.fallback_config import FallbackTreatmentCalculator
 # Storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
     InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, LocalhostTelemetryStorage, \
@@ -171,7 +171,7 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
             telemetry_init_producer=None,
             telemetry_submitter=None,
             preforked_initialization=False,
-            fallback_treatments_configuration=None
+            fallback_treatment_calculator=None
     ):
         """
         Class constructor.
@@ -202,7 +202,7 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
         self._ready_time = get_current_epoch_time_ms()
         _LOGGER.debug("Running in threading mode")
         self._sdk_internal_ready_flag = sdk_ready_flag
-        self._fallback_treatments_configuration = fallback_treatments_configuration
+        self._fallback_treatment_calculator = fallback_treatment_calculator
         self._start_status_updater()
 
     def _start_status_updater(self):
@@ -244,7 +244,7 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
         This client is only a set of references to structures hold by the factory.
         Creating one a fast operation and safe to be used anywhere.
         """
-        return Client(self, self._recorder, self._labels_enabled, self._fallback_treatments_configuration)
+        return Client(self, self._recorder, self._labels_enabled, self._fallback_treatment_calculator)
 
     def manager(self):
         """
@@ -341,7 +341,7 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
             telemetry_submitter=None,
             manager_start_task=None,
             api_client=None,
-            fallback_treatments_configuration=None
+            fallback_treatment_calculator=None
     ):
         """
         Class constructor.
@@ -375,7 +375,7 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
         self._sdk_ready_flag = asyncio.Event()
         self._ready_task = asyncio.get_running_loop().create_task(self._update_status_when_ready_async())
         self._api_client = api_client
-        self._fallback_treatments_configuration = fallback_treatments_configuration
+        self._fallback_treatment_calculator = fallback_treatment_calculator
 
     async def _update_status_when_ready_async(self):
         """Wait until the sdk is ready and update the status for async mode."""
@@ -464,7 +464,7 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
         This client is only a set of references to structures hold by the factory.
         Creating one a fast operation and safe to be used anywhere.
         """
-        return ClientAsync(self, self._recorder, self._labels_enabled, self._fallback_treatments_configuration)
+        return ClientAsync(self, self._recorder, self._labels_enabled, self._fallback_treatment_calculator)
 
 def _wrap_impression_listener(listener, metadata):
     """
@@ -628,7 +628,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
 
         return SplitFactory(api_key, storages, cfg['labelsEnabled'],
                             recorder, manager, None, telemetry_producer, telemetry_init_producer, telemetry_submitter, preforked_initialization=preforked_initialization,
-                            fallback_treatments_configuration=cfg['fallbackTreatments'])
+                            fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments']))
 
     initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
     initialization_thread.start()
@@ -636,7 +636,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     return SplitFactory(api_key, storages, cfg['labelsEnabled'],
                         recorder, manager, sdk_ready_flag,
                         telemetry_producer, telemetry_init_producer,
-                        telemetry_submitter, fallback_treatments_configuration=cfg['fallbackTreatments'])
+                        telemetry_submitter, fallback_treatment_calculator = FallbackTreatmentCalculator(cfg['fallbackTreatments']))
 
 async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=None,  # pylint:disable=too-many-arguments,too-many-localsa
                              auth_api_base_url=None, streaming_api_base_url=None, telemetry_api_base_url=None,
@@ -755,7 +755,7 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
                         recorder, manager,
                         telemetry_producer, telemetry_init_producer,
                         telemetry_submitter, manager_start_task=manager_start_task,
-                        api_client=http_client, fallback_treatments_configuration=cfg['fallbackTreatments'])
+                        api_client=http_client, fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments']))
 
 def _build_redis_factory(api_key, cfg):
     """Build and return a split factory with redis-based storage."""
@@ -834,7 +834,7 @@ def _build_redis_factory(api_key, cfg):
         sdk_ready_flag=None,
         telemetry_producer=telemetry_producer,
         telemetry_init_producer=telemetry_init_producer,
-        fallback_treatments_configuration=cfg['fallbackTreatments']
+        fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments'])
     )
     redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
     storages['telemetry'].record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
@@ -917,7 +917,7 @@ async def _build_redis_factory_async(api_key, cfg):
         telemetry_producer=telemetry_producer,
         telemetry_init_producer=telemetry_init_producer,
         telemetry_submitter=telemetry_submitter,
-        fallback_treatments_configuration=cfg['fallbackTreatments']
+        fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments'])
     )
     redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
     await storages['telemetry'].record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
@@ -1000,7 +1000,7 @@ def _build_pluggable_factory(api_key, cfg):
         sdk_ready_flag=None,
         telemetry_producer=telemetry_producer,
         telemetry_init_producer=telemetry_init_producer,
-        fallback_treatments_configuration=cfg['fallbackTreatments']
+        fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments'])
     )
     redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
     storages['telemetry'].record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
@@ -1081,7 +1081,7 @@ async def _build_pluggable_factory_async(api_key, cfg):
         telemetry_producer=telemetry_producer,
         telemetry_init_producer=telemetry_init_producer,
         telemetry_submitter=telemetry_submitter,
-        fallback_treatments_configuration=cfg['fallbackTreatments']
+        fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments'])
     )
     redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
     await storages['telemetry'].record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
@@ -1159,7 +1159,7 @@ def _build_localhost_factory(cfg):
         telemetry_producer=telemetry_producer,
         telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
         telemetry_submitter=LocalhostTelemetrySubmitter(),
-        fallback_treatments_configuration=cfg['fallbackTreatments']
+        fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments'])
     )
 
 async def _build_localhost_factory_async(cfg):
@@ -1231,7 +1231,7 @@ async def _build_localhost_factory_async(cfg):
         telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
         telemetry_submitter=LocalhostTelemetrySubmitterAsync(),
         manager_start_task=manager_start_task,
-        fallback_treatments_configuration=cfg['fallbackTreatments']
+        fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments'])
     )
 
 def get_factory(api_key, **kwargs):

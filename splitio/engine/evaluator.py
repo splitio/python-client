@@ -2,7 +2,6 @@
 import logging
 from collections import namedtuple
 
-from splitio.client.util import get_fallback_treatment_and_label
 from splitio.models.impressions import Label
 from splitio.models.grammar.condition import ConditionType
 from splitio.models.grammar.matchers.misc import DependencyMatcher
@@ -21,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 class Evaluator(object):  # pylint: disable=too-few-public-methods
     """Split Evaluator class."""
 
-    def __init__(self, splitter, fallback_treatments_configuration=None):
+    def __init__(self, splitter, fallback_treatment_calculator=None):
         """
         Construct a Evaluator instance.
 
@@ -29,7 +28,7 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
         :type splitter: splitio.engine.splitters.Splitters
         """
         self._splitter = splitter
-        self._fallback_treatments_configuration = fallback_treatments_configuration
+        self._fallback_treatment_calculator = fallback_treatment_calculator
 
     def eval_many_with_context(self, key, bucketing, features, attrs, ctx):
         """
@@ -53,8 +52,10 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
         if not feature:
             _LOGGER.warning('Unknown or invalid feature: %s', feature)
             label = Label.SPLIT_NOT_FOUND
-            label, _treatment, config = get_fallback_treatment_and_label(self._fallback_treatments_configuration, 
-                                                                         feature_name, _treatment, label, _LOGGER)            
+            fallback_treatment = self._fallback_treatment_calculator.resolve(feature_name, label)
+            label = fallback_treatment.label
+            _treatment = fallback_treatment.treatment
+            config = fallback_treatment.config
         else:
             _change_number = feature.change_number
             if feature.killed:

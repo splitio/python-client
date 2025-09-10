@@ -4,7 +4,7 @@ import json
 class FallbackTreatment(object):
     """Segment object class."""
 
-    def __init__(self, treatment, config=None):
+    def __init__(self, treatment, config=None, label=None):
         """
         Class constructor.
 
@@ -15,10 +15,8 @@ class FallbackTreatment(object):
         :type config: json
         """
         self._treatment = treatment
-        self._config = None
-        if config != None:
-            self._config = json.dumps(config)
-        self._label_prefix = "fallback - "
+        self._config = config
+        self._label = label
 
     @property
     def treatment(self):
@@ -31,6 +29,6 @@ class FallbackTreatment(object):
         return self._config
     
     @property
-    def label_prefix(self):
+    def label(self):
         """Return label prefix."""
-        return self._label_prefix
+        return self._label

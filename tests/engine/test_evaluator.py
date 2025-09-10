@@ -12,7 +12,7 @@ from splitio.models.impressions import Label
 from splitio.models.grammar import condition
 from splitio.models import rule_based_segments
 from splitio.models.fallback_treatment import FallbackTreatment
-from splitio.models.fallback_config import FallbackTreatmentsConfiguration
+from splitio.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
 from splitio.engine import evaluator, splitters
 from splitio.engine.evaluator import EvaluationContext
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, InMemoryRuleBasedSegmentStorage, \
@@ -383,40 +383,35 @@ class EvaluatorTests(object):
         ctx = EvaluationContext(flags={'some': mocked_split}, segment_memberships=set(), rbs_segments={})
         
         # should use global fallback
-        logger_mock.reset_mock()
-        e = evaluator.Evaluator(splitter_mock, FallbackTreatmentsConfiguration(FallbackTreatment("off-global", {"prop":"val"})))
+        e = evaluator.Evaluator(splitter_mock, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("off-global", '{"prop": "val"}'))))
         result = e.eval_with_context('some_key', 'some_bucketing_key', 'some2', {}, ctx)
         assert result['treatment'] == 'off-global'
         assert result['configurations'] == '{"prop": "val"}'
-        assert result['impression']['label'] == "fallback - " + Label.SPLIT_NOT_FOUND
-        assert logger_mock.debug.mock_calls[0] == mocker.call("Using Global Fallback Treatment.")
-        
+        assert result['impression']['label'] == "fallback - " + Label.SPLIT_NOT_FOUND        
 
         # should use by flag fallback
-        logger_mock.reset_mock()
-        e = evaluator.Evaluator(splitter_mock, FallbackTreatmentsConfiguration(None, {"some2": FallbackTreatment("off-some2", {"prop2":"val2"})}))
+        e = evaluator.Evaluator(splitter_mock, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {"some2": FallbackTreatment("off-some2", '{"prop2": "val2"}')})))
         result = e.eval_with_context('some_key', 'some_bucketing_key', 'some2', {}, ctx)
         assert result['treatment'] == 'off-some2'
         assert result['configurations'] == '{"prop2": "val2"}'
         assert result['impression']['label'] == "fallback - " + Label.SPLIT_NOT_FOUND
-        assert logger_mock.debug.mock_calls[0] == mocker.call("Using Fallback Treatment for feature: %s", "some2")
 
         # should not use any fallback
-        e = evaluator.Evaluator(splitter_mock, FallbackTreatmentsConfiguration(None, {"some2": FallbackTreatment("off-some2", {"prop2":"val2"})}))
+        e = evaluator.Evaluator(splitter_mock, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {"some2": FallbackTreatment("off-some2", '{"prop2": "val2"}')})))
         result = e.eval_with_context('some_key', 'some_bucketing_key', 'some3', {}, ctx)
         assert result['treatment'] == 'control'
         assert result['configurations'] == None
         assert result['impression']['label'] == Label.SPLIT_NOT_FOUND
 
         # should use by flag fallback
-        e = evaluator.Evaluator(splitter_mock, FallbackTreatmentsConfiguration(FallbackTreatment("off-global", {"prop":"val"}), {"some2": FallbackTreatment("off-some2", {"prop2":"val2"})}))
+        e = evaluator.Evaluator(splitter_mock, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("off-global", '{"prop": "val"}'), {"some2": FallbackTreatment("off-some2", '{"prop2": "val2"}')})))
         result = e.eval_with_context('some_key', 'some_bucketing_key', 'some2', {}, ctx)
         assert result['treatment'] == 'off-some2'
         assert result['configurations'] == '{"prop2": "val2"}'
         assert result['impression']['label'] == "fallback - " + Label.SPLIT_NOT_FOUND
 
         # should global flag fallback
-        e = evaluator.Evaluator(splitter_mock, FallbackTreatmentsConfiguration(FallbackTreatment("off-global", {"prop":"val"}), {"some2": FallbackTreatment("off-some2", {"prop2":"val2"})}))
+        e = evaluator.Evaluator(splitter_mock, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("off-global", '{"prop": "val"}'), {"some2": FallbackTreatment("off-some2", '{"prop2": "val2"}')})))
         result = e.eval_with_context('some_key', 'some_bucketing_key', 'some3', {}, ctx)
         assert result['treatment'] == 'off-global'
         assert result['configurations'] == '{"prop": "val"}'
