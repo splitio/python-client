@@ -13,7 +13,7 @@ from splitio.client.config import DEFAULT_CONFIG
 from splitio.storage import redis, inmemmory, pluggable
 from splitio.tasks.util import asynctask
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager
-from splitio.models.fallback_config import FallbackTreatmentsConfiguration
+from splitio.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
 from splitio.models.fallback_treatment import FallbackTreatment
 from splitio.sync.manager import Manager, ManagerAsync
 from splitio.sync.synchronizer import Synchronizer, SynchronizerAsync, SplitSynchronizers, SplitTasks
@@ -136,7 +136,7 @@ class SplitFactoryTests(object):
         assert isinstance(factory._get_storage('events'), redis.RedisEventsStorage)
 
         assert factory._get_storage('splits').flag_set_filter.flag_sets == set([])
-        assert factory._fallback_treatments_configuration.global_fallback_treatment.treatment == fallback_treatments_configuration.global_fallback_treatment.treatment
+        assert factory._fallback_treatment_calculator.fallback_treatments_configuration.global_fallback_treatment.treatment == fallback_treatments_configuration.global_fallback_treatment.treatment
 
         adapter = factory._get_storage('splits')._redis
         assert adapter == factory._get_storage('segments')._redis
@@ -715,7 +715,7 @@ class SplitFactoryAsyncTests(object):
             'streamEnabled': False,
             'fallbackTreatments': fallback_treatments_configuration
         })
-        assert factory._fallback_treatments_configuration.global_fallback_treatment.treatment == fallback_treatments_configuration.global_fallback_treatment.treatment
+        assert factory._fallback_treatment_calculator.fallback_treatments_configuration.global_fallback_treatment.treatment == fallback_treatments_configuration.global_fallback_treatment.treatment
         assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets == 3
         assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets_invalid == 0
         await factory.destroy()
