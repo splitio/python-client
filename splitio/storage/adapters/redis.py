@@ -715,7 +715,6 @@ def _build_default_client(config):  # pylint: disable=too-many-locals
     unix_socket_path = config.get('redisUnixSocketPath', None)
     encoding = config.get('redisEncoding', 'utf-8')
     encoding_errors = config.get('redisEncodingErrors', 'strict')
-#    errors = config.get('redisErrors', None)
     decode_responses = config.get('redisDecodeResponses', True)
     retry_on_timeout = config.get('redisRetryOnTimeout', False)
     ssl = config.get('redisSsl', False)

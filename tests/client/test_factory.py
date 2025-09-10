@@ -112,7 +112,6 @@ class SplitFactoryTests(object):
             'redisConnectionPool': False,
             'redisUnixSocketPath': '/some_path',
             'redisEncodingErrors': 'non-strict',
-            'redisErrors': True,
             'redisDecodeResponses': True,
             'redisRetryOnTimeout': True,
             'redisSsl': True,

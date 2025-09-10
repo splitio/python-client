@@ -171,7 +171,12 @@ def sanitize(sdk_key, config):
         processed["httpAuthenticateScheme"] = authenticate_scheme
 
     processed = _sanitize_fallback_config(config, processed)    
+    
+    if config.get("redisErrors") is not None:
+        _LOGGER.warning('Parameter `redisErrors` is deprecated as it is no longer supported in redis lib.' \
+                        ' Will ignore this value.')
         
+        processed["redisErrors"] = None
     return processed
 
 def _sanitize_fallback_config(config, processed):
