@@ -125,7 +125,6 @@ class RedisStorageAdapterTests(object):
             unix_socket_path='/tmp/socket',
             encoding='utf-8',
             encoding_errors='strict',
-#            errors='abc',
             decode_responses=True,
             retry_on_timeout=True,
             ssl=True,
