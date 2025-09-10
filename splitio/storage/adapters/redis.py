@@ -739,7 +739,6 @@ def _build_default_client(config):  # pylint: disable=too-many-locals
         unix_socket_path=unix_socket_path,
         encoding=encoding,
         encoding_errors=encoding_errors,
-#        errors=errors, Starting from redis 6.0.0 errors argument is removed
         decode_responses=decode_responses,
         retry_on_timeout=retry_on_timeout,
         ssl=ssl,
