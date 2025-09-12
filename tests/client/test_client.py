@@ -2889,9 +2889,10 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
         impmanager = ImpressionManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_producer.get_telemetry_runtime_producer())
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_evaluation_producer, telemetry_producer.get_telemetry_runtime_producer())
-
-        async def manager_start_task():
-            pass
+        
+        class TelemetrySubmitterMock():
+            async def synchronize_config(*_):
+                pass
         
         factory = SplitFactoryAsync(mocker.Mock(),
             {'splits': split_storage,
@@ -2904,19 +2905,19 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             impmanager,
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock(),
-            manager_start_task
+            TelemetrySubmitterMock(),
+            None
         )
+        
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = True
+        type(factory).ready = ready_property
         
         self.imps = None
         async def put(impressions):
             self.imps = impressions    
         impression_storage.put = put
-        
-        class TelemetrySubmitterMock():
-            async def synchronize_config(*_):
-                pass
-        factory._telemetry_submitter = TelemetrySubmitterMock()
+                
         client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global", '{"prop": "val"}'))))
 
         async def get_feature_flag_names_by_flag_sets(*_):
@@ -3040,8 +3041,6 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         impmanager = ImpressionManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_producer.get_telemetry_runtime_producer())
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
-        async def manager_start_task():
-            pass
 
         factory = SplitFactoryAsync(mocker.Mock(),
             {'splits': split_storage,
@@ -3055,8 +3054,11 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock(),
-            manager_start_task
+            None
         )
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = True
+        type(factory).ready = ready_property
         
         self.imps = None
         async def put(impressions):
@@ -3067,6 +3069,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             def synchronize_config(*_):
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
+        
         client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"))))
         
         async def context_for(*_):
@@ -3151,6 +3154,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             def synchronize_config(*_):
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
+        
         client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"))))
         ready_property = mocker.PropertyMock()
         ready_property.return_value = False
