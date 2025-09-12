@@ -205,7 +205,7 @@ class SSEClientAsync(object):
         try:
             await self._done.wait()
         except asyncio.CancelledError:
-            _LOGGER.error("Exception waiting for SSE connection to end")
+            _LOGGER.debug("Exception waiting for SSE connection to end")
             _LOGGER.debug('stack trace: ', exc_info=True)
             pass
 
