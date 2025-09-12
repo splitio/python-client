@@ -583,6 +583,8 @@ class SplitFactoryTests(object):
         assert clear_impressions._called == 1
         assert clear_events._called == 1
         factory.destroy()
+        time.sleep(0.1)
+        assert factory.destroyed
 
     def test_error_prefork(self, mocker):
         """Test not handling fork."""
@@ -645,6 +647,8 @@ class SplitFactoryTests(object):
             pass
         assert factory.ready
         factory.destroy()
+        time.sleep(0.1)
+        assert factory.destroyed
 
     def test_destroy_with_event_pluggable(self, mocker):
         config = {
@@ -700,7 +704,8 @@ class SplitFactoryTests(object):
 
         assert factory._status == Status.WAITING_FORK
         factory.destroy()
-
+        time.sleep(0.1)
+        assert factory.destroyed
 
 class SplitFactoryAsyncTests(object):
     """Split factory async test cases."""
