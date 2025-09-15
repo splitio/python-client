@@ -2874,7 +2874,6 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             pass
 
     @pytest.mark.asyncio
-    @mock.patch('splitio.engine.evaluator.Evaluator.eval_with_context', side_effect=RuntimeError())
     async def test_fallback_treatment_eval_exception(self, mocker):
         # using fallback when the evaluator has RuntimeError exception
         split_storage = mocker.Mock(spec=SplitStorage)
@@ -2891,7 +2890,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
-        impmanager = ImpressionManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_producer.get_telemetry_runtime_producer())
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_producer.get_telemetry_runtime_producer())
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_evaluation_producer, telemetry_producer.get_telemetry_runtime_producer())
         
         class TelemetrySubmitterMock():
@@ -2923,6 +2922,10 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         impression_storage.put = put
                 
         client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global", '{"prop": "val"}'))))
+
+        def eval_with_context(*_):
+            raise RuntimeError()        
+        client._evaluator.eval_with_context = eval_with_context
 
         async def get_feature_flag_names_by_flag_sets(*_):
             return ["some", "some2"]
@@ -3027,7 +3030,6 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             pass
 
     @pytest.mark.asyncio
-    @mock.patch('splitio.engine.evaluator.Evaluator.eval_with_context', side_effect=Exception())
     async def test_fallback_treatment_exception(self, mocker):
         # using fallback when the evaluator has RuntimeError exception
         split_storage = mocker.Mock(spec=SplitStorage)
@@ -3043,7 +3045,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
 
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        impmanager = ImpressionManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_producer.get_telemetry_runtime_producer())
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_producer.get_telemetry_runtime_producer())
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
 
         factory = SplitFactoryAsync(mocker.Mock(),
@@ -3075,6 +3077,10 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         factory._telemetry_submitter = TelemetrySubmitterMock()
         
         client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"))))
+
+        def eval_with_context(*_):
+            raise Exception()        
+        client._evaluator.eval_with_context = eval_with_context
         
         async def context_for(*_):
             return EvaluationContext(
