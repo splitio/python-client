@@ -2868,6 +2868,10 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
 
         assert await client.get_treatments_with_config_by_flag_sets('some_key', ['set_1'], evaluation_options=EvaluationOptions({"prop": "value"})) == {'SPLIT_2': ('on', None)}
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
+        try:
+            await factory.destroy()
+        except:
+            pass
 
     @pytest.mark.asyncio
     @mock.patch('splitio.engine.evaluator.Evaluator.eval_with_context', side_effect=RuntimeError())
