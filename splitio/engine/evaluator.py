@@ -64,7 +64,7 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
             else:
                 label, _treatment = self._check_prerequisites(feature, bucketing, key, attrs, ctx, label, _treatment)
                 label, _treatment = self._get_treatment(feature, bucketing, key, attrs, ctx, label, _treatment)
-            config = feature.get_configurations_for(_treatment) if feature else None
+            config = feature.get_configurations_for(_treatment)
                     
         return {
             'treatment': _treatment,
