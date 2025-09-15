@@ -20,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 class Evaluator(object):  # pylint: disable=too-few-public-methods
     """Split Evaluator class."""
 
-    def __init__(self, splitter):
+    def __init__(self, splitter, fallback_treatment_calculator=None):
         """
         Construct a Evaluator instance.
 
@@ -28,6 +28,7 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
         :type splitter: splitio.engine.splitters.Splitters
         """
         self._splitter = splitter
+        self._fallback_treatment_calculator = fallback_treatment_calculator
 
     def eval_many_with_context(self, key, bucketing, features, attrs, ctx):
         """
@@ -51,6 +52,10 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
         if not feature:
             _LOGGER.warning('Unknown or invalid feature: %s', feature)
             label = Label.SPLIT_NOT_FOUND
+            fallback_treatment = self._fallback_treatment_calculator.resolve(feature_name, label)
+            label = fallback_treatment.label
+            _treatment = fallback_treatment.treatment
+            config = fallback_treatment.config
         else:
             _change_number = feature.change_number
             if feature.killed:
@@ -59,17 +64,18 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
             else:
                 label, _treatment = self._check_prerequisites(feature, bucketing, key, attrs, ctx, label, _treatment)
                 label, _treatment = self._get_treatment(feature, bucketing, key, attrs, ctx, label, _treatment)
+            config = feature.get_configurations_for(_treatment)
                     
         return {
             'treatment': _treatment,
-            'configurations': feature.get_configurations_for(_treatment) if feature else None,
+            'configurations': config,
             'impression': {
                 'label': label,
                 'change_number': _change_number
             },
             'impressions_disabled': feature.impressions_disabled if feature else None
         }
-
+    
     def _get_treatment(self, feature, bucketing, key, attrs, ctx, label, _treatment):
         if _treatment == CONTROL:
             treatment, label = self._treatment_for_flag(feature, key, bucketing, attrs, ctx)

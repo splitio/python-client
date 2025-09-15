@@ -45,7 +45,7 @@ setup(
     tests_require=TESTS_REQUIRES,
     extras_require={
         'test': TESTS_REQUIRES,
-        'redis': ['redis>=2.10.5'],
+        'redis': ['redis>=2.10.5,<7.0.0'],
         'uwsgi': ['uwsgi>=2.0.0'],
         'cpphash': ['mmh3cffi==0.2.1'],
         'asyncio': ['aiohttp>=3.8.4', 'aiofiles>=23.1.0'],

@@ -13,6 +13,8 @@ from splitio.client.config import DEFAULT_CONFIG
 from splitio.storage import redis, inmemmory, pluggable
 from splitio.tasks.util import asynctask
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager
+from splitio.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
+from splitio.models.fallback_treatment import FallbackTreatment
 from splitio.sync.manager import Manager, ManagerAsync
 from splitio.sync.synchronizer import Synchronizer, SynchronizerAsync, SplitSynchronizers, SplitTasks
 from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync
@@ -25,32 +27,37 @@ from tests.storage.test_pluggable import StorageMockAdapter, StorageMockAdapterA
 class SplitFactoryTests(object):
     """Split factory test cases."""
 
-    def test_flag_sets_counts(self):
+    def test_flag_sets_counts(self):        
         factory = get_factory("none", config={
             'flagSetsFilter': ['set1', 'set2', 'set3']
         })
 
         assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets == 3
         assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets_invalid == 0
-        factory.destroy()
-
+        event = threading.Event()
+        factory.destroy(event)
+        event.wait()
+        
         factory = get_factory("none", config={
             'flagSetsFilter': ['s#et1', 'set2', 'set3']
         })
         assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets == 3
         assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets_invalid == 1
-        factory.destroy()
+        event = threading.Event()
+        factory.destroy(event)
+        event.wait()
 
         factory = get_factory("none", config={
             'flagSetsFilter': ['s#et1', 22, 'set3']
         })
         assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets == 3
         assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets_invalid == 2
-        factory.destroy()
+        event = threading.Event()
+        factory.destroy(event)
+        event.wait()
 
     def test_inmemory_client_creation_streaming_false(self, mocker):
         """Test that a client with in-memory storage is created correctly."""
-
         # Setup synchronizer
         def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None):
             synchronizer = mocker.Mock(spec=Synchronizer)
@@ -94,7 +101,7 @@ class SplitFactoryTests(object):
         """Test that a client with redis storage is created correctly."""
         strict_redis_mock = mocker.Mock()
         mocker.patch('splitio.storage.adapters.redis.StrictRedis', new=strict_redis_mock)
-
+        fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackTreatment("on"))
         config = {
             'labelsEnabled': False,
             'impressionListener': 123,
@@ -110,7 +117,6 @@ class SplitFactoryTests(object):
             'redisConnectionPool': False,
             'redisUnixSocketPath': '/some_path',
             'redisEncodingErrors': 'non-strict',
-            'redisErrors': True,
             'redisDecodeResponses': True,
             'redisRetryOnTimeout': True,
             'redisSsl': True,
@@ -119,7 +125,8 @@ class SplitFactoryTests(object):
             'redisSslCertReqs': 'some_cert_req',
             'redisSslCaCerts': 'some_ca_cert',
             'redisMaxConnections': 999,
-            'flagSetsFilter': ['set_1']
+            'flagSetsFilter': ['set_1'],
+            'fallbackTreatments': fallback_treatments_configuration
         }
         factory = get_factory('some_api_key', config=config)
         class TelemetrySubmitterMock():
@@ -133,6 +140,7 @@ class SplitFactoryTests(object):
         assert isinstance(factory._get_storage('events'), redis.RedisEventsStorage)
 
         assert factory._get_storage('splits').flag_set_filter.flag_sets == set([])
+        assert factory._fallback_treatment_calculator.fallback_treatments_configuration.global_fallback_treatment.treatment == fallback_treatments_configuration.global_fallback_treatment.treatment
 
         adapter = factory._get_storage('splits')._redis
         assert adapter == factory._get_storage('segments')._redis
@@ -153,7 +161,6 @@ class SplitFactoryTests(object):
             unix_socket_path='/some_path',
             encoding='utf-8',
             encoding_errors='non-strict',
-            errors=True,
             decode_responses=True,
             retry_on_timeout=True,
             ssl=True,
@@ -516,9 +523,15 @@ class SplitFactoryTests(object):
         event.wait()
         assert _INSTANTIATED_FACTORIES['some_other_api_key'] == 1
         assert _INSTANTIATED_FACTORIES['some_api_key'] == 2
-        factory2.destroy()
-        factory3.destroy()
-        factory4.destroy()
+        event = threading.Event()
+        factory2.destroy(event)
+        event.wait()
+        event = threading.Event()
+        factory3.destroy(event)
+        event.wait()
+        event = threading.Event()
+        factory4.destroy(event)
+        event.wait()
 
     def test_uwsgi_preforked(self, mocker):
         """Test preforked initializations."""
@@ -581,6 +594,8 @@ class SplitFactoryTests(object):
         assert clear_impressions._called == 1
         assert clear_events._called == 1
         factory.destroy()
+        time.sleep(0.1)
+        assert factory.destroyed
 
     def test_error_prefork(self, mocker):
         """Test not handling fork."""
@@ -643,6 +658,8 @@ class SplitFactoryTests(object):
             pass
         assert factory.ready
         factory.destroy()
+        time.sleep(0.1)
+        assert factory.destroyed
 
     def test_destroy_with_event_pluggable(self, mocker):
         config = {
@@ -698,17 +715,21 @@ class SplitFactoryTests(object):
 
         assert factory._status == Status.WAITING_FORK
         factory.destroy()
-
+        time.sleep(0.1)
+        assert factory.destroyed
 
 class SplitFactoryAsyncTests(object):
     """Split factory async test cases."""
 
     @pytest.mark.asyncio
     async def test_flag_sets_counts(self):
+        fallback_treatments_configuration = FallbackTreatmentsConfiguration(FallbackTreatment("on"))
         factory = await get_factory_async("none", config={
             'flagSetsFilter': ['set1', 'set2', 'set3'],
-            'streamEnabled': False
+            'streamEnabled': False,
+            'fallbackTreatments': fallback_treatments_configuration
         })
+        assert factory._fallback_treatment_calculator.fallback_treatments_configuration.global_fallback_treatment.treatment == fallback_treatments_configuration.global_fallback_treatment.treatment
         assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets == 3
         assert factory._telemetry_init_producer._telemetry_storage._tel_config._flag_sets_invalid == 0
         await factory.destroy()
@@ -730,17 +751,22 @@ class SplitFactoryAsyncTests(object):
     @pytest.mark.asyncio
     async def test_inmemory_client_creation_streaming_false_async(self, mocker):
         """Test that a client with in-memory storage is created correctly for async."""
-
         # Setup synchronizer
         def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None):
             synchronizer = mocker.Mock(spec=SynchronizerAsync)
             async def sync_all(*_):
                 return None
             synchronizer.sync_all = sync_all
+
+            def start_periodic_fetching():
+                pass        
+            synchronizer.start_periodic_fetching = start_periodic_fetching
+
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
             self._streaming_enabled = False
             self._telemetry_runtime_producer = telemetry_runtime_producer
+            
         mocker.patch('splitio.sync.manager.ManagerAsync.__init__', new=_split_synchronizer)
 
         async def synchronize_config(*_):
@@ -748,29 +774,30 @@ class SplitFactoryAsyncTests(object):
         mocker.patch('splitio.sync.telemetry.InMemoryTelemetrySubmitterAsync.synchronize_config', new=synchronize_config)
 
         # Start factory and make assertions
-        factory = await get_factory_async('some_api_key', config={'streamingEmabled': False})
-        assert isinstance(factory, SplitFactoryAsync)
-        assert isinstance(factory._storages['splits'], inmemmory.InMemorySplitStorageAsync)
-        assert isinstance(factory._storages['segments'], inmemmory.InMemorySegmentStorageAsync)
-        assert isinstance(factory._storages['impressions'], inmemmory.InMemoryImpressionStorageAsync)
-        assert factory._storages['impressions']._impressions.maxsize == 10000
-        assert isinstance(factory._storages['events'], inmemmory.InMemoryEventStorageAsync)
-        assert factory._storages['events']._events.maxsize == 10000
+        factory2 = await get_factory_async('some_api_key', config={'streamingEmabled': False})
 
-        assert isinstance(factory._sync_manager, ManagerAsync)
+        assert isinstance(factory2, SplitFactoryAsync)
+        assert isinstance(factory2._storages['splits'], inmemmory.InMemorySplitStorageAsync)
+        assert isinstance(factory2._storages['segments'], inmemmory.InMemorySegmentStorageAsync)
+        assert isinstance(factory2._storages['impressions'], inmemmory.InMemoryImpressionStorageAsync)
+        assert factory2._storages['impressions']._impressions.maxsize == 10000
+        assert isinstance(factory2._storages['events'], inmemmory.InMemoryEventStorageAsync)
+        assert factory2._storages['events']._events.maxsize == 10000
 
-        assert isinstance(factory._recorder, StandardRecorderAsync)
-        assert isinstance(factory._recorder._impressions_manager, ImpressionsManager)
-        assert isinstance(factory._recorder._event_sotrage, inmemmory.EventStorage)
-        assert isinstance(factory._recorder._impression_storage, inmemmory.ImpressionStorage)
+        assert isinstance(factory2._sync_manager, ManagerAsync)
 
-        assert factory._labels_enabled is True
+        assert isinstance(factory2._recorder, StandardRecorderAsync)
+        assert isinstance(factory2._recorder._impressions_manager, ImpressionsManager)
+        assert isinstance(factory2._recorder._event_sotrage, inmemmory.EventStorage)
+        assert isinstance(factory2._recorder._impression_storage, inmemmory.ImpressionStorage)
+
+        assert factory2._labels_enabled is True
         try:
-            await factory.block_until_ready(1)
+            await factory2.block_until_ready(1)
         except:
             pass
-        assert factory.ready
-        await factory.destroy()
+        assert factory2._status == Status.READY
+        await factory2.destroy()
 
     @pytest.mark.asyncio
     async def test_destroy_async(self, mocker):
@@ -874,7 +901,7 @@ class SplitFactoryAsyncTests(object):
             await factory.block_until_ready(1)
         except:
             pass
-        assert factory.ready
+        assert factory._status == Status.READY
         assert factory.destroyed is False
 
         await factory.destroy()
@@ -915,7 +942,7 @@ class SplitFactoryAsyncTests(object):
             await factory.block_until_ready(1)
         except:
             pass
-        assert factory.ready
+        assert factory._status == Status.READY
         await factory.destroy()
 
     @pytest.mark.asyncio
@@ -944,3 +971,4 @@ class SplitFactoryAsyncTests(object):
         await asyncio.sleep(0.5)
         assert factory.destroyed
         assert len(build_redis.mock_calls) == 2
+        
