@@ -1705,7 +1705,8 @@ class ClientInputValidationAsyncTests(object):
             impmanager,
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
+            mocker.Mock(),
+            None
         )
         ready_mock = mocker.PropertyMock()
         ready_mock.return_value = True
@@ -1967,7 +1968,8 @@ class ClientInputValidationAsyncTests(object):
             impmanager,
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
+            mocker.Mock(),
+            None
         )
         ready_mock = mocker.PropertyMock()
         ready_mock.return_value = True
@@ -2211,7 +2213,8 @@ class ClientInputValidationAsyncTests(object):
             impmanager,
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
+            mocker.Mock(),
+            None
         )
         factory._sdk_key = 'some-test'
 
@@ -2501,7 +2504,8 @@ class ClientInputValidationAsyncTests(object):
             impmanager,
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
+            mocker.Mock(),
+            None
         )
         ready_mock = mocker.PropertyMock()
         ready_mock.return_value = True
@@ -2665,7 +2669,8 @@ class ClientInputValidationAsyncTests(object):
             impmanager,
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
+            mocker.Mock(),
+            None
         )
         split_mock.name = 'some_feature'
 
@@ -2832,7 +2837,8 @@ class ClientInputValidationAsyncTests(object):
             mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
+            mocker.Mock(),
+            None
         )
         ready_mock = mocker.PropertyMock()
         ready_mock.return_value = True
@@ -2978,7 +2984,8 @@ class ClientInputValidationAsyncTests(object):
             mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
+            mocker.Mock(),
+            None
         )
         ready_mock = mocker.PropertyMock()
         ready_mock.return_value = True
@@ -3133,7 +3140,8 @@ class ClientInputValidationAsyncTests(object):
             mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
+            mocker.Mock(),
+            None
         )
         ready_mock = mocker.PropertyMock()
         ready_mock.return_value = True
@@ -3282,7 +3290,8 @@ class ClientInputValidationAsyncTests(object):
             mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
+            mocker.Mock(),
+            None
         )
         ready_mock = mocker.PropertyMock()
         ready_mock.return_value = True
