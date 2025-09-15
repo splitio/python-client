@@ -8,6 +8,7 @@ import inspect
 from splitio.client.key import Key
 from splitio.client import client
 from splitio.engine.evaluator import CONTROL
+from splitio.models.fallback_treatment import FallbackTreatment
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -15,7 +16,8 @@ MAX_LENGTH = 250
 EVENT_TYPE_PATTERN = r'^[a-zA-Z0-9][-_.:a-zA-Z0-9]{0,79}$'
 MAX_PROPERTIES_LENGTH_BYTES = 32768
 _FLAG_SETS_REGEX = '^[a-z0-9][_a-z0-9]{0,49}$'
-
+_FALLBACK_TREATMENT_REGEX = '^[0-9]+[.a-zA-Z0-9_-]*$|^[a-zA-Z]+[a-zA-Z0-9_-]*$'
+_FALLBACK_TREATMENT_SIZE = 100
 
 def _check_not_null(value, name, operation):
     """
@@ -500,7 +502,7 @@ def validate_feature_flags_get_treatments(  # pylint: disable=invalid-name
         valid_feature_flags.append(ff)
     return valid_feature_flags
 
-def generate_control_treatments(feature_flags):
+def generate_control_treatments(feature_flags, fallback_treatment_calculator):
     """
     Generate valid feature flags to control.
 
@@ -515,7 +517,11 @@ def generate_control_treatments(feature_flags):
     to_return = {}
     for feature_flag in feature_flags:
         if isinstance(feature_flag, str) and len(feature_flag.strip())> 0:
-            to_return[feature_flag] = (CONTROL, None)
+            fallback_treatment = fallback_treatment_calculator.resolve(feature_flag, "")
+            treatment = fallback_treatment.treatment
+            config = fallback_treatment.config
+            
+            to_return[feature_flag] = (treatment, config)
     return to_return
 
 
@@ -712,3 +718,28 @@ def validate_flag_sets(flag_sets, method_name):
         sanitized_flag_sets.add(flag_set)
 
     return list(sanitized_flag_sets)
+
+def validate_fallback_treatment(fallback_treatment):
+    if not isinstance(fallback_treatment, FallbackTreatment):
+        _LOGGER.warning("Config: Fallback treatment instance should be FallbackTreatment, input is discarded")
+        return False
+
+    if not isinstance(fallback_treatment.treatment, str):
+        _LOGGER.warning("Config: Fallback treatment value should be str type, input is discarded")
+        return False
+        
+    if not validate_regex_name(fallback_treatment.treatment):
+        _LOGGER.warning("Config: Fallback treatment should match regex %s", _FALLBACK_TREATMENT_REGEX)
+        return False
+        
+    if len(fallback_treatment.treatment) > _FALLBACK_TREATMENT_SIZE:
+        _LOGGER.warning("Config: Fallback treatment size should not exceed %s characters", _FALLBACK_TREATMENT_SIZE)
+        return False
+                
+    return True
+
+def validate_regex_name(name):
+    if re.match(_FALLBACK_TREATMENT_REGEX, name) == None:
+        return False
+    
+    return True

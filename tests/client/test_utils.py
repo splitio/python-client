@@ -14,7 +14,6 @@ class ClientUtilsTests(object):
     def test_get_metadata(self, mocker):
         """Test the get_metadata function."""
         meta = util.get_metadata({'machineIp': 'some_ip', 'machineName': 'some_machine_name'})
- #       assert _get_hostname_and_ip.mock_calls == []
         assert meta.instance_ip == 'some_ip'
         assert meta.instance_name == 'some_machine_name'
         assert meta.sdk_version == 'python-' + __version__

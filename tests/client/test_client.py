@@ -9,6 +9,8 @@ import pytest
 
 from splitio.client.client import Client, _LOGGER as _logger, CONTROL, ClientAsync, EvaluationOptions
 from splitio.client.factory import SplitFactory, Status as FactoryStatus, SplitFactoryAsync
+from splitio.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
+from splitio.models.fallback_treatment import FallbackTreatment
 from splitio.models.impressions import Impression, Label
 from splitio.models.events import Event, EventWrapper
 from splitio.storage import EventStorage, ImpressionStorage, SegmentStorage, SplitStorage, RuleBasedSegmentsStorage
@@ -21,7 +23,7 @@ from splitio.engine.impressions.impressions import Manager as ImpressionManager
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
 from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
-from splitio.engine.evaluator import Evaluator
+from splitio.engine.evaluator import Evaluator, EvaluationContext
 from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
 from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode, StrategyOptimizedMode
 from tests.integration import splits_json
@@ -74,7 +76,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         factory.block_until_ready(5)
 
         split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
-        client = Client(factory, recorder, True)
+        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         client._evaluator.eval_with_context.return_value = {
             'treatment': 'on',
@@ -146,7 +148,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
-        client = Client(factory, recorder, True)
+        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         client._evaluator.eval_with_context.return_value = {
             'treatment': 'on',
@@ -223,7 +225,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
-        client = Client(factory, recorder, True)
+        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -303,7 +305,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
-        client = Client(factory, recorder, True)
+        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -382,7 +384,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
-        client = Client(factory, recorder, True)
+        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -460,7 +462,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
-        client = Client(factory, recorder, True)
+        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -543,7 +545,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
-        client = Client(factory, recorder, True)
+        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -623,7 +625,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
-        client = Client(factory, recorder, True)
+        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -710,7 +712,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][2])
             ], [], -1)
-        client = Client(factory, recorder, True)
+        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
         assert client.get_treatment('some_key', 'SPLIT_1') == 'off'
         assert client.get_treatment('some_key', 'SPLIT_2') == 'on'
         assert client.get_treatment('some_key', 'SPLIT_3') == 'on'
@@ -774,7 +776,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][2])
             ], [], -1)
-        client = Client(factory, recorder, True)
+        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
         assert client.get_treatment('some_key', 'SPLIT_1') == 'off'
         assert client.get_treatment('some_key', 'SPLIT_2') == 'on'
         assert client.get_treatment('some_key', 'SPLIT_3') == 'on'
@@ -838,7 +840,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][2])
             ], [], -1)
-        client = Client(factory, recorder, True)
+        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
         assert client.get_treatment('some_key', 'SPLIT_1') == 'off'
         assert client.get_treatment('some_key', 'SPLIT_2') == 'on'
         assert client.get_treatment('some_key', 'SPLIT_3') == 'on'
@@ -879,7 +881,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
 
-        client = Client(factory, recorder, True)
+        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
         client.destroy()
         assert client.destroyed is not None
         assert(mocker.called)
@@ -921,7 +923,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         factory._apikey = 'test'
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
 
-        client = Client(factory, recorder, True)
+        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
         assert client.track('key', 'user', 'purchase', 12) is True
         assert mocker.call([
             EventWrapper(
@@ -970,7 +972,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             mocker.call('Client is not ready - no calls possible')
         ]
 
-        client = Client(factory, mocker.Mock())
+        client = Client(factory, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         _logger = mocker.Mock()
         mocker.patch('splitio.client.client._LOGGER', new=_logger)
 
@@ -1042,7 +1044,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
 
-        client = Client(factory, mocker.Mock())
+        client = Client(factory, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         client.ready = False
         assert client.get_treatment('some_key', 'SPLIT_2') == CONTROL
         assert(telemetry_storage._tel_config._not_ready == 1)
@@ -1094,7 +1096,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         ready_property = mocker.PropertyMock()
         ready_property.return_value = True
         type(factory).ready = ready_property
-        client = Client(factory, recorder, True)
+        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
         def _raise(*_):
             raise RuntimeError('something')
         client._evaluator.eval_many_with_context = _raise
@@ -1190,7 +1192,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             pass
         factory._sync_manager.stop = stop
 
-        client = Client(factory, recorder, True)
+        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
         assert client.get_treatment('key', 'SPLIT_2') == 'on'
         assert(telemetry_storage._method_latencies._treatment[0] == 1)
 
@@ -1256,7 +1258,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
 
-        client = Client(factory, recorder, True)
+        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
         try:
             client.track('key', 'tt', 'ev')
         except:
@@ -1309,7 +1311,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         factory.block_until_ready(5)
 
         split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
-        client = Client(factory, recorder, True)
+        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -1375,6 +1377,287 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert client.get_treatments_with_config_by_flag_sets('some_key', ['set_1'], evaluation_options=EvaluationOptions({"prop": "value"})) == {'SPLIT_2': ('on', None)}
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
+    @mock.patch('splitio.engine.evaluator.Evaluator.eval_with_context', side_effect=RuntimeError())
+    def test_fallback_treatment_eval_exception(self, mocker):
+        # using fallback when the evaluator has RuntimeError exception
+        split_storage = mocker.Mock(spec=SplitStorage)
+        segment_storage = mocker.Mock(spec=SegmentStorage)
+        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)        
+        impression_storage = mocker.Mock(spec=ImpressionStorage)
+        event_storage = mocker.Mock(spec=EventStorage)
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        impmanager = ImpressionManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_producer.get_telemetry_runtime_producer())
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+        factory = SplitFactory(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        
+        self.imps = None
+        def put(impressions):
+            self.imps = impressions    
+        impression_storage.put = put
+        
+        class TelemetrySubmitterMock():
+            def synchronize_config(*_):
+                pass
+        factory._telemetry_submitter = TelemetrySubmitterMock()
+        client = Client(factory, recorder, True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global", '{"prop": "val"}'))))
+
+        def get_feature_flag_names_by_flag_sets(*_):
+            return ["some", "some2"]
+        client._get_feature_flag_names_by_flag_sets = get_feature_flag_names_by_flag_sets
+
+        treatment = client.get_treatment("key", "some")
+        assert(treatment == "on-global")
+        assert(self.imps[0].treatment == "on-global")
+        assert(self.imps[0].label == "fallback - exception")
+
+        self.imps = None
+        treatment = client.get_treatments("key_m", ["some", "some2"])
+        assert(treatment == {"some": "on-global", "some2": "on-global"})
+        assert(self.imps[0].treatment == "on-global")
+        assert(self.imps[0].label == "fallback - exception")
+        assert(self.imps[1].treatment == "on-global")
+        assert(self.imps[1].label == "fallback - exception")
+        
+        assert(client.get_treatment_with_config("key", "some") == ("on-global", '{"prop": "val"}'))
+        assert(client.get_treatments_with_config("key_m", ["some", "some2"]) == {"some": ("on-global", '{"prop": "val"}'), "some2": ("on-global", '{"prop": "val"}')})
+        assert(client.get_treatments_by_flag_set("key_m", "set") == {"some": "on-global", "some2": "on-global"})
+        assert(client.get_treatments_by_flag_set("key_m", ["set"]) == {"some": "on-global", "some2": "on-global"})
+        assert(client.get_treatments_with_config_by_flag_set("key_m", "set") == {"some": ("on-global", '{"prop": "val"}'), "some2": ("on-global", '{"prop": "val"}')})
+        assert(client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-global", '{"prop": "val"}'), "some2": ("on-global", '{"prop": "val"}')})
+        
+        self.imps = None
+        client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global", '{"prop": "val"}'), {'some': FallbackTreatment("on-local")}))
+        treatment = client.get_treatment("key2", "some")
+        assert(treatment == "on-local")
+        assert(self.imps[0].treatment == "on-local")
+        assert(self.imps[0].label == "fallback - exception")
+
+        self.imps = None
+        treatment = client.get_treatments("key2_m", ["some", "some2"])
+        assert(treatment == {"some": "on-local", "some2": "on-global"})
+        assert_both = 0
+        for imp in self.imps:
+            if imp.feature_name == "some":
+                assert_both += 1
+                assert(imp.treatment == "on-local")
+                assert(imp.label == "fallback - exception")
+            else:
+                assert_both += 1
+                assert(imp.treatment == "on-global")
+                assert(imp.label == "fallback - exception")
+        assert assert_both == 2
+
+        assert(client.get_treatment_with_config("key", "some") == ("on-local", None))
+        assert(client.get_treatments_with_config("key_m", ["some", "some2"]) == {"some": ("on-local", None), "some2": ("on-global", '{"prop": "val"}')})
+        assert(client.get_treatments_by_flag_set("key_m", "set") == {"some": "on-local", "some2": "on-global"})
+        assert(client.get_treatments_by_flag_set("key_m", ["set"]) == {"some": "on-local", "some2": "on-global"})
+        assert(client.get_treatments_with_config_by_flag_set("key_m", "set") == {"some": ("on-local", None), "some2": ("on-global", '{"prop": "val"}')})
+        assert(client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-local", None), "some2": ("on-global", '{"prop": "val"}')})
+        
+        self.imps = None
+        client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some': FallbackTreatment("on-local", '{"prop": "val"}')}))
+        treatment = client.get_treatment("key3", "some")
+        assert(treatment == "on-local")
+        assert(self.imps[0].treatment == "on-local")
+        assert(self.imps[0].label == "fallback - exception")
+
+        self.imps = None
+        treatment = client.get_treatments("key3_m", ["some", "some2"])
+        assert(treatment == {"some": "on-local", "some2": "control"})
+        assert_both = 0
+        for imp in self.imps:
+            if imp.feature_name == "some":
+                assert_both += 1
+                assert(imp.treatment == "on-local")
+                assert(imp.label == "fallback - exception")
+            else:
+                assert_both += 1
+                assert(imp.treatment == "control")
+                assert(imp.label == "exception")
+        assert assert_both == 2
+
+        assert(client.get_treatment_with_config("key", "some") == ("on-local", '{"prop": "val"}'))
+        assert(client.get_treatments_with_config("key_m", ["some", "some2"]) == {"some": ("on-local", '{"prop": "val"}'), "some2": ("control", None)})
+        assert(client.get_treatments_by_flag_set("key_m", "set") == {"some": "on-local", "some2": "control"})
+        assert(client.get_treatments_by_flag_set("key_m", ["set"]) == {"some": "on-local", "some2": "control"})
+        assert(client.get_treatments_with_config_by_flag_set("key_m", "set") == {"some": ("on-local", '{"prop": "val"}'), "some2": ("control", None)})
+        assert(client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-local", '{"prop": "val"}'), "some2": ("control", None)})
+
+        self.imps = None
+        client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some2': FallbackTreatment("on-local")}))
+        treatment = client.get_treatment("key4", "some")
+        assert(treatment == "control")
+        assert(self.imps[0].treatment == "control")
+        assert(self.imps[0].label == "exception")
+                
+        try:
+            factory.destroy()
+        except:
+            pass
+
+    @mock.patch('splitio.engine.evaluator.Evaluator.eval_with_context', side_effect=Exception())
+    def test_fallback_treatment_exception(self, mocker):
+        # using fallback when the evaluator has RuntimeError exception
+        split_storage = mocker.Mock(spec=SplitStorage)
+        segment_storage = mocker.Mock(spec=SegmentStorage)
+        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)        
+        impression_storage = mocker.Mock(spec=ImpressionStorage)
+        event_storage = mocker.Mock(spec=EventStorage)
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        impmanager = ImpressionManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_producer.get_telemetry_runtime_producer())
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+        factory = SplitFactory(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        
+        self.imps = None
+        def put(impressions):
+            self.imps = impressions    
+        impression_storage.put = put
+        
+        class TelemetrySubmitterMock():
+            def synchronize_config(*_):
+                pass
+        factory._telemetry_submitter = TelemetrySubmitterMock()
+        client = Client(factory, recorder, True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"))))
+        treatment = client.get_treatment("key", "some")
+        assert(treatment == "on-global")
+        assert(self.imps == None)
+        
+        self.imps = None
+        client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'some': FallbackTreatment("on-local")}))
+        treatment = client.get_treatment("key2", "some")
+        assert(treatment == "on-local")
+        assert(self.imps == None)
+        
+        self.imps = None
+        client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some': FallbackTreatment("on-local")}))
+        treatment = client.get_treatment("key3", "some")
+        assert(treatment == "on-local")
+        assert(self.imps == None)
+
+        self.imps = None
+        client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some2': FallbackTreatment("on-local")}))
+        treatment = client.get_treatment("key4", "some")
+        assert(treatment == "control")
+        assert(self.imps == None)
+                
+        try:
+            factory.destroy()
+        except:
+            pass
+
+    @mock.patch('splitio.client.client.Client.ready', side_effect=None)
+    def test_fallback_treatment_not_ready_impressions(self, mocker):
+        # using fallback when the evaluator has RuntimeError exception
+        split_storage = mocker.Mock(spec=SplitStorage)
+        segment_storage = mocker.Mock(spec=SegmentStorage)
+        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)        
+        impression_storage = mocker.Mock(spec=ImpressionStorage)
+        event_storage = mocker.Mock(spec=EventStorage)
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        impmanager = ImpressionManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_producer.get_telemetry_runtime_producer())
+        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+        factory = SplitFactory(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            mocker.Mock(),
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock()
+        )
+        
+        self.imps = None
+        def put(impressions):
+            self.imps = impressions    
+        impression_storage.put = put
+        
+        class TelemetrySubmitterMock():
+            def synchronize_config(*_):
+                pass
+        factory._telemetry_submitter = TelemetrySubmitterMock()
+        client = Client(factory, recorder, True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"))))
+        client.ready = False
+
+        treatment = client.get_treatment("key", "some")
+        assert(self.imps[0].treatment == "on-global")
+        assert(self.imps[0].label == "fallback - not ready")
+        
+        self.imps = None
+        client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'some': FallbackTreatment("on-local")}))
+        treatment = client.get_treatment("key2", "some")
+        assert(treatment == "on-local")
+        assert(self.imps[0].treatment == "on-local")
+        assert(self.imps[0].label == "fallback - not ready")
+        
+        self.imps = None
+        client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some': FallbackTreatment("on-local")}))
+        treatment = client.get_treatment("key3", "some")
+        assert(treatment == "on-local")
+        assert(self.imps[0].treatment == "on-local")
+        assert(self.imps[0].label == "fallback - not ready")
+
+        self.imps = None
+        client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some2': FallbackTreatment("on-local")}))
+        treatment = client.get_treatment("key4", "some")
+        assert(treatment == "control")
+        assert(self.imps[0].treatment == "control")
+        assert(self.imps[0].label == "not ready")
+                
+        try:
+            factory.destroy()
+        except:
+            pass
+        
 class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     """Split client async test cases."""
 
@@ -1417,7 +1700,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         )
 
         await factory.block_until_ready(1)
-        client = ClientAsync(factory, recorder, True)
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         client._evaluator.eval_with_context.return_value = {
             'treatment': 'on',
@@ -1489,7 +1772,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         await factory.block_until_ready(1)
-        client = ClientAsync(factory, recorder, True)
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         client._evaluator.eval_with_context.return_value = {
             'treatment': 'on',
@@ -1566,7 +1849,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         await factory.block_until_ready(1)
-        client = ClientAsync(factory, recorder, True)
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -1646,7 +1929,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         await factory.block_until_ready(1)
-        client = ClientAsync(factory, recorder, True)
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -1726,7 +2009,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         await factory.block_until_ready(1)
-        client = ClientAsync(factory, recorder, True)
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -1805,7 +2088,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         await factory.block_until_ready(1)
-        client = ClientAsync(factory, recorder, True)
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -1889,7 +2172,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         await factory.block_until_ready(1)
-        client = ClientAsync(factory, recorder, True)
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -1973,7 +2256,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         await factory.block_until_ready(1)
-        client = ClientAsync(factory, recorder, True)
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -2059,7 +2342,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][2])
             ], [], -1)
-        client = ClientAsync(factory, recorder, True)
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(None))
         treatment = await client.get_treatment('some_key', 'SPLIT_1')
         assert  treatment == 'off'
         treatment = await client.get_treatment('some_key', 'SPLIT_2')
@@ -2122,7 +2405,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][2])
             ], [], -1)
-        client = ClientAsync(factory, recorder, True)
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(None))
         assert await client.get_treatment('some_key', 'SPLIT_1') == 'off'
         assert await client.get_treatment('some_key', 'SPLIT_2') == 'on'
         assert await client.get_treatment('some_key', 'SPLIT_3') == 'on'
@@ -2182,7 +2465,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][2])
             ], [], -1)
-        client = ClientAsync(factory, recorder, True)
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(None))
         assert await client.get_treatment('some_key', 'SPLIT_1') == 'off'
         assert await client.get_treatment('some_key', 'SPLIT_2') == 'on'
         assert await client.get_treatment('some_key', 'SPLIT_3') == 'on'
@@ -2233,7 +2516,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
 
         await factory.block_until_ready(1)
-        client = ClientAsync(factory, recorder, True)
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(None))
         assert await client.track('key', 'user', 'purchase', 12) is True
         assert self.events[0] == [EventWrapper(
                 event=Event('key', 'user', 'purchase', 12, 1000, None),
@@ -2277,7 +2560,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         type(factory).ready = ready_property
 
         await factory.block_until_ready(1)
-        client = ClientAsync(factory, recorder)
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(None))
         assert await client.get_treatment('some_key', 'SPLIT_2') == CONTROL
         assert(telemetry_storage._tel_config._not_ready == 1)
         await client.track('key', 'tt', 'ev')
@@ -2325,7 +2608,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         ready_property.return_value = True
         type(factory).ready = ready_property
 
-        client = ClientAsync(factory, recorder, True)
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock()
         def _raise(*_):
             raise RuntimeError('something')
@@ -2403,7 +2686,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             await factory.block_until_ready(1)
         except:
             pass
-        client = ClientAsync(factory, recorder, True)
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(None))
         assert await client.get_treatment('key', 'SPLIT_2') == 'on'
         assert(telemetry_storage._method_latencies._treatment[0] == 1)
 
@@ -2473,7 +2756,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         recorder.record_track_stats = exc
 
         await factory.block_until_ready(1)
-        client = ClientAsync(factory, recorder, True)
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(None))
         try:
             await client.track('key', 'tt', 'ev')
         except:
@@ -2520,7 +2803,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         )
 
         await factory.block_until_ready(1)
-        client = ClientAsync(factory, recorder, True)
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -2585,3 +2868,342 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
 
         assert await client.get_treatments_with_config_by_flag_sets('some_key', ['set_1'], evaluation_options=EvaluationOptions({"prop": "value"})) == {'SPLIT_2': ('on', None)}
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
+        try:
+            await factory.destroy()
+        except:
+            pass
+
+    @pytest.mark.asyncio
+    async def test_fallback_treatment_eval_exception(self, mocker):
+        # using fallback when the evaluator has RuntimeError exception
+        split_storage = mocker.Mock(spec=SplitStorage)
+        segment_storage = mocker.Mock(spec=SegmentStorage)
+        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)        
+        impression_storage = mocker.Mock(spec=ImpressionStorage)
+        event_storage = mocker.Mock(spec=EventStorage)
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+        
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_producer.get_telemetry_runtime_producer())
+        recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_evaluation_producer, telemetry_producer.get_telemetry_runtime_producer())
+        
+        class TelemetrySubmitterMock():
+            async def synchronize_config(*_):
+                pass
+        
+        factory = SplitFactoryAsync(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            TelemetrySubmitterMock(),
+            None
+        )
+        
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = True
+        type(factory).ready = ready_property
+        
+        self.imps = None
+        async def put(impressions):
+            self.imps = impressions    
+        impression_storage.put = put
+                
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global", '{"prop": "val"}'))))
+
+        def eval_with_context(*_):
+            raise RuntimeError()        
+        client._evaluator.eval_with_context = eval_with_context
+
+        async def get_feature_flag_names_by_flag_sets(*_):
+            return ["some", "some2"]
+        client._get_feature_flag_names_by_flag_sets = get_feature_flag_names_by_flag_sets
+
+        async def fetch_many(*_):
+            return {"some": from_raw(splits_json['splitChange1_1']['ff']['d'][0])}
+        split_storage.fetch_many = fetch_many
+
+        async def fetch_many_rbs(*_):
+            return {}
+        rb_segment_storage.fetch_many = fetch_many_rbs
+
+        treatment = await client.get_treatment("key", "some")
+        assert(treatment == "on-global")
+        assert(self.imps[0].treatment == "on-global")
+        assert(self.imps[0].label == "fallback - exception")
+
+        self.imps = None
+        treatment = await client.get_treatments("key_m", ["some", "some2"])
+        assert(treatment == {"some": "on-global", "some2": "on-global"})
+        assert(self.imps[0].treatment == "on-global")
+        assert(self.imps[0].label == "fallback - exception")
+        assert(self.imps[1].treatment == "on-global")
+        assert(self.imps[1].label == "fallback - exception")
+        
+        assert(await client.get_treatment_with_config("key", "some") == ("on-global", '{"prop": "val"}'))
+        assert(await client.get_treatments_with_config("key_m", ["some", "some2"]) == {"some": ("on-global", '{"prop": "val"}'), "some2": ("on-global", '{"prop": "val"}')})
+        assert(await client.get_treatments_by_flag_set("key_m", "set") == {"some": "on-global", "some2": "on-global"})
+        assert(await client.get_treatments_by_flag_set("key_m", ["set"]) == {"some": "on-global", "some2": "on-global"})
+        assert(await client.get_treatments_with_config_by_flag_set("key_m", "set") == {"some": ("on-global", '{"prop": "val"}'), "some2": ("on-global", '{"prop": "val"}')})
+        assert(await client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-global", '{"prop": "val"}'), "some2": ("on-global", '{"prop": "val"}')})
+        
+        self.imps = None
+        client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global", '{"prop": "val"}'), {'some': FallbackTreatment("on-local")}))
+        treatment = await client.get_treatment("key2", "some")
+        assert(treatment == "on-local")
+        assert(self.imps[0].treatment == "on-local")
+        assert(self.imps[0].label == "fallback - exception")
+
+        self.imps = None
+        treatment = await client.get_treatments("key2_m", ["some", "some2"])
+        assert(treatment == {"some": "on-local", "some2": "on-global"})
+        assert_both = 0
+        for imp in self.imps:
+            if imp.feature_name == "some":
+                assert_both += 1
+                assert(imp.treatment == "on-local")
+                assert(imp.label == "fallback - exception")
+            else:
+                assert_both += 1
+                assert(imp.treatment == "on-global")
+                assert(imp.label == "fallback - exception")
+        assert assert_both == 2
+
+        assert(await client.get_treatment_with_config("key", "some") == ("on-local", None))
+        assert(await client.get_treatments_with_config("key_m", ["some", "some2"]) == {"some": ("on-local", None), "some2": ("on-global", '{"prop": "val"}')})
+        assert(await client.get_treatments_by_flag_set("key_m", "set") == {"some": "on-local", "some2": "on-global"})
+        assert(await client.get_treatments_by_flag_set("key_m", ["set"]) == {"some": "on-local", "some2": "on-global"})
+        assert(await client.get_treatments_with_config_by_flag_set("key_m", "set") == {"some": ("on-local", None), "some2": ("on-global", '{"prop": "val"}')})
+        assert(await client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-local", None), "some2": ("on-global", '{"prop": "val"}')})
+        
+        self.imps = None
+        client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some': FallbackTreatment("on-local", '{"prop": "val"}')}))
+        treatment = await client.get_treatment("key3", "some")
+        assert(treatment == "on-local")
+        assert(self.imps[0].treatment == "on-local")
+        assert(self.imps[0].label == "fallback - exception")
+
+        self.imps = None
+        treatment = await client.get_treatments("key3_m", ["some", "some2"])
+        assert(treatment == {"some": "on-local", "some2": "control"})
+        assert_both = 0
+        for imp in self.imps:
+            if imp.feature_name == "some":
+                assert_both += 1
+                assert(imp.treatment == "on-local")
+                assert(imp.label == "fallback - exception")
+            else:
+                assert_both += 1
+                assert(imp.treatment == "control")
+                assert(imp.label == "exception")
+        assert assert_both == 2
+
+        assert(await client.get_treatment_with_config("key", "some") == ("on-local", '{"prop": "val"}'))
+        assert(await client.get_treatments_with_config("key_m", ["some", "some2"]) == {"some": ("on-local", '{"prop": "val"}'), "some2": ("control", None)})
+        assert(await client.get_treatments_by_flag_set("key_m", "set") == {"some": "on-local", "some2": "control"})
+        assert(await client.get_treatments_by_flag_set("key_m", ["set"]) == {"some": "on-local", "some2": "control"})
+        assert(await client.get_treatments_with_config_by_flag_set("key_m", "set") == {"some": ("on-local", '{"prop": "val"}'), "some2": ("control", None)})
+        assert(await client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-local", '{"prop": "val"}'), "some2": ("control", None)})
+
+        self.imps = None
+        client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some2': FallbackTreatment("on-local")}))
+        treatment = await client.get_treatment("key4", "some")
+        assert(treatment == "control")
+        assert(self.imps[0].treatment == "control")
+        assert(self.imps[0].label == "exception")
+                
+        try:
+            await factory.destroy()
+        except:
+            pass
+
+    @pytest.mark.asyncio
+    async def test_fallback_treatment_exception(self, mocker):
+        # using fallback when the evaluator has RuntimeError exception
+        split_storage = mocker.Mock(spec=SplitStorage)
+        segment_storage = mocker.Mock(spec=SegmentStorage)
+        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)        
+        impression_storage = mocker.Mock(spec=ImpressionStorage)
+        event_storage = mocker.Mock(spec=EventStorage)
+        destroyed_property = mocker.PropertyMock()
+        destroyed_property.return_value = False
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_producer.get_telemetry_runtime_producer())
+        recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+
+        factory = SplitFactoryAsync(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock(),
+            None
+        )
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = True
+        type(factory).ready = ready_property
+        
+        self.imps = None
+        async def put(impressions):
+            self.imps = impressions    
+        impression_storage.put = put
+        
+        class TelemetrySubmitterMock():
+            def synchronize_config(*_):
+                pass
+        factory._telemetry_submitter = TelemetrySubmitterMock()
+        
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"))))
+
+        def eval_with_context(*_):
+            raise Exception()        
+        client._evaluator.eval_with_context = eval_with_context
+        
+        async def context_for(*_):
+            return EvaluationContext(
+                {}, 
+                {},
+                {}
+            )
+        client._context_factory.context_for = context_for
+        
+        treatment = await client.get_treatment("key", "some")
+        assert(treatment == "on-global")
+        assert(self.imps[0].treatment == "on-global")
+        assert(self.imps[0].label == "fallback - exception")
+        
+        self.imps = None
+        client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'some': FallbackTreatment("on-local")}))
+        treatment = await client.get_treatment("key2", "some")
+        assert(treatment == "on-local")
+        assert(self.imps[0].treatment == "on-local")
+        assert(self.imps[0].label == "fallback - exception")
+        
+        self.imps = None
+        client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some': FallbackTreatment("on-local")}))
+        treatment = await client.get_treatment("key3", "some")
+        assert(treatment == "on-local")
+        assert(self.imps[0].treatment == "on-local")
+        assert(self.imps[0].label == "fallback - exception")
+
+        self.imps = None
+        client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some2': FallbackTreatment("on-local")}))
+        treatment = await client.get_treatment("key4", "some")
+        assert(treatment == "control")
+        assert(self.imps[0].treatment == "control")
+        assert(self.imps[0].label == "exception")
+                
+        try:
+            await factory.destroy()
+        except:
+            pass
+
+    @pytest.mark.asyncio
+    async def test_fallback_treatment_not_ready_impressions(self, mocker):
+        # using fallback when the evaluator has RuntimeError exception
+        split_storage = mocker.Mock(spec=SplitStorage)
+        segment_storage = mocker.Mock(spec=SegmentStorage)
+        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)        
+        impression_storage = mocker.Mock(spec=ImpressionStorage)
+        event_storage = mocker.Mock(spec=EventStorage)
+
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
+        mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
+
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        impmanager = ImpressionManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_producer.get_telemetry_runtime_producer())
+        recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+        async def manager_start_task():
+            pass
+        
+        factory = SplitFactoryAsync(mocker.Mock(),
+            {'splits': split_storage,
+            'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
+            'impressions': impression_storage,
+            'events': event_storage},
+            mocker.Mock(),
+            recorder,
+            impmanager,
+            telemetry_producer,
+            telemetry_producer.get_telemetry_init_producer(),
+            mocker.Mock(),
+            manager_start_task
+        )
+        
+        self.imps = None
+        async def put(impressions):
+            self.imps = impressions    
+        impression_storage.put = put
+        
+        class TelemetrySubmitterMock():
+            def synchronize_config(*_):
+                pass
+        factory._telemetry_submitter = TelemetrySubmitterMock()
+        
+        client = ClientAsync(factory, recorder, True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"))))
+        ready_property = mocker.PropertyMock()
+        ready_property.return_value = False
+        type(factory).ready = ready_property
+
+        async def context_for(*_):
+            return EvaluationContext(
+                {"some": {}}, 
+                {},
+                {}
+            )
+        client._context_factory.context_for = context_for
+
+        treatment = await client.get_treatment("key", "some")
+        assert(self.imps[0].treatment == "on-global")
+        assert(self.imps[0].label == "fallback - not ready")
+        
+        self.imps = None
+        client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'some': FallbackTreatment("on-local")}))
+        treatment = await client.get_treatment("key2", "some")
+        assert(treatment == "on-local")
+        assert(self.imps[0].treatment == "on-local")
+        assert(self.imps[0].label == "fallback - not ready")
+        
+        self.imps = None
+        client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some': FallbackTreatment("on-local")}))
+        treatment = await client.get_treatment("key3", "some")
+        assert(treatment == "on-local")
+        assert(self.imps[0].treatment == "on-local")
+        assert(self.imps[0].label == "fallback - not ready")
+
+        self.imps = None
+        client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some2': FallbackTreatment("on-local")}))
+        treatment = await client.get_treatment("key4", "some")
+        assert(treatment == "control")
+        assert(self.imps[0].treatment == "control")
+        assert(self.imps[0].label == "not ready")
+                
+        try:
+            await factory.destroy()
+        except:
+            pass
