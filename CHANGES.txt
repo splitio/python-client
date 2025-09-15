@@ -1,4 +1,4 @@
-10.5.0 (Sep 12, 2025)
+10.5.0 (Sep 15, 2025)
 - Changed the log level from error to debug when renewing the token for Streaming service in asyncio mode.
 - Added new configuration for Fallback Treatments, which allows setting a treatment value and optional config to be returned in place of "control", either globally or by flag. Read more in our docs.
 - Deprecated config parameter `redisErrors` as it is removed in redis lib since 6.0.0 version (https://github.com/redis/redis-py/releases/tag/v6.0.0).
