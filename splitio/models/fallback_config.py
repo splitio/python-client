@@ -15,8 +15,8 @@ class FallbackTreatmentsConfiguration(object):
         :param by_flag_fallback_treatment: Dict of flags and their fallback treatment
         :type by_flag_fallback_treatment: {str: FallbackTreatment}
         """
-        self._global_fallback_treatment = global_fallback_treatment
-        self._by_flag_fallback_treatment = by_flag_fallback_treatment
+        self._global_fallback_treatment = self._build_global_fallback(global_fallback_treatment)
+        self._by_flag_fallback_treatment = self._build_by_flag_fallback(by_flag_fallback_treatment)
 
     @property
     def global_fallback_treatment(self):
@@ -37,7 +37,26 @@ class FallbackTreatmentsConfiguration(object):
     def by_flag_fallback_treatment(self, new_value):
         """Set global fallback treatment."""
         self.by_flag_fallback_treatment = new_value
-
+    
+    def _build_global_fallback(self, global_fallback_treatment):
+        if isinstance(global_fallback_treatment, str):
+            return FallbackTreatment(global_fallback_treatment)
+        
+        return global_fallback_treatment
+    
+    def _build_by_flag_fallback(self, by_flag_fallback_treatment):
+        if not isinstance(by_flag_fallback_treatment, dict):
+            return by_flag_fallback_treatment
+        
+        parsed_by_flag_fallback = {}
+        for key, value in by_flag_fallback_treatment.items():
+            if isinstance(value, str):
+                parsed_by_flag_fallback[key] = FallbackTreatment(value)
+            else:
+                parsed_by_flag_fallback[key] = value
+                      
+        return parsed_by_flag_fallback
+    
 class FallbackTreatmentCalculator(object):
     """FallbackTreatmentCalculator object class."""
 
