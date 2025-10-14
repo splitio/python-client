@@ -28,6 +28,13 @@ class FallbackTreatmentsConfigModelTests(object):
         
         fallback_config.by_flag_fallback_treatment["flag2"] = flag_fb
         assert fallback_config.by_flag_fallback_treatment == {"flag1": flag_fb, "flag2": flag_fb}
+
+        fallback_config = FallbackTreatmentsConfiguration("on", {"flag1": "off"})
+        assert isinstance(fallback_config.global_fallback_treatment, FallbackTreatment)
+        assert fallback_config.global_fallback_treatment.treatment == "on"
+        
+        assert isinstance(fallback_config.by_flag_fallback_treatment["flag1"], FallbackTreatment)
+        assert fallback_config.by_flag_fallback_treatment["flag1"].treatment == "off"
         
 
 class FallbackTreatmentCalculatorTests(object):
