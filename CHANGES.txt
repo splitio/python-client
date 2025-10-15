@@ -1,3 +1,6 @@
+10.5.1 (Oct 15, 2025)
+- Added using String only parameter for treatments in FallbackTreatmentConfiguration class.
+
 10.5.0 (Sep 15, 2025)
 - Changed the log level from error to debug when renewing the token for Streaming service in asyncio mode.
 - Added new configuration for Fallback Treatments, which allows setting a treatment value and optional config to be returned in place of "control", either globally or by flag. Read more in our docs.
