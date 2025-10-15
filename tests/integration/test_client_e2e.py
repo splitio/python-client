@@ -1393,6 +1393,27 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
         factory.destroy(event)
         event.wait()
 
+    def test_fallback_treatments(self):
+        """Instantiate a client with a JSON file and issue get_treatment() calls."""
+        self._update_temp_file(splits_json['splitChange2_1'])
+        filename = os.path.join(os.path.dirname(__file__), 'files', 'split_changes_temp.json')
+        factory = get_factory('localhost', 
+                                   config={
+                                       'splitFile': filename,
+                                        'fallbackTreatments': FallbackTreatmentsConfiguration("on-global", {'fallback_feature': "on-local"})
+                                    }
+                        )
+        factory.block_until_ready(1)
+        client = factory.client()
+
+        assert client.get_treatment("key", "feature") == "on-global"
+        assert client.get_treatment("key", "fallback_feature") == "on-local"
+    
+        event = threading.Event()
+        factory.destroy(event)
+        event.wait()
+
+
 class PluggableIntegrationTests(object):
     """Pluggable storage-based integration tests."""
 
@@ -3335,6 +3356,23 @@ class LocalhostIntegrationAsyncTests(object):  # pylint: disable=too-few-public-
         assert split.configs == {}
         await factory.destroy()
 
+    @pytest.mark.asyncio
+    async def test_fallback_treatments(self):
+        """Instantiate a client with a JSON file and issue get_treatment() calls."""
+        self._update_temp_file(splits_json['splitChange2_1'])
+        filename = os.path.join(os.path.dirname(__file__), 'files', 'split_changes_temp.json')
+        factory = await get_factory_async('localhost', 
+                                   config={
+                                       'splitFile': filename,
+                                        'fallbackTreatments': FallbackTreatmentsConfiguration("on-global", {'fallback_feature': "on-local"})
+                                    }
+                        )
+        await factory.block_until_ready(1)
+        client = factory.client()
+
+        assert await client.get_treatment("key", "feature") == "on-global"
+        assert await client.get_treatment("key", "fallback_feature") == "on-local"
+        await factory.destroy()
 
 class PluggableIntegrationAsyncTests(object):
     """Pluggable storage-based integration tests."""
