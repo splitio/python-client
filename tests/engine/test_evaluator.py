@@ -4,6 +4,7 @@ import logging
 import os
 import pytest
 import copy
+import queue
 
 from splitio.models.splits import Split, Status, from_raw, Prerequisites
 from splitio.models import segments
@@ -261,7 +262,8 @@ class EvaluatorTests(object):
                 
     def test_evaluate_treatment_with_rbs_in_condition(self):
         e = evaluator.Evaluator(splitters.Splitter())
-        splits_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        splits_storage = InMemorySplitStorage(events_queue)
         rbs_storage = InMemoryRuleBasedSegmentStorage()
         segment_storage = InMemorySegmentStorage()
         evaluation_facctory = EvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
@@ -287,7 +289,8 @@ class EvaluatorTests(object):
         with open(rbs_segments, 'r') as flo:
             data = json.loads(flo.read())
         e = evaluator.Evaluator(splitters.Splitter())
-        splits_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        splits_storage = InMemorySplitStorage(events_queue)
         rbs_storage = InMemoryRuleBasedSegmentStorage()
         segment_storage = InMemorySegmentStorage()
         evaluation_facctory = EvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
@@ -311,7 +314,8 @@ class EvaluatorTests(object):
         with open(rbs_segments, 'r') as flo:
             data = json.loads(flo.read())
         e = evaluator.Evaluator(splitters.Splitter())
-        splits_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        splits_storage = InMemorySplitStorage(events_queue)
         rbs_storage = InMemoryRuleBasedSegmentStorage()
         segment_storage = InMemorySegmentStorage()
         evaluation_facctory = EvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
@@ -334,7 +338,8 @@ class EvaluatorTests(object):
         with open(splits_load, 'r') as flo:
             data = json.loads(flo.read())
         e = evaluator.Evaluator(splitters.Splitter())
-        splits_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        splits_storage = InMemorySplitStorage(events_queue)
         rbs_storage = InMemoryRuleBasedSegmentStorage()
         segment_storage = InMemorySegmentStorage()
         evaluation_facctory = EvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
@@ -542,7 +547,8 @@ class EvaluationDataFactoryTests(object):
         """Test context."""
         mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False, [Prerequisites('split2', ['on'])])
         split2 = Split('split2', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False, [])
-        flag_storage = InMemorySplitStorage([])
+        events_queue = queue.Queue()
+        flag_storage = InMemorySplitStorage(events_queue, [])
         segment_storage = InMemorySegmentStorage()
         rbs_segment_storage = InMemoryRuleBasedSegmentStorage()
         flag_storage.update([mocked_split, split2], [], -1)
