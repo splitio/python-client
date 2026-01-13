@@ -39,22 +39,12 @@ class EventsManagerConfig(object):
     def execution_limits(self):
         """Return execution_limits dict"""
         return self._execution_limits
-    
-    @property
-    def prerequisites(self):
-        """Return require all dict"""
-        return self._prerequisites
-    
+        
     @property
     def evaluation_order(self):
         """Return evaluation_order dict"""
         return self._evaluation_order
-    
-    @property
-    def sorted_events(self):
-        """Return sorted_events dict"""
-        return self._sorted_events
-        
+            
     def _get_require_all(self):
         """Return require all dict"""
         return  {
