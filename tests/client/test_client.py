@@ -6,6 +6,7 @@ import os
 import unittest.mock as mock
 import time
 import pytest
+import queue 
 
 from splitio.client.client import Client, _LOGGER as _logger, CONTROL, ClientAsync, EvaluationOptions
 from splitio.client.factory import SplitFactory, Status as FactoryStatus, SplitFactoryAsync
@@ -36,7 +37,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
         rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
@@ -113,7 +115,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
         rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
@@ -190,7 +193,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
         rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
@@ -270,7 +274,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
         rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
@@ -349,7 +354,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
         rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
@@ -428,7 +434,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
         rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
@@ -511,7 +518,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
         rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
@@ -591,7 +599,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
         rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
@@ -671,7 +680,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
         rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
@@ -735,7 +745,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
         rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
@@ -799,7 +810,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
         rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
@@ -939,7 +951,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10, telemetry_runtime_producer)
         impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
         rb_segment_storage = InMemoryRuleBasedSegmentStorage()        
         split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
@@ -1020,7 +1033,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10, telemetry_runtime_producer)
         impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
         rb_segment_storage = InMemoryRuleBasedSegmentStorage()        
         split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
@@ -1053,7 +1067,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         factory.destroy()
 
     def test_telemetry_record_treatment_exception(self, mocker):
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
         segment_storage = mocker.Mock(spec=SegmentStorage)
         rb_segment_storage = InMemoryRuleBasedSegmentStorage()
@@ -1158,7 +1173,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         impression_storage = InMemoryImpressionStorage(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
         impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
         rb_segment_storage = InMemoryRuleBasedSegmentStorage()        
         split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
@@ -1270,7 +1286,8 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
         rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()

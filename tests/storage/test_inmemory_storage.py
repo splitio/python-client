@@ -3,13 +3,16 @@
 import random
 import pytest
 import copy
+import queue
 
 from splitio.models.splits import Split
 from splitio.models.segments import Segment
 from splitio.models.impressions import Impression
 from splitio.models.events import Event, EventWrapper
+from splitio.models.events import SdkInternalEvent
 import splitio.models.telemetry as ModelTelemetry
 from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
+from splitio.events.events_metadata import SdkEventType
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, InMemorySegmentStorageAsync, InMemorySplitStorageAsync, \
     InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, InMemoryImpressionStorageAsync, InMemoryEventStorageAsync, \
     InMemoryTelemetryStorageAsync, FlagSets, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
@@ -65,7 +68,8 @@ class InMemorySplitStorageTests(object):
 
     def test_storing_retrieving_splits(self, mocker):
         """Test storing and retrieving splits works."""
-        storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        storage = InMemorySplitStorage(events_queue)
 
         split = mocker.Mock(spec=Split)
         name_property = mocker.PropertyMock()
@@ -100,7 +104,8 @@ class InMemorySplitStorageTests(object):
         type(split2).name = name2_prop
         type(split2).sets = sets_property
 
-        storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        storage = InMemorySplitStorage(events_queue)
         storage.update([split1, split2], [], -1)
 
         splits = storage.fetch_many(['split1', 'split2', 'split3'])
@@ -113,7 +118,8 @@ class InMemorySplitStorageTests(object):
 
     def test_store_get_changenumber(self):
         """Test that storing and retrieving change numbers works."""
-        storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        storage = InMemorySplitStorage(events_queue)
         assert storage.get_change_number() == -1
         storage.update([], [], 5)
         assert storage.get_change_number() == 5
@@ -134,7 +140,8 @@ class InMemorySplitStorageTests(object):
         type(split2).name = name2_prop
         type(split2).sets = sets_property
 
-        storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        storage = InMemorySplitStorage(events_queue)
         storage.update([split1, split2], [], -1)
 
         assert set(storage.get_split_names()) == set(['split1', 'split2'])
@@ -155,7 +162,8 @@ class InMemorySplitStorageTests(object):
         type(split2).name = name2_prop
         type(split2).sets = sets_property
 
-        storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        storage = InMemorySplitStorage(events_queue)
         storage.update([split1, split2], [], -1)
 
         all_splits = storage.get_all_splits()
@@ -189,7 +197,8 @@ class InMemorySplitStorageTests(object):
         type(split2).sets = sets_property
         type(split3).sets = sets_property
 
-        storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        storage = InMemorySplitStorage(events_queue)
 
         storage.update([split1], [], -1)
         assert storage.is_valid_traffic_type('user') is True
@@ -217,7 +226,8 @@ class InMemorySplitStorageTests(object):
 
     def test_traffic_type_inc_dec_logic(self, mocker):
         """Test that adding/removing split, handles traffic types correctly."""
-        storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        storage = InMemorySplitStorage(events_queue)
 
         split1 = mocker.Mock()
         name1_prop = mocker.PropertyMock()
@@ -253,7 +263,8 @@ class InMemorySplitStorageTests(object):
 
     def test_kill_locally(self):
         """Test kill local."""
-        storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        storage = InMemorySplitStorage(events_queue)
 
         split = Split('some_split', 123456789, False, 'some', 'traffic_type',
                       'ACTIVE', 1)
@@ -271,7 +282,8 @@ class InMemorySplitStorageTests(object):
         assert storage.get('some_split').change_number == 3
 
     def test_flag_sets_with_config_sets(self):
-        storage = InMemorySplitStorage(['set10', 'set02', 'set05'])
+        events_queue = queue.Queue()
+        storage = InMemorySplitStorage(events_queue, ['set10', 'set02', 'set05'])
         assert storage.flag_set_filter.flag_sets == {'set10', 'set02', 'set05'}
         assert storage.flag_set_filter.should_filter
 
@@ -316,7 +328,8 @@ class InMemorySplitStorageTests(object):
         assert not storage.is_flag_set_exist('set04')
 
     def test_flag_sets_withut_config_sets(self):
-        storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        storage = InMemorySplitStorage(events_queue)
         assert storage.flag_set_filter.flag_sets == set({})
         assert not storage.flag_set_filter.should_filter
 
@@ -357,6 +370,42 @@ class InMemorySplitStorageTests(object):
         storage.update([split3], [], 1)
         assert storage.get_feature_flags_by_sets(['set05']) == ['split3']
         assert storage.get_feature_flags_by_sets(['set04', 'set05']) == ['split3']
+
+    def test_internal_event_notification(self, mocker):
+        """Test storing and retrieving splits works."""
+        events_queue = queue.Queue()
+        storage = InMemorySplitStorage(events_queue)
+
+        split = mocker.Mock(spec=Split)
+        name_property = mocker.PropertyMock()
+        name_property.return_value = 'some_split'
+        type(split).name = name_property
+        sets_property = mocker.PropertyMock()
+        sets_property.return_value = ['set_1']
+        type(split).sets = sets_property
+
+        storage.update([split], [], -1)
+        assert storage.get('some_split') == split
+        assert storage.get_split_names() == ['some_split']
+        assert storage.get_all_splits() == [split]
+        event = events_queue.get()
+        assert event.internal_event == SdkInternalEvent.FLAGS_UPDATED
+        assert event.metadata.get_type() == SdkEventType.FLAG_UPDATE
+        assert event.metadata.get_names() == {'some_split'}
+
+        split2 = Split('another_split', 123456789, False, 'some', 'traffic_type',
+                      'ACTIVE', 1)
+        storage.update([split2], ['some_split'], 1)
+        event = events_queue.get()
+        assert event.internal_event == SdkInternalEvent.FLAGS_UPDATED
+        assert event.metadata.get_type() == SdkEventType.FLAG_UPDATE
+        assert event.metadata.get_names() == {'another_split', 'some_split'}
+
+        storage.kill_locally('another_split', 'default_treatment', 3)
+        event = events_queue.get()
+        assert event.internal_event == SdkInternalEvent.FLAG_KILLED_NOTIFICATION
+        assert event.metadata.get_type() == SdkEventType.FLAG_UPDATE
+        assert event.metadata.get_names() == {'another_split'}
 
 class InMemorySplitStorageAsyncTests(object):
     """In memory split storage test cases."""

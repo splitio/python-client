@@ -6,6 +6,7 @@ import os
 import threading
 import time
 import pytest
+import queue
 import unittest.mock as mocker
 from redis import StrictRedis
 
@@ -515,7 +516,8 @@ class InMemoryDebugIntegrationTests(object):
 
     def setup_method(self):
         """Prepare storages with test data."""
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
         rb_segment_storage = InMemoryRuleBasedSegmentStorage()
 
@@ -677,7 +679,8 @@ class InMemoryOptimizedIntegrationTests(object):
 
     def setup_method(self):
         """Prepare storages with test data."""
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
         rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
@@ -1965,7 +1968,8 @@ class InMemoryImpressionsToggleIntegrationTests(object):
     """InMemory storage-based impressions toggle integration tests."""
 
     def test_optimized(self):
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
 
         split_storage.update([splits.from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
@@ -2023,7 +2027,8 @@ class InMemoryImpressionsToggleIntegrationTests(object):
         assert client.get_treatment('user1', 'fallback_feature') == 'on-local'
 
     def test_debug(self):
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
 
         split_storage.update([splits.from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
@@ -2081,7 +2086,8 @@ class InMemoryImpressionsToggleIntegrationTests(object):
         assert client.get_treatment('user1', 'fallback_feature') == 'on-local'
 
     def test_none(self):
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
 
         split_storage.update([splits.from_raw(splits_json['splitChange1_1']['ff']['d'][0]),

@@ -3,6 +3,7 @@ import logging
 import threading
 from collections import Counter
 from enum import Enum
+import queue 
 
 from splitio.optional.loaders import asyncio
 from splitio.client.client import Client, ClientAsync
@@ -546,9 +547,10 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'events': EventsAPI(http_client, api_key, sdk_metadata, telemetry_runtime_producer),
         'telemetry': TelemetryAPI(http_client, api_key, sdk_metadata, telemetry_runtime_producer),
     }
-
+  
+    events_queue = queue.Queue()
     storages = {
-        'splits': InMemorySplitStorage(cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
+        'splits': InMemorySplitStorage(events_queue, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
         'segments': InMemorySegmentStorage(),
         'rule_based_segments': InMemoryRuleBasedSegmentStorage(),
         'impressions': InMemoryImpressionStorage(cfg['impressionsQueueSize'], telemetry_runtime_producer),
@@ -1096,8 +1098,9 @@ def _build_localhost_factory(cfg):
     telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
     telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
 
+    events_queue = queue.Queue()
     storages = {
-        'splits': InMemorySplitStorage(cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
+        'splits': InMemorySplitStorage(events_queue, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
         'segments': InMemorySegmentStorage(),  # not used, just to avoid possible future errors.
         'rule_based_segments': InMemoryRuleBasedSegmentStorage(),   
         'impressions': LocalhostImpressionsStorage(),

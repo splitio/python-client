@@ -262,7 +262,8 @@ class SplitWorkerTests(object):
 
     def test_fetch_segment(self, mocker):
         q = queue.Queue()
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage()
 
         self.segment_name = None

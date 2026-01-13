@@ -1,6 +1,7 @@
 """Synchronizer tests."""
 import unittest.mock as mock
 import pytest
+import queue
 
 from splitio.sync.synchronizer import Synchronizer, SynchronizerAsync, SplitTasks, SplitSynchronizers, LocalhostSynchronizer, LocalhostSynchronizerAsync, RedisSynchronizer, RedisSynchronizerAsync
 from splitio.tasks.split_sync import SplitSynchronizationTask, SplitSynchronizationTaskAsync
@@ -124,7 +125,8 @@ class SynchronizerTests(object):
         assert not sychronizer._synchronize_segments()
 
     def test_synchronize_splits(self, mocker):
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         rbs_storage = InMemoryRuleBasedSegmentStorage()
         split_api = mocker.Mock()
         split_api.fetch_splits.return_value = {'ff': {'d': splits, 's': 123,
@@ -151,7 +153,8 @@ class SynchronizerTests(object):
             assert inserted_segment.keys == {'key1', 'key2', 'key3'}
 
     def test_synchronize_splits_calling_segment_sync_once(self, mocker):
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         rbs_storage = InMemoryRuleBasedSegmentStorage()
         split_api = mocker.Mock()
         split_api.fetch_splits.return_value = {'ff': {'d': splits, 's': 123,

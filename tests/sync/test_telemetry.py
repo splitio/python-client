@@ -1,6 +1,7 @@
 """Telemetry Worker tests."""
 import unittest.mock as mock
 import pytest
+import queue
 
 from splitio.sync.telemetry import TelemetrySynchronizer, TelemetrySynchronizerAsync, InMemoryTelemetrySubmitter, InMemoryTelemetrySubmitterAsync
 from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageConsumerAsync
@@ -57,7 +58,8 @@ class TelemetrySubmitterTests(object):
         api = mocker.Mock(spec=TelemetryAPI)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         split_storage.update([Split('split1', 1234, 1, False, 'user', Status.ACTIVE, 123)], [], -1)
         segment_storage = InMemorySegmentStorage()
         segment_storage.put(Segment('segment1', [], 123))
