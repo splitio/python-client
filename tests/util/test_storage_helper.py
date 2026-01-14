@@ -1,5 +1,6 @@
 """Storage Helper tests."""
 import pytest
+import queue
 
 from splitio.util.storage_helper import update_feature_flag_storage, get_valid_flag_sets, combine_valid_flag_sets, \
     update_rule_based_segment_storage, update_rule_based_segment_storage_async, update_feature_flag_storage_async, \
@@ -193,7 +194,8 @@ class StorageHelperTests(object):
         assert self.clear == 1
 
     def test_get_standard_segment_in_rbs_storage(self, mocker):
-        storage = InMemoryRuleBasedSegmentStorage()
+        events_queue = queue.Queue()
+        storage = InMemoryRuleBasedSegmentStorage(events_queue)
         segments = update_rule_based_segment_storage(storage, [self.rbs], 123)
         assert get_standard_segment_names_in_rbs_storage(storage) == {'excluded_segment', 'employees'}
 

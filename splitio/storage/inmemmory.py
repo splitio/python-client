@@ -113,11 +113,12 @@ class FlagSets(object):
 class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
     """InMemory implementation of a feature flag storage base."""    
 
-    def __init__(self):
+    def __init__(self, internal_event_queue):
         """Constructor."""
         self._lock = threading.RLock()
         self._rule_based_segments = {}
         self._change_number = -1
+        self._internal_event_queue = internal_event_queue
 
     def clear(self):
         """
@@ -153,6 +154,10 @@ class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
         [self._put(add_segment) for add_segment in to_add]
         [self._remove(delete_segment) for delete_segment in to_delete]
         self._set_change_number(new_change_number)
+        self._internal_event_queue.put(
+            SdkInternalEventNotification(
+                SdkInternalEvent.RB_SEGMENTS_UPDATED,
+                EventsMetadata(SdkEventType.SEGMENT_UPDATE, {})))        
 
     def _put(self, rule_based_segment):
         """
@@ -934,11 +939,12 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
 class InMemorySegmentStorage(SegmentStorage):
     """In-memory implementation of a segment storage."""
 
-    def __init__(self):
+    def __init__(self, internal_event_queue):
         """Constructor."""
         self._segments = {}
         self._change_numbers = {}
         self._lock = threading.RLock()
+        self._internal_event_queue = internal_event_queue
 
     def get(self, segment_name):
         """
@@ -968,9 +974,14 @@ class InMemorySegmentStorage(SegmentStorage):
         with self._lock:
             self._segments[segment.name] = segment
 
+            self._internal_event_queue.put(
+            SdkInternalEventNotification(
+                SdkInternalEvent.SEGMENTS_UPDATED,
+                EventsMetadata(SdkEventType.SEGMENT_UPDATE, {})))        
+
     def update(self, segment_name, to_add, to_remove, change_number=None):
         """
-        Update a feature flag. Create it if it doesn't exist.
+        Update a segment. Create it if it doesn't exist.
 
         :param segment_name: Name of the segment to update.
         :type segment_name: str
@@ -987,6 +998,11 @@ class InMemorySegmentStorage(SegmentStorage):
             self._segments[segment_name].update(to_add, to_remove)
             if change_number is not None:
                 self._segments[segment_name].change_number = change_number
+
+            self._internal_event_queue.put(
+            SdkInternalEventNotification(
+                SdkInternalEvent.SEGMENTS_UPDATED,
+                EventsMetadata(SdkEventType.SEGMENT_UPDATE, {})))        
 
     def get_change_number(self, segment_name):
         """
@@ -1100,7 +1116,7 @@ class InMemorySegmentStorageAsync(SegmentStorage):
 
     async def update(self, segment_name, to_add, to_remove, change_number=None):
         """
-        Update a feature flag. Create it if it doesn't exist.
+        Update a segment. Create it if it doesn't exist.
 
         :param segment_name: Name of the segment to update.
         :type segment_name: str

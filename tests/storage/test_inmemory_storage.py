@@ -713,7 +713,8 @@ class InMemorySegmentStorageTests(object):
 
     def test_segment_storage_retrieval(self, mocker):
         """Test storing and retrieving segments."""
-        storage = InMemorySegmentStorage()
+        events_queue = queue.Queue()
+        storage = InMemorySegmentStorage(events_queue)
         segment = mocker.Mock(spec=Segment)
         name_property = mocker.PropertyMock()
         name_property.return_value = 'some_segment'
@@ -725,14 +726,16 @@ class InMemorySegmentStorageTests(object):
 
     def test_change_number(self, mocker):
         """Test storing and retrieving segment changeNumber."""
-        storage = InMemorySegmentStorage()
+        events_queue = queue.Queue()
+        storage = InMemorySegmentStorage(events_queue)
         storage.set_change_number('some_segment', 123)
         # Change number is not updated if segment doesn't exist
         assert storage.get_change_number('some_segment') is None
         assert storage.get_change_number('nonexistant-segment') is None
 
         # Change number is updated if segment does exist.
-        storage = InMemorySegmentStorage()
+        events_queue = queue.Queue()
+        storage = InMemorySegmentStorage(events_queue)
         segment = mocker.Mock(spec=Segment)
         name_property = mocker.PropertyMock()
         name_property.return_value = 'some_segment'
@@ -743,7 +746,8 @@ class InMemorySegmentStorageTests(object):
 
     def test_segment_contains(self, mocker):
         """Test using storage to determine whether a key belongs to a segment."""
-        storage = InMemorySegmentStorage()
+        events_queue = queue.Queue()
+        storage = InMemorySegmentStorage(events_queue)
         segment = mocker.Mock(spec=Segment)
         name_property = mocker.PropertyMock()
         name_property.return_value = 'some_segment'
@@ -755,7 +759,8 @@ class InMemorySegmentStorageTests(object):
 
     def test_segment_update(self):
         """Test updating a segment."""
-        storage = InMemorySegmentStorage()
+        events_queue = queue.Queue()
+        storage = InMemorySegmentStorage(events_queue)
         segment = Segment('some_segment', ['key1', 'key2', 'key3'], 123)
         storage.put(segment)
         assert storage.get('some_segment') == segment
@@ -768,6 +773,22 @@ class InMemorySegmentStorageTests(object):
         assert not storage.segment_contains('some_segment', 'key3')
         assert storage.get_change_number('some_segment') == 456
 
+    def test_internal_event_notification(self):
+        """Test updating a segment."""
+        events_queue = queue.Queue()
+        storage = InMemorySegmentStorage(events_queue)
+        segment = Segment('some_segment', ['key1', 'key2', 'key3'], 123)
+        storage.put(segment)
+        event = events_queue.get()
+        assert event.internal_event == SdkInternalEvent.SEGMENTS_UPDATED
+        assert event.metadata.get_type() == SdkEventType.SEGMENT_UPDATE
+        assert len(event.metadata.get_names()) == 0
+
+        storage.update('some_segment', ['key4', 'key5'], ['key2', 'key3'], 456)
+        event = events_queue.get()
+        assert event.internal_event == SdkInternalEvent.SEGMENTS_UPDATED
+        assert event.metadata.get_type() == SdkEventType.SEGMENT_UPDATE
+        assert len(event.metadata.get_names()) == 0
 
 class InMemorySegmentStorageAsyncTests(object):
     """In memory segment storage tests."""
@@ -1865,7 +1886,8 @@ class InMemoryRuleBasedSegmentStorageTests(object):
 
     def test_storing_retrieving_segments(self, mocker):
         """Test storing and retrieving splits works."""
-        rbs_storage = InMemoryRuleBasedSegmentStorage()
+        events_queue = queue.Queue()
+        rbs_storage = InMemoryRuleBasedSegmentStorage(events_queue)
 
         segment1 = mocker.Mock(spec=RuleBasedSegment)
         name_property = mocker.PropertyMock()
@@ -1887,7 +1909,8 @@ class InMemoryRuleBasedSegmentStorageTests(object):
 
     def test_store_get_changenumber(self):
         """Test that storing and retrieving change numbers works."""
-        storage = InMemoryRuleBasedSegmentStorage()
+        events_queue = queue.Queue()
+        storage = InMemoryRuleBasedSegmentStorage(events_queue)
         assert storage.get_change_number() == -1
         storage.update([], [], 5)
         assert storage.get_change_number() == 5
@@ -1911,11 +1934,38 @@ class InMemoryRuleBasedSegmentStorageTests(object):
         raw3 = copy.deepcopy(raw)
         raw3["name"] = "segment3"
         segment3 =  rule_based_segments.from_raw(raw3)
-        storage = InMemoryRuleBasedSegmentStorage()
+        events_queue = queue.Queue()
+        storage = InMemoryRuleBasedSegmentStorage(events_queue)
         storage.update([segment1, segment2, segment3], [], -1)
         assert storage.contains(["segment1"])
         assert storage.contains(["segment1", "segment3"])
         assert not storage.contains(["segment5"])
+
+    def test_internal_event_notification(self, mocker):
+        """Test storing and retrieving splits works."""
+        events_queue = queue.Queue()
+        rbs_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+
+        segment1 = mocker.Mock(spec=RuleBasedSegment)
+        name_property = mocker.PropertyMock()
+        name_property.return_value = 'some_segment'
+        type(segment1).name = name_property
+
+        segment2 = mocker.Mock()
+        name2_prop = mocker.PropertyMock()
+        name2_prop.return_value = 'segment2'
+        type(segment2).name = name2_prop
+
+        rbs_storage.update([segment1, segment2], [], -1)
+        event = events_queue.get()
+        assert event.internal_event == SdkInternalEvent.RB_SEGMENTS_UPDATED
+        assert event.metadata.get_type() == SdkEventType.SEGMENT_UPDATE
+        assert len(event.metadata.get_names()) == 0
+
+        rbs_storage.update([], ['some_segment'], -1)
+        assert event.internal_event == SdkInternalEvent.RB_SEGMENTS_UPDATED
+        assert event.metadata.get_type() == SdkEventType.SEGMENT_UPDATE
+        assert len(event.metadata.get_names()) == 0
 
 class InMemoryRuleBasedSegmentStorageAsyncTests(object):
     """In memory rule based segment storage test cases."""
