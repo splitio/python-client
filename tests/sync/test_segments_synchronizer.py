@@ -504,7 +504,8 @@ class LocalSegmentsSynchronizerTests(object):
         """Test the normal operation flow."""
         split_storage = mocker.Mock(spec=InMemorySplitStorage)
         split_storage.get_segment_names.return_value = ['segmentA', 'segmentB', 'segmentC']
-        storage = InMemorySegmentStorage()
+        events_queue = queue.Queue()
+        storage = InMemorySegmentStorage(events_queue)
 
         segment_a = {'name': 'segmentA', 'added': ['key1', 'key2', 'key3'], 'removed': [],
                         'since': -1, 'till': 123}
@@ -585,7 +586,8 @@ class LocalSegmentsSynchronizerTests(object):
         f.write('{"name": "segmentA", "added": ["key1", "key2", "key3"], "removed": [],"since": -1, "till": 123}')
         f.close()
         split_storage = mocker.Mock(spec=InMemorySplitStorage)
-        storage = InMemorySegmentStorage()
+        events_queue = queue.Queue()
+        storage = InMemorySegmentStorage(events_queue)
         segments_synchronizer = LocalSegmentSynchronizer('.', split_storage, storage)
         assert segments_synchronizer.synchronize_segments(['segmentA'])
 

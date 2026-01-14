@@ -264,7 +264,7 @@ class SplitWorkerTests(object):
         q = queue.Queue()
         events_queue = queue.Queue()
         split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage()
+        segment_storage = InMemorySegmentStorage(events_queue)
 
         self.segment_name = None
         def segment_handler_sync(segment_name, change_number):

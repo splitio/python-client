@@ -127,12 +127,12 @@ class SynchronizerTests(object):
     def test_synchronize_splits(self, mocker):
         events_queue = queue.Queue()
         split_storage = InMemorySplitStorage(events_queue)
-        rbs_storage = InMemoryRuleBasedSegmentStorage()
+        rbs_storage = InMemoryRuleBasedSegmentStorage(events_queue)
         split_api = mocker.Mock()
         split_api.fetch_splits.return_value = {'ff': {'d': splits, 's': 123,
                                                't': 123}, 'rbs': {'d': [], 's': -1, 't': -1}}
         split_sync = SplitSynchronizer(split_api, split_storage, rbs_storage)
-        segment_storage = InMemorySegmentStorage()
+        segment_storage = InMemorySegmentStorage(events_queue)
         segment_api = mocker.Mock()
         segment_api.fetch_segment.return_value = {'name': 'segmentA', 'added': ['key1', 'key2',
                                                   'key3'], 'removed': [], 'since': 123, 'till': 123}
@@ -155,7 +155,7 @@ class SynchronizerTests(object):
     def test_synchronize_splits_calling_segment_sync_once(self, mocker):
         events_queue = queue.Queue()
         split_storage = InMemorySplitStorage(events_queue)
-        rbs_storage = InMemoryRuleBasedSegmentStorage()
+        rbs_storage = InMemoryRuleBasedSegmentStorage(events_queue)
         split_api = mocker.Mock()
         split_api.fetch_splits.return_value = {'ff': {'d': splits, 's': 123,
                                                't': 123}, 'rbs': {'d': [], 's': -1, 't': -1}}

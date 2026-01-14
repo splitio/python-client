@@ -518,8 +518,8 @@ class InMemoryDebugIntegrationTests(object):
         """Prepare storages with test data."""
         events_queue = queue.Queue()
         split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage()
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
+        segment_storage = InMemorySegmentStorage(events_queue)
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
 
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
@@ -681,8 +681,8 @@ class InMemoryOptimizedIntegrationTests(object):
         """Prepare storages with test data."""
         events_queue = queue.Queue()
         split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage()
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
+        segment_storage = InMemorySegmentStorage(events_queue)
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
             data = json.loads(flo.read())
@@ -1970,7 +1970,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
     def test_optimized(self):
         events_queue = queue.Queue()
         split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage()
+        segment_storage = InMemorySegmentStorage(events_queue)
 
         split_storage.update([splits.from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
                               splits.from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
@@ -1985,7 +1985,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
-            'rule_based_segments': InMemoryRuleBasedSegmentStorage(),
+            'rule_based_segments': InMemoryRuleBasedSegmentStorage(events_queue),
             'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
         }
@@ -2029,7 +2029,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
     def test_debug(self):
         events_queue = queue.Queue()
         split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage()
+        segment_storage = InMemorySegmentStorage(events_queue)
 
         split_storage.update([splits.from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
                               splits.from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
@@ -2044,7 +2044,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
-            'rule_based_segments': InMemoryRuleBasedSegmentStorage(),
+            'rule_based_segments': InMemoryRuleBasedSegmentStorage(events_queue),
             'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
         }
@@ -2088,7 +2088,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
     def test_none(self):
         events_queue = queue.Queue()
         split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage()
+        segment_storage = InMemorySegmentStorage(events_queue)
 
         split_storage.update([splits.from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
                               splits.from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
@@ -2103,7 +2103,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
-            'rule_based_segments': InMemoryRuleBasedSegmentStorage(),
+            'rule_based_segments': InMemoryRuleBasedSegmentStorage(events_queue),
             'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
         }

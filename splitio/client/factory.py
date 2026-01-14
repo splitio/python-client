@@ -551,8 +551,8 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     events_queue = queue.Queue()
     storages = {
         'splits': InMemorySplitStorage(events_queue, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
-        'segments': InMemorySegmentStorage(),
-        'rule_based_segments': InMemoryRuleBasedSegmentStorage(),
+        'segments': InMemorySegmentStorage(events_queue),
+        'rule_based_segments': InMemoryRuleBasedSegmentStorage(events_queue),
         'impressions': InMemoryImpressionStorage(cfg['impressionsQueueSize'], telemetry_runtime_producer),
         'events': InMemoryEventStorage(cfg['eventsQueueSize'], telemetry_runtime_producer),
     }
@@ -1101,8 +1101,8 @@ def _build_localhost_factory(cfg):
     events_queue = queue.Queue()
     storages = {
         'splits': InMemorySplitStorage(events_queue, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
-        'segments': InMemorySegmentStorage(),  # not used, just to avoid possible future errors.
-        'rule_based_segments': InMemoryRuleBasedSegmentStorage(),   
+        'segments': InMemorySegmentStorage(events_queue),  # not used, just to avoid possible future errors.
+        'rule_based_segments': InMemoryRuleBasedSegmentStorage(events_queue),   
         'impressions': LocalhostImpressionsStorage(),
         'events': LocalhostEventsStorage(),
     }
