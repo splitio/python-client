@@ -20,6 +20,10 @@ from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageC
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
 from splitio.models.fallback_config import FallbackTreatmentCalculator
+from splitio.events.events_metadata import EventsMetadata, SdkEventType
+from splitio.models.notification import SdkInternalEventNotification
+from splitio.models.events import SdkInternalEvent
+
 # Storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
     InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, LocalhostTelemetryStorage, \
@@ -166,6 +170,7 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
             storages,
             labels_enabled,
             recorder,
+            internal_events_queue,
             sync_manager=None,
             sdk_ready_flag=None,
             telemetry_producer=None,
@@ -204,6 +209,7 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
         _LOGGER.debug("Running in threading mode")
         self._sdk_internal_ready_flag = sdk_ready_flag
         self._fallback_treatment_calculator = fallback_treatment_calculator
+        self._internal_events_queue = internal_events_queue
         self._start_status_updater()
 
     def _start_status_updater(self):
@@ -224,12 +230,15 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
             ready_updater.start()
         else:
             self._status = Status.READY
-
+            self._internal_events_queue.put(SdkInternalEventNotification(SdkInternalEvent.SDK_READY, None))
+            
     def _update_status_when_ready(self):
         """Wait until the sdk is ready and update the status."""
         self._sdk_internal_ready_flag.wait()
         self._status = Status.READY
         self._sdk_ready_flag.set()
+        self._internal_events_queue.put(SdkInternalEventNotification(SdkInternalEvent.SDK_READY, None))
+
         self._telemetry_init_producer.record_ready_time(get_current_epoch_time_ms() - self._ready_time)
         redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
         self._telemetry_init_producer.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
@@ -270,6 +279,7 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
 
             if not ready:
                 self._telemetry_init_producer.record_bur_time_out()
+                self._internal_events_queue.put(SdkInternalEventNotification(SdkInternalEvent.SDK_TIMED_OUT, None))
                 raise TimeoutException('SDK Initialization: time of %d exceeded' % timeout)
 
     def destroy(self, destroyed_event=None):
@@ -548,11 +558,11 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'telemetry': TelemetryAPI(http_client, api_key, sdk_metadata, telemetry_runtime_producer),
     }
   
-    events_queue = queue.Queue()
+    internal_events_queue = queue.Queue()
     storages = {
-        'splits': InMemorySplitStorage(events_queue, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
-        'segments': InMemorySegmentStorage(events_queue),
-        'rule_based_segments': InMemoryRuleBasedSegmentStorage(events_queue),
+        'splits': InMemorySplitStorage(internal_events_queue, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
+        'segments': InMemorySegmentStorage(internal_events_queue),
+        'rule_based_segments': InMemoryRuleBasedSegmentStorage(internal_events_queue),
         'impressions': InMemoryImpressionStorage(cfg['impressionsQueueSize'], telemetry_runtime_producer),
         'events': InMemoryEventStorage(cfg['eventsQueueSize'], telemetry_runtime_producer),
     }
@@ -629,14 +639,14 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         synchronizer._split_synchronizers._segment_sync.shutdown()
 
         return SplitFactory(api_key, storages, cfg['labelsEnabled'],
-                            recorder, manager, None, telemetry_producer, telemetry_init_producer, telemetry_submitter, preforked_initialization=preforked_initialization,
+                            recorder, internal_events_queue, manager, None, telemetry_producer, telemetry_init_producer, telemetry_submitter, preforked_initialization=preforked_initialization,
                             fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments']))
 
     initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
     initialization_thread.start()
 
     return SplitFactory(api_key, storages, cfg['labelsEnabled'],
-                        recorder, manager, sdk_ready_flag,
+                        recorder, internal_events_queue, manager, sdk_ready_flag,
                         telemetry_producer, telemetry_init_producer,
                         telemetry_submitter, fallback_treatment_calculator = FallbackTreatmentCalculator(cfg['fallbackTreatments']))
 
@@ -826,12 +836,14 @@ def _build_redis_factory(api_key, cfg):
     initialization_thread.start()
 
     telemetry_init_producer.record_config(cfg, {}, 0, 0)
-
+    internal_events_queue = queue.Queue()
+    
     split_factory = SplitFactory(
         api_key,
         storages,
         cfg['labelsEnabled'],
         recorder,
+        internal_events_queue,
         manager,
         sdk_ready_flag=None,
         telemetry_producer=telemetry_producer,
@@ -992,12 +1004,14 @@ def _build_pluggable_factory(api_key, cfg):
     initialization_thread.start()
 
     telemetry_init_producer.record_config(cfg, {}, 0, 0)
+    internal_events_queue = queue.Queue()
 
     split_factory = SplitFactory(
         api_key,
         storages,
         cfg['labelsEnabled'],
         recorder,
+        internal_events_queue,
         manager,
         sdk_ready_flag=None,
         telemetry_producer=telemetry_producer,
@@ -1152,11 +1166,14 @@ def _build_localhost_factory(cfg):
         telemetry_evaluation_producer,
         telemetry_runtime_producer
     )
+    internal_events_queue = queue.Queue()
+    
     return SplitFactory(
         'localhost',
         storages,
         False,
         recorder,
+        internal_events_queue,
         manager,
         ready_event,
         telemetry_producer=telemetry_producer,

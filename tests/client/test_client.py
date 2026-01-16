@@ -66,6 +66,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
+            events_queue,
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
@@ -136,6 +137,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
+            events_queue,
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
@@ -215,6 +217,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
+            events_queue,
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
@@ -296,6 +299,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
+            events_queue,
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
@@ -376,6 +380,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
+            events_queue,
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
@@ -455,6 +460,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
+            events_queue,
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
@@ -531,6 +537,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property = mocker.PropertyMock()
         destroyed_property.return_value = False
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+        events_queue = queue.Queue()
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -539,6 +546,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
+            events_queue,
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
@@ -620,6 +628,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
+            events_queue,
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
@@ -708,6 +717,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
+            events_queue,
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
@@ -773,6 +783,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
+            events_queue,
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
@@ -838,6 +849,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
+            events_queue,
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
@@ -874,6 +886,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+        events_queue = queue.Queue()
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -882,6 +895,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
+            events_queue,
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
@@ -911,6 +925,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+        events_queue = queue.Queue()
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -919,6 +934,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
+            events_queue,
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
@@ -961,6 +977,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
         impmanager = mocker.Mock(spec=ImpressionManager)
         recorder = StandardRecorder(impmanager, mocker.Mock(), impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+        events_queue = queue.Queue()
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -969,6 +986,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': mocker.Mock()},
             mocker.Mock(),
             recorder,
+            events_queue,
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
@@ -1047,6 +1065,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': mocker.Mock()},
             mocker.Mock(),
             recorder,
+            events_queue,
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
@@ -1092,6 +1111,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
+            events_queue,
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1193,6 +1213,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
+            events_queue,
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1255,6 +1276,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+        events_queue = queue.Queue()
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -1263,6 +1285,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
+            events_queue,
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1316,6 +1339,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
+            events_queue,
             mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
@@ -1412,6 +1436,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         impmanager = ImpressionManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_producer.get_telemetry_runtime_producer())
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+        internal_events_queue = queue.Queue()
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -1420,6 +1445,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
+            internal_events_queue,
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1550,6 +1576,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         impmanager = ImpressionManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_producer.get_telemetry_runtime_producer())
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+        internal_events_queue = queue.Queue()
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -1558,6 +1585,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
+            internal_events_queue,
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1618,6 +1646,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         impmanager = ImpressionManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_producer.get_telemetry_runtime_producer())
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+        internal_events_queue = queue.Queue()
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -1626,6 +1655,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
+            internal_events_queue,
             impmanager,
             mocker.Mock(),
             telemetry_producer,
