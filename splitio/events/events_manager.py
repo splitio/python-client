@@ -49,6 +49,11 @@ class EventsManager(EventsManagerInterface):
                         notify_event.start()
                         self._set_sdk_event_triggered(sorted_event)
     
+    def destroy(self):
+        with self._lock:
+            self._active_subscriptions = {}
+            self._internal_events_status = {}
+                
     def _event_already_triggered(self, sdk_event):
         if self._active_subscriptions.get(sdk_event) != None:
             return self._active_subscriptions.get(sdk_event).triggered

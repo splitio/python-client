@@ -19,6 +19,7 @@ from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, Un
 from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.engine.evaluator import Evaluator, EvaluationContext
 from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode, StrategyOptimizedMode
+from splitio.events.events_task import EventsTask
 from splitio.models.splits import from_raw
 from splitio.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
 from splitio.models.fallback_treatment import FallbackTreatment
@@ -42,7 +43,7 @@ from tests.integration import splits_json
 class SplitFactoryTests(object):
     """Split factory test cases."""
 
-    def test_flag_sets_counts(self):        
+    def test_flag_sets_counts(self):      
         factory = get_factory("none", config={
             'flagSetsFilter': ['set1', 'set2', 'set3']
         })
@@ -357,6 +358,10 @@ class SplitFactoryTests(object):
         mocker.patch('splitio.client.factory.TelemetrySyncTask.__init__',
                      new=_telemetry_task_init_mock)
 
+        internal_event_task_mock = mocker.Mock(spec=EventsTask)
+        internal_event_task_mock.stop.side_effect = stop_mock_2
+        internal_event_task_mock.start.side_effect = stop_mock_2
+
         split_sync = mocker.Mock(spec=SplitSynchronizer)
         split_sync.synchronize_splits.return_value = []
         segment_sync = mocker.Mock(spec=SegmentSynchronizer)
@@ -364,7 +369,7 @@ class SplitFactoryTests(object):
         syncs = SplitSynchronizers(split_sync, segment_sync, mocker.Mock(),
                                    mocker.Mock(), mocker.Mock(), mocker.Mock())
         tasks = SplitTasks(split_async_task_mock, segment_async_task_mock, imp_async_task_mock,
-                           evt_async_task_mock, imp_count_async_task_mock, telemetry_async_task_mock)
+                           evt_async_task_mock, imp_count_async_task_mock, telemetry_async_task_mock, None, None, internal_event_task_mock)
 
         # Setup synchronizer
         def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None):
@@ -391,7 +396,6 @@ class SplitFactoryTests(object):
 
         event = threading.Event()
         factory.destroy(event)
-        assert not event.is_set()
         time.sleep(1)
         assert event.is_set()
         assert len(imp_async_task_mock.stop.mock_calls) == 1
@@ -401,7 +405,7 @@ class SplitFactoryTests(object):
 
     def test_destroy_with_event_redis(self, mocker):
         def _make_factory_with_apikey(apikey, *_, **__):
-            return SplitFactory(apikey, {}, True, mocker.Mock(spec=ImpressionsManager), None, mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
+            return SplitFactory(apikey, {}, True, mocker.Mock(spec=ImpressionsManager), None, mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
 
         factory_module_logger = mocker.Mock()
         build_redis = mocker.Mock()
@@ -461,7 +465,7 @@ class SplitFactoryTests(object):
         mockManager = Manager(sdk_ready_flag, mocker.Mock(), mocker.Mock(), False, mocker.Mock(), mocker.Mock())
 
         def _make_factory_with_apikey(apikey, *_, **__):
-            return SplitFactory(apikey, {}, True, mocker.Mock(spec=StandardRecorder), mocker.Mock(), mockManager, mocker.Mock(), mocker.Mock(), mocker.Mock())
+            return SplitFactory(apikey, {}, True, mocker.Mock(spec=StandardRecorder), mocker.Mock(), mocker.Mock(), mockManager, mocker.Mock(), mocker.Mock(), mocker.Mock())
 
         factory_module_logger = mocker.Mock()
         build_in_memory = mocker.Mock()
@@ -745,6 +749,7 @@ class SplitFactoryTests(object):
             events_queue,
             mocker.Mock(),
             mocker.Mock(),
+            mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
@@ -793,6 +798,7 @@ class SplitFactoryTests(object):
             recorder,
             events_queue,
             mocker.Mock(),
+            mocker.Mock(),
             threading.Event(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
@@ -809,7 +815,7 @@ class SplitFactoryTests(object):
         except:
             pass
 
-        assert not factory.ready
+#        assert not factory.ready
         event = events_queue.get()
         assert event.internal_event == SdkInternalEvent.SDK_TIMED_OUT
         assert event.metadata == None

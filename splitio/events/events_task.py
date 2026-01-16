@@ -64,19 +64,20 @@ class EventsTask(EventsTaskBase):
     def start(self):
         """Start worker."""
         if self.is_running():
-            _LOGGER.debug('Worker is already running')
+            _LOGGER.debug('SDK Event Worker is already running')
             return
+        
         self._running = True
-
-        _LOGGER.debug('Starting Event Task worker')
+        _LOGGER.debug('Starting SDK Event Task worker')
         self._worker = threading.Thread(target=self._run, name='EventsTaskWorker', daemon=True)
         self._worker.start()
 
-    def stop(self):
+    def stop(self, stop_flag=None):
         """Stop worker."""
-        _LOGGER.debug('Stopping Event Task worker')
+        _LOGGER.debug('Stopping SDK Event Task worker')
         if not self.is_running():
-            _LOGGER.debug('Worker is not running. Ignoring.')
+            _LOGGER.debug('SDK Event Worker is not running. Ignoring.')
             return
+        
         self._running = False
         self._internal_events_queue.put(self._centinel)

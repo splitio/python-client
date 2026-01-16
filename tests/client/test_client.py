@@ -1,19 +1,17 @@
 """SDK main client test module."""
 # pylint: disable=no-self-use,protected-access
 
-import json
-import os
 import unittest.mock as mock
-import time
 import pytest
 import queue 
 
 from splitio.client.client import Client, _LOGGER as _logger, CONTROL, ClientAsync, EvaluationOptions
 from splitio.client.factory import SplitFactory, Status as FactoryStatus, SplitFactoryAsync
+from splitio.events.events_manager import EventsManager
 from splitio.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
 from splitio.models.fallback_treatment import FallbackTreatment
 from splitio.models.impressions import Impression, Label
-from splitio.models.events import Event, EventWrapper
+from splitio.models.events import Event, EventWrapper, SdkEvent
 from splitio.storage import EventStorage, ImpressionStorage, SegmentStorage, SplitStorage, RuleBasedSegmentsStorage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
     InMemoryImpressionStorage, InMemoryTelemetryStorage, InMemorySplitStorageAsync, \
@@ -69,6 +67,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             events_queue,
             mocker.Mock(),
             mocker.Mock(),
+            mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
             TelemetrySubmitterMock(),
@@ -79,7 +78,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         factory.block_until_ready(5)
 
         split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
-        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         client._evaluator.eval_with_context.return_value = {
             'treatment': 'on',
@@ -140,6 +139,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             events_queue,
             mocker.Mock(),
             mocker.Mock(),
+            mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
@@ -153,7 +153,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
-        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         client._evaluator.eval_with_context.return_value = {
             'treatment': 'on',
@@ -220,6 +220,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             events_queue,
             mocker.Mock(),
             mocker.Mock(),
+            mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
@@ -232,7 +233,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
-        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -302,6 +303,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             events_queue,
             mocker.Mock(),
             mocker.Mock(),
+            mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
@@ -314,7 +316,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
-        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -383,6 +385,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             events_queue,
             mocker.Mock(),
             mocker.Mock(),
+            mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
@@ -395,7 +398,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
-        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -463,6 +466,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             events_queue,
             mocker.Mock(),
             mocker.Mock(),
+            mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
@@ -475,7 +479,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
-        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -549,6 +553,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             events_queue,
             mocker.Mock(),
             mocker.Mock(),
+            mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
@@ -561,7 +566,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
-        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -631,6 +636,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             events_queue,
             mocker.Mock(),
             mocker.Mock(),
+            mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
@@ -643,7 +649,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
-        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -720,6 +726,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             events_queue,
             mocker.Mock(),
             mocker.Mock(),
+            mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
             TelemetrySubmitterMock(),
@@ -732,7 +739,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][2])
             ], [], -1)
-        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         assert client.get_treatment('some_key', 'SPLIT_1') == 'off'
         assert client.get_treatment('some_key', 'SPLIT_2') == 'on'
         assert client.get_treatment('some_key', 'SPLIT_3') == 'on'
@@ -786,6 +793,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             events_queue,
             mocker.Mock(),
             mocker.Mock(),
+            mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
             TelemetrySubmitterMock(),
@@ -798,7 +806,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][2])
             ], [], -1)
-        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         assert client.get_treatment('some_key', 'SPLIT_1') == 'off'
         assert client.get_treatment('some_key', 'SPLIT_2') == 'on'
         assert client.get_treatment('some_key', 'SPLIT_3') == 'on'
@@ -852,6 +860,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             events_queue,
             mocker.Mock(),
             mocker.Mock(),
+            mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
             TelemetrySubmitterMock(),
@@ -864,7 +873,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][2])
             ], [], -1)
-        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         assert client.get_treatment('some_key', 'SPLIT_1') == 'off'
         assert client.get_treatment('some_key', 'SPLIT_2') == 'on'
         assert client.get_treatment('some_key', 'SPLIT_3') == 'on'
@@ -898,6 +907,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             events_queue,
             mocker.Mock(),
             mocker.Mock(),
+            mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
@@ -907,7 +917,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
 
-        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         client.destroy()
         assert client.destroyed is not None
         assert(mocker.called)
@@ -937,6 +947,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             events_queue,
             mocker.Mock(),
             mocker.Mock(),
+            mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
@@ -951,7 +962,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         factory._apikey = 'test'
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
 
-        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         assert client.track('key', 'user', 'purchase', 12) is True
         assert mocker.call([
             EventWrapper(
@@ -989,6 +1000,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             events_queue,
             mocker.Mock(),
             mocker.Mock(),
+            mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock(),
@@ -1003,7 +1015,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             mocker.call('Client is not ready - no calls possible')
         ]
 
-        client = Client(factory, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = Client(factory, mocker.Mock(), mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         _logger = mocker.Mock()
         mocker.patch('splitio.client.client._LOGGER', new=_logger)
 
@@ -1068,6 +1080,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             events_queue,
             mocker.Mock(),
             mocker.Mock(),
+            mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
@@ -1077,7 +1090,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
 
-        client = Client(factory, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = Client(factory, mocker.Mock(), mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         client.ready = False
         assert client.get_treatment('some_key', 'SPLIT_2') == CONTROL
         assert(telemetry_storage._tel_config._not_ready == 1)
@@ -1112,6 +1125,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             mocker.Mock(),
             recorder,
             events_queue,
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1131,7 +1145,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         ready_property = mocker.PropertyMock()
         ready_property.return_value = True
         type(factory).ready = ready_property
-        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         def _raise(*_):
             raise RuntimeError('something')
         client._evaluator.eval_many_with_context = _raise
@@ -1214,6 +1228,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             mocker.Mock(),
             recorder,
             events_queue,
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1229,7 +1244,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             pass
         factory._sync_manager.stop = stop
 
-        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         assert client.get_treatment('key', 'SPLIT_2') == 'on'
         assert(telemetry_storage._method_latencies._treatment[0] == 1)
 
@@ -1286,6 +1301,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             mocker.Mock(),
             recorder,
             events_queue,
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1297,7 +1313,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
 
-        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         try:
             client.track('key', 'tt', 'ev')
         except:
@@ -1342,6 +1358,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             events_queue,
             mocker.Mock(),
             mocker.Mock(),
+            mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
             TelemetrySubmitterMock(),
@@ -1352,7 +1369,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         factory.block_until_ready(5)
 
         split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
-        client = Client(factory, recorder, True, FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock(spec=Evaluator)
         evaluation = {
             'treatment': 'on',
@@ -1446,6 +1463,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             mocker.Mock(),
             recorder,
             internal_events_queue,
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1462,7 +1480,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             def synchronize_config(*_):
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
-        client = Client(factory, recorder, True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global", '{"prop": "val"}'))))
+        client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global", '{"prop": "val"}'))))
 
         def get_feature_flag_names_by_flag_sets(*_):
             return ["some", "some2"]
@@ -1586,6 +1604,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             mocker.Mock(),
             recorder,
             internal_events_queue,
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1602,7 +1621,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             def synchronize_config(*_):
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
-        client = Client(factory, recorder, True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"))))
+        client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"))))
         treatment = client.get_treatment("key", "some")
         assert(treatment == "on-global")
         assert(self.imps == None)
@@ -1656,6 +1675,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             mocker.Mock(),
             recorder,
             internal_events_queue,
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1672,7 +1692,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             def synchronize_config(*_):
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
-        client = Client(factory, recorder, True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"))))
+        client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"))))
         client.ready = False
 
         treatment = client.get_treatment("key", "some")
@@ -1705,6 +1725,19 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         except:
             pass
         
+    def test_events_subscription(self, mocker):
+        events_manager = mocker.Mock(spec=EventsManager)
+        client = Client(mocker.Mock(), mocker.Mock(), events_manager, True, FallbackTreatmentCalculator(None))
+        client.on(SdkEvent.SDK_READY, self.test_fallback_treatment_not_ready_impressions)
+        assert events_manager.register.mock_calls[0] == mock.call(SdkEvent.SDK_READY, self.test_fallback_treatment_not_ready_impressions)
+
+        events_manager.register.mock_calls = []
+        client.on("dd", self.test_fallback_treatment_not_ready_impressions)
+        assert events_manager.register.mock_calls == []
+        
+        client.on(SdkEvent.SDK_READY, "qwe")
+        assert events_manager.register.mock_calls == []
+
 class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     """Split client async test cases."""
 
