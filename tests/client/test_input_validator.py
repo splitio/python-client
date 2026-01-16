@@ -51,6 +51,7 @@ class ClientInputValidationTests(object):
             mocker.Mock(),
             recorder,
             mocker.Mock(),
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -58,7 +59,7 @@ class ClientInputValidationTests(object):
             mocker.Mock()
         )
 
-        client = Client(factory, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = Client(factory, mocker.Mock(), mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -293,6 +294,7 @@ class ClientInputValidationTests(object):
             mocker.Mock(),
             recorder,
             mocker.Mock(),
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -300,7 +302,7 @@ class ClientInputValidationTests(object):
             mocker.Mock()
         )
 
-        client = Client(factory, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = Client(factory, mocker.Mock(), mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -569,6 +571,7 @@ class ClientInputValidationTests(object):
             mocker.Mock(),
             recorder,
             mocker.Mock(),
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -577,7 +580,7 @@ class ClientInputValidationTests(object):
         )
         factory._sdk_key = 'some-test'
 
-        client = Client(factory, recorder, mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         client._event_storage = event_storage
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
@@ -850,6 +853,7 @@ class ClientInputValidationTests(object):
             mocker.Mock(),
             recorder,
             mocker.Mock(),
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -860,7 +864,7 @@ class ClientInputValidationTests(object):
         ready_mock.return_value = True
         type(factory).ready = ready_mock
 
-        client = Client(factory, recorder, mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -999,6 +1003,7 @@ class ClientInputValidationTests(object):
             mocker.Mock(),
             recorder,
             mocker.Mock(),
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1011,7 +1016,7 @@ class ClientInputValidationTests(object):
             return '{"some": "property"}' if treatment == 'default_treatment' else None
         split_mock.get_configurations_for.side_effect = _configs
 
-        client = Client(factory, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = Client(factory, mocker.Mock(), mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -1148,6 +1153,7 @@ class ClientInputValidationTests(object):
             mocker.Mock(),
             recorder,
             mocker.Mock(),
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1158,7 +1164,7 @@ class ClientInputValidationTests(object):
         ready_mock.return_value = True
         type(factory).ready = ready_mock
 
-        client = Client(factory, recorder, mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -1268,6 +1274,7 @@ class ClientInputValidationTests(object):
             mocker.Mock(),
             recorder,
             mocker.Mock(),
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1278,7 +1285,7 @@ class ClientInputValidationTests(object):
         ready_mock.return_value = True
         type(factory).ready = ready_mock
 
-        client = Client(factory, recorder, mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -1399,6 +1406,7 @@ class ClientInputValidationTests(object):
             mocker.Mock(),
             recorder,
             mocker.Mock(),
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1409,7 +1417,7 @@ class ClientInputValidationTests(object):
         ready_mock.return_value = True
         type(factory).ready = ready_mock
 
-        client = Client(factory, recorder, mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -1524,6 +1532,7 @@ class ClientInputValidationTests(object):
             mocker.Mock(),
             recorder,
             mocker.Mock(),
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1534,7 +1543,7 @@ class ClientInputValidationTests(object):
         ready_mock.return_value = True
         type(factory).ready = ready_mock
 
-        client = Client(factory, recorder, mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -3455,6 +3464,7 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
             },
             mocker.Mock(),
             recorder,
+            mocker.Mock(),
             mocker.Mock(),
             impmanager,
             mocker.Mock(),

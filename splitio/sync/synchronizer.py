@@ -90,7 +90,7 @@ class SplitTasks(object):
     """SplitTasks."""
 
     def __init__(self, feature_flag_task, segment_task, impressions_task, events_task,  # pylint:disable=too-many-arguments
-                 impressions_count_task, telemetry_task=None, unique_keys_task = None, clear_filter_task = None):
+                 impressions_count_task, telemetry_task=None, unique_keys_task = None, clear_filter_task = None, internal_events_task=None):
         """
         Class constructor.
 
@@ -113,6 +113,7 @@ class SplitTasks(object):
         self._unique_keys_task = unique_keys_task
         self._clear_filter_task = clear_filter_task
         self._telemetry_task = telemetry_task
+        self._internal_events_task = internal_events_task
 
     @property
     def split_task(self):
@@ -153,6 +154,11 @@ class SplitTasks(object):
     def telemetry_task(self):
         """Return clear filter sync task."""
         return self._telemetry_task
+
+    @property
+    def internal_events_task(self):
+        """Return internal events task."""
+        return self._internal_events_task
 
 class BaseSynchronizer(object, metaclass=abc.ABCMeta):
     """Synchronizer interface."""
@@ -323,6 +329,9 @@ class SynchronizerInMemoryBase(BaseSynchronizer):
         for task in self._periodic_data_recording_tasks:
             task.start()
 
+        if self._split_tasks.internal_events_task:
+            self._split_tasks.internal_events_task.start()
+
     def stop_periodic_data_recording(self, blocking):
         """
         Stop recorders.
@@ -477,6 +486,9 @@ class Synchronizer(SynchronizerInMemoryBase):
         :type blocking: bool
         """
         _LOGGER.debug('Stopping periodic data recording')
+        if self._split_tasks.internal_events_task:
+            self._split_tasks.internal_events_task.stop()
+
         if blocking:
             events = []
             for task in self._periodic_data_recording_tasks:
@@ -871,6 +883,8 @@ class LocalhostSynchronizerBase(BaseSynchronizer):
             self._split_tasks.split_task.start()
         if self._split_tasks.segment_task is not None:
             self._split_tasks.segment_task.start()
+        if self._split_tasks.internal_events_task:
+            self._split_tasks.internal_events_task.start()
 
     def stop_periodic_fetching(self):
         """Stop fetchers for feature flags and segments."""
@@ -948,6 +962,8 @@ class LocalhostSynchronizer(LocalhostSynchronizerBase):
             self._split_tasks.split_task.stop()
         if self._split_tasks.segment_task is not None:
             self._split_tasks.segment_task.stop()
+        if self._split_tasks.internal_events_task:
+            self._split_tasks.internal_events_task.stop()
 
     def synchronize_splits(self):
         """Synchronize all feature flags."""

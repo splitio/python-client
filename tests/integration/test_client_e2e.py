@@ -16,6 +16,21 @@ from splitio.client.factory import get_factory, SplitFactory, get_factory_async,
 from splitio.client.util import SdkMetadata
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.client.client import EvaluationOptions
+from splitio.engine.impressions.impressions import Manager as ImpressionsManager, ImpressionsMode
+from splitio.engine.impressions import set_classes, set_classes_async
+from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyOptimizedMode, StrategyNoneMode
+from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageConsumerAsync,\
+    TelemetryStorageProducerAsync
+from splitio.engine.impressions.manager import Counter as ImpressionsCounter
+from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
+from splitio.events.events_delivery import EventsDelivery
+from splitio.events.events_manager import EventsManager
+from splitio.events.events_manager_config import EventsManagerConfig
+from splitio.events.events_task import EventsTask
+from splitio.models import splits, segments, rule_based_segments
+from splitio.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
+from splitio.models.fallback_treatment import FallbackTreatment
+from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder, StandardRecorderAsync, PipelinedRecorderAsync
 from splitio.storage.inmemmory import InMemoryEventStorage, InMemoryImpressionStorage, \
     InMemorySegmentStorage, InMemorySplitStorage, InMemoryTelemetryStorage, InMemorySplitStorageAsync,\
     InMemoryEventStorageAsync, InMemoryImpressionStorageAsync, InMemorySegmentStorageAsync, \
@@ -29,17 +44,6 @@ from splitio.storage.pluggable import PluggableEventsStorage, PluggableImpressio
     PluggableSegmentStorageAsync, PluggableSplitStorageAsync, PluggableTelemetryStorageAsync, \
     PluggableRuleBasedSegmentsStorage, PluggableRuleBasedSegmentsStorageAsync
 from splitio.storage.adapters.redis import build, RedisAdapter, RedisAdapterAsync, build_async
-from splitio.models import splits, segments, rule_based_segments
-from splitio.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
-from splitio.models.fallback_treatment import FallbackTreatment
-from splitio.engine.impressions.impressions import Manager as ImpressionsManager, ImpressionsMode
-from splitio.engine.impressions import set_classes, set_classes_async
-from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyOptimizedMode, StrategyNoneMode
-from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageConsumerAsync,\
-    TelemetryStorageProducerAsync
-from splitio.engine.impressions.manager import Counter as ImpressionsCounter
-from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
-from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder, StandardRecorderAsync, PipelinedRecorderAsync
 from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, RedisSynchronizer, SynchronizerAsync,\
 RedisSynchronizerAsync
 from splitio.sync.manager import Manager, RedisManager, ManagerAsync, RedisManagerAsync
@@ -554,6 +558,9 @@ class InMemoryDebugIntegrationTests(object):
         }
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
+        events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
+        internal_events_task = EventsTask(events_manager.notify_internal_event, events_queue)
+
         # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
         try:
             self.factory = SplitFactory('some_api_key',
@@ -561,11 +568,13 @@ class InMemoryDebugIntegrationTests(object):
                                     True,
                                     recorder,
                                     events_queue,
+                                    events_manager,
                                     None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     fallback_treatment_calculator=FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", '{"prop": "val"}')}))
                                     )  # pylint:disable=attribute-defined-outside-init
+            internal_events_task.start()
         except:
             pass
 
@@ -717,16 +726,20 @@ class InMemoryOptimizedIntegrationTests(object):
         }
         impmanager = ImpressionsManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
+        events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
+        internal_events_task = EventsTask(events_manager.notify_internal_event, events_queue)
         self.factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
                                     recorder,
                                     events_queue,
+                                    events_manager,
                                     None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     fallback_treatment_calculator=FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", '{"prop": "val"}')}))
                                     )  # pylint:disable=attribute-defined-outside-init
+        internal_events_task.start()
 
     def test_get_treatment(self):
         """Test client.get_treatment()."""
@@ -1016,11 +1029,14 @@ class RedisIntegrationTests(object):
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = PipelinedRecorder(redis_client.pipeline, impmanager, storages['events'],
                                     storages['impressions'], telemetry_redis_storage, imp_counter=ImpressionsCounter())
+        events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
+        events_queue = queue.Queue()
         self.factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
                                     recorder,
-                                    queue.Queue(),
+                                    events_queue,
+                                    events_manager,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     fallback_treatment_calculator=FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", '{"prop": "val"}')}))
@@ -1206,16 +1222,19 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = PipelinedRecorder(redis_client.pipeline, impmanager,
                                      storages['events'], storages['impressions'], telemetry_redis_storage, imp_counter=ImpressionsCounter())
+        events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
+        events_queue = queue.Queue()
         self.factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
                                     recorder,
-                                    queue.Queue(),
+                                    events_queue,
+                                    events_manager,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     fallback_treatment_calculator=FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", '{"prop": "val"}')}))
                                     )  # pylint:disable=attribute-defined-outside-init
-
+        
 class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-methods
     """Client & Manager integration tests."""
 
@@ -1450,18 +1469,21 @@ class PluggableIntegrationTests(object):
         recorder = StandardRecorder(impmanager, storages['events'],
                                     storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
 
+        events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
+        events_queue = queue.Queue()
         self.factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
                                     recorder,
-                                    queue.Queue(),
+                                    events_queue,
+                                    events_manager,
                                     RedisManager(PluggableSynchronizer()),
                                     sdk_ready_flag=None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     fallback_treatment_calculator=FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", '{"prop": "val"}')}))
                                     )  # pylint:disable=attribute-defined-outside-init
-
+        
         # Adding data to storage
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
@@ -1647,11 +1669,14 @@ class PluggableOptimizedIntegrationTests(object):
         recorder = StandardRecorder(impmanager, storages['events'],
                                     storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
 
+        events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
+        events_queue = queue.Queue()
         self.factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
                                     recorder,
-                                    queue.Queue(),
+                                    events_queue,
+                                    events_manager,
                                     RedisManager(PluggableSynchronizer()),
                                     sdk_ready_flag=None,
                                     telemetry_producer=telemetry_producer,
@@ -1843,11 +1868,14 @@ class PluggableNoneIntegrationTests(object):
 
         manager = RedisManager(synchronizer)
         manager.start()
+        events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
+        events_queue = queue.Queue()
         self.factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
                                     recorder,
-                                    queue.Queue(),
+                                    events_queue,
+                                    events_manager,
                                     manager,
                                     sdk_ready_flag=None,
                                     telemetry_producer=telemetry_producer,
@@ -1998,6 +2026,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
         }
         impmanager = ImpressionsManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTracker(), ImpressionsCounter())
+        events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
         # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
         try:
             factory = SplitFactory('some_api_key',
@@ -2005,6 +2034,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
                                     True,
                                     recorder,
                                     events_queue,
+                                    events_manager,
                                     None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
@@ -2058,6 +2088,8 @@ class InMemoryImpressionsToggleIntegrationTests(object):
         }
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTracker(), ImpressionsCounter())
+        events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
+        internal_events_task = EventsTask(events_manager.notify_internal_event, events_queue)
         # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
         try:
             factory = SplitFactory('some_api_key',
@@ -2065,11 +2097,13 @@ class InMemoryImpressionsToggleIntegrationTests(object):
                                     True,
                                     recorder,
                                     events_queue,
+                                    events_manager,
                                     None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     fallback_treatment_calculator=FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", '{"prop": "val"}')}))
                                     )  # pylint:disable=attribute-defined-outside-init
+            internal_events_task.start()
         except:
             pass
 
@@ -2118,6 +2152,8 @@ class InMemoryImpressionsToggleIntegrationTests(object):
         }
         impmanager = ImpressionsManager(StrategyNoneMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTracker(), ImpressionsCounter())
+        events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
+        internal_events_task = EventsTask(events_manager.notify_internal_event, events_queue)
         # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
         try:
             factory = SplitFactory('some_api_key',
@@ -2125,11 +2161,13 @@ class InMemoryImpressionsToggleIntegrationTests(object):
                                     True,
                                     recorder,
                                     events_queue,
+                                    events_queue,
                                     None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     fallback_treatment_calculator=FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", '{"prop": "val"}')}))
                                     )  # pylint:disable=attribute-defined-outside-init
+            internal_events_task.start()
         except:
             pass
 
@@ -2186,11 +2224,14 @@ class RedisImpressionsToggleIntegrationTests(object):
         impmanager = ImpressionsManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = PipelinedRecorder(redis_client.pipeline, impmanager,
                                      storages['events'], storages['impressions'], telemetry_redis_storage, unique_keys_tracker=UniqueKeysTracker(), imp_counter=ImpressionsCounter())
+        events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
+        events_queue = queue.Queue()
         factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
                                     recorder,
-                                    queue.Queue(),
+                                    events_queue,
+                                    events_manager,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     fallback_treatment_calculator=FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", '{"prop": "val"}')}))
@@ -2254,11 +2295,13 @@ class RedisImpressionsToggleIntegrationTests(object):
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = PipelinedRecorder(redis_client.pipeline, impmanager,
                                      storages['events'], storages['impressions'], telemetry_redis_storage, unique_keys_tracker=UniqueKeysTracker(), imp_counter=ImpressionsCounter())
+        events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
         factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
                                     recorder,
                                     queue.Queue(),
+                                    events_manager,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     fallback_treatment_calculator=FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", '{"prop": "val"}')}))
@@ -2322,11 +2365,13 @@ class RedisImpressionsToggleIntegrationTests(object):
         impmanager = ImpressionsManager(StrategyNoneMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
         recorder = PipelinedRecorder(redis_client.pipeline, impmanager,
                                      storages['events'], storages['impressions'], telemetry_redis_storage, unique_keys_tracker=UniqueKeysTracker(), imp_counter=ImpressionsCounter())
+        events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
         factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
                                     recorder,
                                     queue.Queue(),
+                                    events_manager,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
                                     fallback_treatment_calculator=FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'fallback_feature': FallbackTreatment("on-local", '{"prop":"val"}')}))
