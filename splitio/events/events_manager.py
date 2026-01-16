@@ -2,9 +2,9 @@
 import threading
 import logging
 from collections import namedtuple
-import pytest
 
 from splitio.events import EventsManagerInterface
+from splitio.models.events import SdkEvent
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,10 +25,17 @@ class EventsManager(EventsManagerInterface):
         self._lock = threading.RLock()
         
     def register(self, sdk_event, event_handler):
-        if self._active_subscriptions.get(sdk_event) != None:
+        if self._active_subscriptions.get(sdk_event) != None and self._get_event_handler(sdk_event) != None:
             return
-        
+
         with self._lock:
+            # SDK ready already fired
+            if sdk_event == SdkEvent.SDK_READY and self._event_already_triggered(sdk_event):
+                self._active_subscriptions[sdk_event] = ActiveSubscriptions(True, event_handler)
+                _LOGGER.debug("EventsManager: Firing SDK_READY event for new subscription")                
+                self._fire_sdk_event(sdk_event, None)
+                return
+
             self._active_subscriptions[sdk_event] = ActiveSubscriptions(False, event_handler)
 
     def unregister(self, sdk_event):
@@ -42,18 +49,27 @@ class EventsManager(EventsManagerInterface):
         with self._lock:
             for sorted_event in self._manager_config.evaluation_order:
                 if sorted_event in self._get_sdk_event_if_applicable(sdk_internal_event):
-                    _LOGGER.debug("EventsManager: Firing Sdk event %s", sorted_event)
                     if self._get_event_handler(sorted_event) != None:
-                        notify_event = threading.Thread(target=self._events_delivery.deliver, args=[sorted_event, event_metadata, self._get_event_handler(sorted_event)],
-                                                name='SplitSDKEventNotify', daemon=True)
-                        notify_event.start()
-                        self._set_sdk_event_triggered(sorted_event)
+                        self._fire_sdk_event(sorted_event, event_metadata)
+                        
+                    # if client is not subscribed to SDK_READY    
+                    if sorted_event == SdkEvent.SDK_READY and self._get_event_handler(sorted_event) == None:
+                        _LOGGER.debug("EventsManager: Registering SDK_READY event as fired")
+                        self._active_subscriptions[SdkEvent.SDK_READY] = ActiveSubscriptions(True, None)
+
     
     def destroy(self):
         with self._lock:
             self._active_subscriptions = {}
             self._internal_events_status = {}
                 
+    def _fire_sdk_event(self, sdk_event, event_metadata):
+        _LOGGER.debug("EventsManager: Firing Sdk event %s", sdk_event)
+        notify_event = threading.Thread(target=self._events_delivery.deliver, args=[sdk_event, event_metadata, self._get_event_handler(sdk_event)],
+                                name='SplitSDKEventNotify', daemon=True)
+        notify_event.start()
+        self._set_sdk_event_triggered(sdk_event)
+        
     def _event_already_triggered(self, sdk_event):
         if self._active_subscriptions.get(sdk_event) != None:
             return self._active_subscriptions.get(sdk_event).triggered

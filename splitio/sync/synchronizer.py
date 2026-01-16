@@ -329,9 +329,6 @@ class SynchronizerInMemoryBase(BaseSynchronizer):
         for task in self._periodic_data_recording_tasks:
             task.start()
 
-        if self._split_tasks.internal_events_task:
-            self._split_tasks.internal_events_task.start()
-
     def stop_periodic_data_recording(self, blocking):
         """
         Stop recorders.
@@ -883,8 +880,6 @@ class LocalhostSynchronizerBase(BaseSynchronizer):
             self._split_tasks.split_task.start()
         if self._split_tasks.segment_task is not None:
             self._split_tasks.segment_task.start()
-        if self._split_tasks.internal_events_task:
-            self._split_tasks.internal_events_task.start()
 
     def stop_periodic_fetching(self):
         """Stop fetchers for feature flags and segments."""

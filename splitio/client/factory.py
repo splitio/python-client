@@ -1,4 +1,3 @@
-import pytest
 """A module for Split.io Factories."""
 import logging
 import threading
@@ -643,7 +642,8 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     )
 
     telemetry_init_producer.record_config(cfg, extra_cfg, total_flag_sets, invalid_flag_sets)
-
+    internal_events_task.start()
+    
     if preforked_initialization:
         synchronizer.sync_all(max_retry_attempts=_MAX_RETRY_SYNC_ALL)
         synchronizer._split_synchronizers._segment_sync.shutdown()

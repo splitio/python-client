@@ -10,6 +10,8 @@ import pytest
 from queue import Queue
 from splitio.optional.loaders import asyncio
 from splitio.client.factory import get_factory, get_factory_async
+from splitio.models.events import SdkEvent
+from splitio.events.events_metadata import SdkEventType
 from tests.helpers.mockserver import SSEMockServer, SplitMockServer
 from urllib.parse import parse_qs
 from splitio.models.telemetry import StreamingEventTypes, SSESyncMode
@@ -18,6 +20,9 @@ from splitio.models.telemetry import StreamingEventTypes, SSESyncMode
 class StreamingIntegrationTests(object):
     """Test streaming operation and failover."""
 
+    update_flag = False
+    metadata = []
+    
     def test_happiness(self):
         """Test initialization & splits/segment updates."""
         auth_server_response = {
@@ -70,6 +75,7 @@ class StreamingIntegrationTests(object):
         }
 
         factory = get_factory('some_apikey', **kwargs)
+        factory.client().on(SdkEvent.SDK_UPDATE, self._update_callcack)
         factory.block_until_ready(1)
         assert factory.ready
         assert factory.client().get_treatment('maldo', 'split1') == 'on'
@@ -87,6 +93,13 @@ class StreamingIntegrationTests(object):
         split_changes[2] = {'ff': {'s': 2, 't': 2, 'd': []}, 'rbs': {'s': -1, 't': -1, 'd': []}}
         sse_server.publish(make_split_change_event(2))
         time.sleep(1)
+        flag = False
+        for meta in self.metadata:
+            if 'split1' in meta.get_names():
+                assert meta.get_type() == SdkEventType.FLAG_UPDATE
+                flag = True
+        assert flag
+
         assert factory.client().get_treatment('maldo', 'split1') == 'off'
 
         split_changes[2] = {
@@ -110,14 +123,28 @@ class StreamingIntegrationTests(object):
 
         sse_server.publish(make_split_change_event(3))
         time.sleep(1)
+
+        self._reset_flags()
         sse_server.publish(make_segment_change_event('segment1', 1))
         time.sleep(1)
-
+        assert self.update_flag
+        assert self.metadata[len(self.metadata)-1].get_type() == SdkEventType.SEGMENT_UPDATE
+        flag = False
+        for meta in self.metadata:
+            if 'split2' in meta.get_names():
+                assert meta.get_type() == SdkEventType.FLAG_UPDATE
+                flag = True
+        assert flag
+        
         assert factory.client().get_treatment('pindon', 'split2') == 'off'
         assert factory.client().get_treatment('maldo', 'split2') == 'on'
 
+        self._reset_flags()
         sse_server.publish(make_split_fast_change_event(4))
         time.sleep(1)
+        assert self.update_flag
+        assert self.metadata[len(self.metadata)-1].get_type() == SdkEventType.FLAG_UPDATE
+        assert 'split5' in self.metadata[len(self.metadata)-1].get_names()
         assert factory.client().get_treatment('maldo', 'split5') == 'on'
 
         # Validate the SSE request
@@ -212,6 +239,13 @@ class StreamingIntegrationTests(object):
         sse_server.stop()
         split_backend.stop()
 
+    def _update_callcack(self, metadata):
+        self.update_flag = True
+        self.metadata.append(metadata)
+
+    def _reset_flags(self):
+        self.update_flag = False
+        
     def test_occupancy_flicker(self):
         """Test that changes in occupancy switch between polling & streaming properly."""
         auth_server_response = {

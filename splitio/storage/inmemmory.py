@@ -547,10 +547,11 @@ class InMemorySplitStorage(InMemorySplitStorageBase):
         to_notify = []
         [to_notify.append(feature.name) for feature in to_add]
         to_notify.extend(to_delete)
-        self._internal_event_queue.put(
-            SdkInternalEventNotification(
-                SdkInternalEvent.FLAGS_UPDATED,
-                EventsMetadata(SdkEventType.FLAG_UPDATE, set(to_notify))))
+        if len(to_notify) > 0:
+            self._internal_event_queue.put(
+                SdkInternalEventNotification(
+                    SdkInternalEvent.FLAGS_UPDATED,
+                    EventsMetadata(SdkEventType.FLAG_UPDATE, set(to_notify))))
 
     def _put(self, feature_flag):
         """
