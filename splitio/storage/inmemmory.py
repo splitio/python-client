@@ -154,10 +154,11 @@ class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
         [self._put(add_segment) for add_segment in to_add]
         [self._remove(delete_segment) for delete_segment in to_delete]
         self._set_change_number(new_change_number)
-        self._internal_event_queue.put(
-            SdkInternalEventNotification(
-                SdkInternalEvent.RB_SEGMENTS_UPDATED,
-                EventsMetadata(SdkEventType.SEGMENT_UPDATE, {})))        
+        if len(to_add) > 0 or len(to_delete) > 0:
+            self._internal_event_queue.put(
+                SdkInternalEventNotification(
+                    SdkInternalEvent.RB_SEGMENTS_UPDATED,
+                    EventsMetadata(SdkEventType.SEGMENT_UPDATE, {})))        
 
     def _put(self, rule_based_segment):
         """
@@ -1000,10 +1001,11 @@ class InMemorySegmentStorage(SegmentStorage):
             if change_number is not None:
                 self._segments[segment_name].change_number = change_number
 
-            self._internal_event_queue.put(
-            SdkInternalEventNotification(
-                SdkInternalEvent.SEGMENTS_UPDATED,
-                EventsMetadata(SdkEventType.SEGMENT_UPDATE, {})))        
+            if len(to_add) > 0 or len(to_remove) >0:
+                self._internal_event_queue.put(
+                SdkInternalEventNotification(
+                    SdkInternalEvent.SEGMENTS_UPDATED,
+                    EventsMetadata(SdkEventType.SEGMENT_UPDATE, {})))        
 
     def get_change_number(self, segment_name):
         """
