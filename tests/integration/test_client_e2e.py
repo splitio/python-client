@@ -28,6 +28,7 @@ from splitio.events.events_manager import EventsManager
 from splitio.events.events_manager_config import EventsManagerConfig
 from splitio.events.events_task import EventsTask
 from splitio.models import splits, segments, rule_based_segments
+from splitio.models.events import SdkEvent
 from splitio.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
 from splitio.models.fallback_treatment import FallbackTreatment
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder, StandardRecorderAsync, PipelinedRecorderAsync
@@ -2424,6 +2425,181 @@ class RedisImpressionsToggleIntegrationTests(object):
         for key in keys_to_delete:
             redis_client.delete(key)
 
+class InMemoryEventsNotificationTests(object):
+    """Inmemory storage-based events notification tests."""
+
+    ready_flag = False
+    timeout_flag = False
+
+    def test_sdk_timeout_fire(self):
+        """Prepare storages with test data."""
+        factory2 = get_factory('some_api_key')        
+        client = factory2.client()
+        client.on(SdkEvent.SDK_READY_TIMED_OUT, self._timeout_callback)
+        try:
+            factory2.block_until_ready(1)
+        except Exception as e:
+            print(e)
+            pass
+        
+        time.sleep(1)
+        assert self.timeout_flag
+
+        """Shut down the factory."""
+        event = threading.Event()
+        factory2.destroy(event)
+        event.wait()
+    
+    def test_sdk_ready(self):
+        """Prepare storages with test data."""
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
+        segment_storage = InMemorySegmentStorage(events_queue)
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+
+        split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
+        with open(split_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        for split in data['ff']['d']:
+            split_storage.update([splits.from_raw(split)], [], 0)
+
+        for rbs in data['rbs']['d']:
+            rb_segment_storage.update([rule_based_segments.from_raw(rbs)], [], 0)
+
+        segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
+        with open(segment_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        segment_storage.put(segments.from_raw(data))
+
+        segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentHumanBeignsChanges.json')
+        with open(segment_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        segment_storage.put(segments.from_raw(data))
+
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
+
+        storages = {
+            'splits': split_storage,
+            'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
+            'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
+            'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
+        }
+        impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
+        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
+        events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
+        internal_events_task = EventsTask(events_manager.notify_internal_event, events_queue)
+
+        # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
+        try:
+            factory = SplitFactory('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    events_queue,
+                                    events_manager,
+                                    None,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    fallback_treatment_calculator=FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", '{"prop": "val"}')}))
+                                    )  # pylint:disable=attribute-defined-outside-init
+            internal_events_task.start()
+        except:
+            pass
+        
+        client = factory.client()
+        client.on(SdkEvent.SDK_READY, self._ready_callback)
+        factory.block_until_ready(5)
+        assert self.ready_flag
+
+        """Shut down the factory."""
+        event = threading.Event()
+        factory.destroy(event)
+        event.wait()
+
+    def test_sdk_ready_fire_later(self):
+        """Prepare storages with test data."""
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
+        segment_storage = InMemorySegmentStorage(events_queue)
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+
+        split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
+        with open(split_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        for split in data['ff']['d']:
+            split_storage.update([splits.from_raw(split)], [], 0)
+
+        for rbs in data['rbs']['d']:
+            rb_segment_storage.update([rule_based_segments.from_raw(rbs)], [], 0)
+
+        segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentEmployeesChanges.json')
+        with open(segment_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        segment_storage.put(segments.from_raw(data))
+
+        segment_fn = os.path.join(os.path.dirname(__file__), 'files', 'segmentHumanBeignsChanges.json')
+        with open(segment_fn, 'r') as flo:
+            data = json.loads(flo.read())
+        segment_storage.put(segments.from_raw(data))
+
+        telemetry_storage = InMemoryTelemetryStorage()
+        telemetry_producer = TelemetryStorageProducer(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
+
+        storages = {
+            'splits': split_storage,
+            'segments': segment_storage,
+            'rule_based_segments': rb_segment_storage,
+            'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
+            'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
+        }
+        impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
+        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
+        events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
+        internal_events_task = EventsTask(events_manager.notify_internal_event, events_queue)
+
+        # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
+        try:
+            factory = SplitFactory('some_api_key',
+                                    storages,
+                                    True,
+                                    recorder,
+                                    events_queue,
+                                    events_manager,
+                                    None,
+                                    telemetry_producer=telemetry_producer,
+                                    telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
+                                    fallback_treatment_calculator=FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'fallback_feature': FallbackTreatment("on-local", '{"prop": "val"}')}))
+                                    )  # pylint:disable=attribute-defined-outside-init
+            internal_events_task.start()
+        except:
+            pass
+        
+        client = factory.client()
+        factory.block_until_ready(5)
+
+        assert client.get_treatment('user1', 'sample_feature', evaluation_options=EvaluationOptions({"prop": "value"})) == 'on'
+
+        self.ready_flag = False
+        client.on(SdkEvent.SDK_READY, self._ready_callback)
+        assert self.ready_flag
+
+        """Shut down the factory."""
+        event = threading.Event()
+        factory.destroy(event)
+        event.wait()
+        
+    def _ready_callback(self, metadata):
+        self.ready_flag = True
+
+    def _timeout_callback(self, metadata):
+        self.timeout_flag = True
+        
 class InMemoryIntegrationAsyncTests(object):
     """Inmemory storage-based integration tests."""
 
