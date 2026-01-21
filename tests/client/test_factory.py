@@ -1110,3 +1110,107 @@ class SplitFactoryAsyncTests(object):
         assert factory.destroyed
         assert len(build_redis.mock_calls) == 2
         
+    @pytest.mark.asyncio
+    async def test_internal_ready_event_notification(self, mocker):
+        """Test that a client with in-memory storage is sending internal events correctly."""
+        # Setup synchronizer
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None):
+            synchronizer = mocker.Mock(spec=SynchronizerAsync)
+            async def sync_all(*_):
+                return None
+            synchronizer.sync_all = sync_all
+
+            def start_periodic_fetching():
+                pass        
+            synchronizer.start_periodic_fetching = start_periodic_fetching
+
+            def start_periodic_data_recording():
+                pass        
+            synchronizer.start_periodic_data_recording = start_periodic_data_recording
+
+            self._ready_flag = ready_flag
+            self._synchronizer = synchronizer
+            self._streaming_enabled = False
+            self._telemetry_runtime_producer = telemetry_runtime_producer
+            
+        mocker.patch('splitio.sync.manager.ManagerAsync.__init__', new=_split_synchronizer)
+
+        async def synchronize_config(*_):
+            await asyncio.sleep(2)
+            pass
+        mocker.patch('splitio.sync.telemetry.InMemoryTelemetrySubmitterAsync.synchronize_config', new=synchronize_config)
+
+        async def record_ready_time(*_):
+            pass
+        mocker.patch('splitio.models.telemetry.TelemetryConfigAsync.record_ready_time', new=record_ready_time)
+
+        async def record_active_and_redundant_factories(*_):
+            pass
+        mocker.patch('splitio.models.telemetry.TelemetryConfigAsync.record_active_and_redundant_factories', new=record_active_and_redundant_factories)
+
+        # Start factory and make assertions
+        factory = await get_factory_async('some_api_key', config={'streamingEmabled': False})
+        for task in asyncio.all_tasks():
+            if task.get_name() == "EventsTaskWorker":
+                task.cancel()
+        try:
+            await factory.block_until_ready(3)
+        except:
+            pass
+        await asyncio.sleep(.2)
+        event = await factory._internal_events_queue.get()
+        assert event.internal_event == SdkInternalEvent.SDK_READY
+        assert event.metadata == None
+        await factory.destroy()
+        
+    @pytest.mark.asyncio
+    async def test_internal_timeout_event_notification(self, mocker):
+        """Test that a client with in-memory storage is sending internal events correctly."""
+        # Setup synchronizer
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None):
+            synchronizer = mocker.Mock(spec=SynchronizerAsync)
+            async def sync_all(*_):
+                return None
+            synchronizer.sync_all = sync_all
+
+            def start_periodic_fetching():
+                pass        
+            synchronizer.start_periodic_fetching = start_periodic_fetching
+
+            def start_periodic_data_recording():
+                pass        
+            synchronizer.start_periodic_data_recording = start_periodic_data_recording
+
+            self._ready_flag = ready_flag
+            self._synchronizer = synchronizer
+            self._streaming_enabled = False
+            self._telemetry_runtime_producer = telemetry_runtime_producer
+            
+        mocker.patch('splitio.sync.manager.ManagerAsync.__init__', new=_split_synchronizer)
+
+        async def synchronize_config(*_):
+            await asyncio.sleep(3)
+            pass
+        mocker.patch('splitio.sync.telemetry.InMemoryTelemetrySubmitterAsync.synchronize_config', new=synchronize_config)
+
+        async def record_ready_time(*_):
+            pass
+        mocker.patch('splitio.models.telemetry.TelemetryConfigAsync.record_ready_time', new=record_ready_time)
+
+        async def record_active_and_redundant_factories(*_):
+            pass
+        mocker.patch('splitio.models.telemetry.TelemetryConfigAsync.record_active_and_redundant_factories', new=record_active_and_redundant_factories)
+
+        # Start factory and make assertions
+        factory = await get_factory_async('some_api_key', config={'streamingEmabled': False})
+        for task in asyncio.all_tasks():
+            if task.get_name() == "EventsTaskWorker":
+                task.cancel()
+        try:
+            await factory.block_until_ready(1)
+        except:
+            pass
+        event = await factory._internal_events_queue.get()
+        assert event.internal_event == SdkInternalEvent.SDK_TIMED_OUT
+        assert event.metadata == None
+        await factory.destroy()        

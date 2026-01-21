@@ -708,7 +708,36 @@ class InMemorySplitStorageAsyncTests(object):
         await storage.update([split3], [], 1)
         assert await storage.get_feature_flags_by_sets(['set05']) == ['split3']
         assert await storage.get_feature_flags_by_sets(['set04', 'set05']) == ['split3']
+        
+    @pytest.mark.asyncio
+    async def test_internal_event_notification(self, mocker):
+        """Test retrieving a list of all split names."""
+        split1 = mocker.Mock()
+        name1_prop = mocker.PropertyMock()
+        name1_prop.return_value = 'split1'
+        type(split1).name = name1_prop
+        split2 = mocker.Mock()
+        name2_prop = mocker.PropertyMock()
+        name2_prop.return_value = 'split2'
+        type(split2).name = name2_prop
+        sets_property = mocker.PropertyMock()
+        sets_property.return_value = ['set_1']
+        type(split1).sets = sets_property
+        type(split2).sets = sets_property
+        events_queue = asyncio.Queue()
+        storage = InMemorySplitStorageAsync(events_queue)
+        await storage.update([split1, split2], [], -1)
+        event = await events_queue.get()
+        assert event.internal_event == SdkInternalEvent.FLAGS_UPDATED
+        assert event.metadata.get_type() == SdkEventType.FLAG_UPDATE
+        assert event.metadata.get_names() == {'split1', 'split2'}
 
+        await storage.kill_locally('split1', 'default_treatment', 3)
+        event = await events_queue.get()
+        assert event.internal_event == SdkInternalEvent.FLAG_KILLED_NOTIFICATION
+        assert event.metadata.get_type() == SdkEventType.FLAG_UPDATE
+        assert event.metadata.get_names() == {'split1'}
+        
 class InMemorySegmentStorageTests(object):
     """In memory segment storage tests."""
 
@@ -855,6 +884,23 @@ class InMemorySegmentStorageAsyncTests(object):
         assert not await storage.segment_contains('some_segment', 'key3')
         assert await storage.get_change_number('some_segment') == 456
 
+    @pytest.mark.asyncio
+    async def test_internal_event_notification(self):
+        """Test updating a segment."""
+        events_queue = asyncio.Queue()
+        storage = InMemorySegmentStorageAsync(events_queue)
+        segment = Segment('some_segment', ['key1', 'key2', 'key3'], 123)
+        await storage.put(segment)
+        event = await events_queue.get()
+        assert event.internal_event == SdkInternalEvent.SEGMENTS_UPDATED
+        assert event.metadata.get_type() == SdkEventType.SEGMENT_UPDATE
+        assert len(event.metadata.get_names()) == 0
+
+        await storage.update('some_segment', ['key4', 'key5'], ['key2', 'key3'], 456)
+        event = await events_queue.get()
+        assert event.internal_event == SdkInternalEvent.SEGMENTS_UPDATED
+        assert event.metadata.get_type() == SdkEventType.SEGMENT_UPDATE
+        assert len(event.metadata.get_names()) == 0
 
 class InMemoryImpressionsStorageTests(object):
     """InMemory impressions storage test cases."""
@@ -2027,3 +2073,32 @@ class InMemoryRuleBasedSegmentStorageAsyncTests(object):
         assert await storage.contains(["segment1"])
         assert await storage.contains(["segment1", "segment3"])
         assert not await storage.contains(["segment5"])
+
+    @pytest.mark.asyncio
+    async def test_internal_event_notification(self, mocker):
+        """Test storing and retrieving splits works."""
+        events_queue = asyncio.Queue()
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync(events_queue)
+
+        segment1 = mocker.Mock(spec=RuleBasedSegment)
+        name_property = mocker.PropertyMock()
+        name_property.return_value = 'some_segment'
+        type(segment1).name = name_property
+
+        segment2 = mocker.Mock()
+        name2_prop = mocker.PropertyMock()
+        name2_prop.return_value = 'segment2'
+        type(segment2).name = name2_prop
+
+        await rbs_storage.update([segment1, segment2], [], -1)
+        event = await events_queue.get()
+        assert event.internal_event == SdkInternalEvent.RB_SEGMENTS_UPDATED
+        assert event.metadata.get_type() == SdkEventType.SEGMENT_UPDATE
+        assert len(event.metadata.get_names()) == 0
+
+        await rbs_storage.update([], ['some_segment'], -1)
+        event = await events_queue.get()
+        assert event.internal_event == SdkInternalEvent.RB_SEGMENTS_UPDATED
+        assert event.metadata.get_type() == SdkEventType.SEGMENT_UPDATE
+        assert len(event.metadata.get_names()) == 0
+

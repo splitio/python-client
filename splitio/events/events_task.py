@@ -133,7 +133,7 @@ class EventsTaskAsync(EventsTaskBase):
         
         self._running = True
         _LOGGER.debug('Starting SDK Event Task worker')
-        asyncio.get_running_loop().create_task(self._run())
+        asyncio.get_running_loop().create_task(self._run(), name="EventsTaskWorker")
 
     async def stop(self, stop_flag=None):
         """Stop worker."""
