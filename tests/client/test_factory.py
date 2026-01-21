@@ -20,6 +20,7 @@ from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageP
 from splitio.engine.evaluator import Evaluator, EvaluationContext
 from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode, StrategyOptimizedMode
 from splitio.events.events_task import EventsTask
+from splitio.events.events_manager import EventsManagerAsync
 from splitio.models.splits import from_raw
 from splitio.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
 from splitio.models.fallback_treatment import FallbackTreatment
@@ -1078,8 +1079,14 @@ class SplitFactoryAsyncTests(object):
 
     @pytest.mark.asyncio
     async def test_destroy_redis_async(self, mocker):
+        internal_events_queue = asyncio.Queue()
+        events_manager = mocker.Mock(EventsManagerAsync)
+        async def notify_internal_event(sdk_internal_event, event_metadata):
+            pass
+        events_manager.notify_internal_event = notify_internal_event
+
         async def _make_factory_with_apikey(apikey, *_, **__):
-            return SplitFactoryAsync(apikey, {}, True, mocker.Mock(spec=ImpressionsManager), None, mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
+            return SplitFactoryAsync(apikey, {}, True, mocker.Mock(), internal_events_queue, events_manager, mocker.Mock(spec=ManagerAsync), mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
 
         factory_module_logger = mocker.Mock()
         build_redis = mocker.Mock()

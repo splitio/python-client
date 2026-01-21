@@ -19,3 +19,10 @@ class EventsDelivery(EventsDeliveryInterface):
         except Exception as ex:
             _LOGGER.error("Exception when calling handler for Sdk Event %s", sdk_event)
             _LOGGER.error(ex)
+
+    async def deliver_async(self, sdk_event, event_metadata, event_handler):
+        try:
+            await event_handler(event_metadata)
+        except Exception as ex:
+            _LOGGER.error("Exception when calling handler for Sdk Event %s", sdk_event)
+            _LOGGER.error(ex)

@@ -523,8 +523,9 @@ class SplitWorkerAsyncTests(object):
     @pytest.mark.asyncio
     async def test_fetch_segment(self, mocker):
         q = asyncio.Queue()
-        split_storage = InMemorySplitStorageAsync()
-        segment_storage = InMemorySegmentStorageAsync()
+        internal_events_queue = asyncio.Queue()
+        split_storage = InMemorySplitStorageAsync(internal_events_queue)
+        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
 
         self.segment_name = None
         async def segment_handler_sync(segment_name, change_number):

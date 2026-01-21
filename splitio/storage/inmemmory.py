@@ -154,10 +154,11 @@ class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
         [self._put(add_segment) for add_segment in to_add]
         [self._remove(delete_segment) for delete_segment in to_delete]
         self._set_change_number(new_change_number)
-        self._internal_event_queue.put(
-            SdkInternalEventNotification(
-                SdkInternalEvent.RB_SEGMENTS_UPDATED,
-                EventsMetadata(SdkEventType.SEGMENT_UPDATE, {})))        
+        if len(to_add) > 0 or len(to_delete) > 0:
+            self._internal_event_queue.put(
+                SdkInternalEventNotification(
+                    SdkInternalEvent.RB_SEGMENTS_UPDATED,
+                    EventsMetadata(SdkEventType.SEGMENT_UPDATE, {})))        
 
     def _put(self, rule_based_segment):
         """
@@ -244,11 +245,12 @@ class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
         
 class InMemoryRuleBasedSegmentStorageAsync(RuleBasedSegmentsStorage):
     """InMemory implementation of a feature flag storage base."""    
-    def __init__(self):
+    def __init__(self, internal_event_queue):
         """Constructor."""
         self._lock = asyncio.Lock()
         self._rule_based_segments = {}
         self._change_number = -1
+        self._internal_event_queue = internal_event_queue
 
     async def clear(self):
         """
@@ -284,6 +286,11 @@ class InMemoryRuleBasedSegmentStorageAsync(RuleBasedSegmentsStorage):
         [await self._put(add_segment) for add_segment in to_add]
         [await self._remove(delete_segment) for delete_segment in to_delete]
         await self._set_change_number(new_change_number)
+        if len(to_add) > 0 or len(to_delete) > 0:
+            await self._internal_event_queue.put(
+                SdkInternalEventNotification(
+                    SdkInternalEvent.RB_SEGMENTS_UPDATED,
+                    EventsMetadata(SdkEventType.SEGMENT_UPDATE, {})))        
 
     async def _put(self, rule_based_segment):
         """
@@ -716,7 +723,7 @@ class InMemorySplitStorage(InMemorySplitStorageBase):
 class InMemorySplitStorageAsync(InMemorySplitStorageBase):
     """InMemory implementation of a feature flag async storage."""
 
-    def __init__(self, flag_sets=[]):
+    def __init__(self, internal_event_queue, flag_sets=[]):
         """Constructor."""
         self._lock = asyncio.Lock()
         self._feature_flags = {}
@@ -724,6 +731,7 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
         self._traffic_types = Counter()
         self.flag_set = FlagSets(flag_sets)
         self.flag_set_filter = FlagSetsFilter(flag_sets)
+        self._internal_event_queue = internal_event_queue
 
     async def clear(self):
         """
@@ -772,6 +780,14 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
         [await self._put(add_feature_flag) for add_feature_flag in to_add]
         [await self._remove(delete_feature_flag) for delete_feature_flag in to_delete]
         await self._set_change_number(new_change_number)
+        to_notify = []
+        [to_notify.append(feature.name) for feature in to_add]
+        to_notify.extend(to_delete)
+        if len(to_notify) > 0:
+            await self._internal_event_queue.put(
+                SdkInternalEventNotification(
+                    SdkInternalEvent.FLAGS_UPDATED,
+                    EventsMetadata(SdkEventType.FLAG_UPDATE, set(to_notify))))
 
     async def _put(self, feature_flag):
         """
@@ -917,6 +933,11 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
                 return
             feature_flag.local_kill(default_treatment, change_number)
         await self._put(feature_flag)
+        await self._internal_event_queue.put(
+            SdkInternalEventNotification(
+                SdkInternalEvent.FLAG_KILLED_NOTIFICATION,
+                EventsMetadata(SdkEventType.FLAG_UPDATE, {feature_flag_name})))
+
 
     async def get_segment_names(self):
         """
@@ -1000,10 +1021,11 @@ class InMemorySegmentStorage(SegmentStorage):
             if change_number is not None:
                 self._segments[segment_name].change_number = change_number
 
-            self._internal_event_queue.put(
-            SdkInternalEventNotification(
-                SdkInternalEvent.SEGMENTS_UPDATED,
-                EventsMetadata(SdkEventType.SEGMENT_UPDATE, {})))        
+            if len(to_add) > 0 or len(to_remove) >0:
+                self._internal_event_queue.put(
+                SdkInternalEventNotification(
+                    SdkInternalEvent.SEGMENTS_UPDATED,
+                    EventsMetadata(SdkEventType.SEGMENT_UPDATE, {})))        
 
     def get_change_number(self, segment_name):
         """
@@ -1081,11 +1103,12 @@ class InMemorySegmentStorage(SegmentStorage):
 class InMemorySegmentStorageAsync(SegmentStorage):
     """In-memory implementation of a segment async storage."""
 
-    def __init__(self):
+    def __init__(self, internal_event_queue):
         """Constructor."""
         self._segments = {}
         self._change_numbers = {}
         self._lock = asyncio.Lock()
+        self._internal_event_queue = internal_event_queue
 
     async def get(self, segment_name):
         """
@@ -1114,6 +1137,11 @@ class InMemorySegmentStorageAsync(SegmentStorage):
         """
         async with self._lock:
             self._segments[segment.name] = segment
+            await self._internal_event_queue.put(
+            SdkInternalEventNotification(
+                SdkInternalEvent.SEGMENTS_UPDATED,
+                EventsMetadata(SdkEventType.SEGMENT_UPDATE, {})))        
+
 
     async def update(self, segment_name, to_add, to_remove, change_number=None):
         """
@@ -1134,6 +1162,12 @@ class InMemorySegmentStorageAsync(SegmentStorage):
             self._segments[segment_name].update(to_add, to_remove)
             if change_number is not None:
                 self._segments[segment_name].change_number = change_number
+            if len(to_add) > 0 or len(to_remove) >0:
+                await self._internal_event_queue.put(
+                SdkInternalEventNotification(
+                    SdkInternalEvent.SEGMENTS_UPDATED,
+                    EventsMetadata(SdkEventType.SEGMENT_UPDATE, {})))        
+            
 
     async def get_change_number(self, segment_name):
         """
