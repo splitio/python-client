@@ -1,6 +1,7 @@
 """SDK main manager test module."""
 import pytest
 import queue
+import asyncio
 
 from splitio.client.factory import SplitFactory
 from splitio.client.manager import SplitManager, SplitManagerAsync, _LOGGER as _logger
@@ -90,9 +91,10 @@ class SplitManagerAsyncTests(object):  # pylint: disable=too-few-public-methods
 
     @pytest.mark.asyncio
     async def test_manager_calls(self, mocker):
+        internal_events_queue = asyncio.Queue()
         telemetry_storage = InMemoryTelemetryStorageAsync()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        storage = InMemorySplitStorageAsync()
+        storage = InMemorySplitStorageAsync(internal_events_queue)
 
         factory = mocker.Mock(spec=SplitFactory)
         factory._storages = {'split': storage}

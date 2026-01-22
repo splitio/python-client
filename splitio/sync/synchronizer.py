@@ -654,6 +654,9 @@ class SynchronizerAsync(SynchronizerInMemoryBase):
         :type blocking: bool
         """
         _LOGGER.debug('Stopping periodic data recording')
+        if self._split_tasks.internal_events_task:
+            await self._split_tasks.internal_events_task.stop()
+        
         if blocking:
             await self._stop_periodic_data_recording()
             _LOGGER.debug('all tasks finished successfully.')

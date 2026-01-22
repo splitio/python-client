@@ -4,6 +4,7 @@ import random
 import pytest
 import copy
 import queue
+import asyncio
 
 from splitio.models.splits import Split
 from splitio.models.segments import Segment
@@ -413,7 +414,7 @@ class InMemorySplitStorageAsyncTests(object):
     @pytest.mark.asyncio
     async def test_storing_retrieving_splits(self, mocker):
         """Test storing and retrieving splits works."""
-        storage = InMemorySplitStorageAsync()
+        storage = InMemorySplitStorageAsync(asyncio.Queue())
 
         split = mocker.Mock(spec=Split)
         name_property = mocker.PropertyMock()
@@ -448,7 +449,7 @@ class InMemorySplitStorageAsyncTests(object):
         type(split1).sets = sets_property
         type(split2).sets = sets_property
 
-        storage = InMemorySplitStorageAsync()
+        storage = InMemorySplitStorageAsync(asyncio.Queue())
         await storage.update([split1, split2], [], -1)
 
         splits = await storage.fetch_many(['split1', 'split2', 'split3'])
@@ -460,7 +461,7 @@ class InMemorySplitStorageAsyncTests(object):
     @pytest.mark.asyncio
     async def test_store_get_changenumber(self):
         """Test that storing and retrieving change numbers works."""
-        storage = InMemorySplitStorageAsync()
+        storage = InMemorySplitStorageAsync(asyncio.Queue())
         assert await storage.get_change_number() == -1
         await storage.update([], [], 5)
         assert await storage.get_change_number() == 5
@@ -481,7 +482,7 @@ class InMemorySplitStorageAsyncTests(object):
         type(split1).sets = sets_property
         type(split2).sets = sets_property
 
-        storage = InMemorySplitStorageAsync()
+        storage = InMemorySplitStorageAsync(asyncio.Queue())
         await storage.update([split1, split2], [], -1)
 
         assert set(await storage.get_split_names()) == set(['split1', 'split2'])
@@ -502,7 +503,7 @@ class InMemorySplitStorageAsyncTests(object):
         type(split1).sets = sets_property
         type(split2).sets = sets_property
 
-        storage = InMemorySplitStorageAsync()
+        storage = InMemorySplitStorageAsync(asyncio.Queue())
         await storage.update([split1, split2], [], -1)
 
         all_splits = await storage.get_all_splits()
@@ -537,7 +538,7 @@ class InMemorySplitStorageAsyncTests(object):
         type(split2).sets = sets_property
         type(split3).sets = sets_property
 
-        storage = InMemorySplitStorageAsync()
+        storage = InMemorySplitStorageAsync(asyncio.Queue())
 
         await storage.update([split1], [], -1)
         assert await storage.is_valid_traffic_type('user') is True
@@ -566,7 +567,7 @@ class InMemorySplitStorageAsyncTests(object):
     @pytest.mark.asyncio
     async def test_traffic_type_inc_dec_logic(self, mocker):
         """Test that adding/removing split, handles traffic types correctly."""
-        storage = InMemorySplitStorageAsync()
+        storage = InMemorySplitStorageAsync(asyncio.Queue())
 
         split1 = mocker.Mock()
         name1_prop = mocker.PropertyMock()
@@ -599,7 +600,7 @@ class InMemorySplitStorageAsyncTests(object):
     @pytest.mark.asyncio
     async def test_kill_locally(self):
         """Test kill local."""
-        storage = InMemorySplitStorageAsync()
+        storage = InMemorySplitStorageAsync(asyncio.Queue())
 
         split = Split('some_split', 123456789, False, 'some', 'traffic_type',
                       'ACTIVE', 1)
@@ -620,7 +621,7 @@ class InMemorySplitStorageAsyncTests(object):
 
     @pytest.mark.asyncio
     async def test_flag_sets_with_config_sets(self):
-        storage = InMemorySplitStorageAsync(['set10', 'set02', 'set05'])
+        storage = InMemorySplitStorageAsync(asyncio.Queue(), ['set10', 'set02', 'set05'])
         assert storage.flag_set_filter.flag_sets == {'set10', 'set02', 'set05'}
         assert storage.flag_set_filter.should_filter
 
@@ -666,7 +667,7 @@ class InMemorySplitStorageAsyncTests(object):
 
     @pytest.mark.asyncio
     async def test_flag_sets_withut_config_sets(self):
-        storage = InMemorySplitStorageAsync()
+        storage = InMemorySplitStorageAsync(asyncio.Queue())
         assert storage.flag_set_filter.flag_sets == set({})
         assert not storage.flag_set_filter.should_filter
 
@@ -707,7 +708,36 @@ class InMemorySplitStorageAsyncTests(object):
         await storage.update([split3], [], 1)
         assert await storage.get_feature_flags_by_sets(['set05']) == ['split3']
         assert await storage.get_feature_flags_by_sets(['set04', 'set05']) == ['split3']
+        
+    @pytest.mark.asyncio
+    async def test_internal_event_notification(self, mocker):
+        """Test retrieving a list of all split names."""
+        split1 = mocker.Mock()
+        name1_prop = mocker.PropertyMock()
+        name1_prop.return_value = 'split1'
+        type(split1).name = name1_prop
+        split2 = mocker.Mock()
+        name2_prop = mocker.PropertyMock()
+        name2_prop.return_value = 'split2'
+        type(split2).name = name2_prop
+        sets_property = mocker.PropertyMock()
+        sets_property.return_value = ['set_1']
+        type(split1).sets = sets_property
+        type(split2).sets = sets_property
+        events_queue = asyncio.Queue()
+        storage = InMemorySplitStorageAsync(events_queue)
+        await storage.update([split1, split2], [], -1)
+        event = await events_queue.get()
+        assert event.internal_event == SdkInternalEvent.FLAGS_UPDATED
+        assert event.metadata.get_type() == SdkEventType.FLAG_UPDATE
+        assert event.metadata.get_names() == {'split1', 'split2'}
 
+        await storage.kill_locally('split1', 'default_treatment', 3)
+        event = await events_queue.get()
+        assert event.internal_event == SdkInternalEvent.FLAG_KILLED_NOTIFICATION
+        assert event.metadata.get_type() == SdkEventType.FLAG_UPDATE
+        assert event.metadata.get_names() == {'split1'}
+        
 class InMemorySegmentStorageTests(object):
     """In memory segment storage tests."""
 
@@ -781,13 +811,13 @@ class InMemorySegmentStorageTests(object):
         storage.put(segment)
         event = events_queue.get()
         assert event.internal_event == SdkInternalEvent.SEGMENTS_UPDATED
-        assert event.metadata.get_type() == SdkEventType.SEGMENT_UPDATE
+        assert event.metadata.get_type() == SdkEventType.SEGMENTS_UPDATE
         assert len(event.metadata.get_names()) == 0
 
         storage.update('some_segment', ['key4', 'key5'], ['key2', 'key3'], 456)
         event = events_queue.get()
         assert event.internal_event == SdkInternalEvent.SEGMENTS_UPDATED
-        assert event.metadata.get_type() == SdkEventType.SEGMENT_UPDATE
+        assert event.metadata.get_type() == SdkEventType.SEGMENTS_UPDATE
         assert len(event.metadata.get_names()) == 0
 
 class InMemorySegmentStorageAsyncTests(object):
@@ -796,7 +826,7 @@ class InMemorySegmentStorageAsyncTests(object):
     @pytest.mark.asyncio
     async def test_segment_storage_retrieval(self, mocker):
         """Test storing and retrieving segments."""
-        storage = InMemorySegmentStorageAsync()
+        storage = InMemorySegmentStorageAsync(asyncio.Queue())
         segment = mocker.Mock(spec=Segment)
         name_property = mocker.PropertyMock()
         name_property.return_value = 'some_segment'
@@ -809,14 +839,14 @@ class InMemorySegmentStorageAsyncTests(object):
     @pytest.mark.asyncio
     async def test_change_number(self, mocker):
         """Test storing and retrieving segment changeNumber."""
-        storage = InMemorySegmentStorageAsync()
+        storage = InMemorySegmentStorageAsync(asyncio.Queue())
         await storage.set_change_number('some_segment', 123)
         # Change number is not updated if segment doesn't exist
         assert await storage.get_change_number('some_segment') is None
         assert await storage.get_change_number('nonexistant-segment') is None
 
         # Change number is updated if segment does exist.
-        storage = InMemorySegmentStorageAsync()
+        storage = InMemorySegmentStorageAsync(asyncio.Queue())
         segment = mocker.Mock(spec=Segment)
         name_property = mocker.PropertyMock()
         name_property.return_value = 'some_segment'
@@ -828,7 +858,7 @@ class InMemorySegmentStorageAsyncTests(object):
     @pytest.mark.asyncio
     async def test_segment_contains(self, mocker):
         """Test using storage to determine whether a key belongs to a segment."""
-        storage = InMemorySegmentStorageAsync()
+        storage = InMemorySegmentStorageAsync(asyncio.Queue())
         segment = mocker.Mock(spec=Segment)
         name_property = mocker.PropertyMock()
         name_property.return_value = 'some_segment'
@@ -841,7 +871,7 @@ class InMemorySegmentStorageAsyncTests(object):
     @pytest.mark.asyncio
     async def test_segment_update(self):
         """Test updating a segment."""
-        storage = InMemorySegmentStorageAsync()
+        storage = InMemorySegmentStorageAsync(asyncio.Queue())
         segment = Segment('some_segment', ['key1', 'key2', 'key3'], 123)
         await storage.put(segment)
         assert await storage.get('some_segment') == segment
@@ -854,6 +884,23 @@ class InMemorySegmentStorageAsyncTests(object):
         assert not await storage.segment_contains('some_segment', 'key3')
         assert await storage.get_change_number('some_segment') == 456
 
+    @pytest.mark.asyncio
+    async def test_internal_event_notification(self):
+        """Test updating a segment."""
+        events_queue = asyncio.Queue()
+        storage = InMemorySegmentStorageAsync(events_queue)
+        segment = Segment('some_segment', ['key1', 'key2', 'key3'], 123)
+        await storage.put(segment)
+        event = await events_queue.get()
+        assert event.internal_event == SdkInternalEvent.SEGMENTS_UPDATED
+        assert event.metadata.get_type() == SdkEventType.SEGMENTS_UPDATE
+        assert len(event.metadata.get_names()) == 0
+
+        await storage.update('some_segment', ['key4', 'key5'], ['key2', 'key3'], 456)
+        event = await events_queue.get()
+        assert event.internal_event == SdkInternalEvent.SEGMENTS_UPDATED
+        assert event.metadata.get_type() == SdkEventType.SEGMENTS_UPDATE
+        assert len(event.metadata.get_names()) == 0
 
 class InMemoryImpressionsStorageTests(object):
     """InMemory impressions storage test cases."""
@@ -1959,12 +2006,12 @@ class InMemoryRuleBasedSegmentStorageTests(object):
         rbs_storage.update([segment1, segment2], [], -1)
         event = events_queue.get()
         assert event.internal_event == SdkInternalEvent.RB_SEGMENTS_UPDATED
-        assert event.metadata.get_type() == SdkEventType.SEGMENT_UPDATE
+        assert event.metadata.get_type() == SdkEventType.SEGMENTS_UPDATE
         assert len(event.metadata.get_names()) == 0
 
         rbs_storage.update([], ['some_segment'], -1)
         assert event.internal_event == SdkInternalEvent.RB_SEGMENTS_UPDATED
-        assert event.metadata.get_type() == SdkEventType.SEGMENT_UPDATE
+        assert event.metadata.get_type() == SdkEventType.SEGMENTS_UPDATE
         assert len(event.metadata.get_names()) == 0
 
 class InMemoryRuleBasedSegmentStorageAsyncTests(object):
@@ -1973,7 +2020,7 @@ class InMemoryRuleBasedSegmentStorageAsyncTests(object):
     @pytest.mark.asyncio
     async def test_storing_retrieving_segments(self, mocker):
         """Test storing and retrieving splits works."""
-        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync(asyncio.Queue())
 
         segment1 = mocker.Mock(spec=RuleBasedSegment)
         name_property = mocker.PropertyMock()
@@ -1996,7 +2043,7 @@ class InMemoryRuleBasedSegmentStorageAsyncTests(object):
     @pytest.mark.asyncio
     async def test_store_get_changenumber(self):
         """Test that storing and retrieving change numbers works."""
-        storage = InMemoryRuleBasedSegmentStorageAsync()
+        storage = InMemoryRuleBasedSegmentStorageAsync(asyncio.Queue())
         assert await storage.get_change_number() == -1
         await storage.update([], [], 5)
         assert await storage.get_change_number() == 5
@@ -2021,8 +2068,37 @@ class InMemoryRuleBasedSegmentStorageAsyncTests(object):
         raw3 = copy.deepcopy(raw)
         raw3["name"] = "segment3"
         segment3 =  rule_based_segments.from_raw(raw3)
-        storage = InMemoryRuleBasedSegmentStorageAsync()
+        storage = InMemoryRuleBasedSegmentStorageAsync(asyncio.Queue())
         await storage.update([segment1, segment2, segment3], [], -1)
         assert await storage.contains(["segment1"])
         assert await storage.contains(["segment1", "segment3"])
         assert not await storage.contains(["segment5"])
+
+    @pytest.mark.asyncio
+    async def test_internal_event_notification(self, mocker):
+        """Test storing and retrieving splits works."""
+        events_queue = asyncio.Queue()
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync(events_queue)
+
+        segment1 = mocker.Mock(spec=RuleBasedSegment)
+        name_property = mocker.PropertyMock()
+        name_property.return_value = 'some_segment'
+        type(segment1).name = name_property
+
+        segment2 = mocker.Mock()
+        name2_prop = mocker.PropertyMock()
+        name2_prop.return_value = 'segment2'
+        type(segment2).name = name2_prop
+
+        await rbs_storage.update([segment1, segment2], [], -1)
+        event = await events_queue.get()
+        assert event.internal_event == SdkInternalEvent.RB_SEGMENTS_UPDATED
+        assert event.metadata.get_type() == SdkEventType.SEGMENTS_UPDATE
+        assert len(event.metadata.get_names()) == 0
+
+        await rbs_storage.update([], ['some_segment'], -1)
+        event = await events_queue.get()
+        assert event.internal_event == SdkInternalEvent.RB_SEGMENTS_UPDATED
+        assert event.metadata.get_type() == SdkEventType.SEGMENTS_UPDATE
+        assert len(event.metadata.get_names()) == 0
+
