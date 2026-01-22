@@ -1315,6 +1315,10 @@ class RedisRuleBasedSegmentStorageTests(object):
         assert result['rbs2'] is not None
         assert 'rbs3' in result
 
+        # should not raise exception
+        result = storage.fetch_many([])
+        assert len(result) == 0
+
 class RedisRuleBasedSegmentStorageAsyncTests(object):
     """Redis rule based segment storage test cases."""
 
@@ -1438,3 +1442,7 @@ class RedisRuleBasedSegmentStorageAsyncTests(object):
         assert result['rbs2'] is not None
         assert 'rbs3' in result
         
+        # should not raise exception
+        result = await storage.fetch_many([])
+        assert len(result) == 0
+
