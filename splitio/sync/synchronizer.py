@@ -955,12 +955,13 @@ class LocalhostSynchronizer(LocalhostSynchronizerBase):
 
     def stop_periodic_fetching(self):
         """Stop fetchers for feature flags and segments."""
+        _LOGGER.debug('Stopping periodic fetching')
         if self._split_tasks.split_task is not None:
-            _LOGGER.debug('Stopping periodic fetching')
             self._split_tasks.split_task.stop()
         if self._split_tasks.segment_task is not None:
             self._split_tasks.segment_task.stop()
         if self._split_tasks.internal_events_task:
+            _LOGGER.debug('Stopping internal events notification')
             self._split_tasks.internal_events_task.stop()
 
     def synchronize_splits(self):
@@ -1031,12 +1032,15 @@ class LocalhostSynchronizerAsync(LocalhostSynchronizerBase):
 
     async def stop_periodic_fetching(self):
         """Stop fetchers for feature flags and segments."""
+        _LOGGER.debug('Stopping periodic fetching')
         if self._split_tasks.split_task is not None:
-            _LOGGER.debug('Stopping periodic fetching')
             await self._split_tasks.split_task.stop()
         if self._split_tasks.segment_task is not None:
-            await self._split_tasks.segment_task.stop()
-
+            await self._split_tasks.segment_task.stop()        
+        if self._split_tasks.internal_events_task is not None:
+            _LOGGER.debug('Stopping internal events notification')
+            await self._split_tasks.internal_events_task.stop()
+        
     async def synchronize_splits(self):
         """Synchronize all feature flags."""
         try:
