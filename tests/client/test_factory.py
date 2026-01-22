@@ -1151,7 +1151,7 @@ class SplitFactoryAsyncTests(object):
         # Start factory and make assertions
         factory = await get_factory_async('some_api_key', config={'streamingEmabled': False})
         for task in asyncio.all_tasks():
-            if task.get_name() == "EventsTaskWorker":
+            if task.get_coro().__qualname__ == "EventsTaskAsync._run":
                 task.cancel()
         try:
             await factory.block_until_ready(3)
@@ -1204,7 +1204,7 @@ class SplitFactoryAsyncTests(object):
         # Start factory and make assertions
         factory = await get_factory_async('some_api_key', config={'streamingEmabled': False})
         for task in asyncio.all_tasks():
-            if task.get_name() == "EventsTaskWorker":
+            if task.get_coro().__qualname__ == "EventsTaskAsync._run":
                 task.cancel()
         try:
             await factory.block_until_ready(1)
