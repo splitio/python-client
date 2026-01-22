@@ -158,7 +158,7 @@ class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
             self._internal_event_queue.put(
                 SdkInternalEventNotification(
                     SdkInternalEvent.RB_SEGMENTS_UPDATED,
-                    EventsMetadata(SdkEventType.SEGMENT_UPDATE, {})))        
+                    EventsMetadata(SdkEventType.SEGMENTS_UPDATE, {})))        
 
     def _put(self, rule_based_segment):
         """
@@ -290,7 +290,7 @@ class InMemoryRuleBasedSegmentStorageAsync(RuleBasedSegmentsStorage):
             await self._internal_event_queue.put(
                 SdkInternalEventNotification(
                     SdkInternalEvent.RB_SEGMENTS_UPDATED,
-                    EventsMetadata(SdkEventType.SEGMENT_UPDATE, {})))        
+                    EventsMetadata(SdkEventType.SEGMENTS_UPDATE, {})))        
 
     async def _put(self, rule_based_segment):
         """
@@ -999,7 +999,7 @@ class InMemorySegmentStorage(SegmentStorage):
             self._internal_event_queue.put(
             SdkInternalEventNotification(
                 SdkInternalEvent.SEGMENTS_UPDATED,
-                EventsMetadata(SdkEventType.SEGMENT_UPDATE, {})))        
+                EventsMetadata(SdkEventType.SEGMENTS_UPDATE, {})))        
 
     def update(self, segment_name, to_add, to_remove, change_number=None):
         """
@@ -1025,7 +1025,7 @@ class InMemorySegmentStorage(SegmentStorage):
                 self._internal_event_queue.put(
                 SdkInternalEventNotification(
                     SdkInternalEvent.SEGMENTS_UPDATED,
-                    EventsMetadata(SdkEventType.SEGMENT_UPDATE, {})))        
+                    EventsMetadata(SdkEventType.SEGMENTS_UPDATE, {})))        
 
     def get_change_number(self, segment_name):
         """
@@ -1140,7 +1140,7 @@ class InMemorySegmentStorageAsync(SegmentStorage):
             await self._internal_event_queue.put(
             SdkInternalEventNotification(
                 SdkInternalEvent.SEGMENTS_UPDATED,
-                EventsMetadata(SdkEventType.SEGMENT_UPDATE, {})))        
+                EventsMetadata(SdkEventType.SEGMENTS_UPDATE, {})))        
 
 
     async def update(self, segment_name, to_add, to_remove, change_number=None):
@@ -1166,7 +1166,7 @@ class InMemorySegmentStorageAsync(SegmentStorage):
                 await self._internal_event_queue.put(
                 SdkInternalEventNotification(
                     SdkInternalEvent.SEGMENTS_UPDATED,
-                    EventsMetadata(SdkEventType.SEGMENT_UPDATE, {})))        
+                    EventsMetadata(SdkEventType.SEGMENTS_UPDATE, {})))        
             
 
     async def get_change_number(self, segment_name):

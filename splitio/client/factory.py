@@ -1145,11 +1145,11 @@ def _build_localhost_factory(cfg):
     telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
     telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
 
-    events_queue = queue.Queue()
+    internal_events_queue = queue.Queue()
     storages = {
-        'splits': InMemorySplitStorage(events_queue, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
-        'segments': InMemorySegmentStorage(events_queue),  # not used, just to avoid possible future errors.
-        'rule_based_segments': InMemoryRuleBasedSegmentStorage(events_queue),   
+        'splits': InMemorySplitStorage(internal_events_queue, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
+        'segments': InMemorySegmentStorage(internal_events_queue),  # not used, just to avoid possible future errors.
+        'rule_based_segments': InMemoryRuleBasedSegmentStorage(internal_events_queue),   
         'impressions': LocalhostImpressionsStorage(),
         'events': LocalhostEventsStorage(),
     }
@@ -1162,6 +1162,8 @@ def _build_localhost_factory(cfg):
         LocalSegmentSynchronizer(cfg['segmentDirectory'], storages['splits'], storages['segments']),
         None, None, None,
     )
+    events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
+    internal_events_task = EventsTask(events_manager.notify_internal_event, internal_events_queue)
 
     feature_flag_sync_task = None
     segment_sync_task = None
@@ -1178,6 +1180,7 @@ def _build_localhost_factory(cfg):
         feature_flag_sync_task,
         segment_sync_task,
         None, None, None,
+        internal_events_task
     )
 
     sdk_metadata = util.get_metadata(cfg)
@@ -1199,8 +1202,7 @@ def _build_localhost_factory(cfg):
         telemetry_evaluation_producer,
         telemetry_runtime_producer
     )
-    internal_events_queue = queue.Queue()
-    events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
+    internal_events_task.start()
 
     return SplitFactory(
         'localhost',
@@ -1226,6 +1228,8 @@ async def _build_localhost_factory_async(cfg):
 
     internal_events_queue = asyncio.Queue()
     events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
+    internal_events_task = EventsTaskAsync(events_manager.notify_internal_event, internal_events_queue)
+
     storages = {
         'splits': InMemorySplitStorageAsync(internal_events_queue),
         'segments': InMemorySegmentStorageAsync(internal_events_queue),  # not used, just to avoid possible future errors.
@@ -1258,6 +1262,7 @@ async def _build_localhost_factory_async(cfg):
         feature_flag_sync_task,
         segment_sync_task,
         None, None, None,
+        internal_events_task
     )
 
     sdk_metadata = util.get_metadata(cfg)
@@ -1277,8 +1282,9 @@ async def _build_localhost_factory_async(cfg):
         storages['impressions'],
         telemetry_evaluation_producer,
         telemetry_runtime_producer
-    )
-        
+    )        
+    internal_events_task.start()
+
     return SplitFactoryAsync(
         'localhost',
         storages,
