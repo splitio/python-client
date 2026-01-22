@@ -1180,7 +1180,7 @@ def _build_localhost_factory(cfg):
         feature_flag_sync_task,
         segment_sync_task,
         None, None, None,
-        internal_events_task
+        internal_events_task=internal_events_task
     )
 
     sdk_metadata = util.get_metadata(cfg)
@@ -1262,7 +1262,7 @@ async def _build_localhost_factory_async(cfg):
         feature_flag_sync_task,
         segment_sync_task,
         None, None, None,
-        internal_events_task
+        internal_events_task=internal_events_task
     )
 
     sdk_metadata = util.get_metadata(cfg)

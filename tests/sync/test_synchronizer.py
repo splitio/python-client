@@ -210,7 +210,6 @@ class SynchronizerTests(object):
                                                  mocker.Mock(), mocker.Mock())
 
         synchronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
-#        pytest.set_trace()
         self.clear = False
         def clear():
             self.clear = True
