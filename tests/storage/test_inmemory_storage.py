@@ -811,13 +811,13 @@ class InMemorySegmentStorageTests(object):
         storage.put(segment)
         event = events_queue.get()
         assert event.internal_event == SdkInternalEvent.SEGMENTS_UPDATED
-        assert event.metadata.get_type() == SdkEventType.SEGMENT_UPDATE
+        assert event.metadata.get_type() == SdkEventType.SEGMENTS_UPDATE
         assert len(event.metadata.get_names()) == 0
 
         storage.update('some_segment', ['key4', 'key5'], ['key2', 'key3'], 456)
         event = events_queue.get()
         assert event.internal_event == SdkInternalEvent.SEGMENTS_UPDATED
-        assert event.metadata.get_type() == SdkEventType.SEGMENT_UPDATE
+        assert event.metadata.get_type() == SdkEventType.SEGMENTS_UPDATE
         assert len(event.metadata.get_names()) == 0
 
 class InMemorySegmentStorageAsyncTests(object):
@@ -893,13 +893,13 @@ class InMemorySegmentStorageAsyncTests(object):
         await storage.put(segment)
         event = await events_queue.get()
         assert event.internal_event == SdkInternalEvent.SEGMENTS_UPDATED
-        assert event.metadata.get_type() == SdkEventType.SEGMENT_UPDATE
+        assert event.metadata.get_type() == SdkEventType.SEGMENTS_UPDATE
         assert len(event.metadata.get_names()) == 0
 
         await storage.update('some_segment', ['key4', 'key5'], ['key2', 'key3'], 456)
         event = await events_queue.get()
         assert event.internal_event == SdkInternalEvent.SEGMENTS_UPDATED
-        assert event.metadata.get_type() == SdkEventType.SEGMENT_UPDATE
+        assert event.metadata.get_type() == SdkEventType.SEGMENTS_UPDATE
         assert len(event.metadata.get_names()) == 0
 
 class InMemoryImpressionsStorageTests(object):
@@ -2006,12 +2006,12 @@ class InMemoryRuleBasedSegmentStorageTests(object):
         rbs_storage.update([segment1, segment2], [], -1)
         event = events_queue.get()
         assert event.internal_event == SdkInternalEvent.RB_SEGMENTS_UPDATED
-        assert event.metadata.get_type() == SdkEventType.SEGMENT_UPDATE
+        assert event.metadata.get_type() == SdkEventType.SEGMENTS_UPDATE
         assert len(event.metadata.get_names()) == 0
 
         rbs_storage.update([], ['some_segment'], -1)
         assert event.internal_event == SdkInternalEvent.RB_SEGMENTS_UPDATED
-        assert event.metadata.get_type() == SdkEventType.SEGMENT_UPDATE
+        assert event.metadata.get_type() == SdkEventType.SEGMENTS_UPDATE
         assert len(event.metadata.get_names()) == 0
 
 class InMemoryRuleBasedSegmentStorageAsyncTests(object):
@@ -2093,12 +2093,12 @@ class InMemoryRuleBasedSegmentStorageAsyncTests(object):
         await rbs_storage.update([segment1, segment2], [], -1)
         event = await events_queue.get()
         assert event.internal_event == SdkInternalEvent.RB_SEGMENTS_UPDATED
-        assert event.metadata.get_type() == SdkEventType.SEGMENT_UPDATE
+        assert event.metadata.get_type() == SdkEventType.SEGMENTS_UPDATE
         assert len(event.metadata.get_names()) == 0
 
         await rbs_storage.update([], ['some_segment'], -1)
         event = await events_queue.get()
         assert event.internal_event == SdkInternalEvent.RB_SEGMENTS_UPDATED
-        assert event.metadata.get_type() == SdkEventType.SEGMENT_UPDATE
+        assert event.metadata.get_type() == SdkEventType.SEGMENTS_UPDATE
         assert len(event.metadata.get_names()) == 0
 

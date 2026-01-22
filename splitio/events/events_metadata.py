@@ -5,7 +5,7 @@ class SdkEventType(Enum):
     """Public event types"""
     
     FLAG_UPDATE = 'FLAG_UPDATE'
-    SEGMENT_UPDATE = 'SEGMENT_UPDATE'
+    SEGMENTS_UPDATE = 'SEGMENTS_UPDATE'
 
 class EventsMetadata(object):
     """Events Metadata class."""

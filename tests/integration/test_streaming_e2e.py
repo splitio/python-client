@@ -128,7 +128,7 @@ class StreamingIntegrationTests(object):
         sse_server.publish(make_segment_change_event('segment1', 1))
         time.sleep(1)
         assert self.update_flag
-        assert self.metadata[len(self.metadata)-1].get_type() == SdkEventType.SEGMENT_UPDATE
+        assert self.metadata[len(self.metadata)-1].get_type() == SdkEventType.SEGMENTS_UPDATE
         flag = False
         for meta in self.metadata:
             if 'split2' in meta.get_names():
