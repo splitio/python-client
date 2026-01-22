@@ -142,6 +142,9 @@ class RedisRuleBasedSegmentsStorage(RuleBasedSegmentsStorage):
         :rtype: dict(segment_name, splitio.models.rule_based_segment.RuleBasedSegment)
         """
         to_return = dict()
+        if len(segment_names) == 0:
+            return to_return
+        
         try:
             keys = [self._get_key(segment_name) for segment_name in segment_names]
             raw_rbs_segments = self._redis.mget(keys)
@@ -286,6 +289,9 @@ class RedisRuleBasedSegmentsStorageAsync(RuleBasedSegmentsStorage):
         :rtype: dict(segment_name, splitio.models.rule_based_segment.RuleBasedSegment)
         """
         to_return = dict()
+        if len(segment_names) == 0:
+            return to_return
+
         try:
             keys = [self._get_key(segment_name) for segment_name in segment_names]
             raw_rbs_segments = await self._redis.mget(keys)
