@@ -215,7 +215,7 @@ class EventsManagerAsync(EventsManagerBase):
             if sdk_event == SdkEvent.SDK_READY and self._event_already_triggered(sdk_event):
                 self._active_subscriptions[sdk_event] = ActiveSubscriptions(True, event_handler)
                 _LOGGER.debug("EventsManager: Firing SDK_READY event for new subscription")                
-                await self._fire_sdk_event(sdk_event, None)
+                self._fire_sdk_event(sdk_event, None)
                 return
 
             self._active_subscriptions[sdk_event] = ActiveSubscriptions(False, event_handler)
@@ -233,7 +233,7 @@ class EventsManagerAsync(EventsManagerBase):
             for sorted_event in self._manager_config.evaluation_order:
                 if sorted_event in self._get_sdk_event_if_applicable(sdk_internal_event):
                     if self._get_event_handler(sorted_event) != None:
-                        await self._fire_sdk_event(sorted_event, event_metadata)
+                        self._fire_sdk_event(sorted_event, event_metadata)
                         
                     # if client is not subscribed to SDK_READY    
                     if sorted_event == SdkEvent.SDK_READY and self._get_event_handler(sorted_event) == None:
