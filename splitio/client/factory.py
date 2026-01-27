@@ -3,6 +3,7 @@ import logging
 import threading
 from collections import Counter
 from enum import Enum
+import queue 
 
 from splitio.optional.loaders import asyncio
 from splitio.client.client import Client, ClientAsync
@@ -18,7 +19,14 @@ from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageC
     TelemetryStorageProducerAsync, TelemetryStorageConsumerAsync
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
+from splitio.events.events_manager import EventsManager, EventsManagerAsync
+from splitio.events.events_manager_config import EventsManagerConfig
+from splitio.events.events_task import EventsTask, EventsTaskAsync
+from splitio.events.events_delivery import EventsDelivery
 from splitio.models.fallback_config import FallbackTreatmentCalculator
+from splitio.models.notification import SdkInternalEventNotification
+from splitio.models.events import SdkInternalEvent
+
 # Storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
     InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, LocalhostTelemetryStorage, \
@@ -165,6 +173,8 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
             storages,
             labels_enabled,
             recorder,
+            internal_events_queue,
+            events_manager,
             sync_manager=None,
             sdk_ready_flag=None,
             telemetry_producer=None,
@@ -203,6 +213,8 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
         _LOGGER.debug("Running in threading mode")
         self._sdk_internal_ready_flag = sdk_ready_flag
         self._fallback_treatment_calculator = fallback_treatment_calculator
+        self._internal_events_queue = internal_events_queue
+        self._events_manager = events_manager
         self._start_status_updater()
 
     def _start_status_updater(self):
@@ -223,12 +235,15 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
             ready_updater.start()
         else:
             self._status = Status.READY
-
+            self._internal_events_queue.put(SdkInternalEventNotification(SdkInternalEvent.SDK_READY, None))
+            
     def _update_status_when_ready(self):
         """Wait until the sdk is ready and update the status."""
         self._sdk_internal_ready_flag.wait()
         self._status = Status.READY
         self._sdk_ready_flag.set()
+        self._internal_events_queue.put(SdkInternalEventNotification(SdkInternalEvent.SDK_READY, None))
+
         self._telemetry_init_producer.record_ready_time(get_current_epoch_time_ms() - self._ready_time)
         redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
         self._telemetry_init_producer.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
@@ -244,7 +259,7 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
         This client is only a set of references to structures hold by the factory.
         Creating one a fast operation and safe to be used anywhere.
         """
-        return Client(self, self._recorder, self._labels_enabled, self._fallback_treatment_calculator)
+        return Client(self, self._recorder, self._events_manager, self._labels_enabled, self._fallback_treatment_calculator)
 
     def manager(self):
         """
@@ -269,6 +284,7 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
 
             if not ready:
                 self._telemetry_init_producer.record_bur_time_out()
+                self._internal_events_queue.put(SdkInternalEventNotification(SdkInternalEvent.SDK_TIMED_OUT, None))
                 raise TimeoutException('SDK Initialization: time of %d exceeded' % timeout)
 
     def destroy(self, destroyed_event=None):
@@ -287,6 +303,7 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
 
         try:
             _LOGGER.info('Factory destroy called, stopping tasks.')
+            self._events_manager.destroy()
             if self._sync_manager is not None:
                 if destroyed_event is not None:
 
@@ -335,6 +352,8 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
             storages,
             labels_enabled,
             recorder,
+            internal_events_queue,
+            events_manager,
             sync_manager=None,
             telemetry_producer=None,
             telemetry_init_producer=None,
@@ -370,6 +389,8 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
         self._telemetry_submitter = telemetry_submitter
         self._ready_time = get_current_epoch_time_ms()
         _LOGGER.debug("Running in asyncio mode")
+        self._internal_events_queue = internal_events_queue
+        self._events_manager = events_manager
         self._manager_start_task = manager_start_task
         self._status = Status.NOT_INITIALIZED
         self._sdk_ready_flag = asyncio.Event()
@@ -392,6 +413,7 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
             _LOGGER.debug(str(e))
         self._status = Status.READY
         self._sdk_ready_flag.set()
+        await self._internal_events_queue.put(SdkInternalEventNotification(SdkInternalEvent.SDK_READY, None))
 
     def manager(self):
         """
@@ -417,6 +439,7 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
             _LOGGER.error("Exception initializing SDK")
             _LOGGER.debug(str(e))
             await self._telemetry_init_producer.record_bur_time_out()
+            await self._internal_events_queue.put(SdkInternalEventNotification(SdkInternalEvent.SDK_TIMED_OUT, None))
             raise TimeoutException('SDK Initialization: time of %d exceeded' % timeout)
 
     async def destroy(self, destroyed_event=None):
@@ -464,7 +487,7 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
         This client is only a set of references to structures hold by the factory.
         Creating one a fast operation and safe to be used anywhere.
         """
-        return ClientAsync(self, self._recorder, self._labels_enabled, self._fallback_treatment_calculator)
+        return ClientAsync(self, self._recorder, self._events_manager, self._labels_enabled, self._fallback_treatment_calculator)
 
 def _wrap_impression_listener(listener, metadata):
     """
@@ -546,11 +569,14 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'events': EventsAPI(http_client, api_key, sdk_metadata, telemetry_runtime_producer),
         'telemetry': TelemetryAPI(http_client, api_key, sdk_metadata, telemetry_runtime_producer),
     }
-
+  
+    internal_events_queue = queue.Queue()
+    events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
+    internal_events_task = EventsTask(events_manager.notify_internal_event, internal_events_queue)
     storages = {
-        'splits': InMemorySplitStorage(cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
-        'segments': InMemorySegmentStorage(),
-        'rule_based_segments': InMemoryRuleBasedSegmentStorage(),
+        'splits': InMemorySplitStorage(internal_events_queue, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
+        'segments': InMemorySegmentStorage(internal_events_queue),
+        'rule_based_segments': InMemoryRuleBasedSegmentStorage(internal_events_queue),
         'impressions': InMemoryImpressionStorage(cfg['impressionsQueueSize'], telemetry_runtime_producer),
         'events': InMemoryEventStorage(cfg['eventsQueueSize'], telemetry_runtime_producer),
     }
@@ -596,6 +622,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         TelemetrySyncTask(synchronizers.telemetry_sync.synchronize_stats, cfg['metricsRefreshRate']),
         unique_keys_task,
         clear_filter_task,
+        internal_events_task
     )
 
     synchronizer = Synchronizer(synchronizers, tasks)
@@ -621,20 +648,21 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     )
 
     telemetry_init_producer.record_config(cfg, extra_cfg, total_flag_sets, invalid_flag_sets)
-
+    internal_events_task.start()
+    
     if preforked_initialization:
         synchronizer.sync_all(max_retry_attempts=_MAX_RETRY_SYNC_ALL)
         synchronizer._split_synchronizers._segment_sync.shutdown()
 
         return SplitFactory(api_key, storages, cfg['labelsEnabled'],
-                            recorder, manager, None, telemetry_producer, telemetry_init_producer, telemetry_submitter, preforked_initialization=preforked_initialization,
+                            recorder, internal_events_queue, events_manager, manager, None, telemetry_producer, telemetry_init_producer, telemetry_submitter, preforked_initialization=preforked_initialization,
                             fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments']))
 
     initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
     initialization_thread.start()
 
     return SplitFactory(api_key, storages, cfg['labelsEnabled'],
-                        recorder, manager, sdk_ready_flag,
+                        recorder, internal_events_queue, events_manager, manager, sdk_ready_flag,
                         telemetry_producer, telemetry_init_producer,
                         telemetry_submitter, fallback_treatment_calculator = FallbackTreatmentCalculator(cfg['fallbackTreatments']))
 
@@ -676,11 +704,14 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
         'events': EventsAPIAsync(http_client, api_key, sdk_metadata, telemetry_runtime_producer),
         'telemetry': TelemetryAPIAsync(http_client, api_key, sdk_metadata, telemetry_runtime_producer),
     }
+    internal_events_queue = asyncio.Queue()
+    events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
+    internal_events_task = EventsTaskAsync(events_manager.notify_internal_event, internal_events_queue)
 
     storages = {
-        'splits': InMemorySplitStorageAsync(cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
-        'segments': InMemorySegmentStorageAsync(),
-        'rule_based_segments': InMemoryRuleBasedSegmentStorageAsync(),
+        'splits': InMemorySplitStorageAsync(internal_events_queue, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
+        'segments': InMemorySegmentStorageAsync(internal_events_queue),
+        'rule_based_segments': InMemoryRuleBasedSegmentStorageAsync(internal_events_queue),
         'impressions': InMemoryImpressionStorageAsync(cfg['impressionsQueueSize'], telemetry_runtime_producer),
         'events': InMemoryEventStorageAsync(cfg['eventsQueueSize'], telemetry_runtime_producer),
     }
@@ -726,6 +757,7 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
         TelemetrySyncTaskAsync(synchronizers.telemetry_sync.synchronize_stats, cfg['metricsRefreshRate']),
         unique_keys_task,
         clear_filter_task,
+        internal_events_task
     )
 
     synchronizer = SynchronizerAsync(synchronizers, tasks)
@@ -748,11 +780,12 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
     )
 
     await telemetry_init_producer.record_config(cfg, extra_cfg, total_flag_sets, invalid_flag_sets)
+    internal_events_task.start()
 
     manager_start_task = asyncio.get_running_loop().create_task(manager.start())
 
     return SplitFactoryAsync(api_key, storages, cfg['labelsEnabled'],
-                        recorder, manager,
+                        recorder, internal_events_queue, events_manager, manager,
                         telemetry_producer, telemetry_init_producer,
                         telemetry_submitter, manager_start_task=manager_start_task,
                         api_client=http_client, fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments']))
@@ -824,12 +857,16 @@ def _build_redis_factory(api_key, cfg):
     initialization_thread.start()
 
     telemetry_init_producer.record_config(cfg, {}, 0, 0)
+    internal_events_queue = queue.Queue()
+    events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
 
     split_factory = SplitFactory(
         api_key,
         storages,
         cfg['labelsEnabled'],
         recorder,
+        internal_events_queue,
+        events_manager,
         manager,
         sdk_ready_flag=None,
         telemetry_producer=telemetry_producer,
@@ -907,12 +944,16 @@ async def _build_redis_factory_async(api_key, cfg):
     manager = RedisManagerAsync(synchronizer)
     await telemetry_init_producer.record_config(cfg, {}, 0, 0)
     manager.start()
+    internal_events_queue = asyncio.Queue()
+    events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
 
     split_factory = SplitFactoryAsync(
         api_key,
         storages,
         cfg['labelsEnabled'],
         recorder,
+        internal_events_queue,
+        events_manager,
         manager,
         telemetry_producer=telemetry_producer,
         telemetry_init_producer=telemetry_init_producer,
@@ -990,12 +1031,16 @@ def _build_pluggable_factory(api_key, cfg):
     initialization_thread.start()
 
     telemetry_init_producer.record_config(cfg, {}, 0, 0)
+    internal_events_queue = queue.Queue()
+    events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
 
     split_factory = SplitFactory(
         api_key,
         storages,
         cfg['labelsEnabled'],
         recorder,
+        internal_events_queue,
+        events_manager,
         manager,
         sdk_ready_flag=None,
         telemetry_producer=telemetry_producer,
@@ -1071,12 +1116,16 @@ async def _build_pluggable_factory_async(api_key, cfg):
     manager = RedisManagerAsync(synchronizer)
     manager.start()
     await telemetry_init_producer.record_config(cfg, {}, 0, 0)
+    internal_events_queue = asyncio.Queue()
+    events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
 
     split_factory = SplitFactoryAsync(
         api_key,
         storages,
         cfg['labelsEnabled'],
         recorder,
+        internal_events_queue,
+        events_manager,
         manager,
         telemetry_producer=telemetry_producer,
         telemetry_init_producer=telemetry_init_producer,
@@ -1096,10 +1145,11 @@ def _build_localhost_factory(cfg):
     telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
     telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
 
+    internal_events_queue = queue.Queue()
     storages = {
-        'splits': InMemorySplitStorage(cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
-        'segments': InMemorySegmentStorage(),  # not used, just to avoid possible future errors.
-        'rule_based_segments': InMemoryRuleBasedSegmentStorage(),   
+        'splits': InMemorySplitStorage(internal_events_queue, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
+        'segments': InMemorySegmentStorage(internal_events_queue),  # not used, just to avoid possible future errors.
+        'rule_based_segments': InMemoryRuleBasedSegmentStorage(internal_events_queue),   
         'impressions': LocalhostImpressionsStorage(),
         'events': LocalhostEventsStorage(),
     }
@@ -1112,6 +1162,8 @@ def _build_localhost_factory(cfg):
         LocalSegmentSynchronizer(cfg['segmentDirectory'], storages['splits'], storages['segments']),
         None, None, None,
     )
+    events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
+    internal_events_task = EventsTask(events_manager.notify_internal_event, internal_events_queue)
 
     feature_flag_sync_task = None
     segment_sync_task = None
@@ -1128,6 +1180,7 @@ def _build_localhost_factory(cfg):
         feature_flag_sync_task,
         segment_sync_task,
         None, None, None,
+        internal_events_task=internal_events_task
     )
 
     sdk_metadata = util.get_metadata(cfg)
@@ -1149,11 +1202,15 @@ def _build_localhost_factory(cfg):
         telemetry_evaluation_producer,
         telemetry_runtime_producer
     )
+    internal_events_task.start()
+
     return SplitFactory(
         'localhost',
         storages,
         False,
         recorder,
+        internal_events_queue,
+        events_manager,
         manager,
         ready_event,
         telemetry_producer=telemetry_producer,
@@ -1169,10 +1226,14 @@ async def _build_localhost_factory_async(cfg):
     telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
     telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
 
+    internal_events_queue = asyncio.Queue()
+    events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
+    internal_events_task = EventsTaskAsync(events_manager.notify_internal_event, internal_events_queue)
+
     storages = {
-        'splits': InMemorySplitStorageAsync(),
-        'segments': InMemorySegmentStorageAsync(),  # not used, just to avoid possible future errors.
-        'rule_based_segments': InMemoryRuleBasedSegmentStorageAsync(),
+        'splits': InMemorySplitStorageAsync(internal_events_queue),
+        'segments': InMemorySegmentStorageAsync(internal_events_queue),  # not used, just to avoid possible future errors.
+        'rule_based_segments': InMemoryRuleBasedSegmentStorageAsync(internal_events_queue),
         'impressions': LocalhostImpressionsStorageAsync(),
         'events': LocalhostEventsStorageAsync(),
     }
@@ -1201,6 +1262,7 @@ async def _build_localhost_factory_async(cfg):
         feature_flag_sync_task,
         segment_sync_task,
         None, None, None,
+        internal_events_task=internal_events_task
     )
 
     sdk_metadata = util.get_metadata(cfg)
@@ -1220,12 +1282,16 @@ async def _build_localhost_factory_async(cfg):
         storages['impressions'],
         telemetry_evaluation_producer,
         telemetry_runtime_producer
-    )
+    )        
+    internal_events_task.start()
+
     return SplitFactoryAsync(
         'localhost',
         storages,
         False,
         recorder,
+        internal_events_queue,
+        events_manager,
         manager,
         telemetry_producer=telemetry_producer,
         telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
@@ -1239,13 +1305,14 @@ def get_factory(api_key, **kwargs):
     _INSTANTIATED_FACTORIES_LOCK.acquire()
     if _INSTANTIATED_FACTORIES:
         if api_key in _INSTANTIATED_FACTORIES:
-            _LOGGER.warning(
-                "factory instantiation: You already have %d %s with this SDK Key. "
-                "We recommend keeping only one instance of the factory at all times "
-                "(Singleton pattern) and reusing it throughout your application.",
-                _INSTANTIATED_FACTORIES[api_key],
-                'factory' if _INSTANTIATED_FACTORIES[api_key] == 1 else 'factories'
-            )
+            if _INSTANTIATED_FACTORIES[api_key] > 0:
+                _LOGGER.warning(
+                    "factory instantiation: You already have %d %s with this SDK Key. "
+                    "We recommend keeping only one instance of the factory at all times "
+                    "(Singleton pattern) and reusing it throughout your application.",
+                    _INSTANTIATED_FACTORIES[api_key],
+                    'factory' if _INSTANTIATED_FACTORIES[api_key] == 1 else 'factories'
+                )
         else:
             _LOGGER.warning(
                 "factory instantiation: You already have an instance of the Split factory. "

@@ -1,10 +1,12 @@
 """Unit tests for the input_validator module."""
 import pytest
 import logging
+import asyncio
 
 from splitio.client.factory import SplitFactory, get_factory, SplitFactoryAsync, get_factory_async
 from splitio.client.client import CONTROL, Client, _LOGGER as _logger, ClientAsync
 from splitio.client.key import Key
+from splitio.events.events_manager import EventsManagerAsync
 from splitio.storage import SplitStorage, EventStorage, ImpressionStorage, SegmentStorage, RuleBasedSegmentsStorage
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync, \
     InMemorySplitStorage, InMemorySplitStorageAsync, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
@@ -50,6 +52,8 @@ class ClientInputValidationTests(object):
             },
             mocker.Mock(),
             recorder,
+            mocker.Mock(),
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -57,7 +61,7 @@ class ClientInputValidationTests(object):
             mocker.Mock()
         )
 
-        client = Client(factory, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = Client(factory, mocker.Mock(), mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -291,6 +295,8 @@ class ClientInputValidationTests(object):
             },
             mocker.Mock(),
             recorder,
+            mocker.Mock(),
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -298,7 +304,7 @@ class ClientInputValidationTests(object):
             mocker.Mock()
         )
 
-        client = Client(factory, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = Client(factory, mocker.Mock(), mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -566,6 +572,8 @@ class ClientInputValidationTests(object):
             },
             mocker.Mock(),
             recorder,
+            mocker.Mock(),
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -574,7 +582,7 @@ class ClientInputValidationTests(object):
         )
         factory._sdk_key = 'some-test'
 
-        client = Client(factory, recorder, mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         client._event_storage = event_storage
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
@@ -846,6 +854,8 @@ class ClientInputValidationTests(object):
             },
             mocker.Mock(),
             recorder,
+            mocker.Mock(),
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -856,7 +866,7 @@ class ClientInputValidationTests(object):
         ready_mock.return_value = True
         type(factory).ready = ready_mock
 
-        client = Client(factory, recorder, mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -994,6 +1004,8 @@ class ClientInputValidationTests(object):
             },
             mocker.Mock(),
             recorder,
+            mocker.Mock(),
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1006,7 +1018,7 @@ class ClientInputValidationTests(object):
             return '{"some": "property"}' if treatment == 'default_treatment' else None
         split_mock.get_configurations_for.side_effect = _configs
 
-        client = Client(factory, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = Client(factory, mocker.Mock(), mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -1142,6 +1154,8 @@ class ClientInputValidationTests(object):
             },
             mocker.Mock(),
             recorder,
+            mocker.Mock(),
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1152,7 +1166,7 @@ class ClientInputValidationTests(object):
         ready_mock.return_value = True
         type(factory).ready = ready_mock
 
-        client = Client(factory, recorder, mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -1261,6 +1275,8 @@ class ClientInputValidationTests(object):
             },
             mocker.Mock(),
             recorder,
+            mocker.Mock(),
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1271,7 +1287,7 @@ class ClientInputValidationTests(object):
         ready_mock.return_value = True
         type(factory).ready = ready_mock
 
-        client = Client(factory, recorder, mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -1391,6 +1407,8 @@ class ClientInputValidationTests(object):
             },
             mocker.Mock(),
             recorder,
+            mocker.Mock(),
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1401,7 +1419,7 @@ class ClientInputValidationTests(object):
         ready_mock.return_value = True
         type(factory).ready = ready_mock
 
-        client = Client(factory, recorder, mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -1515,6 +1533,8 @@ class ClientInputValidationTests(object):
             },
             mocker.Mock(),
             recorder,
+            mocker.Mock(),
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -1525,7 +1545,7 @@ class ClientInputValidationTests(object):
         ready_mock.return_value = True
         type(factory).ready = ready_mock
 
-        client = Client(factory, recorder, mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = Client(factory, recorder, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -1664,6 +1684,12 @@ class ClientInputValidationAsyncTests(object):
     @pytest.mark.asyncio
     async def test_get_treatment(self, mocker):
         """Test get_treatment validation."""
+        internal_events_queue = asyncio.Queue()
+        events_manager = mocker.Mock(EventsManagerAsync)
+        async def notify_internal_event(sdk_internal_event, event_metadata):
+            pass
+        events_manager.notify_internal_event = notify_internal_event
+
         split_mock = mocker.Mock(spec=Split)
         default_treatment_mock = mocker.PropertyMock()
         default_treatment_mock.return_value = 'default_treatment'
@@ -1702,6 +1728,8 @@ class ClientInputValidationAsyncTests(object):
             },
             mocker.Mock(),
             recorder,
+            internal_events_queue,
+            events_manager,
             impmanager,
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
@@ -1712,7 +1740,7 @@ class ClientInputValidationAsyncTests(object):
         ready_mock.return_value = True
         type(factory).ready = ready_mock
 
-        client = ClientAsync(factory, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = ClientAsync(factory, mocker.Mock(), events_manager, mocker.Mock(), FallbackTreatmentCalculator(None))
 
         async def record_treatment_stats(*_):
             pass
@@ -1923,6 +1951,12 @@ class ClientInputValidationAsyncTests(object):
     @pytest.mark.asyncio
     async def test_get_treatment_with_config(self, mocker):
         """Test get_treatment validation."""
+        internal_events_queue = asyncio.Queue()
+        events_manager = mocker.Mock(EventsManagerAsync)
+        async def notify_internal_event(sdk_internal_event, event_metadata):
+            pass
+        events_manager.notify_internal_event = notify_internal_event
+
         split_mock = mocker.Mock(spec=Split)
         default_treatment_mock = mocker.PropertyMock()
         default_treatment_mock.return_value = 'default_treatment'
@@ -1965,6 +1999,8 @@ class ClientInputValidationAsyncTests(object):
             },
             mocker.Mock(),
             recorder,
+            internal_events_queue,
+            events_manager,
             impmanager,
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
@@ -1975,7 +2011,7 @@ class ClientInputValidationAsyncTests(object):
         ready_mock.return_value = True
         type(factory).ready = ready_mock
 
-        client = ClientAsync(factory, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = ClientAsync(factory, mocker.Mock(), events_manager, mocker.Mock(), FallbackTreatmentCalculator(None))
         async def record_treatment_stats(*_):
             pass
         client._recorder.record_treatment_stats = record_treatment_stats
@@ -2185,6 +2221,12 @@ class ClientInputValidationAsyncTests(object):
     @pytest.mark.asyncio
     async def test_track(self, mocker):
         """Test track method()."""
+        internal_events_queue = asyncio.Queue()
+        events_manager = mocker.Mock(EventsManagerAsync)
+        async def notify_internal_event(sdk_internal_event, event_metadata):
+            pass
+        events_manager.notify_internal_event = notify_internal_event
+
         events_storage_mock = mocker.Mock(spec=EventStorage)
         async def put(*_):
             return True
@@ -2210,6 +2252,8 @@ class ClientInputValidationAsyncTests(object):
             },
             mocker.Mock(),
             recorder,
+            internal_events_queue,
+            events_manager,
             impmanager,
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
@@ -2218,7 +2262,7 @@ class ClientInputValidationAsyncTests(object):
         )
         factory._sdk_key = 'some-test'
 
-        client = ClientAsync(factory, recorder, mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = ClientAsync(factory, recorder, events_manager, mocker.Mock(), FallbackTreatmentCalculator(None))
         client._event_storage = event_storage
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
@@ -2460,6 +2504,12 @@ class ClientInputValidationAsyncTests(object):
     @pytest.mark.asyncio
     async def test_get_treatments(self, mocker):
         """Test getTreatments() method."""
+        internal_events_queue = asyncio.Queue()
+        events_manager = mocker.Mock(EventsManagerAsync)
+        async def notify_internal_event(sdk_internal_event, event_metadata):
+            pass
+        events_manager.notify_internal_event = notify_internal_event
+
         split_mock = mocker.Mock(spec=Split)
         default_treatment_mock = mocker.PropertyMock()
         default_treatment_mock.return_value = 'default_treatment'
@@ -2501,6 +2551,8 @@ class ClientInputValidationAsyncTests(object):
             },
             mocker.Mock(),
             recorder,
+            internal_events_queue,
+            events_manager,
             impmanager,
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
@@ -2511,7 +2563,7 @@ class ClientInputValidationAsyncTests(object):
         ready_mock.return_value = True
         type(factory).ready = ready_mock
 
-        client = ClientAsync(factory, recorder, mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = ClientAsync(factory, recorder, events_manager, mocker.Mock(), FallbackTreatmentCalculator(None))
         async def record_treatment_stats(*_):
             pass
         client._recorder.record_treatment_stats = record_treatment_stats
@@ -2625,6 +2677,12 @@ class ClientInputValidationAsyncTests(object):
     @pytest.mark.asyncio
     async def test_get_treatments_with_config(self, mocker):
         """Test getTreatments() method."""
+        internal_events_queue = asyncio.Queue()
+        events_manager = mocker.Mock(EventsManagerAsync)
+        async def notify_internal_event(sdk_internal_event, event_metadata):
+            pass
+        events_manager.notify_internal_event = notify_internal_event
+
         split_mock = mocker.Mock(spec=Split)
         default_treatment_mock = mocker.PropertyMock()
         default_treatment_mock.return_value = 'default_treatment'
@@ -2666,6 +2724,8 @@ class ClientInputValidationAsyncTests(object):
             },
             mocker.Mock(),
             recorder,
+            internal_events_queue,
+            events_manager,
             impmanager,
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
@@ -2678,7 +2738,7 @@ class ClientInputValidationAsyncTests(object):
             return '{"some": "property"}' if treatment == 'default_treatment' else None
         split_mock.get_configurations_for.side_effect = _configs
 
-        client = ClientAsync(factory, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = ClientAsync(factory, mocker.Mock(), events_manager, mocker.Mock(), FallbackTreatmentCalculator(None))
         async def record_treatment_stats(*_):
             pass
         client._recorder.record_treatment_stats = record_treatment_stats
@@ -2790,6 +2850,12 @@ class ClientInputValidationAsyncTests(object):
 
     @pytest.mark.asyncio
     async def test_get_treatments_by_flag_set(self, mocker):
+        internal_events_queue = asyncio.Queue()
+        events_manager = mocker.Mock(EventsManagerAsync)
+        async def notify_internal_event(sdk_internal_event, event_metadata):
+            pass
+        events_manager.notify_internal_event = notify_internal_event
+
         split_mock = mocker.Mock(spec=Split)
         default_treatment_mock = mocker.PropertyMock()
         default_treatment_mock.return_value = 'default_treatment'
@@ -2834,6 +2900,8 @@ class ClientInputValidationAsyncTests(object):
             },
             mocker.Mock(),
             recorder,
+            internal_events_queue,
+            events_manager,
             mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
@@ -2844,7 +2912,7 @@ class ClientInputValidationAsyncTests(object):
         ready_mock.return_value = True
         type(factory).ready = ready_mock
 
-        client = ClientAsync(factory, recorder, mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = ClientAsync(factory, recorder, events_manager, mocker.Mock(), FallbackTreatmentCalculator(None))
         async def record_treatment_stats(*_):
             pass
         client._recorder.record_treatment_stats = record_treatment_stats
@@ -2936,6 +3004,12 @@ class ClientInputValidationAsyncTests(object):
 
     @pytest.mark.asyncio
     async def test_get_treatments_by_flag_sets(self, mocker):
+        internal_events_queue = asyncio.Queue()
+        events_manager = mocker.Mock(EventsManagerAsync)
+        async def notify_internal_event(sdk_internal_event, event_metadata):
+            pass
+        events_manager.notify_internal_event = notify_internal_event
+
         split_mock = mocker.Mock(spec=Split)
         default_treatment_mock = mocker.PropertyMock()
         default_treatment_mock.return_value = 'default_treatment'
@@ -2981,6 +3055,8 @@ class ClientInputValidationAsyncTests(object):
             },
             mocker.Mock(),
             recorder,
+            internal_events_queue,
+            events_manager,
             mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
@@ -2991,7 +3067,7 @@ class ClientInputValidationAsyncTests(object):
         ready_mock.return_value = True
         type(factory).ready = ready_mock
 
-        client = ClientAsync(factory, recorder, mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = ClientAsync(factory, recorder, events_manager, mocker.Mock(), FallbackTreatmentCalculator(None))
         async def record_treatment_stats(*_):
             pass
         client._recorder.record_treatment_stats = record_treatment_stats
@@ -3089,6 +3165,12 @@ class ClientInputValidationAsyncTests(object):
 
     @pytest.mark.asyncio
     async def test_get_treatments_with_config_by_flag_set(self, mocker):
+        internal_events_queue = asyncio.Queue()
+        events_manager = mocker.Mock(EventsManagerAsync)
+        async def notify_internal_event(sdk_internal_event, event_metadata):
+            pass
+        events_manager.notify_internal_event = notify_internal_event
+
         split_mock = mocker.Mock(spec=Split)
         def _configs(treatment):
             return '{"some": "property"}' if treatment == 'default_treatment' else None
@@ -3137,6 +3219,8 @@ class ClientInputValidationAsyncTests(object):
             },
             mocker.Mock(),
             recorder,
+            internal_events_queue,
+            events_manager,
             mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
@@ -3147,7 +3231,7 @@ class ClientInputValidationAsyncTests(object):
         ready_mock.return_value = True
         type(factory).ready = ready_mock
 
-        client = ClientAsync(factory, recorder, mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = ClientAsync(factory, recorder, events_manager, mocker.Mock(), FallbackTreatmentCalculator(None))
         async def record_treatment_stats(*_):
             pass
         client._recorder.record_treatment_stats = record_treatment_stats
@@ -3239,6 +3323,12 @@ class ClientInputValidationAsyncTests(object):
 
     @pytest.mark.asyncio
     async def test_get_treatments_with_config_by_flag_sets(self, mocker):
+        internal_events_queue = asyncio.Queue()
+        events_manager = mocker.Mock(EventsManagerAsync)
+        async def notify_internal_event(sdk_internal_event, event_metadata):
+            pass
+        events_manager.notify_internal_event = notify_internal_event
+
         split_mock = mocker.Mock(spec=Split)
         def _configs(treatment):
             return '{"some": "property"}' if treatment == 'default_treatment' else None
@@ -3287,6 +3377,9 @@ class ClientInputValidationAsyncTests(object):
             },
             mocker.Mock(),
             recorder,
+            internal_events_queue,
+            events_manager,
+            mocker.Mock(),
             mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),
@@ -3297,7 +3390,7 @@ class ClientInputValidationAsyncTests(object):
         ready_mock.return_value = True
         type(factory).ready = ready_mock
 
-        client = ClientAsync(factory, recorder, mocker.Mock(), FallbackTreatmentCalculator(None))
+        client = ClientAsync(factory, recorder, events_manager, mocker.Mock(), FallbackTreatmentCalculator(None))
         async def record_treatment_stats(*_):
             pass
         client._recorder.record_treatment_stats = record_treatment_stats
@@ -3445,6 +3538,8 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
             },
             mocker.Mock(),
             recorder,
+            mocker.Mock(),
+            mocker.Mock(),
             impmanager,
             mocker.Mock(),
             telemetry_producer,
@@ -3501,6 +3596,12 @@ class ManagerInputValidationAsyncTests(object):  #pylint: disable=too-few-public
     @pytest.mark.asyncio
     async def test_split_(self, mocker):
         """Test split input validation."""
+        internal_events_queue = asyncio.Queue()
+        events_manager = mocker.Mock(EventsManagerAsync)
+        async def notify_internal_event(sdk_internal_event, event_metadata):
+            pass
+        events_manager.notify_internal_event = notify_internal_event
+
         storage_mock = mocker.Mock(spec=SplitStorage)
         split_mock = mocker.Mock(spec=Split)
         async def get(*_):
@@ -3522,6 +3623,8 @@ class ManagerInputValidationAsyncTests(object):  #pylint: disable=too-few-public
             },
             mocker.Mock(),
             recorder,
+            internal_events_queue,
+            events_manager,
             mocker.Mock(),
             telemetry_producer,
             telemetry_producer.get_telemetry_init_producer(),

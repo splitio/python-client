@@ -92,7 +92,7 @@ class AsyncTaskTests(object):
         task.stop(on_stop_event)
         on_stop_event.wait(1)
 
-        assert on_stop_event.isSet()
+        assert on_stop_event.is_set()
         assert on_init.mock_calls == [mocker.call()]
         assert on_stop.mock_calls == [mocker.call()]
         assert 9 <= len(main_func.mock_calls) <= 10
@@ -113,7 +113,7 @@ class AsyncTaskTests(object):
         task.stop(on_stop_event)
         on_stop_event.wait(1)
 
-        assert on_stop_event.isSet()
+        assert on_stop_event.is_set()
         assert on_init.mock_calls == [mocker.call()]
         assert on_stop.mock_calls == [mocker.call()]
         assert len(main_func.mock_calls) == 2
