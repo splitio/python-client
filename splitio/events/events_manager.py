@@ -25,15 +25,19 @@ class EventsManagerBase(EventsManagerInterface):
         self._manager_config = events_configurations
         
     def register(self, sdk_event, event_handler):
+        # Implement in child class
         pass
     
     def unregister(self, sdk_event):
+        # Implement in child class
         pass
     
     def notify_internal_event(self, sdk_internal_event, event_metadata):
+        # Implement in child class
         pass
     
     def destroy(self):
+        # Implement in child class
         pass
 
     def _event_already_triggered(self, sdk_event):
@@ -241,7 +245,7 @@ class EventsManagerAsync(EventsManagerBase):
             self._active_subscriptions = {}
             self._internal_events_status = {}
 
-    async def _fire_sdk_event(self, sdk_event, event_metadata):
+    def _fire_sdk_event(self, sdk_event, event_metadata):
         _LOGGER.debug("EventsManager: Firing Sdk event %s", sdk_event)
         asyncio.get_running_loop().create_task(self._events_delivery.deliver_async(sdk_event, event_metadata, self._get_event_handler(sdk_event)))
         self._set_sdk_event_triggered(sdk_event)
