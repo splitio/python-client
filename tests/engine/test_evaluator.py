@@ -4,6 +4,8 @@ import logging
 import os
 import pytest
 import copy
+import queue
+import asyncio
 
 from splitio.models.splits import Split, Status, from_raw, Prerequisites
 from splitio.models import segments
@@ -261,9 +263,10 @@ class EvaluatorTests(object):
                 
     def test_evaluate_treatment_with_rbs_in_condition(self):
         e = evaluator.Evaluator(splitters.Splitter())
-        splits_storage = InMemorySplitStorage()
-        rbs_storage = InMemoryRuleBasedSegmentStorage()
-        segment_storage = InMemorySegmentStorage()
+        events_queue = queue.Queue()
+        splits_storage = InMemorySplitStorage(events_queue)
+        rbs_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        segment_storage = InMemorySegmentStorage(events_queue)
         evaluation_facctory = EvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
         
         rbs_segments = os.path.join(os.path.dirname(__file__), 'files', 'rule_base_segments.json')
@@ -287,9 +290,10 @@ class EvaluatorTests(object):
         with open(rbs_segments, 'r') as flo:
             data = json.loads(flo.read())
         e = evaluator.Evaluator(splitters.Splitter())
-        splits_storage = InMemorySplitStorage()
-        rbs_storage = InMemoryRuleBasedSegmentStorage()
-        segment_storage = InMemorySegmentStorage()
+        events_queue = queue.Queue()
+        splits_storage = InMemorySplitStorage(events_queue)
+        rbs_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        segment_storage = InMemorySegmentStorage(events_queue)
         evaluation_facctory = EvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
                     
         mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False, [])
@@ -311,9 +315,10 @@ class EvaluatorTests(object):
         with open(rbs_segments, 'r') as flo:
             data = json.loads(flo.read())
         e = evaluator.Evaluator(splitters.Splitter())
-        splits_storage = InMemorySplitStorage()
-        rbs_storage = InMemoryRuleBasedSegmentStorage()
-        segment_storage = InMemorySegmentStorage()
+        events_queue = queue.Queue()
+        splits_storage = InMemorySplitStorage(events_queue)
+        rbs_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        segment_storage = InMemorySegmentStorage(events_queue)
         evaluation_facctory = EvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
                     
         mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False, [])
@@ -334,9 +339,10 @@ class EvaluatorTests(object):
         with open(splits_load, 'r') as flo:
             data = json.loads(flo.read())
         e = evaluator.Evaluator(splitters.Splitter())
-        splits_storage = InMemorySplitStorage()
-        rbs_storage = InMemoryRuleBasedSegmentStorage()
-        segment_storage = InMemorySegmentStorage()
+        events_queue = queue.Queue()
+        splits_storage = InMemorySplitStorage(events_queue)
+        rbs_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        segment_storage = InMemorySegmentStorage(events_queue)
         evaluation_facctory = EvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
                     
         rbs = rule_based_segments.from_raw(data["rbs"]["d"][0])
@@ -420,9 +426,11 @@ class EvaluatorTests(object):
     @pytest.mark.asyncio
     async def test_evaluate_treatment_with_rbs_in_condition_async(self):
         e = evaluator.Evaluator(splitters.Splitter())
-        splits_storage = InMemorySplitStorageAsync()
-        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
-        segment_storage = InMemorySegmentStorageAsync()
+        internal_events_queue = asyncio.Queue()
+
+        splits_storage = InMemorySplitStorageAsync(internal_events_queue)
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
         evaluation_facctory = AsyncEvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
         
         rbs_segments = os.path.join(os.path.dirname(__file__), 'files', 'rule_base_segments.json')
@@ -446,9 +454,10 @@ class EvaluatorTests(object):
         with open(rbs_segments, 'r') as flo:
             data = json.loads(flo.read())
         e = evaluator.Evaluator(splitters.Splitter())
-        splits_storage = InMemorySplitStorageAsync()
-        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
-        segment_storage = InMemorySegmentStorageAsync()
+        internal_events_queue = asyncio.Queue()
+        splits_storage = InMemorySplitStorageAsync(internal_events_queue)
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
         evaluation_facctory = AsyncEvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
                     
         mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False)
@@ -471,9 +480,10 @@ class EvaluatorTests(object):
         with open(rbs_segments, 'r') as flo:
             data = json.loads(flo.read())
         e = evaluator.Evaluator(splitters.Splitter())
-        splits_storage = InMemorySplitStorageAsync()
-        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
-        segment_storage = InMemorySegmentStorageAsync()
+        internal_events_queue = asyncio.Queue()
+        splits_storage = InMemorySplitStorageAsync(internal_events_queue)
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
         evaluation_facctory = AsyncEvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
                     
         mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False)
@@ -495,9 +505,10 @@ class EvaluatorTests(object):
         with open(splits_load, 'r') as flo:
             data = json.loads(flo.read())
         e = evaluator.Evaluator(splitters.Splitter())
-        splits_storage = InMemorySplitStorageAsync()
-        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
-        segment_storage = InMemorySegmentStorageAsync()
+        internal_events_queue = asyncio.Queue()
+        splits_storage = InMemorySplitStorageAsync(internal_events_queue)
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
         evaluation_facctory = AsyncEvaluationDataFactory(splits_storage, segment_storage, rbs_storage)
                     
         rbs = rule_based_segments.from_raw(data["rbs"]["d"][0])
@@ -542,9 +553,10 @@ class EvaluationDataFactoryTests(object):
         """Test context."""
         mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False, [Prerequisites('split2', ['on'])])
         split2 = Split('split2', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False, [])
-        flag_storage = InMemorySplitStorage([])
-        segment_storage = InMemorySegmentStorage()
-        rbs_segment_storage = InMemoryRuleBasedSegmentStorage()
+        events_queue = queue.Queue()
+        flag_storage = InMemorySplitStorage(events_queue, [])
+        segment_storage = InMemorySegmentStorage(events_queue)
+        rbs_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
         flag_storage.update([mocked_split, split2], [], -1)
         rbs = copy.deepcopy(rbs_raw)
         rbs['conditions'].append(
@@ -584,9 +596,10 @@ class EvaluationDataFactoryAsyncTests(object):
         """Test context."""
         mocked_split = Split('some', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False, [Prerequisites('split2', ['on'])])
         split2 = Split('split2', 12345, False, 'off', 'user', Status.ACTIVE, 12, split_conditions, 1.2, 100, 1234, {}, None, False, [])
-        flag_storage = InMemorySplitStorageAsync([])
-        segment_storage = InMemorySegmentStorageAsync()
-        rbs_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
+        internal_events_queue = asyncio.Queue()
+        flag_storage = InMemorySplitStorageAsync(internal_events_queue, [])
+        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
+        rbs_segment_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
         await flag_storage.update([mocked_split, split2], [], -1)
         rbs = copy.deepcopy(rbs_raw)
         rbs['conditions'].append(

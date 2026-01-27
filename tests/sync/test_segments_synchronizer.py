@@ -504,7 +504,8 @@ class LocalSegmentsSynchronizerTests(object):
         """Test the normal operation flow."""
         split_storage = mocker.Mock(spec=InMemorySplitStorage)
         split_storage.get_segment_names.return_value = ['segmentA', 'segmentB', 'segmentC']
-        storage = InMemorySegmentStorage()
+        events_queue = queue.Queue()
+        storage = InMemorySegmentStorage(events_queue)
 
         segment_a = {'name': 'segmentA', 'added': ['key1', 'key2', 'key3'], 'removed': [],
                         'since': -1, 'till': 123}
@@ -585,7 +586,8 @@ class LocalSegmentsSynchronizerTests(object):
         f.write('{"name": "segmentA", "added": ["key1", "key2", "key3"], "removed": [],"since": -1, "till": 123}')
         f.close()
         split_storage = mocker.Mock(spec=InMemorySplitStorage)
-        storage = InMemorySegmentStorage()
+        events_queue = queue.Queue()
+        storage = InMemorySegmentStorage(events_queue)
         segments_synchronizer = LocalSegmentSynchronizer('.', split_storage, storage)
         assert segments_synchronizer.synchronize_segments(['segmentA'])
 
@@ -684,7 +686,7 @@ class LocalSegmentsSynchronizerTests(object):
             return ['segmentA', 'segmentB', 'segmentC']
         split_storage.get_segment_names = get_segment_names
 
-        storage = InMemorySegmentStorageAsync()
+        storage = InMemorySegmentStorageAsync(asyncio.Queue())
 
         segment_a = {'name': 'segmentA', 'added': ['key1', 'key2', 'key3'], 'removed': [],
                         'since': -1, 'till': 123}
@@ -765,7 +767,7 @@ class LocalSegmentsSynchronizerTests(object):
         async with aiofiles.open("./segmentA.json", "w") as f:
             await f.write('{"name": "segmentA", "added": ["key1", "key2", "key3"], "removed": [],"since": -1, "till": 123}')
         split_storage = mocker.Mock(spec=InMemorySplitStorageAsync)
-        storage = InMemorySegmentStorageAsync()
+        storage = InMemorySegmentStorageAsync(asyncio.Queue())
         segments_synchronizer = LocalSegmentSynchronizerAsync('.', split_storage, storage)
         assert await segments_synchronizer.synchronize_segments(['segmentA'])
 

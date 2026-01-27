@@ -1,6 +1,8 @@
 """Telemetry Worker tests."""
 import unittest.mock as mock
 import pytest
+import queue
+import asyncio
 
 from splitio.sync.telemetry import TelemetrySynchronizer, TelemetrySynchronizerAsync, InMemoryTelemetrySubmitter, InMemoryTelemetrySubmitterAsync
 from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageConsumerAsync
@@ -57,9 +59,10 @@ class TelemetrySubmitterTests(object):
         api = mocker.Mock(spec=TelemetryAPI)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
-        split_storage = InMemorySplitStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
         split_storage.update([Split('split1', 1234, 1, False, 'user', Status.ACTIVE, 123)], [], -1)
-        segment_storage = InMemorySegmentStorage()
+        segment_storage = InMemorySegmentStorage(events_queue)
         segment_storage.put(Segment('segment1', [], 123))
         telemetry_submitter = InMemoryTelemetrySubmitter(telemetry_consumer, split_storage, segment_storage, api)
 
@@ -182,9 +185,9 @@ class TelemetrySubmitterAsyncTests(object):
         api = mocker.Mock(spec=TelemetryAPI)
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_consumer = TelemetryStorageConsumerAsync(telemetry_storage)
-        split_storage = InMemorySplitStorageAsync()
+        split_storage = InMemorySplitStorageAsync(asyncio.Queue())
         await split_storage.update([Split('split1', 1234, 1, False, 'user', Status.ACTIVE, 123)], [], -1)
-        segment_storage = InMemorySegmentStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync(asyncio.Queue())
         await segment_storage.put(Segment('segment1', [], 123))
         telemetry_submitter = InMemoryTelemetrySubmitterAsync(telemetry_consumer, split_storage, segment_storage, api)
 

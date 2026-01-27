@@ -4,12 +4,13 @@ import json
 from collections import namedtuple
 import copy
 
+from splitio.client import input_validator
 from splitio.engine.evaluator import Evaluator, CONTROL, EvaluationDataFactory, AsyncEvaluationDataFactory
 from splitio.engine.splitters import Splitter
 from splitio.models.impressions import Impression, Label, ImpressionDecorated
-from splitio.models.events import Event, EventWrapper
+from splitio.models.events import Event, EventWrapper, SdkEvent
 from splitio.models.telemetry import get_latency_bucket_index, MethodExceptionsAndLatencies
-from splitio.client import input_validator
+from splitio.optional.loaders import asyncio
 from splitio.util.time import get_current_epoch_time_ms, utctime_ms
 
 
@@ -40,7 +41,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         'impressions_disabled': False
     }
 
-    def __init__(self, factory, recorder, labels_enabled=True, fallback_treatment_calculator=None):
+    def __init__(self, factory, recorder, events_manager, labels_enabled=True, fallback_treatment_calculator=None):
         """
         Construct a Client instance.
 
@@ -66,6 +67,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         self._telemetry_evaluation_producer = self._factory._telemetry_evaluation_producer
         self._telemetry_init_producer = self._factory._telemetry_init_producer
         self._fallback_treatment_calculator = fallback_treatment_calculator
+        self._events_manager = events_manager
 
     @property
     def ready(self):
@@ -221,10 +223,27 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
     def _check_impression_label(self, result):
         return result['impression']['label'] == None or (result['impression']['label'] != None and result['impression']['label'].find(Label.SPLIT_NOT_FOUND) == -1)
     
+    def _validate_sdk_event_info(self, sdk_event, callback_handle):
+        if not self._check_sdk_event(sdk_event):
+            return False
+        
+        if not hasattr(callback_handle, '__call__'):
+            _LOGGER.warning("Client Event Subscription: The callback handle passed must be of type function, ignoring event subscribing action.")
+            return False
+        
+        return True
+
+    def _check_sdk_event(self, sdk_event):
+        if not isinstance(sdk_event, SdkEvent):
+            _LOGGER.warning("Client Event Subscription: The event passed must be of type SdkEvent, ignoring event subscribing action.")
+            return False
+        
+        return True
+
 class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
     """Entry point for the split sdk."""
 
-    def __init__(self, factory, recorder, labels_enabled=True, fallback_treatment_calculator=None):
+    def __init__(self, factory, recorder, events_manager, labels_enabled=True, fallback_treatment_calculator=None):
         """
         Construct a Client instance.
 
@@ -239,7 +258,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
 
         :rtype: Client
         """
-        ClientBase.__init__(self, factory, recorder, labels_enabled, fallback_treatment_calculator)
+        ClientBase.__init__(self, factory, recorder, events_manager, labels_enabled, fallback_treatment_calculator)
         self._context_factory = EvaluationDataFactory(factory._get_storage('splits'), factory._get_storage('segments'), factory._get_storage('rule_based_segments'))
 
     def destroy(self):
@@ -249,7 +268,13 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         Only applicable when using in-memory operation mode.
         """
         self._factory.destroy()
-
+        
+    def on(self, sdk_event, callback_handle):
+        if not self._validate_sdk_event_info(sdk_event, callback_handle):
+            return
+        
+        self._events_manager.register(sdk_event, callback_handle)
+        
     def get_treatment(self, key, feature_flag_name, attributes=None, evaluation_options=None):
         """
         Get the treatment for a feature flag and key, with an optional dictionary of attributes.
@@ -725,7 +750,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
 class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
     """Entry point for the split sdk."""
 
-    def __init__(self, factory, recorder, labels_enabled=True, fallback_treatment_calculator=None):
+    def __init__(self, factory, recorder, events_manager, labels_enabled=True, fallback_treatment_calculator=None):
         """
         Construct a Client instance.
 
@@ -740,7 +765,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
 
         :rtype: Client
         """
-        ClientBase.__init__(self, factory, recorder, labels_enabled, fallback_treatment_calculator)
+        ClientBase.__init__(self, factory, recorder, events_manager, labels_enabled, fallback_treatment_calculator)
         self._context_factory = AsyncEvaluationDataFactory(factory._get_storage('splits'), factory._get_storage('segments'), factory._get_storage('rule_based_segments'))
 
     async def destroy(self):
@@ -750,6 +775,12 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         Only applicable when using in-memory operation mode.
         """
         await self._factory.destroy()
+
+    async def on(self, sdk_event, callback_handle):
+        if not self._validate_sdk_event_info(sdk_event, callback_handle):
+            return
+        
+        await self._events_manager.register(sdk_event, callback_handle)
 
     async def get_treatment(self, key, feature_flag_name, attributes=None, evaluation_options=None):
         """

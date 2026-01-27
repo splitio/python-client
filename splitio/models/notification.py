@@ -170,6 +170,29 @@ class SplitKillNotification(object):  # pylint: disable=too-many-instance-attrib
     def split_name(self):
         return self._split_name
 
+class SdkInternalEventNotification(object):  # pylint: disable=too-many-instance-attributes
+    """SdkInternalEventNotification model object."""
+
+    def __init__(self, internal_event, metadata):
+        """
+        Class constructor.
+
+        :param internal_event: internal event object
+        :type channel: SdkInternalEvent
+        :param metadata: metadata associated with event
+        :type change_number: EventsMetadata
+
+        """
+        self._internal_event = internal_event
+        self._metadata = metadata
+
+    @property
+    def internal_event(self):
+        return self._internal_event
+
+    @property
+    def metadata(self):
+        return self._metadata
 
 _NOTIFICATION_MAPPERS = {
     Type.SPLIT_UPDATE: lambda c, d: SplitChangeNotification(c, Type.SPLIT_UPDATE, d['changeNumber']),
