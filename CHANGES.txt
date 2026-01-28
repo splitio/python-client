@@ -3,7 +3,6 @@
 - Added the ability to listen to different events triggered by the SDK
    - SDK_UPDATE notify when a flag or user segment has changed
    - SDK_READY notify when the SDK is ready to evaluate
-   - SDK_READY_TIMED_OUT notify when block_until_ready() call is timed-out
 
 10.5.1 (Oct 15, 2025)
 - Added using String only parameter for treatments in FallbackTreatmentConfiguration class.
