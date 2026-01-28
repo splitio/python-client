@@ -2430,25 +2430,6 @@ class InMemoryEventsNotificationTests(object):
 
     ready_flag = False
     timeout_flag = False
-
-    def test_sdk_timeout_fire(self):
-        """Prepare storages with test data."""
-        factory2 = get_factory('some_api_key')        
-        client = factory2.client()
-        client.on(SdkEvent.SDK_READY_TIMED_OUT, self._timeout_callback)
-        try:
-            factory2.block_until_ready(1)
-        except Exception as e:
-            print(e)
-            pass
-        
-        time.sleep(1)
-        assert self.timeout_flag
-
-        """Shut down the factory."""
-        event = threading.Event()
-        factory2.destroy(event)
-        event.wait()
     
     def test_sdk_ready(self):
         """Prepare storages with test data."""
@@ -2605,23 +2586,6 @@ class InMemoryEventsNotificationAsyncTests(object):
 
     ready_flag = False
     timeout_flag = False
-
-    @pytest.mark.asyncio
-    async def test_sdk_timeout_fire(self):
-        """Prepare storages with test data."""
-        factory2 = await get_factory_async('some_api_key')
-        client = factory2.client()
-        await client.on(SdkEvent.SDK_READY_TIMED_OUT, self._timeout_callback)
-        try:
-            await factory2.block_until_ready(1)
-        except Exception as e:
-            pass
-        
-        await asyncio.sleep(1)
-        assert self.timeout_flag
-
-        """Shut down the factory."""
-        await factory2.destroy()
     
     @pytest.mark.asyncio
     async def test_sdk_ready(self):

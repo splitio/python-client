@@ -15,12 +15,8 @@ class EventsManagerConfigTests(object):
 
         assert SdkEvent.SDK_READY in config.prerequisites[SdkEvent.SDK_UPDATE]
                                                           
-        assert config.execution_limits[SdkEvent.SDK_READY_TIMED_OUT] == -1
         assert config.execution_limits[SdkEvent.SDK_UPDATE] == -1
         assert config.execution_limits[SdkEvent.SDK_READY] == 1
-
-        assert len(config.require_any[SdkEvent.SDK_READY_TIMED_OUT]) == 1
-        assert SdkInternalEvent.SDK_TIMED_OUT in config.require_any[SdkEvent.SDK_READY_TIMED_OUT]
 
         assert len(config.require_any[SdkEvent.SDK_UPDATE]) == 4
         assert SdkInternalEvent.FLAG_KILLED_NOTIFICATION in config.require_any[SdkEvent.SDK_UPDATE]
@@ -28,16 +24,11 @@ class EventsManagerConfigTests(object):
         assert SdkInternalEvent.RB_SEGMENTS_UPDATED in config.require_any[SdkEvent.SDK_UPDATE]
         assert SdkInternalEvent.SEGMENTS_UPDATED in config.require_any[SdkEvent.SDK_UPDATE]
 
-        assert len(config.suppressed_by[SdkEvent.SDK_READY_TIMED_OUT]) == 1
-        assert SdkEvent.SDK_READY in config.suppressed_by[SdkEvent.SDK_READY_TIMED_OUT]
-
         order = 0
-        assert len(config.evaluation_order) == 3
+        assert len(config.evaluation_order) == 2
         for sdk_event in config.evaluation_order:
             order += 1            
             if order == 1:
-                assert sdk_event == SdkEvent.SDK_READY_TIMED_OUT
-            if order == 2:
                 assert sdk_event == SdkEvent.SDK_READY
-            if order == 3:
+            if order == 2:
                 assert sdk_event == SdkEvent.SDK_UPDATE
