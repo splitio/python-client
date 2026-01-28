@@ -284,7 +284,6 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
 
             if not ready:
                 self._telemetry_init_producer.record_bur_time_out()
-                self._internal_events_queue.put(SdkInternalEventNotification(SdkInternalEvent.SDK_TIMED_OUT, None))
                 raise TimeoutException('SDK Initialization: time of %d exceeded' % timeout)
 
     def destroy(self, destroyed_event=None):
@@ -439,7 +438,6 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
             _LOGGER.error("Exception initializing SDK")
             _LOGGER.debug(str(e))
             await self._telemetry_init_producer.record_bur_time_out()
-            await self._internal_events_queue.put(SdkInternalEventNotification(SdkInternalEvent.SDK_TIMED_OUT, None))
             raise TimeoutException('SDK Initialization: time of %d exceeded' % timeout)
 
     async def destroy(self, destroyed_event=None):
