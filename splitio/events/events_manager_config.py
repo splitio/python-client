@@ -61,28 +61,25 @@ class EventsManagerConfig(object):
         """Return require_any dict"""
         return  {
                     SdkEvent.SDK_UPDATE: {SdkInternalEvent.FLAG_KILLED_NOTIFICATION, SdkInternalEvent.FLAGS_UPDATED, 
-                                             SdkInternalEvent.RB_SEGMENTS_UPDATED, SdkInternalEvent.SEGMENTS_UPDATED},
-                    SdkEvent.SDK_READY_TIMED_OUT: {SdkInternalEvent.SDK_TIMED_OUT}
+                                             SdkInternalEvent.RB_SEGMENTS_UPDATED, SdkInternalEvent.SEGMENTS_UPDATED}
                 }
 
     def _get_suppressed_by(self):
         """Return suppressed_by dict"""
         return  {
-                    SdkEvent.SDK_READY_TIMED_OUT: {SdkEvent.SDK_READY}
                 }
 
     def _get_execution_limits(self):
         """Return execution_limits dict"""
         return  {
                     SdkEvent.SDK_READY: 1,
-                    SdkEvent.SDK_READY_TIMED_OUT: -1,
                     SdkEvent.SDK_UPDATE: -1
                 }
 
     def _get_sorted_events(self):
         """Return dorted events set"""
         sorted_events = []
-        for sdk_event in [SdkEvent.SDK_READY, SdkEvent.SDK_READY_TIMED_OUT, SdkEvent.SDK_UPDATE]:
+        for sdk_event in [SdkEvent.SDK_READY, SdkEvent.SDK_UPDATE]:
             sorted_events = self._dfs_recursive(sdk_event, sorted_events)
 
         return sorted_events

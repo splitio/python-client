@@ -24,14 +24,12 @@ class SdkEvent(Enum):
     """Public SDK events"""
 
     SDK_READY = 'SDK_READY'
-    SDK_READY_TIMED_OUT = 'SDK_READY_TIMED_OUT'
     SDK_UPDATE = 'SDK_UPDATE'
 
 class SdkInternalEvent(Enum):
     """Internal SDK events"""
 
     SDK_READY = 'SDK_READY'
-    SDK_TIMED_OUT = 'SDK_TIMED_OUT'
     FLAGS_UPDATED = 'FLAGS_UPDATED'
     FLAG_KILLED_NOTIFICATION = 'FLAG_KILLED_NOTIFICATION'
     SEGMENTS_UPDATED = 'SEGMENTS_UPDATED'
