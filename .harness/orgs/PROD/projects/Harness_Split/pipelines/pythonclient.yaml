@@ -103,7 +103,7 @@ pipeline:
                     shell: Python
                     command: |
                       # Run pytest with JUnit XML report output
-                      python setup.py test 
+                      python /harness/setup.py test 
                     envVariables:
                       PYTHONPATH: ${PYTHONPATH}:.
                       PYTEST_ADDOPTS: "--verbose"
