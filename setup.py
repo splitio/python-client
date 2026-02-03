@@ -15,7 +15,7 @@ TESTS_REQUIRES = [
     'iniconfig==1.1.1',
     'attrs==22.1.0',
     'pytest-asyncio==0.21.0',
-    'aiohttp>=3.8.4',
+    'aiohttp<=3.8.6',
     'aiofiles>=23.1.0',
     'requests-kerberos>=0.15.0',
     'urllib3==2.0.7'
