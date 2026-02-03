@@ -107,7 +107,6 @@ pipeline:
                     envVariables:
                       PYTHONPATH: ${PYTHONPATH}:.
                       PYTEST_ADDOPTS: "--verbose"
-                    intelligenceMode: true
               - step:
                   type: Run
                   name: Extract Version
