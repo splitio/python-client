@@ -87,13 +87,9 @@ pipeline:
                       # Upgrade pip
                       pip install --upgrade pip
 
-                      # Install dependencies
-                      pip install -r requirements.txt
+                      pip install -U setuptools pip wheel
+                      pip install -e .[cpphash,redis,uwsgi]
 
-                      # Install dev/test dependencies if they exist
-                      if grep -q "\[dev\]" requirements.txt; then
-                        pip install -r requirements.txt[dev,test]
-                      fi
                       echo "Python dependencies installed successfully"
                   timeout: 10m
               - step:
