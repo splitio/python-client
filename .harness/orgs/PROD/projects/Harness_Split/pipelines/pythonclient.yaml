@@ -61,7 +61,8 @@ pipeline:
                     shell: Sh
                     command: |-
                       apk update
-                      apk add --no-cache krb5-dev musl-dev libffi-dev build-base redis
+                      apk add --no-cache krb5-dev musl-dev libffi-dev build-base
+                      apk add --no-cache redis
                       redis-server /etc/redis.conf
 
                       # Run pytest with JUnit XML report output
