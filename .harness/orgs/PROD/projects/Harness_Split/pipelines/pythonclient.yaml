@@ -96,6 +96,7 @@ pipeline:
                       pip install aiohttp==3.8.4
                       pip install cryptography==45.0.7
                       pip install pycparser==2.21
+                      pip install redis==5.0.8
                       python setup.py test 
                     envVariables:
                       PYTHONPATH: ${PYTHONPATH}:.
