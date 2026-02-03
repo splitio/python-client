@@ -80,7 +80,7 @@ pipeline:
                     envVariables:
                       PYTHONPATH: ${PYTHONPATH}:.
                       PYTEST_ADDOPTS: "--verbose"
-                    intelligenceMode: true
+                    timeout: 40m
               - step:
                   type: Run
                   name: Extract Version
