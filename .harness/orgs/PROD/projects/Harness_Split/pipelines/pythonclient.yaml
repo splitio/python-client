@@ -73,8 +73,7 @@ pipeline:
                       pip install pycparser==2.21
 
                       apk add redis 
-                      rc-update add redis default
-                      rc-service redis start
+                      redis-server /etc/redis.conf &
 
                       pip install redis==5.0.8
                       python setup.py test 
