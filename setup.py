@@ -23,7 +23,7 @@ TESTS_REQUIRES = [
 
 INSTALL_REQUIRES = [
     'requests',
-    'pyyaml',
+    'pyyaml<=6.0.1',
     'docopt>=0.6.2',
     'enum34;python_version<"3.4"',
     'bloom-filter2>=2.0.0'
