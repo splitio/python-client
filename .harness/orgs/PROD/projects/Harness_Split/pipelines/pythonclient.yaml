@@ -77,22 +77,6 @@ pipeline:
                       gcc -v
                   timeout: 10m
               - step:
-                  type: Run
-                  name: Install Python Dependencies
-                  identifier: install_python_dependencies
-                  spec:
-                    connectorRef: account.harnessImage
-                    image: python:3.7.16-alpine
-                    shell: Sh
-                    command: |-
-                      # Upgrade pip
-                      pip install --upgrade pip
-
-                      pip install -U setuptools pip wheel
-
-                      echo "Python dependencies installed successfully"
-                  timeout: 10m
-              - step:
                   type: Test
                   name: Run Python Tests
                   identifier: run_tests
@@ -106,7 +90,9 @@ pipeline:
 
                       # Run pytest with JUnit XML report output
                       cd /harness
-                      pip install Cython
+                      pip install --upgrade pip
+                      pip install -U setuptools pip wheel
+                      pip install Cython==3.0.12
                       pip install aiohttp==3.8.4
                       pip install cryptography==45.0.7
                       pip install pycparser==2.21
