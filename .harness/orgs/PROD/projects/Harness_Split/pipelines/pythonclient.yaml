@@ -51,10 +51,10 @@ pipeline:
                       - name: PYTHON_VERSION
                   timeout: 2m
               - step:
+                  timeout: 30m
                   type: Test
                   name: Run Python Tests
                   identifier: run_tests
-                  timeout: 10m
                   spec:
                     connectorRef: account.harnessImage
                     image: python:3.7.16-alpine
@@ -80,7 +80,6 @@ pipeline:
                     envVariables:
                       PYTHONPATH: ${PYTHONPATH}:.
                       PYTEST_ADDOPTS: "--verbose"
-                    timeout: 40m
               - step:
                   type: Run
                   name: Extract Version
