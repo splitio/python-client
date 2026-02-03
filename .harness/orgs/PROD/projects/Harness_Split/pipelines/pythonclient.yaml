@@ -62,8 +62,6 @@ pipeline:
                     command: |-
                       apk update
                       apk add --no-cache krb5-dev musl-dev libffi-dev build-base
-                      apk add --no-cache redis
-                      redis-server /etc/redis.conf
 
                       # Run pytest with JUnit XML report output
                       cd /harness
@@ -73,6 +71,10 @@ pipeline:
                       pip install aiohttp==3.8.4
                       pip install cryptography==45.0.7
                       pip install pycparser==2.21
+
+                      apk --update add redis 
+                      redis-server /etc/redis.conf
+
                       pip install redis==5.0.8
                       python setup.py test 
                     envVariables:
