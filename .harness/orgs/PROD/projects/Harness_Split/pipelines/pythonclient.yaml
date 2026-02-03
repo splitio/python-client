@@ -48,8 +48,8 @@ pipeline:
                   spec:
                     connectorRef: account.harnessImage
                     image: alpine
-                    shell: Bash
-                    command: |
+                    shell: Sh
+                    command: |-
                       # Install Python 3.7.16
                       echo "Installing Python 3.7.16..."
                       apt-get update
@@ -82,8 +82,8 @@ pipeline:
                   spec:
                     connectorRef: account.harnessImage
                     image: alpine
-                    shell: Bash
-                    command: |
+                    shell: Sh
+                    command: |-
                       # Update package lists
                       apt-get update
 
@@ -97,8 +97,8 @@ pipeline:
                   spec:
                     connectorRef: account.harnessImage
                     image: alpine
-                    shell: Bash
-                    command: |
+                    shell: Sh
+                    command: |-
                       # Install pip if not already installed
                       apk add --no-cache python3 py3-pip
 
