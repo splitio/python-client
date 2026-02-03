@@ -100,10 +100,11 @@ pipeline:
                   spec:
                     connectorRef: account.harnessImage
                     image: python:3.7.16-alpine
-                    shell: Python
-                    command: |
+                    shell: Sh
+                    command: |-
                       # Run pytest with JUnit XML report output
-                      python /harness/setup.py test 
+                      cd /harness
+                      python setup.py test 
                     envVariables:
                       PYTHONPATH: ${PYTHONPATH}:.
                       PYTEST_ADDOPTS: "--verbose"
