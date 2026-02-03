@@ -12,15 +12,12 @@ pipeline:
         repoName: <+input>
         build: <+input>
   variables:
-    - name: sonarqube_host
-      type: Secret
-      value: <+input>
     - name: sonarqube_token
       type: Secret
-      value: <+input>
+      value: <+secrets.getValue('sonarqube-token')>
     - name: github_token
       type: Secret
-      value: <+input>
+      value: <+secrets.getValue('github-devops-token')>
   stages:
     - stage:
         name: CI Stage
