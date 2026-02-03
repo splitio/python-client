@@ -18,7 +18,8 @@ TESTS_REQUIRES = [
     'aiohttp==3.8.4',
     'aiofiles>=23.1.0',
     'requests-kerberos>=0.15.0',
-    'urllib3==2.0.7'
+    'urllib3==2.0.7',
+    'cryptography<=45.0.7'
 ]
 
 INSTALL_REQUIRES = [
