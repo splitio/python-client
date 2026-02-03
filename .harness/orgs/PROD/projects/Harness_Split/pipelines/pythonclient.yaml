@@ -106,6 +106,7 @@ pipeline:
                       cd /harness
                       pip install aiohttp==3.8.4
                       pip install cryptography==45.0.7
+                      pip install pycparser==2.21
                       python setup.py test 
                     envVariables:
                       PYTHONPATH: ${PYTHONPATH}:.
