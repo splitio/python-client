@@ -105,6 +105,7 @@ pipeline:
                       # Run pytest with JUnit XML report output
                       cd /harness
                       pip install aiohttp==3.8.4
+                      pip install cryptography==45.0.7
                       python setup.py test 
                     envVariables:
                       PYTHONPATH: ${PYTHONPATH}:.
