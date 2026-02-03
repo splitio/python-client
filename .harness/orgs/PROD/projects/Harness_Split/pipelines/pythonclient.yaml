@@ -28,7 +28,7 @@ pipeline:
           runtime:
             type: Cloud
             spec:
-              size: medium
+              size: small
               nestedVirtualization: true
           platform:
             os: Linux
