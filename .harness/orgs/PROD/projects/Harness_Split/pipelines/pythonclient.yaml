@@ -173,14 +173,9 @@ pipeline:
                     target:
                       type: repository
                       detection: auto
-                    auth:
-                      access_token: <+pipeline.variables.sonarqube_token>
-                    tool:
-                      project_key: <+codebase.repoName>
-                      branch_name: <+codebase.branch>
-                      pull_request_key: <+codebase.prNumber>
-                      pull_request_branch: <+codebase.targetBranch>
-                      pull_request_base: <+codebase.sourceBranch>
+                    advanced:
+                      log:
+                        level: info
                     settings:
                       sonar.host.url: <+pipeline.variables.sonarqube_host>
                       sonar.qualitygate.wait: true
@@ -188,6 +183,12 @@ pipeline:
                       sonar.pullrequest.key: <+codebase.prNumber>
                       sonar.pullrequest.branch: <+codebase.targetBranch>
                       sonar.pullrequest.base: <+codebase.sourceBranch>
+                    auth:
+                      access_token: <+secrets.getValue("sonarqube-token")>
+                      domain: https://sonar.harness.io/
+                      ssl: true
+                    tool:
+                      project_key: <+codebase.repoName>
                   strategy:
                     when: <+codebase.prNumber != "">
                     matrix:
