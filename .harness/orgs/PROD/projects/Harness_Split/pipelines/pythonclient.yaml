@@ -99,7 +99,7 @@ pipeline:
                   timeout: 10m
                   spec:
                     connectorRef: account.harnessImage
-                    image: alpine
+                    image: python:3.7.16-alpine
                     shell: Python
                     command: |
                       # Run pytest with JUnit XML report output
@@ -119,7 +119,7 @@ pipeline:
                   identifier: extract_version
                   spec:
                     connectorRef: account.harnessImage
-                    image: alpine
+                    image: python:3.7.16-alpine
                     shell: Python
                     command: |
                       import os
