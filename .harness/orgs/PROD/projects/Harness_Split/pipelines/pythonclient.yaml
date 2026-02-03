@@ -1,0 +1,198 @@
+pipeline:
+  name: python-client
+  identifier: pythonclient
+  projectIdentifier: Harness_Split
+  orgIdentifier: PROD
+  tags:
+    ai_generated: "true"
+  properties:
+    ci:
+      codebase:
+        connectorRef: <+input>
+        repoName: <+input>
+        build:
+          type: branch
+          spec:
+            branch: <+input>
+  variables:
+    - name: sonarqube_host
+      type: Secret
+      value: <+input>
+    - name: sonarqube_token
+      type: Secret
+      value: <+input>
+    - name: github_token
+      type: Secret
+      value: <+input>
+  stages:
+    - stage:
+        name: CI Stage
+        identifier: ci_stage
+        type: CI
+        spec:
+          cloneCodebase: true
+          runtime:
+            type: Cloud
+            spec:
+              size: small
+          platform:
+            os: Linux
+            arch: Amd64
+          serviceDependencies:
+            - type: Service
+              identifier: redis
+              name: Redis
+              spec:
+                image: redis:latest
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Setup Python
+                  identifier: setup_python
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: alpine
+                    shell: Bash
+                    command: |
+                      # Install Python 3.7.16
+                      echo "Installing Python 3.7.16..."
+                      apt-get update
+                      apt-get install -y wget build-essential libssl-dev zlib1g-dev libncurses5-dev libncursesw5-dev libreadline-dev libsqlite3-dev libgdbm-dev libdb5.3-dev libbz2-dev libexpat1-dev liblzma-dev libffi-dev
+
+                      wget https://www.python.org/ftp/python/3.7.16/Python-3.7.16.tgz
+                      tar -xf Python-3.7.16.tgz
+                      cd Python-3.7.16
+                      ./configure --enable-optimizations
+                      make -j $(nproc)
+                      make altinstall
+
+                      # Add Python to PATH
+                      ln -sf /usr/local/bin/python3.7 /usr/local/bin/python
+                      ln -sf /usr/local/bin/pip3.7 /usr/local/bin/pip
+
+                      # Verify installation
+                      python --version
+                      pip --version
+
+                      # Export Python version as output variable
+                      export PYTHON_VERSION=$(python --version)
+                    outputVariables:
+                      - name: PYTHON_VERSION
+                  timeout: 10m
+              - step:
+                  type: Run
+                  name: Install System Dependencies
+                  identifier: install_system_dependencies
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: alpine
+                    shell: Bash
+                    command: |
+                      # Update package lists
+                      apt-get update
+
+                      # Install libkrb5-dev package
+                      apt-get install -y libkrb5-dev
+                  timeout: 10m
+              - step:
+                  type: Run
+                  name: Install Python Dependencies
+                  identifier: install_python_dependencies
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: alpine
+                    shell: Bash
+                    command: |
+                      # Install pip if not already installed
+                      apk add --no-cache python3 py3-pip
+
+                      # Install dependencies from requirements.txt with extras
+                      pip install -r requirements.txt
+                      pip install -r requirements.txt[dev,test]
+
+                      echo "Python dependencies installed successfully"
+                  timeout: 10m
+              - step:
+                  type: Test
+                  name: Run Python Tests
+                  identifier: run_tests
+                  timeout: 10m
+                  spec:
+                    command: |
+                      # Run pytest with JUnit XML report output
+                      python -m pytest --junitxml=test-reports/junit.xml
+                    shell: Python
+                    connectorRef: account.harnessImage
+                    image: alpine
+                    reports:
+                      type: JUnit
+                      spec:
+                        paths:
+                          - test-reports/junit.xml
+                    envVariables:
+                      PYTHONPATH: ${PYTHONPATH}:.
+                      PYTEST_ADDOPTS: "--verbose"
+              - step:
+                  type: Run
+                  name: Extract Version
+                  identifier: extract_version
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: alpine
+                    shell: Python
+                    command: |
+                      import os
+                      import re
+
+                      # Read the version.py file
+                      with open('splitio/version.py', 'r') as file:
+                          content = file.read()
+
+                      # Extract version using regex
+                      version_match = re.search(r'__version__\s*=\s*["\']([^"\']*)["\']\'', content)
+                      if version_match:
+                          version = version_match.group(1)
+                          print(f"Extracted version: {version}")
+                          # Export as environment variable for output
+                          os.environ["VERSION"] = version
+                      else:
+                          print("Version not found in version.py file")
+                          os.environ["VERSION"] = "not_found"
+                    outputVariables:
+                      - name: VERSION
+                  timeout: 10m
+              - step:
+                  identifier: sonarqube_scan
+                  name: SonarQube Scan
+                  type: Sonarqube
+                  timeout: 10m
+                  spec:
+                    mode: orchestration
+                    config: default
+                    target:
+                      type: repository
+                      detection: auto
+                    auth:
+                      access_token: <+pipeline.variables.sonarqube_token>
+                    tool:
+                      project_key: <+codebase.repoName>
+                      branch_name: <+codebase.branch>
+                      pull_request_key: <+codebase.prNumber>
+                      pull_request_branch: <+codebase.targetBranch>
+                      pull_request_base: <+codebase.sourceBranch>
+                    settings:
+                      sonar.host.url: <+pipeline.variables.sonarqube_host>
+                      sonar.qualitygate.wait: true
+                      sonar.branch.name: <+codebase.branch>
+                      sonar.pullrequest.key: <+codebase.prNumber>
+                      sonar.pullrequest.branch: <+codebase.targetBranch>
+                      sonar.pullrequest.base: <+codebase.sourceBranch>
+                  strategy:
+                    when: <+codebase.prNumber != "">
+                    matrix:
+                      config:
+                        - default
+                        - branch-scan
+            rollbackSteps: []
+  description: This pipeline was generated by Harness AI on 2026-02-03 04:11:48 UTC by Bilal Al-Shahwany.
