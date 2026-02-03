@@ -85,6 +85,8 @@ pipeline:
                     image: python:3.7.16-alpine
                     shell: Sh
                     command: |-
+                      apk add --no-cache krb5-dev musl-dev libffi-dev build-base python3-dev
+
                       # Upgrade pip
                       pip install --upgrade pip
 
