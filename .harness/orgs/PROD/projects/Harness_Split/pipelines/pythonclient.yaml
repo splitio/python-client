@@ -89,7 +89,6 @@ pipeline:
                       pip install --upgrade pip
 
                       pip install -U setuptools pip wheel
-                      pip install -e .[cpphash,redis,uwsgi]
 
                       echo "Python dependencies installed successfully"
                   timeout: 10m
@@ -99,12 +98,12 @@ pipeline:
                   identifier: run_tests
                   timeout: 10m
                   spec:
-                    command: |
-                      # Run pytest with JUnit XML report output
-                      python -m pytest --junitxml=test-reports/junit.xml
-                    shell: Python
                     connectorRef: account.harnessImage
                     image: alpine
+                    shell: Python
+                    command: |
+                      # Run pytest with JUnit XML report output
+                      python setup.py test --junitxml=test-reports/junit.xml
                     reports:
                       type: JUnit
                       spec:
@@ -113,6 +112,7 @@ pipeline:
                     envVariables:
                       PYTHONPATH: ${PYTHONPATH}:.
                       PYTEST_ADDOPTS: "--verbose"
+                    intelligenceMode: true
               - step:
                   type: Run
                   name: Extract Version
