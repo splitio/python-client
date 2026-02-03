@@ -74,6 +74,7 @@ pipeline:
 
                       # Install libkrb5-dev package
                       apk add --no-cache krb5-dev musl-dev libffi-dev build-base python3-dev
+                      gcc -v
                   timeout: 10m
               - step:
                   type: Run
