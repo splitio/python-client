@@ -103,12 +103,12 @@ pipeline:
                     shell: Python
                     command: |
                       # Run pytest with JUnit XML report output
-                      python setup.py test --junitxml=test-reports/junit.xml
+                      python setup.py test --junitxml=./junit.xml
                     reports:
                       type: JUnit
                       spec:
                         paths:
-                          - test-reports/junit.xml
+                          - ./junit.xml
                     envVariables:
                       PYTHONPATH: ${PYTHONPATH}:.
                       PYTEST_ADDOPTS: "--verbose"
