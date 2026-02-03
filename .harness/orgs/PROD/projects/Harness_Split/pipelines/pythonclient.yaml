@@ -8,12 +8,10 @@ pipeline:
   properties:
     ci:
       codebase:
-        connectorRef: <+input>
-        repoName: <+input>
-        build:
-          type: branch
-          spec:
-            branch: <+input>
+        connectorRef: fmegithubharnessgitops
+        repoName: python-client
+        build: <+input>
+        sparseCheckout: []
   variables:
     - name: sonarqube_token
       type: Secret
