@@ -52,8 +52,8 @@ pipeline:
                     command: |-
                       # Install Python 3.7.16
                       echo "Installing Python 3.7.16..."
-                      apt-get update
-                      apt-get install -y wget build-essential libssl-dev zlib1g-dev libncurses5-dev libncursesw5-dev libreadline-dev libsqlite3-dev libgdbm-dev libdb5.3-dev libbz2-dev libexpat1-dev liblzma-dev libffi-dev
+                      apk update
+                      apk add -y wget build-essential libssl-dev zlib1g-dev libncurses5-dev libncursesw5-dev libreadline-dev libsqlite3-dev libgdbm-dev libdb5.3-dev libbz2-dev libexpat1-dev liblzma-dev libffi-dev
 
                       wget https://www.python.org/ftp/python/3.7.16/Python-3.7.16.tgz
                       tar -xf Python-3.7.16.tgz
@@ -85,10 +85,10 @@ pipeline:
                     shell: Sh
                     command: |-
                       # Update package lists
-                      apt-get update
+                      apk update
 
                       # Install libkrb5-dev package
-                      apt-get install -y libkrb5-dev
+                      apk add -y libkrb5-dev
                   timeout: 10m
               - step:
                   type: Run
