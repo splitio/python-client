@@ -72,8 +72,9 @@ pipeline:
                       pip install cryptography==45.0.7
                       pip install pycparser==2.21
 
-                      apk --update add redis 
-                      redis-server /etc/redis.conf
+                      apk add redis 
+                      rc-update add redis default
+                      rc-service redis start
 
                       pip install redis==5.0.8
                       python setup.py test 
