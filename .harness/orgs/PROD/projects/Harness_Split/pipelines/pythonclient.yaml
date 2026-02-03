@@ -33,12 +33,6 @@ pipeline:
           platform:
             os: Linux
             arch: Amd64
-          serviceDependencies:
-            - type: Service
-              identifier: redis
-              name: Redis
-              spec:
-                image: redis:latest
           execution:
             steps:
               - step:
@@ -53,29 +47,9 @@ pipeline:
                       # Python is already installed in this image
                       python --version
                       pip --version
-
-                      # Install any additional system packages if needed
-                      apk update
-                      apk add --no-cache gcc musl-dev libffi-dev
                     outputVariables:
                       - name: PYTHON_VERSION
                   timeout: 2m
-              - step:
-                  type: Run
-                  name: Install System Dependencies
-                  identifier: install_system_dependencies
-                  spec:
-                    connectorRef: account.harnessImage
-                    image: python:3.7.16-alpine
-                    shell: Sh
-                    command: |-
-                      # Update package lists
-                      apk update
-
-                      # Install libkrb5-dev package
-                      apk add --no-cache krb5-dev musl-dev libffi-dev build-base python3-dev
-                      gcc -v
-                  timeout: 10m
               - step:
                   type: Test
                   name: Run Python Tests
@@ -86,6 +60,7 @@ pipeline:
                     image: python:3.7.16-alpine
                     shell: Sh
                     command: |-
+                      apk update
                       apk add --no-cache krb5-dev musl-dev libffi-dev build-base python3-dev redis
                       redis-server /etc/redis.conf
 
