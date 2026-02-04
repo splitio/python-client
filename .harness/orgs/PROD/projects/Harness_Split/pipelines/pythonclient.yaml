@@ -41,7 +41,7 @@ pipeline:
                   identifier: install_sonarqube_scanner
                   spec:
                     connectorRef: account.harnessImage
-                    image: alpine
+                    image: eclipse-temurin:21-jdk-alpine
                     shell: Sh
                     command: |
                       apk add unzip
