@@ -60,10 +60,10 @@ pipeline:
                       echo "sonnar is moved" 
                       # Verify installation
                       ls -ail /opt/sonar-scanner
-                      /opt/sonar-scanner/bin/sonar-scanner --version
+                      /opt/sonar-scanner-4.8.0.2856/bin/sonar-scanner --version
 
                       # Export the PATH as an output variable
-                      export SONAR_SCANNER_PATH="/opt/sonar-scanner/bin"
+                      export SONAR_SCANNER_PATH="/opt/sonar-scanner-4.8.0.2856/bin"
                     envVariables:
                       SONAR_TOKEN: <+pipeline.variables.sonarqube_token>
                     outputVariables:
