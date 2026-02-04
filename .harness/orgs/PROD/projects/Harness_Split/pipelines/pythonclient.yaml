@@ -54,7 +54,8 @@ pipeline:
                           -Dsonar.token=<+secrets.getValue('sonarqube-token')> \
                           -Dsonar.pullrequest.key=<+codebase.prNumber> \
                           -Dsonar.pullrequest.branch=<+codebase.sourceBranch> \
-                          -Dsonar.pullrequest.base=<+codebase.targetBranch>
+                          -Dsonar.pullrequest.base=<+codebase.targetBranch> \
+                          -Dsonar.scanner.skipSystemTruststore=true
                       else
                         echo "Branch Analysis"
                         sonar-scanner \
@@ -62,7 +63,8 @@ pipeline:
                           #-Dsonar.sources=. \
                           -Dsonar.host.url=https://sonar.harness.io \
                           -Dsonar.token=<+secrets.getValue('sonarqube-token')> \
-                          -Dsonar.branch.name=<+codebase.branch>
+                          -Dsonar.branch.name=<+codebase.branch> \
+                          -Dsonar.scanner.skipSystemTruststore=true
                       fi
                     envVariables:
                       SONAR_TOKEN: <+pipeline.variables.sonarqube_token>
