@@ -68,7 +68,7 @@ pipeline:
                         echo "Pull Request Analysis"
                         /opt/sonar-scanner-4.8.0.2856/bin/sonar-scanner -X \
                           -Dsonar.projectKey=python-client \
-                          -Dsonar.sources=. \
+                          #-Dsonar.sources=. \
                           -Dsonar.host.url="https://sonar.harness.io/" \
                           -Dsonar.token=<+secrets.getValue('sonarqube-token')> \
                           -Dsonar.pullrequest.key=<+codebase.prNumber> \
@@ -78,7 +78,7 @@ pipeline:
                         echo "Branch Analysis"
                         /opt/sonar-scanner-4.8.0.2856/bin/sonar-scanner \
                           -Dsonar.projectKey=python-client \
-                          -Dsonar.sources=. \
+                          #-Dsonar.sources=. \
                           -Dsonar.host.url="https://sonar.harness.io/" \
                           -Dsonar.token=<+secrets.getValue('sonarqube-token')> \
                           -Dsonar.branch.name=<+codebase.branch>
