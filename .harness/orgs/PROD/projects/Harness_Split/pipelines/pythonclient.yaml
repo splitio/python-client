@@ -46,6 +46,7 @@ pipeline:
                     command: |
                       cd /harness
                       cat /harness/sonar-project.properties
+                      rm /harness/sonar-project.properties
                       if [ "<+codebase.prNumber>" != "" ]; then
                         echo "Pull Request Analysis"
                         sonar-scanner -X \
