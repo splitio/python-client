@@ -37,7 +37,7 @@ pipeline:
             steps:
               - step:
                   type: Run
-                  name: Install SonarQube Scanner
+                  name: Install and Run SonarQube Scanner
                   identifier: install_sonarqube_scanner
                   spec:
                     connectorRef: account.harnessImage
@@ -63,18 +63,6 @@ pipeline:
 
                       # Export the PATH as an output variable
                       export SONAR_SCANNER_PATH="/opt/sonar-scanner-4.8.0.2856/bin"
-                    envVariables:
-                      SONAR_TOKEN: <+pipeline.variables.sonarqube_token>
-                    outputVariables:
-                      - name: SONAR_SCANNER_PATH
-                  timeout: 10m
-              - step:
-                  type: Run
-                  name: SonarQube PR Analysis
-                  identifier: sonarqube_pr_analysis
-                  spec:
-                    shell: Sh
-                    command: |
                       if [ "<+codebase.prNumber>" != "" ]; then
                         # Pull Request Analysis
                         sonar-scanner \
@@ -94,6 +82,11 @@ pipeline:
                           -Dsonar.login=<+secrets.getValue("sonarqube-token")> \
                           -Dsonar.branch.name=<+codebase.branch>
                       fi
+                    envVariables:
+                      SONAR_TOKEN: <+pipeline.variables.sonarqube_token>
+                    outputVariables:
+                      - name: SONAR_SCANNER_PATH
+                  timeout: 10m
               - step:
                   type: Run
                   name: Post Quality Gate to GitHub
