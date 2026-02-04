@@ -41,7 +41,7 @@ pipeline:
                   identifier: install_sonarqube_scanner
                   spec:
                     connectorRef: account.harnessImage
-                    image: ubuntu
+                    image: SonarSource/sonarqube-scan-action@v6
                     shell: Bash
                     command: |
                       apt-get update && apt-get install -y curl unzip
@@ -65,6 +65,7 @@ pipeline:
                       export SONAR_SCANNER_PATH="/opt/sonar-scanner-4.8.0.2856/bin"
                       echo "sonar.host.url=https://sonar.harness.io" >> /harness/sonar-project.properties
                       cat /harness/sonar-project.properties
+                      cd /harness
                       if [ "<+codebase.prNumber>" != "" ]; then
                         echo "Pull Request Analysis"
                         /opt/sonar-scanner-4.8.0.2856/bin/sonar-scanner -X \
