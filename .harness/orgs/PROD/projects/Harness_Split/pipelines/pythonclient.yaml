@@ -52,7 +52,7 @@ pipeline:
                       export SONAR_SCANNER_HOME=/opt/sonar-scanner
 
                       # Download, unzip, and clean up SonarScanner CLI
-                      curl -sSL https://binaries.sonarsource.com{SONAR_SCANNER_VERSION}-linux.zip -o sonar-scanner.zip \
+                      curl -sSL https://binaries.sonarsource.com/{SONAR_SCANNER_VERSION}-linux.zip -o sonar-scanner.zip \
                           && unzip sonar-scanner.zip -d /opt \
                           && mv /opt/sonar-scanner-${SONAR_SCANNER_VERSION}-linux $SONAR_SCANNER_HOME \
                           && rm sonar-scanner.zip
