@@ -45,12 +45,13 @@ pipeline:
                     shell: Bash
                     command: |
                       apt-get update && apt-get install -y curl unzip
+                      apt-get install openjdk-21-jdk
+
                       SONAR_SCANNER_VERSION="4.8.0.2856"
                       mkdir -p /opt/sonar-scanner
 
                       curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}.zip
                       unzip sonar-scanner.zip -d /opt
-
 
                       # Add SonarScanner to the PATH environment variable
                       export SONAR_SCANNER_HOME="/opt/sonar-scanner"
