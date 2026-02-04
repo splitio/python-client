@@ -45,7 +45,7 @@ pipeline:
                     shell: Bash
                     command: |
                       cd /harness
-                      echo "sonar.host.url=https://sonar.harness.io" >> /harness/sonar-project.properties
+                      sudo echo "sonar.host.url=https://sonar.harness.io" >> /harness/sonar-project.properties
                       cat /harness/sonar-project.properties
                       if [ "<+codebase.prNumber>" != "" ]; then
                         echo "Pull Request Analysis"
