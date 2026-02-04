@@ -80,9 +80,9 @@ pipeline:
                     command: |-
                       # Get SonarQube quality gate status
                       curl -s -u <+secrets.getValue("sonarqube_token")> \
-                        "https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=<+codebase.prNumber>"
+                        "https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}"
                       QUALITY_GATE_STATUS=$(curl -s -u <+secrets.getValue("sonarqube_token")> \
-                        "https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=<+codebase.prNumber>" \
+                        "https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}" \
                         | jq -r '.projectStatus.status')
 
                       # Set GitHub status based on quality gate
