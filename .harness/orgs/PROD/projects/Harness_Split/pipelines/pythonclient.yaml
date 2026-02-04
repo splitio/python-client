@@ -50,6 +50,7 @@ pipeline:
                         echo "Pull Request Analysis"
                         sonar-scanner -X \
                           -Dsonar.projectKey=python-client \
+                          -Dsonar.scanner.skipJreProvisioning=true \
                           #-Dsonar.sources=. \
                           -Dsonar.host.url=https://sonar.harness.io \
                           -Dsonar.token=<+secrets.getValue('sonarqube-token')> \
@@ -61,6 +62,7 @@ pipeline:
                         echo "Branch Analysis"
                         sonar-scanner \
                           -Dsonar.projectKey=python-client \
+                          -Dsonar.scanner.skipJreProvisioning=true \
                           #-Dsonar.sources=. \
                           -Dsonar.host.url=https://sonar.harness.io \
                           -Dsonar.token=<+secrets.getValue('sonarqube-token')> \
