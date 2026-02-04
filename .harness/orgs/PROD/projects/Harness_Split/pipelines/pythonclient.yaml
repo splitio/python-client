@@ -56,6 +56,8 @@ pipeline:
                       echo "export PATH=\"$PATH:/opt/sonar-scanner/bin\"" >> $HOME/.bashrc
                        
                       chmod 777 /opt/sonar-scanner/jre/bin/java
+                      chmod +x /opt/sonar-scanner/jre/bin/java
+                      echo "checking java version"
                       /opt/sonar-scanner/jre/bin/java -version
                       # Verify installation
                       sonar-scanner --version
