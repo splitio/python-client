@@ -63,8 +63,8 @@ pipeline:
 
                       # Export the PATH as an output variable
                       export SONAR_SCANNER_PATH="/opt/sonar-scanner-4.8.0.2856/bin"
+                      cat /harness/sonar-project.properties
                       if [ "<+codebase.prNumber>" != "" ]; then
-                        
                         echo "Pull Request Analysis"
                         /opt/sonar-scanner-4.8.0.2856/bin/sonar-scanner -X \
                           -Dsonar.projectKey=python-client \
