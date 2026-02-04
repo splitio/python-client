@@ -65,7 +65,7 @@ pipeline:
                       export SONAR_SCANNER_PATH="/opt/sonar-scanner-4.8.0.2856/bin"
                       if [ "<+codebase.prNumber>" != "" ]; then
                         # Pull Request Analysis
-                        sonar-scanner \
+                        /opt/sonar-scanner-4.8.0.2856/bin/sonar-scanner \
                           -Dsonar.projectKey=python-client \
                           -Dsonar.sources=. \
                           -Dsonar.host.url="https://sonar.harness.io/" \
@@ -75,7 +75,7 @@ pipeline:
                           -Dsonar.pullrequest.base=<+codebase.targetBranch>
                       else
                         # Branch Analysis
-                        sonar-scanner \
+                        /opt/sonar-scanner-4.8.0.2856/bin/sonar-scanner \
                           -Dsonar.projectKey=python-client \
                           -Dsonar.sources=. \
                           -Dsonar.host.url="https://sonar.harness.io/" \
