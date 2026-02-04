@@ -36,22 +36,31 @@ pipeline:
           execution:
             steps:
               - step:
-                  type: Sonarqube
-                  name: Sonarqube
-                  identifier: Sonarqube
+                  type: Run
+                  name: SonarQube PR Analysis
+                  identifier: sonarqube_pr_analysis
                   spec:
-                    mode: orchestration
-                    config: default
-                    target:
-                      type: repository
-                      detection: auto
-                    advanced:
-                      log:
-                        level: info
-                    auth:
-                      access_token: <+secrets.getValue("sonarqube-token")>
-                      domain: https://sonar.harness.io/
-                      ssl: true
+                    shell: Sh
+                    command: |
+                      if [ "<+codebase.prNumber>" != "" ]; then
+                        # Pull Request Analysis
+                        sonar-scanner \
+                          -Dsonar.projectKey=python-client \
+                          -Dsonar.sources=. \
+                          -Dsonar.host.url="https://sonar.harness.io/" \
+                          -Dsonar.login=<+secrets.getValue("sonarqube-token")> \
+                          -Dsonar.pullrequest.key=<+codebase.prNumber> \
+                          -Dsonar.pullrequest.branch=<+codebase.sourceBranch> \
+                          -Dsonar.pullrequest.base=<+codebase.targetBranch>
+                      else
+                        # Branch Analysis
+                        sonar-scanner \
+                          -Dsonar.projectKey=python-client \
+                          -Dsonar.sources=. \
+                          -Dsonar.host.url="https://sonar.harness.io/" \
+                          -Dsonar.login=<+secrets.getValue("sonarqube-token")> \
+                          -Dsonar.branch.name=<+codebase.branch>
+                      fi
               - step:
                   type: Run
                   name: Post Quality Gate to GitHub
