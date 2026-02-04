@@ -36,20 +36,22 @@ pipeline:
           execution:
             steps:
               - step:
-                  type: Run
-                  name: Verify Python Installation
-                  identifier: verify_python
+                  type: Sonarqube
+                  name: Sonarqube
+                  identifier: Sonarqube
                   spec:
-                    connectorRef: account.harnessImage
-                    image: python:3.7.16-alpine
-                    shell: Sh
-                    command: |-
-                      # Python is already installed in this image
-                      python --version
-                      pip --version
-                    outputVariables:
-                      - name: PYTHON_VERSION
-                  timeout: 2m
+                    mode: orchestration
+                    config: default
+                    target:
+                      type: repository
+                      detection: auto
+                    advanced:
+                      log:
+                        level: info
+                    auth:
+                      access_token: <+secrets.getValue("sonarqube-token")>
+                      domain: https://sonar.harness.io/
+                      ssl: true
               - step:
                   timeout: 30m
                   type: Test
@@ -80,39 +82,7 @@ pipeline:
                     envVariables:
                       PYTHONPATH: ${PYTHONPATH}:.
                       PYTEST_ADDOPTS: "--verbose"
-              - step:
-                  identifier: sonarqube_scan
-                  name: SonarQube Scan
-                  type: Sonarqube
-                  timeout: 10m
-                  spec:
-                    mode: orchestration
-                    config: default
-                    target:
-                      type: repository
-                      detection: auto
-                    auth:
-                      access_token: <+secrets.getValue("sonarqube-token")>
-                    tool:
-                      project_key: <+codebase.repoName>
-                      branch_name: <+codebase.branch>
-                      pull_request_key: <+codebase.prNumber>
-                      pull_request_branch: <+codebase.targetBranch>
-                      pull_request_base: <+codebase.sourceBranch>
-                    settings:
-                      sonar.host.url: https://sonar.harness.io/
-                      sonar.qualitygate.wait: true
-                      sonar.branch.name: <+codebase.branch>
-                      sonar.pullrequest.key: <+codebase.prNumber>
-                      sonar.pullrequest.branch: <+codebase.targetBranch>
-                      sonar.pullrequest.base: <+codebase.sourceBranch>
-                  strategy:
-                    when: <+codebase.prNumber != "">
-                    matrix:
-                      config:
-                        - default
-                        - branch-scan
-            rollbackSteps: []
+          rollbackSteps: []
           caching:
             enabled: false
             paths: []
