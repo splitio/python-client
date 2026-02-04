@@ -69,7 +69,7 @@ pipeline:
                           -Dsonar.projectKey=python-client \
                           -Dsonar.sources=. \
                           -Dsonar.host.url="https://sonar.harness.io/" \
-                          -Dsonar.login=<+secrets.getValue('github-devops-token')> \
+                          -Dsonar.login=<+secrets.getValue('sonarqube-token')> \
                           -Dsonar.pullrequest.key=<+codebase.prNumber> \
                           -Dsonar.pullrequest.branch=<+codebase.sourceBranch> \
                           -Dsonar.pullrequest.base=<+codebase.targetBranch>
@@ -79,7 +79,7 @@ pipeline:
                           -Dsonar.projectKey=python-client \
                           -Dsonar.sources=. \
                           -Dsonar.host.url="https://sonar.harness.io/" \
-                          -Dsonar.login=<+secrets.getValue('github-devops-token')> \
+                          -Dsonar.login=<+secrets.getValue('sonarqube-token')> \
                           -Dsonar.branch.name=<+codebase.branch>
                       fi
                     envVariables:
