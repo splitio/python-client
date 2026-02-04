@@ -41,7 +41,7 @@ pipeline:
                   identifier: install_sonarqube_scanner
                   spec:
                     connectorRef: account.harnessImage
-                    image: sonarqube:lts-community
+                    image: sonarsource/sonar-scanner-cli
                     shell: Bash
                     command: |
                       cd /harness
