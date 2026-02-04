@@ -79,7 +79,9 @@ pipeline:
                     shell: Sh
                     command: |-
                       # Get SonarQube quality gate status
-                      QUALITY_GATE_STATUS=$(curl -s -u <+secrets.getValue("sonarqube_token")>: \
+                      curl -s -u <+secrets.getValue("sonarqube_token")> \
+                        "https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=<+codebase.prNumber>"
+                      QUALITY_GATE_STATUS=$(curl -s -u <+secrets.getValue("sonarqube_token")> \
                         "https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=<+codebase.prNumber>" \
                         | jq -r '.projectStatus.status')
 
