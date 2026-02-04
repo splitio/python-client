@@ -64,22 +64,23 @@ pipeline:
                       # Export the PATH as an output variable
                       export SONAR_SCANNER_PATH="/opt/sonar-scanner-4.8.0.2856/bin"
                       if [ "<+codebase.prNumber>" != "" ]; then
-                        # Pull Request Analysis
+                        
+                        echo "Pull Request Analysis"
                         /opt/sonar-scanner-4.8.0.2856/bin/sonar-scanner \
                           -Dsonar.projectKey=python-client \
                           -Dsonar.sources=. \
                           -Dsonar.host.url="https://sonar.harness.io/" \
-                          -Dsonar.login=<+secrets.getValue('sonarqube-token')> \
+                          -Dsonar.token=<+secrets.getValue('sonarqube-token')> \
                           -Dsonar.pullrequest.key=<+codebase.prNumber> \
                           -Dsonar.pullrequest.branch=<+codebase.sourceBranch> \
                           -Dsonar.pullrequest.base=<+codebase.targetBranch>
                       else
-                        # Branch Analysis
+                        echo "Branch Analysis"
                         /opt/sonar-scanner-4.8.0.2856/bin/sonar-scanner \
                           -Dsonar.projectKey=python-client \
                           -Dsonar.sources=. \
                           -Dsonar.host.url="https://sonar.harness.io/" \
-                          -Dsonar.login=<+secrets.getValue('sonarqube-token')> \
+                          -Dsonar.token=<+secrets.getValue('sonarqube-token')> \
                           -Dsonar.branch.name=<+codebase.branch>
                       fi
                     envVariables:
