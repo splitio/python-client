@@ -50,13 +50,14 @@ pipeline:
 
                       curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}.zip
                       unzip sonar-scanner.zip -d /opt
-                      mv /opt/sonar-scanner-${SONAR_SCANNER_VERSION} /opt/sonar-scanner
-                      echo "sonnar is moved"
+
 
                       # Add SonarScanner to the PATH environment variable
                       export SONAR_SCANNER_HOME="/opt/sonar-scanner"
                       export PATH="${SONAR_SCANNER_HOME}/bin:${PATH}"
-                       
+
+                      mv sonar-scanner-4.8.0.2856 /opt/sonar-scanner
+                      echo "sonnar is moved" 
                       # Verify installation
                       ls -ail /opt/sonar-scanner
                       /opt/sonar-scanner/bin/sonar-scanner --version
