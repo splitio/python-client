@@ -54,7 +54,7 @@ pipeline:
                       # Add SonarQube Scanner to PATH
                       export PATH="$PATH:/opt/sonar-scanner/bin"
                       echo "export PATH=\"$PATH:/opt/sonar-scanner/bin\"" >> $HOME/.bashrc
-                      ls -ail /opt/sonar-scanner/jre/bin/
+                      /opt/sonar-scanner/jre/bin/java -version
                       # Verify installation
                       sonar-scanner --version
 
