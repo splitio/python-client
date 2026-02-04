@@ -44,18 +44,12 @@ pipeline:
                     image: eclipse-temurin:21-jdk
                     shell: Bash
                     command: |
-
                       apt-get update && apt-get install -y curl unzip && rm -rf /var/lib/apt/lists/*
 
-                      # Define SonarScanner version
-                      export SONAR_SCANNER_VERSION=5.0.1.3000
-                      export SONAR_SCANNER_HOME=/opt/sonar-scanner
-
-                      # Download, unzip, and clean up SonarScanner CLI
-                      curl -sSL https://binaries.sonarsource.com/{SONAR_SCANNER_VERSION}-linux.zip -o sonar-scanner.zip \
-                          && unzip sonar-scanner.zip -d /opt \
-                          && mv /opt/sonar-scanner-${SONAR_SCANNER_VERSION}-linux $SONAR_SCANNER_HOME \
-                          && rm sonar-scanner.zip
+                      cd /opt
+                      wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
+                      unzip sonar-scanner-cli-*.zip
+                      mv sonar-scanner-5.0.1.3006-linux sonar-scanner
 
                       # Add SonarScanner to the PATH environment variable
                       export PATH="${SONAR_SCANNER_HOME}/bin:${PATH}"
