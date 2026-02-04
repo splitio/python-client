@@ -45,7 +45,6 @@ pipeline:
                     shell: Sh
                     command: |
                       apk add unzip
-                      apk add openjdk21-jre-headless
 
                       # Download and install SonarQube Scanner
                       wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.7.0.2747-linux.zip
@@ -55,7 +54,7 @@ pipeline:
                       # Add SonarQube Scanner to PATH
                       export PATH="$PATH:/opt/sonar-scanner/bin"
                       echo "export PATH=\"$PATH:/opt/sonar-scanner/bin\"" >> $HOME/.bashrc
-
+                      ls -ail /opt/sonar-scanner/jre/bin/
                       # Verify installation
                       sonar-scanner --version
 
