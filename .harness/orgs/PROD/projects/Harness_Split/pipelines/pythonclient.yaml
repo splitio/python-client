@@ -81,35 +81,6 @@ pipeline:
                       PYTHONPATH: ${PYTHONPATH}:.
                       PYTEST_ADDOPTS: "--verbose"
               - step:
-                  type: Run
-                  name: Extract Version
-                  identifier: extract_version
-                  spec:
-                    connectorRef: account.harnessImage
-                    image: python:3.7.16-alpine
-                    shell: Python
-                    command: |
-                      import os
-                      import re
-
-                      # Read the version.py file
-                      with open('splitio/version.py', 'r') as file:
-                          content = file.read()
-
-                      # Extract version using regex
-                      version_match = re.search(r'__version__\s*=\s*["\']([^"\']*)["\']\'', content)
-                      if version_match:
-                          version = version_match.group(1)
-                          print(f"Extracted version: {version}")
-                          # Export as environment variable for output
-                          os.environ["VERSION"] = version
-                      else:
-                          print("Version not found in version.py file")
-                          os.environ["VERSION"] = "not_found"
-                    outputVariables:
-                      - name: VERSION
-                  timeout: 10m
-              - step:
                   identifier: sonarqube_scan
                   name: SonarQube Scan
                   type: Sonarqube
@@ -121,7 +92,7 @@ pipeline:
                       type: repository
                       detection: auto
                     auth:
-                      access_token: <+pipeline.variables.sonarqube_token>
+                      access_token: <+secrets.getValue("sonarqube-token")>
                     tool:
                       project_key: <+codebase.repoName>
                       branch_name: <+codebase.branch>
@@ -129,7 +100,7 @@ pipeline:
                       pull_request_branch: <+codebase.targetBranch>
                       pull_request_base: <+codebase.sourceBranch>
                     settings:
-                      sonar.host.url: <+pipeline.variables.sonarqube_host>
+                      sonar.host.url: https://sonar.harness.io/
                       sonar.qualitygate.wait: true
                       sonar.branch.name: <+codebase.branch>
                       sonar.pullrequest.key: <+codebase.prNumber>
