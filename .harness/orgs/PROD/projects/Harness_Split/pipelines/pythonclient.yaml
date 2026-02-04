@@ -41,12 +41,10 @@ pipeline:
                   identifier: install_sonarqube_scanner
                   spec:
                     connectorRef: account.harnessImage
-                    image: eclipse-temurin:21-jdk-alpine
+                    image: eclipse-temurin:21-jdk
                     shell: Sh
                     command: |
                       apk add unzip
-                      apk add --no-cache libc6-compat
-                      apk add --no-cache gcompat
 
                       # Download and install SonarQube Scanner
                       wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.7.0.2747-linux.zip
