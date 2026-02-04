@@ -49,10 +49,9 @@ pipeline:
                         echo "Pull Request Analysis"
                         sonar-scanner -X \
                           -Dsonar.host.url=https://sonar.harness.io \
+                          -Dsonar.token=<+secrets.getValue('sonarqube-token')> \
                           -Dsonar.projectKey=python-client \
                           -Dsonar.scanner.skipJreProvisioning=true \
-                          #-Dsonar.sources=. \
-                          -Dsonar.token=<+secrets.getValue('sonarqube-token')> \
                           -Dsonar.pullrequest.key=<+codebase.prNumber> \
                           -Dsonar.pullrequest.branch=<+codebase.sourceBranch> \
                           -Dsonar.pullrequest.base=<+codebase.targetBranch> \
@@ -60,11 +59,10 @@ pipeline:
                       else
                         echo "Branch Analysis"
                         sonar-scanner \
-                          -Dsonar.projectKey=python-client \
-                          -Dsonar.scanner.skipJreProvisioning=true \
-                          #-Dsonar.sources=. \
                           -Dsonar.host.url=https://sonar.harness.io \
                           -Dsonar.token=<+secrets.getValue('sonarqube-token')> \
+                          -Dsonar.projectKey=python-client \
+                          -Dsonar.scanner.skipJreProvisioning=true \
                           -Dsonar.branch.name=<+codebase.branch> \
                           -Dsonar.scanner.skipSystemTruststore=true
                       fi
