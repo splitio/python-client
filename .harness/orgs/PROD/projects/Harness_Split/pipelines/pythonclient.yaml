@@ -41,7 +41,7 @@ pipeline:
                   identifier: install_sonarqube_scanner
                   spec:
                     connectorRef: account.harnessImage
-                    image: Ubuntu
+                    image: ubuntu
                     shell: Bash
                     command: |
                       apt-get update && apt-get install -y curl unzip
