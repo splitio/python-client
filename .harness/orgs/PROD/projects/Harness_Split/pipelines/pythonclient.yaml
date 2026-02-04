@@ -45,6 +45,7 @@ pipeline:
                     shell: Sh
                     command: |
                       apk add unzip
+                      apk add --no-cache libc6-compat
 
                       # Download and install SonarQube Scanner
                       wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.7.0.2747-linux.zip
