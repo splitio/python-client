@@ -56,7 +56,7 @@ pipeline:
                       export SONAR_SCANNER_HOME="/opt/sonar-scanner"
                       export PATH="${SONAR_SCANNER_HOME}/bin:${PATH}"
 
-                      mv sonar-scanner-4.8.0.2856 /opt/sonar-scanner
+                      mv /opt/sonar-scanner-4.8.0.2856 /opt/sonar-scanner
                       echo "sonnar is moved" 
                       # Verify installation
                       ls -ail /opt/sonar-scanner
