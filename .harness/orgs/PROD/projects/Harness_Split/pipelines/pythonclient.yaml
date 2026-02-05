@@ -66,8 +66,8 @@ pipeline:
                          -H "Authorization: token ${<+secrets.getValue('github-token')>}" \
                          -H "Content-Type: application/json" \
                          -d "{
-                           \"state\": \"$STATE\",
-                           \"description\": \"$DESCRIPTION\",
+                           \"state\": \"${STATE}\",
+                           \"description\": \"${DESCRIPTION}\",
                            \"context\": \"sonarqube/qualitygate\",
                            \"target_url\": \"https://sonar.harness.io/dashboard?id=python-client&pullRequest=${<+codebase.prNumber>}\"
                          }" \
