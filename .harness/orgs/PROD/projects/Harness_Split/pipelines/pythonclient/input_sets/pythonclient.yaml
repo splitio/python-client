@@ -1,0 +1,16 @@
+inputSet:
+  name: python-client
+  identifier: pythonclient
+  orgIdentifier: PROD
+  projectIdentifier: Harness_Split
+  pipeline:
+    identifier: pythonclient
+    properties:
+      ci:
+        codebase:
+          connectorRef: fmegithubharnessgitops
+          repoName: python-client
+          build:
+            type: PR
+            spec:
+              number: <+trigger.prNumber>
