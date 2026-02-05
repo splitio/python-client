@@ -48,7 +48,7 @@ pipeline:
 
                       QUALITY_GATE_STATUS=$(curl -u <+secrets.getValue(\'sonarqube_token\')> :\
                         -s \'https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}\' \
-                        | jq -r \'.projectStatus.status\')
+                        | jq -r .projectStatus.status)
 
                       # Set GitHub status based on quality gate
                       if [ "$QUALITY_GATE_STATUS" = "OK" ]; then
@@ -61,7 +61,7 @@ pipeline:
 
                       # Post status to GitHub
                       curl -X POST \
-                        -H "Authorization: token <+secrets.getValue("github_token")>" \
+                        -H "Authorization: token <+secrets.getValue('github_token')>" \
                         -H "Content-Type: application/json" \
                         -d "{
                           \"state\": \"$STATE\",
