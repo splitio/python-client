@@ -44,7 +44,7 @@ pipeline:
                     command: |-
                       # Get SonarQube quality gate status
                       QUALITY_GATE_STATUS=$(curl -u <+secrets.getValue('sonarqube_token')> :\
-                        -s \'https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}\' \
+                        -s 'https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}' \
                         | jq -r .projectStatus.status)
 
                       echo "QUALITY_GATE_STATUS: $QUALITY_GATE_STATUS"
