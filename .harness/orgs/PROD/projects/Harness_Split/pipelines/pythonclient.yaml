@@ -43,12 +43,12 @@ pipeline:
                     shell: Sh
                     command: |-
                       # Get SonarQube quality gate status
-                       curl -u <+secrets.getValue('sonarqube_token')>: \
+                       curl -u <+secrets.getValue('sonarqube-token')>: \
                          -s "https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}"
 
-                       curl -u <+secrets.getValue('sonarqube_token')>: -s 'https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}' | jq -r .projectStatus.status
+                       curl -u <+secrets.getValue('sonarqube-token')>: -s 'https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}' | jq -r .projectStatus.status
 
-                       QUALITY_GATE_STATUS=$(curl -u <+secrets.getValue('sonarqube_token')>: -s 'https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}' | jq -r .projectStatus.status)
+                       QUALITY_GATE_STATUS=$(curl -u <+secrets.getValue('sonarqube-token')>: -s 'https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}' | jq -r .projectStatus.status)
 
                        echo "QUALITY_GATE_STATUS: $QUALITY_GATE_STATUS"
 
