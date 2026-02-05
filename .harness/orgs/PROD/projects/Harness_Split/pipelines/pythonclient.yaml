@@ -63,7 +63,7 @@ pipeline:
 
                        # Post status to GitHub
                        curl -X POST \
-                         -H "Authorization: token ${<+secrets.getValue('github_token')>}" \
+                         -H "Authorization: token ${<+secrets.getValue('github-token')>}" \
                          -H "Content-Type: application/json" \
                          -d "{
                            \"state\": \"$STATE\",
