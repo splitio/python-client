@@ -36,42 +36,35 @@ pipeline:
           execution:
             steps:
               - step:
-                  type: Run
-                  name: Post Quality Gate to GitHub
-                  identifier: Post_Quality_Gate_to_GitHub
+                  timeout: 30m
+                  type: Test
+                  name: Run Python Tests
+                  identifier: run_tests
                   spec:
+                    connectorRef: account.harnessImage
+                    image: python:3.7.16-alpine
                     shell: Sh
                     command: |-
-                      # Get SonarQube quality gate status
-                       curl -u <+secrets.getValue('sonarqube-token')>: \
-                         -s "https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}"
+                      apk update
+                      apk add --no-cache krb5-dev musl-dev libffi-dev build-base
 
-                       curl -u <+secrets.getValue('sonarqube-token')>: -s 'https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}' | jq -r .projectStatus.status
+                      # Run pytest with JUnit XML report output
+                      cd /harness
+                      pip install --upgrade pip
+                      pip install -U setuptools pip wheel
+                      pip install Cython==3.0.12
+                      pip install aiohttp==3.8.4
+                      pip install cryptography==45.0.7
+                      pip install pycparser==2.21
 
-                       QUALITY_GATE_STATUS=$(curl -u <+secrets.getValue('sonarqube-token')>: -s 'https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}' | jq -r .projectStatus.status)
+                      apk add redis 
+                      redis-server /etc/redis.conf &
 
-                       echo "QUALITY_GATE_STATUS: $QUALITY_GATE_STATUS"
-
-                       # Set GitHub status based on quality gate
-                       if [ "$QUALITY_GATE_STATUS" = "OK" ]; then
-                         STATE="success"
-                         DESCRIPTION="SonarQube Quality Gate passed"
-                       else
-                         STATE="failure"
-                         DESCRIPTION="SonarQube Quality Gate failed"
-                       fi
-
-                       # Post status to GitHub
-                       curl -X POST \
-                         -H "Authorization: token ${<+secrets.getValue('github-devops-token')>}" \
-                         -H "Content-Type: application/json" \
-                         -d "{
-                           \"state\": \"${STATE}\",
-                           \"description\": \"${DESCRIPTION}\",
-                           \"context\": \"sonarqube/qualitygate\",
-                           \"target_url\": \"https://sonar.harness.io/dashboard?id=python-client&pullRequest=${<+codebase.prNumber>}\"
-                         }" \
-                         "https://api.github.com/repos/splitio/python-client/statuses/<+codebase.commitSha>"
+                      pip install redis==5.0.8
+                      python setup.py test 
+                    envVariables:
+                      PYTHONPATH: ${PYTHONPATH}:.
+                      PYTEST_ADDOPTS: "--verbose"
               - step:
                   type: Run
                   name: Install and Run SonarQube Scanner
@@ -109,35 +102,42 @@ pipeline:
                       - name: SONAR_SCANNER_PATH
                   timeout: 10m
               - step:
-                  timeout: 30m
-                  type: Test
-                  name: Run Python Tests
-                  identifier: run_tests
+                  type: Run
+                  name: Post Quality Gate to GitHub
+                  identifier: Post_Quality_Gate_to_GitHub
                   spec:
-                    connectorRef: account.harnessImage
-                    image: python:3.7.16-alpine
                     shell: Sh
                     command: |-
-                      apk update
-                      apk add --no-cache krb5-dev musl-dev libffi-dev build-base
+                      # Get SonarQube quality gate status
+                       curl -u <+secrets.getValue('sonarqube-token')>: \
+                         -s "https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}"
 
-                      # Run pytest with JUnit XML report output
-                      cd /harness
-                      pip install --upgrade pip
-                      pip install -U setuptools pip wheel
-                      pip install Cython==3.0.12
-                      pip install aiohttp==3.8.4
-                      pip install cryptography==45.0.7
-                      pip install pycparser==2.21
+                       curl -u <+secrets.getValue('sonarqube-token')>: -s 'https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}' | jq -r .projectStatus.status
 
-                      apk add redis 
-                      redis-server /etc/redis.conf &
+                       QUALITY_GATE_STATUS=$(curl -u <+secrets.getValue('sonarqube-token')>: -s 'https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}' | jq -r .projectStatus.status)
 
-                      pip install redis==5.0.8
-                      python setup.py test 
-                    envVariables:
-                      PYTHONPATH: ${PYTHONPATH}:.
-                      PYTEST_ADDOPTS: "--verbose"
+                       echo "QUALITY_GATE_STATUS: $QUALITY_GATE_STATUS"
+
+                       # Set GitHub status based on quality gate
+                       if [ "$QUALITY_GATE_STATUS" = "OK" ]; then
+                         STATE="success"
+                         DESCRIPTION="SonarQube Quality Gate passed"
+                       else
+                         STATE="failure"
+                         DESCRIPTION="SonarQube Quality Gate failed"
+                       fi
+
+                       # Post status to GitHub
+                       curl -X POST \
+                         -H "Authorization: token ${<+secrets.getValue('github-devops-token')>}" \
+                         -H "Content-Type: application/json" \
+                         -d "{
+                           \"state\": \"${STATE}\",
+                           \"description\": \"${DESCRIPTION}\",
+                           \"context\": \"sonarqube/qualitygate\",
+                           \"target_url\": \"https://sonar.harness.io/dashboard?id=python-client&pullRequest=${<+codebase.prNumber>}\"
+                         }" \
+                         "https://api.github.com/repos/splitio/python-client/statuses/<+codebase.commitSha>"
             rollbackSteps: []
           rollbackSteps: []
           caching:
