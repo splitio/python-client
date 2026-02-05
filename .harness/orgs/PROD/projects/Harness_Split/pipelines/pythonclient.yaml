@@ -42,34 +42,36 @@ pipeline:
                   spec:
                     shell: Sh
                     command: |-
-                      curl -u <+secrets.getValue('sonarqube_token')>: -s "https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}"
+                      # Get SonarQube quality gate status
+                       curl -u <+secrets.getValue("sonarqube_token")>: \
+                         -s "https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}"
 
-                      curl -u <+secrets.getValue('sonarqube_token')>: -s 'https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}' | jq -r .projectStatus.status
+                       curl -u <+secrets.getValue('sonarqube_token')>: -s 'https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}' | jq -r .projectStatus.status
 
-                      QUALITY_GATE_STATUS=$(curl -u <+secrets.getValue('sonarqube_token')>: -s 'https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}' | jq -r .projectStatus.status)
+                       QUALITY_GATE_STATUS=$(curl -u <+secrets.getValue('sonarqube_token')>: -s 'https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}' | jq -r .projectStatus.status)
 
-                      echo "QUALITY_GATE_STATUS: $QUALITY_GATE_STATUS"
+                       echo "QUALITY_GATE_STATUS: $QUALITY_GATE_STATUS"
 
-                      # Set GitHub status based on quality gate
-                      if [ "$QUALITY_GATE_STATUS" = "OK" ]; then
-                        STATE="success"
-                        DESCRIPTION="SonarQube Quality Gate passed"
-                      else
-                        STATE="failure"
-                        DESCRIPTION="SonarQube Quality Gate failed"
-                      fi
+                       # Set GitHub status based on quality gate
+                       if [ "$QUALITY_GATE_STATUS" = "OK" ]; then
+                         STATE="success"
+                         DESCRIPTION="SonarQube Quality Gate passed"
+                       else
+                         STATE="failure"
+                         DESCRIPTION="SonarQube Quality Gate failed"
+                       fi
 
-                      # Post status to GitHub
-                      curl -X POST \
-                        -H "Authorization: token ${<+secrets.getValue('github_token')>}" \
-                        -H "Content-Type: application/json" \
-                        -d "{
-                          \"state\": \"$STATE\",
-                          \"description\": \"$DESCRIPTION\",
-                          \"context\": \"sonarqube/qualitygate\",
-                          \"target_url\": \"https://sonar.harness.io/dashboard?id=python-client&pullRequest=${<+codebase.prNumber>}\"
-                        }" \
-                        "https://api.github.com/repos/splitio/python-client/statuses/<+codebase.commitSha>"
+                       # Post status to GitHub
+                       curl -X POST \
+                         -H "Authorization: token ${<+secrets.getValue('github_token')>}" \
+                         -H "Content-Type: application/json" \
+                         -d "{
+                           \"state\": \"$STATE\",
+                           \"description\": \"$DESCRIPTION\",
+                           \"context\": \"sonarqube/qualitygate\",
+                           \"target_url\": \"https://sonar.harness.io/dashboard?id=python-client&pullRequest=${<+codebase.prNumber>}\"
+                         }" \
+                         "https://api.github.com/repos/splitio/python-client/statuses/<+codebase.commitSha>"
               - step:
                   type: Run
                   name: Install and Run SonarQube Scanner
