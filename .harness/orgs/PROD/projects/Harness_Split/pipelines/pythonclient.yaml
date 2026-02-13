@@ -1,0 +1,149 @@
+pipeline:
+  name: python-client
+  identifier: pythonclient
+  projectIdentifier: Harness_Split
+  orgIdentifier: PROD
+  tags:
+    ai_generated: "true"
+  properties:
+    ci:
+      codebase:
+        connectorRef: <+input>
+        repoName: <+input>
+        build: <+input>
+  variables:
+    - name: sonarqube_token
+      type: Secret
+      value: <+secrets.getValue('sonarqube-token')>
+    - name: github_token
+      type: Secret
+      value: <+secrets.getValue('github-devops-token')>
+  stages:
+    - stage:
+        name: Build and Test
+        identifier: ci_stage
+        type: CI
+        spec:
+          cloneCodebase: true
+          runtime:
+            type: Cloud
+            spec:
+              size: medium
+              nestedVirtualization: true
+          platform:
+            os: Linux
+            arch: Amd64
+          execution:
+            steps:
+              - step:
+                  timeout: 30m
+                  type: Test
+                  name: Run Python Tests
+                  identifier: run_tests
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: python:3.7.16-alpine
+                    shell: Sh
+                    command: |-
+                      apk update
+                      apk add --no-cache krb5-dev musl-dev libffi-dev build-base
+
+                      # Run pytest with JUnit XML report output
+                      cd /harness
+                      pip install --upgrade pip
+                      pip install -U setuptools pip wheel
+                      pip install Cython==3.0.12
+                      pip install aiohttp==3.8.4
+                      pip install cryptography==45.0.7
+                      pip install pycparser==2.21
+
+                      apk add redis 
+                      redis-server /etc/redis.conf &
+
+                      pip install redis==5.0.8
+                      python setup.py test 
+                    envVariables:
+                      PYTHONPATH: ${PYTHONPATH}:.
+                      PYTEST_ADDOPTS: "--verbose"
+              - step:
+                  type: Run
+                  name: Install and Run SonarQube Scanner
+                  identifier: install_sonarqube_scanner
+                  spec:
+                    connectorRef: account.harnessImage
+                    image: sonarsource/sonar-scanner-cli
+                    shell: Bash
+                    command: |
+                      cd /harness
+                      if [ "<+codebase.prNumber>" != "" ]; then
+                        echo "Pull Request Analysis"
+                        sonar-scanner -X \
+                          -Dsonar.host.url=https://sonar.harness.io \
+                          -Dsonar.token=<+secrets.getValue('sonarqube-token')> \
+                          -Dsonar.projectKey=python-client \
+                          -Dsonar.scanner.skipJreProvisioning=true \
+                          -Dsonar.pullrequest.key=<+codebase.prNumber> \
+                          -Dsonar.pullrequest.branch=<+codebase.sourceBranch> \
+                          -Dsonar.pullrequest.base=<+codebase.targetBranch> \
+                          -Dsonar.scanner.skipSystemTruststore=true
+                      else
+                        echo "Branch Analysis"
+                        sonar-scanner \
+                          -Dsonar.host.url=https://sonar.harness.io \
+                          -Dsonar.token=<+secrets.getValue('sonarqube-token')> \
+                          -Dsonar.projectKey=python-client \
+                          -Dsonar.scanner.skipJreProvisioning=true \
+                          -Dsonar.branch.name=<+codebase.branch> \
+                          -Dsonar.scanner.skipSystemTruststore=true
+                      fi
+                    envVariables:
+                      SONAR_TOKEN: <+pipeline.variables.sonarqube_token>
+                    outputVariables:
+                      - name: SONAR_SCANNER_PATH
+                  timeout: 10m
+              - step:
+                  type: Run
+                  name: Post Quality Gate to GitHub
+                  identifier: Post_Quality_Gate_to_GitHub
+                  spec:
+                    shell: Sh
+                    command: |-
+                      # Get SonarQube quality gate status
+                       curl -u <+secrets.getValue('sonarqube-token')>: \
+                         -s "https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}"
+
+                       curl -u <+secrets.getValue('sonarqube-token')>: -s 'https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}' | jq -r .projectStatus.status
+
+                       QUALITY_GATE_STATUS=$(curl -u <+secrets.getValue('sonarqube-token')>: -s 'https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}' | jq -r .projectStatus.status)
+
+                       echo "QUALITY_GATE_STATUS: $QUALITY_GATE_STATUS"
+
+                       # Set GitHub status based on quality gate
+                       if [ "$QUALITY_GATE_STATUS" = "OK" ]; then
+                         STATE="success"
+                         DESCRIPTION="SonarQube Quality Gate passed"
+                       else
+                         STATE="failure"
+                         DESCRIPTION="SonarQube Quality Gate failed"
+                       fi
+
+                       # Post status to GitHub
+                       curl -X POST \
+                         -H "Authorization: token ${<+secrets.getValue('github-devops-token')>}" \
+                         -H "Content-Type: application/json" \
+                         -d "{
+                           \"state\": \"${STATE}\",
+                           \"description\": \"${DESCRIPTION}\",
+                           \"context\": \"sonarqube/qualitygate\",
+                           \"target_url\": \"https://sonar.harness.io/dashboard?id=python-client&pullRequest=${<+codebase.prNumber>}\"
+                         }" \
+                         "https://api.github.com/repos/splitio/python-client/statuses/<+codebase.commitSha>"
+            rollbackSteps: []
+          rollbackSteps: []
+          caching:
+            enabled: false
+            paths: []
+          buildIntelligence:
+            enabled: false
+        description: ""
+  description: This pipeline was updated by Harness AI on 2026-02-04 05:22:48 UTC by Bilal Al-Shahwany.
