@@ -1,6 +1,8 @@
 """Synchronizer tests."""
 import unittest.mock as mock
 import pytest
+import queue
+import asyncio
 
 from splitio.sync.synchronizer import Synchronizer, SynchronizerAsync, SplitTasks, SplitSynchronizers, LocalhostSynchronizer, LocalhostSynchronizerAsync, RedisSynchronizer, RedisSynchronizerAsync
 from splitio.tasks.split_sync import SplitSynchronizationTask, SplitSynchronizationTaskAsync
@@ -124,13 +126,14 @@ class SynchronizerTests(object):
         assert not sychronizer._synchronize_segments()
 
     def test_synchronize_splits(self, mocker):
-        split_storage = InMemorySplitStorage()
-        rbs_storage = InMemoryRuleBasedSegmentStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
+        rbs_storage = InMemoryRuleBasedSegmentStorage(events_queue)
         split_api = mocker.Mock()
         split_api.fetch_splits.return_value = {'ff': {'d': splits, 's': 123,
                                                't': 123}, 'rbs': {'d': [], 's': -1, 't': -1}}
         split_sync = SplitSynchronizer(split_api, split_storage, rbs_storage)
-        segment_storage = InMemorySegmentStorage()
+        segment_storage = InMemorySegmentStorage(events_queue)
         segment_api = mocker.Mock()
         segment_api.fetch_segment.return_value = {'name': 'segmentA', 'added': ['key1', 'key2',
                                                   'key3'], 'removed': [], 'since': 123, 'till': 123}
@@ -151,8 +154,9 @@ class SynchronizerTests(object):
             assert inserted_segment.keys == {'key1', 'key2', 'key3'}
 
     def test_synchronize_splits_calling_segment_sync_once(self, mocker):
-        split_storage = InMemorySplitStorage()
-        rbs_storage = InMemoryRuleBasedSegmentStorage()
+        events_queue = queue.Queue()
+        split_storage = InMemorySplitStorage(events_queue)
+        rbs_storage = InMemoryRuleBasedSegmentStorage(events_queue)
         split_api = mocker.Mock()
         split_api.fetch_splits.return_value = {'ff': {'d': splits, 's': 123,
                                                't': 123}, 'rbs': {'d': [], 's': -1, 't': -1}}
@@ -206,7 +210,6 @@ class SynchronizerTests(object):
                                                  mocker.Mock(), mocker.Mock())
 
         synchronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
-#        pytest.set_trace()
         self.clear = False
         def clear():
             self.clear = True
@@ -499,8 +502,9 @@ class SynchronizerAsyncTests(object):
 
     @pytest.mark.asyncio
     async def test_synchronize_splits(self, mocker):
-        split_storage = InMemorySplitStorageAsync()
-        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
+        internal_events_queue = asyncio.Queue()
+        split_storage = InMemorySplitStorageAsync(internal_events_queue)
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
         split_api = mocker.Mock()
 
         async def fetch_splits(change, rb, options):
@@ -510,7 +514,7 @@ class SynchronizerAsyncTests(object):
         split_api.fetch_splits = fetch_splits
 
         split_sync = SplitSynchronizerAsync(split_api, split_storage, rbs_storage)
-        segment_storage = InMemorySegmentStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
         segment_api = mocker.Mock()
 
         async def get_change_number():
@@ -542,8 +546,9 @@ class SynchronizerAsyncTests(object):
 
     @pytest.mark.asyncio
     async def test_synchronize_splits_calling_segment_sync_once(self, mocker):
-        split_storage = InMemorySplitStorageAsync()
-        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
+        internal_events_queue = asyncio.Queue()
+        split_storage = InMemorySplitStorageAsync(internal_events_queue)
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
         async def get_change_number():
             return 123
         split_storage.get_change_number = get_change_number
@@ -577,8 +582,9 @@ class SynchronizerAsyncTests(object):
 
     @pytest.mark.asyncio
     async def test_sync_all(self, mocker):
-        split_storage = InMemorySplitStorageAsync()
-        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
+        internal_events_queue = asyncio.Queue()
+        split_storage = InMemorySplitStorageAsync(internal_events_queue)
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
         async def get_change_number():
             return 123
         split_storage.get_change_number = get_change_number
@@ -609,7 +615,7 @@ class SynchronizerAsyncTests(object):
         split_api.fetch_splits = fetch_splits
 
         split_sync = SplitSynchronizerAsync(split_api, split_storage, rbs_storage)
-        segment_storage = InMemorySegmentStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
         async def get_change_number(segment):
             return 123
         segment_storage.get_change_number = get_change_number

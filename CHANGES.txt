@@ -1,3 +1,9 @@
+10.6.0 (Jan 28, 2026)
+- Fixed non-blocking error when fetching feature flags from redis.
+- Added the ability to listen to different events triggered by the SDK. Read more in our docs.
+   - SDK_UPDATE notify when a flag or user segment has changed
+   - SDK_READY notify when the SDK is ready to evaluate
+
 10.5.1 (Oct 15, 2025)
 - Added using String only parameter for treatments in FallbackTreatmentConfiguration class.
 
