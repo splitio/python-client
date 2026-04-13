@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 TESTS_REQUIRES = [
     'flake8',
-    'pytest==7.0.1',
+    'pytest==9.0.3',
     'pytest-mock==3.11.1',
     'coverage==7.0.0',
     'pytest-cov==4.1.0',
