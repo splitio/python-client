@@ -2,7 +2,7 @@ import threading
 from collections import defaultdict, namedtuple
 
 from splitio.util.time import utctime_ms
-from splitio.models.impressions import Impression
+from harness_commons.models.impressions import Impression
 from splitio.engine.hashfns import murmur_128
 from splitio.engine.cache.lru import SimpleLruCache
 from splitio.optional.loaders import asyncio
@@ -28,10 +28,10 @@ def truncate_impressions_time(imps, counter = None):
     Impressions are truncated based on time
 
     :param impressions: List of impression objects with attributes
-    :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
+    :type impressions: list[tuple[harness_commons.models.impression.Impression, dict]]
 
     :returns: truncated list of impressions
-    :rtype: list[splitio.models.impression.Impression]
+    :rtype: list[harness_commons.models.impression.Impression]
     """
     this_hour = truncate_time(utctime_ms())
     return [imp for imp, _ in imps] if counter is None \
@@ -61,7 +61,7 @@ class Hasher(object):  # pylint:disable=too-few-public-methods
         Stringify an impression.
 
         :param impression: Impression to stringify using _PATTERN
-        :type impression: splitio.models.impressions.Impression
+        :type impression: harness_commons.models.impressions.Impression
 
         :returns: a string representation of the impression
         :rtype: str
@@ -77,7 +77,7 @@ class Hasher(object):  # pylint:disable=too-few-public-methods
         Hash an impression.
 
         :param impression: Impression to hash.
-        :type impression: splitio.models.impressions.Impression
+        :type impression: harness_commons.models.impressions.Impression
 
         :returns: a hash of the supplied impression's relevant fields.
         :rtype: int
@@ -98,10 +98,10 @@ class Observer(object):  # pylint:disable=too-few-public-methods
         Examine an impression to determine and set it's previous time accordingly.
 
         :param impression: Impression to track
-        :type impression: splitio.models.impressions.Impression
+        :type impression: harness_commons.models.impressions.Impression
 
         :returns: Impression with populated previous time
-        :rtype: splitio.models.impressions.Impression
+        :rtype: harness_commons.models.impressions.Impression
         """
         previous_time = self._cache.test_and_set(self._hasher.process(impression), impression.time)
         return Impression(impression.matching_key,
@@ -130,7 +130,7 @@ class Counter(object):
         Register N new impressions for a feature in a specific timeframe.
 
         :param impressions: generated impressions
-        :type impressions: list[splitio.models.impressions.Impression]
+        :type impressions: list[harness_commons.models.impressions.Impression]
 
         :param inc: amount to increment (defaults to 1)
         :type inc: int

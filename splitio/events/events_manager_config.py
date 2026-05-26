@@ -1,5 +1,5 @@
 """Events Manager Configuration."""
-from splitio.models.events import SdkEvent, SdkInternalEvent
+from harness_commons.models.events import SdkEvent, SdkInternalEvent
 
 class EventsManagerConfig(object):
     """Events Manager Configurations class."""

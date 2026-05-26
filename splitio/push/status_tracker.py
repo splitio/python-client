@@ -4,7 +4,7 @@ import logging
 
 from splitio.push.parser import ControlType
 from splitio.util.time import get_current_epoch_time_ms
-from splitio.models.telemetry import StreamingEventTypes, SSEConnectionError, SSEStreamingStatus
+from harness_commons.models.telemetry import StreamingEventTypes, SSEConnectionError, SSEStreamingStatus
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -91,7 +91,7 @@ class PushStatusTrackerBase(object):
         Return the next status to propagate based on the last status.
 
         :returns: Next status and Streaming status for telemetry event.
-        :rtype: Tuple(splitio.push.status_tracker.Status, splitio.models.telemetry.SSEStreamingStatus)
+        :rtype: Tuple(splitio.push.status_tracker.Status, harness_commons.models.telemetry.SSEStreamingStatus)
         """
         if self._last_status_propagated == Status.PUSH_SUBSYSTEM_UP:
             if not self._occupancy_ok() \

@@ -5,7 +5,7 @@ from queue import Queue
 import pytest
 
 from splitio.api import APIException
-from splitio.models.token import Token
+from harness_commons.models.token import Token
 from splitio.push.sse import SSEEvent
 from splitio.push.parser import parse_incoming_event, EventType, ControlType, ControlMessage, \
     OccupancyMessage, SplitChangeUpdate, SplitKillUpdate, SegmentChangeUpdate
@@ -16,7 +16,7 @@ from splitio.push.splitsse import SplitSSEClient, SplitSSEClientAsync
 from splitio.push.status_tracker import Status
 from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
-from splitio.models.telemetry import StreamingEventTypes
+from harness_commons.models.telemetry import StreamingEventTypes
 from splitio.optional.loaders import asyncio
 
 from tests.helpers import Any

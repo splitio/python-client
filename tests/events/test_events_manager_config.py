@@ -2,7 +2,7 @@
 import pytest
 
 from splitio.events.events_manager_config import EventsManagerConfig
-from splitio.models.events import SdkEvent, SdkInternalEvent
+from harness_commons.models.events import SdkEvent, SdkInternalEvent
 
 class EventsManagerConfigTests(object):
     """Tests for EventsManagerConfig."""

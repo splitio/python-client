@@ -4,8 +4,8 @@ import queue
 import time
 import asyncio
 
-from splitio.models.events import SdkInternalEvent
-from splitio.models.notification import SdkInternalEventNotification
+from harness_commons.models.events import SdkInternalEvent
+from harness_commons.models.notification import SdkInternalEventNotification
 from splitio.events.events_metadata import EventsMetadata
 from splitio.events.events_metadata import SdkEventType
 from splitio.events.events_task import EventsTask, EventsTaskAsync

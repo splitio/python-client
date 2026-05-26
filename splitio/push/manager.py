@@ -14,7 +14,7 @@ from splitio.push.parser import parse_incoming_event, EventParsingException, Eve
     MessageType
 from splitio.push.processor import MessageProcessor, MessageProcessorAsync
 from splitio.push.status_tracker import PushStatusTracker, Status, PushStatusTrackerAsync
-from splitio.models.telemetry import StreamingEventTypes
+from harness_commons.models.telemetry import StreamingEventTypes
 
 if sys.version_info.major == 3 and sys.version_info.minor < 10:
   from splitio.optional.loaders import _anext as anext
@@ -188,7 +188,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         Schedule next token refresh.
 
         :param token: Last fetched token.
-        :type token: splitio.models.token.Token
+        :type token: harness_commons.models.token.Token
         """
         if self._next_refresh is not None:
             self._next_refresh.cancel()
@@ -391,7 +391,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         """Refresh auth token.
 
         :param current_token: token (parsed) JWT
-        :type current_token: splitio.models.token.Token
+        :type current_token: harness_commons.models.token.Token
         """
         _LOGGER.debug("Next token refresh in " + str(self._get_time_period(current_token)) + " seconds")
         await asyncio.sleep(self._get_time_period(current_token))

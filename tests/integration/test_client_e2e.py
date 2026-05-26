@@ -27,10 +27,11 @@ from splitio.events.events_delivery import EventsDelivery
 from splitio.events.events_manager import EventsManager, EventsManagerAsync
 from splitio.events.events_manager_config import EventsManagerConfig
 from splitio.events.events_task import EventsTask, EventsTaskAsync
-from splitio.models import splits, segments, rule_based_segments
-from splitio.models.events import SdkEvent
-from splitio.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
-from splitio.models.fallback_treatment import FallbackTreatment
+from splitio.models import splits
+from harness_commons.models import segments, rule_based_segments
+from harness_commons.models.events import SdkEvent
+from harness_commons.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
+from harness_commons.models.fallback_treatment import FallbackTreatment
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder, StandardRecorderAsync, PipelinedRecorderAsync
 from splitio.storage.inmemmory import InMemoryEventStorage, InMemoryImpressionStorage, \
     InMemorySegmentStorage, InMemorySplitStorage, InMemoryTelemetryStorage, InMemorySplitStorageAsync,\

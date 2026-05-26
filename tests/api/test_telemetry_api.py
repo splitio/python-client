@@ -4,7 +4,7 @@ import pytest
 import unittest.mock as mock
 
 from splitio.api import telemetry, client, APIException
-#from splitio.models.telemetry import
+#from harness_commons.models.telemetry import
 from splitio.client.util import get_metadata
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.version import __version__

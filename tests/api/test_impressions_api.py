@@ -4,7 +4,7 @@ import pytest
 import unittest.mock as mock
 
 from splitio.api import impressions, client, APIException
-from splitio.models.impressions import Impression
+from harness_commons.models.impressions import Impression
 from splitio.engine.impressions.impressions import ImpressionsMode
 from splitio.engine.impressions.manager import Counter
 from splitio.client.util import get_metadata

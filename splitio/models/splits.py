@@ -3,8 +3,9 @@ from enum import Enum
 from collections import namedtuple
 import logging
 
-from splitio.models import MatcherNotFoundException
-from splitio.models.grammar import condition
+from harness_commons.models import MatcherNotFoundException, _DEFAULT_CONDITIONS_TEMPLATE, Status, HashAlgorithm, Prerequisites
+from harness_commons.models.grammar import condition
+from harness_commons.models.definitions import Definition, Prerequisites, Status, from_raw_prerequisites
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -13,71 +14,7 @@ SplitView = namedtuple(
     ['name', 'traffic_type', 'killed', 'treatments', 'change_number', 'configs', 'default_treatment', 'sets', 'impressions_disabled', 'prerequisites']
 )
 
-_DEFAULT_CONDITIONS_TEMPLATE =   {
-    "conditionType": "ROLLOUT",
-    "matcherGroup": {
-        "combiner": "AND",
-        "matchers": [
-        {
-            "keySelector": None,
-            "matcherType": "ALL_KEYS",
-            "negate": False,
-            "userDefinedSegmentMatcherData": None,
-            "whitelistMatcherData": None,
-            "unaryNumericMatcherData": None,
-            "betweenMatcherData": None,
-            "dependencyMatcherData": None,
-            "booleanMatcherData": None,
-            "stringMatcherData": None
-        }]
-    },
-    "partitions": [
-        {
-        "treatment": "control",
-        "size": 100
-        }
-    ],
-    "label": "targeting rule type unsupported by sdk"
-}
-
-class Prerequisites(object):
-    """Prerequisites."""
-    def __init__(self, feature_flag_name, treatments):
-        self._feature_flag_name = feature_flag_name
-        self._treatments = treatments
-    
-    @property
-    def feature_flag_name(self):
-        """Return featur eflag name."""
-        return self._feature_flag_name
-
-    @property
-    def treatments(self):
-        """Return treatments."""
-        return self._treatments
-    
-    def to_json(self):
-        to_return = []
-        for feature_flag_name in self._feature_flag_name:
-            to_return.append({"n": feature_flag_name, "ts": [treatment for treatment in self._treatments]})
-        
-        return to_return
-
-class Status(Enum):
-    """Split status."""
-
-    ACTIVE = "ACTIVE"
-    ARCHIVED = "ARCHIVED"
-
-
-class HashAlgorithm(Enum):
-    """Hash algorithm names."""
-
-    LEGACY = 1
-    MURMUR = 2
-
-
-class Split(object):  # pylint: disable=too-many-instance-attributes
+class Split(Definition):  # pylint: disable=too-many-instance-attributes
     """Split model object."""
 
     def __init__(  # pylint: disable=too-many-arguments
@@ -124,139 +61,9 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
         :pram prerequisites: prerequisites
         :type prerequisites: List of Preqreuisites
         """
-        self._name = name
-        self._seed = seed
-        self._killed = killed
-        self._default_treatment = default_treatment
-        self._traffic_type_name = traffic_type_name
-        try:
-            self._status = Status(status)
-        except ValueError:
-            self._status = Status.ARCHIVED
-
-        self._change_number = change_number
-        self._conditions = conditions if conditions is not None else []
-
-        if traffic_allocation is None:
-            self._traffic_allocation = 100
-        elif traffic_allocation >= 0 and traffic_allocation <= 100:
-            self._traffic_allocation = traffic_allocation
-        else:
-            self._traffic_allocation = 100
-
-        self._traffic_allocation_seed = traffic_allocation_seed
-        try:
-            self._algo = HashAlgorithm(algo)
-        except ValueError:
-            self._algo = HashAlgorithm.LEGACY
-
-        self._configurations = configurations
-        self._sets = set(sets) if sets is not None else set()
-        self._impressions_disabled = impressions_disabled if impressions_disabled is not None else False
-        self._prerequisites = prerequisites if prerequisites is not None else []
-
-    @property
-    def name(self):
-        """Return name."""
-        return self._name
-
-    @property
-    def seed(self):
-        """Return seed."""
-        return self._seed
-
-    @property
-    def algo(self):
-        """Return hash algorithm."""
-        return self._algo
-
-    @property
-    def killed(self):
-        """Return whether the split has been killed."""
-        return self._killed
-
-    @property
-    def default_treatment(self):
-        """Return the default treatment."""
-        return self._default_treatment
-
-    @property
-    def traffic_type_name(self):
-        """Return the traffic type of the split."""
-        return self._traffic_type_name
-
-    @property
-    def status(self):
-        """Return the status of the split."""
-        return self._status
-
-    @property
-    def change_number(self):
-        """Return the change number of the split."""
-        return self._change_number
-
-    @property
-    def conditions(self):
-        """Return the condition list of the split."""
-        return self._conditions
-
-    @property
-    def traffic_allocation(self):
-        """Return the traffic allocation percentage of the split."""
-        return self._traffic_allocation
-
-    @property
-    def traffic_allocation_seed(self):
-        """Return the traffic allocation seed of the split."""
-        return self._traffic_allocation_seed
-
-    @property
-    def sets(self):
-        """Return the flag sets of the split."""
-        return self._sets
-
-    @property
-    def impressions_disabled(self):
-        """Return impressions_disabled of the split."""
-        return self._impressions_disabled
-    
-    @property
-    def prerequisites(self):
-        """Return prerequisites of the split."""
-        return self._prerequisites
-
-    def get_configurations_for(self, treatment):
-        """Return the mapping of treatments to configurations."""
-        return self._configurations.get(treatment) if self._configurations else None
-
-    def get_segment_names(self):
-        """
-        Return a list of segment names referenced in all matchers from this split.
-
-        :return: List of segment names.
-        :rtype: list(string)
-        """
-        return [name for cond in self.conditions for name in cond.get_segment_names()]
-
-    def to_json(self):
-        """Return a JSON representation of this split."""
-        return {
-            'changeNumber': self.change_number,
-            'trafficTypeName': self.traffic_type_name,
-            'name': self.name,
-            'trafficAllocation': self.traffic_allocation,
-            'trafficAllocationSeed': self.traffic_allocation_seed,
-            'seed': self.seed,
-            'status': self.status.value,
-            'killed': self.killed,
-            'defaultTreatment': self.default_treatment,
-            'algo': self.algo.value,
-            'conditions': [c.to_json() for c in self.conditions],
-            'configurations': self._configurations,
-            'sets': list(self._sets),
-            'impressionsDisabled': self._impressions_disabled,
-            'prerequisites': [prerequisite.to_json() for prerequisite in self._prerequisites]
-        }
+        Definition.__init__(self, name, seed, killed, default_treatment, traffic_type_name, status,
+            change_number, conditions, algo, traffic_allocation, traffic_allocation_seed, configurations,
+            sets, impressions_disabled, prerequisites)
 
     def to_split_view(self):
         """
@@ -278,67 +85,36 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             self._prerequisites
         )
 
-    def local_kill(self, default_treatment, change_number):
-        """
-        Perform split kill.
-
-        :param default_treatment: name of the default treatment to return
-        :type default_treatment: str
-        :param change_number: change_number
-        :type change_number: int
-        """
-        self._default_treatment = default_treatment
-        self._change_number = change_number
-        self._killed = True
-
-    def __str__(self):
-        """Return string representation."""
-        return 'name: {name}, seed: {seed}, killed: {killed}, ' \
-               'default treatment: {default_treatment}, ' \
-               'conditions: {conditions}'.format(
-                   name=self._name, seed=self._seed, killed=self._killed,
-                   default_treatment=self._default_treatment,
-                   conditions=','.join(map(str, self._conditions))
-               )
-
-
-def from_raw(raw_split):
+def from_raw(raw_definition):
     """
-    Parse a split from a JSON portion of splitChanges.
+    Parse a definition from a JSON portion of definitionChanges.
 
-    :param raw_split: JSON object extracted from a splitChange's split array (splitChanges response)
-    :type raw_split: dict
+    :param raw_definition: JSON object extracted from a definitionChange's definition array (definitionChanges response)
+    :type raw_definition: dict
 
-    :return: A parsed Split object capable of performing evaluations.
-    :rtype: Split
+    :return: A parsed definition object capable of performing evaluations.
+    :rtype: definition
     """
     try:
-        conditions = [condition.from_raw(c) for c in raw_split['conditions']]
+        conditions = [condition.from_raw(c) for c in raw_definition['conditions']] 
     except MatcherNotFoundException as e:
         _LOGGER.error(str(e))
-        _LOGGER.debug("Using default conditions template for feature flag: %s", raw_split['name'])
+        _LOGGER.debug("Using default conditions template for feature flag: %s", raw_definition['name'])
         conditions = [condition.from_raw(_DEFAULT_CONDITIONS_TEMPLATE)]
     return Split(
-        raw_split['name'],
-        raw_split['seed'],
-        raw_split['killed'],
-        raw_split['defaultTreatment'],
-        raw_split['trafficTypeName'],
-        raw_split['status'],
-        raw_split['changeNumber'],
+        raw_definition['name'],
+        raw_definition['seed'],
+        raw_definition['killed'],
+        raw_definition['defaultTreatment'],
+        raw_definition['trafficTypeName'],
+        raw_definition['status'],
+        raw_definition['changeNumber'],
         conditions,
-        raw_split.get('algo'),
-        traffic_allocation=raw_split.get('trafficAllocation'),
-        traffic_allocation_seed=raw_split.get('trafficAllocationSeed'),
-        configurations=raw_split.get('configurations'),
-        sets=set(raw_split.get('sets')) if raw_split.get('sets') is not None else [],
-        impressions_disabled=raw_split.get('impressionsDisabled') if raw_split.get('impressionsDisabled') is not None else False,
-        prerequisites=from_raw_prerequisites(raw_split.get('prerequisites')) if raw_split.get('prerequisites') is not None else []
+        raw_definition.get('algo'),
+        traffic_allocation=raw_definition.get('trafficAllocation'),
+        traffic_allocation_seed=raw_definition.get('trafficAllocationSeed'),
+        configurations=raw_definition.get('configurations'),
+        sets=set(raw_definition.get('sets')) if raw_definition.get('sets') is not None else [],
+        impressions_disabled=raw_definition.get('impressionsDisabled') if raw_definition.get('impressionsDisabled') is not None else False,
+        prerequisites=from_raw_prerequisites(raw_definition.get('prerequisites')) if raw_definition.get('prerequisites') is not None else []
     )
-
-def from_raw_prerequisites(raw_prerequisites):
-    to_return = []
-    for prerequisite in raw_prerequisites:
-        to_return.append(Prerequisites(prerequisite['n'], prerequisite['ts']))
-    
-    return to_return

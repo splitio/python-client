@@ -10,7 +10,8 @@ from enum import Enum
 from splitio.api import APIException, APIUriException
 from splitio.api.commons import FetchOptions
 from splitio.client.input_validator import validate_flag_sets
-from splitio.models import splits, rule_based_segments
+from splitio.models import splits
+from harness_commons.models import rule_based_segments
 from splitio.util.backoff import Backoff
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.util.storage_helper import update_feature_flag_storage, update_feature_flag_storage_async,  \

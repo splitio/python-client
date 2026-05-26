@@ -6,7 +6,7 @@ import pytest
 
 from splitio.api import APIException
 from splitio.push.workers import SplitWorker, SplitWorkerAsync
-from splitio.models.notification import SplitChangeNotification
+from harness_commons.models.notification import SplitChangeNotification
 from splitio.optional.loaders import asyncio
 from splitio.push.parser import SplitChangeUpdate, RBSChangeUpdate
 from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync

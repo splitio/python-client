@@ -57,7 +57,7 @@ class SplitSSEClientBase(object, metaclass=abc.ABCMeta):
         Build the url to connect to and return it as a string.
 
         :param token: (parsed) JWT
-        :type token: splitio.models.token.Token
+        :type token: harness_commons.models.token.Token
 
         :returns: true if the connection was successful. False otherwise.
         :rtype: bool
@@ -135,7 +135,7 @@ class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-a
         Open a connection to start listening for events.
 
         :param token: (parsed) JWT
-        :type token: splitio.models.token.Token
+        :type token: harness_commons.models.token.Token
 
         :returns: true if the connection was successful. False otherwise.
         :rtype: bool
@@ -203,7 +203,7 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         Open a connection to start listening for events.
 
         :param token: (parsed) JWT
-        :type token: splitio.models.token.Token
+        :type token: harness_commons.models.token.Token
 
         :returns: yield events received from SSEClientAsync object
         :rtype: SSEEvent

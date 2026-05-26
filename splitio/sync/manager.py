@@ -9,7 +9,7 @@ from splitio.push.manager import PushManager, PushManagerAsync, Status
 from splitio.api import APIException
 from splitio.util.backoff import Backoff
 from splitio.util.time import get_current_epoch_time_ms
-from splitio.models.telemetry import SSESyncMode, StreamingEventTypes
+from harness_commons.models.telemetry import SSESyncMode, StreamingEventTypes
 from splitio.sync.synchronizer import _SYNC_ALL_NO_RETRIES
 
 _LOGGER = logging.getLogger(__name__)

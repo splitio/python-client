@@ -1,7 +1,7 @@
 """EventsManager test module."""
 import pytest
 
-from splitio.models.events import SdkEvent, SdkInternalEvent
+from harness_commons.models.events import SdkEvent, SdkInternalEvent
 from splitio.events.events_metadata import EventsMetadata
 from splitio.events.events_delivery import EventsDelivery
 from splitio.events.events_metadata import SdkEventType

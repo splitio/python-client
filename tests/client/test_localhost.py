@@ -5,7 +5,7 @@ import os
 from splitio.client import localhost
 from splitio.sync.split import LocalSplitSynchronizer
 from splitio.models.splits import Split
-from splitio.models.grammar.matchers import AllKeysMatcher
+from harness_commons.models.grammar.matchers import AllKeysMatcher
 from splitio.storage import SplitStorage, RuleBasedSegmentsStorage
 
 

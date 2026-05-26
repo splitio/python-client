@@ -8,8 +8,8 @@ from splitio.api.commons import headers_from_metadata, record_telemetry
 from splitio.spec import SPEC_VERSION
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.api.client import HttpClientException
-from splitio.models.token import from_raw
-from splitio.models.telemetry import HTTPExceptionsAndLatencies
+from harness_commons.models.token import from_raw
+from harness_commons.models.telemetry import HTTPExceptionsAndLatencies
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class AuthAPI(object):  # pylint: disable=too-few-public-methods
         Perform authentication.
 
         :return: Json representation of an authentication.
-        :rtype: splitio.models.token.Token
+        :rtype: harness_commons.models.token.Token
         """
         try:
             response = self._client.get(
@@ -86,7 +86,7 @@ class AuthAPIAsync(object):  # pylint: disable=too-few-public-methods
         Perform authentication.
 
         :return: Json representation of an authentication.
-        :rtype: splitio.models.token.Token
+        :rtype: harness_commons.models.token.Token
         """
         try:
             response = await self._client.get(

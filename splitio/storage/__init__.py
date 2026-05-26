@@ -129,7 +129,7 @@ class SegmentStorage(object, metaclass=abc.ABCMeta):
         Store a segment.
 
         :param segment: Segment to store.
-        :type segment: splitio.models.segment.Segment
+        :type segment: harness_commons.models.segment.Segment
         """
         pass
 
@@ -377,9 +377,9 @@ class RuleBasedSegmentsStorage(object, metaclass=abc.ABCMeta):
         Update rule based segment..
 
         :param to_add: List of rule based segment. to add
-        :type to_add: list[splitio.models.rule_based_segments.RuleBasedSegment]
+        :type to_add: list[harness_commons.models.rule_based_segments.RuleBasedSegment]
         :param to_delete: List of rule based segment. to delete
-        :type to_delete: list[splitio.models.rule_based_segments.RuleBasedSegment]
+        :type to_delete: list[harness_commons.models.rule_based_segments.RuleBasedSegment]
         :param new_change_number: New change number.
         :type new_change_number: int
         """

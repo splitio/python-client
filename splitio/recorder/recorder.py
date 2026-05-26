@@ -5,8 +5,8 @@ import random
 
 from splitio.client.config import DEFAULT_DATA_SAMPLING
 from splitio.client.listener import ImpressionListenerException
-from splitio.models.telemetry import MethodExceptionsAndLatencies
-from splitio.models import telemetry
+from harness_commons.models.telemetry import MethodExceptionsAndLatencies
+from harness_commons.models import telemetry
 from splitio.optional.loaders import asyncio
 
 _LOGGER = logging.getLogger(__name__)
@@ -86,7 +86,7 @@ class StatsRecorderThreadingBase(StatsRecorder):
         Send impression result to custom listener.
 
         :param impressions: List of impression objects with attributes
-        :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
+        :type impressions: list[tuple[harness_commons.models.impression.Impression, dict]]
         """
         if self._listener is not None:
             try:
@@ -120,7 +120,7 @@ class StatsRecorderAsyncBase(StatsRecorder):
         Send impression result to custom listener.
 
         :param impressions: List of impression objects with attributes
-        :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
+        :type impressions: list[tuple[harness_commons.models.impression.Impression, dict]]
         """
         if self._listener is not None:
             try:
@@ -183,7 +183,7 @@ class StandardRecorder(StatsRecorderThreadingBase):
         Record stats for tracking events.
 
         :param event: events tracked
-        :type event: splitio.models.events.EventWrapper
+        :type event: harness_commons.models.events.EventWrapper
         """
         self._telemetry_evaluation_producer.record_latency(MethodExceptionsAndLatencies.TRACK, latency)
         return self._event_sotrage.put(event)
@@ -244,7 +244,7 @@ class StandardRecorderAsync(StatsRecorderAsyncBase):
         Record stats for tracking events.
 
         :param event: events tracked
-        :type event: splitio.models.events.EventWrapper
+        :type event: harness_commons.models.events.EventWrapper
         """
         await self._telemetry_evaluation_producer.record_latency(MethodExceptionsAndLatencies.TRACK, latency)
         return await self._event_sotrage.put(event)
@@ -319,7 +319,7 @@ class PipelinedRecorder(StatsRecorderThreadingBase):
         Record stats for tracking events.
 
         :param event: events tracked
-        :type event: splitio.models.events.EventWrapper
+        :type event: harness_commons.models.events.EventWrapper
         """
         try:
             pipe = self._make_pipe()
@@ -410,7 +410,7 @@ class PipelinedRecorderAsync(StatsRecorderAsyncBase):
         Record stats for tracking events.
 
         :param event: events tracked
-        :type event: splitio.models.events.EventWrapper
+        :type event: harness_commons.models.events.EventWrapper
         """
         try:
             pipe = self._make_pipe()

@@ -1,6 +1,6 @@
 """Splitter test module."""
 
-from splitio.models.grammar.partitions import Partition
+from harness_commons.models.grammar.partitions import Partition
 from splitio.engine.splitters import Splitter, CONTROL
 
 

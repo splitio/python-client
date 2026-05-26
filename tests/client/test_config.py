@@ -3,8 +3,8 @@
 import pytest
 from splitio.client import config
 from splitio.engine.impressions.impressions import ImpressionsMode
-from splitio.models.fallback_treatment import FallbackTreatment
-from splitio.models.fallback_config import FallbackTreatmentsConfiguration
+from harness_commons.models.fallback_treatment import FallbackTreatment
+from harness_commons.models.fallback_config import FallbackTreatmentsConfiguration
 
 class ConfigSanitizationTests(object):
     """Inmemory storage-based integration tests."""

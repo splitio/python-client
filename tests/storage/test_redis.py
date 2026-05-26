@@ -17,10 +17,10 @@ from splitio.storage.redis import RedisEventsStorage, RedisEventsStorageAsync, R
 from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterException, build
 from redis.asyncio.client import Redis as aioredis
 from splitio.storage.adapters import redis
-from splitio.models.segments import Segment
-from splitio.models.impressions import Impression
-from splitio.models.events import Event, EventWrapper
-from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MethodExceptionsAndLatencies, TelemetryConfigAsync
+from harness_commons.models.segments import Segment
+from harness_commons.models.impressions import Impression
+from harness_commons.models.events import Event, EventWrapper
+from harness_commons.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MethodExceptionsAndLatencies, TelemetryConfigAsync
 
 class RedisSplitStorageTests(object):
     """Redis split storage test cases."""
@@ -1011,7 +1011,7 @@ class RedisTelemetryStorageTests(object):
         assert(isinstance(redis_telemetry._tel_config, TelemetryConfig))
         assert(redis_telemetry._make_pipe is not None)
 
-    @mock.patch('splitio.models.telemetry.TelemetryConfig.record_config')
+    @mock.patch('harness_commons.models.telemetry.TelemetryConfig.record_config')
     def test_record_config(self, mocker):
         redis_telemetry = RedisTelemetryStorage(mocker.Mock(), mocker.Mock())
         redis_telemetry.record_config(mocker.Mock(), mocker.Mock(), 0, 0)

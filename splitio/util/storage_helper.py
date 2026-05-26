@@ -1,7 +1,6 @@
 """Storage Helper."""
 import logging
 from splitio.models import splits
-from splitio.models import rule_based_segments
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,7 +42,7 @@ def update_rule_based_segment_storage(rule_based_segment_storage, rule_based_seg
     :param rule_based_segment_storage: rule based segment storage instance
     :type rule_based_segment_storage: splitio.storage.RuleBasedSegmentStorage
     :param rule_based_segments: rule based segment instance to validate.
-    :type rule_based_segments: splitio.models.rule_based_segments.RuleBasedSegment
+    :type rule_based_segments: harness_commons.models.rule_based_segments.RuleBasedSegment
     :param: last change number
     :type: int
 
@@ -121,7 +120,7 @@ async def update_rule_based_segment_storage_async(rule_based_segment_storage, ru
     :param rule_based_segment_storage: rule based segment storage instance
     :type rule_based_segment_storage: splitio.storage.RuleBasedSegmentStorage
     :param rule_based_segments: rule based segment instance to validate.
-    :type rule_based_segments: splitio.models.rule_based_segments.RuleBasedSegment
+    :type rule_based_segments: harness_commons.models.rule_based_segments.RuleBasedSegment
     :param: last change number
     :type: int
 

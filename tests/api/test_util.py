@@ -7,7 +7,7 @@ from splitio.api import headers_from_metadata
 from splitio.client.util import SdkMetadata
 from splitio.engine.telemetry import TelemetryStorageProducer
 from splitio.storage.inmemmory import InMemoryTelemetryStorage
-from splitio.models.telemetry import HTTPExceptionsAndLatencies
+from harness_commons.models.telemetry import HTTPExceptionsAndLatencies
 
 
 class UtilTests(object):

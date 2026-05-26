@@ -5,9 +5,9 @@ import pytest
 from splitio.engine.impressions.impressions import Manager, ImpressionsMode
 from splitio.engine.impressions.manager import Hasher, Observer, Counter, truncate_time
 from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyOptimizedMode, StrategyNoneMode
-from splitio.models.impressions import Impression, ImpressionDecorated
+from harness_commons.models.impressions import Impression, ImpressionDecorated
 from splitio.client.listener import ImpressionListenerWrapper
-import splitio.models.telemetry as ModelTelemetry
+import harness_commons.models.telemetry as ModelTelemetry
 from splitio.engine.telemetry import TelemetryStorageProducer
 from splitio.storage.inmemmory import InMemoryTelemetryStorage
 

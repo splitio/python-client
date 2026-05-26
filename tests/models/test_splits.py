@@ -2,7 +2,7 @@
 import copy
 
 from splitio.models import splits
-from splitio.models.grammar.condition import Condition
+from harness_commons.models.grammar.condition import Condition
 
 class SplitTests(object):
     """Split model tests."""
@@ -91,10 +91,10 @@ class SplitTests(object):
         flag1 = False
         flag2 = False
         for prerequisite in parsed.prerequisites:
-            if prerequisite.feature_flag_name == 'flag1':
+            if prerequisite.definition_name == 'flag1':
                 flag1 = True
                 assert prerequisite.treatments == ['on','v1']
-            if prerequisite.feature_flag_name == 'flag2':
+            if prerequisite.definition_name == 'flag2':
                 flag2 = True
                 assert prerequisite.treatments == ['off']
         assert flag1
