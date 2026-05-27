@@ -201,7 +201,7 @@ class SplitWorker(WorkerBase):
         :param segment_storage: segment storage instance
         :type segment_storage: splitio.storage.inmemory.InMemorySegmentStorage
         :param telemetry_runtime_producer: Telemetry runtime producer instance
-        :type telemetry_runtime_producer: splitio.engine.telemetry.TelemetryRuntimeProducer
+        :type telemetry_runtime_producer: harness_commons.engine.telemetry.TelemetryRuntimeProducer
         :param rule_based_segment_storage: Rule based segment Storage.
         :type rule_based_segment_storage: splitio.storage.InMemoryRuleBasedStorage
         """
@@ -340,7 +340,7 @@ class SplitWorkerAsync(WorkerBase):
         :param segment_storage: segment storage instance
         :type segment_storage: splitio.storage.inmemory.InMemorySegmentStorage
         :param telemetry_runtime_producer: Telemetry runtime producer instance
-        :type telemetry_runtime_producer: splitio.engine.telemetry.TelemetryRuntimeProducer
+        :type telemetry_runtime_producer: harness_commons.engine.telemetry.TelemetryRuntimeProducer
         :param rule_based_segment_storage: Rule based segment Storage.
         :type rule_based_segment_storage: splitio.storage.InMemoryRuleBasedStorage
         """

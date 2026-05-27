@@ -12,11 +12,11 @@ from splitio.optional.loaders import asyncio
 from splitio.client.factory import get_factory, get_factory_async, SplitFactory, _INSTANTIATED_FACTORIES, Status,\
     _LOGGER as _logger, SplitFactoryAsync
 from splitio.client.config import DEFAULT_CONFIG
-from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
+from harness_commons.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
-from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
+from harness_commons.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.engine.evaluator import Evaluator, EvaluationContext
 from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode, StrategyOptimizedMode
 from splitio.events.events_task import EventsTask
@@ -853,7 +853,7 @@ class SplitFactoryAsyncTests(object):
 
         async def synchronize_config(*_):
             pass
-        mocker.patch('splitio.sync.telemetry.InMemoryTelemetrySubmitterAsync.synchronize_config', new=synchronize_config)
+        mocker.patch('harness_commons.sync.telemetry.InMemoryTelemetrySubmitterAsync.synchronize_config', new=synchronize_config)
 
         # Start factory and make assertions
         factory2 = await get_factory_async('some_api_key', config={'streamingEmabled': False})
@@ -965,7 +965,7 @@ class SplitFactoryAsyncTests(object):
 
         async def synchronize_config(*_):
             pass
-        mocker.patch('splitio.sync.telemetry.InMemoryTelemetrySubmitterAsync.synchronize_config', new=synchronize_config)
+        mocker.patch('harness_commons.sync.telemetry.InMemoryTelemetrySubmitterAsync.synchronize_config', new=synchronize_config)
         # Start factory and make assertions
         # Using invalid key should result in a timeout exception
         factory = await get_factory_async('some_api_key')
@@ -1088,7 +1088,7 @@ class SplitFactoryAsyncTests(object):
         async def synchronize_config(*_):
             await asyncio.sleep(2)
             pass
-        mocker.patch('splitio.sync.telemetry.InMemoryTelemetrySubmitterAsync.synchronize_config', new=synchronize_config)
+        mocker.patch('harness_commons.sync.telemetry.InMemoryTelemetrySubmitterAsync.synchronize_config', new=synchronize_config)
 
         async def record_ready_time(*_):
             pass

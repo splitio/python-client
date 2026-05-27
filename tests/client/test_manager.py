@@ -8,7 +8,7 @@ from splitio.client.manager import SplitManager, SplitManagerAsync, _LOGGER as _
 from splitio.models import splits
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync, InMemorySplitStorage, InMemorySplitStorageAsync
 from splitio.engine.impressions.impressions import Manager as ImpressionManager
-from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync, TelemetryStorageConsumer, TelemetryStorageConsumerAsync
+from harness_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync, TelemetryStorageConsumer, TelemetryStorageConsumerAsync
 from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
 from tests.integration import splits_json
 

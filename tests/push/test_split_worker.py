@@ -9,7 +9,7 @@ from splitio.push.workers import SplitWorker, SplitWorkerAsync
 from harness_commons.models.notification import SplitChangeNotification
 from splitio.optional.loaders import asyncio
 from splitio.push.parser import SplitChangeUpdate, RBSChangeUpdate
-from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
+from harness_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemorySplitStorage, InMemorySegmentStorage, \
     InMemoryTelemetryStorageAsync, InMemorySplitStorageAsync, InMemorySegmentStorageAsync
 

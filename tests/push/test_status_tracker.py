@@ -4,7 +4,7 @@ import pytest
 
 from splitio.push.status_tracker import PushStatusTracker, Status, PushStatusTrackerAsync
 from splitio.push.parser import ControlType, AblyError, OccupancyMessage, ControlMessage
-from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
+from harness_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
 from harness_commons.models.telemetry import StreamingEventTypes, SSEStreamingStatus, SSEConnectionError
 

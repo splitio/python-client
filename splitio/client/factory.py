@@ -15,7 +15,7 @@ from splitio.client.listener import ImpressionListenerWrapper, ImpressionListene
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager
 from splitio.engine.impressions import set_classes, set_classes_async
 from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode
-from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageConsumer, \
+from harness_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageConsumer, \
     TelemetryStorageProducerAsync, TelemetryStorageConsumerAsync
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
@@ -61,7 +61,7 @@ from splitio.tasks.segment_sync import SegmentSynchronizationTask, SegmentSynchr
 from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask,\
     ImpressionsCountSyncTaskAsync, ImpressionsSyncTaskAsync
 from splitio.tasks.events_sync import EventsSyncTask, EventsSyncTaskAsync
-from splitio.tasks.telemetry_sync import TelemetrySyncTask, TelemetrySyncTaskAsync
+from harness_commons.tasks.telemetry_sync import TelemetrySyncTask, TelemetrySyncTaskAsync
 
 # Synchronizer
 from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, \
@@ -75,7 +75,7 @@ from splitio.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer, 
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer, \
     ImpressionsCountSynchronizerAsync, ImpressionSynchronizerAsync
 from splitio.sync.event import EventSynchronizer, EventSynchronizerAsync
-from splitio.sync.telemetry import TelemetrySynchronizer, InMemoryTelemetrySubmitter, \
+from harness_commons.sync.telemetry import TelemetrySynchronizer, InMemoryTelemetrySubmitter, \
     LocalhostTelemetrySubmitter, RedisTelemetrySubmitter, LocalhostTelemetrySubmitterAsync, \
     InMemoryTelemetrySubmitterAsync, TelemetrySynchronizerAsync, RedisTelemetrySubmitterAsync
 
