@@ -13,7 +13,7 @@ from splitio.storage import SplitStorage, RuleBasedSegmentsStorage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySplitStorageAsync, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 from splitio.storage import FlagSetsFilter
 from splitio.models.splits import Split
-from splitio.models.rule_based_segments import RuleBasedSegment
+from harness_commons.models.rule_based_segments import RuleBasedSegment
 from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync, LocalSplitSynchronizer, LocalSplitSynchronizerAsync, LocalhostMode
 from splitio.optional.loaders import aiofiles, asyncio
 from tests.integration import splits_json, rbsegments_json

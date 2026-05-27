@@ -8,7 +8,7 @@ import inspect
 from splitio.client.key import Key
 from splitio.client import client
 from splitio.engine.evaluator import CONTROL
-from splitio.models.fallback_treatment import FallbackTreatment
+from harness_commons.models.fallback_treatment import FallbackTreatment
 
 
 _LOGGER = logging.getLogger(__name__)

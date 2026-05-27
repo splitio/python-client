@@ -6,7 +6,7 @@ from itertools import groupby
 from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException
 from splitio.engine.impressions import ImpressionsMode
-from splitio.models.telemetry import HTTPExceptionsAndLatencies
+from harness_commons.models.telemetry import HTTPExceptionsAndLatencies
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class ImpressionsAPIBase(object):  # pylint: disable=too-few-public-methods
         Build an impression bulk formatted as the API expects it.
 
         :param impressions: List of impressions to bundle.
-        :type impressions: list(splitio.models.impressions.Impression)
+        :type impressions: list(harness_commons.models.impressions.Impression)
 
         :return: Dictionary of lists of impressions.
         :rtype: list

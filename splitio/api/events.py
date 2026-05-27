@@ -3,7 +3,7 @@ import logging
 
 from splitio.api import APIException, headers_from_metadata
 from splitio.api.client import HttpClientException
-from splitio.models.telemetry import HTTPExceptionsAndLatencies
+from harness_commons.models.telemetry import HTTPExceptionsAndLatencies
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ class EventsAPIBase(object):  # pylint: disable=too-few-public-methods
         Build event bulk as expected by the API.
 
         :param events: Events to be bundled.
-        :type events: list(splitio.models.events.Event)
+        :type events: list(harness_commons.models.events.Event)
 
         :return: Formatted bulk.
         :rtype: dict

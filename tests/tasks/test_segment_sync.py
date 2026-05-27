@@ -8,9 +8,9 @@ from splitio.api.commons import FetchOptions
 from splitio.tasks import segment_sync
 from splitio.storage import SegmentStorage, SplitStorage, RuleBasedSegmentsStorage
 from splitio.models.splits import Split
-from splitio.models.segments import Segment
-from splitio.models.grammar.condition import Condition
-from splitio.models.grammar.matchers import UserDefinedSegmentMatcher
+from harness_commons.models.segments import Segment
+from harness_commons.models.grammar.condition import Condition
+from harness_commons.models.grammar.matchers import UserDefinedSegmentMatcher
 from splitio.sync.segment import SegmentSynchronizer, SegmentSynchronizerAsync
 from splitio.optional.loaders import asyncio
 

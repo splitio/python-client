@@ -5,7 +5,7 @@ from collections import namedtuple
 from splitio.optional.loaders import asyncio
 
 from splitio.events import EventsManagerInterface
-from splitio.models.events import SdkEvent
+from harness_commons.models.events import SdkEvent
 
 _LOGGER = logging.getLogger(__name__)
 

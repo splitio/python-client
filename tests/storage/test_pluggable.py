@@ -6,15 +6,16 @@ import pytest
 
 from splitio.optional.loaders import asyncio
 from splitio.models.splits import Split
-from splitio.models import splits, segments, rule_based_segments
-from splitio.models.segments import Segment
-from splitio.models.impressions import Impression
-from splitio.models.events import Event, EventWrapper
+from splitio.models import splits
+from harness_commons.models import rule_based_segments
+from harness_commons.models.segments import Segment
+from harness_commons.models.impressions import Impression
+from harness_commons.models.events import Event, EventWrapper
 from splitio.storage.pluggable import PluggableSplitStorage, PluggableSegmentStorage, PluggableImpressionsStorage, PluggableEventsStorage, \
     PluggableTelemetryStorage, PluggableEventsStorageAsync, PluggableSegmentStorageAsync, PluggableImpressionsStorageAsync,\
     PluggableSplitStorageAsync, PluggableTelemetryStorageAsync, PluggableRuleBasedSegmentsStorage, PluggableRuleBasedSegmentsStorageAsync
 from splitio.client.util import get_metadata, SdkMetadata
-from splitio.models.telemetry import MAX_TAGS, MethodExceptionsAndLatencies, OperationMode
+from harness_commons.models.telemetry import MAX_TAGS, MethodExceptionsAndLatencies, OperationMode
 from tests.integration import splits_json, rbsegments_json
 
 class StorageMockAdapter(object):

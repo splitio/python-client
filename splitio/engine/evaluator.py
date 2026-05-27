@@ -2,13 +2,13 @@
 import logging
 from collections import namedtuple
 
-from splitio.models.impressions import Label
-from splitio.models.grammar.condition import ConditionType
-from splitio.models.grammar.matchers.misc import DependencyMatcher
-from splitio.models.grammar.matchers.keys import UserDefinedSegmentMatcher
-from splitio.models.grammar.matchers import RuleBasedSegmentMatcher
-from splitio.models.grammar.matchers.prerequisites import PrerequisitesMatcher
-from splitio.models.rule_based_segments import SegmentType
+from splitio.models.label import Label
+from harness_commons.models.grammar.condition import ConditionType
+from harness_commons.models.grammar.matchers.misc import DependencyMatcher
+from harness_commons.models.grammar.matchers.keys import UserDefinedSegmentMatcher
+from harness_commons.models.grammar.matchers import RuleBasedSegmentMatcher
+from harness_commons.models.grammar.matchers.prerequisites import PrerequisitesMatcher
+from harness_commons.models.rule_based_segments import SegmentType
 from splitio.optional.loaders import asyncio
 
 CONTROL = 'control'
@@ -252,4 +252,4 @@ def update_objects(fetched, fetched_rbs, splits, rb_segments):
     return features, rbsegments, splits, rb_segments
     
 def get_prerequisites(feature):
-    return [prerequisite.feature_flag_name for prerequisite in feature.prerequisites]
+    return [prerequisite.definition_name for prerequisite in feature.prerequisites]

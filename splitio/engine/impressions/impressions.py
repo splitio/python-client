@@ -33,10 +33,10 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         Impressions are analyzed to see if they've been seen before and counted.
 
         :param impressions_decorated: List of impression objects with attributes
-        :type impressions_decorated: list[tuple[splitio.models.impression.ImpressionDecorated, dict]]
+        :type impressions_decorated: list[tuple[harness_commons.models.impression.ImpressionDecorated, dict]]
 
         :return: processed and deduped impressions.
-        :rtype: tuple(list[tuple[splitio.models.impression.Impression, dict]], list(int))
+        :rtype: tuple(list[tuple[harness_commons.models.impression.Impression, dict]], list(int))
         """
         for_listener_all = []
         for_log_all = []

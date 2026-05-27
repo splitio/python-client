@@ -7,9 +7,10 @@ import copy
 from splitio.client import input_validator
 from splitio.engine.evaluator import Evaluator, CONTROL, EvaluationDataFactory, AsyncEvaluationDataFactory
 from splitio.engine.splitters import Splitter
-from splitio.models.impressions import Impression, Label, ImpressionDecorated
-from splitio.models.events import Event, EventWrapper, SdkEvent
-from splitio.models.telemetry import get_latency_bucket_index, MethodExceptionsAndLatencies
+from harness_commons.models.impressions import Impression, ImpressionDecorated
+from splitio.models.label import Label
+from harness_commons.models.events import Event, EventWrapper, SdkEvent
+from harness_commons.models.telemetry import get_latency_bucket_index, MethodExceptionsAndLatencies
 from splitio.optional.loaders import asyncio
 from splitio.util.time import get_current_epoch_time_ms, utctime_ms
 
@@ -174,7 +175,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         :type properties: dict
 
         :return: validation, event created and its properties size.
-        :rtype: tuple(bool, splitio.models.events.Event, int)
+        :rtype: tuple(bool, harness_commons.models.events.Event, int)
         """
         if self.destroyed:
             _LOGGER.error("Client has already been destroyed - no calls possible")
@@ -338,7 +339,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
         :param method: The method calling this function
-        :type method: splitio.models.telemetry.MethodExceptionsAndLatencies
+        :type method: harness_commons.models.telemetry.MethodExceptionsAndLatencies
         :param evaluation_options: An optional dictionary of options
         :type evaluation_options: dict
         :return: The treatment and config for the key and feature flag
@@ -508,7 +509,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :param flag_sets: list of flag sets
         :type flag_sets: list
         :param method: Treatment by flag set method flavor
-        :type method: splitio.models.telemetry.MethodExceptionsAndLatencies
+        :type method: harness_commons.models.telemetry.MethodExceptionsAndLatencies
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
         :param evaluation_options: An optional dictionary of options
@@ -637,7 +638,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :param feature_flag_names: Array of feature flag names for which to get the treatments
         :type feature_flag_names: list(str)
         :param method: The method calling this function
-        :type method: splitio.models.telemetry.MethodExceptionsAndLatencies
+        :type method: harness_commons.models.telemetry.MethodExceptionsAndLatencies
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
         :param evaluation_options: An optional dictionary of options
@@ -688,7 +689,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         Record impressions.
 
         :param impressions_decorated: Generated impressions
-        :type impressions_decorated: list[tuple[splitio.models.impression.ImpressionDecorated, dict]]
+        :type impressions_decorated: list[tuple[harness_commons.models.impression.ImpressionDecorated, dict]]
 
         :param start: timestamp when get_treatment or get_treatments was called
         :type start: int
@@ -845,7 +846,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
         :param method: The method calling this function
-        :type method: splitio.models.telemetry.MethodExceptionsAndLatencies
+        :type method: harness_commons.models.telemetry.MethodExceptionsAndLatencies
         :param evaluation_options: An optional dictionary of options
         :type evaluation_options: dict
         :return: The treatment and config for the key and feature flag
@@ -1013,7 +1014,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         :param flag_sets: list of flag sets
         :type flag_sets: list
         :param method: Treatment by flag set method flavor
-        :type method: splitio.models.telemetry.MethodExceptionsAndLatencies
+        :type method: harness_commons.models.telemetry.MethodExceptionsAndLatencies
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
         :param evaluation_options: An optional dictionary of options
@@ -1057,7 +1058,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         :param feature_flag_names: Array of feature flag names for which to get the treatments
         :type feature_flag_names: list(str)
         :param method: The method calling this function
-        :type method: splitio.models.telemetry.MethodExceptionsAndLatencies
+        :type method: harness_commons.models.telemetry.MethodExceptionsAndLatencies
         :param attributes: An optional dictionary of attributes
         :type attributes: dict
         :param evaluation_options: An optional dictionary of options
@@ -1107,7 +1108,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         Record impressions for async calls
 
         :param impressions_decorated: Generated impressions decorated
-        :type impressions_decorated: list[tuple[splitio.models.impression.Impression, dict]]
+        :type impressions_decorated: list[tuple[harness_commons.models.impression.Impression, dict]]
 
         :param start: timestamp when get_treatment or get_treatments was called
         :type start: int

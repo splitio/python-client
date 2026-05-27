@@ -6,7 +6,7 @@ import json
 from splitio.api import APIException, headers_from_metadata
 from splitio.api.commons import build_fetch, FetchOptions
 from splitio.api.client import HttpClientException
-from splitio.models.telemetry import HTTPExceptionsAndLatencies
+from harness_commons.models.telemetry import HTTPExceptionsAndLatencies
 from splitio.util.time import utctime_ms
 from splitio.spec import SPEC_VERSION
 from splitio.sync import util

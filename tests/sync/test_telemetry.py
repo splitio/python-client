@@ -8,8 +8,8 @@ from splitio.sync.telemetry import TelemetrySynchronizer, TelemetrySynchronizerA
 from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageConsumerAsync
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync, InMemorySegmentStorage, InMemorySegmentStorageAsync, InMemorySplitStorage, InMemorySplitStorageAsync
 from splitio.models.splits import Split, Status
-from splitio.models.segments import Segment
-from splitio.models.telemetry import StreamingEvents, StreamingEventsAsync
+from harness_commons.models.segments import Segment
+from harness_commons.models.telemetry import StreamingEvents, StreamingEventsAsync
 from splitio.api.telemetry import TelemetryAPI
 
 class TelemetrySynchronizerTests(object):

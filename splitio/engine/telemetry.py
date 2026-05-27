@@ -5,7 +5,7 @@ import os
 import logging
 _LOGGER = logging.getLogger(__name__)
 
-from splitio.models.telemetry import CounterConstants, UpdateFromSSE
+from harness_commons.models.telemetry import CounterConstants, UpdateFromSSE
 
 class TelemetryStorageProducerBase(object):
     """Telemetry storage producer base class."""

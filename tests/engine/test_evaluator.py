@@ -8,13 +8,13 @@ import queue
 import asyncio
 
 from splitio.models.splits import Split, Status, from_raw, Prerequisites
-from splitio.models import segments
-from splitio.models.grammar.condition import Condition, ConditionType
-from splitio.models.impressions import Label
-from splitio.models.grammar import condition
-from splitio.models import rule_based_segments
-from splitio.models.fallback_treatment import FallbackTreatment
-from splitio.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
+from harness_commons.models import segments
+from harness_commons.models.grammar.condition import Condition, ConditionType
+from splitio.models.label import Label
+from harness_commons.models.grammar import condition
+from harness_commons.models import rule_based_segments
+from harness_commons.models.fallback_treatment import FallbackTreatment
+from harness_commons.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
 from splitio.engine import evaluator, splitters
 from splitio.engine.evaluator import EvaluationContext
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, InMemoryRuleBasedSegmentStorage, \
@@ -335,7 +335,7 @@ class EvaluatorTests(object):
         assert e.eval_with_context('bilal2@split.io', 'bilal2@split.io', 'some', {'email': 'bilal2@split.io'}, ctx)['treatment'] == "on"
 
     def test_prerequisites(self):
-        splits_load = os.path.join(os.path.dirname(__file__), '../models/grammar/files', 'splits_prereq.json')
+        splits_load = os.path.join(os.path.dirname(__file__), 'files', 'splits_prereq.json')
         with open(splits_load, 'r') as flo:
             data = json.loads(flo.read())
         e = evaluator.Evaluator(splitters.Splitter())
@@ -501,7 +501,7 @@ class EvaluatorTests(object):
         
     @pytest.mark.asyncio
     async def test_prerequisites(self):
-        splits_load = os.path.join(os.path.dirname(__file__), '../models/grammar/files', 'splits_prereq.json')
+        splits_load = os.path.join(os.path.dirname(__file__), 'files', 'splits_prereq.json')
         with open(splits_load, 'r') as flo:
             data = json.loads(flo.read())
         e = evaluator.Evaluator(splitters.Splitter())

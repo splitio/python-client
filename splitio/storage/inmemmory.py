@@ -4,12 +4,12 @@ import threading
 import queue
 from collections import Counter
 
-from splitio.models.segments import Segment
-from splitio.models.telemetry import HTTPErrors, HTTPLatencies, MethodExceptions, MethodLatencies, LastSynchronization, StreamingEvents, TelemetryConfig, TelemetryCounters, CounterConstants, \
+from harness_commons.models.segments import Segment
+from harness_commons.models.telemetry import HTTPErrors, HTTPLatencies, MethodExceptions, MethodLatencies, LastSynchronization, StreamingEvents, TelemetryConfig, TelemetryCounters, CounterConstants, \
     HTTPErrorsAsync, HTTPLatenciesAsync, MethodExceptionsAsync, MethodLatenciesAsync, LastSynchronizationAsync, StreamingEventsAsync, TelemetryConfigAsync, TelemetryCountersAsync
-from splitio.models.events import SdkInternalEvent
+from harness_commons.models.events import SdkInternalEvent
 from splitio.events.events_metadata import EventsMetadata, SdkEventType
-from splitio.models.notification import SdkInternalEventNotification
+from harness_commons.models.notification import SdkInternalEventNotification
 from splitio.storage import FlagSetsFilter, SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage, RuleBasedSegmentsStorage
 from splitio.optional.loaders import asyncio
 
@@ -135,7 +135,7 @@ class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
         :param segment_name: Name of the segment to fetch.
         :type segment_name: str
 
-        :rtype: splitio.models.rule_based_segments.RuleBasedSegment
+        :rtype: harness_commons.models.rule_based_segments.RuleBasedSegment
         """
         with self._lock:
             return self._rule_based_segments.get(segment_name)
@@ -145,9 +145,9 @@ class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
         Update rule based segment.
 
         :param to_add: List of rule based segment. to add
-        :type to_add: list[splitio.models.rule_based_segments.RuleBasedSegment]
+        :type to_add: list[harness_commons.models.rule_based_segments.RuleBasedSegment]
         :param to_delete: List of rule based segment. to delete
-        :type to_delete: list[splitio.models.rule_based_segments.RuleBasedSegment]
+        :type to_delete: list[harness_commons.models.rule_based_segments.RuleBasedSegment]
         :param new_change_number: New change number.
         :type new_change_number: int
         """
@@ -165,7 +165,7 @@ class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
         Store a rule based segment.
 
         :param rule_based_segment: RuleBasedSegment object.
-        :type rule_based_segment: splitio.models.rule_based_segments.RuleBasedSegment
+        :type rule_based_segment: harness_commons.models.rule_based_segments.RuleBasedSegment
         """
         with self._lock:
             self._rule_based_segments[rule_based_segment.name] = rule_based_segment
@@ -267,7 +267,7 @@ class InMemoryRuleBasedSegmentStorageAsync(RuleBasedSegmentsStorage):
         :param segment_name: Name of the segment to fetch.
         :type segment_name: str
 
-        :rtype: splitio.models.rule_based_segments.RuleBasedSegment
+        :rtype: harness_commons.models.rule_based_segments.RuleBasedSegment
         """
         async with self._lock:
             return self._rule_based_segments.get(segment_name)
@@ -277,9 +277,9 @@ class InMemoryRuleBasedSegmentStorageAsync(RuleBasedSegmentsStorage):
         Update rule based segment.
 
         :param to_add: List of rule based segment. to add
-        :type to_add: list[splitio.models.rule_based_segments.RuleBasedSegment]
+        :type to_add: list[harness_commons.models.rule_based_segments.RuleBasedSegment]
         :param to_delete: List of rule based segment. to delete
-        :type to_delete: list[splitio.models.rule_based_segments.RuleBasedSegment]
+        :type to_delete: list[harness_commons.models.rule_based_segments.RuleBasedSegment]
         :param new_change_number: New change number.
         :type new_change_number: int
         """
@@ -297,7 +297,7 @@ class InMemoryRuleBasedSegmentStorageAsync(RuleBasedSegmentsStorage):
         Store a rule based segment.
 
         :param rule_based_segment: RuleBasedSegment object.
-        :type rule_based_segment: splitio.models.rule_based_segments.RuleBasedSegment
+        :type rule_based_segment: harness_commons.models.rule_based_segments.RuleBasedSegment
         """
         async with self._lock:
             self._rule_based_segments[rule_based_segment.name] = rule_based_segment
@@ -991,7 +991,7 @@ class InMemorySegmentStorage(SegmentStorage):
         Store a segment.
 
         :param segment: Segment to store.
-        :type segment: splitio.models.segment.Segment
+        :type segment: harness_commons.models.segment.Segment
         """
         with self._lock:
             self._segments[segment.name] = segment
@@ -1133,7 +1133,7 @@ class InMemorySegmentStorageAsync(SegmentStorage):
         Store a segment.
 
         :param segment: Segment to store.
-        :type segment: splitio.models.segment.Segment
+        :type segment: harness_commons.models.segment.Segment
         """
         async with self._lock:
             self._segments[segment.name] = segment

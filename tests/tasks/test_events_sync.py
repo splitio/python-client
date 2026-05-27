@@ -7,7 +7,7 @@ import pytest
 from splitio.api.client import HttpResponse
 from splitio.tasks import events_sync
 from splitio.storage import EventStorage
-from splitio.models.events import Event
+from harness_commons.models.events import Event
 from splitio.api.events import EventsAPI
 from splitio.sync.event import EventSynchronizer, EventSynchronizerAsync
 from splitio.optional.loaders import asyncio

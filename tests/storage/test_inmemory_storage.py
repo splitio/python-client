@@ -7,18 +7,18 @@ import queue
 import asyncio
 
 from splitio.models.splits import Split
-from splitio.models.segments import Segment
-from splitio.models.impressions import Impression
-from splitio.models.events import Event, EventWrapper
-from splitio.models.events import SdkInternalEvent
-import splitio.models.telemetry as ModelTelemetry
+from harness_commons.models.segments import Segment
+from harness_commons.models.impressions import Impression
+from harness_commons.models.events import Event, EventWrapper
+from harness_commons.models.events import SdkInternalEvent
+import harness_commons.models.telemetry as ModelTelemetry
 from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.events.events_metadata import SdkEventType
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, InMemorySegmentStorageAsync, InMemorySplitStorageAsync, \
     InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, InMemoryImpressionStorageAsync, InMemoryEventStorageAsync, \
     InMemoryTelemetryStorageAsync, FlagSets, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
-from splitio.models.rule_based_segments import RuleBasedSegment
-from splitio.models import rule_based_segments
+from harness_commons.models.rule_based_segments import RuleBasedSegment
+from harness_commons.models import rule_based_segments
 
 class FlagSetsFilterTests(object):
     """Flag sets filter storage tests."""

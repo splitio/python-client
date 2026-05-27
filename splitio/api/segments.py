@@ -6,7 +6,7 @@ import logging
 from splitio.api import APIException, headers_from_metadata
 from splitio.api.commons import build_fetch
 from splitio.api.client import HttpClientException
-from splitio.models.telemetry import HTTPExceptionsAndLatencies
+from harness_commons.models.telemetry import HTTPExceptionsAndLatencies
 
 
 _LOGGER = logging.getLogger(__name__)

@@ -5,7 +5,8 @@ import json
 import os
 
 from splitio.client.util import get_metadata
-from splitio.models import splits, impressions, events
+from splitio.models import splits
+from harness_commons.models import impressions, events
 from splitio.storage.redis import RedisSplitStorage, RedisSegmentStorage, RedisImpressionsStorage, \
     RedisEventsStorage, RedisEventsStorageAsync, RedisImpressionsStorageAsync, RedisSegmentStorageAsync, \
     RedisSplitStorageAsync

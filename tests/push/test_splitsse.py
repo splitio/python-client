@@ -4,7 +4,7 @@ import time
 from queue import Queue
 import pytest
 
-from splitio.models.token import Token
+from harness_commons.models.token import Token
 from splitio.push.splitsse import SplitSSEClient, SplitSSEClientAsync
 from splitio.push.sse import SSEEvent, SSE_EVENT_ERROR
 

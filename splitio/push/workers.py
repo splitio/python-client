@@ -9,8 +9,8 @@ import json
 from enum import Enum
 
 from splitio.models.splits import from_raw
-from splitio.models.rule_based_segments import from_raw as rbs_from_raw
-from splitio.models.telemetry import UpdateFromSSE
+from harness_commons.models.rule_based_segments import from_raw as rbs_from_raw
+from harness_commons.models.telemetry import UpdateFromSSE
 from splitio.push import SplitStorageException
 from splitio.push.parser import UpdateType
 from splitio.optional.loaders import asyncio

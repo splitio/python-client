@@ -17,7 +17,7 @@ from splitio.sync.event import EventSynchronizer, EventSynchronizerAsync
 from splitio.storage import SegmentStorage, SplitStorage, RuleBasedSegmentsStorage
 from splitio.api import APIException, APIUriException
 from splitio.models.splits import Split
-from splitio.models.segments import Segment
+from harness_commons.models.segments import Segment
 from splitio.storage.inmemmory import InMemorySegmentStorage, InMemorySplitStorage, InMemorySegmentStorageAsync, InMemorySplitStorageAsync, \
     InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 

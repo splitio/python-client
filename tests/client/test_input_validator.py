@@ -11,13 +11,13 @@ from splitio.storage import SplitStorage, EventStorage, ImpressionStorage, Segme
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync, \
     InMemorySplitStorage, InMemorySplitStorageAsync, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 from splitio.models.splits import Split
-from splitio.models.fallback_config import FallbackTreatmentCalculator
+from harness_commons.models.fallback_config import FallbackTreatmentCalculator
 from splitio.client import input_validator
 from splitio.client.manager import SplitManager, SplitManagerAsync 
 from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
 from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.engine.impressions.impressions import Manager as ImpressionManager
-from splitio.models.fallback_treatment import FallbackTreatment
+from harness_commons.models.fallback_treatment import FallbackTreatment
 
 class ClientInputValidationTests(object):
     """Input validation test cases."""

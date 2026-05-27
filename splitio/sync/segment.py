@@ -6,7 +6,7 @@ import os
 from splitio.api import APIException
 from splitio.api.commons import FetchOptions
 from splitio.tasks.util import workerpool
-from splitio.models import segments
+from harness_commons.models import segments
 from splitio.util.backoff import Backoff
 from splitio.optional.loaders import asyncio, aiofiles
 from splitio.sync import util

@@ -8,8 +8,8 @@ from splitio.api.commons import FetchOptions
 from splitio.storage import SplitStorage, SegmentStorage, RuleBasedSegmentsStorage
 from splitio.storage.inmemmory import InMemorySegmentStorage, InMemorySegmentStorageAsync, InMemorySplitStorage, InMemorySplitStorageAsync
 from splitio.sync.segment import SegmentSynchronizer, SegmentSynchronizerAsync, LocalSegmentSynchronizer, LocalSegmentSynchronizerAsync
-from splitio.models.segments import Segment
-from splitio.models import rule_based_segments
+from harness_commons.models.segments import Segment
+from harness_commons.models import rule_based_segments
 from splitio.optional.loaders import aiofiles, asyncio
 
 import pytest

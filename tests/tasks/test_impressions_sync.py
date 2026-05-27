@@ -7,7 +7,7 @@ import pytest
 from splitio.api.client import HttpResponse
 from splitio.tasks import impressions_sync
 from splitio.storage import ImpressionStorage
-from splitio.models.impressions import Impression
+from harness_commons.models.impressions import Impression
 from splitio.api.impressions import ImpressionsAPI
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer, ImpressionSynchronizerAsync, ImpressionsCountSynchronizerAsync
 from splitio.engine.impressions.manager import Counter

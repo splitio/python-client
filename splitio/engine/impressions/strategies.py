@@ -33,10 +33,10 @@ class StrategyDebugMode(BaseStrategy):
         Impressions are analyzed to see if they've been seen before.
 
         :param impressions: List of impression objects with attributes
-        :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
+        :type impressions: list[tuple[harness_commons.models.impression.Impression, dict]]
 
         :returns: Tuple of to be stored, observed and counted impressions, and unique keys tuple
-        :rtype: list[tuple[splitio.models.impression.Impression, dict]], list[], list[], list[]
+        :rtype: list[tuple[harness_commons.models.impression.Impression, dict]], list[], list[], list[]
         """
         imps = []
         for imp, attrs in impressions:
@@ -59,10 +59,10 @@ class StrategyNoneMode(BaseStrategy):
         Unique keys tracking are updated.
 
         :param impressions: List of impression objects with attributes
-        :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
+        :type impressions: list[tuple[harness_commons.models.impression.Impression, dict]]
 
         :returns: Tuple of to be stored, observed and counted impressions, and unique keys tuple
-        :rtype: list[[], dict]], list[splitio.models.impression.Impression], list[splitio.models.impression.Impression], list[(str, str)]
+        :rtype: list[[], dict]], list[harness_commons.models.impression.Impression], list[harness_commons.models.impression.Impression], list[(str, str)]
         """
         counter_imps = [imp for imp, _ in impressions]
         unique_keys_tracker = []
@@ -87,10 +87,10 @@ class StrategyOptimizedMode(BaseStrategy):
         Impressions are analyzed to see if they've been seen before and counted.
 
         :param impressions: List of impression objects with attributes
-        :type impressions: list[tuple[splitio.models.impression.Impression, dict]]
+        :type impressions: list[tuple[harness_commons.models.impression.Impression, dict]]
 
         :returns: Tuple of to be stored, observed and counted impressions, and unique keys tuple
-        :rtype: list[tuple[splitio.models.impression.Impression, dict]], list[splitio.models.impression.Impression], list[splitio.models.impression.Impression], list[]
+        :rtype: list[tuple[harness_commons.models.impression.Impression, dict]], list[harness_commons.models.impression.Impression], list[harness_commons.models.impression.Impression], list[]
         """
         imps = []
         for imp, attrs in impressions:

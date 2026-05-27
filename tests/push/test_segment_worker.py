@@ -5,7 +5,7 @@ import pytest
 
 from splitio.api import APIException
 from splitio.push.workers import SegmentWorker, SegmentWorkerAsync
-from splitio.models.notification import SegmentChangeNotification
+from harness_commons.models.notification import SegmentChangeNotification
 from splitio.optional.loaders import asyncio
 
 change_number_received = None

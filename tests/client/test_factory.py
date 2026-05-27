@@ -22,9 +22,9 @@ from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyNon
 from splitio.events.events_task import EventsTask
 from splitio.events.events_manager import EventsManagerAsync
 from splitio.models.splits import from_raw
-from splitio.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
-from splitio.models.fallback_treatment import FallbackTreatment
-from splitio.models.events import SdkInternalEvent
+from harness_commons.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
+from harness_commons.models.fallback_treatment import FallbackTreatment
+from harness_commons.models.events import SdkInternalEvent
 from splitio.recorder.recorder import PipelinedRecorder, StandardRecorder, StandardRecorderAsync
 from splitio.storage import redis, inmemmory, pluggable, EventStorage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
@@ -1092,11 +1092,11 @@ class SplitFactoryAsyncTests(object):
 
         async def record_ready_time(*_):
             pass
-        mocker.patch('splitio.models.telemetry.TelemetryConfigAsync.record_ready_time', new=record_ready_time)
+        mocker.patch('harness_commons.models.telemetry.TelemetryConfigAsync.record_ready_time', new=record_ready_time)
 
         async def record_active_and_redundant_factories(*_):
             pass
-        mocker.patch('splitio.models.telemetry.TelemetryConfigAsync.record_active_and_redundant_factories', new=record_active_and_redundant_factories)
+        mocker.patch('harness_commons.models.telemetry.TelemetryConfigAsync.record_active_and_redundant_factories', new=record_active_and_redundant_factories)
 
         # Start factory and make assertions
         factory = await get_factory_async('some_api_key', config={'streamingEmabled': False})

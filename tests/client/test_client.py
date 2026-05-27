@@ -9,10 +9,10 @@ import asyncio
 from splitio.client.client import Client, _LOGGER as _logger, CONTROL, ClientAsync, EvaluationOptions
 from splitio.client.factory import SplitFactory, Status as FactoryStatus, SplitFactoryAsync
 from splitio.events.events_manager import EventsManager, EventsManagerAsync
-from splitio.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
-from splitio.models.fallback_treatment import FallbackTreatment
-from splitio.models.impressions import Impression, Label
-from splitio.models.events import Event, EventWrapper, SdkEvent
+from harness_commons.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
+from harness_commons.models.fallback_treatment import FallbackTreatment
+from harness_commons.models.impressions import Impression, Label
+from harness_commons.models.events import Event, EventWrapper, SdkEvent
 from splitio.storage import EventStorage, ImpressionStorage, SegmentStorage, SplitStorage, RuleBasedSegmentsStorage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
     InMemoryImpressionStorage, InMemoryTelemetryStorage, InMemorySplitStorageAsync, \
