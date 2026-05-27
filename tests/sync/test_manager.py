@@ -14,7 +14,7 @@ from splitio.tasks.split_sync import SplitSynchronizationTask, SplitSynchronizat
 from splitio.tasks.segment_sync import SegmentSynchronizationTask
 from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask
 from splitio.tasks.events_sync import EventsSyncTask
-from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
+from harness_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
 from harness_commons.models.telemetry import SSESyncMode, StreamingEventTypes
 from splitio.push.manager import Status

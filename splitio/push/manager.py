@@ -62,7 +62,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         :type sdk_metadata: splitio.client.util.SdkMetadata
 
         :param telemetry_runtime_producer: Telemetry object to record runtime events
-        :type sdk_metadata: splitio.engine.telemetry.TelemetryRunTimeProducer
+        :type sdk_metadata: harness_commons.engine.telemetry.TelemetryRunTimeProducer
 
         :param sse_url: streaming base url.
         :type sse_url: str
@@ -295,7 +295,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         :type sdk_metadata: splitio.client.util.SdkMetadata
 
         :param telemetry_runtime_producer: Telemetry object to record runtime events
-        :type sdk_metadata: splitio.engine.telemetry.TelemetryRunTimeProducer
+        :type sdk_metadata: harness_commons.engine.telemetry.TelemetryRunTimeProducer
 
         :param sse_url: streaming base url.
         :type sse_url: str

@@ -22,7 +22,7 @@ from splitio.models.splits import Split, Status, from_raw
 from splitio.engine.impressions.impressions import Manager as ImpressionManager
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
-from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
+from harness_commons.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.engine.evaluator import Evaluator, EvaluationContext
 from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
 from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode, StrategyOptimizedMode

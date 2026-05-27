@@ -19,7 +19,7 @@ from splitio.client.client import EvaluationOptions
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager, ImpressionsMode
 from splitio.engine.impressions import set_classes, set_classes_async
 from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyOptimizedMode, StrategyNoneMode
-from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageConsumerAsync,\
+from harness_commons.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageConsumerAsync,\
     TelemetryStorageProducerAsync
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
@@ -50,7 +50,7 @@ from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchroniz
 RedisSynchronizerAsync
 from splitio.sync.manager import Manager, RedisManager, ManagerAsync, RedisManagerAsync
 from splitio.sync.synchronizer import PluggableSynchronizer, PluggableSynchronizerAsync
-from splitio.sync.telemetry import RedisTelemetrySubmitter, RedisTelemetrySubmitterAsync
+from harness_commons.sync.telemetry import RedisTelemetrySubmitter, RedisTelemetrySubmitterAsync
 
 from tests.helpers.mockserver import SplitMockServer
 from tests.integration import splits_json
