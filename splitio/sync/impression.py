@@ -1,7 +1,7 @@
 import logging
 import queue
 
-from splitio.api import APIException
+from harness_commons.api import APIException
 from splitio.optional.loaders import asyncio
 
 _LOGGER = logging.getLogger(__name__)
@@ -14,7 +14,7 @@ class ImpressionSynchronizer(object):
         Class constructor.
 
         :param impressions_api: Impressions Api object to send data to the backend
-        :type impressions_api: splitio.api.impressions.ImpressionsAPI
+        :type impressions_api: harness_commons.api.impressions.ImpressionsAPI
         :param storage: Impressions Storage
         :type storage: splitio.storage.ImpressionsStorage
         :param bulk_size: How many impressions to send per push.
@@ -74,7 +74,7 @@ class ImpressionsCountSynchronizer(object):
         Class constructor.
 
         :param impressions_api: Impressions Api object to send data to the backend
-        :type impressions_api: splitio.api.impressions.ImpressionsAPI
+        :type impressions_api: harness_commons.api.impressions.ImpressionsAPI
         :param impressions_manager: Impressions manager instance
         :type impressions_manager: splitio.engine.impressions.Manager
 
@@ -106,7 +106,7 @@ class ImpressionSynchronizerAsync(object):
         Class constructor.
 
         :param impressions_api: Impressions Api object to send data to the backend
-        :type impressions_api: splitio.api.impressions.ImpressionsAPI
+        :type impressions_api: harness_commons.api.impressions.ImpressionsAPI
         :param storage: Impressions Storage
         :type storage: splitio.storage.ImpressionsStorage
         :param bulk_size: How many impressions to send per push.
@@ -166,7 +166,7 @@ class ImpressionsCountSynchronizerAsync(object):
         Class constructor.
 
         :param impressions_api: Impressions Api object to send data to the backend
-        :type impressions_api: splitio.api.impressions.ImpressionsAPI
+        :type impressions_api: harness_commons.api.impressions.ImpressionsAPI
         :param impressions_manager: Impressions manager instance
         :type impressions_manager: splitio.engine.impressions.Manager
 

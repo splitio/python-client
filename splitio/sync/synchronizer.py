@@ -7,7 +7,7 @@ import time
 from collections import namedtuple
 
 from splitio.optional.loaders import asyncio
-from splitio.api import APIException, APIUriException
+from harness_commons.api import APIException, APIUriException
 from splitio.util.backoff import Backoff
 from splitio.sync.split import _ON_DEMAND_FETCH_BACKOFF_BASE, _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES, _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT, LocalhostMode
 

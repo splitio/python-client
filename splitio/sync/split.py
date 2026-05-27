@@ -7,8 +7,8 @@ import time
 import json
 from enum import Enum
 
-from splitio.api import APIException, APIUriException
-from splitio.api.commons import FetchOptions
+from harness_commons.api import APIException, APIUriException
+from harness_commons.api.commons import FetchOptions
 from splitio.client.input_validator import validate_flag_sets
 from splitio.models import splits
 from harness_commons.models import rule_based_segments
@@ -18,6 +18,7 @@ from splitio.util.storage_helper import update_feature_flag_storage, update_feat
     update_rule_based_segment_storage, update_rule_based_segment_storage_async
     
 from splitio.sync import util
+from splitio.spec import SPEC_VERSION
 from splitio.optional.loaders import asyncio, aiofiles
 
 _LEGACY_COMMENT_LINE_RE = re.compile(r'^#.*$')
@@ -207,7 +208,7 @@ class SplitSynchronizer(SplitSynchronizerBase):
         :type rbs_till: int
         """
         final_segment_list = set()
-        fetch_options = FetchOptions(True, sets=self._get_config_sets())  # Set Cache-Control to no-cache
+        fetch_options = FetchOptions(True, sets=self._get_config_sets(), spec=SPEC_VERSION)  # Set Cache-Control to no-cache
         successful_sync, remaining_attempts, change_number, rbs_change_number, segment_list = self._attempt_feature_flag_sync(fetch_options,
                                                                                       till, rbs_till)
         final_segment_list.update(segment_list)
@@ -216,7 +217,7 @@ class SplitSynchronizer(SplitSynchronizerBase):
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return final_segment_list
 
-        with_cdn_bypass = FetchOptions(True, change_number, rbs_change_number, sets=self._get_config_sets())  # Set flag for bypassing CDN
+        with_cdn_bypass = FetchOptions(True, change_number, rbs_change_number, sets=self._get_config_sets(), spec=SPEC_VERSION)  # Set flag for bypassing CDN
         without_cdn_successful_sync, remaining_attempts, change_number, rbs_change_number, segment_list = self._attempt_feature_flag_sync(with_cdn_bypass, till, rbs_till)
         final_segment_list.update(segment_list)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
@@ -354,7 +355,7 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
         :type rbs_till: int
         """
         final_segment_list = set()
-        fetch_options = FetchOptions(True, sets=self._get_config_sets())  # Set Cache-Control to no-cache
+        fetch_options = FetchOptions(True, sets=self._get_config_sets(), spec=SPEC_VERSION)  # Set Cache-Control to no-cache
         successful_sync, remaining_attempts, change_number, rbs_change_number, segment_list = await self._attempt_feature_flag_sync(fetch_options,
                                                                                       till, rbs_till)
         final_segment_list.update(segment_list)
@@ -363,7 +364,7 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return final_segment_list
 
-        with_cdn_bypass = FetchOptions(True, change_number, rbs_change_number, sets=self._get_config_sets())  # Set flag for bypassing CDN
+        with_cdn_bypass = FetchOptions(True, change_number, rbs_change_number, sets=self._get_config_sets(), spec=SPEC_VERSION)  # Set flag for bypassing CDN
         without_cdn_successful_sync, remaining_attempts, change_number, rbs_change_number, segment_list = await self._attempt_feature_flag_sync(with_cdn_bypass, till, rbs_till)
         final_segment_list.update(segment_list)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts

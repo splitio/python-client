@@ -44,14 +44,16 @@ from splitio.storage.pluggable import PluggableEventsStorage, PluggableImpressio
     PluggableRuleBasedSegmentsStorage, PluggableRuleBasedSegmentsStorageAsync
 
 # APIs
-from splitio.api.client import HttpClient, HttpClientAsync, HttpClientKerberos
+from harness_commons.api.client import HttpClient, HttpClientAsync
+from splitio.api.kerberos_client import HttpClientKerberos
 from splitio.api.splits import SplitsAPI, SplitsAPIAsync
-from splitio.api.segments import SegmentsAPI, SegmentsAPIAsync
-from splitio.api.impressions import ImpressionsAPI, ImpressionsAPIAsync
-from splitio.api.events import EventsAPI, EventsAPIAsync
-from splitio.api.auth import AuthAPI, AuthAPIAsync
-from splitio.api.telemetry import TelemetryAPI, TelemetryAPIAsync
+from harness_commons.api.segments import SegmentsAPI, SegmentsAPIAsync
+from harness_commons.api.impressions import ImpressionsAPI, ImpressionsAPIAsync
+from harness_commons.api.events import EventsAPI, EventsAPIAsync
+from harness_commons.api.auth import AuthAPI, AuthAPIAsync
+from harness_commons.api.telemetry import TelemetryAPI, TelemetryAPIAsync
 from splitio.util.time import get_current_epoch_time_ms
+from splitio.spec import SPEC_VERSION
 
 # Tasks
 from splitio.tasks.split_sync import SplitSynchronizationTask, SplitSynchronizationTaskAsync
@@ -560,7 +562,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
 
     sdk_metadata = util.get_metadata(cfg)
     apis = {
-        'auth': AuthAPI(http_client, api_key, sdk_metadata, telemetry_runtime_producer),
+        'auth': AuthAPI(http_client, api_key, sdk_metadata, telemetry_runtime_producer, SPEC_VERSION),
         'splits': SplitsAPI(http_client, api_key, sdk_metadata, telemetry_runtime_producer),
         'segments': SegmentsAPI(http_client, api_key, sdk_metadata, telemetry_runtime_producer),
         'impressions': ImpressionsAPI(http_client, api_key, sdk_metadata, telemetry_runtime_producer, cfg['impressionsMode']),
@@ -695,7 +697,7 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
 
     sdk_metadata = util.get_metadata(cfg)
     apis = {
-        'auth': AuthAPIAsync(http_client, api_key, sdk_metadata, telemetry_runtime_producer),
+        'auth': AuthAPIAsync(http_client, api_key, sdk_metadata, telemetry_runtime_producer, SPEC_VERSION),
         'splits': SplitsAPIAsync(http_client, api_key, sdk_metadata, telemetry_runtime_producer),
         'segments': SegmentsAPIAsync(http_client, api_key, sdk_metadata, telemetry_runtime_producer),
         'impressions': ImpressionsAPIAsync(http_client, api_key, sdk_metadata, telemetry_runtime_producer, cfg['impressionsMode']),

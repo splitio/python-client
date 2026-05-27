@@ -15,7 +15,7 @@ from splitio.sync.segment import SegmentSynchronizer, SegmentSynchronizerAsync, 
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionSynchronizerAsync, ImpressionsCountSynchronizer, ImpressionsCountSynchronizerAsync
 from splitio.sync.event import EventSynchronizer, EventSynchronizerAsync
 from splitio.storage import SegmentStorage, SplitStorage, RuleBasedSegmentsStorage
-from splitio.api import APIException, APIUriException
+from harness_commons.api import APIException, APIUriException
 from splitio.models.splits import Split
 from harness_commons.models.segments import Segment
 from splitio.storage.inmemmory import InMemorySegmentStorage, InMemorySplitStorage, InMemorySegmentStorageAsync, InMemorySplitStorageAsync, \

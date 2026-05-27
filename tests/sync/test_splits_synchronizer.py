@@ -7,8 +7,8 @@ import copy
 import queue
 
 from splitio.util.backoff import Backoff
-from splitio.api import APIException
-from splitio.api.commons import FetchOptions
+from harness_commons.api import APIException
+from harness_commons.api.commons import FetchOptions
 from splitio.storage import SplitStorage, RuleBasedSegmentsStorage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySplitStorageAsync, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 from splitio.storage import FlagSetsFilter

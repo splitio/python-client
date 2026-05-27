@@ -3,7 +3,7 @@ import time
 import queue
 import pytest
 
-from splitio.api import APIException
+from harness_commons.api import APIException
 from splitio.push.workers import SegmentWorker, SegmentWorkerAsync
 from harness_commons.models.notification import SegmentChangeNotification
 from splitio.optional.loaders import asyncio

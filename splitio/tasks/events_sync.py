@@ -42,7 +42,7 @@ class EventsSyncTask(EventsSyncTaskBase):
         Class constructor.
 
         :param synchronize_events: Events Api object to send data to the backend
-        :type synchronize_events: splitio.api.events.EventsAPI
+        :type synchronize_events: harness_commons.api.events.EventsAPI
         :param period: How many seconds to wait between subsequent event pushes to the BE.
         :type period: int
 
@@ -63,7 +63,7 @@ class EventsSyncTaskAsync(EventsSyncTaskBase):
         Class constructor.
 
         :param synchronize_events: Events Api object to send data to the backend
-        :type synchronize_events: splitio.api.events.EventsAPIAsync
+        :type synchronize_events: harness_commons.api.events.EventsAPIAsync
         :param period: How many seconds to wait between subsequent event pushes to the BE.
         :type period: int
 

@@ -7,7 +7,7 @@ import redis.asyncio as aioredis
 from splitio.engine.impressions.adapters import InMemorySenderAdapter, RedisSenderAdapter, PluggableSenderAdapter, \
     InMemorySenderAdapterAsync, RedisSenderAdapterAsync, PluggableSenderAdapterAsync
 from splitio.engine.impressions import adapters
-from splitio.api.telemetry import TelemetryAPI, TelemetryAPIAsync
+from harness_commons.api.telemetry import TelemetryAPI, TelemetryAPIAsync
 from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterAsync
 from splitio.engine.impressions.manager import Counter
 from tests.storage.test_pluggable import StorageMockAdapter, StorageMockAdapterAsync
@@ -32,7 +32,7 @@ class InMemorySenderAdapterTests(object):
             assert(sorted(sender_adapter._uniques_formatter(uniques)[i]["ks"]) == sorted(formatted[i]["ks"]))
 
 
-    @mock.patch('splitio.api.telemetry.TelemetryAPI.record_unique_keys')
+    @mock.patch('harness_commons.api.telemetry.TelemetryAPI.record_unique_keys')
     def test_record_unique_keys(self, mocker):
         """Test sending unique keys."""
 

@@ -5,7 +5,7 @@ import abc
 import sys
 
 from splitio.optional.loaders import asyncio
-from splitio.api import APIException
+from harness_commons.api import APIException
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.push import AuthException
 from splitio.push.splitsse import SplitSSEClient, SplitSSEClientAsync
@@ -50,7 +50,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         Class constructor.
 
         :param auth_api: sdk-auth-service api client
-        :type auth_api: splitio.api.auth.AuthAPI
+        :type auth_api: harness_commons.api.auth.AuthAPI
 
         :param synchronizer: split data synchronizer facade
         :type synchronizer: splitio.sync.synchronizer.Synchronizer
@@ -283,7 +283,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         Class constructor.
 
         :param auth_api: sdk-auth-service api client
-        :type auth_api: splitio.api.auth.AuthAPI
+        :type auth_api: harness_commons.api.auth.AuthAPI
 
         :param synchronizer: split data synchronizer facade
         :type synchronizer: splitio.sync.synchronizer.Synchronizer
