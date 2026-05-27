@@ -3,13 +3,13 @@
 import logging
 import json
 
-from splitio.api import APIException, headers_from_metadata
-from splitio.api.commons import build_fetch, FetchOptions
-from splitio.api.client import HttpClientException
+from harness_commons.api import APIException, headers_from_metadata
+from harness_commons.api.commons import build_fetch, FetchOptions
+from harness_commons.api.client import HttpClientException
 from harness_commons.models.telemetry import HTTPExceptionsAndLatencies
-from splitio.util.time import utctime_ms
+from harness_commons.util.time import utctime_ms
 from splitio.spec import SPEC_VERSION
-from splitio.sync import util
+from harness_commons.sync import util
 
 _LOGGER = logging.getLogger(__name__)
 _SPEC_1_1 = "1.1"
@@ -70,6 +70,9 @@ class SplitsAPI(SplitsAPIBase):  # pylint: disable=too-few-public-methods
         SplitsAPIBase.__init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer)
 
     def fetch_splits(self, change_number, rbs_change_number, fetch_options):
+        return self.fetch_definitions(change_number, rbs_change_number, fetch_options)
+    
+    def fetch_definitions(self, change_number, rbs_change_number, fetch_options):
         """
         Fetch feature flags from backend.
 
@@ -80,7 +83,7 @@ class SplitsAPI(SplitsAPIBase):  # pylint: disable=too-few-public-methods
         :type rbs_change_number: int
 
         :param fetch_options: Fetch options for getting feature flag definitions.
-        :type fetch_options: splitio.api.commons.FetchOptions
+        :type fetch_options: harness_commons.api.commons.FetchOptions
 
         :return: Json representation of a splitChanges response.
         :rtype: dict
@@ -144,6 +147,9 @@ class SplitsAPIAsync(SplitsAPIBase):  # pylint: disable=too-few-public-methods
         SplitsAPIBase.__init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer)
 
     async def fetch_splits(self, change_number, rbs_change_number, fetch_options):
+        return await self.fetch_definitions(change_number, rbs_change_number, fetch_options)
+
+    async def fetch_definitions(self, change_number, rbs_change_number, fetch_options):
         """
         Fetch feature flags from backend.
 
@@ -154,7 +160,7 @@ class SplitsAPIAsync(SplitsAPIBase):  # pylint: disable=too-few-public-methods
         :type rbs_change_number: int
 
         :param fetch_options: Fetch options for getting feature flag definitions.
-        :type fetch_options: splitio.api.commons.FetchOptions
+        :type fetch_options: harness_commons.api.commons.FetchOptions
 
         :return: Json representation of a splitChanges response.
         :rtype: dict

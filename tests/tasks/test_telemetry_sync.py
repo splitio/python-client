@@ -2,9 +2,9 @@
 import pytest
 import threading
 import time
-from splitio.api.client import HttpResponse
+from harness_commons.api.client import HttpResponse
 from splitio.tasks.telemetry_sync import TelemetrySyncTask, TelemetrySyncTaskAsync
-from splitio.api.telemetry import TelemetryAPI, TelemetryAPIAsync
+from harness_commons.api.telemetry import TelemetryAPI, TelemetryAPIAsync
 from splitio.sync.telemetry import TelemetrySynchronizer, TelemetrySynchronizerAsync, InMemoryTelemetrySubmitter, InMemoryTelemetrySubmitterAsync
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
 from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageConsumerAsync

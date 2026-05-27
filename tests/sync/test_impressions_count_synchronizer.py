@@ -4,13 +4,13 @@ import threading
 import time
 import pytest
 
-from splitio.api.client import HttpResponse
-from splitio.api import APIException
+from harness_commons.api.client import HttpResponse
+from harness_commons.api import APIException
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager
 from splitio.engine.impressions.manager import Counter
 from splitio.engine.impressions.strategies import StrategyOptimizedMode
 from splitio.sync.impression import ImpressionsCountSynchronizer, ImpressionsCountSynchronizerAsync
-from splitio.api.impressions import ImpressionsAPI
+from harness_commons.api.impressions import ImpressionsAPI
 
 
 class ImpressionsCountSynchronizerTests(object):

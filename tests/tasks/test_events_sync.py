@@ -4,11 +4,11 @@ import threading
 import time
 import pytest
 
-from splitio.api.client import HttpResponse
+from harness_commons.api.client import HttpResponse
 from splitio.tasks import events_sync
 from splitio.storage import EventStorage
 from harness_commons.models.events import Event
-from splitio.api.events import EventsAPI
+from harness_commons.api.events import EventsAPI
 from splitio.sync.event import EventSynchronizer, EventSynchronizerAsync
 from splitio.optional.loaders import asyncio
 

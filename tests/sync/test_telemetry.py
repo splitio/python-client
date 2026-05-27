@@ -10,7 +10,7 @@ from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetr
 from splitio.models.splits import Split, Status
 from harness_commons.models.segments import Segment
 from harness_commons.models.telemetry import StreamingEvents, StreamingEventsAsync
-from splitio.api.telemetry import TelemetryAPI
+from harness_commons.api.telemetry import TelemetryAPI
 
 class TelemetrySynchronizerTests(object):
     """Telemetry synchronizer test cases."""

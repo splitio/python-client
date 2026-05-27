@@ -3,8 +3,8 @@ import time
 import json
 import os
 
-from splitio.api import APIException
-from splitio.api.commons import FetchOptions
+from harness_commons.api import APIException
+from harness_commons.api.commons import FetchOptions
 from splitio.tasks.util import workerpool
 from harness_commons.models import segments
 from splitio.util.backoff import Backoff
@@ -28,7 +28,7 @@ class SegmentSynchronizer(object):
         Class constructor.
 
         :param segment_api: API to retrieve segments from backend.
-        :type segment_api: splitio.api.SegmentApi
+        :type segment_api: harness_commons.api.segmentApi
 
         :param feature_flag_storage: Feature Flag Storage.
         :type feature_flag_storage: splitio.storage.InMemorySplitStorage
@@ -214,7 +214,7 @@ class SegmentSynchronizerAsync(object):
         Class constructor.
 
         :param segment_api: API to retrieve segments from backend.
-        :type segment_api: splitio.api.SegmentApi
+        :type segment_api: harness_commons.api.segmentApi
 
         :param feature_flag_storage: Feature Flag Storage.
         :type feature_flag_storage: splitio.storage.InMemorySplitStorage

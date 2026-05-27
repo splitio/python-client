@@ -4,10 +4,10 @@ import threading
 import time
 import pytest
 
-from splitio.api.client import HttpResponse
+from harness_commons.api.client import HttpResponse
 from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTask,\
     ClearFilterSyncTaskAsync, UniqueKeysSyncTaskAsync
-from splitio.api.telemetry import TelemetryAPI
+from harness_commons.api.telemetry import TelemetryAPI
 from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer,\
     UniqueKeysSynchronizerAsync, ClearFilterSynchronizerAsync
 from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync

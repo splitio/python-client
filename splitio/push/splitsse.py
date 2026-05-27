@@ -7,7 +7,7 @@ import sys
 
 from splitio.push.sse import SSEClient, SSEClientAsync, SSE_EVENT_ERROR
 from splitio.util.threadutil import EventGroup
-from splitio.api import headers_from_metadata
+from harness_commons.api import headers_from_metadata
 from splitio.optional.loaders import asyncio
 
 if sys.version_info.major == 3 and sys.version_info.minor < 10:

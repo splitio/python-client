@@ -53,7 +53,7 @@ class InMemorySenderAdapter(InMemorySenderAdapterBase):
         Initialize In memory sender adapter instance
 
         :param telemtry_http_client: instance of telemetry http api
-        :type telemtry_http_client: splitio.api.telemetry.TelemetryAPI
+        :type telemtry_http_client: harness_commons.api.telemetry.TelemetryAPI
         """
         self._telemtry_http_client = telemtry_http_client
 
@@ -78,7 +78,7 @@ class InMemorySenderAdapterAsync(InMemorySenderAdapterBase):
         Initialize In memory sender adapter instance
 
         :param telemtry_http_client: instance of telemetry http api
-        :type telemtry_http_client: splitio.api.telemetry.TelemetryAPI
+        :type telemtry_http_client: harness_commons.api.telemetry.TelemetryAPI
         """
         self._telemtry_http_client = telemtry_http_client
 
@@ -103,7 +103,7 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         Initialize Redis sender adapter instance
 
         :param telemtry_http_client: instance of telemetry http api
-        :type telemtry_http_client: splitio.api.telemetry.TelemetryAPI
+        :type telemtry_http_client: harness_commons.api.telemetry.TelemetryAPI
         """
         self._redis_client = redis_client
 
@@ -176,7 +176,7 @@ class RedisSenderAdapterAsync(ImpressionsSenderAdapter):
         Initialize Redis sender adapter instance
 
         :param telemtry_http_client: instance of telemetry http api
-        :type telemtry_http_client: splitio.api.telemetry.TelemetryAPI
+        :type telemtry_http_client: harness_commons.api.telemetry.TelemetryAPI
         """
         self._redis_client = redis_client
 
@@ -249,7 +249,7 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
         Initialize pluggable sender adapter instance
 
         :param telemtry_http_client: instance of telemetry http api
-        :type telemtry_http_client: splitio.api.telemetry.TelemetryAPI
+        :type telemtry_http_client: harness_commons.api.telemetry.TelemetryAPI
         """
         self._adapter_client = adapter_client
         self._prefix = ""
@@ -321,7 +321,7 @@ class PluggableSenderAdapterAsync(ImpressionsSenderAdapter):
         Initialize pluggable sender adapter instance
 
         :param telemtry_http_client: instance of telemetry http api
-        :type telemtry_http_client: splitio.api.telemetry.TelemetryAPI
+        :type telemtry_http_client: harness_commons.api.telemetry.TelemetryAPI
         """
         self._adapter_client = adapter_client
         self._prefix = ""

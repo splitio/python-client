@@ -4,7 +4,7 @@ import threading
 import time
 import pytest
 
-from splitio.api.commons import FetchOptions
+from harness_commons.api.commons import FetchOptions
 from splitio.tasks import segment_sync
 from splitio.storage import SegmentStorage, SplitStorage, RuleBasedSegmentsStorage
 from splitio.models.splits import Split

@@ -6,7 +6,7 @@ from queue import Queue
 
 from splitio.optional.loaders import asyncio
 from splitio.push.manager import PushManager, PushManagerAsync, Status
-from splitio.api import APIException
+from harness_commons.api import APIException
 from splitio.util.backoff import Backoff
 from splitio.util.time import get_current_epoch_time_ms
 from harness_commons.models.telemetry import SSESyncMode, StreamingEventTypes
@@ -31,7 +31,7 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
         :type split_synchronizers: splitio.sync.synchronizer.Synchronizer
 
         :param auth_api: Authentication api client
-        :type auth_api: splitio.api.auth.AuthAPI
+        :type auth_api: harness_commons.api.auth.AuthAPI
 
         :param sdk_metadata: SDK version & machine name & IP.
         :type sdk_metadata: splitio.client.util.SdkMetadata
@@ -149,7 +149,7 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
         :type split_synchronizers: splitio.sync.synchronizer.Synchronizer
 
         :param auth_api: Authentication api client
-        :type auth_api: splitio.api.auth.AuthAPI
+        :type auth_api: harness_commons.api.auth.AuthAPI
 
         :param sdk_metadata: SDK version & machine name & IP.
         :type sdk_metadata: splitio.client.util.SdkMetadata

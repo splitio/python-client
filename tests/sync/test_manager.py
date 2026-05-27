@@ -6,8 +6,8 @@ import time
 import pytest
 
 from splitio.optional.loaders import asyncio
-from splitio.api.auth import AuthAPI
-from splitio.api import auth, client, APIException
+from harness_commons.api.auth import AuthAPI
+from harness_commons.api import auth, client, APIException
 from splitio.client.util import get_metadata
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.tasks.split_sync import SplitSynchronizationTask, SplitSynchronizationTaskAsync
@@ -25,7 +25,7 @@ from splitio.sync.event import EventSynchronizer
 from splitio.sync.synchronizer import Synchronizer, SynchronizerAsync, SplitTasks, SplitSynchronizers, RedisSynchronizer, RedisSynchronizerAsync
 from splitio.sync.manager import Manager, ManagerAsync, RedisManager, RedisManagerAsync
 from splitio.storage import SplitStorage, RuleBasedSegmentsStorage
-from splitio.api import APIException
+from harness_commons.api import APIException
 from splitio.client.util import SdkMetadata
 
 

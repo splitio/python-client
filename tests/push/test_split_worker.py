@@ -4,7 +4,7 @@ import queue
 import base64
 import pytest
 
-from splitio.api import APIException
+from harness_commons.api import APIException
 from splitio.push.workers import SplitWorker, SplitWorkerAsync
 from harness_commons.models.notification import SplitChangeNotification
 from splitio.optional.loaders import asyncio

@@ -4,7 +4,7 @@ from threading import Thread
 from queue import Queue
 import pytest
 
-from splitio.api import APIException
+from harness_commons.api import APIException
 from harness_commons.models.token import Token
 from splitio.push.sse import SSEEvent
 from splitio.push.parser import parse_incoming_event, EventType, ControlType, ControlMessage, \

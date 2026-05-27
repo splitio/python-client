@@ -1,7 +1,7 @@
 import logging
 import queue
 
-from splitio.api import APIException
+from harness_commons.api import APIException
 from splitio.optional.loaders import asyncio
 
 _LOGGER = logging.getLogger(__name__)
@@ -14,7 +14,7 @@ class EventSynchronizer(object):
         Class constructor.
 
         :param events_api: Events Api object to send data to the backend
-        :type events_api: splitio.api.events.EventsAPI
+        :type events_api: harness_commons.api.events.EventsAPI
         :param storage: Events Storage
         :type storage: splitio.storage.EventStorage
         :param bulk_size: How many events to send per push.
@@ -75,7 +75,7 @@ class EventSynchronizerAsync(object):
         Class constructor.
 
         :param events_api: Events Api object to send data to the backend
-        :type events_api: splitio.api.events.EventsAPI
+        :type events_api: harness_commons.api.events.EventsAPI
         :param storage: Events Storage
         :type storage: splitio.storage.EventStorage
         :param bulk_size: How many events to send per push.
