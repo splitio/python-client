@@ -1271,7 +1271,7 @@ class RedisImpressionsStorageAsync(RedisImpressionsStorageBase):
 class RedisEventsStorageBase(EventStorage):
     """Redis based event storage base class."""
 
-    _EVENTS_KEY_TEMPLATE = 'SPLITIO.events'
+    _EVENTS_KEY_TEMPLATE = 'harness_commons.events'
     _EVENTS_KEY_DEFAULT_TTL = 3600
 
     def add_events_to_pipe(self, events, pipe):

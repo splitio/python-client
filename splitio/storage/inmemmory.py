@@ -8,7 +8,7 @@ from harness_commons.models.segments import Segment
 from harness_commons.models.telemetry import HTTPErrors, HTTPLatencies, MethodExceptions, MethodLatencies, LastSynchronization, StreamingEvents, TelemetryConfig, TelemetryCounters, CounterConstants, \
     HTTPErrorsAsync, HTTPLatenciesAsync, MethodExceptionsAsync, MethodLatenciesAsync, LastSynchronizationAsync, StreamingEventsAsync, TelemetryConfigAsync, TelemetryCountersAsync
 from harness_commons.models.events import SdkInternalEvent
-from splitio.events.events_metadata import EventsMetadata, SdkEventType
+from harness_commons.events.events_metadata import EventsMetadata, SdkEventType
 from harness_commons.models.notification import SdkInternalEventNotification
 from splitio.storage import FlagSetsFilter, SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage, RuleBasedSegmentsStorage
 from splitio.optional.loaders import asyncio

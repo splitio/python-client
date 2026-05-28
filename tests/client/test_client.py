@@ -8,7 +8,7 @@ import asyncio
 
 from splitio.client.client import Client, _LOGGER as _logger, CONTROL, ClientAsync, EvaluationOptions
 from splitio.client.factory import SplitFactory, Status as FactoryStatus, SplitFactoryAsync
-from splitio.events.events_manager import EventsManager, EventsManagerAsync
+from harness_commons.events.events_manager import EventsManager, EventsManagerAsync
 from harness_commons.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
 from harness_commons.models.fallback_treatment import FallbackTreatment
 from harness_commons.models.impressions import Impression, Label

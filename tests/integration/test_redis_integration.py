@@ -225,14 +225,14 @@ class RedisEventsStorageTests(object):
         adapter = _build_default_client({})
         try:
             self._put_events(adapter, get_metadata({}))
-            evts = adapter.lrange('SPLITIO.events', 0, 2)
+            evts = adapter.lrange('harness_commons.events', 0, 2)
             assert len(evts) == 3
             for rawEvent in evts:
                 event = json.loads(rawEvent)
                 assert event['m']['i'] != 'NA'
                 assert event['m']['n'] != 'NA'
         finally:
-            adapter.delete('SPLITIO.events')
+            adapter.delete('harness_commons.events')
 
     def test_put_fetch_contains_ip_address_disabled(self):
         """Test storing and retrieving splits in redis."""
@@ -242,14 +242,14 @@ class RedisEventsStorageTests(object):
             cfg.update({'IPAddressesEnabled': False})
             self._put_events(adapter, get_metadata(cfg))
 
-            evts = adapter.lrange('SPLITIO.events', 0, 2)
+            evts = adapter.lrange('harness_commons.events', 0, 2)
             assert len(evts) == 3
             for rawEvent in evts:
                 event = json.loads(rawEvent)
                 assert event['m']['i'] == 'NA'
                 assert event['m']['n'] == 'NA'
         finally:
-            adapter.delete('SPLITIO.events')
+            adapter.delete('harness_commons.events')
 
 class RedisSplitStorageAsyncTests(object):
     """Redis Split storage e2e tests."""
@@ -461,14 +461,14 @@ class RedisEventsStorageAsyncTests(object):
         adapter = await _build_default_client_async({})
         try:
             await self._put_events(adapter, get_metadata({}))
-            evts = await adapter.lrange('SPLITIO.events', 0, 2)
+            evts = await adapter.lrange('harness_commons.events', 0, 2)
             assert len(evts) == 3
             for rawEvent in evts:
                 event = json.loads(rawEvent)
                 assert event['m']['i'] != 'NA'
                 assert event['m']['n'] != 'NA'
         finally:
-            await adapter.delete('SPLITIO.events')
+            await adapter.delete('harness_commons.events')
 
     @pytest.mark.asyncio
     async def test_put_fetch_contains_ip_address_disabled(self):
@@ -479,11 +479,11 @@ class RedisEventsStorageAsyncTests(object):
             cfg.update({'IPAddressesEnabled': False})
             await self._put_events(adapter, get_metadata(cfg))
 
-            evts = await adapter.lrange('SPLITIO.events', 0, 2)
+            evts = await adapter.lrange('harness_commons.events', 0, 2)
             assert len(evts) == 3
             for rawEvent in evts:
                 event = json.loads(rawEvent)
                 assert event['m']['i'] == 'NA'
                 assert event['m']['n'] == 'NA'
         finally:
-            await adapter.delete('SPLITIO.events')
+            await adapter.delete('harness_commons.events')

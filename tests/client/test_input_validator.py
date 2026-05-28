@@ -6,7 +6,7 @@ import asyncio
 from splitio.client.factory import SplitFactory, get_factory, SplitFactoryAsync, get_factory_async
 from splitio.client.client import CONTROL, Client, _LOGGER as _logger, ClientAsync
 from splitio.client.key import Key
-from splitio.events.events_manager import EventsManagerAsync
+from harness_commons.events.events_manager import EventsManagerAsync
 from splitio.storage import SplitStorage, EventStorage, ImpressionStorage, SegmentStorage, RuleBasedSegmentsStorage
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync, \
     InMemorySplitStorage, InMemorySplitStorageAsync, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
