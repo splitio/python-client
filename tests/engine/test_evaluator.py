@@ -17,8 +17,9 @@ from harness_commons.models.fallback_treatment import FallbackTreatment
 from harness_commons.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
 from splitio.engine import evaluator, splitters
 from splitio.engine.evaluator import EvaluationContext
-from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, InMemoryRuleBasedSegmentStorage, \
-    InMemorySplitStorageAsync, InMemorySegmentStorageAsync, InMemoryRuleBasedSegmentStorageAsync
+from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync
+from harness_commons.storage.inmemmory import InMemorySegmentStorage, InMemoryRuleBasedSegmentStorage, \
+    InMemorySegmentStorageAsync, InMemoryRuleBasedSegmentStorageAsync
 from splitio.engine.evaluator import EvaluationDataFactory, AsyncEvaluationDataFactory
 
 rbs_raw = {

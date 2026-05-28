@@ -8,14 +8,15 @@ import asyncio
 
 from splitio.client.client import Client, _LOGGER as _logger, CONTROL, ClientAsync, EvaluationOptions
 from splitio.client.factory import SplitFactory, Status as FactoryStatus, SplitFactoryAsync
-from splitio.events.events_manager import EventsManager, EventsManagerAsync
+from harness_commons.events.events_manager import EventsManager, EventsManagerAsync
 from harness_commons.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
 from harness_commons.models.fallback_treatment import FallbackTreatment
 from harness_commons.models.impressions import Impression, Label
 from harness_commons.models.events import Event, EventWrapper, SdkEvent
-from splitio.storage import EventStorage, ImpressionStorage, SegmentStorage, SplitStorage, RuleBasedSegmentsStorage
-from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
-    InMemoryImpressionStorage, InMemoryTelemetryStorage, InMemorySplitStorageAsync, \
+from harness_commons.storage import SegmentStorage, ImpressionStorage, EventStorage, RuleBasedSegmentsStorage
+from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync, SplitStorage
+from harness_commons.storage.inmemmory import InMemorySegmentStorage, \
+    InMemoryImpressionStorage, InMemoryTelemetryStorage, \
     InMemoryImpressionStorageAsync, InMemorySegmentStorageAsync, InMemoryTelemetryStorageAsync, InMemoryEventStorageAsync, \
     InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 from splitio.models.splits import Split, Status, from_raw
@@ -99,7 +100,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         ready_property = mocker.PropertyMock()
         ready_property.return_value = False
         type(factory).ready = ready_property
-       # pytest.set_trace()
+       
         assert client.get_treatment('some_key', 'SPLIT_2', {'some_attribute': 1}) == 'control'
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', Label.NOT_READY, None, None, 1000, None, None)]
 

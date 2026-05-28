@@ -19,18 +19,19 @@ from harness_commons.engine.telemetry import TelemetryStorageProducer, Telemetry
     TelemetryStorageProducerAsync, TelemetryStorageConsumerAsync
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
-from splitio.events.events_manager import EventsManager, EventsManagerAsync
-from splitio.events.events_manager_config import EventsManagerConfig
-from splitio.events.events_task import EventsTask, EventsTaskAsync
-from splitio.events.events_delivery import EventsDelivery
+from harness_commons.events.events_manager import EventsManager, EventsManagerAsync
+from harness_commons.events.events_manager_config import EventsManagerConfig
+from harness_commons.events.events_task import EventsTask, EventsTaskAsync
+from harness_commons.events.events_delivery import EventsDelivery
 from harness_commons.models.fallback_config import FallbackTreatmentCalculator
 from harness_commons.models.notification import SdkInternalEventNotification
 from harness_commons.models.events import SdkInternalEvent
 
 # Storage
-from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
+from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync
+from harness_commons.storage.inmemmory import InMemorySegmentStorage, \
     InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, LocalhostTelemetryStorage, \
-    InMemorySplitStorageAsync, InMemorySegmentStorageAsync, InMemoryImpressionStorageAsync, \
+    InMemorySegmentStorageAsync, InMemoryImpressionStorageAsync, \
     InMemoryEventStorageAsync, InMemoryTelemetryStorageAsync, LocalhostTelemetryStorageAsync, \
     InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 from splitio.storage.adapters import redis

@@ -9,7 +9,7 @@ from harness_commons.models.impressions import Impression, ImpressionDecorated
 from splitio.client.listener import ImpressionListenerWrapper
 import harness_commons.models.telemetry as ModelTelemetry
 from harness_commons.engine.telemetry import TelemetryStorageProducer
-from splitio.storage.inmemmory import InMemoryTelemetryStorage
+from harness_commons.storage.inmemmory import InMemoryTelemetryStorage
 
 def utctime_ms_reimplement():
     """Re-implementation of utctime_ms to avoid conflicts with mock/patching."""

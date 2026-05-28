@@ -5,8 +5,9 @@ import os
 from splitio.client import localhost
 from splitio.sync.split import LocalSplitSynchronizer
 from splitio.models.splits import Split
+from splitio.storage.inmemory import SplitStorage
 from harness_commons.models.grammar.matchers import AllKeysMatcher
-from splitio.storage import SplitStorage, RuleBasedSegmentsStorage
+from harness_commons.storage import RuleBasedSegmentsStorage
 
 
 class LocalHostStoragesTests(object):

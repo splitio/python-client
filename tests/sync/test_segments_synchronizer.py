@@ -5,8 +5,9 @@ import os
 from splitio.util.backoff import Backoff
 from harness_commons.api import APIException
 from harness_commons.api.commons import FetchOptions
-from splitio.storage import SplitStorage, SegmentStorage, RuleBasedSegmentsStorage
-from splitio.storage.inmemmory import InMemorySegmentStorage, InMemorySegmentStorageAsync, InMemorySplitStorage, InMemorySplitStorageAsync
+from harness_commons.storage import DefinitionStorage, SegmentStorage, RuleBasedSegmentsStorage
+from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync
+from harness_commons.storage.inmemmory import InMemorySegmentStorage, InMemorySegmentStorageAsync
 from splitio.sync.segment import SegmentSynchronizer, SegmentSynchronizerAsync, LocalSegmentSynchronizer, LocalSegmentSynchronizerAsync
 from harness_commons.models.segments import Segment
 from harness_commons.models import rule_based_segments
@@ -19,7 +20,7 @@ class SegmentsSynchronizerTests(object):
 
     def test_synchronize_segments_error(self, mocker):
         """On error."""
-        split_storage = mocker.Mock(spec=SplitStorage)
+        split_storage = mocker.Mock(spec=DefinitionStorage)
         split_storage.get_segment_names.return_value = ['segmentA', 'segmentB', 'segmentC']
 
         storage = mocker.Mock(spec=SegmentStorage)
@@ -38,7 +39,7 @@ class SegmentsSynchronizerTests(object):
 
     def test_synchronize_segments(self, mocker):
         """Test the normal operation flow."""
-        split_storage = mocker.Mock(spec=SplitStorage)
+        split_storage = mocker.Mock(spec=DefinitionStorage)
         split_storage.get_segment_names.return_value = ['segmentA', 'segmentB', 'segmentC']
 
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
@@ -121,7 +122,7 @@ class SegmentsSynchronizerTests(object):
 
     def test_synchronize_segment(self, mocker):
         """Test particular segment update."""
-        split_storage = mocker.Mock(spec=SplitStorage)
+        split_storage = mocker.Mock(spec=DefinitionStorage)
         storage = mocker.Mock(spec=SegmentStorage)
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         rbs_storage.get_segment_names.return_value = []
@@ -156,7 +157,7 @@ class SegmentsSynchronizerTests(object):
         """Test particular segment update cdn bypass."""
         mocker.patch('splitio.sync.segment._ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES', new=3)
 
-        split_storage = mocker.Mock(spec=SplitStorage)
+        split_storage = mocker.Mock(spec=DefinitionStorage)
         storage = mocker.Mock(spec=SegmentStorage)
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         rbs_storage.get_segment_names.return_value = []
@@ -218,7 +219,7 @@ class SegmentsSynchronizerAsyncTests(object):
     @pytest.mark.asyncio
     async def test_synchronize_segments_error(self, mocker):
         """On error."""
-        split_storage = mocker.Mock(spec=SplitStorage)
+        split_storage = mocker.Mock(spec=DefinitionStorage)
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
 
         async def get_segment_names_rbs():
@@ -250,7 +251,7 @@ class SegmentsSynchronizerAsyncTests(object):
     @pytest.mark.asyncio
     async def test_synchronize_segments(self, mocker):
         """Test the normal operation flow."""
-        split_storage = mocker.Mock(spec=SplitStorage)
+        split_storage = mocker.Mock(spec=DefinitionStorage)
         async def get_segment_names():
             return ['segmentA', 'segmentB', 'segmentC']
         split_storage.get_segment_names = get_segment_names
@@ -357,7 +358,7 @@ class SegmentsSynchronizerAsyncTests(object):
     @pytest.mark.asyncio
     async def test_synchronize_segment(self, mocker):
         """Test particular segment update."""
-        split_storage = mocker.Mock(spec=SplitStorage)
+        split_storage = mocker.Mock(spec=DefinitionStorage)
         storage = mocker.Mock(spec=SegmentStorage)
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
 
@@ -410,7 +411,7 @@ class SegmentsSynchronizerAsyncTests(object):
         """Test particular segment update cdn bypass."""
         mocker.patch('splitio.sync.segment._ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES', new=3)
 
-        split_storage = mocker.Mock(spec=SplitStorage)
+        split_storage = mocker.Mock(spec=DefinitionStorage)
         storage = mocker.Mock(spec=SegmentStorage)
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
 
@@ -491,7 +492,7 @@ class LocalSegmentsSynchronizerTests(object):
 
     def test_synchronize_segments_error(self, mocker):
         """On error."""
-        split_storage = mocker.Mock(spec=SplitStorage)
+        split_storage = mocker.Mock(spec=DefinitionStorage)
         split_storage.get_segment_names.return_value = ['segmentA', 'segmentB', 'segmentC']
 
         storage = mocker.Mock(spec=SegmentStorage)
@@ -665,7 +666,7 @@ class LocalSegmentsSynchronizerTests(object):
     @pytest.mark.asyncio
     async def test_synchronize_segments_error(self, mocker):
         """On error."""
-        split_storage = mocker.Mock(spec=SplitStorage)
+        split_storage = mocker.Mock(spec=DefinitionStorage)
         async def get_segment_names():
             return ['segmentA', 'segmentB', 'segmentC']
         split_storage.get_segment_names = get_segment_names

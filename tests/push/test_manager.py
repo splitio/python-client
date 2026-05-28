@@ -15,7 +15,7 @@ from splitio.push.manager import PushManager, PushManagerAsync, _TOKEN_REFRESH_G
 from splitio.push.splitsse import SplitSSEClient, SplitSSEClientAsync
 from splitio.push.status_tracker import Status
 from harness_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
-from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
+from harness_commons.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
 from harness_commons.models.telemetry import StreamingEventTypes
 from splitio.optional.loaders import asyncio
 

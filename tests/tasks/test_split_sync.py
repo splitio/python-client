@@ -6,7 +6,7 @@ import pytest
 from harness_commons.api import APIException
 from harness_commons.api.commons import FetchOptions
 from splitio.tasks import split_sync
-from splitio.storage import SplitStorage, RuleBasedSegmentsStorage
+from harness_commons.storage import DefinitionStorage, RuleBasedSegmentsStorage
 from splitio.models.splits import Split
 from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync
 from splitio.optional.loaders import asyncio
@@ -52,7 +52,7 @@ class SplitSynchronizationTests(object):
 
     def test_normal_operation(self, mocker):
         """Test the normal operation flow."""
-        storage = mocker.Mock(spec=SplitStorage)
+        storage = mocker.Mock(spec=DefinitionStorage)
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
 
         def change_number_mock():
@@ -117,7 +117,7 @@ class SplitSynchronizationTests(object):
 
     def test_that_errors_dont_stop_task(self, mocker):
         """Test that if fetching splits fails at some_point, the task will continue running."""
-        storage = mocker.Mock(spec=SplitStorage)
+        storage = mocker.Mock(spec=DefinitionStorage)
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         api = mocker.Mock()
 
@@ -150,7 +150,7 @@ class SplitSynchronizationAsyncTests(object):
     @pytest.mark.asyncio
     async def test_normal_operation(self, mocker):
         """Test the normal operation flow."""
-        storage = mocker.Mock(spec=SplitStorage)
+        storage = mocker.Mock(spec=DefinitionStorage)
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
 
         async def change_number_mock():
@@ -225,7 +225,7 @@ class SplitSynchronizationAsyncTests(object):
     @pytest.mark.asyncio
     async def test_that_errors_dont_stop_task(self, mocker):
         """Test that if fetching splits fails at some_point, the task will continue running."""
-        storage = mocker.Mock(spec=SplitStorage)
+        storage = mocker.Mock(spec=DefinitionStorage)
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         api = mocker.Mock()
 

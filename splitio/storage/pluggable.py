@@ -10,7 +10,8 @@ from harness_commons.models import segments, rule_based_segments
 from harness_commons.models.impressions import Impression
 from harness_commons.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MAX_TAGS,\
     MethodLatenciesAsync, MethodExceptionsAsync, TelemetryConfigAsync
-from splitio.storage import FlagSetsFilter, SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage, RuleBasedSegmentsStorage
+from harness_commons.storage import FlagSetsFilter, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage, RuleBasedSegmentsStorage
+from splitio.storage.inmemory import SplitStorage
 from splitio.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
 
 _LOGGER = logging.getLogger(__name__)
@@ -1399,7 +1400,7 @@ class PluggableEventsStorageBase(EventStorage):
                                 'n': sdk_metadata.instance_name,
                                 'i': sdk_metadata.instance_ip,
                             }
-        self._events_queue_key = 'SPLITIO.events'
+        self._events_queue_key = 'harness_commons.events'
         if prefix is not None:
             self._events_queue_key = prefix + "." + self._events_queue_key
 

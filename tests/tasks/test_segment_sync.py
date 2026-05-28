@@ -6,7 +6,7 @@ import pytest
 
 from harness_commons.api.commons import FetchOptions
 from splitio.tasks import segment_sync
-from splitio.storage import SegmentStorage, SplitStorage, RuleBasedSegmentsStorage
+from harness_commons.storage import DefinitionStorage, SegmentStorage, RuleBasedSegmentsStorage
 from splitio.models.splits import Split
 from harness_commons.models.segments import Segment
 from harness_commons.models.grammar.condition import Condition
@@ -19,7 +19,7 @@ class SegmentSynchronizationTests(object):
 
     def test_normal_operation(self, mocker):
         """Test the normal operation flow."""
-        split_storage = mocker.Mock(spec=SplitStorage)
+        split_storage = mocker.Mock(spec=DefinitionStorage)
         split_storage.get_segment_names.return_value = ['segmentA', 'segmentB', 'segmentC']
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         rbs_storage.get_segment_names.return_value = []
@@ -99,7 +99,7 @@ class SegmentSynchronizationTests(object):
 
     def test_that_errors_dont_stop_task(self, mocker):
         """Test that if fetching segments fails at some_point, the task will continue running."""
-        split_storage = mocker.Mock(spec=SplitStorage)
+        split_storage = mocker.Mock(spec=DefinitionStorage)
         split_storage.get_segment_names.return_value = ['segmentA', 'segmentB', 'segmentC']
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         rbs_storage.get_segment_names.return_value = []
@@ -182,7 +182,7 @@ class SegmentSynchronizationAsyncTests(object):
     @pytest.mark.asyncio
     async def test_normal_operation(self, mocker):
         """Test the normal operation flow."""
-        split_storage = mocker.Mock(spec=SplitStorage)
+        split_storage = mocker.Mock(spec=DefinitionStorage)
         async def get_segment_names():
             return ['segmentA', 'segmentB', 'segmentC']
         split_storage.get_segment_names = get_segment_names
@@ -280,7 +280,7 @@ class SegmentSynchronizationAsyncTests(object):
     @pytest.mark.asyncio
     async def test_that_errors_dont_stop_task(self, mocker):
         """Test that if fetching segments fails at some_point, the task will continue running."""
-        split_storage = mocker.Mock(spec=SplitStorage)
+        split_storage = mocker.Mock(spec=DefinitionStorage)
         async def get_segment_names():
             return ['segmentA', 'segmentB', 'segmentC']
         split_storage.get_segment_names = get_segment_names

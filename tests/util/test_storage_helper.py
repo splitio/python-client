@@ -6,11 +6,11 @@ import asyncio
 from splitio.util.storage_helper import update_feature_flag_storage, get_valid_flag_sets, combine_valid_flag_sets, \
     update_rule_based_segment_storage, update_rule_based_segment_storage_async, update_feature_flag_storage_async, \
     get_standard_segment_names_in_rbs_storage_async, get_standard_segment_names_in_rbs_storage 
-from splitio.storage.inmemmory import InMemorySplitStorage, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync, \
-    InMemorySplitStorageAsync
+from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync    
+from harness_commons.storage.inmemmory import InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 from splitio.models import splits
 from harness_commons.models import rule_based_segments
-from splitio.storage import FlagSetsFilter
+from harness_commons.storage import FlagSetsFilter
 from tests.sync.test_splits_synchronizer import splits_raw as split_sample
 
 class StorageHelperTests(object):

@@ -19,16 +19,17 @@ from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, Un
 from harness_commons.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.engine.evaluator import Evaluator, EvaluationContext
 from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode, StrategyOptimizedMode
-from splitio.events.events_task import EventsTask
-from splitio.events.events_manager import EventsManagerAsync
+from harness_commons.events.events_task import EventsTask
+from harness_commons.events.events_manager import EventsManagerAsync
 from splitio.models.splits import from_raw
 from harness_commons.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
 from harness_commons.models.fallback_treatment import FallbackTreatment
 from harness_commons.models.events import SdkInternalEvent
 from splitio.recorder.recorder import PipelinedRecorder, StandardRecorder, StandardRecorderAsync
-from splitio.storage import redis, inmemmory, pluggable, EventStorage
-from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
-    InMemoryImpressionStorage, InMemoryTelemetryStorage, InMemorySplitStorageAsync, \
+from harness_commons.storage import  inmemmory, EventStorage
+from splitio.storage import inmemory, redis, pluggable
+from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync
+from harness_commons.storage.inmemmory import InMemorySegmentStorage, InMemoryImpressionStorage, InMemoryTelemetryStorage, \
     InMemoryImpressionStorageAsync, InMemorySegmentStorageAsync, InMemoryTelemetryStorageAsync, InMemoryEventStorageAsync, \
     InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 from splitio.sync.manager import Manager, ManagerAsync
@@ -93,7 +94,7 @@ class SplitFactoryTests(object):
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
 
-        assert isinstance(factory._storages['splits'], inmemmory.InMemorySplitStorage)
+        assert isinstance(factory._storages['splits'], inmemory.InMemorySplitStorage)
         assert isinstance(factory._storages['segments'], inmemmory.InMemorySegmentStorage)
         assert isinstance(factory._storages['impressions'], inmemmory.InMemoryImpressionStorage)
         assert factory._storages['impressions']._impressions.maxsize == 10000
@@ -564,7 +565,7 @@ class SplitFactoryTests(object):
 
         clear_impressions._called = 0
         clear_events._called = 0
-        split_storage = mocker.Mock(spec=inmemmory.SplitStorage)
+        split_storage = mocker.Mock(spec=inmemory.SplitStorage)
         segment_storage = mocker.Mock(spec=inmemmory.SegmentStorage)
         impression_storage = mocker.Mock(spec=inmemmory.ImpressionStorage)
         impression_storage.clear.side_effect = clear_impressions
@@ -781,7 +782,7 @@ class SplitFactoryTests(object):
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
 
-        assert isinstance(factory._storages['splits'], inmemmory.InMemorySplitStorage)
+        assert isinstance(factory._storages['splits'], inmemory.InMemorySplitStorage)
         assert isinstance(factory._storages['segments'], inmemmory.InMemorySegmentStorage)
         assert isinstance(factory._storages['impressions'], inmemmory.InMemoryImpressionStorage)
         assert factory._storages['impressions']._impressions.maxsize == 10000
@@ -859,7 +860,7 @@ class SplitFactoryAsyncTests(object):
         factory2 = await get_factory_async('some_api_key', config={'streamingEmabled': False})
 
         assert isinstance(factory2, SplitFactoryAsync)
-        assert isinstance(factory2._storages['splits'], inmemmory.InMemorySplitStorageAsync)
+        assert isinstance(factory2._storages['splits'], inmemory.InMemorySplitStorageAsync)
         assert isinstance(factory2._storages['segments'], inmemmory.InMemorySegmentStorageAsync)
         assert isinstance(factory2._storages['impressions'], inmemmory.InMemoryImpressionStorageAsync)
         assert factory2._storages['impressions']._impressions.maxsize == 10000

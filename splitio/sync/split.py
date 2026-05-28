@@ -44,10 +44,10 @@ class SplitSynchronizerBase(object):
         :type feature_flag_api: splitio.api.splits.SplitsAPI
 
         :param feature_flag_storage: Feature Flag Storage.
-        :type feature_flag_storage: splitio.storage.InMemorySplitStorage
+        :type feature_flag_storage: harness_commons.storage.inmemmorySplitStorage
 
         :param rule_based_segment_storage: Rule based segment Storage.
-        :type rule_based_segment_storage: splitio.storage.InMemoryRuleBasedStorage
+        :type rule_based_segment_storage: harness_commons.storage.inmemmoryRuleBasedStorage
         """
         self._api = feature_flag_api
         self._feature_flag_storage = feature_flag_storage
@@ -94,10 +94,10 @@ class SplitSynchronizer(SplitSynchronizerBase):
         :type feature_flag_api: splitio.api.splits.SplitsAPI
 
         :param feature_flag_storage: Feature Flag Storage.
-        :type feature_flag_storage: splitio.storage.InMemorySplitStorage
+        :type feature_flag_storage: harness_commons.storage.inmemmorySplitStorage
 
         :param rule_based_segment_storage: Rule based segment Storage.
-        :type rule_based_segment_storage: splitio.storage.InMemoryRuleBasedStorage
+        :type rule_based_segment_storage: harness_commons.storage.inmemmoryRuleBasedStorage
         """
         SplitSynchronizerBase.__init__(self, feature_flag_api, feature_flag_storage, rule_based_segment_storage)
 
@@ -253,10 +253,10 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
         :type feature_flag_api: splitio.api.splits.SplitsAPI
 
         :param feature_flag_storage: Feature Flag Storage.
-        :type feature_flag_storage: splitio.storage.InMemorySplitStorage
+        :type feature_flag_storage: harness_commons.storage.inmemmorySplitStorage
 
         :param rule_based_segment_storage: Rule based segment Storage.
-        :type rule_based_segment_storage: splitio.storage.InMemoryRuleBasedStorage
+        :type rule_based_segment_storage: harness_commons.storage.inmemmoryRuleBasedStorage
         """
         SplitSynchronizerBase.__init__(self, feature_flag_api, feature_flag_storage, rule_based_segment_storage)
 
@@ -410,7 +410,7 @@ class LocalSplitSynchronizerBase(object):
         :param filename: File to parse feature flags from.
         :type filename: str
         :param feature_flag_storage: Feature flag Storage.
-        :type feature_flag_storage: splitio.storage.InMemorySplitStorage
+        :type feature_flag_storage: harness_commons.storage.inmemmorySplitStorage
         :param localhost_mode: mode for localhost either JSON, YAML or LEGACY.
         :type localhost_mode: splitio.sync.split.LocalhostMode
         """
@@ -678,7 +678,7 @@ class LocalSplitSynchronizer(LocalSplitSynchronizerBase):
         :param filename: File to parse feature flags from.
         :type filename: str
         :param feature_flag_storage: Feature flag Storage.
-        :type feature_flag_storage: splitio.storage.InMemorySplitStorage
+        :type feature_flag_storage: harness_commons.storage.inmemmorySplitStorage
         :param localhost_mode: mode for localhost either JSON, YAML or LEGACY.
         :type localhost_mode: splitio.sync.split.LocalhostMode
         """
@@ -839,7 +839,7 @@ class LocalSplitSynchronizerAsync(LocalSplitSynchronizerBase):
         :param filename: File to parse feature flags from.
         :type filename: str
         :param feature_flag_storage: Feature flag Storage.
-        :type feature_flag_storage: splitio.storage.InMemorySplitStorage
+        :type feature_flag_storage: harness_commons.storage.inmemmorySplitStorage
         :param localhost_mode: mode for localhost either JSON, YAML or LEGACY.
         :type localhost_mode: splitio.sync.split.LocalhostMode
         """

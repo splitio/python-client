@@ -10,8 +10,9 @@ from harness_commons.models.notification import SplitChangeNotification
 from splitio.optional.loaders import asyncio
 from splitio.push.parser import SplitChangeUpdate, RBSChangeUpdate
 from harness_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
-from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemorySplitStorage, InMemorySegmentStorage, \
-    InMemoryTelemetryStorageAsync, InMemorySplitStorageAsync, InMemorySegmentStorageAsync
+from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync
+from harness_commons.storage.inmemmory import InMemoryTelemetryStorage, InMemorySegmentStorage, \
+    InMemoryTelemetryStorageAsync, InMemorySegmentStorageAsync
 
 change_number_received = None
 rbs = {

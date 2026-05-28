@@ -11,7 +11,7 @@ from queue import Queue
 from splitio.optional.loaders import asyncio
 from splitio.client.factory import get_factory, get_factory_async
 from harness_commons.models.events import SdkEvent
-from splitio.events.events_metadata import SdkEventType
+from harness_commons.events.events_metadata import SdkEventType
 from tests.helpers.mockserver import SSEMockServer, SplitMockServer
 from urllib.parse import parse_qs
 from harness_commons.models.telemetry import StreamingEventTypes, SSESyncMode
