@@ -7,8 +7,9 @@ from harness_commons.models.impressions import Impression
 from splitio.models import splits
 from harness_commons.models import segments, rule_based_segments
 from harness_commons.models.telemetry import TelemetryConfig, TelemetryConfigAsync
-from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, \
+from harness_commons.storage import SegmentStorage, ImpressionStorage, EventStorage, \
     ImpressionPipelinedStorage, TelemetryStorage, FlagSetsFilter, RuleBasedSegmentsStorage
+from splitio.storage.inmemory import SplitStorage
 from splitio.storage.adapters.redis import RedisAdapterException
 from splitio.storage.adapters.cache_trait import decorate as add_cache, DEFAULT_MAX_AGE
 from splitio.storage.adapters.cache_trait import LocalMemoryCache, LocalMemoryCacheAsync

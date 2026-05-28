@@ -6,7 +6,7 @@ import pytest
 
 from harness_commons.api.client import HttpResponse
 from harness_commons.api import APIException
-from splitio.storage import ImpressionStorage
+from harness_commons.storage import ImpressionStorage
 from harness_commons.models.impressions import Impression
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionSynchronizerAsync
 

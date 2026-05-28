@@ -6,7 +6,7 @@ import pytest
 
 from harness_commons.api.client import HttpResponse
 from splitio.tasks import events_sync
-from splitio.storage import EventStorage
+from harness_commons.storage import EventStorage
 from harness_commons.models.events import Event
 from harness_commons.api.events import EventsAPI
 from splitio.sync.event import EventSynchronizer, EventSynchronizerAsync

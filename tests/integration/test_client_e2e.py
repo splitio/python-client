@@ -33,8 +33,9 @@ from harness_commons.models.events import SdkEvent
 from harness_commons.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
 from harness_commons.models.fallback_treatment import FallbackTreatment
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder, StandardRecorderAsync, PipelinedRecorderAsync
-from splitio.storage.inmemmory import InMemoryEventStorage, InMemoryImpressionStorage, \
-    InMemorySegmentStorage, InMemorySplitStorage, InMemoryTelemetryStorage, InMemorySplitStorageAsync,\
+from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync
+from harness_commons.storage.inmemmory import InMemoryEventStorage, InMemoryImpressionStorage, \
+    InMemorySegmentStorage, InMemoryTelemetryStorage, \
     InMemoryEventStorageAsync, InMemoryImpressionStorageAsync, InMemorySegmentStorageAsync, \
     InMemoryTelemetryStorageAsync, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync 
 from splitio.storage.redis import RedisEventsStorage, RedisImpressionsStorage, \

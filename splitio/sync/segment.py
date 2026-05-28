@@ -31,7 +31,7 @@ class SegmentSynchronizer(object):
         :type segment_api: harness_commons.api.segmentApi
 
         :param feature_flag_storage: Feature Flag Storage.
-        :type feature_flag_storage: splitio.storage.InMemorySplitStorage
+        :type feature_flag_storage: harness_commons.storage.inmemmorySplitStorage
 
         :param segment_storage: Segment storage reference.
         :type segment_storage: splitio.storage.SegmentStorage
@@ -217,7 +217,7 @@ class SegmentSynchronizerAsync(object):
         :type segment_api: harness_commons.api.segmentApi
 
         :param feature_flag_storage: Feature Flag Storage.
-        :type feature_flag_storage: splitio.storage.InMemorySplitStorage
+        :type feature_flag_storage: harness_commons.storage.inmemmorySplitStorage
 
         :param segment_storage: Segment storage reference.
         :type segment_storage: splitio.storage.SegmentStorage
@@ -435,7 +435,7 @@ class LocalSegmentSynchronizer(LocalSegmentSynchronizerBase):
         :type segment_folder: str
 
         :param feature_flag_storage: Feature flag Storage.
-        :type feature_flag_storage: splitio.storage.InMemorySplitStorage
+        :type feature_flag_storage: harness_commons.storage.inmemmorySplitStorage
 
         :param segment_storage: Segment storage reference.
         :type segment_storage: splitio.storage.SegmentStorage
@@ -546,7 +546,7 @@ class LocalSegmentSynchronizerAsync(LocalSegmentSynchronizerBase):
         :type segment_folder: str
 
         :param feature_flag_storage: Feature flag Storage.
-        :type feature_flag_storage: splitio.storage.InMemorySplitStorage
+        :type feature_flag_storage: harness_commons.storage.inmemmorySplitStorage
 
         :param segment_storage: Segment storage reference.
         :type segment_storage: splitio.storage.SegmentStorage

@@ -28,9 +28,10 @@ from harness_commons.models.notification import SdkInternalEventNotification
 from harness_commons.models.events import SdkInternalEvent
 
 # Storage
-from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
+from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync
+from harness_commons.storage.inmemmory import InMemorySegmentStorage, \
     InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, LocalhostTelemetryStorage, \
-    InMemorySplitStorageAsync, InMemorySegmentStorageAsync, InMemoryImpressionStorageAsync, \
+    InMemorySegmentStorageAsync, InMemoryImpressionStorageAsync, \
     InMemoryEventStorageAsync, InMemoryTelemetryStorageAsync, LocalhostTelemetryStorageAsync, \
     InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 from splitio.storage.adapters import redis

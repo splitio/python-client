@@ -10,7 +10,7 @@ import pytest
 from splitio.client.util import get_metadata, SdkMetadata
 from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterAsync, RedisAdapterException, build
 from splitio.optional.loaders import asyncio
-from splitio.storage import FlagSetsFilter
+from harness_commons.storage import FlagSetsFilter
 from splitio.storage.redis import RedisEventsStorage, RedisEventsStorageAsync, RedisImpressionsStorage, RedisImpressionsStorageAsync, \
     RedisSegmentStorage, RedisSegmentStorageAsync, RedisSplitStorage, RedisSplitStorageAsync, RedisTelemetryStorage, RedisTelemetryStorageAsync, \
     RedisRuleBasedSegmentsStorage, RedisRuleBasedSegmentsStorageAsync

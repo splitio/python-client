@@ -199,11 +199,11 @@ class SplitWorker(WorkerBase):
         :param feature_flag_storage: feature flag storage instance
         :type feature_flag_storage: splitio.storage.inmemory.InMemorySplitStorage
         :param segment_storage: segment storage instance
-        :type segment_storage: splitio.storage.inmemory.InMemorySegmentStorage
+        :type segment_storage: harness_commons.storage.inmemmory.InMemorySegmentStorage
         :param telemetry_runtime_producer: Telemetry runtime producer instance
         :type telemetry_runtime_producer: harness_commons.engine.telemetry.TelemetryRuntimeProducer
         :param rule_based_segment_storage: Rule based segment Storage.
-        :type rule_based_segment_storage: splitio.storage.InMemoryRuleBasedStorage
+        :type rule_based_segment_storage: harness_commons.storage.inmemmoryRuleBasedStorage
         """
         self._feature_flag_queue = feature_flag_queue
         self._handler = synchronize_feature_flag
@@ -338,11 +338,11 @@ class SplitWorkerAsync(WorkerBase):
         :param feature_flag_storage: feature flag storage instance
         :type feature_flag_storage: splitio.storage.inmemory.InMemorySplitStorage
         :param segment_storage: segment storage instance
-        :type segment_storage: splitio.storage.inmemory.InMemorySegmentStorage
+        :type segment_storage: harness_commons.storage.inmemmory.InMemorySegmentStorage
         :param telemetry_runtime_producer: Telemetry runtime producer instance
         :type telemetry_runtime_producer: harness_commons.engine.telemetry.TelemetryRuntimeProducer
         :param rule_based_segment_storage: Rule based segment Storage.
-        :type rule_based_segment_storage: splitio.storage.InMemoryRuleBasedStorage
+        :type rule_based_segment_storage: harness_commons.storage.inmemmoryRuleBasedStorage
         """
         self._feature_flag_queue = feature_flag_queue
         self._handler = synchronize_feature_flag

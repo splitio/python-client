@@ -7,9 +7,10 @@ from splitio.client.factory import SplitFactory, get_factory, SplitFactoryAsync,
 from splitio.client.client import CONTROL, Client, _LOGGER as _logger, ClientAsync
 from splitio.client.key import Key
 from harness_commons.events.events_manager import EventsManagerAsync
-from splitio.storage import SplitStorage, EventStorage, ImpressionStorage, SegmentStorage, RuleBasedSegmentsStorage
-from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync, \
-    InMemorySplitStorage, InMemorySplitStorageAsync, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
+from harness_commons.storage import DefinitionStorage, SegmentStorage, ImpressionStorage, EventStorage, RuleBasedSegmentsStorage
+from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync
+from harness_commons.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync, \
+    InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 from splitio.models.splits import Split
 from harness_commons.models.fallback_config import FallbackTreatmentCalculator
 from splitio.client import input_validator
@@ -32,7 +33,7 @@ class ClientInputValidationTests(object):
         conditions_mock.return_value = []
         type(split_mock).conditions = conditions_mock
         type(split_mock).prerequisites = []
-        storage_mock = mocker.Mock(spec=SplitStorage)
+        storage_mock = mocker.Mock(spec=DefinitionStorage)
         storage_mock.fetch_many.return_value = {'some_feature': split_mock}
         rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
         rbs_storage.fetch_many.return_value = {}
@@ -275,7 +276,7 @@ class ClientInputValidationTests(object):
         def _configs(treatment):
             return '{"some": "property"}' if treatment == 'default_treatment' else None
         split_mock.get_configurations_for.side_effect = _configs
-        storage_mock = mocker.Mock(spec=SplitStorage)
+        storage_mock = mocker.Mock(spec=DefinitionStorage)
         storage_mock.fetch_many.return_value = {'some_feature': split_mock}
         rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
         rbs_storage.fetch_many.return_value = {}
@@ -554,7 +555,7 @@ class ClientInputValidationTests(object):
         events_storage_mock.put.return_value = True
         event_storage = mocker.Mock(spec=EventStorage)
         event_storage.put.return_value = True
-        split_storage_mock = mocker.Mock(spec=SplitStorage)
+        split_storage_mock = mocker.Mock(spec=DefinitionStorage)
         split_storage_mock.is_valid_traffic_type.return_value = True
 
         impmanager = mocker.Mock(spec=ImpressionManager)
@@ -832,7 +833,7 @@ class ClientInputValidationTests(object):
         type(split_mock).conditions = conditions_mock
         type(split_mock).prerequisites = []
 
-        storage_mock = mocker.Mock(spec=SplitStorage)
+        storage_mock = mocker.Mock(spec=DefinitionStorage)
         storage_mock.fetch_many.return_value = {
             'some_feature': split_mock
         }
@@ -982,7 +983,7 @@ class ClientInputValidationTests(object):
         type(split_mock).conditions = conditions_mock
         type(split_mock).prerequisites = []
 
-        storage_mock = mocker.Mock(spec=SplitStorage)
+        storage_mock = mocker.Mock(spec=DefinitionStorage)
         storage_mock.fetch_many.return_value = {
             'some_feature': split_mock
         }
@@ -1698,7 +1699,7 @@ class ClientInputValidationAsyncTests(object):
         conditions_mock.return_value = []
         type(split_mock).conditions = conditions_mock
         type(split_mock).prerequisites = []
-        storage_mock = mocker.Mock(spec=SplitStorage)
+        storage_mock = mocker.Mock(spec=DefinitionStorage)
         async def fetch_many(*_):
             return {
             'some_feature': split_mock
@@ -1969,7 +1970,7 @@ class ClientInputValidationAsyncTests(object):
         def _configs(treatment):
             return '{"some": "property"}' if treatment == 'default_treatment' else None
         split_mock.get_configurations_for.side_effect = _configs
-        storage_mock = mocker.Mock(spec=SplitStorage)
+        storage_mock = mocker.Mock(spec=DefinitionStorage)
         async def fetch_many(*_):
             return {
             'some_feature': split_mock
@@ -2234,7 +2235,7 @@ class ClientInputValidationAsyncTests(object):
 
         event_storage = mocker.Mock(spec=EventStorage)
         event_storage.put = put
-        split_storage_mock = mocker.Mock(spec=SplitStorage)
+        split_storage_mock = mocker.Mock(spec=DefinitionStorage)
         split_storage_mock.is_valid_traffic_type = put
 
         impmanager = mocker.Mock(spec=ImpressionManager)
@@ -2518,7 +2519,7 @@ class ClientInputValidationAsyncTests(object):
         conditions_mock.return_value = []
         type(split_mock).conditions = conditions_mock
         type(split_mock).prerequisites = []
-        storage_mock = mocker.Mock(spec=SplitStorage)
+        storage_mock = mocker.Mock(spec=DefinitionStorage)
         async def get(*_):
             return split_mock
         storage_mock.get = get
@@ -2692,7 +2693,7 @@ class ClientInputValidationAsyncTests(object):
         type(split_mock).conditions = conditions_mock
         type(split_mock).prerequisites = []
 
-        storage_mock = mocker.Mock(spec=SplitStorage)
+        storage_mock = mocker.Mock(spec=DefinitionStorage)
         async def get(*_):
             return split_mock
         storage_mock.get = get
@@ -2864,7 +2865,7 @@ class ClientInputValidationAsyncTests(object):
         conditions_mock.return_value = []
         type(split_mock).conditions = conditions_mock
         type(split_mock).prerequisites = []
-        storage_mock = mocker.Mock(spec=SplitStorage)
+        storage_mock = mocker.Mock(spec=DefinitionStorage)
         async def get(*_):
             return split_mock
         storage_mock.get = get
@@ -3018,7 +3019,7 @@ class ClientInputValidationAsyncTests(object):
         conditions_mock.return_value = []
         type(split_mock).conditions = conditions_mock
         type(split_mock).prerequisites = []
-        storage_mock = mocker.Mock(spec=SplitStorage)
+        storage_mock = mocker.Mock(spec=DefinitionStorage)
         async def get(*_):
             return split_mock
         storage_mock.get = get
@@ -3183,7 +3184,7 @@ class ClientInputValidationAsyncTests(object):
         conditions_mock.return_value = []
         type(split_mock).conditions = conditions_mock
         type(split_mock).prerequisites = []
-        storage_mock = mocker.Mock(spec=SplitStorage)
+        storage_mock = mocker.Mock(spec=DefinitionStorage)
         async def get(*_):
             return split_mock
         storage_mock.get = get
@@ -3340,7 +3341,7 @@ class ClientInputValidationAsyncTests(object):
         conditions_mock.return_value = []
         type(split_mock).conditions = conditions_mock
         type(split_mock).prerequisites = []
-        storage_mock = mocker.Mock(spec=SplitStorage)
+        storage_mock = mocker.Mock(spec=DefinitionStorage)
         async def get(*_):
             return split_mock
         storage_mock.get = get
@@ -3519,7 +3520,7 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
 
     def test_split_(self, mocker):
         """Test split input validation."""
-        storage_mock = mocker.Mock(spec=SplitStorage)
+        storage_mock = mocker.Mock(spec=DefinitionStorage)
         split_mock = mocker.Mock(spec=Split)
         storage_mock.get.return_value = split_mock
 
@@ -3602,7 +3603,7 @@ class ManagerInputValidationAsyncTests(object):  #pylint: disable=too-few-public
             pass
         events_manager.notify_internal_event = notify_internal_event
 
-        storage_mock = mocker.Mock(spec=SplitStorage)
+        storage_mock = mocker.Mock(spec=DefinitionStorage)
         split_mock = mocker.Mock(spec=Split)
         async def get(*_):
             return split_mock

@@ -9,9 +9,10 @@ import queue
 from splitio.util.backoff import Backoff
 from harness_commons.api import APIException
 from harness_commons.api.commons import FetchOptions
-from splitio.storage import SplitStorage, RuleBasedSegmentsStorage
-from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySplitStorageAsync, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
-from splitio.storage import FlagSetsFilter
+from harness_commons.storage import DefinitionStorage, RuleBasedSegmentsStorage
+from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync
+from harness_commons.storage.inmemmory import InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
+from harness_commons.storage import FlagSetsFilter
 from splitio.models.splits import Split
 from harness_commons.models.rule_based_segments import RuleBasedSegment
 from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync, LocalSplitSynchronizer, LocalSplitSynchronizerAsync, LocalhostMode
@@ -892,7 +893,7 @@ class LocalSplitsSynchronizerTests(object):
 
     def test_synchronize_splits_error(self, mocker):
         """Test that if fetching splits fails at some_point, the task will continue running."""
-        storage = mocker.Mock(spec=SplitStorage)
+        storage = mocker.Mock(spec=DefinitionStorage)
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         split_synchronizer = LocalSplitSynchronizer("/incorrect_file", storage, rbs_storage)
 
@@ -1253,7 +1254,7 @@ class LocalSplitsSynchronizerAsyncTests(object):
     @pytest.mark.asyncio
     async def test_synchronize_splits_error(self, mocker):
         """Test that if fetching splits fails at some_point, the task will continue running."""
-        storage = mocker.Mock(spec=SplitStorage)
+        storage = mocker.Mock(spec=DefinitionStorage)
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         split_synchronizer = LocalSplitSynchronizerAsync("/incorrect_file", storage, rbs_storage)
 

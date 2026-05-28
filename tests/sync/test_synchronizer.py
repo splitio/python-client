@@ -14,11 +14,12 @@ from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync, LocalS
 from splitio.sync.segment import SegmentSynchronizer, SegmentSynchronizerAsync, LocalSegmentSynchronizer, LocalSegmentSynchronizerAsync
 from splitio.sync.impression import ImpressionSynchronizer, ImpressionSynchronizerAsync, ImpressionsCountSynchronizer, ImpressionsCountSynchronizerAsync
 from splitio.sync.event import EventSynchronizer, EventSynchronizerAsync
-from splitio.storage import SegmentStorage, SplitStorage, RuleBasedSegmentsStorage
+from harness_commons.storage import DefinitionStorage, SegmentStorage, RuleBasedSegmentsStorage
 from harness_commons.api import APIException, APIUriException
 from splitio.models.splits import Split
 from harness_commons.models.segments import Segment
-from splitio.storage.inmemmory import InMemorySegmentStorage, InMemorySplitStorage, InMemorySegmentStorageAsync, InMemorySplitStorageAsync, \
+from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync
+from harness_commons.storage.inmemmory import InMemorySegmentStorage, InMemorySegmentStorageAsync, \
     InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 
 splits = [{
@@ -106,7 +107,7 @@ class SynchronizerTests(object):
     def test_sync_all_failed_segments(self, mocker):
         api = mocker.Mock()
         storage = mocker.Mock()
-        split_storage = mocker.Mock(spec=SplitStorage)
+        split_storage = mocker.Mock(spec=DefinitionStorage)
         split_storage.get_segment_names.return_value = ['segmentA']
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         rbs_storage.get_segment_names.return_value = []
@@ -180,7 +181,7 @@ class SynchronizerTests(object):
         assert counts['segments'] == 1
 
     def test_sync_all(self, mocker):
-        split_storage = mocker.Mock(spec=SplitStorage)
+        split_storage = mocker.Mock(spec=DefinitionStorage)
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         rbs_storage.get_segment_names.return_value = []
         split_storage.get_change_number.return_value = 123
@@ -474,7 +475,7 @@ class SynchronizerAsyncTests(object):
     async def test_sync_all_failed_segments(self, mocker):
         api = mocker.Mock()
         storage = mocker.Mock()
-        split_storage = mocker.Mock(spec=SplitStorage)
+        split_storage = mocker.Mock(spec=DefinitionStorage)
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         split_sync = mocker.Mock(spec=SplitSynchronizer)
         split_sync.synchronize_splits.return_value = None

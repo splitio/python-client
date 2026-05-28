@@ -15,7 +15,7 @@ from splitio.tasks.segment_sync import SegmentSynchronizationTask
 from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask
 from splitio.tasks.events_sync import EventsSyncTask
 from harness_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
-from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
+from harness_commons.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
 from harness_commons.models.telemetry import SSESyncMode, StreamingEventTypes
 from splitio.push.manager import Status
 from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync
@@ -24,7 +24,8 @@ from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSync
 from splitio.sync.event import EventSynchronizer
 from splitio.sync.synchronizer import Synchronizer, SynchronizerAsync, SplitTasks, SplitSynchronizers, RedisSynchronizer, RedisSynchronizerAsync
 from splitio.sync.manager import Manager, ManagerAsync, RedisManager, RedisManagerAsync
-from splitio.storage import SplitStorage, RuleBasedSegmentsStorage
+from harness_commons.storage import DefinitionStorage, RuleBasedSegmentsStorage
+
 from harness_commons.api import APIException
 from splitio.client.util import SdkMetadata
 
@@ -37,7 +38,7 @@ class SyncManagerTests(object):
         split_tasks = SplitTasks(split_task, mocker.Mock(), mocker.Mock(), mocker.Mock(),
                                  mocker.Mock(), mocker.Mock())
 
-        storage = mocker.Mock(spec=SplitStorage)
+        storage = mocker.Mock(spec=DefinitionStorage)
         rb_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         api = mocker.Mock()
 
@@ -102,7 +103,7 @@ class SyncManagerAsyncTests(object):
         split_tasks = SplitTasks(split_task, mocker.Mock(), mocker.Mock(), mocker.Mock(),
                                  mocker.Mock(), mocker.Mock())
 
-        storage = mocker.Mock(spec=SplitStorage)
+        storage = mocker.Mock(spec=DefinitionStorage)
         rb_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         api = mocker.Mock()
 
