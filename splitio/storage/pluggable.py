@@ -1399,7 +1399,7 @@ class PluggableEventsStorageBase(EventStorage):
                                 'n': sdk_metadata.instance_name,
                                 'i': sdk_metadata.instance_ip,
                             }
-        self._events_queue_key = 'SPLITIO.events'
+        self._events_queue_key = 'harness_commons.events'
         if prefix is not None:
             self._events_queue_key = prefix + "." + self._events_queue_key
 

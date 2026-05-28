@@ -19,8 +19,8 @@ from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, Un
 from harness_commons.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.engine.evaluator import Evaluator, EvaluationContext
 from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode, StrategyOptimizedMode
-from splitio.events.events_task import EventsTask
-from splitio.events.events_manager import EventsManagerAsync
+from harness_commons.events.events_task import EventsTask
+from harness_commons.events.events_manager import EventsManagerAsync
 from splitio.models.splits import from_raw
 from harness_commons.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
 from harness_commons.models.fallback_treatment import FallbackTreatment

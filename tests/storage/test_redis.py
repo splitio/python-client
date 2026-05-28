@@ -895,7 +895,7 @@ class RedisEventsStorageTests(object):  # pylint: disable=too-few-public-methods
         for item in list_of_events_sent:
             assert item in list_of_events_called
 
-#        assert adapter.rpush.mock_calls == [mocker.call('SPLITIO.events', to_validate)]
+#        assert adapter.rpush.mock_calls == [mocker.call('harness_commons.events', to_validate)]
         # Assert that if an exception is thrown it's caught and False is returned
         adapter.reset_mock()
 
@@ -917,7 +917,7 @@ class RedisEventsStorageTests(object):  # pylint: disable=too-few-public-methods
         adapter.expire = expire
 
         storage.expire_keys(2, 2)
-        assert self.key == 'SPLITIO.events'
+        assert self.key == 'harness_commons.events'
         assert self.ttl == 3600
 
         self.key = None
@@ -967,7 +967,7 @@ class RedisEventsStorageAsyncTests(object):  # pylint: disable=too-few-public-me
         }) for e in events]
 
         assert self.events == tuple(list_of_raw_events)
-        assert self.key == 'SPLITIO.events'
+        assert self.key == 'harness_commons.events'
         assert storage._wrap_events(events) == list_of_raw_events
 
         # Assert that if an exception is thrown it's caught and False is returned
@@ -993,7 +993,7 @@ class RedisEventsStorageAsyncTests(object):  # pylint: disable=too-few-public-me
         adapter.expire = expire
 
         await storage.expire_keys(2, 2)
-        assert self.key == 'SPLITIO.events'
+        assert self.key == 'harness_commons.events'
         assert self.ttl == 3600
 
         self.key = None

@@ -23,10 +23,10 @@ from harness_commons.engine.telemetry import TelemetryStorageConsumer, Telemetry
     TelemetryStorageProducerAsync
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter
 from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
-from splitio.events.events_delivery import EventsDelivery
-from splitio.events.events_manager import EventsManager, EventsManagerAsync
-from splitio.events.events_manager_config import EventsManagerConfig
-from splitio.events.events_task import EventsTask, EventsTaskAsync
+from harness_commons.events.events_delivery import EventsDelivery
+from harness_commons.events.events_manager import EventsManager, EventsManagerAsync
+from harness_commons.events.events_manager_config import EventsManagerConfig
+from harness_commons.events.events_task import EventsTask, EventsTaskAsync
 from splitio.models import splits
 from harness_commons.models import segments, rule_based_segments
 from harness_commons.models.events import SdkEvent

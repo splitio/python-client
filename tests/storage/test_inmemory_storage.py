@@ -13,7 +13,7 @@ from harness_commons.models.events import Event, EventWrapper
 from harness_commons.models.events import SdkInternalEvent
 import harness_commons.models.telemetry as ModelTelemetry
 from harness_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
-from splitio.events.events_metadata import SdkEventType
+from harness_commons.events.events_metadata import SdkEventType
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, InMemorySegmentStorageAsync, InMemorySplitStorageAsync, \
     InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, InMemoryImpressionStorageAsync, InMemoryEventStorageAsync, \
     InMemoryTelemetryStorageAsync, FlagSets, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
