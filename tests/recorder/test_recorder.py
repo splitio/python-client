@@ -4,10 +4,10 @@ import pytest
 
 from splitio.client.listener import ImpressionListenerWrapper, ImpressionListenerWrapperAsync
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder, StandardRecorderAsync, PipelinedRecorderAsync
-from splitio.engine.impressions.impressions import Manager as ImpressionsManager
+from harness_commons.engine.impressions.impressions import Manager as ImpressionsManager
 from harness_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
-from splitio.engine.impressions.manager import Counter as ImpressionsCounter
-from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
+from harness_commons.engine.impressions.manager import Counter as ImpressionsCounter
+from harness_commons.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
 from harness_commons.storage.inmemmory import EventStorage, ImpressionStorage, InMemoryTelemetryStorage, InMemoryEventStorageAsync, InMemoryImpressionStorageAsync
 from splitio.storage.redis import ImpressionPipelinedStorage, EventStorage, RedisEventsStorage, RedisImpressionsStorage, RedisImpressionsStorageAsync, RedisEventsStorageAsync
 from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterAsync

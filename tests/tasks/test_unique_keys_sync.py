@@ -10,7 +10,7 @@ from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTa
 from harness_commons.api.telemetry import TelemetryAPI
 from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer,\
     UniqueKeysSynchronizerAsync, ClearFilterSynchronizerAsync
-from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
+from harness_commons.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
 
 
 class UniqueKeysSyncTests(object):

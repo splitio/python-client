@@ -8,7 +8,7 @@ class UniqueKeysSynchronizerBase(object):
         Initialize Unique keys synchronizer instance
 
         :param uniqe_keys_tracker: instance of uniqe keys tracker
-        :type uniqe_keys_tracker: splitio.engine.uniqur_key_tracker.UniqueKeysTracker
+        :type uniqe_keys_tracker: harness_commons.engine.uniqur_key_tracker.UniqueKeysTracker
         """
         self._max_bulk_size = _UNIQUE_KEYS_MAX_BULK_SIZE
 
@@ -57,7 +57,7 @@ class UniqueKeysSynchronizer(UniqueKeysSynchronizerBase):
         Initialize Unique keys synchronizer instance
 
         :param uniqe_keys_tracker: instance of uniqe keys tracker
-        :type uniqe_keys_tracker: splitio.engine.uniqur_key_tracker.UniqueKeysTracker
+        :type uniqe_keys_tracker: harness_commons.engine.uniqur_key_tracker.UniqueKeysTracker
         """
         UniqueKeysSynchronizerBase.__init__(self)
         self._uniqe_keys_tracker = uniqe_keys_tracker
@@ -85,7 +85,7 @@ class UniqueKeysSynchronizerAsync(UniqueKeysSynchronizerBase):
         Initialize Unique keys synchronizer instance
 
         :param uniqe_keys_tracker: instance of uniqe keys tracker
-        :type uniqe_keys_tracker: splitio.engine.uniqur_key_tracker.UniqueKeysTracker
+        :type uniqe_keys_tracker: harness_commons.engine.uniqur_key_tracker.UniqueKeysTracker
         """
         UniqueKeysSynchronizerBase.__init__(self)
         self._uniqe_keys_tracker = uniqe_keys_tracker
@@ -113,7 +113,7 @@ class ClearFilterSynchronizer(object):
         Initialize Unique keys synchronizer instance
 
         :param uniqe_keys_tracker: instance of uniqe keys tracker
-        :type uniqe_keys_tracker: splitio.engine.uniqur_key_tracker.UniqueKeysTracker
+        :type uniqe_keys_tracker: harness_commons.engine.uniqur_key_tracker.UniqueKeysTracker
         """
         self._unique_keys_tracker = unique_keys_tracker
 
@@ -132,7 +132,7 @@ class ClearFilterSynchronizerAsync(object):
         Initialize Unique keys synchronizer instance
 
         :param uniqe_keys_tracker: instance of uniqe keys tracker
-        :type uniqe_keys_tracker: splitio.engine.uniqur_key_tracker.UniqueKeysTracker
+        :type uniqe_keys_tracker: harness_commons.engine.uniqur_key_tracker.UniqueKeysTracker
         """
         self._unique_keys_tracker = unique_keys_tracker
 

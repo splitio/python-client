@@ -14,7 +14,7 @@ from harness_commons.models.telemetry import UpdateFromSSE
 from splitio.push import SplitStorageException
 from splitio.push.parser import UpdateType
 from splitio.optional.loaders import asyncio
-from splitio.util.storage_helper import update_feature_flag_storage, update_feature_flag_storage_async, \
+from harness_commons.util.storage_helper import update_definition_storage, update_definition_storage_async, \
     update_rule_based_segment_storage, update_rule_based_segment_storage_async
 
 _LOGGER = logging.getLogger(__name__)
@@ -225,7 +225,7 @@ class SplitWorker(WorkerBase):
         try:
             if event.update_type == UpdateType.SPLIT_UPDATE:                
                 new_feature_flag = from_raw(json.loads(self._get_object_definition(event)))                
-                segment_list = update_feature_flag_storage(self._feature_flag_storage, [new_feature_flag], event.change_number)
+                segment_list = update_definition_storage(self._feature_flag_storage, [new_feature_flag], event.change_number)
                 for segment_name in segment_list:
                     if self._segment_storage.get(segment_name) is None:
                         _LOGGER.debug(self._fetching_segment.format(segment_name=segment_name))
@@ -363,7 +363,7 @@ class SplitWorkerAsync(WorkerBase):
         try:
             if event.update_type == UpdateType.SPLIT_UPDATE:                
                 new_feature_flag = from_raw(json.loads(self._get_object_definition(event)))
-                segment_list = await update_feature_flag_storage_async(self._feature_flag_storage, [new_feature_flag], event.change_number)
+                segment_list = await update_definition_storage_async(self._feature_flag_storage, [new_feature_flag], event.change_number)
                 for segment_name in segment_list:
                     if await self._segment_storage.get(segment_name) is None:
                         _LOGGER.debug(self._fetching_segment.format(segment_name=segment_name))

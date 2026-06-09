@@ -12,7 +12,7 @@ from harness_commons.models.telemetry import MethodExceptions, MethodLatencies, 
     MethodLatenciesAsync, MethodExceptionsAsync, TelemetryConfigAsync
 from harness_commons.storage import FlagSetsFilter, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage, RuleBasedSegmentsStorage
 from splitio.storage.inmemory import SplitStorage
-from splitio.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
+from harness_commons.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
 
 _LOGGER = logging.getLogger(__name__)
 

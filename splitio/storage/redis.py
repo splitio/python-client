@@ -13,7 +13,7 @@ from splitio.storage.inmemory import SplitStorage
 from splitio.storage.adapters.redis import RedisAdapterException
 from splitio.storage.adapters.cache_trait import decorate as add_cache, DEFAULT_MAX_AGE
 from splitio.storage.adapters.cache_trait import LocalMemoryCache, LocalMemoryCacheAsync
-from splitio.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
+from harness_commons.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
 
 _LOGGER = logging.getLogger(__name__)
 MAX_TAGS = 10

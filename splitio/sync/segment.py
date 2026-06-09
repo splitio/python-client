@@ -10,7 +10,7 @@ from harness_commons.models import segments
 from splitio.util.backoff import Backoff
 from splitio.optional.loaders import asyncio, aiofiles
 from splitio.sync import util
-from splitio.util.storage_helper import get_standard_segment_names_in_rbs_storage, get_standard_segment_names_in_rbs_storage_async
+from harness_commons.util.storage_helper import get_standard_segment_names_in_rbs_storage, get_standard_segment_names_in_rbs_storage_async
 from splitio.optional.loaders import asyncio
 
 _LOGGER = logging.getLogger(__name__)

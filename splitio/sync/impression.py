@@ -76,7 +76,7 @@ class ImpressionsCountSynchronizer(object):
         :param impressions_api: Impressions Api object to send data to the backend
         :type impressions_api: harness_commons.api.impressions.ImpressionsAPI
         :param impressions_manager: Impressions manager instance
-        :type impressions_manager: splitio.engine.impressions.Manager
+        :type impressions_manager: harness_commons.engine.impressions.Manager
 
         """
         self._impressions_api = impressions_api
@@ -168,7 +168,7 @@ class ImpressionsCountSynchronizerAsync(object):
         :param impressions_api: Impressions Api object to send data to the backend
         :type impressions_api: harness_commons.api.impressions.ImpressionsAPI
         :param impressions_manager: Impressions manager instance
-        :type impressions_manager: splitio.engine.impressions.Manager
+        :type impressions_manager: harness_commons.engine.impressions.Manager
 
         """
         self._impressions_api = impressions_api
