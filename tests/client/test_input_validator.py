@@ -17,7 +17,7 @@ from splitio.client import input_validator
 from splitio.client.manager import SplitManager, SplitManagerAsync 
 from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
 from harness_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
-from splitio.engine.impressions.impressions import Manager as ImpressionManager
+from harness_commons.engine.impressions.impressions import Manager as ImpressionManager
 from harness_commons.models.fallback_treatment import FallbackTreatment
 
 class ClientInputValidationTests(object):

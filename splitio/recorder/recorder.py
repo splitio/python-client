@@ -20,15 +20,15 @@ class StatsRecorder(object, metaclass=abc.ABCMeta):
         Class constructor.
 
         :param impressions_manager: impression manager instance
-        :type impressions_manager: splitio.engine.impressions.Manager
+        :type impressions_manager: harness_commons.engine.impressions.Manager
         :param event_storage: event storage instance
         :type event_storage: splitio.storage.EventStorage
         :param impression_storage: impression storage instance
         :type impression_storage: splitio.storage.ImpressionStorage
         :param unique_keys_tracker: Unique Keys Tracker instance
-        :type unique_keys_tracker: splitio.engine.unique_keys_tracker.UniqueKeysTracker
+        :type unique_keys_tracker: harness_commons.engine.unique_keys_tracker.UniqueKeysTracker
         :param imp_counter: Impressions Counter instance
-        :type imp_counter: splitio.engine.impressions.Counter
+        :type imp_counter: harness_commons.engine.impressions.Counter
         """
         self._impressions_manager = impressions_manager
         self._event_sotrage = event_storage
@@ -69,15 +69,15 @@ class StatsRecorderThreadingBase(StatsRecorder):
         Class constructor.
 
         :param impressions_manager: impression manager instance
-        :type impressions_manager: splitio.engine.impressions.Manager
+        :type impressions_manager: harness_commons.engine.impressions.Manager
         :param event_storage: event storage instance
         :type event_storage: splitio.storage.EventStorage
         :param impression_storage: impression storage instance
         :type impression_storage: splitio.storage.ImpressionStorage
         :param unique_keys_tracker: Unique Keys Tracker instance
-        :type unique_keys_tracker: splitio.engine.unique_keys_tracker.UniqueKeysTracker
+        :type unique_keys_tracker: harness_commons.engine.unique_keys_tracker.UniqueKeysTracker
         :param imp_counter: Impressions Counter instance
-        :type imp_counter: splitio.engine.impressions.Counter
+        :type imp_counter: harness_commons.engine.impressions.Counter
         """
         StatsRecorder.__init__(self, impressions_manager, event_storage, impression_storage, listener, unique_keys_tracker, imp_counter)
 
@@ -103,15 +103,15 @@ class StatsRecorderAsyncBase(StatsRecorder):
         Class constructor.
 
         :param impressions_manager: impression manager instance
-        :type impressions_manager: splitio.engine.impressions.Manager
+        :type impressions_manager: harness_commons.engine.impressions.Manager
         :param event_storage: event storage instance
         :type event_storage: splitio.storage.EventStorage
         :param impression_storage: impression storage instance
         :type impression_storage: splitio.storage.ImpressionStorage
         :param unique_keys_tracker: Unique Keys Tracker instance
-        :type unique_keys_tracker: splitio.engine.unique_keys_tracker.UniqueKeysTracker
+        :type unique_keys_tracker: harness_commons.engine.unique_keys_tracker.UniqueKeysTracker
         :param imp_counter: Impressions Counter instance
-        :type imp_counter: splitio.engine.impressions.Counter
+        :type imp_counter: harness_commons.engine.impressions.Counter
         """
         StatsRecorder.__init__(self, impressions_manager, event_storage, impression_storage, listener, unique_keys_tracker, imp_counter)
 
@@ -137,15 +137,15 @@ class StandardRecorder(StatsRecorderThreadingBase):
         Class constructor.
 
         :param impressions_manager: impression manager instance
-        :type impressions_manager: splitio.engine.impressions.Manager
+        :type impressions_manager: harness_commons.engine.impressions.Manager
         :param event_storage: event storage instance
         :type event_storage: splitio.storage.EventStorage
         :param impression_storage: impression storage instance
         :type impression_storage: splitio.storage.ImpressionStorage
         :param unique_keys_tracker: Unique Keys Tracker instance
-        :type unique_keys_tracker: splitio.engine.unique_keys_tracker.UniqueKeysTracker
+        :type unique_keys_tracker: harness_commons.engine.unique_keys_tracker.UniqueKeysTracker
         :param imp_counter: Impressions Counter instance
-        :type imp_counter: splitio.engine.impressions.Counter
+        :type imp_counter: harness_commons.engine.impressions.Counter
         """
         StatsRecorderThreadingBase.__init__(self, impressions_manager, event_storage, impression_storage, listener, unique_keys_tracker, imp_counter)
         self._telemetry_evaluation_producer = telemetry_evaluation_producer
@@ -196,15 +196,15 @@ class StandardRecorderAsync(StatsRecorderAsyncBase):
         Class constructor.
 
         :param impressions_manager: impression manager instance
-        :type impressions_manager: splitio.engine.impressions.Manager
+        :type impressions_manager: harness_commons.engine.impressions.Manager
         :param event_storage: event storage instance
         :type event_storage: splitio.storage.EventStorage
         :param impression_storage: impression storage instance
         :type impression_storage: splitio.storage.ImpressionStorage
         :param unique_keys_tracker: Unique Keys Tracker instance
-        :type unique_keys_tracker: splitio.engine.unique_keys_tracker.UniqueKeysTrackerAsync
+        :type unique_keys_tracker: harness_commons.engine.unique_keys_tracker.UniqueKeysTrackerAsync
         :param imp_counter: Impressions Counter instance
-        :type imp_counter: splitio.engine.impressions.Counter
+        :type imp_counter: harness_commons.engine.impressions.Counter
         """
         StatsRecorderAsyncBase.__init__(self, impressions_manager, event_storage, impression_storage, listener, unique_keys_tracker, imp_counter)
         self._telemetry_evaluation_producer = telemetry_evaluation_producer
@@ -260,7 +260,7 @@ class PipelinedRecorder(StatsRecorderThreadingBase):
         :param pipe: redis pipeline function
         :type pipe: callable
         :param impressions_manager: impression manager instance
-        :type impressions_manager: splitio.engine.impressions.Manager
+        :type impressions_manager: harness_commons.engine.impressions.Manager
         :param event_storage: event storage instance
         :type event_storage: splitio.storage.EventStorage
         :param impression_storage: impression storage instance
@@ -268,9 +268,9 @@ class PipelinedRecorder(StatsRecorderThreadingBase):
         :param data_sampling: data sampling factor
         :type data_sampling: number
         :param unique_keys_tracker: Unique Keys Tracker instance
-        :type unique_keys_tracker: splitio.engine.unique_keys_tracker.UniqueKeysTracker
+        :type unique_keys_tracker: harness_commons.engine.unique_keys_tracker.UniqueKeysTracker
         :param imp_counter: Impressions Counter instance
-        :type imp_counter: splitio.engine.impressions.Counter
+        :type imp_counter: harness_commons.engine.impressions.Counter
         """
         StatsRecorderThreadingBase.__init__(self, impressions_manager, event_storage, impression_storage, listener, unique_keys_tracker, imp_counter)
         self._make_pipe = pipe
@@ -350,7 +350,7 @@ class PipelinedRecorderAsync(StatsRecorderAsyncBase):
         :param pipe: redis pipeline function
         :type pipe: callable
         :param impressions_manager: impression manager instance
-        :type impressions_manager: splitio.engine.impressions.Manager
+        :type impressions_manager: harness_commons.engine.impressions.Manager
         :param event_storage: event storage instance
         :type event_storage: splitio.storage.EventStorage
         :param impression_storage: impression storage instance
@@ -358,9 +358,9 @@ class PipelinedRecorderAsync(StatsRecorderAsyncBase):
         :param data_sampling: data sampling factor
         :type data_sampling: number
         :param unique_keys_tracker: Unique Keys Tracker instance
-        :type unique_keys_tracker: splitio.engine.unique_keys_tracker.UniqueKeysTrackerAsync
+        :type unique_keys_tracker: harness_commons.engine.unique_keys_tracker.UniqueKeysTrackerAsync
         :param imp_counter: Impressions Counter instance
-        :type imp_counter: splitio.engine.impressions.Counter
+        :type imp_counter: harness_commons.engine.impressions.Counter
         """
         StatsRecorderAsyncBase.__init__(self, impressions_manager, event_storage, impression_storage, listener, unique_keys_tracker, imp_counter)
         self._make_pipe = pipe

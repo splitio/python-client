@@ -4,7 +4,7 @@ from splitio.models import splits
 
 _LOGGER = logging.getLogger(__name__)
 
-def update_feature_flag_storage(feature_flag_storage, feature_flags, change_number, clear_storage=False):
+def update_definition_storage(feature_flag_storage, feature_flags, change_number, clear_storage=False):
     """
     Update feature flag storage from given list of feature flags while checking the flag set logic
 
@@ -82,7 +82,7 @@ def get_standard_segment_names_in_rbs_storage(rule_based_segment_storage):
         
     return segment_list
     
-async def update_feature_flag_storage_async(feature_flag_storage, feature_flags, change_number, clear_storage=False):
+async def update_definition_storage_async(feature_flag_storage, feature_flags, change_number, clear_storage=False):
     """
     Update feature flag storage from given list of feature flags while checking the flag set logic
 

@@ -12,13 +12,13 @@ from splitio.client.config import sanitize as sanitize_config, DEFAULT_DATA_SAMP
 from splitio.client.manager import SplitManager, SplitManagerAsync
 from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper, ImpressionListenerWrapperAsync
-from splitio.engine.impressions.impressions import Manager as ImpressionsManager
-from splitio.engine.impressions import set_classes, set_classes_async
-from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode
+from harness_commons.engine.impressions.impressions import Manager as ImpressionsManager
+from splitio.client import set_classes, set_classes_async
+from harness_commons.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode
 from harness_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageConsumer, \
     TelemetryStorageProducerAsync, TelemetryStorageConsumerAsync
-from splitio.engine.impressions.manager import Counter as ImpressionsCounter
-from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
+from harness_commons.engine.impressions.manager import Counter as ImpressionsCounter
+from harness_commons.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
 from harness_commons.events.events_manager import EventsManager, EventsManagerAsync
 from harness_commons.events.events_manager_config import EventsManagerConfig
 from harness_commons.events.events_task import EventsTask, EventsTaskAsync

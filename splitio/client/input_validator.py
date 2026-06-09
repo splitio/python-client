@@ -7,7 +7,7 @@ import inspect
 
 from splitio.client.key import Key
 from splitio.client import client
-from splitio.engine.evaluator import CONTROL
+from harness_commons.engine.evaluator import CONTROL
 from harness_commons.models.fallback_treatment import FallbackTreatment
 
 

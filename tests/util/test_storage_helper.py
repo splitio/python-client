@@ -3,8 +3,8 @@ import pytest
 import queue
 import asyncio 
 
-from splitio.util.storage_helper import update_feature_flag_storage, get_valid_flag_sets, combine_valid_flag_sets, \
-    update_rule_based_segment_storage, update_rule_based_segment_storage_async, update_feature_flag_storage_async, \
+from harness_commons.util.storage_helper import update_definition_storage, get_valid_flag_sets, combine_valid_flag_sets, \
+    update_rule_based_segment_storage, update_rule_based_segment_storage_async, update_definition_storage_async, \
     get_standard_segment_names_in_rbs_storage_async, get_standard_segment_names_in_rbs_storage 
 from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync    
 from harness_commons.storage.inmemmory import InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
@@ -42,7 +42,7 @@ class StorageHelperTests(object):
         ]
     })
 
-    def test_update_feature_flag_storage(self, mocker):
+    def test_update_definition_storage(self, mocker):
         storage = mocker.Mock(spec=InMemorySplitStorage)
         split = splits.from_raw(split_sample[0])
 
@@ -72,7 +72,7 @@ class StorageHelperTests(object):
             self.clear += 1
         storage.clear = clear    
 
-        update_feature_flag_storage(storage, [split], 123, True)
+        update_definition_storage(storage, [split], 123, True)
         assert self.added[0] == split
         assert self.deleted == []
         assert self.change_number == 123
@@ -87,7 +87,7 @@ class StorageHelperTests(object):
         storage.flag_set_filter.flag_sets = set({'set1', 'set2'})
 
         self.clear = 0
-        update_feature_flag_storage(storage, [split], 123)
+        update_definition_storage(storage, [split], 123)
         assert self.added == []
         assert self.deleted[0] == split.name
         assert self.clear == 0
@@ -103,7 +103,7 @@ class StorageHelperTests(object):
         def is_flag_set_exist2(flag_set):
             return True
         storage.is_flag_set_exist = is_flag_set_exist2
-        update_feature_flag_storage(storage, [split], 123)
+        update_definition_storage(storage, [split], 123)
         assert self.added[0] == split
         assert self.deleted == []
 
@@ -137,7 +137,7 @@ class StorageHelperTests(object):
 
         split = splits.from_raw(split_json)
         storage.config_flag_sets_used = 0
-        assert update_feature_flag_storage(storage, [split], 123) == {'segment1'}
+        assert update_definition_storage(storage, [split], 123) == {'segment1'}
 
     def test_get_valid_flag_sets(self):
         flag_sets = ['set1', 'set2']
@@ -234,7 +234,7 @@ class StorageHelperTests(object):
         assert self.clear == 1
 
     @pytest.mark.asyncio
-    async def test_update_feature_flag_storage_async(self, mocker):
+    async def test_update_definition_storage_async(self, mocker):
         storage = mocker.Mock(spec=InMemorySplitStorageAsync)
         split = splits.from_raw(split_sample[0])
 
@@ -268,7 +268,7 @@ class StorageHelperTests(object):
             self.clear += 1
         storage.clear = clear    
 
-        await update_feature_flag_storage_async(storage, [split], 123, True)
+        await update_definition_storage_async(storage, [split], 123, True)
         assert self.added[0] == split
         assert self.deleted == []
         assert self.change_number == 123
@@ -287,7 +287,7 @@ class StorageHelperTests(object):
         storage.get = get
 
         self.clear = 0
-        await update_feature_flag_storage_async(storage, [split], 123)
+        await update_definition_storage_async(storage, [split], 123)
         assert self.added == []
         assert self.deleted[0] == split.name
         assert self.clear == 0
@@ -303,7 +303,7 @@ class StorageHelperTests(object):
         async def is_flag_set_exist2(flag_set):
             return True
         storage.is_flag_set_exist = is_flag_set_exist2
-        await update_feature_flag_storage_async(storage, [split], 123)
+        await update_definition_storage_async(storage, [split], 123)
         assert self.added[0] == split
         assert self.deleted == []
 
@@ -337,4 +337,4 @@ class StorageHelperTests(object):
 
         split = splits.from_raw(split_json)
         storage.config_flag_sets_used = 0
-        assert await update_feature_flag_storage_async(storage, [split], 123) == {'segment1'}
+        assert await update_definition_storage_async(storage, [split], 123) == {'segment1'}

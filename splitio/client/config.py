@@ -3,7 +3,7 @@ import os.path
 import logging
 from enum import Enum
 
-from splitio.engine.impressions import ImpressionsMode
+from harness_commons.engine.impressions.impressions import ImpressionsMode
 from splitio.client.input_validator import validate_flag_sets, validate_fallback_treatment, validate_regex_name
 from harness_commons.models.fallback_config import FallbackTreatmentsConfiguration
 

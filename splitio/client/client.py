@@ -5,8 +5,8 @@ from collections import namedtuple
 import copy
 
 from splitio.client import input_validator
-from splitio.engine.evaluator import Evaluator, CONTROL, EvaluationDataFactory, AsyncEvaluationDataFactory
-from splitio.engine.splitters import Splitter
+from harness_commons.engine.evaluator import Evaluator, CONTROL, EvaluationDataFactory, AsyncEvaluationDataFactory
+from harness_commons.engine.splitters import Splitter
 from harness_commons.models.impressions import Impression, ImpressionDecorated
 from splitio.models.label import Label
 from harness_commons.models.events import Event, EventWrapper, SdkEvent
@@ -224,6 +224,19 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
     def _check_impression_label(self, result):
         return result['impression']['label'] == None or (result['impression']['label'] != None and result['impression']['label'].find(Label.SPLIT_NOT_FOUND) == -1)
     
+    def _update_not_found_label(self, result):
+        if result['impression']['label'] != None and Label.DEFINITION_NOT_FOUND in result['impression']['label']:
+            result['impression']['label'] = result['impression']['label'].replace(Label.DEFINITION_NOT_FOUND, Label.SPLIT_NOT_FOUND) 
+        
+        return result
+    
+    def _update_not_found_labels(self, results):
+        to_return = {}
+        for feature, result in results.items():
+            to_return[feature] = self._update_not_found_label(result)
+        
+        return to_return
+    
     def _validate_sdk_event_info(self, sdk_event, callback_handle):
         if not self._check_sdk_event(sdk_event):
             return False
@@ -371,6 +384,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
                 self._telemetry_evaluation_producer.record_exception(method)
                 result = self._get_fallback_eval_results(self._FAILED_EVAL_RESULT, feature)
 
+        result = self._update_not_found_label(result)
         properties = self._get_properties(evaluation_options)
         if self._check_impression_label(result):
             impression_decorated = self._build_impression(key, bucketing, feature, result, properties)
@@ -672,6 +686,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
                 self._telemetry_evaluation_producer.record_exception(method)
                 results = {n: self._get_fallback_eval_results(self._FAILED_EVAL_RESULT, n) for n in features}
 
+        results = self._update_not_found_labels(results)
         properties = self._get_properties(evaluation_options)
         imp_decorated_attrs = [
             (i, attributes) for i in self._build_impressions(key, bucketing, results, properties)
@@ -877,6 +892,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
                 await self._telemetry_evaluation_producer.record_exception(method)
                 result = self._get_fallback_eval_results(self._FAILED_EVAL_RESULT, feature)
 
+        result = self._update_not_found_label(result)
         properties = self._get_properties(evaluation_options)
         if self._check_impression_label(result):
             impression_decorated = self._build_impression(key, bucketing, feature, result, properties)
@@ -1091,6 +1107,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
                 await self._telemetry_evaluation_producer.record_exception(method)
                 results = {n: self._get_fallback_eval_results(self._FAILED_EVAL_RESULT, n) for n in features}
 
+        results = self._update_not_found_labels(results)
         properties = self._get_properties(evaluation_options)
         imp_decorated_attrs = [
             (i, attributes) for i in self._build_impressions(key, bucketing, results, properties)

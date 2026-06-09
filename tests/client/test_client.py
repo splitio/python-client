@@ -20,13 +20,13 @@ from harness_commons.storage.inmemmory import InMemorySegmentStorage, \
     InMemoryImpressionStorageAsync, InMemorySegmentStorageAsync, InMemoryTelemetryStorageAsync, InMemoryEventStorageAsync, \
     InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 from splitio.models.splits import Split, Status, from_raw
-from splitio.engine.impressions.impressions import Manager as ImpressionManager
-from splitio.engine.impressions.manager import Counter as ImpressionsCounter
-from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
+from harness_commons.engine.impressions.impressions import Manager as ImpressionManager
+from harness_commons.engine.impressions.manager import Counter as ImpressionsCounter
+from harness_commons.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
 from harness_commons.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
-from splitio.engine.evaluator import Evaluator, EvaluationContext
+from harness_commons.engine.evaluator import Evaluator, EvaluationContext
 from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
-from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode, StrategyOptimizedMode
+from harness_commons.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode, StrategyOptimizedMode
 from tests.integration import splits_json
 
 
@@ -1437,7 +1437,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert client.get_treatments_with_config_by_flag_sets('some_key', ['set_1'], evaluation_options=EvaluationOptions({"prop": "value"})) == {'SPLIT_2': ('on', None)}
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
-    @mock.patch('splitio.engine.evaluator.Evaluator.eval_with_context', side_effect=RuntimeError())
+    @mock.patch('harness_commons.engine.evaluator.Evaluator.eval_with_context', side_effect=RuntimeError())
     def test_fallback_treatment_eval_exception(self, mocker):
         # using fallback when the evaluator has RuntimeError exception
         split_storage = mocker.Mock(spec=SplitStorage)
@@ -1578,7 +1578,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         except:
             pass
 
-    @mock.patch('splitio.engine.evaluator.Evaluator.eval_with_context', side_effect=Exception())
+    @mock.patch('harness_commons.engine.evaluator.Evaluator.eval_with_context', side_effect=Exception())
     def test_fallback_treatment_exception(self, mocker):
         # using fallback when the evaluator has RuntimeError exception
         split_storage = mocker.Mock(spec=SplitStorage)

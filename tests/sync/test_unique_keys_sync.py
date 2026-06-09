@@ -2,8 +2,8 @@
 import unittest.mock as mock
 import pytest
 
-from splitio.engine.impressions.adapters import InMemorySenderAdapter, InMemorySenderAdapterAsync
-from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
+from harness_commons.engine.impressions.adapters import InMemorySenderAdapter, InMemorySenderAdapterAsync
+from harness_commons.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
 from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer, UniqueKeysSynchronizerAsync, ClearFilterSynchronizerAsync
 
 class UniqueKeysSynchronizerTests(object):
@@ -27,7 +27,7 @@ class UniqueKeysSynchronizerTests(object):
             else:
                 assert(len(bulks[i]['feature1']) == unique_keys_synchronizer._max_bulk_size)
 
-    @mock.patch('splitio.engine.impressions.adapters.InMemorySenderAdapter.record_unique_keys')
+    @mock.patch('harness_commons.engine.impressions.adapters.InMemorySenderAdapter.record_unique_keys')
     def test_sync_unique_keys_send_all(self, mtk_mocker):
         mtk_mocker.side_effect = self.mocked_record_unique_keys
 

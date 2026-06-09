@@ -14,7 +14,7 @@ from splitio.models import splits
 from harness_commons.models import rule_based_segments
 from splitio.util.backoff import Backoff
 from splitio.util.time import get_current_epoch_time_ms
-from splitio.util.storage_helper import update_feature_flag_storage, update_feature_flag_storage_async,  \
+from harness_commons.util.storage_helper import update_definition_storage, update_definition_storage_async,  \
     update_rule_based_segment_storage, update_rule_based_segment_storage_async
     
 from splitio.sync import util
@@ -147,7 +147,7 @@ class SplitSynchronizer(SplitSynchronizerBase):
             rbs_segment_list = update_rule_based_segment_storage(self._rule_based_segment_storage, fetched_rule_based_segments, feature_flag_changes.get('rbs')['t'], self._api.clear_storage)
             
             fetched_feature_flags = [(splits.from_raw(feature_flag)) for feature_flag in feature_flag_changes.get('ff').get('d', [])]
-            segment_list.update(update_feature_flag_storage(self._feature_flag_storage, fetched_feature_flags, feature_flag_changes.get('ff')['t'], self._api.clear_storage))
+            segment_list.update(update_definition_storage(self._feature_flag_storage, fetched_feature_flags, feature_flag_changes.get('ff')['t'], self._api.clear_storage))
             segment_list.update(rbs_segment_list)
             
             if self._check_return_conditions(feature_flag_changes):
@@ -306,7 +306,7 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
             rbs_segment_list = await update_rule_based_segment_storage_async(self._rule_based_segment_storage, fetched_rule_based_segments, feature_flag_changes.get('rbs')['t'], self._api.clear_storage)
             
             fetched_feature_flags = [(splits.from_raw(feature_flag)) for feature_flag in feature_flag_changes.get('ff').get('d', [])]
-            segment_list = await update_feature_flag_storage_async(self._feature_flag_storage, fetched_feature_flags, feature_flag_changes.get('ff')['t'], self._api.clear_storage)
+            segment_list = await update_definition_storage_async(self._feature_flag_storage, fetched_feature_flags, feature_flag_changes.get('ff')['t'], self._api.clear_storage)
             segment_list.update(rbs_segment_list)
 
             if self._check_return_conditions(feature_flag_changes):
@@ -790,7 +790,7 @@ class LocalSplitSynchronizer(LocalSplitSynchronizerBase):
 
             if not self._check_exit_conditions(self._feature_flag_storage.get_change_number(), parsed['ff']['t'], self._DEFAULT_FEATURE_FLAG_TILL):
                 fetched_feature_flags = [splits.from_raw(feature_flag) for feature_flag in parsed['ff']['d']]
-                segment_list = update_feature_flag_storage(self._feature_flag_storage, fetched_feature_flags, parsed['ff']['t'])
+                segment_list = update_definition_storage(self._feature_flag_storage, fetched_feature_flags, parsed['ff']['t'])
             
             if not self._check_exit_conditions(self._rule_based_segment_storage.get_change_number(), parsed['rbs']['t'], self._DEFAULT_RB_SEGMENT_TILL):
                 fetched_rb_segments = [rule_based_segments.from_raw(rb_segment) for rb_segment in parsed['rbs']['d']]
@@ -952,7 +952,7 @@ class LocalSplitSynchronizerAsync(LocalSplitSynchronizerBase):
 
             if not self._check_exit_conditions(await self._feature_flag_storage.get_change_number(), parsed['ff']['t'], self._DEFAULT_FEATURE_FLAG_TILL):
                 fetched_feature_flags = [splits.from_raw(feature_flag) for feature_flag in parsed['ff']['d']]
-                segment_list = await update_feature_flag_storage_async(self._feature_flag_storage, fetched_feature_flags, parsed['ff']['t'])
+                segment_list = await update_definition_storage_async(self._feature_flag_storage, fetched_feature_flags, parsed['ff']['t'])
             
             if not self._check_exit_conditions(await self._rule_based_segment_storage.get_change_number(), parsed['rbs']['t'], self._DEFAULT_RB_SEGMENT_TILL):
                 fetched_rb_segments = [rule_based_segments.from_raw(rb_segment) for rb_segment in parsed['rbs']['d']]
