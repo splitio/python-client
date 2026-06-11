@@ -119,7 +119,7 @@ class SplitFetchingTaskTests(object):
         sync = LocalSplitSynchronizer('something', storage_mock, rbs)
         sync._read_feature_flags_from_legacy_file = parse_legacy
         sync._read_feature_flags_from_yaml_file = parse_yaml
-        sync.synchronize_splits()
+        sync.synchronize_definitions()
         assert parse_legacy.mock_calls == [mocker.call('something')]
         assert parse_yaml.mock_calls == []
 
@@ -128,7 +128,7 @@ class SplitFetchingTaskTests(object):
         sync = LocalSplitSynchronizer('something.yaml', storage_mock, rbs)
         sync._read_feature_flags_from_legacy_file = parse_legacy
         sync._read_feature_flags_from_yaml_file = parse_yaml
-        sync.synchronize_splits()
+        sync.synchronize_definitions()
         assert parse_legacy.mock_calls == []
         assert parse_yaml.mock_calls == [mocker.call('something.yaml')]
 
@@ -137,7 +137,7 @@ class SplitFetchingTaskTests(object):
         sync = LocalSplitSynchronizer('something.yml', storage_mock, rbs)
         sync._read_feature_flags_from_legacy_file = parse_legacy
         sync._read_feature_flags_from_yaml_file = parse_yaml
-        sync.synchronize_splits()
+        sync.synchronize_definitions()
         assert parse_legacy.mock_calls == []
         assert parse_yaml.mock_calls == [mocker.call('something.yml')]
 
@@ -146,7 +146,7 @@ class SplitFetchingTaskTests(object):
         sync = LocalSplitSynchronizer('something.YAML', storage_mock, rbs)
         sync._read_feature_flags_from_legacy_file = parse_legacy
         sync._read_feature_flags_from_yaml_file = parse_yaml
-        sync.synchronize_splits()
+        sync.synchronize_definitions()
         assert parse_legacy.mock_calls == []
         assert parse_yaml.mock_calls == [mocker.call('something.YAML')]
 
@@ -155,6 +155,6 @@ class SplitFetchingTaskTests(object):
         sync = LocalSplitSynchronizer('yaml', storage_mock, rbs)
         sync._read_feature_flags_from_legacy_file = parse_legacy
         sync._read_feature_flags_from_yaml_file = parse_yaml
-        sync.synchronize_splits()
+        sync.synchronize_definitions()
         assert parse_legacy.mock_calls == [mocker.call('yaml')]
         assert parse_yaml.mock_calls == []

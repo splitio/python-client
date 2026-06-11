@@ -27,6 +27,12 @@ from harness_commons.models.fallback_config import FallbackTreatmentCalculator
 from harness_commons.models.notification import SdkInternalEventNotification
 from harness_commons.models.events import SdkInternalEvent
 
+# push
+from harness_commons.push.manager import PushManager, PushManagerAsync
+from harness_commons.push.processor import MessageProcessor, MessageProcessorAsync
+from harness_commons.push.parser import UpdateType
+from splitio.push.workers import SplitWorker, SplitWorkerAsync
+
 # Storage
 from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync
 from harness_commons.storage.inmemmory import InMemorySegmentStorage, \
@@ -65,21 +71,21 @@ from splitio.tasks.events_sync import EventsSyncTask, EventsSyncTaskAsync
 from harness_commons.tasks.telemetry_sync import TelemetrySyncTask, TelemetrySyncTaskAsync
 
 # Synchronizer
-from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, \
+from harness_commons.sync.synchronizer import HarnessTasks, HarnessSynchronizers, Synchronizer, \
     LocalhostSynchronizer, RedisSynchronizer, PluggableSynchronizer,\
     SynchronizerAsync, RedisSynchronizerAsync, LocalhostSynchronizerAsync
-from splitio.sync.manager import Manager, RedisManager, ManagerAsync, RedisManagerAsync
+from harness_commons.sync.manager import Manager, RedisManager, ManagerAsync, RedisManagerAsync
 from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer, LocalhostMode,\
     SplitSynchronizerAsync, LocalSplitSynchronizerAsync
-from splitio.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer, SegmentSynchronizerAsync,\
+from harness_commons.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer, SegmentSynchronizerAsync,\
     LocalSegmentSynchronizerAsync
-from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer, \
+from harness_commons.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer, \
     ImpressionsCountSynchronizerAsync, ImpressionSynchronizerAsync
-from splitio.sync.event import EventSynchronizer, EventSynchronizerAsync
+from harness_commons.sync.event import EventSynchronizer, EventSynchronizerAsync
 from harness_commons.sync.telemetry import TelemetrySynchronizer, InMemoryTelemetrySubmitter, \
     LocalhostTelemetrySubmitter, RedisTelemetrySubmitter, LocalhostTelemetrySubmitterAsync, \
     InMemoryTelemetrySubmitterAsync, TelemetrySynchronizerAsync, RedisTelemetrySubmitterAsync
-
+from harness_commons.sync.auth import AuthSynchronizer, AuthSynchronizerAsync
 
 # Recorder
 from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder, StandardRecorderAsync, PipelinedRecorderAsync
@@ -196,7 +202,7 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
         :param apis: Dictionary of apis client wrappers
         :type apis: dict
         :param sync_manager: Manager synchronization
-        :type sync_manager: splitio.sync.manager.Manager
+        :type sync_manager: harness_commons.sync.manager.Manager
         :param sdk_ready_flag: Event to set when the sdk is ready.
         :type sdk_ready_flag: threading.Event
         :param recorder: StatsRecorder instance
@@ -374,7 +380,7 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
         :param apis: Dictionary of apis client wrappers
         :type apis: dict
         :param sync_manager: Manager synchronization
-        :type sync_manager: splitio.sync.manager.Manager
+        :type sync_manager: harness_commons.sync.manager.Manager
         :param sdk_ready_flag: Event to set when the sdk is ready.
         :type sdk_ready_flag: threading.Event
         :param recorder: StatsRecorder instance
@@ -593,7 +599,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     imp_manager = ImpressionsManager(
         imp_strategy, none_strategy, telemetry_runtime_producer)
 
-    synchronizers = SplitSynchronizers(
+    synchronizers = HarnessSynchronizers(
         SplitSynchronizer(apis['splits'], storages['splits'], storages['rule_based_segments']),
         SegmentSynchronizer(apis['segments'], storages['splits'], storages['segments'], storages['rule_based_segments']),
         ImpressionSynchronizer(apis['impressions'], storages['impressions'],
@@ -605,9 +611,9 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         clear_filter_sync,
     )
 
-    tasks = SplitTasks(
+    tasks = HarnessTasks(
         SplitSynchronizationTask(
-            synchronizers.split_sync.synchronize_splits,
+            synchronizers.definition_sync.synchronize_definitions,
             cfg['featuresRefreshRate'],
         ),
         SegmentSynchronizationTask(
@@ -631,8 +637,23 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     preforked_initialization = cfg.get('preforkedInitialization', False)
 
     sdk_ready_flag = threading.Event() if not preforked_initialization else None
+    
+    push_queue = None
+    push_manager = None
+    if cfg['streamingEnabled']:
+        push_queue = queue.Queue()
+        split_worker = SplitWorker(synchronizer.synchronize_definitions, synchronizer.synchronize_segment, queue.Queue(), synchronizer.definition_sync, synchronizer.definition_sync.definition_storage, synchronizer.segment_storage, telemetry_runtime_producer, synchronizer.definition_sync.rule_based_segment_storage)
+        split_handlers = {
+            UpdateType.SPLIT_UPDATE: split_worker.handle_feature_flag_update,
+            UpdateType.SPLIT_KILL: split_worker.handle_feature_flag_kill,
+            UpdateType.RB_SEGMENT_UPDATE: split_worker.handle_feature_flag_update
+        }
+        auth_synchronizer = AuthSynchronizer(apis['auth'], telemetry_runtime_producer, push_queue)
+        processor = MessageProcessor(synchronizer, split_worker, split_handlers)
+        push_manager = PushManager(apis['auth'], push_queue, sdk_metadata, telemetry_runtime_producer, processor, auth_synchronizer, streaming_api_base_url, api_key[-4:])
+    
     manager = Manager(sdk_ready_flag, synchronizer, apis['auth'], cfg['streamingEnabled'],
-                      sdk_metadata, telemetry_runtime_producer, streaming_api_base_url, api_key[-4:])
+                      sdk_metadata, telemetry_runtime_producer, streaming_api_base_url, api_key[-4:], push_manager, push_queue)
 
     storages['events'].set_queue_full_hook(tasks.events_task.flush)
     storages['impressions'].set_queue_full_hook(tasks.impressions_task.flush)
@@ -653,7 +674,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     
     if preforked_initialization:
         synchronizer.sync_all(max_retry_attempts=_MAX_RETRY_SYNC_ALL)
-        synchronizer._split_synchronizers._segment_sync.shutdown()
+        synchronizer._harness_synchronizers._segment_sync.shutdown()
 
         return SplitFactory(api_key, storages, cfg['labelsEnabled'],
                             recorder, internal_events_queue, events_manager, manager, None, telemetry_producer, telemetry_init_producer, telemetry_submitter, preforked_initialization=preforked_initialization,
@@ -728,7 +749,7 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
     imp_manager = ImpressionsManager(
         imp_strategy, none_strategy, telemetry_runtime_producer)
 
-    synchronizers = SplitSynchronizers(
+    synchronizers = HarnessSynchronizers(
         SplitSynchronizerAsync(apis['splits'], storages['splits'], storages['rule_based_segments']),
         SegmentSynchronizerAsync(apis['segments'], storages['splits'], storages['segments'], storages['rule_based_segments']),
         ImpressionSynchronizerAsync(apis['impressions'], storages['impressions'],
@@ -740,9 +761,9 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
         clear_filter_sync,
     )
 
-    tasks = SplitTasks(
+    tasks = HarnessTasks(
         SplitSynchronizationTaskAsync(
-            synchronizers.split_sync.synchronize_splits,
+            synchronizers.definition_sync.synchronize_definitions,
             cfg['featuresRefreshRate'],
         ),
         SegmentSynchronizationTaskAsync(
@@ -763,8 +784,21 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
 
     synchronizer = SynchronizerAsync(synchronizers, tasks)
 
+    push_queue = None
+    push_manager = None
+    if cfg['streamingEnabled']:
+        push_queue = asyncio.Queue()
+        split_worker = SplitWorkerAsync(synchronizer.synchronize_definitions, synchronizer.synchronize_segment, asyncio.Queue(), synchronizer.definition_sync, synchronizer.definition_sync.definition_storage, synchronizer.segment_storage, telemetry_runtime_producer, synchronizer.definition_sync.rule_based_segment_storage)
+        split_handlers = {
+            UpdateType.SPLIT_UPDATE: split_worker.handle_feature_flag_update,
+            UpdateType.SPLIT_KILL: split_worker.handle_feature_flag_kill,
+            UpdateType.RB_SEGMENT_UPDATE: split_worker.handle_feature_flag_update
+        }
+        auth_synchronizer = AuthSynchronizerAsync(apis['auth'], telemetry_runtime_producer, push_queue)
+        processor = MessageProcessorAsync(synchronizer, split_worker, split_handlers)
+        push_manager = PushManagerAsync(apis['auth'], push_queue, sdk_metadata, telemetry_runtime_producer, processor, auth_synchronizer, streaming_api_base_url, api_key[-4:])
     manager = ManagerAsync(synchronizer, apis['auth'], cfg['streamingEnabled'],
-                      sdk_metadata, telemetry_runtime_producer, streaming_api_base_url, api_key[-4:])
+                      sdk_metadata, telemetry_runtime_producer, streaming_api_base_url, api_key[-4:], push_manager, push_queue)
 
     storages['events'].set_queue_full_hook(tasks.events_task.flush)
     storages['impressions'].set_queue_full_hook(tasks.impressions_task.flush)
@@ -826,14 +860,14 @@ def _build_redis_factory(api_key, cfg):
         imp_strategy, none_strategy,
         telemetry_runtime_producer)
 
-    synchronizers = SplitSynchronizers(None, None, None, None,
+    synchronizers = HarnessSynchronizers(None, None, None, None,
         impressions_count_sync,
         None,
         unique_keys_synchronizer,
         clear_filter_sync
     )
 
-    tasks = SplitTasks(None, None, None, None,
+    tasks = HarnessTasks(None, None, None, None,
         impressions_count_task,
         None,
         unique_keys_task,
@@ -915,14 +949,14 @@ async def _build_redis_factory_async(api_key, cfg):
         imp_strategy, none_strategy,
         telemetry_runtime_producer)
 
-    synchronizers = SplitSynchronizers(None, None, None, None,
+    synchronizers = HarnessSynchronizers(None, None, None, None,
         impressions_count_sync,
         None,
         unique_keys_synchronizer,
         clear_filter_sync
     )
 
-    tasks = SplitTasks(None, None, None, None,
+    tasks = HarnessTasks(None, None, None, None,
         impressions_count_task,
         None,
         unique_keys_task,
@@ -999,14 +1033,14 @@ def _build_pluggable_factory(api_key, cfg):
         imp_strategy, none_strategy,
         telemetry_runtime_producer)
 
-    synchronizers = SplitSynchronizers(None, None, None, None,
+    synchronizers = HarnessSynchronizers(None, None, None, None,
         impressions_count_sync,
         None,
         unique_keys_synchronizer,
         clear_filter_sync
     )
 
-    tasks = SplitTasks(None, None, None, None,
+    tasks = HarnessTasks(None, None, None, None,
         impressions_count_task,
         None,
         unique_keys_task,
@@ -1086,14 +1120,14 @@ async def _build_pluggable_factory_async(api_key, cfg):
         imp_strategy, none_strategy,
         telemetry_runtime_producer)
 
-    synchronizers = SplitSynchronizers(None, None, None, None,
+    synchronizers = HarnessSynchronizers(None, None, None, None,
         impressions_count_sync,
         None,
         unique_keys_synchronizer,
         clear_filter_sync
     )
 
-    tasks = SplitTasks(None, None, None, None,
+    tasks = HarnessTasks(None, None, None, None,
         impressions_count_task,
         None,
         unique_keys_task,
@@ -1155,7 +1189,7 @@ def _build_localhost_factory(cfg):
         'events': LocalhostEventsStorage(),
     }
     localhost_mode = LocalhostMode.JSON if cfg['splitFile'][-5:].lower() == '.json' else LocalhostMode.LEGACY
-    synchronizers = SplitSynchronizers(
+    synchronizers = HarnessSynchronizers(
         LocalSplitSynchronizer(cfg['splitFile'],
                                storages['splits'],
                                storages['rule_based_segments'],
@@ -1170,14 +1204,14 @@ def _build_localhost_factory(cfg):
     segment_sync_task = None
     if cfg['localhostRefreshEnabled'] and localhost_mode == LocalhostMode.JSON:
         feature_flag_sync_task = SplitSynchronizationTask(
-            synchronizers.split_sync.synchronize_splits,
+            synchronizers.definition_sync.synchronize_definitions,
             cfg['featuresRefreshRate'],
         )
         segment_sync_task = SegmentSynchronizationTask(
             synchronizers.segment_sync.synchronize_segments,
             cfg['segmentsRefreshRate'],
         )
-    tasks = SplitTasks(
+    tasks = HarnessTasks(
         feature_flag_sync_task,
         segment_sync_task,
         None, None, None,
@@ -1239,7 +1273,7 @@ async def _build_localhost_factory_async(cfg):
         'events': LocalhostEventsStorageAsync(),
     }
     localhost_mode = LocalhostMode.JSON if cfg['splitFile'][-5:].lower() == '.json' else LocalhostMode.LEGACY
-    synchronizers = SplitSynchronizers(
+    synchronizers = HarnessSynchronizers(
         LocalSplitSynchronizerAsync(cfg['splitFile'],
                                storages['splits'],
                                storages['rule_based_segments'],
@@ -1252,14 +1286,14 @@ async def _build_localhost_factory_async(cfg):
     segment_sync_task = None
     if cfg['localhostRefreshEnabled'] and localhost_mode == LocalhostMode.JSON:
         feature_flag_sync_task = SplitSynchronizationTaskAsync(
-            synchronizers.split_sync.synchronize_splits,
+            synchronizers.definition_sync.synchronize_definitions,
             cfg['featuresRefreshRate'],
         )
         segment_sync_task = SegmentSynchronizationTaskAsync(
             synchronizers.segment_sync.synchronize_segments,
             cfg['segmentsRefreshRate'],
         )
-    tasks = SplitTasks(
+    tasks = HarnessTasks(
         feature_flag_sync_task,
         segment_sync_task,
         None, None, None,

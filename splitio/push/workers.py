@@ -7,186 +7,27 @@ import zlib
 import base64
 import json
 from enum import Enum
+from queue import Queue
 
+from splitio.optional.loaders import asyncio
 from splitio.models.splits import from_raw
 from harness_commons.models.rule_based_segments import from_raw as rbs_from_raw
 from harness_commons.models.telemetry import UpdateFromSSE
-from splitio.push import SplitStorageException
-from splitio.push.parser import UpdateType
-from splitio.optional.loaders import asyncio
+from harness_commons.push import SplitStorageException
+from harness_commons.push.parser import UpdateType
+from harness_commons.push.workers import WorkerBase
+from harness_commons.optional.loaders import asyncio
 from harness_commons.util.storage_helper import update_definition_storage, update_definition_storage_async, \
     update_rule_based_segment_storage, update_rule_based_segment_storage_async
 
 _LOGGER = logging.getLogger(__name__)
-
-class CompressionMode(Enum):
-    """Compression modes """
-
-    NO_COMPRESSION = 0
-    GZIP_COMPRESSION = 1
-    ZLIB_COMPRESSION = 2
-
-_compression_handlers = {
-    CompressionMode.NO_COMPRESSION: lambda event: base64.b64decode(event.object_definition),
-    CompressionMode.GZIP_COMPRESSION: lambda event: gzip.decompress(base64.b64decode(event.object_definition)).decode('utf-8'),
-    CompressionMode.ZLIB_COMPRESSION: lambda event: zlib.decompress(base64.b64decode(event.object_definition)).decode('utf-8'),
-}
-
-class WorkerBase(object, metaclass=abc.ABCMeta):
-    """Worker template."""
-
-    _fetching_segment = "Fetching new segment {segment_name}"
-
-    @abc.abstractmethod
-    def is_running(self):
-        """Return whether the working is running."""
-
-    @abc.abstractmethod
-    def start(self):
-        """Start worker."""
-
-    @abc.abstractmethod
-    def stop(self):
-        """Stop worker."""
-
-    def _get_object_definition(self, event):
-        """return feature flag or rule based segment definition in event."""
-        cm = CompressionMode(event.compression) # will throw if the number is not defined in compression mode
-        return _compression_handlers[cm](event)
-    
-    def _get_referenced_rbs(self, feature_flag):
-        referenced_rbs = set()
-        for condition in feature_flag.conditions:
-            for matcher in condition.matchers:
-                raw_matcher = matcher.to_json()
-                if raw_matcher['matcherType'] == 'IN_RULE_BASED_SEGMENT':
-                    referenced_rbs.add(raw_matcher['userDefinedSegmentMatcherData']['segmentName'])
-        return referenced_rbs
-
-class SegmentWorker(WorkerBase):
-    """Segment Worker for processing updates."""
-
-    _centinel = object()
-
-    def __init__(self, synchronize_segment, segment_queue):
-        """
-        Class constructor.
-
-        :param synchronize_segment: handler to perform segment synchronization on incoming event
-        :type synchronize_segment: function
-
-        :param segment_queue: queue with segment updates notifications
-        :type segment_queue: queue
-        """
-        self._segment_queue = segment_queue
-        self._handler = synchronize_segment
-        self._running = False
-        self._worker = None
-
-    def is_running(self):
-        """Return whether the working is running."""
-        return self._running
-
-    def _run(self):
-        """Run worker handler."""
-        while self.is_running():
-            event = self._segment_queue.get()
-            if not self.is_running():
-                break
-            if event == self._centinel:
-                continue
-            _LOGGER.debug('Processing segment_update: %s, change_number: %d',
-                          event.segment_name, event.change_number)
-            try:
-                self._handler(event.segment_name, event.change_number)
-            except Exception:
-                _LOGGER.error('Exception raised in segment synchronization')
-                _LOGGER.debug('Exception information: ', exc_info=True)
-
-    def start(self):
-        """Start worker."""
-        if self.is_running():
-            _LOGGER.debug('Worker is already running')
-            return
-        self._running = True
-
-        _LOGGER.debug('Starting Segment Worker')
-        self._worker = threading.Thread(target=self._run, name='PushSegmentWorker', daemon=True)
-        self._worker.start()
-
-    def stop(self):
-        """Stop worker."""
-        _LOGGER.debug('Stopping Segment Worker')
-        if not self.is_running():
-            _LOGGER.debug('Worker is not running. Ignoring.')
-            return
-        self._running = False
-        self._segment_queue.put(self._centinel)
-
-class SegmentWorkerAsync(WorkerBase):
-    """Segment Worker for processing updates."""
-
-    _centinel = object()
-
-    def __init__(self, synchronize_segment, segment_queue):
-        """
-        Class constructor.
-
-        :param synchronize_segment: handler to perform segment synchronization on incoming event
-        :type synchronize_segment: function
-
-        :param segment_queue: queue with segment updates notifications
-        :type segment_queue: asyncio.Queue
-        """
-        self._segment_queue = segment_queue
-        self._handler = synchronize_segment
-        self._running = False
-
-    def is_running(self):
-        """Return whether the working is running."""
-        return self._running
-
-    async def _run(self):
-        """Run worker handler."""
-        while self.is_running():
-            event = await self._segment_queue.get()
-            if not self.is_running():
-                break
-            if event == self._centinel:
-                continue
-            _LOGGER.debug('Processing segment_update: %s, change_number: %d',
-                          event.segment_name, event.change_number)
-            try:
-                await self._handler(event.segment_name, event.change_number)
-            except Exception:
-                _LOGGER.error('Exception raised in segment synchronization')
-                _LOGGER.debug('Exception information: ', exc_info=True)
-
-    def start(self):
-        """Start worker."""
-        if self.is_running():
-            _LOGGER.debug('Worker is already running')
-            return
-        self._running = True
-
-        _LOGGER.debug('Starting Segment Worker')
-        asyncio.get_running_loop().create_task(self._run())
-
-    async def stop(self):
-        """Stop worker."""
-        _LOGGER.debug('Stopping Segment Worker')
-        if not self.is_running():
-            _LOGGER.debug('Worker is not running. Ignoring.')
-            return
-        self._running = False
-        await self._segment_queue.put(self._centinel)
 
 class SplitWorker(WorkerBase):
     """Feature Flag Worker for processing updates."""
 
     _centinel = object()
 
-    def __init__(self, synchronize_feature_flag, synchronize_segment, feature_flag_queue, feature_flag_storage, segment_storage, telemetry_runtime_producer, rule_based_segment_storage):
+    def __init__(self, synchronize_feature_flag, synchronize_segment, feature_flag_queue, split_synchronizer, feature_flag_storage, segment_storage, telemetry_runtime_producer, rule_based_segment_storage):
         """
         Class constructor.
 
@@ -199,11 +40,11 @@ class SplitWorker(WorkerBase):
         :param feature_flag_storage: feature flag storage instance
         :type feature_flag_storage: splitio.storage.inmemory.InMemorySplitStorage
         :param segment_storage: segment storage instance
-        :type segment_storage: harness_commons.storage.inmemmory.InMemorySegmentStorage
+        :type segment_storage: splitio.storage.inmemory.InMemorySegmentStorage
         :param telemetry_runtime_producer: Telemetry runtime producer instance
-        :type telemetry_runtime_producer: harness_commons.engine.telemetry.TelemetryRuntimeProducer
+        :type telemetry_runtime_producer: splitio.engine.telemetry.TelemetryRuntimeProducer
         :param rule_based_segment_storage: Rule based segment Storage.
-        :type rule_based_segment_storage: harness_commons.storage.inmemmoryRuleBasedStorage
+        :type rule_based_segment_storage: splitio.storage.InMemoryRuleBasedStorage
         """
         self._feature_flag_queue = feature_flag_queue
         self._handler = synchronize_feature_flag
@@ -214,6 +55,7 @@ class SplitWorker(WorkerBase):
         self._segment_storage = segment_storage
         self._telemetry_runtime_producer = telemetry_runtime_producer
         self._rule_based_segment_storage = rule_based_segment_storage
+        self._synchronizer = split_synchronizer
 
     def is_running(self):
         """Return whether the working is running."""
@@ -320,12 +162,32 @@ class SplitWorker(WorkerBase):
         self._running = False
         self._feature_flag_queue.put(self._centinel)
 
+    def handle_feature_flag_update(self, event):
+        """
+        Handle incoming feature_flag update notification.
+
+        :param event: Incoming feature_flag change event
+        :type event: splitio.push.parser.SplitChangeUpdate
+        """
+        self._feature_flag_queue.put(event)
+
+    def handle_feature_flag_kill(self, event):
+        """
+        Handle incoming feature flag kill notification.
+
+        :param event: Incoming feature flag kill event
+        :type event: splitio.push.parser.SplitKillUpdate
+        """
+        self._synchronizer.kill_definition(event.definition_name, event.default_treatment,
+                                      event.change_number)
+        self._feature_flag_queue.put(event)
+
 class SplitWorkerAsync(WorkerBase):
     """Split Worker for processing updates."""
 
     _centinel = object()
 
-    def __init__(self, synchronize_feature_flag, synchronize_segment, feature_flag_queue, feature_flag_storage, segment_storage, telemetry_runtime_producer, rule_based_segment_storage):
+    def __init__(self, synchronize_feature_flag, synchronize_segment, feature_flag_queue, split_synchronizer, feature_flag_storage, segment_storage, telemetry_runtime_producer, rule_based_segment_storage):
         """
         Class constructor.
 
@@ -338,11 +200,11 @@ class SplitWorkerAsync(WorkerBase):
         :param feature_flag_storage: feature flag storage instance
         :type feature_flag_storage: splitio.storage.inmemory.InMemorySplitStorage
         :param segment_storage: segment storage instance
-        :type segment_storage: harness_commons.storage.inmemmory.InMemorySegmentStorage
+        :type segment_storage: splitio.storage.inmemory.InMemorySegmentStorage
         :param telemetry_runtime_producer: Telemetry runtime producer instance
-        :type telemetry_runtime_producer: harness_commons.engine.telemetry.TelemetryRuntimeProducer
+        :type telemetry_runtime_producer: splitio.engine.telemetry.TelemetryRuntimeProducer
         :param rule_based_segment_storage: Rule based segment Storage.
-        :type rule_based_segment_storage: harness_commons.storage.inmemmoryRuleBasedStorage
+        :type rule_based_segment_storage: splitio.storage.InMemoryRuleBasedStorage
         """
         self._feature_flag_queue = feature_flag_queue
         self._handler = synchronize_feature_flag
@@ -352,6 +214,7 @@ class SplitWorkerAsync(WorkerBase):
         self._segment_storage = segment_storage
         self._telemetry_runtime_producer = telemetry_runtime_producer
         self._rule_based_segment_storage = rule_based_segment_storage
+        self._synchronizer = split_synchronizer
         
     def is_running(self):
         """Return whether the working is running."""
@@ -443,3 +306,23 @@ class SplitWorkerAsync(WorkerBase):
             return
         self._running = False
         await self._feature_flag_queue.put(self._centinel)
+
+    async def handle_feature_flag_update(self, event):
+        """
+        Handle incoming feature_flag update notification.
+
+        :param event: Incoming feature_flag change event
+        :type event: splitio.push.parser.SplitChangeUpdate
+        """
+        await self._feature_flag_queue.put(event)
+
+    async def handle_feature_flag_kill(self, event):
+        """
+        Handle incoming feature_flag kill notification.
+
+        :param event: Incoming feature_flag kill event
+        :type event: splitio.push.parser.SplitKillUpdate
+        """
+        await self._synchronizer.kill_definition(event.definition_name, event.default_treatment,
+                                      event.change_number)
+        await self._feature_flag_queue.put(event)

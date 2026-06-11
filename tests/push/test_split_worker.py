@@ -7,12 +7,11 @@ import pytest
 from harness_commons.api import APIException
 from splitio.push.workers import SplitWorker, SplitWorkerAsync
 from harness_commons.models.notification import SplitChangeNotification
-from splitio.optional.loaders import asyncio
-from splitio.push.parser import SplitChangeUpdate, RBSChangeUpdate
+from harness_commons.optional.loaders import asyncio
+from harness_commons.push.parser import SplitChangeUpdate, RBSChangeUpdate
 from harness_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
-from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync
-from harness_commons.storage.inmemmory import InMemoryTelemetryStorage, InMemorySegmentStorage, \
-    InMemoryTelemetryStorageAsync, InMemorySegmentStorageAsync
+from harness_commons.storage.inmemmory import InMemoryTelemetryStorage, InMemoryDefinitionStorage, InMemorySegmentStorage, \
+    InMemoryTelemetryStorageAsync, InMemoryDefinitionStorageAsync, InMemorySegmentStorageAsync
 
 change_number_received = None
 rbs = {
@@ -68,7 +67,7 @@ class SplitWorkerTests(object):
 
     def test_handler(self, mocker):
         q = queue.Queue()
-        split_worker = SplitWorker(handler_sync, mocker.Mock(), q, mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
+        split_worker = SplitWorker(handler_sync, mocker.Mock(), q, mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
 
         global change_number_received
         global rbs_change_number_received
@@ -148,7 +147,7 @@ class SplitWorkerTests(object):
         def handler_sync(change_number):
             raise APIException('some')
 
-        split_worker = SplitWorker(handler_sync, mocker.Mock(), q, mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
+        split_worker = SplitWorker(handler_sync, mocker.Mock(), q, mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
         split_worker.start()
         assert split_worker.is_running()
 
@@ -168,7 +167,7 @@ class SplitWorkerTests(object):
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
-        split_worker = SplitWorker(handler_sync, mocker.Mock(), q, mocker.Mock(), mocker.Mock(), telemetry_runtime_producer, mocker.Mock())
+        split_worker = SplitWorker(handler_sync, mocker.Mock(), q, mocker.Mock(), mocker.Mock(), mocker.Mock(), telemetry_runtime_producer, mocker.Mock())
         global change_number_received
         split_worker.start()
         def get_change_number():
@@ -217,7 +216,7 @@ class SplitWorkerTests(object):
 
     def test_edge_cases(self, mocker):
         q = queue.Queue()
-        split_worker = SplitWorker(handler_sync, mocker.Mock(), q, mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
+        split_worker = SplitWorker(handler_sync, mocker.Mock(), q, mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
         global change_number_received
         split_worker.start()
 
@@ -264,14 +263,14 @@ class SplitWorkerTests(object):
     def test_fetch_segment(self, mocker):
         q = queue.Queue()
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
+        split_storage = InMemoryDefinitionStorage(events_queue)
         segment_storage = InMemorySegmentStorage(events_queue)
 
         self.segment_name = None
         def segment_handler_sync(segment_name, change_number):
             self.segment_name = segment_name
             return
-        split_worker = SplitWorker(handler_sync, segment_handler_sync, q, split_storage, segment_storage, mocker.Mock(), mocker.Mock())
+        split_worker = SplitWorker(handler_sync, segment_handler_sync, q, mocker.Mock(), split_storage, segment_storage, mocker.Mock(), mocker.Mock())
         split_worker.start()
 
         def get_change_number():
@@ -295,7 +294,7 @@ class SplitWorkerAsyncTests(object):
         def handler_sync(change_number):
             raise APIException('some')
 
-        split_worker = SplitWorkerAsync(handler_async, mocker.Mock(), q, mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
+        split_worker = SplitWorkerAsync(handler_async, mocker.Mock(), q, mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
         split_worker.start()
         assert split_worker.is_running()
 
@@ -323,7 +322,7 @@ class SplitWorkerAsyncTests(object):
     @pytest.mark.asyncio
     async def test_handler(self, mocker):
         q = asyncio.Queue()
-        split_worker = SplitWorkerAsync(handler_async, mocker.Mock(), q, mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
+        split_worker = SplitWorkerAsync(handler_async, mocker.Mock(), q, mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
 
         assert not split_worker.is_running()
         split_worker.start()
@@ -411,7 +410,7 @@ class SplitWorkerAsyncTests(object):
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
-        split_worker = SplitWorkerAsync(handler_async, mocker.Mock(), q, mocker.Mock(), mocker.Mock(), telemetry_runtime_producer, mocker.Mock())
+        split_worker = SplitWorkerAsync(handler_async, mocker.Mock(), q, mocker.Mock(), mocker.Mock(), mocker.Mock(), telemetry_runtime_producer, mocker.Mock())
         global change_number_received
         split_worker.start()
         async def get_change_number():
@@ -473,7 +472,7 @@ class SplitWorkerAsyncTests(object):
     @pytest.mark.asyncio
     async def test_edge_cases(self, mocker):
         q = asyncio.Queue()
-        split_worker = SplitWorkerAsync(handler_async, mocker.Mock(), q, mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
+        split_worker = SplitWorkerAsync(handler_async, mocker.Mock(), q, mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock())
         global change_number_received
         split_worker.start()
 
@@ -525,14 +524,14 @@ class SplitWorkerAsyncTests(object):
     async def test_fetch_segment(self, mocker):
         q = asyncio.Queue()
         internal_events_queue = asyncio.Queue()
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
+        split_storage = InMemoryDefinitionStorageAsync(internal_events_queue)
         segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
 
         self.segment_name = None
         async def segment_handler_sync(segment_name, change_number):
             self.segment_name = segment_name
             return
-        split_worker = SplitWorkerAsync(handler_async, segment_handler_sync, q, split_storage, segment_storage, mocker.Mock(), mocker.Mock())
+        split_worker = SplitWorkerAsync(handler_async, segment_handler_sync, q, mocker.Mock(), split_storage, segment_storage, mocker.Mock(), mocker.Mock())
         split_worker.start()
 
         async def get_change_number():

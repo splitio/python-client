@@ -3,8 +3,8 @@ from harness_commons.engine.impressions.strategies import StrategyNoneMode, Stra
 from harness_commons.engine.impressions.adapters import InMemorySenderAdapter, RedisSenderAdapter, PluggableSenderAdapter, RedisSenderAdapterAsync, \
     InMemorySenderAdapterAsync, PluggableSenderAdapterAsync
 from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTask, UniqueKeysSyncTaskAsync, ClearFilterSyncTaskAsync
-from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer, UniqueKeysSynchronizerAsync, ClearFilterSynchronizerAsync
-from splitio.sync.impression import ImpressionsCountSynchronizer, ImpressionsCountSynchronizerAsync
+from harness_commons.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer, UniqueKeysSynchronizerAsync, ClearFilterSynchronizerAsync
+from harness_commons.sync.impression import ImpressionsCountSynchronizer, ImpressionsCountSynchronizerAsync
 from splitio.tasks.impressions_sync import ImpressionsCountSyncTask, ImpressionsCountSyncTaskAsync
 
 def set_classes(storage_mode, impressions_mode, api_adapter, imp_counter, unique_keys_tracker, prefix=None):
@@ -25,11 +25,11 @@ def set_classes(storage_mode, impressions_mode, api_adapter, imp_counter, unique
     :type prefix: str
 
     :return: tuple of classes instances.
-    :rtype: (splitio.sync.unique_keys.UniqueKeysSynchronizer,
-            splitio.sync.unique_keys.ClearFilterSynchronizer,
+    :rtype: (harness_commons.sync.unique_keys.UniqueKeysSynchronizer,
+            harness_commons.sync.unique_keys.ClearFilterSynchronizer,
             splitio.tasks.unique_keys_sync.UniqueKeysTask,
             splitio.tasks.unique_keys_sync.ClearFilterTask,
-            splitio.sync.impressions_sync.ImpressionsCountSynchronizer,
+            harness_commons.sync.impressions_sync.ImpressionsCountSynchronizer,
             splitio.tasks.impressions_sync.ImpressionsCountSyncTask,
             splitio.engine.impressions.strategies.StrategyNoneMode/splitio.engine.impressions.strategies.StrategyDebugMode/splitio.engine.impressions.strategies.StrategyOptimizedMode)
     """
@@ -90,11 +90,11 @@ def set_classes_async(storage_mode, impressions_mode, api_adapter, imp_counter, 
     :type prefix: str
 
     :return: tuple of classes instances.
-    :rtype: (splitio.sync.unique_keys.UniqueKeysSynchronizerAsync,
-            splitio.sync.unique_keys.ClearFilterSynchronizerAsync,
+    :rtype: (harness_commons.sync.unique_keys.UniqueKeysSynchronizerAsync,
+            harness_commons.sync.unique_keys.ClearFilterSynchronizerAsync,
             splitio.tasks.unique_keys_sync.UniqueKeysTaskAsync,
             splitio.tasks.unique_keys_sync.ClearFilterTaskAsync,
-            splitio.sync.impressions_sync.ImpressionsCountSynchronizerAsync,
+            harness_commons.sync.impressions_sync.ImpressionsCountSynchronizerAsync,
             splitio.tasks.impressions_sync.ImpressionsCountSyncTaskAsync,
             splitio.engine.impressions.strategies.StrategyNoneMode/splitio.engine.impressions.strategies.StrategyDebugMode/splitio.engine.impressions.strategies.StrategyOptimizedMode)
     """
