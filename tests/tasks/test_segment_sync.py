@@ -11,7 +11,7 @@ from splitio.models.splits import Split
 from harness_commons.models.segments import Segment
 from harness_commons.models.grammar.condition import Condition
 from harness_commons.models.grammar.matchers import UserDefinedSegmentMatcher
-from splitio.sync.segment import SegmentSynchronizer, SegmentSynchronizerAsync
+from harness_commons.sync.segment import SegmentSynchronizer, SegmentSynchronizerAsync
 from splitio.optional.loaders import asyncio
 
 class SegmentSynchronizationTests(object):

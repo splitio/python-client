@@ -9,7 +9,7 @@ from splitio.tasks import events_sync
 from harness_commons.storage import EventStorage
 from harness_commons.models.events import Event
 from harness_commons.api.events import EventsAPI
-from splitio.sync.event import EventSynchronizer, EventSynchronizerAsync
+from harness_commons.sync.event import EventSynchronizer, EventSynchronizerAsync
 from splitio.optional.loaders import asyncio
 
 

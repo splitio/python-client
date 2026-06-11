@@ -8,7 +8,7 @@ from harness_commons.api.client import HttpResponse
 from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTask,\
     ClearFilterSyncTaskAsync, UniqueKeysSyncTaskAsync
 from harness_commons.api.telemetry import TelemetryAPI
-from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer,\
+from harness_commons.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer,\
     UniqueKeysSynchronizerAsync, ClearFilterSynchronizerAsync
 from harness_commons.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
 

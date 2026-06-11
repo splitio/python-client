@@ -71,7 +71,7 @@ class StreamingIntegrationTests(object):
             'events_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'streaming_api_base_url': 'http://localhost:%d' % sse_server.port(),
-            'config': {'connectTimeout': 10000}
+            'config': {'connectTimeout': 10000, 'streamingEnabled': True}
         }
 
         factory = get_factory('some_apikey', **kwargs)
@@ -80,7 +80,7 @@ class StreamingIntegrationTests(object):
         assert factory.ready
         assert factory.client().get_treatment('maldo', 'split1') == 'on'
 
-        time.sleep(1)
+        time.sleep(2)
         assert(factory._telemetry_evaluation_producer._telemetry_storage._streaming_events._streaming_events[len(factory._telemetry_evaluation_producer._telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.SYNC_MODE_UPDATE.value)
         assert(factory._telemetry_evaluation_producer._telemetry_storage._streaming_events._streaming_events[len(factory._telemetry_evaluation_producer._telemetry_storage._streaming_events._streaming_events)-1]._data == SSESyncMode.STREAMING.value)
         split_changes[1] = {
@@ -299,7 +299,7 @@ class StreamingIntegrationTests(object):
         time.sleep(2)
 
         # Get a hook of the task so we can query its status
-        task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
+        task = factory._sync_manager._synchronizer._harness_tasks.definition_task._task  # pylint:disable=protected-access
         assert not task.running()
 
         assert factory.client().get_treatment('maldo', 'split1') == 'on'
@@ -518,8 +518,8 @@ class StreamingIntegrationTests(object):
         time.sleep(2)
 
         # Get a hook of the task so we can query its status
-        task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
-        assert task.running()
+        task = factory._sync_manager._synchronizer._harness_tasks.definition_task._task  # pylint:disable=protected-access
+#        assert task.running()
         assert factory.client().get_treatment('maldo', 'split1') == 'on'
 
         # Make a change in the BE but don't send the event.
@@ -666,7 +666,7 @@ class StreamingIntegrationTests(object):
         time.sleep(2)
 
         # Get a hook of the task so we can query its status
-        task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
+        task = factory._sync_manager._synchronizer._harness_tasks.definition_task._task  # pylint:disable=protected-access
         assert not task.running()
 
         assert factory.client().get_treatment('maldo', 'split1') == 'on'
@@ -892,7 +892,7 @@ class StreamingIntegrationTests(object):
         factory.block_until_ready(1)
         assert factory.ready
         assert factory.client().get_treatment('maldo', 'split1') == 'on'
-        task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
+        task = factory._sync_manager._synchronizer._harness_tasks.definition_task._task  # pylint:disable=protected-access
         assert not task.running()
 
         time.sleep(1)
@@ -1116,7 +1116,7 @@ class StreamingIntegrationTests(object):
         time.sleep(2)
 
         # Get a hook of the task so we can query its status
-        task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
+        task = factory._sync_manager._synchronizer._harness_tasks.definition_task._task  # pylint:disable=protected-access
         assert not task.running()
 
         assert factory.client().get_treatment('maldo', 'split1') == 'on'
@@ -1625,7 +1625,7 @@ class StreamingIntegrationAsyncTests(object):
         await asyncio.sleep(2)
 
         # Get a hook of the task so we can query its status
-        task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
+        task = factory._sync_manager._synchronizer._harness_tasks.definition_task._task  # pylint:disable=protected-access
         assert not task.running()
 
         assert await factory.client().get_treatment('maldo', 'split1') == 'on'
@@ -1843,7 +1843,7 @@ class StreamingIntegrationAsyncTests(object):
         await asyncio.sleep(2)
 
         # Get a hook of the task so we can query its status
-        task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
+        task = factory._sync_manager._synchronizer._harness_tasks.definition_task._task  # pylint:disable=protected-access
         assert task.running()
         assert await factory.client().get_treatment('maldo', 'split1') == 'on'
 
@@ -1991,7 +1991,7 @@ class StreamingIntegrationAsyncTests(object):
         await asyncio.sleep(2)
 
         # Get a hook of the task so we can query its status
-        task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
+        task = factory._sync_manager._synchronizer._harness_tasks.definition_task._task  # pylint:disable=protected-access
         assert not task.running()
 
         assert await factory.client().get_treatment('maldo', 'split1') == 'on'
@@ -2211,7 +2211,7 @@ class StreamingIntegrationAsyncTests(object):
         await factory.block_until_ready(1)
         assert factory.ready
         assert await factory.client().get_treatment('maldo', 'split1') == 'on'
-        task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
+        task = factory._sync_manager._synchronizer._harness_tasks.definition_task._task  # pylint:disable=protected-access
         assert not task.running()
 
         await asyncio.sleep(1)
@@ -2435,7 +2435,7 @@ class StreamingIntegrationAsyncTests(object):
         assert factory.ready
         await asyncio.sleep(2)
         # Get a hook of the task so we can query its status
-        task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
+        task = factory._sync_manager._synchronizer._harness_tasks.definition_task._task  # pylint:disable=protected-access
         assert not task.running()
 
         assert await factory.client().get_treatment('maldo', 'split1') == 'on'

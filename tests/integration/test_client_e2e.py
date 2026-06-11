@@ -47,10 +47,10 @@ from splitio.storage.pluggable import PluggableEventsStorage, PluggableImpressio
     PluggableSegmentStorageAsync, PluggableSplitStorageAsync, PluggableTelemetryStorageAsync, \
     PluggableRuleBasedSegmentsStorage, PluggableRuleBasedSegmentsStorageAsync
 from splitio.storage.adapters.redis import build, RedisAdapter, RedisAdapterAsync, build_async
-from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, RedisSynchronizer, SynchronizerAsync,\
+from harness_commons.sync.synchronizer import HarnessTasks, HarnessSynchronizers, Synchronizer, RedisSynchronizer, SynchronizerAsync,\
 RedisSynchronizerAsync
-from splitio.sync.manager import Manager, RedisManager, ManagerAsync, RedisManagerAsync
-from splitio.sync.synchronizer import PluggableSynchronizer, PluggableSynchronizerAsync
+from harness_commons.sync.manager import Manager, RedisManager, ManagerAsync, RedisManagerAsync
+from harness_commons.sync.synchronizer import PluggableSynchronizer, PluggableSynchronizerAsync
 from harness_commons.sync.telemetry import RedisTelemetrySubmitter, RedisTelemetrySubmitterAsync
 
 from tests.helpers.mockserver import SplitMockServer
@@ -1363,8 +1363,8 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
 
     def _synchronize_now(self):
         filename = os.path.join(os.path.dirname(__file__), 'files', 'split_changes_temp.json')
-        self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._filename = filename
-        self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync.synchronize_splits()
+        self.factory._sync_manager._synchronizer._harness_synchronizers._definition_sync._filename = filename
+        self.factory._sync_manager._synchronizer._harness_synchronizers._definition_sync.synchronize_definitions()
 
     def test_incorrect_file_e2e(self):
         """Test initialize factory with a incorrect file name."""
@@ -1853,14 +1853,14 @@ class PluggableNoneIntegrationTests(object):
         recorder = StandardRecorder(impmanager, storages['events'],
                                     storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, unique_keys_tracker=unique_keys_tracker, imp_counter=imp_counter)
 
-        synchronizers = SplitSynchronizers(None, None, None, None,
+        synchronizers = HarnessSynchronizers(None, None, None, None,
             impressions_count_sync,
             None,
             unique_keys_synchronizer,
             clear_filter_sync
         )
 
-        tasks = SplitTasks(None, None, None, None,
+        tasks = HarnessTasks(None, None, None, None,
             impressions_count_task,
             None,
             self.unique_keys_task,
@@ -2579,9 +2579,6 @@ class InMemoryEventsNotificationTests(object):
         
     def _ready_callback(self, metadata):
         self.ready_flag = True
-
-    def _timeout_callback(self, metadata):
-        self.timeout_flag = True
         
 class InMemoryEventsNotificationAsyncTests(object):
     """Inmemory storage-based events notification tests."""
@@ -2730,9 +2727,6 @@ class InMemoryEventsNotificationAsyncTests(object):
         
     async def _ready_callback(self, metadata):
         self.ready_flag = True
-
-    async def _timeout_callback(self, metadata):
-        self.timeout_flag = True
         
 class InMemoryIntegrationAsyncTests(object):
     """Inmemory storage-based integration tests."""
@@ -3690,8 +3684,8 @@ class LocalhostIntegrationAsyncTests(object):  # pylint: disable=too-few-public-
 
     async def _synchronize_now(self):
         filename = os.path.join(os.path.dirname(__file__), 'files', 'split_changes_temp.json')
-        self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync._filename = filename
-        await self.factory._sync_manager._synchronizer._split_synchronizers._feature_flag_sync.synchronize_splits()
+        self.factory._sync_manager._synchronizer._harness_synchronizers._definition_sync._filename = filename
+        await self.factory._sync_manager._synchronizer._harness_synchronizers._definition_sync.synchronize_definitions()
 
     @pytest.mark.asyncio
     async def test_incorrect_file_e2e(self):
@@ -4262,14 +4256,14 @@ class PluggableNoneIntegrationAsyncTests(object):
         recorder = StandardRecorderAsync(impmanager, storages['events'],
                                     storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, unique_keys_tracker=unique_keys_tracker, imp_counter=imp_counter)
 
-        synchronizers = SplitSynchronizers(None, None, None, None,
+        synchronizers = HarnessSynchronizers(None, None, None, None,
             impressions_count_sync,
             None,
             unique_keys_synchronizer,
             clear_filter_sync
         )
 
-        tasks = SplitTasks(None, None, None, None,
+        tasks = HarnessTasks(None, None, None, None,
             impressions_count_task,
             None,
             self.unique_keys_task,

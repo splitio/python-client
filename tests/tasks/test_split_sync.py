@@ -96,9 +96,9 @@ class SplitSynchronizationTests(object):
         get_changes.called = 0
 
         fetch_options = FetchOptions(True)
-        api.fetch_splits.side_effect = get_changes
+        api.fetch_definitions.side_effect = get_changes
         split_synchronizer = SplitSynchronizer(api, storage, rbs_storage)
-        task = split_sync.SplitSynchronizationTask(split_synchronizer.synchronize_splits, 0.5)
+        task = split_sync.SplitSynchronizationTask(split_synchronizer.synchronize_definitions, 0.5)
         task.start()
         time.sleep(0.7)
         assert task.is_running()
@@ -106,10 +106,11 @@ class SplitSynchronizationTests(object):
         task.stop(stop_event)
         stop_event.wait()
         assert not task.is_running()
-        assert api.fetch_splits.mock_calls[0][1][0] == -1
-        assert api.fetch_splits.mock_calls[0][1][2].cache_control_headers == True
-        assert api.fetch_splits.mock_calls[1][1][0] == 123
-        assert api.fetch_splits.mock_calls[1][1][2].cache_control_headers == True
+        print(api.fetch_definitions.mock_calls)
+        assert api.fetch_definitions.mock_calls[0][1][0] == -1
+        assert api.fetch_definitions.mock_calls[0][1][2].cache_control_headers == True
+        assert api.fetch_definitions.mock_calls[1][1][0] == 123
+        assert api.fetch_definitions.mock_calls[1][1][2].cache_control_headers == True
 
         inserted_split = storage.update.mock_calls[0][1][0][0]
         assert isinstance(inserted_split, Split)
@@ -131,11 +132,11 @@ class SplitSynchronizationTests(object):
                         'rbs': {'d': [], 't': -1, 's': -1}}
             raise APIException("something broke")
         run._calls = 0
-        api.fetch_splits.side_effect = run
+        api.fetch_definitions.side_effect = run
         storage.get_change_number.return_value = -1
 
         split_synchronizer = SplitSynchronizer(api, storage, rbs_storage)
-        task = split_sync.SplitSynchronizationTask(split_synchronizer.synchronize_splits, 0.5)
+        task = split_sync.SplitSynchronizationTask(split_synchronizer.synchronize_definitions, 0.5)
         task.start()
         time.sleep(0.1)
         assert task.is_running()
@@ -198,7 +199,7 @@ class SplitSynchronizationAsyncTests(object):
             else:
                 return {'ff': {'d': [],'s': 123, 't': 123}, 
                         'rbs': {'d': [], 't': -1, 's': -1}}                
-        api.fetch_splits = get_changes
+        api.fetch_definitions = get_changes
         get_changes.called = 0
         self.inserted_split = None
         async def update(split, deleted, change_number):
@@ -211,7 +212,7 @@ class SplitSynchronizationAsyncTests(object):
         
         fetch_options = FetchOptions(True)
         split_synchronizer = SplitSynchronizerAsync(api, storage, rbs_storage)
-        task = split_sync.SplitSynchronizationTaskAsync(split_synchronizer.synchronize_splits, 0.5)
+        task = split_sync.SplitSynchronizationTaskAsync(split_synchronizer.synchronize_definitions, 0.5)
         task.start()
         await asyncio.sleep(2)
         assert task.is_running()
@@ -239,14 +240,14 @@ class SplitSynchronizationAsyncTests(object):
                         'rbs': {'d': [], 't': -1, 's': -1}}
             raise APIException("something broke")
         run._calls = 0
-        api.fetch_splits = run
+        api.fetch_definitions = run
 
         async def get_change_number():
             return -1
         storage.get_change_number = get_change_number
 
         split_synchronizer = SplitSynchronizerAsync(api, storage, rbs_storage)
-        task = split_sync.SplitSynchronizationTaskAsync(split_synchronizer.synchronize_splits, 0.5)
+        task = split_sync.SplitSynchronizationTaskAsync(split_synchronizer.synchronize_definitions, 0.5)
         task.start()
         await asyncio.sleep(0.1)
         assert task.is_running()

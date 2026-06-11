@@ -9,7 +9,7 @@ from splitio.tasks import impressions_sync
 from harness_commons.storage import ImpressionStorage
 from harness_commons.models.impressions import Impression
 from harness_commons.api.impressions import ImpressionsAPI
-from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer, ImpressionSynchronizerAsync, ImpressionsCountSynchronizerAsync
+from harness_commons.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer, ImpressionSynchronizerAsync, ImpressionsCountSynchronizerAsync
 from harness_commons.engine.impressions.manager import Counter
 from splitio.optional.loaders import asyncio
 

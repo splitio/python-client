@@ -6,7 +6,7 @@ import json
 import copy
 import queue
 
-from splitio.util.backoff import Backoff
+from harness_commons.util.backoff import Backoff
 from harness_commons.api import APIException
 from harness_commons.api.commons import FetchOptions
 from harness_commons.storage import DefinitionStorage, RuleBasedSegmentsStorage
@@ -168,7 +168,7 @@ class SplitsSynchronizerTests(object):
 
     splits = copy.deepcopy(splits_raw)
 
-    def test_synchronize_splits_error(self, mocker):
+    def test_synchronize_definitions_error(self, mocker):
         """Test that if fetching splits fails at some_point, the task will continue running."""
         storage = mocker.Mock(spec=InMemorySplitStorage)
         rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
@@ -177,7 +177,7 @@ class SplitsSynchronizerTests(object):
         def run(x, y, c):
             raise APIException("something broke")
         run._calls = 0
-        api.fetch_splits.side_effect = run
+        api.fetch_definitions.side_effect = run
         storage.get_change_number.return_value = -1
         rbs_storage.get_change_number.return_value = -1
         
@@ -194,9 +194,9 @@ class SplitsSynchronizerTests(object):
         split_synchronizer = SplitSynchronizer(api, storage, rbs_storage)
 
         with pytest.raises(APIException):
-            split_synchronizer.synchronize_splits(1)
+            split_synchronizer.synchronize_definitions(1)
 
-    def test_synchronize_splits(self, mocker):
+    def test_synchronize_definitions(self, mocker):
         """Test split sync."""
         storage = mocker.Mock(spec=InMemorySplitStorage)
         rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
@@ -250,16 +250,16 @@ class SplitsSynchronizerTests(object):
                 }
                 
         get_changes.called = 0
-        api.fetch_splits.side_effect = get_changes
+        api.fetch_definitions.side_effect = get_changes
 
         split_synchronizer = SplitSynchronizer(api, storage, rbs_storage)
-        split_synchronizer.synchronize_splits()
+        split_synchronizer.synchronize_definitions()
     
-        assert api.fetch_splits.mock_calls[0][1][0] == -1
-        assert api.fetch_splits.mock_calls[0][1][2].cache_control_headers == True
-        assert api.fetch_splits.mock_calls[1][1][0] == 123
-        assert api.fetch_splits.mock_calls[1][1][1] == 123
-        assert api.fetch_splits.mock_calls[1][1][2].cache_control_headers == True
+        assert api.fetch_definitions.mock_calls[0][1][0] == -1
+        assert api.fetch_definitions.mock_calls[0][1][2].cache_control_headers == True
+        assert api.fetch_definitions.mock_calls[1][1][0] == 123
+        assert api.fetch_definitions.mock_calls[1][1][1] == 123
+        assert api.fetch_definitions.mock_calls[1][1][2].cache_control_headers == True
 
         inserted_split = storage.update.mock_calls[0][1][0][0]
         assert isinstance(inserted_split, Split)
@@ -296,16 +296,16 @@ class SplitsSynchronizerTests(object):
         get_changes.called = 0
 
         api = mocker.Mock()
-        api.fetch_splits.side_effect = get_changes
+        api.fetch_definitions.side_effect = get_changes
 
         split_synchronizer = SplitSynchronizer(api, storage, rbs_storage)
-        split_synchronizer.synchronize_splits(1)
+        split_synchronizer.synchronize_definitions(1)
 
         assert get_changes.called == 0
 
-    def test_synchronize_splits_cdn(self, mocker):
+    def test_synchronize_definitions_cdn(self, mocker):
         """Test split sync with bypassing cdn."""
-        mocker.patch('splitio.sync.split._ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES', new=3)
+        mocker.patch('harness_commons.sync.definition._ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES', new=3)
 
         storage = mocker.Mock(spec=InMemorySplitStorage)
         rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
@@ -362,7 +362,7 @@ class SplitsSynchronizerTests(object):
                         'rbs':  {"t": 666, "s": 666, "d": rbs_1}}
 
         get_changes.called = 0
-        api.fetch_splits.side_effect = get_changes
+        api.fetch_definitions.side_effect = get_changes
 
         class flag_set_filter():
             def should_filter():
@@ -377,18 +377,18 @@ class SplitsSynchronizerTests(object):
 
         split_synchronizer = SplitSynchronizer(api, storage, rbs_storage)
         split_synchronizer._backoff = Backoff(1, 1)
-        split_synchronizer.synchronize_splits()
+        split_synchronizer.synchronize_definitions()
 
-        assert api.fetch_splits.mock_calls[0][1][0] == -1
-        assert api.fetch_splits.mock_calls[0][1][2].cache_control_headers == True
-        assert api.fetch_splits.mock_calls[1][1][0] == 123
-        assert api.fetch_splits.mock_calls[1][1][2].cache_control_headers == True
+        assert api.fetch_definitions.mock_calls[0][1][0] == -1
+        assert api.fetch_definitions.mock_calls[0][1][2].cache_control_headers == True
+        assert api.fetch_definitions.mock_calls[1][1][0] == 123
+        assert api.fetch_definitions.mock_calls[1][1][2].cache_control_headers == True
 
         split_synchronizer._backoff = Backoff(1, 0.1)
-        split_synchronizer.synchronize_splits(12345)
-        assert api.fetch_splits.mock_calls[3][1][0] == 1234
-        assert api.fetch_splits.mock_calls[3][1][2].cache_control_headers == True
-        assert len(api.fetch_splits.mock_calls) == 8 # 2 ok + BACKOFF(2 since==till + 2 re-attempts) + CDN(2 since==till)
+        split_synchronizer.synchronize_definitions(12345)
+        assert api.fetch_definitions.mock_calls[3][1][0] == 1234
+        assert api.fetch_definitions.mock_calls[3][1][2].cache_control_headers == True
+        assert len(api.fetch_definitions.mock_calls) == 8 # 2 ok + BACKOFF(2 since==till + 2 re-attempts) + CDN(2 since==till)
 
         inserted_split = storage.update.mock_calls[0][1][0][0]
         assert isinstance(inserted_split, Split)
@@ -397,7 +397,7 @@ class SplitsSynchronizerTests(object):
         assert inserted_rbs.excluded.get_excluded_keys() == ["mauro@split.io","gaston@split.io"]
 
         split_synchronizer._backoff = Backoff(1, 0.1)
-        split_synchronizer.synchronize_splits(None, 666)
+        split_synchronizer.synchronize_definitions(None, 666)
         inserted_rbs = rbs_storage.update.mock_calls[8][1][0][0]
         assert inserted_rbs.excluded.get_excluded_keys() == ['bilal@split.io']
         
@@ -433,20 +433,20 @@ class SplitsSynchronizerTests(object):
             return { 'ff': { 'd': splits4, 's': 12438, 't': 12438 },
                         'rbs':  {'t': 12438, 's': 12438, 'd': []}}                        
         get_changes.called = 0
-        api.fetch_splits.side_effect = get_changes
+        api.fetch_definitions.side_effect = get_changes
 
         split_synchronizer = SplitSynchronizer(api, storage, rbs_storage)
         split_synchronizer._backoff = Backoff(1, 1)
-        split_synchronizer.synchronize_splits()
+        split_synchronizer.synchronize_definitions()
         assert isinstance(storage.get('some_name'), Split)
 
-        split_synchronizer.synchronize_splits(124)
+        split_synchronizer.synchronize_definitions(124)
         assert storage.get('some_name') == None
 
-        split_synchronizer.synchronize_splits(12434)
+        split_synchronizer.synchronize_definitions(12434)
         assert isinstance(storage.get('some_name'), Split)
 
-        split_synchronizer.synchronize_splits(12438)
+        split_synchronizer.synchronize_definitions(12438)
         assert storage.get('new_name') == None
 
     def test_sync_flag_sets_without_config_sets(self, mocker):
@@ -479,20 +479,20 @@ class SplitsSynchronizerTests(object):
             return { 'ff': { 'd': splits4, 's': 12438, 't': 12438 },
                         'rbs':  {"t": 12438, "s": 12438, "d": []}}                        
         get_changes.called = 0
-        api.fetch_splits.side_effect = get_changes
+        api.fetch_definitions.side_effect = get_changes
 
         split_synchronizer = SplitSynchronizer(api, storage, rbs_storage)
         split_synchronizer._backoff = Backoff(1, 1)
-        split_synchronizer.synchronize_splits()
+        split_synchronizer.synchronize_definitions()
         assert isinstance(storage.get('some_name'), Split)
 
-        split_synchronizer.synchronize_splits(124)
+        split_synchronizer.synchronize_definitions(124)
         assert isinstance(storage.get('some_name'), Split)
 
-        split_synchronizer.synchronize_splits(12434)
+        split_synchronizer.synchronize_definitions(12434)
         assert isinstance(storage.get('some_name'), Split)
 
-        split_synchronizer.synchronize_splits(12438)
+        split_synchronizer.synchronize_definitions(12438)
         assert isinstance(storage.get('third_split'), Split)
 
 class SplitsSynchronizerAsyncTests(object):
@@ -501,7 +501,7 @@ class SplitsSynchronizerAsyncTests(object):
     splits = copy.deepcopy(splits_raw)
 
     @pytest.mark.asyncio
-    async def test_synchronize_splits_error(self, mocker):
+    async def test_synchronize_definitions_error(self, mocker):
         """Test that if fetching splits fails at some_point, the task will continue running."""
         storage = mocker.Mock(spec=InMemorySplitStorageAsync)
         rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
@@ -510,7 +510,7 @@ class SplitsSynchronizerAsyncTests(object):
         async def run(x, y, c):
             raise APIException("something broke")
         run._calls = 0
-        api.fetch_splits = run
+        api.fetch_definitions = run
 
         async def get_change_number(*args):
             return -1
@@ -530,10 +530,10 @@ class SplitsSynchronizerAsyncTests(object):
         split_synchronizer = SplitSynchronizerAsync(api, storage, rbs_storage)
 
         with pytest.raises(APIException):
-            await split_synchronizer.synchronize_splits(1)
+            await split_synchronizer.synchronize_definitions(1)
 
     @pytest.mark.asyncio
-    async def test_synchronize_splits(self, mocker):
+    async def test_synchronize_definitions(self, mocker):
         """Test split sync."""
         storage = mocker.Mock(spec=InMemorySplitStorageAsync)
         rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
@@ -613,11 +613,11 @@ class SplitsSynchronizerAsyncTests(object):
                     }               
                 }
         get_changes.called = 0
-        api.fetch_splits = get_changes
+        api.fetch_definitions = get_changes
         api.clear_storage.return_value = False
 
         split_synchronizer = SplitSynchronizerAsync(api, storage, rbs_storage)
-        await split_synchronizer.synchronize_splits()
+        await split_synchronizer.synchronize_definitions()
 
         assert (-1, FetchOptions(True)._cache_control_headers) == (self.change_number_1, self.fetch_options_1._cache_control_headers)
         assert (123, FetchOptions(True)._cache_control_headers) == (self.change_number_2, self.fetch_options_2._cache_control_headers)
@@ -656,16 +656,16 @@ class SplitsSynchronizerAsyncTests(object):
             return None
         get_changes.called = 0
         api = mocker.Mock()
-        api.fetch_splits = get_changes
+        api.fetch_definitions = get_changes
 
         split_synchronizer = SplitSynchronizerAsync(api, storage, rbs_storage)
-        await split_synchronizer.synchronize_splits(1)
+        await split_synchronizer.synchronize_definitions(1)
         assert get_changes.called == 0
 
     @pytest.mark.asyncio
-    async def test_synchronize_splits_cdn(self, mocker):
+    async def test_synchronize_definitions_cdn(self, mocker):
         """Test split sync with bypassing cdn."""
-        mocker.patch('splitio.sync.split._ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES', new=3)
+        mocker.patch('harness_commons.sync.definition._ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES', new=3)
         storage = mocker.Mock(spec=InMemorySplitStorageAsync)
         rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
         async def change_number_mock():
@@ -744,7 +744,7 @@ class SplitsSynchronizerAsyncTests(object):
                         'rbs':  {"t": 666, "s": 666, "d": rbs_1}}
     
         get_changes.called = 0
-        api.fetch_splits = get_changes
+        api.fetch_definitions = get_changes
 
         class flag_set_filter():
             def should_filter():
@@ -769,13 +769,13 @@ class SplitsSynchronizerAsyncTests(object):
 
         split_synchronizer = SplitSynchronizerAsync(api, storage, rbs_storage)
         split_synchronizer._backoff = Backoff(1, 1)
-        await split_synchronizer.synchronize_splits()
+        await split_synchronizer.synchronize_definitions()
 
         assert (-1, FetchOptions(True).cache_control_headers) == (self.change_number_1, self.fetch_options_1.cache_control_headers)
         assert (123, FetchOptions(True).cache_control_headers) == (self.change_number_2, self.fetch_options_2.cache_control_headers)
 
         split_synchronizer._backoff = Backoff(1, 0.1)
-        await split_synchronizer.synchronize_splits(12345)
+        await split_synchronizer.synchronize_definitions(12345)
         assert (12345, True, 1234) == (self.change_number_3, self.fetch_options_3.cache_control_headers, self.fetch_options_3.change_number)
         assert get_changes.called == 8 # 2 ok + BACKOFF(2 since==till + 2 re-attempts) + CDN(2 since==till)
 
@@ -786,7 +786,7 @@ class SplitsSynchronizerAsyncTests(object):
         assert inserted_rbs.excluded.get_excluded_keys() == ["mauro@split.io","gaston@split.io"]
 
         split_synchronizer._backoff = Backoff(1, 0.1)
-        await split_synchronizer.synchronize_splits(None, 666)
+        await split_synchronizer.synchronize_definitions(None, 666)
         inserted_rbs = self.parsed_rbs[0]
         assert inserted_rbs.excluded.get_excluded_keys() == ['bilal@split.io']
         
@@ -823,20 +823,20 @@ class SplitsSynchronizerAsyncTests(object):
                         'rbs':  {'t': 12438, 's': 12438, 'd': []}}                        
 
         get_changes.called = 0
-        api.fetch_splits = get_changes
+        api.fetch_definitions = get_changes
 
         split_synchronizer = SplitSynchronizerAsync(api, storage, rbs_storage)
         split_synchronizer._backoff = Backoff(1, 1)
-        await split_synchronizer.synchronize_splits()
+        await split_synchronizer.synchronize_definitions()
         assert isinstance(await storage.get('some_name'), Split)
 
-        await split_synchronizer.synchronize_splits(124)
+        await split_synchronizer.synchronize_definitions(124)
         assert await storage.get('some_name') == None
 
-        await split_synchronizer.synchronize_splits(12434)
+        await split_synchronizer.synchronize_definitions(12434)
         assert isinstance(await storage.get('some_name'), Split)
 
-        await split_synchronizer.synchronize_splits(12438)
+        await split_synchronizer.synchronize_definitions(12438)
         assert await storage.get('new_name') == None
 
     @pytest.mark.asyncio
@@ -870,20 +870,20 @@ class SplitsSynchronizerAsyncTests(object):
             return { 'ff': { 'd': splits4, 's': 12438, 't': 12438 },
                         'rbs':  {"t": 12438, "s": 12438, "d": []}}                        
         get_changes.called = 0
-        api.fetch_splits.side_effect = get_changes
+        api.fetch_definitions.side_effect = get_changes
 
         split_synchronizer = SplitSynchronizerAsync(api, storage, rbs_storage)
         split_synchronizer._backoff = Backoff(1, 1)
-        await split_synchronizer.synchronize_splits()
+        await split_synchronizer.synchronize_definitions()
         assert isinstance(await storage.get('new_split'), Split)
 
-        await split_synchronizer.synchronize_splits(124)
+        await split_synchronizer.synchronize_definitions(124)
         assert isinstance(await storage.get('new_split'), Split)
 
-        await split_synchronizer.synchronize_splits(12434)
+        await split_synchronizer.synchronize_definitions(12434)
         assert isinstance(await storage.get('new_split'), Split)
 
-        await split_synchronizer.synchronize_splits(12438)
+        await split_synchronizer.synchronize_definitions(12438)
         assert isinstance(await storage.get('third_split'), Split)
 
 class LocalSplitsSynchronizerTests(object):
@@ -891,16 +891,16 @@ class LocalSplitsSynchronizerTests(object):
 
     payload = copy.deepcopy(json_body)
 
-    def test_synchronize_splits_error(self, mocker):
+    def test_synchronize_definitions_error(self, mocker):
         """Test that if fetching splits fails at some_point, the task will continue running."""
         storage = mocker.Mock(spec=DefinitionStorage)
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         split_synchronizer = LocalSplitSynchronizer("/incorrect_file", storage, rbs_storage)
 
         with pytest.raises(Exception):
-            split_synchronizer.synchronize_splits(1)
+            split_synchronizer.synchronize_definitions(1)
 
-    def test_synchronize_splits(self, mocker):
+    def test_synchronize_definitions(self, mocker):
         """Test split sync."""
         events_queue = queue.Queue()
         storage = InMemorySplitStorage(events_queue)
@@ -912,28 +912,28 @@ class LocalSplitsSynchronizerTests(object):
         split_synchronizer = LocalSplitSynchronizer("split.json", storage, rbs_storage, LocalhostMode.JSON)
         split_synchronizer._read_feature_flags_from_json_file = read_splits_from_json_file
 
-        split_synchronizer.synchronize_splits()
+        split_synchronizer.synchronize_definitions()
         inserted_split = storage.get(self.payload["ff"]["d"][0]['name'])
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
 
         # Should sync when changenumber is not changed
         self.payload["ff"]["d"][0]['killed'] = True
-        split_synchronizer.synchronize_splits()
+        split_synchronizer.synchronize_definitions()
         inserted_split = storage.get(self.payload["ff"]["d"][0]['name'])
         assert inserted_split.killed
 
         # Should not sync when changenumber is less than stored
         self.payload["ff"]["t"] = 122
         self.payload["ff"]["d"][0]['killed'] = False
-        split_synchronizer.synchronize_splits()
+        split_synchronizer.synchronize_definitions()
         inserted_split = storage.get(self.payload["ff"]["d"][0]['name'])
         assert inserted_split.killed
 
         # Should sync when changenumber is higher than stored
         self.payload["ff"]["t"] = 1675095324999
         split_synchronizer._current_json_sha = "-1"
-        split_synchronizer.synchronize_splits()
+        split_synchronizer.synchronize_definitions()
         inserted_split = storage.get(self.payload["ff"]["d"][0]['name'])
         assert inserted_split.killed == False
 
@@ -941,7 +941,7 @@ class LocalSplitsSynchronizerTests(object):
         self.payload["ff"]["t"] = -1
         split_synchronizer._current_json_sha = "-1"
         self.payload["ff"]["d"][0]['killed'] = True
-        split_synchronizer.synchronize_splits()
+        split_synchronizer.synchronize_definitions()
         inserted_split = storage.get(self.payload["ff"]["d"][0]['name'])
         assert inserted_split.killed == True
 
@@ -976,16 +976,16 @@ class LocalSplitsSynchronizerTests(object):
         split_synchronizer = LocalSplitSynchronizer("split.json", storage, rbs_storage, LocalhostMode.JSON)
         split_synchronizer._read_feature_flags_from_json_file = read_feature_flags_from_json_file
 
-        split_synchronizer.synchronize_splits()
+        split_synchronizer.synchronize_definitions()
         assert isinstance(storage.get('some_name'), Split)
 
-        split_synchronizer.synchronize_splits(124)
+        split_synchronizer.synchronize_definitions(124)
         assert storage.get('some_name') == None
 
-        split_synchronizer.synchronize_splits(12434)
+        split_synchronizer.synchronize_definitions(12434)
         assert isinstance(storage.get('some_name'), Split)
 
-        split_synchronizer.synchronize_splits(12438)
+        split_synchronizer.synchronize_definitions(12438)
         assert storage.get('new_name') == None
 
     def test_sync_flag_sets_without_config_sets(self, mocker):
@@ -1019,16 +1019,16 @@ class LocalSplitsSynchronizerTests(object):
         split_synchronizer = LocalSplitSynchronizer("split.json", storage, rbs_storage, LocalhostMode.JSON)
         split_synchronizer._read_feature_flags_from_json_file = read_feature_flags_from_json_file
 
-        split_synchronizer.synchronize_splits()
+        split_synchronizer.synchronize_definitions()
         assert isinstance(storage.get('new_split'), Split)
 
-        split_synchronizer.synchronize_splits(124)
+        split_synchronizer.synchronize_definitions(124)
         assert isinstance(storage.get('new_split'), Split)
 
-        split_synchronizer.synchronize_splits(12434)
+        split_synchronizer.synchronize_definitions(12434)
         assert isinstance(storage.get('new_split'), Split)
 
-        split_synchronizer.synchronize_splits(12438)
+        split_synchronizer.synchronize_definitions(12438)
         assert isinstance(storage.get('third_split'), Split)
 
     def test_reading_json(self, mocker):
@@ -1040,7 +1040,7 @@ class LocalSplitsSynchronizerTests(object):
         storage = InMemorySplitStorage(events_queue)
         rbs_storage = InMemoryRuleBasedSegmentStorage(events_queue)
         split_synchronizer = LocalSplitSynchronizer("./splits.json", storage, rbs_storage, LocalhostMode.JSON)
-        split_synchronizer.synchronize_splits()
+        split_synchronizer.synchronize_definitions()
 
         inserted_split = storage.get(self.payload['ff']['d'][0]['name'])
         assert isinstance(inserted_split, Split)
@@ -1252,17 +1252,17 @@ class LocalSplitsSynchronizerAsyncTests(object):
     payload = copy.deepcopy(json_body)
 
     @pytest.mark.asyncio
-    async def test_synchronize_splits_error(self, mocker):
+    async def test_synchronize_definitions_error(self, mocker):
         """Test that if fetching splits fails at some_point, the task will continue running."""
         storage = mocker.Mock(spec=DefinitionStorage)
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         split_synchronizer = LocalSplitSynchronizerAsync("/incorrect_file", storage, rbs_storage)
 
         with pytest.raises(Exception):
-            await split_synchronizer.synchronize_splits(1)
+            await split_synchronizer.synchronize_definitions(1)
 
     @pytest.mark.asyncio
-    async def test_synchronize_splits(self, mocker):
+    async def test_synchronize_definitions(self, mocker):
         """Test split sync."""
         internal_events_queue = asyncio.Queue()
         storage = InMemorySplitStorageAsync(internal_events_queue)
@@ -1274,28 +1274,28 @@ class LocalSplitsSynchronizerAsyncTests(object):
         split_synchronizer = LocalSplitSynchronizerAsync("split.json", storage, rbs_storage, LocalhostMode.JSON)
         split_synchronizer._read_feature_flags_from_json_file = read_splits_from_json_file
 
-        await split_synchronizer.synchronize_splits()
+        await split_synchronizer.synchronize_definitions()
         inserted_split = await storage.get(self.payload["ff"]["d"][0]['name'])
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
 
         # Should sync when changenumber is not changed
         self.payload["ff"]["d"][0]['killed'] = True
-        await split_synchronizer.synchronize_splits()
+        await split_synchronizer.synchronize_definitions()
         inserted_split = await storage.get(self.payload["ff"]["d"][0]['name'])
         assert inserted_split.killed
 
         # Should not sync when changenumber is less than stored
         self.payload["ff"]["t"] = 122
         self.payload["ff"]["d"][0]['killed'] = False
-        await split_synchronizer.synchronize_splits()
+        await split_synchronizer.synchronize_definitions()
         inserted_split = await storage.get(self.payload["ff"]["d"][0]['name'])
         assert inserted_split.killed
 
         # Should sync when changenumber is higher than stored
         self.payload["ff"]["t"] = 1675095324999
         split_synchronizer._current_json_sha = "-1"
-        await split_synchronizer.synchronize_splits()
+        await split_synchronizer.synchronize_definitions()
         inserted_split = await storage.get(self.payload["ff"]["d"][0]['name'])
         assert inserted_split.killed == False
 
@@ -1303,7 +1303,7 @@ class LocalSplitsSynchronizerAsyncTests(object):
         self.payload["ff"]["t"] = -1
         split_synchronizer._current_json_sha = "-1"
         self.payload["ff"]["d"][0]['killed'] = True
-        await split_synchronizer.synchronize_splits()
+        await split_synchronizer.synchronize_definitions()
         inserted_split = await storage.get(self.payload["ff"]["d"][0]['name'])
         assert inserted_split.killed == True
 
@@ -1339,16 +1339,16 @@ class LocalSplitsSynchronizerAsyncTests(object):
         split_synchronizer = LocalSplitSynchronizerAsync("split.json", storage, rbs_storage, LocalhostMode.JSON)
         split_synchronizer._read_feature_flags_from_json_file = read_feature_flags_from_json_file
 
-        await split_synchronizer.synchronize_splits()
+        await split_synchronizer.synchronize_definitions()
         assert isinstance(await storage.get('some_name'), Split)
 
-        await split_synchronizer.synchronize_splits(124)
+        await split_synchronizer.synchronize_definitions(124)
         assert await storage.get('some_name') == None
 
-        await split_synchronizer.synchronize_splits(12434)
+        await split_synchronizer.synchronize_definitions(12434)
         assert isinstance(await storage.get('some_name'), Split)
 
-        await split_synchronizer.synchronize_splits(12438)
+        await split_synchronizer.synchronize_definitions(12438)
         assert await storage.get('new_name') == None
 
     @pytest.mark.asyncio
@@ -1382,16 +1382,16 @@ class LocalSplitsSynchronizerAsyncTests(object):
         split_synchronizer = LocalSplitSynchronizerAsync("split.json", storage, rbs_storage, LocalhostMode.JSON)
         split_synchronizer._read_feature_flags_from_json_file = read_feature_flags_from_json_file
 
-        await split_synchronizer.synchronize_splits()
+        await split_synchronizer.synchronize_definitions()
         assert isinstance(await storage.get('new_split'), Split)
 
-        await split_synchronizer.synchronize_splits(124)
+        await split_synchronizer.synchronize_definitions(124)
         assert isinstance(await storage.get('new_split'), Split)
 
-        await split_synchronizer.synchronize_splits(12434)
+        await split_synchronizer.synchronize_definitions(12434)
         assert isinstance(await storage.get('new_split'), Split)
 
-        await split_synchronizer.synchronize_splits(12438)
+        await split_synchronizer.synchronize_definitions(12438)
         assert isinstance(await storage.get('third_split'), Split)
 
     @pytest.mark.asyncio
@@ -1403,7 +1403,7 @@ class LocalSplitsSynchronizerAsyncTests(object):
         storage = InMemorySplitStorageAsync(internal_events_queue)
         rbs_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
         split_synchronizer = LocalSplitSynchronizerAsync("./splits.json", storage, rbs_storage, LocalhostMode.JSON)
-        await split_synchronizer.synchronize_splits()
+        await split_synchronizer.synchronize_definitions()
 
         inserted_split = await storage.get(self.payload['ff']['d'][0]['name'])
         assert isinstance(inserted_split, Split)
