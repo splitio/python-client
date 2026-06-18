@@ -59,15 +59,15 @@ from harness_commons.api.impressions import ImpressionsAPI, ImpressionsAPIAsync
 from harness_commons.api.events import EventsAPI, EventsAPIAsync
 from harness_commons.api.auth import AuthAPI, AuthAPIAsync
 from harness_commons.api.telemetry import TelemetryAPI, TelemetryAPIAsync
-from splitio.util.time import get_current_epoch_time_ms
+from harness_commons.util.time import get_current_epoch_time_ms
 from splitio.spec import SPEC_VERSION
 
 # Tasks
 from splitio.tasks.split_sync import SplitSynchronizationTask, SplitSynchronizationTaskAsync
-from splitio.tasks.segment_sync import SegmentSynchronizationTask, SegmentSynchronizationTaskAsync
-from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask,\
+from harness_commons.tasks.segment_sync import SegmentSynchronizationTask, SegmentSynchronizationTaskAsync
+from harness_commons.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask,\
     ImpressionsCountSyncTaskAsync, ImpressionsSyncTaskAsync
-from splitio.tasks.events_sync import EventsSyncTask, EventsSyncTaskAsync
+from harness_commons.tasks.events_sync import EventsSyncTask, EventsSyncTaskAsync
 from harness_commons.tasks.telemetry_sync import TelemetrySyncTask, TelemetrySyncTaskAsync
 
 # Synchronizer

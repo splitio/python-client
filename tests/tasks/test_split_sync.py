@@ -9,6 +9,7 @@ from splitio.tasks import split_sync
 from harness_commons.storage import DefinitionStorage, RuleBasedSegmentsStorage
 from splitio.models.splits import Split
 from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync
+from splitio.tasks.split_sync import SplitSynchronizationTask, SplitSynchronizationTaskAsync
 from splitio.optional.loaders import asyncio
 
 splits = [{
@@ -45,7 +46,6 @@ splits = [{
         }
     ]
 }]
-
 
 class SplitSynchronizationTests(object):
     """Split synchronization task test cases."""
@@ -98,7 +98,7 @@ class SplitSynchronizationTests(object):
         fetch_options = FetchOptions(True)
         api.fetch_definitions.side_effect = get_changes
         split_synchronizer = SplitSynchronizer(api, storage, rbs_storage)
-        task = split_sync.SplitSynchronizationTask(split_synchronizer.synchronize_definitions, 0.5)
+        task = SplitSynchronizationTask(split_synchronizer.synchronize_definitions, 0.5)
         task.start()
         time.sleep(0.7)
         assert task.is_running()
@@ -106,7 +106,6 @@ class SplitSynchronizationTests(object):
         task.stop(stop_event)
         stop_event.wait()
         assert not task.is_running()
-        print(api.fetch_definitions.mock_calls)
         assert api.fetch_definitions.mock_calls[0][1][0] == -1
         assert api.fetch_definitions.mock_calls[0][1][2].cache_control_headers == True
         assert api.fetch_definitions.mock_calls[1][1][0] == 123
@@ -136,7 +135,7 @@ class SplitSynchronizationTests(object):
         storage.get_change_number.return_value = -1
 
         split_synchronizer = SplitSynchronizer(api, storage, rbs_storage)
-        task = split_sync.SplitSynchronizationTask(split_synchronizer.synchronize_definitions, 0.5)
+        task = SplitSynchronizationTask(split_synchronizer.synchronize_definitions, 0.5)
         task.start()
         time.sleep(0.1)
         assert task.is_running()
@@ -212,7 +211,7 @@ class SplitSynchronizationAsyncTests(object):
         
         fetch_options = FetchOptions(True)
         split_synchronizer = SplitSynchronizerAsync(api, storage, rbs_storage)
-        task = split_sync.SplitSynchronizationTaskAsync(split_synchronizer.synchronize_definitions, 0.5)
+        task = SplitSynchronizationTaskAsync(split_synchronizer.synchronize_definitions, 0.5)
         task.start()
         await asyncio.sleep(2)
         assert task.is_running()
@@ -247,7 +246,7 @@ class SplitSynchronizationAsyncTests(object):
         storage.get_change_number = get_change_number
 
         split_synchronizer = SplitSynchronizerAsync(api, storage, rbs_storage)
-        task = split_sync.SplitSynchronizationTaskAsync(split_synchronizer.synchronize_definitions, 0.5)
+        task = SplitSynchronizationTaskAsync(split_synchronizer.synchronize_definitions, 0.5)
         task.start()
         await asyncio.sleep(0.1)
         assert task.is_running()
