@@ -6,7 +6,7 @@ This project provides Python programs access to the `Split.io <http://split.io/>
 Installation and Requirements
 -----------------------------
 
-``splitio_client`` supports Python 3 (3.3 or later). Stable versions can be installed from `PyPI <https://pypi.python.org>`_ using pip: ::
+``splitio_client`` supports Python 3 (3.7 or later). Stable versions can be installed from `PyPI <https://pypi.python.org>`_ using pip: ::
 
   pip install splitio_client
 
@@ -14,95 +14,141 @@ and development versions are installed directly from the `Github <https://github
 
   pip install -e git+git@github.com:splitio/python-client.git@development#egg=splitio_client
 
+Optional extras can be installed for Redis, asyncio, or Kerberos support: ::
+
+  pip install splitio_client[redis]
+  pip install splitio_client[asyncio]
+  pip install splitio_client[kerberos]
+
 Quickstart
 ----------
 
-Before you begin, make sure that you have an **API key** for the Split.io services. Consult the Split.io documentation on how to get an API key for any of your environments.
+Before you begin, make sure that you have an **SDK Key** for the Split.io services. Consult the Split.io documentation on how to get an SDK key for any of your environments.
 
 The main entry point for this project is the ``get_factory`` function. This function creates Split clients that keep the cached information up-to-date with periodic requests to the SDK API. Impressions (which treatments were given to each user) and metrics are also sent periodically to the Split events backend.
 
-The following snippet shows you how to create a basic client using the default configuration, and request a treatment for user: ::
+The following snippet shows you how to create a basic client using the default configuration, and request a treatment for a user: ::
 
   >>> from splitio import get_factory
-  >>> factory = get_factory('some_api_key')
+  >>> factory = get_factory('YOUR_SDK_KEY')
+  >>> factory.block_until_ready(5)
   >>> client = factory.client()
   >>> client.get_treatment('some_user', 'some_feature')
   'SOME_TREATMENT'
 
+For asyncio environments: ::
+
+  >>> from splitio import get_factory_async
+  >>> factory = await get_factory_async('YOUR_SDK_KEY')
+  >>> await factory.block_until_ready(5)
+  >>> client = factory.client()
+  >>> await client.get_treatment('some_user', 'some_feature')
+  'SOME_TREATMENT'
+
 Bucketing key
 -------------
-In advanced mode the key can be set as two different parts, one of them just to match the condition and the other one to calculate the treatment bucket ::
+In advanced mode the key can be set as two different parts, one of them just to match the condition and the other one to calculate the treatment bucket: ::
 
   >>> from splitio import get_factory, Key
   >>> user = 'some_user_or_anonymous'
   >>> bucketing_key = 'some_random_string'
   >>> split_key = Key(user, bucketing_key)
-  >>> factory = get_factory('API_KEY')
+  >>> factory = get_factory('YOUR_SDK_KEY')
+  >>> factory.block_until_ready(5)
   >>> client = factory.client()
   >>> client.get_treatment(split_key, 'some_feature')
 
 Manager API
 -----------
-Manager API is very useful to get a representation (view) of cached splits: ::
+Manager API is useful to get a representation (view) of cached feature flags: ::
 
   >>> from splitio import get_factory
-  >>> factory = get_factory('API_KEY')
+  >>> factory = get_factory('YOUR_SDK_KEY')
+  >>> factory.block_until_ready(5)
   >>> manager = factory.manager()
 
 Available methods:
 
-**splits():** Returns a list of SplitView instance ::
+**splits():** Returns a list of SplitView instances: ::
+
   >>> manager.splits()
 
-**split(name):** Returns a SplitView instance ::
-  >>> manager.split('some_test_name')
+**split(name):** Returns a SplitView instance: ::
 
-**split_names():** Returns a list of Split names (String) ::
+  >>> manager.split('some_feature_flag')
+
+**split_names():** Returns a list of feature flag names (String): ::
+
   >>> manager.split_names()
+
+Client API
+----------
+
+The client provides the following methods for evaluating feature flags:
+
+**get_treatment(key, feature_flag_name, attributes=None, evaluation_options=None):** Returns a treatment string for a single flag.
+
+**get_treatment_with_config(key, feature_flag_name, attributes=None, evaluation_options=None):** Returns a treatment string and configuration for a single flag.
+
+**get_treatments(key, feature_flag_names, attributes=None, evaluation_options=None):** Returns treatments for multiple flags.
+
+**get_treatments_with_config(key, feature_flag_names, attributes=None, evaluation_options=None):** Returns treatments and configurations for multiple flags.
+
+**get_treatments_by_flag_set(key, flag_set, attributes=None, evaluation_options=None):** Returns treatments for all flags in a flag set.
+
+**get_treatments_by_flag_sets(key, flag_sets, attributes=None, evaluation_options=None):** Returns treatments for all flags in multiple flag sets.
+
+**get_treatments_with_config_by_flag_set(key, flag_set, attributes=None, evaluation_options=None):** Returns treatments and configs for all flags in a flag set.
+
+**get_treatments_with_config_by_flag_sets(key, flag_sets, attributes=None, evaluation_options=None):** Returns treatments and configs for all flags in multiple flag sets.
+
+**track(key, traffic_type, event_type, value=None, properties=None):** Tracks custom events.
+
+**destroy():** Gracefully shuts down the client and flushes pending data.
 
 Client configuration
 --------------------
 
-It's possible to control certain aspects of the client behaviour by supplying a ``config`` dictionary. For instance, the following snippets shows you how to set the segment update interval to 10 seconds: ::
+It's possible to control certain aspects of the client behaviour by supplying a ``config`` dictionary. For instance, the following snippet shows you how to set the segment update interval to 10 seconds: ::
 
   >>> from splitio import get_factory
   >>> config = {'segmentsRefreshRate': 10}
-  >>> factory = get_factory('some_api_key', config=config)
+  >>> factory = get_factory('YOUR_SDK_KEY', config=config)
+  >>> factory.block_until_ready(5)
   >>> client = factory.client()
 
 All the possible configuration options are:
 
-+------------------------+------+--------------------------------------------------------+---------+
-| Key                    | Type | Description                                            | Default |
-+========================+======+========================================================+=========+
-| connectionTimeout      | int  | The timeout for HTTP connections in milliseconds.      | 1500    |
-+------------------------+------+--------------------------------------------------------+---------+
-| readTimeout            | int  | The read timeout for HTTP connections in milliseconds. | 1500    |
-+------------------------+------+--------------------------------------------------------+---------+
-| featuresRefreshRate    | int  | The features (splits) update refresh period in         | 5      |
-|                        |      | seconds.                                               |         |
-+------------------------+------+--------------------------------------------------------+---------+
-| segmentsRefreshRate    | int  | The segments update refresh period in seconds.         | 60      |
-+------------------------+------+--------------------------------------------------------+---------+
-| metricsRefreshRate     | int  | The metrics report period in seconds                   | 60      |
-+------------------------+------+--------------------------------------------------------+---------+
-| impressionsRefreshRate | int  | The impressions report period in seconds               | 60      |
-+------------------------+------+--------------------------------------------------------+---------+
-| ready                  | int  | How long to wait (in milliseconds) for the features    |         |
-|                        |      | and segments information to be available. If the       |         |
-|                        |      | timeout is exceeded, a ``TimeoutException`` will be    |         |
-|                        |      | raised. If value is 0, the constructor will return     |         |
-|                        |      | immediately but not all the information might be       |         |
-|                        |      | available right away.                                  |         |
-+------------------------+------+--------------------------------------------------------+---------+
++----------------------------+------+--------------------------------------------------------+-----------+
+| Key                        | Type | Description                                            | Default   |
++============================+======+========================================================+===========+
+| connectionTimeout          | int  | The timeout for HTTP connections in seconds.           | 15        |
++----------------------------+------+--------------------------------------------------------+-----------+
+| featuresRefreshRate        | int  | The feature flags update refresh period in seconds.    | 30        |
++----------------------------+------+--------------------------------------------------------+-----------+
+| segmentsRefreshRate        | int  | The segments update refresh period in seconds.         | 30        |
++----------------------------+------+--------------------------------------------------------+-----------+
+| impressionsRefreshRate     | int  | The impressions report period in seconds.              | 300       |
++----------------------------+------+--------------------------------------------------------+-----------+
+| eventsPushRate             | int  | The events report period in seconds.                   | 10        |
++----------------------------+------+--------------------------------------------------------+-----------+
+| impressionsMode            | str  | Impressions tracking mode: OPTIMIZED, DEBUG, or NONE.  | OPTIMIZED |
++----------------------------+------+--------------------------------------------------------+-----------+
+| streamingEnabled           | bool | Enable streaming updates via SSE.                      | True      |
++----------------------------+------+--------------------------------------------------------+-----------+
+| labelsEnabled              | bool | Whether to send rule labels with impressions.          | True      |
++----------------------------+------+--------------------------------------------------------+-----------+
+| IPAddressesEnabled         | bool | Send machine name and IP in headers.                   | True      |
++----------------------------+------+--------------------------------------------------------+-----------+
+| flagSetsFilter             | list | Only sync feature flags belonging to these flag sets.  | None      |
++----------------------------+------+--------------------------------------------------------+-----------+
 
 .. _localhost_environment:
+
 The localhost environment
 -------------------------
 
-During development it is possible to create a 'localhost client' to avoid hitting the
-Split.io API SDK. The configuration is taken from a ``.split`` file in the user's *HOME*
-directory. The ``.split`` file has the following format: ::
+During development it is possible to create a 'localhost client' to avoid hitting the Split.io API. The configuration is taken from a ``.split`` file in the user's *HOME* directory or from a JSON file. The ``.split`` file has the following format: ::
 
   file: (comment | split_line)+
   comment : '#' string*\n
@@ -120,6 +166,7 @@ Whenever a treatment is requested for the feature ``feature_0``, ``treatment_0``
 
   >>> from splitio import get_factory
   >>> factory = get_factory('localhost')
+  >>> factory.block_until_ready(5)
   >>> client = factory.client()
   >>> client.get_treatment('some_user', 'feature_0')
   'treatment_0'
@@ -128,11 +175,11 @@ Whenever a treatment is requested for the feature ``feature_0``, ``treatment_0``
   >>> client.get_treatment('yet_another_user', 'feature_1')
   'treatment_1'
   >>> client.get_treatment('some_user', 'non_existent_feature')
-  'CONTROL'
+  'control'
 
-Notice that an API key is not necessary for the localhost environment, and the ``CONTROL`` is returned for non existent features.
+Notice that an SDK key is not necessary for the localhost environment, and ``control`` is returned for non-existent features.
 
-It is possible to specify a different splits file using the ``split_definition_file_name`` argument: ::
+JSON files are also supported in localhost mode by setting the ``splitFile`` config option to a ``.json`` file path: ::
 
   >>> from splitio import get_factory
   >>> factory = get_factory('localhost', split_definition_file_name='/path/to/splits/file')

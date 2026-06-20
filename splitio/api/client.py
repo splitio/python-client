@@ -108,7 +108,7 @@ class HttpClientBase(object, metaclass=abc.ABCMeta):
         :type telemetry_url: str
         """
         _LOGGER.debug("Initializing httpclient")
-        self._timeout = timeout/1000 if timeout else None # Convert ms to seconds.
+        self._timeout = timeout if timeout else None
         self._urls = _construct_urls(sdk_url, events_url, auth_url, telemetry_url)
 
     @abc.abstractmethod
@@ -399,7 +399,7 @@ class HttpClientKerberos(HttpClientBase):
         :type authentication_params: [str, str]
         """
         _LOGGER.debug("Initializing httpclient for Kerberos auth")
-        self._timeout = timeout/1000 if timeout else None # Convert ms to seconds.
+        self._timeout = timeout if timeout else None
         self._urls = _construct_urls(sdk_url, events_url, auth_url, telemetry_url)
         self._authentication_scheme = authentication_scheme
         self._authentication_params = authentication_params
