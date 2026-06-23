@@ -1,5 +1,4 @@
 10.6.1 (Jun 23, 2026)
-- Fixed connectionTimeout config to accept values in seconds, with a default of 15 seconds.
 - Fixed splitChanges parsing to handle responses without the 'rbs' field.
 - Fixed fallback treatment not being applied when a feature flag has an unsupported matcher type.
 

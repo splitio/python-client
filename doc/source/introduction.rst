@@ -122,7 +122,7 @@ All the possible configuration options are:
 +----------------------------+------+--------------------------------------------------------+-----------+
 | Key                        | Type | Description                                            | Default   |
 +============================+======+========================================================+===========+
-| connectionTimeout          | int  | The timeout for HTTP connections in seconds.           | 15        |
+| connectionTimeout          | int  | The timeout for HTTP connections in milliseconds.      | 1500      |
 +----------------------------+------+--------------------------------------------------------+-----------+
 | featuresRefreshRate        | int  | The feature flags update refresh period in seconds.    | 30        |
 +----------------------------+------+--------------------------------------------------------+-----------+

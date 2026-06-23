@@ -165,7 +165,7 @@ class HttpClientTests(object):
         get_mock = mocker.Mock()
         get_mock.return_value = response_mock
         mocker.patch('splitio.api.client.requests.post', new=get_mock)
-        httpclient = client.HttpClient(timeout=15, sdk_url='https://sdk.com', events_url='https://events.com')
+        httpclient = client.HttpClient(timeout=1500, sdk_url='https://sdk.com', events_url='https://events.com')
         httpclient.set_telemetry_data("metric", telemetry_runtime_producer)
 
         self.metric1 = None
@@ -313,7 +313,7 @@ class HttpClientKerberosTests(object):
                 pass
         mocker.patch('splitio.api.client.requests.Session.post', new=post_mock)
 
-        httpclient = client.HttpClientKerberos(timeout=15, sdk_url='https://sdk.com', events_url='https://events.com', authentication_scheme=AuthenticateScheme.KERBEROS_PROXY, authentication_params=[None, None])
+        httpclient = client.HttpClientKerberos(timeout=1500, sdk_url='https://sdk.com', events_url='https://events.com', authentication_scheme=AuthenticateScheme.KERBEROS_PROXY, authentication_params=[None, None])
         httpclient.set_telemetry_data("metric", mocker.Mock())
 
         response = httpclient.post('events', 'test1', 'some_api_key', {'p1': 'a'}, {'param1': 123}, {'h1': 'abc'})
@@ -331,7 +331,7 @@ class HttpClientKerberosTests(object):
         tparams = None
         ttimeout = None
         mocker.patch('splitio.api.client.requests.Session.get', new=get_mock)
-        httpclient = client.HttpClientKerberos(timeout=15, sdk_url='https://sdk.com', authentication_scheme=AuthenticateScheme.KERBEROS_PROXY, authentication_params=['bilal', 'split'])
+        httpclient = client.HttpClientKerberos(timeout=1500, sdk_url='https://sdk.com', authentication_scheme=AuthenticateScheme.KERBEROS_PROXY, authentication_params=['bilal', 'split'])
         httpclient.set_telemetry_data("metric", mocker.Mock())
         response = httpclient.get('sdk', '/test1', 'some_api_key', {'param1': 123}, {'h1': 'abc'})
         assert turl == 'https://sdk.com/test1'
@@ -429,7 +429,7 @@ class HttpClientKerberosTests(object):
                 pass
         mocker.patch('splitio.api.client.requests.Session.post', new=post_mock)
 
-        httpclient = client.HttpClientKerberos(timeout=15, sdk_url='https://sdk.com', events_url='https://events.com', authentication_scheme=AuthenticateScheme.KERBEROS_PROXY, authentication_params=[None, None])
+        httpclient = client.HttpClientKerberos(timeout=1500, sdk_url='https://sdk.com', events_url='https://events.com', authentication_scheme=AuthenticateScheme.KERBEROS_PROXY, authentication_params=[None, None])
         httpclient.set_telemetry_data("metric", mocker.Mock())
         response = httpclient.post('events', 'test1', 'some_api_key', {'p1': 'a'}, {'param1': 123}, {'h1': 'abc'})
         assert response.status_code == 200
@@ -449,7 +449,7 @@ class HttpClientKerberosTests(object):
         get_mock = mocker.Mock()
         get_mock.return_value = response_mock
         mocker.patch('splitio.api.client.requests.post', new=get_mock)
-        httpclient = client.HttpClient(timeout=15, sdk_url='https://sdk.com', events_url='https://events.com')
+        httpclient = client.HttpClient(timeout=1500, sdk_url='https://sdk.com', events_url='https://events.com')
         httpclient.set_telemetry_data("metric", telemetry_runtime_producer)
 
         self.metric1 = None
