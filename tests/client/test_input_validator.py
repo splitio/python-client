@@ -15,7 +15,7 @@ from splitio.models.splits import Split
 from harness_commons.models.fallback_config import FallbackTreatmentCalculator
 from splitio.client import input_validator
 from splitio.client.manager import SplitManager, SplitManagerAsync 
-from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
+from harness_commons.recorder.recorder import StandardRecorder, StandardRecorderAsync
 from harness_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 from harness_commons.engine.impressions.impressions import Manager as ImpressionManager
 from harness_commons.models.fallback_treatment import FallbackTreatment

@@ -25,7 +25,7 @@ from harness_commons.engine.impressions.manager import Counter as ImpressionsCou
 from harness_commons.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
 from harness_commons.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
 from harness_commons.engine.evaluator import Evaluator, EvaluationContext
-from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
+from harness_commons.recorder.recorder import StandardRecorder, StandardRecorderAsync
 from harness_commons.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode, StrategyOptimizedMode
 from tests.integration import splits_json
 
@@ -1276,7 +1276,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert(telemetry_storage._method_latencies._track[0] == 1)
         factory.destroy()
 
-    @mock.patch('splitio.recorder.recorder.StandardRecorder.record_track_stats', side_effect=Exception())
+    @mock.patch('harness_commons.recorder.recorder.StandardRecorder.record_track_stats', side_effect=Exception())
     def test_telemetry_track_exception(self, mocker):
         split_storage = mocker.Mock(spec=SplitStorage)
         segment_storage = mocker.Mock(spec=SegmentStorage)
