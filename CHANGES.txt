@@ -1,3 +1,7 @@
+10.6.1 (Jun 23, 2026)
+- Updated splitChanges parsing to handle responses without the 'rbs' field.
+- Fixed fallback treatment not being applied when a feature flag has an unsupported matcher type.
+
 10.6.0 (Jan 28, 2026)
 - Fixed non-blocking error when fetching feature flags from redis.
 - Added the ability to listen to different events triggered by the SDK. Read more in our docs.
