@@ -16,7 +16,6 @@ from tests.helpers.mockserver import SSEMockServer, SplitMockServer
 from urllib.parse import parse_qs
 from harness_commons.models.telemetry import StreamingEventTypes, SSESyncMode
 
-
 class StreamingIntegrationTests(object):
     """Test streaming operation and failover."""
 

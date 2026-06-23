@@ -105,8 +105,10 @@ class SplitWorker(WorkerBase):
 
     def _run(self):
         """Run worker handler."""
+        _LOGGER.error("Run worker handler")
         while self.is_running():
             event = self._feature_flag_queue.get()
+            _LOGGER.error(event)
             if not self.is_running():
                 break
             if event == self._centinel:
@@ -120,6 +122,7 @@ class SplitWorker(WorkerBase):
                 till = None
                 rbs_till = None
                 till, rbs_till = self._check_update_type(till, rbs_till, event)
+                _LOGGER.error("synching")
                 sync_result = self._handler(till, rbs_till)
                 if not sync_result.success and sync_result.error_code is not None and sync_result.error_code == 414:
                     _LOGGER.error("URI too long exception caught, sync failed")

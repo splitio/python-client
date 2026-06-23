@@ -16,8 +16,8 @@ from splitio.client.factory import get_factory, SplitFactory, get_factory_async,
 from splitio.client.util import SdkMetadata
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.client.client import EvaluationOptions
+
 from harness_commons.engine.impressions.impressions import Manager as ImpressionsManager, ImpressionsMode
-from splitio.client import set_classes, set_classes_async
 from harness_commons.engine.impressions.strategies import StrategyDebugMode, StrategyOptimizedMode, StrategyNoneMode
 from harness_commons.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageConsumerAsync,\
     TelemetryStorageProducerAsync
@@ -27,12 +27,17 @@ from harness_commons.events.events_delivery import EventsDelivery
 from harness_commons.events.events_manager import EventsManager, EventsManagerAsync
 from harness_commons.events.events_manager_config import EventsManagerConfig
 from harness_commons.events.events_task import EventsTask, EventsTaskAsync
+from harness_commons.engine.impressions.impressions import ImpressionsMode
+from harness_commons.engine.impressions.strategies import StrategyNoneMode, StrategyDebugMode, StrategyOptimizedMode
+from harness_commons.engine.impressions.adapters import InMemorySenderAdapter, RedisSenderAdapter, PluggableSenderAdapter, RedisSenderAdapterAsync, \
+    InMemorySenderAdapterAsync, PluggableSenderAdapterAsync
+
 from splitio.models import splits
 from harness_commons.models import segments, rule_based_segments
 from harness_commons.models.events import SdkEvent
 from harness_commons.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
 from harness_commons.models.fallback_treatment import FallbackTreatment
-from splitio.recorder.recorder import StandardRecorder, PipelinedRecorder, StandardRecorderAsync, PipelinedRecorderAsync
+from harness_commons.recorder.recorder import StandardRecorder, PipelinedRecorder, StandardRecorderAsync, PipelinedRecorderAsync
 from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync
 from harness_commons.storage.inmemmory import InMemoryEventStorage, InMemoryImpressionStorage, \
     InMemorySegmentStorage, InMemoryTelemetryStorage, \
@@ -52,6 +57,10 @@ RedisSynchronizerAsync
 from harness_commons.sync.manager import Manager, RedisManager, ManagerAsync, RedisManagerAsync
 from harness_commons.sync.synchronizer import PluggableSynchronizer, PluggableSynchronizerAsync
 from harness_commons.sync.telemetry import RedisTelemetrySubmitter, RedisTelemetrySubmitterAsync
+from harness_commons.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer, UniqueKeysSynchronizerAsync, ClearFilterSynchronizerAsync
+from harness_commons.sync.impression import ImpressionsCountSynchronizer, ImpressionsCountSynchronizerAsync
+from harness_commons.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTask, UniqueKeysSyncTaskAsync, ClearFilterSyncTaskAsync
+from harness_commons.tasks.impressions_sync import ImpressionsCountSyncTask, ImpressionsCountSyncTaskAsync
 
 from tests.helpers.mockserver import SplitMockServer
 from tests.integration import splits_json
@@ -5354,3 +5363,133 @@ async def _manager_methods_async(factory, skip_rbs=False):
     
     assert len(await manager.split_names()) == 9
     assert len(await manager.splits()) == 9
+    
+def set_classes(storage_mode, impressions_mode, api_adapter, imp_counter, unique_keys_tracker, prefix=None):
+    """
+    Createe and return instances based on storage, impressions and threading mode
+
+    :param storage_mode: storage mode (MEMORY, REDIS or PLUGGABLE)
+    :type storage_mode: str
+    :param impressions_mode: impressions mode used
+    :type impressions_mode: splitio.engine.impressions.impressions.ImpressionsMode
+    :param api_adapter: api adapter instance(s)
+    :type impressions_mode: dict or splitio.storage.adapters.redis.RedisAdapter/splitio.storage.adapters.redis.RedisAdapterAsync
+    :param imp_counter: Impressions Counter instance
+    :type imp_counter: splitio.engine.impressions.Counter/splitio.engine.impressions.Counter
+    :param unique_keys_tracker: Unique Keys Tracker instance
+    :type unique_keys_tracker: splitio.engine.unique_keys_tracker.UniqueKeysTracker/splitio.engine.unique_keys_tracker.UniqueKeysTrackerAsync
+    :param prefix: Prefix used for redis or pluggable adapters
+    :type prefix: str
+
+    :return: tuple of classes instances.
+    :rtype: (harness_commons.sync.unique_keys.UniqueKeysSynchronizer,
+            harness_commons.sync.unique_keys.ClearFilterSynchronizer,
+            harness_commons.tasks.unique_keys_sync.UniqueKeysTask,
+            harness_commons.tasks.unique_keys_sync.ClearFilterTask,
+            harness_commons.sync.impressions_sync.ImpressionsCountSynchronizer,
+            harness_commons.tasks.impressions_sync.ImpressionsCountSyncTask,
+            splitio.engine.impressions.strategies.StrategyNoneMode/splitio.engine.impressions.strategies.StrategyDebugMode/splitio.engine.impressions.strategies.StrategyOptimizedMode)
+    """
+    unique_keys_synchronizer = None
+    clear_filter_sync = None
+    unique_keys_task = None
+    clear_filter_task = None
+    impressions_count_sync = None
+    impressions_count_task = None
+    sender_adapter = None
+    if storage_mode == 'PLUGGABLE':
+        sender_adapter = PluggableSenderAdapter(api_adapter, prefix)
+        api_telemetry_adapter = sender_adapter
+        api_impressions_adapter = sender_adapter
+    elif storage_mode == 'REDIS':
+        sender_adapter = RedisSenderAdapter(api_adapter)
+        api_telemetry_adapter = sender_adapter
+        api_impressions_adapter = sender_adapter
+    else:
+        api_telemetry_adapter = api_adapter['telemetry']
+        api_impressions_adapter = api_adapter['impressions']
+        sender_adapter = InMemorySenderAdapter(api_telemetry_adapter)
+
+    none_strategy = StrategyNoneMode()
+    unique_keys_synchronizer = UniqueKeysSynchronizer(sender_adapter, unique_keys_tracker)
+    unique_keys_task = UniqueKeysSyncTask(unique_keys_synchronizer.send_all)
+    clear_filter_sync = ClearFilterSynchronizer(unique_keys_tracker)
+    impressions_count_sync = ImpressionsCountSynchronizer(api_impressions_adapter, imp_counter)
+    impressions_count_task = ImpressionsCountSyncTask(impressions_count_sync.synchronize_counters)
+    clear_filter_task = ClearFilterSyncTask(clear_filter_sync.clear_all)
+    unique_keys_tracker.set_queue_full_hook(unique_keys_task.flush)
+
+    if impressions_mode == ImpressionsMode.NONE:
+        imp_strategy = StrategyNoneMode()
+    elif impressions_mode == ImpressionsMode.DEBUG:
+        imp_strategy = StrategyDebugMode()
+    else:
+        imp_strategy = StrategyOptimizedMode()
+
+    return unique_keys_synchronizer, clear_filter_sync, unique_keys_task, clear_filter_task, \
+            impressions_count_sync, impressions_count_task, imp_strategy, none_strategy
+
+def set_classes_async(storage_mode, impressions_mode, api_adapter, imp_counter, unique_keys_tracker, prefix=None):
+    """
+    Createe and return instances based on storage, impressions and async mode
+
+    :param storage_mode: storage mode (MEMORY, REDIS or PLUGGABLE)
+    :type storage_mode: str
+    :param impressions_mode: impressions mode used
+    :type impressions_mode: splitio.engine.impressions.impressions.ImpressionsMode
+    :param api_adapter: api adapter instance(s)
+    :type impressions_mode: dict or splitio.storage.adapters.redis.RedisAdapter/splitio.storage.adapters.redis.RedisAdapterAsync
+    :param imp_counter: Impressions Counter instance
+    :type imp_counter: splitio.engine.impressions.Counter/splitio.engine.impressions.Counter
+    :param unique_keys_tracker: Unique Keys Tracker instance
+    :type unique_keys_tracker: splitio.engine.unique_keys_tracker.UniqueKeysTracker/splitio.engine.unique_keys_tracker.UniqueKeysTrackerAsync
+    :param prefix: Prefix used for redis or pluggable adapters
+    :type prefix: str
+
+    :return: tuple of classes instances.
+    :rtype: (harness_commons.sync.unique_keys.UniqueKeysSynchronizerAsync,
+            harness_commons.sync.unique_keys.ClearFilterSynchronizerAsync,
+            harness_commons.tasks.unique_keys_sync.UniqueKeysTaskAsync,
+            harness_commons.tasks.unique_keys_sync.ClearFilterTaskAsync,
+            harness_commons.sync.impressions_sync.ImpressionsCountSynchronizerAsync,
+            harness_commons.tasks.impressions_sync.ImpressionsCountSyncTaskAsync,
+            splitio.engine.impressions.strategies.StrategyNoneMode/splitio.engine.impressions.strategies.StrategyDebugMode/splitio.engine.impressions.strategies.StrategyOptimizedMode)
+    """
+    unique_keys_synchronizer = None
+    clear_filter_sync = None
+    unique_keys_task = None
+    clear_filter_task = None
+    impressions_count_sync = None
+    impressions_count_task = None
+    sender_adapter = None
+    if storage_mode == 'PLUGGABLE':
+        sender_adapter = PluggableSenderAdapterAsync(api_adapter, prefix)
+        api_telemetry_adapter = sender_adapter
+        api_impressions_adapter = sender_adapter
+    elif storage_mode == 'REDIS':
+        sender_adapter = RedisSenderAdapterAsync(api_adapter)
+        api_telemetry_adapter = sender_adapter
+        api_impressions_adapter = sender_adapter
+    else:
+        api_telemetry_adapter = api_adapter['telemetry']
+        api_impressions_adapter = api_adapter['impressions']
+        sender_adapter = InMemorySenderAdapterAsync(api_telemetry_adapter)
+
+    none_strategy = StrategyNoneMode()
+    unique_keys_synchronizer = UniqueKeysSynchronizerAsync(sender_adapter, unique_keys_tracker)
+    unique_keys_task = UniqueKeysSyncTaskAsync(unique_keys_synchronizer.send_all)
+    clear_filter_sync = ClearFilterSynchronizerAsync(unique_keys_tracker)
+    impressions_count_sync = ImpressionsCountSynchronizerAsync(api_impressions_adapter, imp_counter)
+    impressions_count_task = ImpressionsCountSyncTaskAsync(impressions_count_sync.synchronize_counters)
+    clear_filter_task = ClearFilterSyncTaskAsync(clear_filter_sync.clear_all)
+    unique_keys_tracker.set_queue_full_hook(unique_keys_task.flush)
+
+    if impressions_mode == ImpressionsMode.NONE:
+        imp_strategy = StrategyNoneMode()
+    elif impressions_mode == ImpressionsMode.DEBUG:
+        imp_strategy = StrategyDebugMode()
+    else:
+        imp_strategy = StrategyOptimizedMode()
+
+    return unique_keys_synchronizer, clear_filter_sync, unique_keys_task, clear_filter_task, \
+            impressions_count_sync, impressions_count_task, imp_strategy, none_strategy

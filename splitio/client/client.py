@@ -53,7 +53,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         :type labels_enabled: bool
 
         :param recorder: recorder instance
-        :type recorder: splitio.recorder.StatsRecorder
+        :type recorder: harness_commons.recorder.StatsRecorder
 
         :rtype: Client
         """
@@ -268,7 +268,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :type labels_enabled: bool
 
         :param recorder: recorder instance
-        :type recorder: splitio.recorder.StatsRecorder
+        :type recorder: harness_commons.recorder.StatsRecorder
 
         :rtype: Client
         """
@@ -777,7 +777,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         :type labels_enabled: bool
 
         :param recorder: recorder instance
-        :type recorder: splitio.recorder.StatsRecorder
+        :type recorder: harness_commons.recorder.StatsRecorder
 
         :rtype: Client
         """
