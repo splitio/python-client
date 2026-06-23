@@ -37,7 +37,7 @@ from harness_commons.sync.synchronizer import Synchronizer, SynchronizerAsync, H
 from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync
 from harness_commons.sync.segment import SegmentSynchronizer, SegmentSynchronizerAsync
 from splitio.storage.adapters.redis import RedisAdapter, RedisPipelineAdapter
-from splitio.tasks.util import asynctask
+from harness_commons.tasks.util import asynctask
 from tests.storage.test_pluggable import StorageMockAdapter, StorageMockAdapterAsync
 from tests.integration import splits_json
 

@@ -12,7 +12,7 @@ from splitio.models.label import Label
 from harness_commons.models.events import Event, EventWrapper, SdkEvent
 from harness_commons.models.telemetry import get_latency_bucket_index, MethodExceptionsAndLatencies
 from splitio.optional.loaders import asyncio
-from splitio.util.time import get_current_epoch_time_ms, utctime_ms
+from harness_commons.util.time import get_current_epoch_time_ms, utctime_ms
 
 
 _LOGGER = logging.getLogger(__name__)

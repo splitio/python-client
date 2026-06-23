@@ -1,8 +1,8 @@
 """Split Synchronization task."""
 
 import logging
-from splitio.tasks import BaseSynchronizationTask
-from splitio.tasks.util.asynctask import AsyncTask, AsyncTaskAsync
+from harness_commons.tasks import BaseSynchronizationTask
+from harness_commons.tasks.util.asynctask import AsyncTask, AsyncTaskAsync
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -32,17 +32,17 @@ class SplitSynchronizationTaskBase(BaseSynchronizationTask):
 class SplitSynchronizationTask(SplitSynchronizationTaskBase):
     """Split Synchronization task class."""
 
-    def __init__(self, synchronize_splits, period):
+    def __init__(self, synchronize_definitions, period):
         """
         Class constructor.
 
-        :param synchronize_splits: Handler
-        :type synchronize_splits: func
+        :param synchronize_definitions: Handler
+        :type synchronize_definitions: func
         :param period: Period of task
         :type period: int
         """
         self._period = period
-        self._task = AsyncTask(synchronize_splits, period, on_init=None)
+        self._task = AsyncTask(synchronize_definitions, period, on_init=None)
 
     def stop(self, event=None):
         """Stop the task. Accept an optional event to set when the task has finished."""
@@ -52,17 +52,17 @@ class SplitSynchronizationTask(SplitSynchronizationTaskBase):
 class SplitSynchronizationTaskAsync(SplitSynchronizationTaskBase):
     """Split Synchronization async task class."""
 
-    def __init__(self, synchronize_splits, period):
+    def __init__(self, synchronize_definitions, period):
         """
         Class constructor.
 
-        :param synchronize_splits: Handler
-        :type synchronize_splits: func
+        :param synchronize_definitions: Handler
+        :type synchronize_definitions: func
         :param period: Period of task
         :type period: int
         """
         self._period = period
-        self._task = AsyncTaskAsync(synchronize_splits, period, on_init=None)
+        self._task = AsyncTaskAsync(synchronize_definitions, period, on_init=None)
 
     async def stop(self, event=None):
         """Stop the task. Accept an optional event to set when the task has finished."""
