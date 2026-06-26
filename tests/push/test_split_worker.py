@@ -4,13 +4,13 @@ import queue
 import base64
 import pytest
 
-from harness_commons.api import APIException
+from splitio_commons.api import APIException
 from splitio.push.workers import SplitWorker, SplitWorkerAsync
-from harness_commons.models.notification import SplitChangeNotification
-from harness_commons.optional.loaders import asyncio
-from harness_commons.push.parser import SplitChangeUpdate, RBSChangeUpdate
-from harness_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
-from harness_commons.storage.inmemmory import InMemoryTelemetryStorage, InMemoryDefinitionStorage, InMemorySegmentStorage, \
+from splitio_commons.models.notification import SplitChangeNotification
+from splitio_commons.optional.loaders import asyncio
+from splitio_commons.push.parser import SplitChangeUpdate, RBSChangeUpdate
+from splitio_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
+from splitio_commons.storage.inmemmory import InMemoryTelemetryStorage, InMemoryDefinitionStorage, InMemorySegmentStorage, \
     InMemoryTelemetryStorageAsync, InMemoryDefinitionStorageAsync, InMemorySegmentStorageAsync
 
 change_number_received = None

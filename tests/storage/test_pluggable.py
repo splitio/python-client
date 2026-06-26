@@ -7,15 +7,15 @@ import pytest
 from splitio.optional.loaders import asyncio
 from splitio.models.splits import Split
 from splitio.models import splits
-from harness_commons.models import rule_based_segments
-from harness_commons.models.segments import Segment
-from harness_commons.models.impressions import Impression
-from harness_commons.models.events import Event, EventWrapper
+from splitio_commons.models import rule_based_segments
+from splitio_commons.models.segments import Segment
+from splitio_commons.models.impressions import Impression
+from splitio_commons.models.events import Event, EventWrapper
 from splitio.storage.pluggable import PluggableSplitStorage, PluggableSegmentStorage, PluggableImpressionsStorage, PluggableEventsStorage, \
     PluggableTelemetryStorage, PluggableEventsStorageAsync, PluggableSegmentStorageAsync, PluggableImpressionsStorageAsync,\
     PluggableSplitStorageAsync, PluggableTelemetryStorageAsync, PluggableRuleBasedSegmentsStorage, PluggableRuleBasedSegmentsStorageAsync
 from splitio.client.util import get_metadata, SdkMetadata
-from harness_commons.models.telemetry import MAX_TAGS, MethodExceptionsAndLatencies, OperationMode
+from splitio_commons.models.telemetry import MAX_TAGS, MethodExceptionsAndLatencies, OperationMode
 from tests.integration import splits_json, rbsegments_json
 
 class StorageMockAdapter(object):
@@ -870,7 +870,7 @@ class PluggableEventsStorageTests(object):
             else:
                 prefix = ''
             pluggable_events_storage = PluggableEventsStorage(self.mock_adapter, self.metadata, prefix=sprefix)
-            assert(pluggable_events_storage._events_queue_key == prefix + "harness_commons.events")
+            assert(pluggable_events_storage._events_queue_key == prefix + "splitio_commons.events")
             assert(pluggable_events_storage._sdk_metadata == {
                                     's': self.metadata.sdk_version,
                                     'n': self.metadata.instance_name,
@@ -892,15 +892,15 @@ class PluggableEventsStorageTests(object):
             ]
             assert(pluggable_events_storage.put(events))
             assert(pluggable_events_storage._events_queue_key in self.mock_adapter._keys)
-            assert(self.mock_adapter._keys[prefix + "harness_commons.events"] == pluggable_events_storage._wrap_events(events))
-            assert(self.mock_adapter._expire[prefix + "harness_commons.events"] == PluggableEventsStorage._EVENTS_KEY_DEFAULT_TTL)
+            assert(self.mock_adapter._keys[prefix + "splitio_commons.events"] == pluggable_events_storage._wrap_events(events))
+            assert(self.mock_adapter._expire[prefix + "splitio_commons.events"] == PluggableEventsStorage._EVENTS_KEY_DEFAULT_TTL)
 
             events2 = [
                 EventWrapper(event=Event('key5', 'user', 'purchase', 10, 123456, None),  size=32768),
                 EventWrapper(event=Event('key6', 'user', 'purchase', 10, 123456, None),  size=32768),
             ]
             assert(pluggable_events_storage.put(events2))
-            assert(self.mock_adapter._keys[prefix + "harness_commons.events"] == pluggable_events_storage._wrap_events(events + events2))
+            assert(self.mock_adapter._keys[prefix + "splitio_commons.events"] == pluggable_events_storage._wrap_events(events + events2))
 
     def test_wrap_events(self):
         for sprefix in [None, 'myprefix']:
@@ -965,7 +965,7 @@ class PluggableEventsStorageTests(object):
 
             pluggable_events_storage.expire_key(200, 200)
             assert(self.expired_called)
-            assert(self.key == prefix + "harness_commons.events")
+            assert(self.key == prefix + "splitio_commons.events")
             assert(self.ttl == pluggable_events_storage._EVENTS_KEY_DEFAULT_TTL)
 
 
@@ -984,7 +984,7 @@ class PluggableEventsStorageAsyncTests(object):
             else:
                 prefix = ''
             pluggable_events_storage = PluggableEventsStorageAsync(self.mock_adapter, self.metadata, prefix=sprefix)
-            assert(pluggable_events_storage._events_queue_key == prefix + "harness_commons.events")
+            assert(pluggable_events_storage._events_queue_key == prefix + "splitio_commons.events")
             assert(pluggable_events_storage._sdk_metadata == {
                                     's': self.metadata.sdk_version,
                                     'n': self.metadata.instance_name,
@@ -1007,15 +1007,15 @@ class PluggableEventsStorageAsyncTests(object):
             ]
             assert(await pluggable_events_storage.put(events))
             assert(pluggable_events_storage._events_queue_key in self.mock_adapter._keys)
-            assert(self.mock_adapter._keys[prefix + "harness_commons.events"] == pluggable_events_storage._wrap_events(events))
-            assert(self.mock_adapter._expire[prefix + "harness_commons.events"] == PluggableEventsStorageAsync._EVENTS_KEY_DEFAULT_TTL)
+            assert(self.mock_adapter._keys[prefix + "splitio_commons.events"] == pluggable_events_storage._wrap_events(events))
+            assert(self.mock_adapter._expire[prefix + "splitio_commons.events"] == PluggableEventsStorageAsync._EVENTS_KEY_DEFAULT_TTL)
 
             events2 = [
                 EventWrapper(event=Event('key5', 'user', 'purchase', 10, 123456, None),  size=32768),
                 EventWrapper(event=Event('key6', 'user', 'purchase', 10, 123456, None),  size=32768),
             ]
             assert(await pluggable_events_storage.put(events2))
-            assert(self.mock_adapter._keys[prefix + "harness_commons.events"] == pluggable_events_storage._wrap_events(events + events2))
+            assert(self.mock_adapter._keys[prefix + "splitio_commons.events"] == pluggable_events_storage._wrap_events(events + events2))
 
     def test_wrap_events(self):
         for sprefix in [None, 'myprefix']:
@@ -1081,7 +1081,7 @@ class PluggableEventsStorageAsyncTests(object):
 
             await pluggable_events_storage.expire_key(200, 200)
             assert(self.expired_called)
-            assert(self.key == prefix + "harness_commons.events")
+            assert(self.key == prefix + "splitio_commons.events")
             assert(self.ttl == pluggable_events_storage._EVENTS_KEY_DEFAULT_TTL)
 
 

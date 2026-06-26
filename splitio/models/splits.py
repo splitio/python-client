@@ -3,9 +3,9 @@ from enum import Enum
 from collections import namedtuple
 import logging
 
-from harness_commons.models import MatcherNotFoundException, _DEFAULT_CONDITIONS_TEMPLATE, Status, HashAlgorithm, Prerequisites
-from harness_commons.models.grammar import condition
-from harness_commons.models.definitions import Definition, Prerequisites, Status, from_raw_prerequisites
+from splitio_commons.models import MatcherNotFoundException, _DEFAULT_CONDITIONS_TEMPLATE, Status, HashAlgorithm, Prerequisites
+from splitio_commons.models.grammar import condition
+from splitio_commons.models.definitions import Definition, Prerequisites, Status, from_raw_prerequisites
 
 _LOGGER = logging.getLogger(__name__)
 

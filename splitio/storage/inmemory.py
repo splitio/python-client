@@ -1,6 +1,6 @@
 import abc
 
-from harness_commons.storage.inmemmory import InMemoryDefinitionStorage, InMemoryDefinitionStorageAsync
+from splitio_commons.storage.inmemmory import InMemoryDefinitionStorage, InMemoryDefinitionStorageAsync
 
 class SplitStorage(object, metaclass=abc.ABCMeta):
     """Split storage interface implemented as an abstract class."""

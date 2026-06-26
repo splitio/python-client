@@ -3,10 +3,10 @@ import threading
 import time
 import pytest
 
-from harness_commons.api import APIException
-from harness_commons.api.commons import FetchOptions
+from splitio_commons.api import APIException
+from splitio_commons.api.commons import FetchOptions
 from splitio.tasks import split_sync
-from harness_commons.storage import DefinitionStorage, RuleBasedSegmentsStorage
+from splitio_commons.storage import DefinitionStorage, RuleBasedSegmentsStorage
 from splitio.models.splits import Split
 from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync
 from splitio.tasks.split_sync import SplitSynchronizationTask, SplitSynchronizationTaskAsync

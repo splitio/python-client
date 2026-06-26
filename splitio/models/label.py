@@ -1,6 +1,6 @@
 """Impressions model module."""
 from collections import namedtuple
-from harness_commons.models.impressions import Label as CommonsLabel
+from splitio_commons.models.impressions import Label as CommonsLabel
 
 class Label(CommonsLabel):  # pylint: disable=too-few-public-methods
     """Impressions labels."""

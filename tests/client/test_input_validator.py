@@ -6,19 +6,19 @@ import asyncio
 from splitio.client.factory import SplitFactory, get_factory, SplitFactoryAsync, get_factory_async
 from splitio.client.client import CONTROL, Client, _LOGGER as _logger, ClientAsync
 from splitio.client.key import Key
-from harness_commons.events.events_manager import EventsManagerAsync
-from harness_commons.storage import DefinitionStorage, SegmentStorage, ImpressionStorage, EventStorage, RuleBasedSegmentsStorage
+from splitio_commons.events.events_manager import EventsManagerAsync
+from splitio_commons.storage import DefinitionStorage, SegmentStorage, ImpressionStorage, EventStorage, RuleBasedSegmentsStorage
 from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync
-from harness_commons.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync, \
+from splitio_commons.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync, \
     InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 from splitio.models.splits import Split
-from harness_commons.models.fallback_config import FallbackTreatmentCalculator
+from splitio_commons.models.fallback_config import FallbackTreatmentCalculator
 from splitio.client import input_validator
 from splitio.client.manager import SplitManager, SplitManagerAsync 
-from harness_commons.recorder.recorder import StandardRecorder, StandardRecorderAsync
-from harness_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
-from harness_commons.engine.impressions.impressions import Manager as ImpressionManager
-from harness_commons.models.fallback_treatment import FallbackTreatment
+from splitio_commons.recorder.recorder import StandardRecorder, StandardRecorderAsync
+from splitio_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
+from splitio_commons.engine.impressions.impressions import Manager as ImpressionManager
+from splitio_commons.models.fallback_treatment import FallbackTreatment
 
 class ClientInputValidationTests(object):
     """Input validation test cases."""

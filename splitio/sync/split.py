@@ -7,15 +7,15 @@ import time
 import json
 from enum import Enum
 
-from harness_commons.api import APIException
+from splitio_commons.api import APIException
 from splitio.spec import SPEC_VERSION
 from splitio.client.input_validator import validate_flag_sets
 from splitio.models import splits
-from harness_commons.models import rule_based_segments
-from harness_commons.util.time import get_current_epoch_time_ms
-from harness_commons.sync.definition import DefinitionSynchronizer, DefinitionSynchronizerAsync, _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES
-from harness_commons.sync import util
-from harness_commons.util.storage_helper import update_definition_storage, update_definition_storage_async, \
+from splitio_commons.models import rule_based_segments
+from splitio_commons.util.time import get_current_epoch_time_ms
+from splitio_commons.sync.definition import DefinitionSynchronizer, DefinitionSynchronizerAsync, _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES
+from splitio_commons.sync import util
+from splitio_commons.util.storage_helper import update_definition_storage, update_definition_storage_async, \
     update_rule_based_segment_storage, update_rule_based_segment_storage_async
 from splitio.optional.loaders import aiofiles
 
@@ -32,7 +32,7 @@ class SplitSynchronizer(DefinitionSynchronizer):
         Class constructor.
 
         :param feature_flag_api: Feature Flag API Client.
-        :type feature_flag_api: harness_commons.api.splits.SplitsAPI
+        :type feature_flag_api: splitio_commons.api.splits.SplitsAPI
 
         :param feature_flag_storage: Feature Flag Storage.
         :type feature_flag_storage: splitio.storage.InMemorySplitStorage
@@ -50,7 +50,7 @@ class SplitSynchronizerAsync(DefinitionSynchronizerAsync):
         Class constructor.
 
         :param feature_flag_api: Feature Flag API Client.
-        :type feature_flag_api: harness_commons.api.splits.SplitsAPI
+        :type feature_flag_api: splitio_commons.api.splits.SplitsAPI
 
         :param feature_flag_storage: Feature Flag Storage.
         :type feature_flag_storage: splitio.storage.InMemorySplitStorage

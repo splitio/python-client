@@ -10,17 +10,17 @@ import pytest
 from splitio.client.util import get_metadata, SdkMetadata
 from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterAsync, RedisAdapterException, build
 from splitio.optional.loaders import asyncio
-from harness_commons.storage import FlagSetsFilter
+from splitio_commons.storage import FlagSetsFilter
 from splitio.storage.redis import RedisEventsStorage, RedisEventsStorageAsync, RedisImpressionsStorage, RedisImpressionsStorageAsync, \
     RedisSegmentStorage, RedisSegmentStorageAsync, RedisSplitStorage, RedisSplitStorageAsync, RedisTelemetryStorage, RedisTelemetryStorageAsync, \
     RedisRuleBasedSegmentsStorage, RedisRuleBasedSegmentsStorageAsync
 from splitio.storage.adapters.redis import RedisAdapter, RedisAdapterException, build
 from redis.asyncio.client import Redis as aioredis
 from splitio.storage.adapters import redis
-from harness_commons.models.segments import Segment
-from harness_commons.models.impressions import Impression
-from harness_commons.models.events import Event, EventWrapper
-from harness_commons.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MethodExceptionsAndLatencies, TelemetryConfigAsync
+from splitio_commons.models.segments import Segment
+from splitio_commons.models.impressions import Impression
+from splitio_commons.models.events import Event, EventWrapper
+from splitio_commons.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MethodExceptionsAndLatencies, TelemetryConfigAsync
 
 class RedisSplitStorageTests(object):
     """Redis split storage test cases."""
@@ -895,7 +895,7 @@ class RedisEventsStorageTests(object):  # pylint: disable=too-few-public-methods
         for item in list_of_events_sent:
             assert item in list_of_events_called
 
-#        assert adapter.rpush.mock_calls == [mocker.call('harness_commons.events', to_validate)]
+#        assert adapter.rpush.mock_calls == [mocker.call('splitio_commons.events', to_validate)]
         # Assert that if an exception is thrown it's caught and False is returned
         adapter.reset_mock()
 
@@ -917,7 +917,7 @@ class RedisEventsStorageTests(object):  # pylint: disable=too-few-public-methods
         adapter.expire = expire
 
         storage.expire_keys(2, 2)
-        assert self.key == 'harness_commons.events'
+        assert self.key == 'splitio_commons.events'
         assert self.ttl == 3600
 
         self.key = None
@@ -967,7 +967,7 @@ class RedisEventsStorageAsyncTests(object):  # pylint: disable=too-few-public-me
         }) for e in events]
 
         assert self.events == tuple(list_of_raw_events)
-        assert self.key == 'harness_commons.events'
+        assert self.key == 'splitio_commons.events'
         assert storage._wrap_events(events) == list_of_raw_events
 
         # Assert that if an exception is thrown it's caught and False is returned
@@ -993,7 +993,7 @@ class RedisEventsStorageAsyncTests(object):  # pylint: disable=too-few-public-me
         adapter.expire = expire
 
         await storage.expire_keys(2, 2)
-        assert self.key == 'harness_commons.events'
+        assert self.key == 'splitio_commons.events'
         assert self.ttl == 3600
 
         self.key = None
@@ -1011,7 +1011,7 @@ class RedisTelemetryStorageTests(object):
         assert(isinstance(redis_telemetry._tel_config, TelemetryConfig))
         assert(redis_telemetry._make_pipe is not None)
 
-    @mock.patch('harness_commons.models.telemetry.TelemetryConfig.record_config')
+    @mock.patch('splitio_commons.models.telemetry.TelemetryConfig.record_config')
     def test_record_config(self, mocker):
         redis_telemetry = RedisTelemetryStorage(mocker.Mock(), mocker.Mock())
         redis_telemetry.record_config(mocker.Mock(), mocker.Mock(), 0, 0)

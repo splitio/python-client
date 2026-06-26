@@ -11,13 +11,13 @@ from queue import Queue
 
 from splitio.optional.loaders import asyncio
 from splitio.models.splits import from_raw
-from harness_commons.models.rule_based_segments import from_raw as rbs_from_raw
-from harness_commons.models.telemetry import UpdateFromSSE
-from harness_commons.push import SplitStorageException
-from harness_commons.push.parser import UpdateType
-from harness_commons.push.workers import WorkerBase
-from harness_commons.optional.loaders import asyncio
-from harness_commons.util.storage_helper import update_definition_storage, update_definition_storage_async, \
+from splitio_commons.models.rule_based_segments import from_raw as rbs_from_raw
+from splitio_commons.models.telemetry import UpdateFromSSE
+from splitio_commons.push import SplitStorageException
+from splitio_commons.push.parser import UpdateType
+from splitio_commons.push.workers import WorkerBase
+from splitio_commons.optional.loaders import asyncio
+from splitio_commons.util.storage_helper import update_definition_storage, update_definition_storage_async, \
     update_rule_based_segment_storage, update_rule_based_segment_storage_async
 
 _LOGGER = logging.getLogger(__name__)

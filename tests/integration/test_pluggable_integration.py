@@ -6,7 +6,7 @@ import os
 
 from splitio.client.util import get_metadata
 from splitio.models import splits
-from harness_commons.models import impressions, events
+from splitio_commons.models import impressions, events
 from splitio.storage.pluggable import PluggableEventsStorage, PluggableImpressionsStorage, PluggableSegmentStorage, \
     PluggableSplitStorage, PluggableEventsStorageAsync, PluggableImpressionsStorageAsync, PluggableSegmentStorageAsync,\
     PluggableSplitStorageAsync
@@ -222,14 +222,14 @@ class PluggableEventsStorageIntegrationTests(object):
         adapter = StorageMockAdapter()
         try:
             self._put_events(adapter, get_metadata({}))
-            evts = adapter.pop_items('harness_commons.events')
+            evts = adapter.pop_items('splitio_commons.events')
             assert len(evts) == 3
             for rawEvent in evts:
                 event = json.loads(rawEvent)
                 assert event['m']['i'] != 'NA'
                 assert event['m']['n'] != 'NA'
         finally:
-            adapter.delete('harness_commons.events')
+            adapter.delete('splitio_commons.events')
 
     def test_put_fetch_contains_ip_address_disabled(self):
         """Test storing and retrieving splits in pluggable."""
@@ -239,14 +239,14 @@ class PluggableEventsStorageIntegrationTests(object):
             cfg.update({'IPAddressesEnabled': False})
             self._put_events(adapter, get_metadata(cfg))
 
-            evts = adapter.pop_items('harness_commons.events')
+            evts = adapter.pop_items('splitio_commons.events')
             assert len(evts) == 3
             for rawEvent in evts:
                 event = json.loads(rawEvent)
                 assert event['m']['i'] == 'NA'
                 assert event['m']['n'] == 'NA'
         finally:
-            adapter.delete('harness_commons.events')
+            adapter.delete('splitio_commons.events')
 
 
 class PluggableSplitStorageIntegrationAsyncTests(object):
@@ -416,14 +416,14 @@ class PluggableEventsStorageIntegrationAsyncTests(object):
         adapter = StorageMockAdapterAsync()
         try:
             await self._put_events(adapter, get_metadata({}))
-            evts = await adapter.pop_items('harness_commons.events')
+            evts = await adapter.pop_items('splitio_commons.events')
             assert len(evts) == 3
             for rawEvent in evts:
                 event = json.loads(rawEvent)
                 assert event['m']['i'] != 'NA'
                 assert event['m']['n'] != 'NA'
         finally:
-            await adapter.delete('harness_commons.events')
+            await adapter.delete('splitio_commons.events')
 
     @pytest.mark.asyncio
     async def test_put_fetch_contains_ip_address_disabled(self):
@@ -434,11 +434,11 @@ class PluggableEventsStorageIntegrationAsyncTests(object):
             cfg.update({'IPAddressesEnabled': False})
             await self._put_events(adapter, get_metadata(cfg))
 
-            evts = await adapter.pop_items('harness_commons.events')
+            evts = await adapter.pop_items('splitio_commons.events')
             assert len(evts) == 3
             for rawEvent in evts:
                 event = json.loads(rawEvent)
                 assert event['m']['i'] == 'NA'
                 assert event['m']['n'] == 'NA'
         finally:
-            await adapter.delete('harness_commons.events')
+            await adapter.delete('splitio_commons.events')

@@ -6,13 +6,13 @@ import threading
 
 from splitio.optional.loaders import asyncio
 from splitio.models import splits
-from harness_commons.models import segments, rule_based_segments
-from harness_commons.models.impressions import Impression
-from harness_commons.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MAX_TAGS,\
+from splitio_commons.models import segments, rule_based_segments
+from splitio_commons.models.impressions import Impression
+from splitio_commons.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MAX_TAGS,\
     MethodLatenciesAsync, MethodExceptionsAsync, TelemetryConfigAsync
-from harness_commons.storage import FlagSetsFilter, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage, RuleBasedSegmentsStorage
+from splitio_commons.storage import FlagSetsFilter, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage, RuleBasedSegmentsStorage
 from splitio.storage.inmemory import SplitStorage
-from harness_commons.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
+from splitio_commons.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -82,9 +82,9 @@ class PluggableRuleBasedSegmentsStorageBase(RuleBasedSegmentsStorage):
         Update rule based segment..
 
         :param to_add: List of rule based segment. to add
-        :type to_add: list[harness_commons.models.rule_based_segments.RuleBasedSegment]
+        :type to_add: list[splitio_commons.models.rule_based_segments.RuleBasedSegment]
         :param to_delete: List of rule based segment. to delete
-        :type to_delete: list[harness_commons.models.rule_based_segments.RuleBasedSegment]
+        :type to_delete: list[splitio_commons.models.rule_based_segments.RuleBasedSegment]
         :param new_change_number: New change number.
         :type new_change_number: int
         """
@@ -188,7 +188,7 @@ class PluggableRuleBasedSegmentsStorage(PluggableRuleBasedSegmentsStorageBase):
         :type rb_segment_names: list(str)
 
         :return: A dict with rule based segment objects parsed from queue.
-        :rtype: dict(rb_segment_names, harness_commons.models.rule_based_segments.RuleBasedSegment)
+        :rtype: dict(rb_segment_names, splitio_commons.models.rule_based_segments.RuleBasedSegment)
         """
         try:
             prefix_added = [self._prefix.format(segment_name=rb_segment_name) for rb_segment_name in rb_segment_names]
@@ -285,7 +285,7 @@ class PluggableRuleBasedSegmentsStorageAsync(PluggableRuleBasedSegmentsStorageBa
         :type rb_segment_names: list(str)
 
         :return: A dict with rule based segment objects parsed from queue.
-        :rtype: dict(rb_segment_names, harness_commons.models.rule_based_segments.RuleBasedSegment)
+        :rtype: dict(rb_segment_names, splitio_commons.models.rule_based_segments.RuleBasedSegment)
         """
         try:
             prefix_added = [self._prefix.format(segment_name=rb_segment_name) for rb_segment_name in rb_segment_names]
@@ -984,7 +984,7 @@ class PluggableSegmentStorageBase(SegmentStorage):
         :type segment_name: str
 
         :return: segment object
-        :rtype: harness_commons.models.segments.Segment
+        :rtype: splitio_commons.models.segments.Segment
         """
         pass
 
@@ -993,7 +993,7 @@ class PluggableSegmentStorageBase(SegmentStorage):
         Store a segment.
 
         :param segment: Segment to store.
-        :type segment: harness_commons.models.segments.Segment
+        :type segment: splitio_commons.models.segments.Segment
         """
         pass
         # TODO: To be added when producer mode is aupported
@@ -1085,7 +1085,7 @@ class PluggableSegmentStorage(PluggableSegmentStorageBase):
         :type segment_name: str
 
         :return: segment object
-        :rtype: harness_commons.models.segments.Segment
+        :rtype: splitio_commons.models.segments.Segment
         """
         try:
             return segments.from_raw({'name': segment_name, 'added': self._pluggable_adapter.get_items(self._prefix.format(segment_name=segment_name)), 'removed': [], 'till': self._pluggable_adapter.get(self._segment_till_prefix.format(segment_name=segment_name))})
@@ -1174,7 +1174,7 @@ class PluggableSegmentStorageAsync(PluggableSegmentStorageBase):
         :type segment_name: str
 
         :return: segment object
-        :rtype: harness_commons.models.segments.Segment
+        :rtype: splitio_commons.models.segments.Segment
         """
         try:
             return segments.from_raw({'name': segment_name, 'added': await self._pluggable_adapter.get_items(self._prefix.format(segment_name=segment_name)), 'removed': [], 'till': await self._pluggable_adapter.get(self._segment_till_prefix.format(segment_name=segment_name))})
@@ -1215,10 +1215,10 @@ class PluggableImpressionsStorageBase(ImpressionStorage):
         Wrap impressions to be stored in storage
 
         :param impressions: Impression to add to the queue.
-        :type impressions: harness_commons.models.impressions.Impression
+        :type impressions: splitio_commons.models.impressions.Impression
 
         :return: Processed impressions.
-        :rtype: list[harness_commons.models.impressions.Impression]
+        :rtype: list[splitio_commons.models.impressions.Impression]
         """
         bulk_impressions = []
         for impression in impressions:
@@ -1244,7 +1244,7 @@ class PluggableImpressionsStorageBase(ImpressionStorage):
         Add an impression to the pluggable storage.
 
         :param impressions: Impression to add to the queue.
-        :type impressions: harness_commons.models.impressions.Impression
+        :type impressions: splitio_commons.models.impressions.Impression
 
         :return: Whether the impression has been added or not.
         :rtype: bool
@@ -1299,7 +1299,7 @@ class PluggableImpressionsStorage(PluggableImpressionsStorageBase):
         Add an impression to the pluggable storage.
 
         :param impressions: Impression to add to the queue.
-        :type impressions: harness_commons.models.impressions.Impression
+        :type impressions: splitio_commons.models.impressions.Impression
 
         :return: Whether the impression has been added or not.
         :rtype: bool
@@ -1349,7 +1349,7 @@ class PluggableImpressionsStorageAsync(PluggableImpressionsStorageBase):
         Add an impression to the pluggable storage.
 
         :param impressions: Impression to add to the queue.
-        :type impressions: harness_commons.models.impressions.Impression
+        :type impressions: splitio_commons.models.impressions.Impression
 
         :return: Whether the impression has been added or not.
         :rtype: bool
@@ -1400,7 +1400,7 @@ class PluggableEventsStorageBase(EventStorage):
                                 'n': sdk_metadata.instance_name,
                                 'i': sdk_metadata.instance_ip,
                             }
-        self._events_queue_key = 'harness_commons.events'
+        self._events_queue_key = 'splitio_commons.events'
         if prefix is not None:
             self._events_queue_key = prefix + "." + self._events_queue_key
 
@@ -1425,7 +1425,7 @@ class PluggableEventsStorageBase(EventStorage):
         Add an event to the redis storage.
 
         :param event: Event to add to the queue.
-        :type event: harness_commons.models.events.Event
+        :type event: splitio_commons.models.events.Event
 
         :return: Whether the event has been added or not.
         :rtype: bool
@@ -1479,7 +1479,7 @@ class PluggableEventsStorage(PluggableEventsStorageBase):
         Add an event to the redis storage.
 
         :param event: Event to add to the queue.
-        :type event: harness_commons.models.events.Event
+        :type event: splitio_commons.models.events.Event
 
         :return: Whether the event has been added or not.
         :rtype: bool
@@ -1529,7 +1529,7 @@ class PluggableEventsStorageAsync(PluggableEventsStorageBase):
         Add an event to the redis storage.
 
         :param event: Event to add to the queue.
-        :type event: harness_commons.models.events.Event
+        :type event: splitio_commons.models.events.Event
 
         :return: Whether the event has been added or not.
         :rtype: bool

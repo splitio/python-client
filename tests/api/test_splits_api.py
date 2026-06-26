@@ -6,8 +6,8 @@ import time
 
 from splitio.spec import SPEC_VERSION
 from splitio.api import splits
-from harness_commons.api import client, APIException
-from harness_commons.api.commons import FetchOptions
+from splitio_commons.api import client, APIException
+from splitio_commons.api.commons import FetchOptions
 from splitio.client.util import SdkMetadata
 
 class SplitAPITests(object):

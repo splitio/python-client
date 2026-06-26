@@ -3,17 +3,17 @@ import json
 import logging
 import threading
 
-from harness_commons.models.impressions import Impression
+from splitio_commons.models.impressions import Impression
 from splitio.models import splits
-from harness_commons.models import segments, rule_based_segments
-from harness_commons.models.telemetry import TelemetryConfig, TelemetryConfigAsync
-from harness_commons.storage import SegmentStorage, ImpressionStorage, EventStorage, \
+from splitio_commons.models import segments, rule_based_segments
+from splitio_commons.models.telemetry import TelemetryConfig, TelemetryConfigAsync
+from splitio_commons.storage import SegmentStorage, ImpressionStorage, EventStorage, \
     ImpressionPipelinedStorage, TelemetryStorage, FlagSetsFilter, RuleBasedSegmentsStorage
 from splitio.storage.inmemory import SplitStorage
 from splitio.storage.adapters.redis import RedisAdapterException
 from splitio.storage.adapters.cache_trait import decorate as add_cache, DEFAULT_MAX_AGE
 from splitio.storage.adapters.cache_trait import LocalMemoryCache, LocalMemoryCacheAsync
-from harness_commons.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
+from splitio_commons.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
 
 _LOGGER = logging.getLogger(__name__)
 MAX_TAGS = 10
@@ -71,9 +71,9 @@ class RedisRuleBasedSegmentsStorage(RuleBasedSegmentsStorage):
         Update rule based segment..
 
         :param to_add: List of rule based segment. to add
-        :type to_add: list[harness_commons.models.rule_based_segments.RuleBasedSegment]
+        :type to_add: list[splitio_commons.models.rule_based_segments.RuleBasedSegment]
         :param to_delete: List of rule based segment. to delete
-        :type to_delete: list[harness_commons.models.rule_based_segments.RuleBasedSegment]
+        :type to_delete: list[splitio_commons.models.rule_based_segments.RuleBasedSegment]
         :param new_change_number: New change number.
         :type new_change_number: int
         """
@@ -141,7 +141,7 @@ class RedisRuleBasedSegmentsStorage(RuleBasedSegmentsStorage):
         :type segment_names: list(str)
 
         :return: A dict with rule based segment objects parsed from redis.
-        :rtype: dict(segment_name, harness_commons.models.rule_based_segments.RuleBasedSegment)
+        :rtype: dict(segment_name, splitio_commons.models.rule_based_segments.RuleBasedSegment)
         """
         to_return = dict()
         if len(segment_names) == 0:
@@ -218,9 +218,9 @@ class RedisRuleBasedSegmentsStorageAsync(RuleBasedSegmentsStorage):
         Update rule based segment..
 
         :param to_add: List of rule based segment. to add
-        :type to_add: list[harness_commons.models.rule_based_segments.RuleBasedSegment]
+        :type to_add: list[splitio_commons.models.rule_based_segments.RuleBasedSegment]
         :param to_delete: List of rule based segment. to delete
-        :type to_delete: list[harness_commons.models.rule_based_segments.RuleBasedSegment]
+        :type to_delete: list[splitio_commons.models.rule_based_segments.RuleBasedSegment]
         :param new_change_number: New change number.
         :type new_change_number: int
         """
@@ -288,7 +288,7 @@ class RedisRuleBasedSegmentsStorageAsync(RuleBasedSegmentsStorage):
         :type segment_names: list(str)
 
         :return: A dict with rule based segment objects parsed from redis.
-        :rtype: dict(segment_name, harness_commons.models.rule_based_segments.RuleBasedSegment)
+        :rtype: dict(segment_name, splitio_commons.models.rule_based_segments.RuleBasedSegment)
         """
         to_return = dict()
         if len(segment_names) == 0:
@@ -874,7 +874,7 @@ class RedisSegmentStorageBase(SegmentStorage):
         Store a segment.
 
         :param segment: Segment to store.
-        :type segment: harness_commons.models.segments.Segment
+        :type segment: splitio_commons.models.segments.Segment
         """
         raise NotImplementedError('Only redis-consumer mode is supported.')
 
@@ -937,7 +937,7 @@ class RedisSegmentStorage(RedisSegmentStorageBase):
         :type segment_name: str
 
         :return: Segment object is key exists. None otherwise.
-        :rtype: harness_commons.models.segments.Segment
+        :rtype: splitio_commons.models.segments.Segment
         """
         try:
             keys = (self._redis.smembers(self._get_key(segment_name)))
@@ -1016,7 +1016,7 @@ class RedisSegmentStorageAsync(RedisSegmentStorageBase):
         :type segment_name: str
 
         :return: Segment object is key exists. None otherwise.
-        :rtype: harness_commons.models.segments.Segment
+        :rtype: splitio_commons.models.segments.Segment
         """
         try:
             keys = (await self._redis.smembers(self._get_key(segment_name)))
@@ -1086,10 +1086,10 @@ class RedisImpressionsStorageBase(ImpressionStorage, ImpressionPipelinedStorage)
         Wrap impressions to be stored in redis
 
         :param impressions: Impression to add to the queue.
-        :type impressions: harness_commons.models.impressions.Impression
+        :type impressions: splitio_commons.models.impressions.Impression
 
         :return: Processed impressions.
-        :rtype: list[harness_commons.models.impressions.Impression]
+        :rtype: list[splitio_commons.models.impressions.Impression]
         """
         bulk_impressions = []
         for impression in impressions:
@@ -1144,7 +1144,7 @@ class RedisImpressionsStorageBase(ImpressionStorage, ImpressionPipelinedStorage)
         Add an impression to the redis storage.
 
         :param impressions: Impression to add to the queue.
-        :type impressions: harness_commons.models.impressions.Impression
+        :type impressions: splitio_commons.models.impressions.Impression
 
         :return: Whether the impression has been added or not.
         :rtype: bool
@@ -1199,7 +1199,7 @@ class RedisImpressionsStorage(RedisImpressionsStorageBase):
         Add an impression to the redis storage.
 
         :param impressions: Impression to add to the queue.
-        :type impressions: harness_commons.models.impressions.Impression
+        :type impressions: splitio_commons.models.impressions.Impression
 
         :return: Whether the impression has been added or not.
         :rtype: bool
@@ -1250,7 +1250,7 @@ class RedisImpressionsStorageAsync(RedisImpressionsStorageBase):
         Add an impression to the redis storage.
 
         :param impressions: Impression to add to the queue.
-        :type impressions: harness_commons.models.impressions.Impression
+        :type impressions: splitio_commons.models.impressions.Impression
 
         :return: Whether the impression has been added or not.
         :rtype: bool
@@ -1272,7 +1272,7 @@ class RedisImpressionsStorageAsync(RedisImpressionsStorageBase):
 class RedisEventsStorageBase(EventStorage):
     """Redis based event storage base class."""
 
-    _EVENTS_KEY_TEMPLATE = 'harness_commons.events'
+    _EVENTS_KEY_TEMPLATE = 'splitio_commons.events'
     _EVENTS_KEY_DEFAULT_TTL = 3600
 
     def add_events_to_pipe(self, events, pipe):
@@ -1314,7 +1314,7 @@ class RedisEventsStorageBase(EventStorage):
         Add an event to the redis storage.
 
         :param event: Event to add to the queue.
-        :type event: harness_commons.models.events.Event
+        :type event: splitio_commons.models.events.Event
 
         :return: Whether the event has been added or not.
         :rtype: bool
@@ -1367,7 +1367,7 @@ class RedisEventsStorage(RedisEventsStorageBase):
         Add an event to the redis storage.
 
         :param event: Event to add to the queue.
-        :type event: harness_commons.models.events.Event
+        :type event: splitio_commons.models.events.Event
 
         :return: Whether the event has been added or not.
         :rtype: bool
@@ -1418,7 +1418,7 @@ class RedisEventsStorageAsync(RedisEventsStorageBase):
         Add an event to the redis storage.
 
         :param event: Event to add to the queue.
-        :type event: harness_commons.models.events.Event
+        :type event: splitio_commons.models.events.Event
 
         :return: Whether the event has been added or not.
         :rtype: bool
