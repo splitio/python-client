@@ -14,23 +14,23 @@ from splitio.client import util
 from splitio.client.listener import ImpressionListenerWrapper, ImpressionListenerWrapperAsync
 
 # events
-from harness_commons.events.events_manager import EventsManager, EventsManagerAsync
-from harness_commons.events.events_manager_config import EventsManagerConfig
-from harness_commons.events.events_task import EventsTask, EventsTaskAsync
-from harness_commons.events.events_delivery import EventsDelivery
-from harness_commons.models.fallback_config import FallbackTreatmentCalculator
-from harness_commons.models.notification import SdkInternalEventNotification
-from harness_commons.models.events import SdkInternalEvent
+from splitio_commons.events.events_manager import EventsManager, EventsManagerAsync
+from splitio_commons.events.events_manager_config import EventsManagerConfig
+from splitio_commons.events.events_task import EventsTask, EventsTaskAsync
+from splitio_commons.events.events_delivery import EventsDelivery
+from splitio_commons.models.fallback_config import FallbackTreatmentCalculator
+from splitio_commons.models.notification import SdkInternalEventNotification
+from splitio_commons.models.events import SdkInternalEvent
 
 # push
-from harness_commons.push.manager import PushManager, PushManagerAsync
-from harness_commons.push.processor import MessageProcessor, MessageProcessorAsync
-from harness_commons.push.parser import UpdateType
+from splitio_commons.push.manager import PushManager, PushManagerAsync
+from splitio_commons.push.processor import MessageProcessor, MessageProcessorAsync
+from splitio_commons.push.parser import UpdateType
 from splitio.push.workers import SplitWorker, SplitWorkerAsync
 
 # Storage
 from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync
-from harness_commons.storage.inmemmory import InMemorySegmentStorage, \
+from splitio_commons.storage.inmemmory import InMemorySegmentStorage, \
     InMemoryImpressionStorage, InMemoryEventStorage, InMemoryTelemetryStorage, LocalhostTelemetryStorage, \
     InMemorySegmentStorageAsync, InMemoryImpressionStorageAsync, \
     InMemoryEventStorageAsync, InMemoryTelemetryStorageAsync, LocalhostTelemetryStorageAsync, \
@@ -46,62 +46,62 @@ from splitio.storage.pluggable import PluggableEventsStorage, PluggableImpressio
     PluggableRuleBasedSegmentsStorage, PluggableRuleBasedSegmentsStorageAsync
 
 # APIs
-from harness_commons.api.client import HttpClient, HttpClientAsync
+from splitio_commons.api.client import HttpClient, HttpClientAsync
 from splitio.api.kerberos_client import HttpClientKerberos
 from splitio.api.splits import SplitsAPI, SplitsAPIAsync
-from harness_commons.api.segments import SegmentsAPI, SegmentsAPIAsync
-from harness_commons.api.impressions import ImpressionsAPI, ImpressionsAPIAsync
-from harness_commons.api.events import EventsAPI, EventsAPIAsync
-from harness_commons.api.auth import AuthAPI, AuthAPIAsync
-from harness_commons.api.telemetry import TelemetryAPI, TelemetryAPIAsync
-from harness_commons.util.time import get_current_epoch_time_ms
+from splitio_commons.api.segments import SegmentsAPI, SegmentsAPIAsync
+from splitio_commons.api.impressions import ImpressionsAPI, ImpressionsAPIAsync
+from splitio_commons.api.events import EventsAPI, EventsAPIAsync
+from splitio_commons.api.auth import AuthAPI, AuthAPIAsync
+from splitio_commons.api.telemetry import TelemetryAPI, TelemetryAPIAsync
+from splitio_commons.util.time import get_current_epoch_time_ms
 from splitio.spec import SPEC_VERSION
 
 # engine
-from harness_commons.engine.impressions.impressions import ImpressionsMode
-from harness_commons.engine.impressions.strategies import StrategyNoneMode, StrategyDebugMode, StrategyOptimizedMode
-from harness_commons.engine.impressions.adapters import InMemorySenderAdapter, RedisSenderAdapter, PluggableSenderAdapter, RedisSenderAdapterAsync, \
+from splitio_commons.engine.impressions.impressions import ImpressionsMode
+from splitio_commons.engine.impressions.strategies import StrategyNoneMode, StrategyDebugMode, StrategyOptimizedMode
+from splitio_commons.engine.impressions.adapters import InMemorySenderAdapter, RedisSenderAdapter, PluggableSenderAdapter, RedisSenderAdapterAsync, \
     InMemorySenderAdapterAsync, PluggableSenderAdapterAsync
-from harness_commons.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode
-from harness_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageConsumer, \
+from splitio_commons.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode
+from splitio_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageConsumer, \
     TelemetryStorageProducerAsync, TelemetryStorageConsumerAsync
-from harness_commons.engine.impressions.manager import Counter as ImpressionsCounter
-from harness_commons.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
-from harness_commons.engine.impressions.impressions import Manager as ImpressionsManager
+from splitio_commons.engine.impressions.manager import Counter as ImpressionsCounter
+from splitio_commons.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
+from splitio_commons.engine.impressions.impressions import Manager as ImpressionsManager
 
 # Tasks
 from splitio.tasks.split_sync import SplitSynchronizationTask, SplitSynchronizationTaskAsync
-from harness_commons.tasks.segment_sync import SegmentSynchronizationTask, SegmentSynchronizationTaskAsync
-from harness_commons.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask,\
+from splitio_commons.tasks.segment_sync import SegmentSynchronizationTask, SegmentSynchronizationTaskAsync
+from splitio_commons.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask,\
     ImpressionsCountSyncTaskAsync, ImpressionsSyncTaskAsync
-from harness_commons.tasks.events_sync import EventsSyncTask, EventsSyncTaskAsync
-from harness_commons.tasks.telemetry_sync import TelemetrySyncTask, TelemetrySyncTaskAsync
-from harness_commons.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTask, UniqueKeysSyncTaskAsync, ClearFilterSyncTaskAsync
-from harness_commons.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer, UniqueKeysSynchronizerAsync, ClearFilterSynchronizerAsync
-from harness_commons.sync.impression import ImpressionsCountSynchronizer, ImpressionsCountSynchronizerAsync
-from harness_commons.tasks.impressions_sync import ImpressionsCountSyncTask, ImpressionsCountSyncTaskAsync
+from splitio_commons.tasks.events_sync import EventsSyncTask, EventsSyncTaskAsync
+from splitio_commons.tasks.telemetry_sync import TelemetrySyncTask, TelemetrySyncTaskAsync
+from splitio_commons.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTask, UniqueKeysSyncTaskAsync, ClearFilterSyncTaskAsync
+from splitio_commons.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer, UniqueKeysSynchronizerAsync, ClearFilterSynchronizerAsync
+from splitio_commons.sync.impression import ImpressionsCountSynchronizer, ImpressionsCountSynchronizerAsync
+from splitio_commons.tasks.impressions_sync import ImpressionsCountSyncTask, ImpressionsCountSyncTaskAsync
 
 # Synchronizer
-from harness_commons.sync.synchronizer import HarnessTasks, HarnessSynchronizers, Synchronizer, \
+from splitio_commons.sync.synchronizer import HarnessTasks, HarnessSynchronizers, Synchronizer, \
     LocalhostSynchronizer, RedisSynchronizer, PluggableSynchronizer,\
     SynchronizerAsync, RedisSynchronizerAsync, LocalhostSynchronizerAsync
-from harness_commons.sync.manager import Manager, RedisManager, ManagerAsync, RedisManagerAsync
+from splitio_commons.sync.manager import Manager, RedisManager, ManagerAsync, RedisManagerAsync
 from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer, LocalhostMode,\
     SplitSynchronizerAsync, LocalSplitSynchronizerAsync
-from harness_commons.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer, SegmentSynchronizerAsync,\
+from splitio_commons.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer, SegmentSynchronizerAsync,\
     LocalSegmentSynchronizerAsync
-from harness_commons.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer, \
+from splitio_commons.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer, \
     ImpressionsCountSynchronizerAsync, ImpressionSynchronizerAsync
-from harness_commons.sync.event import EventSynchronizer, EventSynchronizerAsync
-from harness_commons.sync.telemetry import TelemetrySynchronizer, InMemoryTelemetrySubmitter, \
+from splitio_commons.sync.event import EventSynchronizer, EventSynchronizerAsync
+from splitio_commons.sync.telemetry import TelemetrySynchronizer, InMemoryTelemetrySubmitter, \
     LocalhostTelemetrySubmitter, RedisTelemetrySubmitter, LocalhostTelemetrySubmitterAsync, \
     InMemoryTelemetrySubmitterAsync, TelemetrySynchronizerAsync, RedisTelemetrySubmitterAsync
-from harness_commons.sync.auth import AuthSynchronizer, AuthSynchronizerAsync
-from harness_commons.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer, UniqueKeysSynchronizerAsync, ClearFilterSynchronizerAsync
-from harness_commons.sync.impression import ImpressionsCountSynchronizer, ImpressionsCountSynchronizerAsync
+from splitio_commons.sync.auth import AuthSynchronizer, AuthSynchronizerAsync
+from splitio_commons.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer, UniqueKeysSynchronizerAsync, ClearFilterSynchronizerAsync
+from splitio_commons.sync.impression import ImpressionsCountSynchronizer, ImpressionsCountSynchronizerAsync
 
 # Recorder
-from harness_commons.recorder.recorder import StandardRecorder, PipelinedRecorder, StandardRecorderAsync, PipelinedRecorderAsync
+from splitio_commons.recorder.recorder import StandardRecorder, PipelinedRecorder, StandardRecorderAsync, PipelinedRecorderAsync
 
 # Localhost stuff
 from splitio.client.localhost import LocalhostEventsStorage, LocalhostImpressionsStorage, \
@@ -220,7 +220,7 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
         :param apis: Dictionary of apis client wrappers
         :type apis: dict
         :param sync_manager: Manager synchronization
-        :type sync_manager: harness_commons.sync.manager.Manager
+        :type sync_manager: splitio_commons.sync.manager.Manager
         :param sdk_ready_flag: Event to set when the sdk is ready.
         :type sdk_ready_flag: threading.Event
         :param recorder: StatsRecorder instance
@@ -398,7 +398,7 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
         :param apis: Dictionary of apis client wrappers
         :type apis: dict
         :param sync_manager: Manager synchronization
-        :type sync_manager: harness_commons.sync.manager.Manager
+        :type sync_manager: splitio_commons.sync.manager.Manager
         :param sdk_ready_flag: Event to set when the sdk is ready.
         :type sdk_ready_flag: threading.Event
         :param recorder: StatsRecorder instance

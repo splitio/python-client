@@ -1,8 +1,8 @@
 """Split Synchronization task."""
 
 import logging
-from harness_commons.tasks import BaseSynchronizationTask
-from harness_commons.tasks.util.asynctask import AsyncTask, AsyncTaskAsync
+from splitio_commons.tasks import BaseSynchronizationTask
+from splitio_commons.tasks.util.asynctask import AsyncTask, AsyncTaskAsync
 
 
 _LOGGER = logging.getLogger(__name__)

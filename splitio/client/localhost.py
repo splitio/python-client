@@ -2,7 +2,7 @@
 import logging
 import re
 
-from harness_commons.storage import ImpressionStorage, EventStorage
+from splitio_commons.storage import ImpressionStorage, EventStorage
 
 _LEGACY_COMMENT_LINE_RE = re.compile(r'^#.*$')
 _LEGACY_DEFINITION_LINE_RE = re.compile(r'^(?<![^#])(?P<feature>[\w_-]+)\s+(?P<treatment>[\w_-]+)$')

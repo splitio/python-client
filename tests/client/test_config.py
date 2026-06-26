@@ -2,9 +2,9 @@
 # pylint: disable=protected-access,no-self-use,line-too-long
 import pytest
 from splitio.client import config
-from harness_commons.engine.impressions.impressions import ImpressionsMode
-from harness_commons.models.fallback_treatment import FallbackTreatment
-from harness_commons.models.fallback_config import FallbackTreatmentsConfiguration
+from splitio_commons.engine.impressions.impressions import ImpressionsMode
+from splitio_commons.models.fallback_treatment import FallbackTreatment
+from splitio_commons.models.fallback_config import FallbackTreatmentsConfiguration
 
 class ConfigSanitizationTests(object):
     """Inmemory storage-based integration tests."""

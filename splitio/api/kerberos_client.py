@@ -8,11 +8,11 @@ import json
 import threading
 from urllib3.util import parse_url
 
-from harness_commons.api.client import HttpClientBase, build_url, construct_urls, HttpResponse
+from splitio_commons.api.client import HttpClientBase, build_url, construct_urls, HttpResponse
 from splitio.optional.loaders import HTTPKerberosAuth, OPTIONAL
 from splitio.client.config import AuthenticateScheme
 from splitio.optional.loaders import aiohttp
-from harness_commons.util.time import get_current_epoch_time_ms
+from splitio_commons.util.time import get_current_epoch_time_ms
 
 _LOGGER = logging.getLogger(__name__)
 _EXC_MSG = '{source} library is throwing exceptions'

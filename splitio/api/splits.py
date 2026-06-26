@@ -3,13 +3,13 @@
 import logging
 import json
 
-from harness_commons.api import APIException, headers_from_metadata
-from harness_commons.api.commons import build_fetch, FetchOptions
-from harness_commons.api.client import HttpClientException
-from harness_commons.models.telemetry import HTTPExceptionsAndLatencies
-from harness_commons.util.time import utctime_ms
+from splitio_commons.api import APIException, headers_from_metadata
+from splitio_commons.api.commons import build_fetch, FetchOptions
+from splitio_commons.api.client import HttpClientException
+from splitio_commons.models.telemetry import HTTPExceptionsAndLatencies
+from splitio_commons.util.time import utctime_ms
 from splitio.spec import SPEC_VERSION
-from harness_commons.sync import util
+from splitio_commons.sync import util
 
 _LOGGER = logging.getLogger(__name__)
 _SPEC_1_1 = "1.1"
@@ -83,7 +83,7 @@ class SplitsAPI(SplitsAPIBase):  # pylint: disable=too-few-public-methods
         :type rbs_change_number: int
 
         :param fetch_options: Fetch options for getting feature flag definitions.
-        :type fetch_options: harness_commons.api.commons.FetchOptions
+        :type fetch_options: splitio_commons.api.commons.FetchOptions
 
         :return: Json representation of a splitChanges response.
         :rtype: dict
@@ -160,7 +160,7 @@ class SplitsAPIAsync(SplitsAPIBase):  # pylint: disable=too-few-public-methods
         :type rbs_change_number: int
 
         :param fetch_options: Fetch options for getting feature flag definitions.
-        :type fetch_options: harness_commons.api.commons.FetchOptions
+        :type fetch_options: splitio_commons.api.commons.FetchOptions
 
         :return: Json representation of a splitChanges response.
         :rtype: dict

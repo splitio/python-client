@@ -6,15 +6,15 @@ import json
 import copy
 import queue
 
-from harness_commons.util.backoff import Backoff
-from harness_commons.api import APIException
-from harness_commons.api.commons import FetchOptions
-from harness_commons.storage import DefinitionStorage, RuleBasedSegmentsStorage
+from splitio_commons.util.backoff import Backoff
+from splitio_commons.api import APIException
+from splitio_commons.api.commons import FetchOptions
+from splitio_commons.storage import DefinitionStorage, RuleBasedSegmentsStorage
 from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync
-from harness_commons.storage.inmemmory import InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
-from harness_commons.storage import FlagSetsFilter
+from splitio_commons.storage.inmemmory import InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
+from splitio_commons.storage import FlagSetsFilter
 from splitio.models.splits import Split
-from harness_commons.models.rule_based_segments import RuleBasedSegment
+from splitio_commons.models.rule_based_segments import RuleBasedSegment
 from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync, LocalSplitSynchronizer, LocalSplitSynchronizerAsync, LocalhostMode
 from splitio.optional.loaders import aiofiles, asyncio
 from tests.integration import splits_json, rbsegments_json
@@ -305,7 +305,7 @@ class SplitsSynchronizerTests(object):
 
     def test_synchronize_definitions_cdn(self, mocker):
         """Test split sync with bypassing cdn."""
-        mocker.patch('harness_commons.sync.definition._ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES', new=3)
+        mocker.patch('splitio_commons.sync.definition._ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES', new=3)
 
         storage = mocker.Mock(spec=InMemorySplitStorage)
         rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
@@ -665,7 +665,7 @@ class SplitsSynchronizerAsyncTests(object):
     @pytest.mark.asyncio
     async def test_synchronize_definitions_cdn(self, mocker):
         """Test split sync with bypassing cdn."""
-        mocker.patch('harness_commons.sync.definition._ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES', new=3)
+        mocker.patch('splitio_commons.sync.definition._ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES', new=3)
         storage = mocker.Mock(spec=InMemorySplitStorageAsync)
         rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
         async def change_number_mock():

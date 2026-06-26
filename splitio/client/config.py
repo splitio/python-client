@@ -3,9 +3,9 @@ import os.path
 import logging
 from enum import Enum
 
-from harness_commons.engine.impressions.impressions import ImpressionsMode
+from splitio_commons.engine.impressions.impressions import ImpressionsMode
 from splitio.client.input_validator import validate_flag_sets, validate_fallback_treatment, validate_regex_name
-from harness_commons.models.fallback_config import FallbackTreatmentsConfiguration
+from splitio_commons.models.fallback_config import FallbackTreatmentsConfiguration
 
 _LOGGER = logging.getLogger(__name__)
 DEFAULT_DATA_SAMPLING = 1

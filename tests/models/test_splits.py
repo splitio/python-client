@@ -2,7 +2,7 @@
 import copy
 
 from splitio.models import splits
-from harness_commons.models.grammar.condition import Condition
+from splitio_commons.models.grammar.condition import Condition
 
 class SplitTests(object):
     """Split model tests."""

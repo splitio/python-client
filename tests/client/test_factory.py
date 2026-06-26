@@ -12,32 +12,32 @@ from splitio.optional.loaders import asyncio
 from splitio.client.factory import get_factory, get_factory_async, SplitFactory, _INSTANTIATED_FACTORIES, Status,\
     _LOGGER as _logger, SplitFactoryAsync
 from splitio.client.config import DEFAULT_CONFIG
-from harness_commons.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
-from harness_commons.engine.impressions.impressions import Manager as ImpressionsManager
-from harness_commons.engine.impressions.manager import Counter as ImpressionsCounter
-from harness_commons.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
-from harness_commons.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
-from harness_commons.engine.evaluator import Evaluator, EvaluationContext
-from harness_commons.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode, StrategyOptimizedMode
-from harness_commons.events.events_task import EventsTask
-from harness_commons.events.events_manager import EventsManagerAsync
+from splitio_commons.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
+from splitio_commons.engine.impressions.impressions import Manager as ImpressionsManager
+from splitio_commons.engine.impressions.manager import Counter as ImpressionsCounter
+from splitio_commons.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
+from splitio_commons.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
+from splitio_commons.engine.evaluator import Evaluator, EvaluationContext
+from splitio_commons.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode, StrategyOptimizedMode
+from splitio_commons.events.events_task import EventsTask
+from splitio_commons.events.events_manager import EventsManagerAsync
 from splitio.models.splits import from_raw
-from harness_commons.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
-from harness_commons.models.fallback_treatment import FallbackTreatment
-from harness_commons.models.events import SdkInternalEvent
-from harness_commons.recorder.recorder import PipelinedRecorder, StandardRecorder, StandardRecorderAsync
-from harness_commons.storage import  inmemmory, EventStorage
+from splitio_commons.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
+from splitio_commons.models.fallback_treatment import FallbackTreatment
+from splitio_commons.models.events import SdkInternalEvent
+from splitio_commons.recorder.recorder import PipelinedRecorder, StandardRecorder, StandardRecorderAsync
+from splitio_commons.storage import  inmemmory, EventStorage
 from splitio.storage import inmemory, redis, pluggable
 from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync
-from harness_commons.storage.inmemmory import InMemorySegmentStorage, InMemoryImpressionStorage, InMemoryTelemetryStorage, \
+from splitio_commons.storage.inmemmory import InMemorySegmentStorage, InMemoryImpressionStorage, InMemoryTelemetryStorage, \
     InMemoryImpressionStorageAsync, InMemorySegmentStorageAsync, InMemoryTelemetryStorageAsync, InMemoryEventStorageAsync, \
     InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
-from harness_commons.sync.manager import Manager, ManagerAsync
-from harness_commons.sync.synchronizer import Synchronizer, SynchronizerAsync, HarnessSynchronizers, HarnessTasks
+from splitio_commons.sync.manager import Manager, ManagerAsync
+from splitio_commons.sync.synchronizer import Synchronizer, SynchronizerAsync, HarnessSynchronizers, HarnessTasks
 from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync
-from harness_commons.sync.segment import SegmentSynchronizer, SegmentSynchronizerAsync
+from splitio_commons.sync.segment import SegmentSynchronizer, SegmentSynchronizerAsync
 from splitio.storage.adapters.redis import RedisAdapter, RedisPipelineAdapter
-from harness_commons.tasks.util import asynctask
+from splitio_commons.tasks.util import asynctask
 from tests.storage.test_pluggable import StorageMockAdapter, StorageMockAdapterAsync
 from tests.integration import splits_json
 
@@ -85,7 +85,7 @@ class SplitFactoryTests(object):
             self._streaming_enabled = False
             self._telemetry_runtime_producer = telemetry_runtime_producer
 
-        mocker.patch('harness_commons.sync.manager.Manager.__init__', new=_split_synchronizer)
+        mocker.patch('splitio_commons.sync.manager.Manager.__init__', new=_split_synchronizer)
 
         # Start factory and make assertions
         factory = get_factory('some_api_key')
@@ -275,7 +275,7 @@ class SplitFactoryTests(object):
             self._synchronizer = synchronizer
             self._streaming_enabled = False
             self._telemetry_runtime_producer = telemetry_runtime_producer
-        mocker.patch('harness_commons.sync.manager.Manager.__init__', new=_split_synchronizer)
+        mocker.patch('splitio_commons.sync.manager.Manager.__init__', new=_split_synchronizer)
 
         # Start factory and make assertions
         # Using invalid key should result in a timeout exception
@@ -380,7 +380,7 @@ class SplitFactoryTests(object):
             self._synchronizer = synchronizer
             self._streaming_enabled = False
             self._telemetry_runtime_producer = telemetry_runtime_producer
-        mocker.patch('harness_commons.sync.manager.Manager.__init__', new=_split_synchronizer)
+        mocker.patch('splitio_commons.sync.manager.Manager.__init__', new=_split_synchronizer)
 
         # Start factory and make assertions
         factory = get_factory('some_api_key')
@@ -454,15 +454,15 @@ class SplitFactoryTests(object):
             self._streaming_enabled = False
             self._telemetry_runtime_producer = telemetry_runtime_producer
             self._telemetry_init_consumer = telemetry_init_consumer
-        mocker.patch('harness_commons.sync.manager.Manager.__init__', new=_init)
+        mocker.patch('splitio_commons.sync.manager.Manager.__init__', new=_init)
 
         def _start(self, *args, **kwargs):
             sdk_ready_flag.set()
-        mocker.patch('harness_commons.sync.manager.Manager.start', new=_start)
+        mocker.patch('splitio_commons.sync.manager.Manager.start', new=_start)
 
         def _stop(self, *args, **kwargs):
             pass
-        mocker.patch('harness_commons.sync.manager.Manager.stop', new=_stop)
+        mocker.patch('splitio_commons.sync.manager.Manager.stop', new=_stop)
 
         mockManager = Manager(sdk_ready_flag, mocker.Mock(), mocker.Mock(), False, mocker.Mock(), mocker.Mock())
 
@@ -583,13 +583,13 @@ class SplitFactoryTests(object):
         mocker.patch('splitio.client.factory.SplitFactory._get_storage', new=_get_storage_mock)
 
         sync_all_mock = mocker.Mock()
-        mocker.patch('harness_commons.sync.synchronizer.Synchronizer.sync_all', new=sync_all_mock)
+        mocker.patch('splitio_commons.sync.synchronizer.Synchronizer.sync_all', new=sync_all_mock)
 
         start_mock = mocker.Mock()
-        mocker.patch('harness_commons.sync.manager.Manager.start', new=start_mock)
+        mocker.patch('splitio_commons.sync.manager.Manager.start', new=start_mock)
 
         recreate_mock = mocker.Mock()
-        mocker.patch('harness_commons.sync.manager.Manager.recreate', new=recreate_mock)
+        mocker.patch('splitio_commons.sync.manager.Manager.recreate', new=recreate_mock)
 
         config = {
             'preforkedInitialization': True,
@@ -722,7 +722,7 @@ class SplitFactoryTests(object):
             self._streaming_enabled = False
             self._telemetry_runtime_producer = telemetry_runtime_producer
 
-        mocker.patch('harness_commons.sync.manager.Manager.__init__', new=_split_synchronizer)
+        mocker.patch('splitio_commons.sync.manager.Manager.__init__', new=_split_synchronizer)
 
         # Start factory and make assertions
         
@@ -850,11 +850,11 @@ class SplitFactoryAsyncTests(object):
             self._streaming_enabled = False
             self._telemetry_runtime_producer = telemetry_runtime_producer
             
-        mocker.patch('harness_commons.sync.manager.ManagerAsync.__init__', new=_split_synchronizer)
+        mocker.patch('splitio_commons.sync.manager.ManagerAsync.__init__', new=_split_synchronizer)
 
         async def synchronize_config(*_):
             pass
-        mocker.patch('harness_commons.sync.telemetry.InMemoryTelemetrySubmitterAsync.synchronize_config', new=synchronize_config)
+        mocker.patch('splitio_commons.sync.telemetry.InMemoryTelemetrySubmitterAsync.synchronize_config', new=synchronize_config)
 
         # Start factory and make assertions
         factory2 = await get_factory_async('some_api_key', config={'streamingEmabled': False})
@@ -962,11 +962,11 @@ class SplitFactoryAsyncTests(object):
             self._synchronizer = synchronizer
             self._streaming_enabled = False
             self._telemetry_runtime_producer = telemetry_runtime_producer
-        mocker.patch('harness_commons.sync.manager.ManagerAsync.__init__', new=_split_synchronizer)
+        mocker.patch('splitio_commons.sync.manager.ManagerAsync.__init__', new=_split_synchronizer)
 
         async def synchronize_config(*_):
             pass
-        mocker.patch('harness_commons.sync.telemetry.InMemoryTelemetrySubmitterAsync.synchronize_config', new=synchronize_config)
+        mocker.patch('splitio_commons.sync.telemetry.InMemoryTelemetrySubmitterAsync.synchronize_config', new=synchronize_config)
         # Start factory and make assertions
         # Using invalid key should result in a timeout exception
         factory = await get_factory_async('some_api_key')
@@ -1084,20 +1084,20 @@ class SplitFactoryAsyncTests(object):
             self._streaming_enabled = False
             self._telemetry_runtime_producer = telemetry_runtime_producer
             
-        mocker.patch('harness_commons.sync.manager.ManagerAsync.__init__', new=_split_synchronizer)
+        mocker.patch('splitio_commons.sync.manager.ManagerAsync.__init__', new=_split_synchronizer)
 
         async def synchronize_config(*_):
             await asyncio.sleep(2)
             pass
-        mocker.patch('harness_commons.sync.telemetry.InMemoryTelemetrySubmitterAsync.synchronize_config', new=synchronize_config)
+        mocker.patch('splitio_commons.sync.telemetry.InMemoryTelemetrySubmitterAsync.synchronize_config', new=synchronize_config)
 
         async def record_ready_time(*_):
             pass
-        mocker.patch('harness_commons.models.telemetry.TelemetryConfigAsync.record_ready_time', new=record_ready_time)
+        mocker.patch('splitio_commons.models.telemetry.TelemetryConfigAsync.record_ready_time', new=record_ready_time)
 
         async def record_active_and_redundant_factories(*_):
             pass
-        mocker.patch('harness_commons.models.telemetry.TelemetryConfigAsync.record_active_and_redundant_factories', new=record_active_and_redundant_factories)
+        mocker.patch('splitio_commons.models.telemetry.TelemetryConfigAsync.record_active_and_redundant_factories', new=record_active_and_redundant_factories)
 
         # Start factory and make assertions
         factory = await get_factory_async('some_api_key', config={'streamingEmabled': False})

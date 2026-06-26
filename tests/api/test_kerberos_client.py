@@ -7,8 +7,8 @@ import requests
 from splitio.client.config import AuthenticateScheme
 from splitio.api import kerberos_client as client
 
-from harness_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
-from harness_commons.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
+from splitio_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
+from splitio_commons.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
 
 class HttpClientKerberosTests(object):
     """Http Client test cases."""

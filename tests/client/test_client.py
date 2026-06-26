@@ -8,25 +8,25 @@ import asyncio
 
 from splitio.client.client import Client, _LOGGER as _logger, CONTROL, ClientAsync, EvaluationOptions
 from splitio.client.factory import SplitFactory, Status as FactoryStatus, SplitFactoryAsync
-from harness_commons.events.events_manager import EventsManager, EventsManagerAsync
-from harness_commons.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
-from harness_commons.models.fallback_treatment import FallbackTreatment
-from harness_commons.models.impressions import Impression, Label
-from harness_commons.models.events import Event, EventWrapper, SdkEvent
-from harness_commons.storage import SegmentStorage, ImpressionStorage, EventStorage, RuleBasedSegmentsStorage
+from splitio_commons.events.events_manager import EventsManager, EventsManagerAsync
+from splitio_commons.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
+from splitio_commons.models.fallback_treatment import FallbackTreatment
+from splitio_commons.models.impressions import Impression, Label
+from splitio_commons.models.events import Event, EventWrapper, SdkEvent
+from splitio_commons.storage import SegmentStorage, ImpressionStorage, EventStorage, RuleBasedSegmentsStorage
 from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync, SplitStorage
-from harness_commons.storage.inmemmory import InMemorySegmentStorage, \
+from splitio_commons.storage.inmemmory import InMemorySegmentStorage, \
     InMemoryImpressionStorage, InMemoryTelemetryStorage, \
     InMemoryImpressionStorageAsync, InMemorySegmentStorageAsync, InMemoryTelemetryStorageAsync, InMemoryEventStorageAsync, \
     InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 from splitio.models.splits import Split, Status, from_raw
-from harness_commons.engine.impressions.impressions import Manager as ImpressionManager
-from harness_commons.engine.impressions.manager import Counter as ImpressionsCounter
-from harness_commons.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
-from harness_commons.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
-from harness_commons.engine.evaluator import Evaluator, EvaluationContext
-from harness_commons.recorder.recorder import StandardRecorder, StandardRecorderAsync
-from harness_commons.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode, StrategyOptimizedMode
+from splitio_commons.engine.impressions.impressions import Manager as ImpressionManager
+from splitio_commons.engine.impressions.manager import Counter as ImpressionsCounter
+from splitio_commons.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
+from splitio_commons.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
+from splitio_commons.engine.evaluator import Evaluator, EvaluationContext
+from splitio_commons.recorder.recorder import StandardRecorder, StandardRecorderAsync
+from splitio_commons.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode, StrategyOptimizedMode
 from tests.integration import splits_json
 
 
@@ -1276,7 +1276,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert(telemetry_storage._method_latencies._track[0] == 1)
         factory.destroy()
 
-    @mock.patch('harness_commons.recorder.recorder.StandardRecorder.record_track_stats', side_effect=Exception())
+    @mock.patch('splitio_commons.recorder.recorder.StandardRecorder.record_track_stats', side_effect=Exception())
     def test_telemetry_track_exception(self, mocker):
         split_storage = mocker.Mock(spec=SplitStorage)
         segment_storage = mocker.Mock(spec=SegmentStorage)
@@ -1437,7 +1437,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert client.get_treatments_with_config_by_flag_sets('some_key', ['set_1'], evaluation_options=EvaluationOptions({"prop": "value"})) == {'SPLIT_2': ('on', None)}
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
-    @mock.patch('harness_commons.engine.evaluator.Evaluator.eval_with_context', side_effect=RuntimeError())
+    @mock.patch('splitio_commons.engine.evaluator.Evaluator.eval_with_context', side_effect=RuntimeError())
     def test_fallback_treatment_eval_exception(self, mocker):
         # using fallback when the evaluator has RuntimeError exception
         split_storage = mocker.Mock(spec=SplitStorage)
@@ -1578,7 +1578,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         except:
             pass
 
-    @mock.patch('harness_commons.engine.evaluator.Evaluator.eval_with_context', side_effect=Exception())
+    @mock.patch('splitio_commons.engine.evaluator.Evaluator.eval_with_context', side_effect=Exception())
     def test_fallback_treatment_exception(self, mocker):
         # using fallback when the evaluator has RuntimeError exception
         split_storage = mocker.Mock(spec=SplitStorage)

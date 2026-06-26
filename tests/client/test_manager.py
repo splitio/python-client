@@ -7,10 +7,10 @@ from splitio.client.factory import SplitFactory
 from splitio.client.manager import SplitManager, SplitManagerAsync, _LOGGER as _logger
 from splitio.models import splits
 from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync
-from harness_commons.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
-from harness_commons.engine.impressions.impressions import Manager as ImpressionManager
-from harness_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync, TelemetryStorageConsumer, TelemetryStorageConsumerAsync
-from harness_commons.recorder.recorder import StandardRecorder, StandardRecorderAsync
+from splitio_commons.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
+from splitio_commons.engine.impressions.impressions import Manager as ImpressionManager
+from splitio_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync, TelemetryStorageConsumer, TelemetryStorageConsumerAsync
+from splitio_commons.recorder.recorder import StandardRecorder, StandardRecorderAsync
 from tests.integration import splits_json
 
 class SplitManagerTests(object):  # pylint: disable=too-few-public-methods
