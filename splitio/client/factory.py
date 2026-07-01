@@ -707,7 +707,7 @@ def _build_synchronizer_classes(threading_mode, storages, apis, cfg, telemetry_s
     if cfg['storageType'] in ['redis', 'pluggable']:
         if threading_mode == ThreadingMode.ASYNC:
             return HarnessSynchronizers(None, None, None, None,
-                ImpressionsCountSynchronizer(sender_adapter, imp_counter),
+                ImpressionsCountSynchronizerAsync(sender_adapter, imp_counter),
                 None,
                 UniqueKeysSynchronizerAsync(sender_adapter, unique_keys_tracker),
                 ClearFilterSynchronizerAsync(unique_keys_tracker)
@@ -1109,7 +1109,7 @@ def _build_pluggable_factory(api_key, cfg):
     tasks = _build_sync_tasks(ThreadingMode.THREADED, synchronizers, cfg, None)
     synchronizer = RedisSynchronizer(synchronizers, tasks)
 
-    recorder = _build_recorder(ThreadingMode.THREADED, cfg, imp_manager, storages, None, None, sdk_metadata, imp_counter, unique_keys_tracker, pluggable_adapter)
+    recorder = _build_recorder(ThreadingMode.THREADED, cfg, imp_manager, storages, NoOpClass(), NoOpClass(), sdk_metadata, imp_counter, unique_keys_tracker, pluggable_adapter)
     # Using same class as redis for consumer mode only
     manager = RedisManager(synchronizer)
     initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
@@ -1149,15 +1149,15 @@ async def _build_pluggable_factory_async(api_key, cfg):
     storages['telemetry'] = await PluggableTelemetryStorageAsync.create(pluggable_adapter, sdk_metadata, storage_prefix)
 
     telemetry_producer, telemetry_runtime_producer, telemetry_init_producer, telemetry_submitter = _build_telemetry_classes(cfg['storageType'], ThreadingMode.ASYNC, storages['telemetry'])
-    unique_keys_tracker = UniqueKeysTracker(_UNIQUE_KEYS_CACHE_SIZE)
+    unique_keys_tracker = UniqueKeysTrackerAsync(_UNIQUE_KEYS_CACHE_SIZE)
     imp_counter, imp_manager = _build_engine_classes(cfg['impressionsMode'], telemetry_runtime_producer)
 
-    sender_adapter = PluggableSenderAdapter(pluggable_adapter, storage_prefix)
+    sender_adapter = PluggableSenderAdapterAsync(pluggable_adapter, storage_prefix)
     synchronizers = _build_synchronizer_classes(ThreadingMode.ASYNC, storages, None, cfg, None, unique_keys_tracker, imp_counter, sender_adapter)
     tasks = _build_sync_tasks(ThreadingMode.ASYNC, synchronizers, cfg, None)
-    synchronizer = RedisSynchronizer(synchronizers, tasks)
+    synchronizer = RedisSynchronizerAsync(synchronizers, tasks)
 
-    recorder = _build_recorder(ThreadingMode.ASYNC, cfg, imp_manager, storages, None, None, sdk_metadata, imp_counter, unique_keys_tracker, pluggable_adapter)
+    recorder = _build_recorder(ThreadingMode.ASYNC, cfg, imp_manager, storages, NoOpClassAsync(), NoOpClassAsync(), sdk_metadata, imp_counter, unique_keys_tracker, pluggable_adapter)
     # Using same class as redis for consumer mode only
     manager = RedisManagerAsync(synchronizer)
     manager.start()
@@ -1459,3 +1459,17 @@ def _get_total_and_invalid_flag_sets(config_raw):
         invalid_flag_sets = total_flag_sets - len(input_validator.validate_flag_sets(config_raw.get('flagSetsFilter'), 'Telemetry Init'))
 
     return total_flag_sets, invalid_flag_sets
+
+class NoOpClass(object):
+    def do_nothing(*_, **__):
+        return {}
+
+    def __getattr__(self, _):
+        return self.do_nothing
+
+class NoOpClassAsync(object):
+    async def do_nothing(*_, **__):
+        return {}
+
+    def __getattr__(self, _):
+        return self.do_nothing
