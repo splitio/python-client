@@ -835,7 +835,7 @@ def _build_push_classes(threading_mode, synchronizer, cfg, telemetry_runtime_pro
     
     return push_manager, push_queue
 
-def _build_recorder(threading_mode, cfg, imp_manager, storages, telemetry_evaluation_producer, telemetry_runtime_producer, sdk_metadata, imp_counter, unique_keys_tracker, redis_adapter=None):
+def _build_recorder(threading_mode, synchronizer, cfg, imp_manager, storages, telemetry_evaluation_producer, telemetry_runtime_producer, sdk_metadata, imp_counter, unique_keys_tracker, redis_adapter=None):
     if cfg['storageType'] == 'redis':
         data_sampling = cfg.get('dataSampling', DEFAULT_DATA_SAMPLING)
         if data_sampling < _MIN_DEFAULT_DATA_SAMPLING_ALLOWED:
@@ -870,6 +870,8 @@ def _build_recorder(threading_mode, cfg, imp_manager, storages, telemetry_evalua
 
     if threading_mode == ThreadingMode.ASYNC:
         return StandardRecorderAsync(
+            synchronizer._harness_synchronizers.impressions_sync.synchronize_impressions,
+            synchronizer._harness_synchronizers.events_sync.synchronize_events,
             imp_manager,
             storages['events'],
             storages['impressions'],
@@ -881,6 +883,8 @@ def _build_recorder(threading_mode, cfg, imp_manager, storages, telemetry_evalua
         )
 
     return StandardRecorder(
+        synchronizer._harness_synchronizers.impressions_sync.synchronize_impressions,
+        synchronizer._harness_synchronizers.events_sync.synchronize_events,
         imp_manager,
         storages['events'],
         storages['impressions'],
@@ -936,10 +940,8 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     push_manager, push_queue = _build_push_classes(ThreadingMode.THREADED, synchronizer, cfg, telemetry_runtime_producer, apis, sdk_metadata, streaming_api_base_url, api_key)    
     manager = Manager(sdk_ready_flag, synchronizer, apis['auth'], cfg['streamingEnabled'],
                       sdk_metadata, telemetry_runtime_producer, streaming_api_base_url, api_key[-4:], push_manager, push_queue)
-    recorder = _build_recorder(ThreadingMode.THREADED, cfg, imp_manager, storages, telemetry_evaluation_producer, telemetry_runtime_producer, sdk_metadata, imp_counter, unique_keys_tracker)
+    recorder = _build_recorder(ThreadingMode.THREADED, synchronizer, cfg, imp_manager, storages, telemetry_evaluation_producer, telemetry_runtime_producer, sdk_metadata, imp_counter, unique_keys_tracker)
 
-    storages['events'].set_queue_full_hook(tasks.events_task.flush)
-    storages['impressions'].set_queue_full_hook(tasks.impressions_task.flush)
     telemetry_init_producer.record_config(cfg, extra_cfg, total_flag_sets, invalid_flag_sets)
     internal_events_task.start()
     
@@ -992,9 +994,7 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
     manager = ManagerAsync(synchronizer, apis['auth'], cfg['streamingEnabled'],
                       sdk_metadata, telemetry_runtime_producer, streaming_api_base_url, api_key[-4:], push_manager, push_queue)
 
-    storages['events'].set_queue_full_hook(tasks.events_task.flush)
-    storages['impressions'].set_queue_full_hook(tasks.impressions_task.flush)
-    recorder = _build_recorder(ThreadingMode.ASYNC, cfg, imp_manager, storages, telemetry_evaluation_producer, telemetry_runtime_producer, sdk_metadata, imp_counter, unique_keys_tracker)
+    recorder = _build_recorder(ThreadingMode.ASYNC, synchronizer, cfg, imp_manager, storages, telemetry_evaluation_producer, telemetry_runtime_producer, sdk_metadata, imp_counter, unique_keys_tracker)
 
     await telemetry_init_producer.record_config(cfg, extra_cfg, total_flag_sets, invalid_flag_sets)
     internal_events_task.start()
@@ -1022,7 +1022,7 @@ def _build_redis_factory(api_key, cfg):
     tasks = _build_sync_tasks(ThreadingMode.THREADED, synchronizers, cfg, None)
     synchronizer = RedisSynchronizer(synchronizers, tasks)
 
-    recorder = _build_recorder(ThreadingMode.THREADED, cfg, imp_manager, storages, None, None, sdk_metadata, imp_counter, unique_keys_tracker, redis_adapter)
+    recorder = _build_recorder(ThreadingMode.THREADED, synchronizer, cfg, imp_manager, storages, None, None, sdk_metadata, imp_counter, unique_keys_tracker, redis_adapter)
     manager = RedisManager(synchronizer)
     initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
     initialization_thread.start()
@@ -1065,7 +1065,7 @@ async def _build_redis_factory_async(api_key, cfg):
     tasks = _build_sync_tasks(ThreadingMode.ASYNC, synchronizers, cfg, None)
     synchronizer = RedisSynchronizerAsync(synchronizers, tasks)
     
-    recorder = _build_recorder(ThreadingMode.ASYNC, cfg, imp_manager, storages, None, None, sdk_metadata, imp_counter, unique_keys_tracker, redis_adapter)
+    recorder = _build_recorder(ThreadingMode.ASYNC, synchronizer, cfg, imp_manager, storages, None, None, sdk_metadata, imp_counter, unique_keys_tracker, redis_adapter)
     manager = RedisManagerAsync(synchronizer)
     await telemetry_init_producer.record_config(cfg, {}, 0, 0)
     manager.start()
@@ -1109,7 +1109,19 @@ def _build_pluggable_factory(api_key, cfg):
     tasks = _build_sync_tasks(ThreadingMode.THREADED, synchronizers, cfg, None)
     synchronizer = RedisSynchronizer(synchronizers, tasks)
 
-    recorder = _build_recorder(ThreadingMode.THREADED, cfg, imp_manager, storages, NoOpClass(), NoOpClass(), sdk_metadata, imp_counter, unique_keys_tracker, pluggable_adapter)
+    recorder = StandardRecorder(
+        None,
+        None,
+        imp_manager,
+        storages['events'],
+        storages['impressions'],
+        NoOpClass(),
+        NoOpClass(),
+        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
+        imp_counter=imp_counter,
+        unique_keys_tracker=unique_keys_tracker
+    )
+
     # Using same class as redis for consumer mode only
     manager = RedisManager(synchronizer)
     initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
@@ -1157,7 +1169,19 @@ async def _build_pluggable_factory_async(api_key, cfg):
     tasks = _build_sync_tasks(ThreadingMode.ASYNC, synchronizers, cfg, None)
     synchronizer = RedisSynchronizerAsync(synchronizers, tasks)
 
-    recorder = _build_recorder(ThreadingMode.ASYNC, cfg, imp_manager, storages, NoOpClassAsync(), NoOpClassAsync(), sdk_metadata, imp_counter, unique_keys_tracker, pluggable_adapter)
+    recorder = StandardRecorderAsync(
+        None,
+        None,
+        imp_manager,
+        storages['events'],
+        storages['impressions'],
+        telemetry_producer.get_telemetry_evaluation_producer(),
+        telemetry_runtime_producer,
+        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
+        imp_counter=imp_counter,
+        unique_keys_tracker=unique_keys_tracker
+    )
+
     # Using same class as redis for consumer mode only
     manager = RedisManagerAsync(synchronizer)
     manager.start()
@@ -1241,6 +1265,8 @@ def _build_localhost_factory(cfg):
         manager.start()
 
     recorder = StandardRecorder(
+        None,
+        None,
         ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer),
         storages['events'],
         storages['impressions'],
@@ -1322,6 +1348,8 @@ async def _build_localhost_factory_async(cfg):
         await manager.start()
 
     recorder = StandardRecorderAsync(
+        None,
+        None,
         ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer),
         storages['events'],
         storages['impressions'],

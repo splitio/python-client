@@ -733,13 +733,13 @@ class SplitFactoryTests(object):
         segment_storage = InMemorySegmentStorage(events_queue)
         rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
-        impression_storage = InMemoryImpressionStorage(10, telemetry_runtime_producer)
+        impression_storage = InMemoryImpressionStorage(10000, telemetry_runtime_producer)
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
 
         destroyed_property = mocker.PropertyMock()
         destroyed_property.return_value = False
-        recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+        recorder = StandardRecorder(None, None, impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory("some key",
             {'splits': split_storage,
             'segments': segment_storage,

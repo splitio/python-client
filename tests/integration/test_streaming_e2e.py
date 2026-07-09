@@ -176,12 +176,6 @@ class StreamingIntegrationTests(object):
         assert req.path == '/api/splitChanges?s=1.3&since=-1&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=1&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
         # Auth
         req = split_backend_requests.get()
         assert req.method == 'GET'
@@ -390,12 +384,6 @@ class StreamingIntegrationTests(object):
         assert req.path == '/api/splitChanges?s=1.3&since=-1&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=1&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
         # Auth
         req = split_backend_requests.get()
         assert req.method == 'GET'
@@ -414,22 +402,10 @@ class StreamingIntegrationTests(object):
         assert req.path == '/api/splitChanges?s=1.3&since=1&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=2&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
         # Fetch after second notification
         req = split_backend_requests.get()
         assert req.method == 'GET'
         assert req.path == '/api/splitChanges?s=1.3&since=2&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=3&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Iteration until since == till
@@ -448,12 +424,6 @@ class StreamingIntegrationTests(object):
         req = split_backend_requests.get()
         assert req.method == 'GET'
         assert req.path == '/api/splitChanges?s=1.3&since=4&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=5&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Cleanup
@@ -568,12 +538,6 @@ class StreamingIntegrationTests(object):
         assert req.path == '/api/splitChanges?s=1.3&since=-1&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=1&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
         # Auth
         req = split_backend_requests.get()
         assert req.method == 'GET'
@@ -596,12 +560,6 @@ class StreamingIntegrationTests(object):
         req = split_backend_requests.get()
         assert req.method == 'GET'
         assert req.path == '/api/splitChanges?s=1.3&since=1&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
-        # Second iteration of previous syncAll
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=2&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Cleanup
@@ -760,12 +718,6 @@ class StreamingIntegrationTests(object):
         assert req.path == '/api/splitChanges?s=1.3&since=-1&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=1&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
         # Auth
         req = split_backend_requests.get()
         assert req.method == 'GET'
@@ -784,22 +736,10 @@ class StreamingIntegrationTests(object):
         assert req.path == '/api/splitChanges?s=1.3&since=1&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=2&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
         # SyncAll after push is up
         req = split_backend_requests.get()
         assert req.method == 'GET'
         assert req.path == '/api/splitChanges?s=1.3&since=2&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=3&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Fetch after notification
@@ -818,12 +758,6 @@ class StreamingIntegrationTests(object):
         req = split_backend_requests.get()
         assert req.method == 'GET'
         assert req.path == '/api/splitChanges?s=1.3&since=4&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=5&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Cleanup
@@ -985,12 +919,6 @@ class StreamingIntegrationTests(object):
         req = split_backend_requests.get()
         assert req.method == 'GET'
         assert req.path == '/api/splitChanges?s=1.3&since=-1&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=1&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Auth
@@ -1224,12 +1152,6 @@ class StreamingIntegrationTests(object):
         assert req.path == '/api/splitChanges?s=1.3&since=-1&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=1&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
         # Auth
         req = split_backend_requests.get()
         assert req.method == 'GET'
@@ -1246,12 +1168,6 @@ class StreamingIntegrationTests(object):
         req = split_backend_requests.get()
         assert req.method == 'GET'
         assert req.path == '/api/splitChanges?s=1.3&since=1&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=2&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Auth again
@@ -1506,12 +1422,6 @@ class StreamingIntegrationAsyncTests(object):
         assert req.path == '/api/splitChanges?s=1.3&since=-1&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=1&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
         # Auth
         req = split_backend_requests.get()
         assert req.method == 'GET'
@@ -1714,12 +1624,6 @@ class StreamingIntegrationAsyncTests(object):
         assert req.path == '/api/splitChanges?s=1.3&since=-1&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=1&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
         # Auth
         req = split_backend_requests.get()
         assert req.method == 'GET'
@@ -1738,22 +1642,10 @@ class StreamingIntegrationAsyncTests(object):
         assert req.path == '/api/splitChanges?s=1.3&since=1&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=2&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
         # Fetch after second notification
         req = split_backend_requests.get()
         assert req.method == 'GET'
         assert req.path == '/api/splitChanges?s=1.3&since=2&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=3&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Iteration until since == till
@@ -1772,12 +1664,6 @@ class StreamingIntegrationAsyncTests(object):
         req = split_backend_requests.get()
         assert req.method == 'GET'
         assert req.path == '/api/splitChanges?s=1.3&since=4&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=5&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Cleanup
@@ -1892,12 +1778,6 @@ class StreamingIntegrationAsyncTests(object):
         assert req.path == '/api/splitChanges?s=1.3&since=-1&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=1&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
         # Auth
         req = split_backend_requests.get()
         assert req.method == 'GET'
@@ -1920,12 +1800,6 @@ class StreamingIntegrationAsyncTests(object):
         req = split_backend_requests.get()
         assert req.method == 'GET'
         assert req.path == '/api/splitChanges?s=1.3&since=1&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
-        # Second iteration of previous syncAll
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=2&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Cleanup
@@ -2086,12 +1960,6 @@ class StreamingIntegrationAsyncTests(object):
         assert req.path == '/api/splitChanges?s=1.3&since=-1&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=1&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
         # Auth
         req = split_backend_requests.get()
         assert req.method == 'GET'
@@ -2110,22 +1978,10 @@ class StreamingIntegrationAsyncTests(object):
         assert req.path == '/api/splitChanges?s=1.3&since=1&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=2&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
         # SyncAll after push is up
         req = split_backend_requests.get()
         assert req.method == 'GET'
         assert req.path == '/api/splitChanges?s=1.3&since=2&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=3&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Fetch after notification
@@ -2134,22 +1990,10 @@ class StreamingIntegrationAsyncTests(object):
         assert req.path == '/api/splitChanges?s=1.3&since=3&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=4&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
         # SyncAll after streaming disabled
         req = split_backend_requests.get()
         assert req.method == 'GET'
         assert req.path == '/api/splitChanges?s=1.3&since=4&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=5&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Cleanup
@@ -2304,12 +2148,6 @@ class StreamingIntegrationAsyncTests(object):
         req = split_backend_requests.get()
         assert req.method == 'GET'
         assert req.path == '/api/splitChanges?s=1.3&since=-1&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=1&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Auth
@@ -2542,12 +2380,6 @@ class StreamingIntegrationAsyncTests(object):
         assert req.path == '/api/splitChanges?s=1.3&since=-1&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=1&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
         # Auth
         req = split_backend_requests.get()
         assert req.method == 'GET'
@@ -2564,12 +2396,6 @@ class StreamingIntegrationAsyncTests(object):
         req = split_backend_requests.get()
         assert req.method == 'GET'
         assert req.path == '/api/splitChanges?s=1.3&since=1&rbSince=-1'
-        assert req.headers['authorization'] == 'Bearer some_apikey'
-
-        # Iteration until since == till
-        req = split_backend_requests.get()
-        assert req.method == 'GET'
-        assert req.path == '/api/splitChanges?s=1.3&since=2&rbSince=-1'
         assert req.headers['authorization'] == 'Bearer some_apikey'
 
         # Auth again

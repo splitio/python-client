@@ -2,6 +2,7 @@
 import pytest
 import logging
 import asyncio
+import queue
 
 from splitio.client.factory import SplitFactory, get_factory, SplitFactoryAsync, get_factory_async
 from splitio.client.client import CONTROL, Client, _LOGGER as _logger, ClientAsync
@@ -41,7 +42,7 @@ class ClientInputValidationTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
+        recorder = StandardRecorder(None, None, impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
             {
@@ -284,7 +285,7 @@ class ClientInputValidationTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
+        recorder = StandardRecorder(None, None, impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
             {
@@ -552,16 +553,18 @@ class ClientInputValidationTests(object):
     def test_track(self, mocker):
         """Test track method()."""
         events_storage_mock = mocker.Mock(spec=EventStorage)
+        events_storage_mock._size = 10
+        events_storage_mock._queue_size = 1000
+        events_storage_mock._events = queue.Queue()
         events_storage_mock.put.return_value = True
-        event_storage = mocker.Mock(spec=EventStorage)
-        event_storage.put.return_value = True
+        
         split_storage_mock = mocker.Mock(spec=DefinitionStorage)
         split_storage_mock.is_valid_traffic_type.return_value = True
 
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        recorder = StandardRecorder(impmanager, events_storage_mock, ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
+        recorder = StandardRecorder(None, None, impmanager, events_storage_mock, ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
             {
@@ -584,7 +587,7 @@ class ClientInputValidationTests(object):
         factory._sdk_key = 'some-test'
 
         client = Client(factory, recorder, mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
-        client._event_storage = event_storage
+        client._event_storage = events_storage_mock
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -843,7 +846,7 @@ class ClientInputValidationTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+        recorder = StandardRecorder(None, None, impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
             {
@@ -993,7 +996,7 @@ class ClientInputValidationTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+        recorder = StandardRecorder(None, None, impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
             {
@@ -1143,7 +1146,7 @@ class ClientInputValidationTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+        recorder = StandardRecorder(None, None, impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
             {
@@ -1264,7 +1267,7 @@ class ClientInputValidationTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+        recorder = StandardRecorder(None, None, impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
             {
@@ -1396,7 +1399,7 @@ class ClientInputValidationTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+        recorder = StandardRecorder(None, None, impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
             {
@@ -1522,7 +1525,7 @@ class ClientInputValidationTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+        recorder = StandardRecorder(None, None, impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
             {
@@ -1717,7 +1720,7 @@ class ClientInputValidationAsyncTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
+        recorder = StandardRecorderAsync(None, None, impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
             {
@@ -1988,7 +1991,7 @@ class ClientInputValidationAsyncTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
+        recorder = StandardRecorderAsync(None, None, impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
             {
@@ -2232,16 +2235,17 @@ class ClientInputValidationAsyncTests(object):
         async def put(*_):
             return True
         events_storage_mock.put = put
-
-        event_storage = mocker.Mock(spec=EventStorage)
-        event_storage.put = put
+        events_storage_mock._size = 10
+        events_storage_mock._queue_size = 1000
+        events_storage_mock._events = asyncio.Queue()
+        
         split_storage_mock = mocker.Mock(spec=DefinitionStorage)
         split_storage_mock.is_valid_traffic_type = put
 
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        recorder = StandardRecorderAsync(impmanager, events_storage_mock, ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
+        recorder = StandardRecorderAsync(None, None, impmanager, events_storage_mock, ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
             {
@@ -2264,7 +2268,7 @@ class ClientInputValidationAsyncTests(object):
         factory._sdk_key = 'some-test'
 
         client = ClientAsync(factory, recorder, events_manager, mocker.Mock(), FallbackTreatmentCalculator(None))
-        client._event_storage = event_storage
+        client._event_storage = events_storage_mock
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
@@ -2540,7 +2544,7 @@ class ClientInputValidationAsyncTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+        recorder = StandardRecorderAsync(None, None, impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
             {
@@ -2713,7 +2717,7 @@ class ClientInputValidationAsyncTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+        recorder = StandardRecorderAsync(None, None, impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
             {
@@ -2889,7 +2893,7 @@ class ClientInputValidationAsyncTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+        recorder = StandardRecorderAsync(None, None, impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
             {
@@ -3044,7 +3048,7 @@ class ClientInputValidationAsyncTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+        recorder = StandardRecorderAsync(None, None, impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
             {
@@ -3208,7 +3212,7 @@ class ClientInputValidationAsyncTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+        recorder = StandardRecorderAsync(None, None, impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
             {
@@ -3366,7 +3370,7 @@ class ClientInputValidationAsyncTests(object):
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+        recorder = StandardRecorderAsync(None, None, impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
             {
@@ -3527,7 +3531,7 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
-        recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+        recorder = StandardRecorder(None, None, impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
             {
@@ -3612,7 +3616,12 @@ class ManagerInputValidationAsyncTests(object):  #pylint: disable=too-few-public
         impmanager = mocker.Mock(spec=ImpressionManager)
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
+        event_storage = mocker.Mock(spec=EventStorage)
+        event_storage._size = 10
+        event_storage._queue_size = 1000
+        event_storage._events = queue.Queue()
+
+        recorder = StandardRecorderAsync(None, None, impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
             {
@@ -3620,7 +3629,7 @@ class ManagerInputValidationAsyncTests(object):  #pylint: disable=too-few-public
                 'segments': mocker.Mock(spec=SegmentStorage),
                 'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
                 'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': mocker.Mock(spec=EventStorage),
+                'events': event_storage,
             },
             mocker.Mock(),
             recorder,

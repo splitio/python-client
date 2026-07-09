@@ -3,6 +3,7 @@
 import logging
 import json
 import threading
+import queue
 
 from splitio.optional.loaders import asyncio
 from splitio.models import splits
@@ -1327,7 +1328,6 @@ class PluggableImpressionsStorage(PluggableImpressionsStorageBase):
         if total_keys == inserted:
             self._pluggable_adapter.expire(self._impressions_queue_key, self.IMPRESSIONS_KEY_DEFAULT_TTL)
 
-
 class PluggableImpressionsStorageAsync(PluggableImpressionsStorageBase):
     """Pluggable Impressions storage class."""
 
@@ -1473,6 +1473,7 @@ class PluggableEventsStorage(PluggableEventsStorageBase):
         :type prefix: str
         """
         PluggableEventsStorageBase.__init__(self, pluggable_adapter, sdk_metadata, prefix)
+        self._events = queue.Queue() # adding it to allow hook condition in recorder
 
     def put(self, events):
         """
