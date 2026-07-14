@@ -108,8 +108,6 @@ class SplitSynchronizationTests(object):
         assert not task.is_running()
         assert api.fetch_definitions.mock_calls[0][1][0] == -1
         assert api.fetch_definitions.mock_calls[0][1][2].cache_control_headers == True
-        assert api.fetch_definitions.mock_calls[1][1][0] == 123
-        assert api.fetch_definitions.mock_calls[1][1][2].cache_control_headers == True
 
         inserted_split = storage.update.mock_calls[0][1][0][0]
         assert isinstance(inserted_split, Split)

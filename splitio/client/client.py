@@ -313,6 +313,8 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
     
         except:
             _LOGGER.error('get_treatment failed')
+            _LOGGER.error('Error: ', exc_info=True)
+
             treatment, _ = self._get_fallback_treatment_with_config(feature_flag_name)
             return treatment
 
@@ -759,7 +761,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         except Exception:  # pylint: disable=broad-except
             self._telemetry_evaluation_producer.record_exception(MethodExceptionsAndLatencies.TRACK)
             _LOGGER.error('Error processing track event')
-            _LOGGER.debug('Error: ', exc_info=True)
+            _LOGGER.error('Error: ', exc_info=True)
             return False
 
 

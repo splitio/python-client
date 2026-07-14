@@ -565,11 +565,11 @@ class InMemoryDebugIntegrationTests(object):
             'splits': split_storage,
             'segments': segment_storage,
             'rule_based_segments': rb_segment_storage,
-            'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
-            'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
+            'impressions': InMemoryImpressionStorage(50000, telemetry_runtime_producer),
+            'events': InMemoryEventStorage(50000, telemetry_runtime_producer),
         }
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
+        recorder = StandardRecorder(None, None, impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
         events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
         internal_events_task = EventsTask(events_manager.notify_internal_event, events_queue)
 
@@ -733,11 +733,11 @@ class InMemoryOptimizedIntegrationTests(object):
             'splits': split_storage,
             'segments': segment_storage,
             'rule_based_segments': rb_segment_storage,
-            'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
-            'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
+            'impressions': InMemoryImpressionStorage(50000, telemetry_runtime_producer),
+            'events': InMemoryEventStorage(50000, telemetry_runtime_producer),
         }
         impmanager = ImpressionsManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
+        recorder = StandardRecorder(None, None, impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
         events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
         internal_events_task = EventsTask(events_manager.notify_internal_event, events_queue)
         self.factory = SplitFactory('some_api_key',
@@ -1478,7 +1478,7 @@ class PluggableIntegrationTests(object):
         }
 
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorder(impmanager, storages['events'],
+        recorder = StandardRecorder(None, None, impmanager, storages['events'],
                                     storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
 
         events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
@@ -1678,7 +1678,7 @@ class PluggableOptimizedIntegrationTests(object):
         }
 
         impmanager = ImpressionsManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorder(impmanager, storages['events'],
+        recorder = StandardRecorder(None, None, impmanager, storages['events'],
                                     storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
 
         events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
@@ -1859,7 +1859,7 @@ class PluggableNoneIntegrationTests(object):
         imp_strategy, none_strategy = set_classes('PLUGGABLE', ImpressionsMode.NONE, self.pluggable_storage_adapter, imp_counter, unique_keys_tracker)
         impmanager = ImpressionsManager(imp_strategy, none_strategy, telemetry_runtime_producer) # no listener
 
-        recorder = StandardRecorder(impmanager, storages['events'],
+        recorder = StandardRecorder(None, None, impmanager, storages['events'],
                                     storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, unique_keys_tracker=unique_keys_tracker, imp_counter=imp_counter)
 
         synchronizers = HarnessSynchronizers(None, None, None, None,
@@ -1925,7 +1925,7 @@ class PluggableNoneIntegrationTests(object):
     def test_get_treatment(self):
         """Test client.get_treatment()."""
         _get_treatment(self.factory)
-        assert self.pluggable_storage_adapter._keys['SPLITIO.impressions'] == []
+        assert self.pluggable_storage_adapter._keys.get('SPLITIO.impressions') == None
 
     def test_get_treatments(self):
         """Test client.get_treatments()."""
@@ -1942,7 +1942,7 @@ class PluggableNoneIntegrationTests(object):
         assert result['invalid_feature'] == 'control'
         assert result['sample_feature'] == 'off'
 
-        assert self.pluggable_storage_adapter._keys['SPLITIO.impressions'] == []
+        assert self.pluggable_storage_adapter._keys.get('SPLITIO.impressions') == None
 
     def test_get_treatments_with_config(self):
         """Test client.get_treatments_with_config()."""
@@ -1958,12 +1958,12 @@ class PluggableNoneIntegrationTests(object):
         assert result['killed_feature'] == ('defTreatment', '{"size":15,"defTreatment":true}')
         assert result['invalid_feature'] == ('control', None)
         assert result['sample_feature'] == ('off', None)
-        assert self.pluggable_storage_adapter._keys['SPLITIO.impressions'] == []
+        assert self.pluggable_storage_adapter._keys.get('SPLITIO.impressions') == None
 
     def test_get_treatments_by_flag_set(self):
         """Test client.get_treatments_by_flag_set()."""
         _get_treatments_by_flag_set(self.factory)
-        assert self.pluggable_storage_adapter._keys['SPLITIO.impressions'] == []
+        assert self.pluggable_storage_adapter._keys.get('SPLITIO.impressions') == None
 
     def test_get_treatments_by_flag_sets(self):
         """Test client.get_treatments_by_flag_sets()."""
@@ -1974,12 +1974,12 @@ class PluggableNoneIntegrationTests(object):
                             'whitelist_feature': 'off',
                             'all_feature': 'on'
                             }
-        assert self.pluggable_storage_adapter._keys['SPLITIO.impressions'] == []
+        assert self.pluggable_storage_adapter._keys.get('SPLITIO.impressions') == None
 
     def test_get_treatments_with_config_by_flag_set(self):
         """Test client.get_treatments_with_config_by_flag_set()."""
         _get_treatments_with_config_by_flag_set(self.factory)
-        assert self.pluggable_storage_adapter._keys['SPLITIO.impressions'] == []
+        assert self.pluggable_storage_adapter._keys.get('SPLITIO.impressions') == None
 
     def test_get_treatments_with_config_by_flag_sets(self):
         """Test client.get_treatments_with_config_by_flag_sets()."""
@@ -1990,7 +1990,7 @@ class PluggableNoneIntegrationTests(object):
                             'whitelist_feature': ('off', None),
                             'all_feature': ('on', None)
                             }
-        assert self.pluggable_storage_adapter._keys['SPLITIO.impressions'] == []
+        assert self.pluggable_storage_adapter._keys.get('SPLITIO.impressions') == None
 
     def test_track(self):
         """Test client.track()."""
@@ -2033,11 +2033,11 @@ class InMemoryImpressionsToggleIntegrationTests(object):
             'splits': split_storage,
             'segments': segment_storage,
             'rule_based_segments': InMemoryRuleBasedSegmentStorage(events_queue),
-            'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
-            'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
+            'impressions': InMemoryImpressionStorage(50000, telemetry_runtime_producer),
+            'events': InMemoryEventStorage(50000, telemetry_runtime_producer),
         }
         impmanager = ImpressionsManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTracker(), ImpressionsCounter())
+        recorder = StandardRecorder(None, None, impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTracker(), ImpressionsCounter())
         events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
         # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
         try:
@@ -2095,11 +2095,11 @@ class InMemoryImpressionsToggleIntegrationTests(object):
             'splits': split_storage,
             'segments': segment_storage,
             'rule_based_segments': InMemoryRuleBasedSegmentStorage(events_queue),
-            'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
-            'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
+            'impressions': InMemoryImpressionStorage(50000, telemetry_runtime_producer),
+            'events': InMemoryEventStorage(50000, telemetry_runtime_producer),
         }
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTracker(), ImpressionsCounter())
+        recorder = StandardRecorder(None, None, impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTracker(), ImpressionsCounter())
         events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
         internal_events_task = EventsTask(events_manager.notify_internal_event, events_queue)
         # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
@@ -2159,11 +2159,11 @@ class InMemoryImpressionsToggleIntegrationTests(object):
             'splits': split_storage,
             'segments': segment_storage,
             'rule_based_segments': InMemoryRuleBasedSegmentStorage(events_queue),
-            'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
-            'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
+            'impressions': InMemoryImpressionStorage(50000, telemetry_runtime_producer),
+            'events': InMemoryEventStorage(50000, telemetry_runtime_producer),
         }
         impmanager = ImpressionsManager(StrategyNoneMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTracker(), ImpressionsCounter())
+        recorder = StandardRecorder(None, None, impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTracker(), ImpressionsCounter())
         events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
         internal_events_task = EventsTask(events_manager.notify_internal_event, events_queue)
         # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
@@ -2477,11 +2477,11 @@ class InMemoryEventsNotificationTests(object):
             'splits': split_storage,
             'segments': segment_storage,
             'rule_based_segments': rb_segment_storage,
-            'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
-            'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
+            'impressions': InMemoryImpressionStorage(50000, telemetry_runtime_producer),
+            'events': InMemoryEventStorage(50000, telemetry_runtime_producer),
         }
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
+        recorder = StandardRecorder(None, None, impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
         events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
         internal_events_task = EventsTask(events_manager.notify_internal_event, events_queue)
 
@@ -2547,11 +2547,11 @@ class InMemoryEventsNotificationTests(object):
             'splits': split_storage,
             'segments': segment_storage,
             'rule_based_segments': rb_segment_storage,
-            'impressions': InMemoryImpressionStorage(5000, telemetry_runtime_producer),
-            'events': InMemoryEventStorage(5000, telemetry_runtime_producer),
+            'impressions': InMemoryImpressionStorage(50000, telemetry_runtime_producer),
+            'events': InMemoryEventStorage(50000, telemetry_runtime_producer),
         }
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorder(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
+        recorder = StandardRecorder(None, None, impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
         events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
         internal_events_task = EventsTask(events_manager.notify_internal_event, events_queue)
 
@@ -2635,7 +2635,7 @@ class InMemoryEventsNotificationAsyncTests(object):
             'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
         }
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorderAsync(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
+        recorder = StandardRecorderAsync(None, None, impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
         events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
         internal_events_task = EventsTaskAsync(events_manager.notify_internal_event, events_queue)
 
@@ -2705,7 +2705,7 @@ class InMemoryEventsNotificationAsyncTests(object):
             'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
         }
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorderAsync(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
+        recorder = StandardRecorderAsync(None, None, impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
         events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
         internal_events_task = EventsTaskAsync(events_manager.notify_internal_event, events_queue)
 
@@ -2784,7 +2784,7 @@ class InMemoryIntegrationAsyncTests(object):
             'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
         }
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorderAsync(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
+        recorder = StandardRecorderAsync(None, None, impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, imp_counter=ImpressionsCounter())
         # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
         try:
             self.factory = SplitFactoryAsync('some_api_key',
@@ -2960,7 +2960,7 @@ class InMemoryOptimizedIntegrationAsyncTests(object):
             'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
         }
         impmanager = ImpressionsManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorderAsync(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer,
+        recorder = StandardRecorderAsync(None, None, impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer,
                                          imp_counter = ImpressionsCounter())
         # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
         try:
@@ -3802,7 +3802,7 @@ class PluggableIntegrationAsyncTests(object):
         }
 
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorderAsync(impmanager, storages['events'],
+        recorder = StandardRecorderAsync(None, None, impmanager, storages['events'],
                                     storages['impressions'],
                                     telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_runtime_producer, imp_counter=ImpressionsCounter())
@@ -4036,7 +4036,7 @@ class PluggableOptimizedIntegrationAsyncTests(object):
         }
 
         impmanager = ImpressionsManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorderAsync(impmanager, storages['events'],
+        recorder = StandardRecorderAsync(None, None, impmanager, storages['events'],
                                     storages['impressions'],
                                     telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_runtime_producer,
@@ -4068,6 +4068,7 @@ class PluggableOptimizedIntegrationAsyncTests(object):
             for flag_set in split.get('sets'):
                 await self.pluggable_storage_adapter.push_items(split_storage._flag_set_prefix.format(flag_set=flag_set), split['name'])
         await self.pluggable_storage_adapter.set(split_storage._feature_flag_till_prefix, data['ff']['t'])
+        await self.pluggable_storage_adapter.set('SPLITIO.trafficType.user', 1)
 
         for rbs in data['rbs']['d']:
             await self.pluggable_storage_adapter.set(rb_segment_storage._prefix.format(segment_name=rbs['name']), rbs)
@@ -4111,7 +4112,7 @@ class PluggableOptimizedIntegrationAsyncTests(object):
         assert result['killed_feature'] == 'defTreatment'
         assert result['invalid_feature'] == 'control'
         assert result['sample_feature'] == 'off'
-        assert len(self.pluggable_storage_adapter._keys['SPLITIO.impressions']) == 0
+        assert self.pluggable_storage_adapter._keys.get('SPLITIO.impressions') == None
         await self.factory.destroy()
         await self._teardown_method()
 
@@ -4262,7 +4263,7 @@ class PluggableNoneIntegrationAsyncTests(object):
         imp_strategy, none_strategy = set_classes_async('PLUGGABLE', ImpressionsMode.NONE, self.pluggable_storage_adapter, imp_counter, unique_keys_tracker)
         impmanager = ImpressionsManager(imp_strategy, none_strategy, telemetry_runtime_producer) # no listener
 
-        recorder = StandardRecorderAsync(impmanager, storages['events'],
+        recorder = StandardRecorderAsync(None, None, impmanager, storages['events'],
                                     storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, unique_keys_tracker=unique_keys_tracker, imp_counter=imp_counter)
 
         synchronizers = HarnessSynchronizers(None, None, None, None,
@@ -4326,7 +4327,7 @@ class PluggableNoneIntegrationAsyncTests(object):
         """Test client.get_treatment()."""
         await self.setup_task
         await _get_treatment_async(self.factory)
-        assert self.pluggable_storage_adapter._keys['SPLITIO.impressions'] == []
+        assert self.pluggable_storage_adapter._keys.get('SPLITIO.impressions') == None
         await self.factory.destroy()
         await self._teardown_method()
 
@@ -4347,7 +4348,7 @@ class PluggableNoneIntegrationAsyncTests(object):
         assert result['killed_feature'] == 'defTreatment'
         assert result['invalid_feature'] == 'control'
         assert result['sample_feature'] == 'off'
-        assert self.pluggable_storage_adapter._keys['SPLITIO.impressions'] == []
+        assert self.pluggable_storage_adapter._keys.get('SPLITIO.impressions') == None
         await self.factory.destroy()
         await self._teardown_method()
 
@@ -4368,7 +4369,7 @@ class PluggableNoneIntegrationAsyncTests(object):
         assert result['killed_feature'] == ('defTreatment', '{"size":15,"defTreatment":true}')
         assert result['invalid_feature'] == ('control', None)
         assert result['sample_feature'] == ('off', None)
-        assert self.pluggable_storage_adapter._keys['SPLITIO.impressions'] == []
+        assert self.pluggable_storage_adapter._keys.get('SPLITIO.impressions') == None
         await self.factory.destroy()
         await self._teardown_method()
 
@@ -4377,7 +4378,7 @@ class PluggableNoneIntegrationAsyncTests(object):
         """Test client.get_treatments_by_flag_set()."""
         await self.setup_task
         await _get_treatments_by_flag_set_async(self.factory)
-        assert self.pluggable_storage_adapter._keys['SPLITIO.impressions'] == []
+        assert self.pluggable_storage_adapter._keys.get('SPLITIO.impressions') == None
         await self.factory.destroy()
         await self._teardown_method()
 
@@ -4393,7 +4394,7 @@ class PluggableNoneIntegrationAsyncTests(object):
                             'whitelist_feature': 'off',
                             'all_feature': 'on'
                             }
-        assert self.pluggable_storage_adapter._keys['SPLITIO.impressions'] == []
+        assert self.pluggable_storage_adapter._keys.get('SPLITIO.impressions') == None
         await self.factory.destroy()
         await self._teardown_method()
 
@@ -4402,7 +4403,7 @@ class PluggableNoneIntegrationAsyncTests(object):
         """Test client.get_treatments_with_config_by_flag_set()."""
         await self.setup_task
         await _get_treatments_with_config_by_flag_set_async(self.factory)
-        assert self.pluggable_storage_adapter._keys['SPLITIO.impressions'] == []
+        assert self.pluggable_storage_adapter._keys.get('SPLITIO.impressions') == None
         await self.factory.destroy()
         await self._teardown_method()
 
@@ -4418,7 +4419,7 @@ class PluggableNoneIntegrationAsyncTests(object):
                             'whitelist_feature': ('off', None),
                             'all_feature': ('on', None)
                             }
-        assert self.pluggable_storage_adapter._keys['SPLITIO.impressions'] == []
+        assert self.pluggable_storage_adapter._keys.get('SPLITIO.impressions') == None
         await self.factory.destroy()
         await self._teardown_method()
 
@@ -4499,7 +4500,7 @@ class InMemoryImpressionsToggleIntegrationAsyncTests(object):
             'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
         }
         impmanager = ImpressionsManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorderAsync(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTrackerAsync(), ImpressionsCounter())
+        recorder = StandardRecorderAsync(None, None, impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTrackerAsync(), ImpressionsCounter())
         # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
         try:
             factory = SplitFactoryAsync('some_api_key',
@@ -4565,7 +4566,7 @@ class InMemoryImpressionsToggleIntegrationAsyncTests(object):
             'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
         }
         impmanager = ImpressionsManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorderAsync(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTrackerAsync(), ImpressionsCounter())
+        recorder = StandardRecorderAsync(None, None, impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTrackerAsync(), ImpressionsCounter())
         # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
         try:
             factory = SplitFactoryAsync('some_api_key',
@@ -4631,7 +4632,7 @@ class InMemoryImpressionsToggleIntegrationAsyncTests(object):
             'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
         }
         impmanager = ImpressionsManager(StrategyNoneMode(), StrategyNoneMode(), telemetry_runtime_producer) # no listener
-        recorder = StandardRecorderAsync(impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTrackerAsync(), ImpressionsCounter())
+        recorder = StandardRecorderAsync(None, None, impmanager, storages['events'], storages['impressions'], telemetry_evaluation_producer, telemetry_runtime_producer, None, UniqueKeysTrackerAsync(), ImpressionsCounter())
         # Since we are passing None as SDK_Ready event, the factory will use the Redis telemetry call, using try catch to ignore the exception.
         try:
             factory = SplitFactoryAsync('some_api_key',

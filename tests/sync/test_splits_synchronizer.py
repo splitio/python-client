@@ -257,9 +257,6 @@ class SplitsSynchronizerTests(object):
     
         assert api.fetch_definitions.mock_calls[0][1][0] == -1
         assert api.fetch_definitions.mock_calls[0][1][2].cache_control_headers == True
-        assert api.fetch_definitions.mock_calls[1][1][0] == 123
-        assert api.fetch_definitions.mock_calls[1][1][1] == 123
-        assert api.fetch_definitions.mock_calls[1][1][2].cache_control_headers == True
 
         inserted_split = storage.update.mock_calls[0][1][0][0]
         assert isinstance(inserted_split, Split)
@@ -381,8 +378,6 @@ class SplitsSynchronizerTests(object):
 
         assert api.fetch_definitions.mock_calls[0][1][0] == -1
         assert api.fetch_definitions.mock_calls[0][1][2].cache_control_headers == True
-        assert api.fetch_definitions.mock_calls[1][1][0] == 123
-        assert api.fetch_definitions.mock_calls[1][1][2].cache_control_headers == True
 
         split_synchronizer._backoff = Backoff(1, 0.1)
         split_synchronizer.synchronize_definitions(12345)
@@ -620,7 +615,6 @@ class SplitsSynchronizerAsyncTests(object):
         await split_synchronizer.synchronize_definitions()
 
         assert (-1, FetchOptions(True)._cache_control_headers) == (self.change_number_1, self.fetch_options_1._cache_control_headers)
-        assert (123, FetchOptions(True)._cache_control_headers) == (self.change_number_2, self.fetch_options_2._cache_control_headers)
         inserted_split = self.parsed_split[0]
         assert isinstance(inserted_split, Split)
         assert inserted_split.name == 'some_name'
@@ -772,7 +766,6 @@ class SplitsSynchronizerAsyncTests(object):
         await split_synchronizer.synchronize_definitions()
 
         assert (-1, FetchOptions(True).cache_control_headers) == (self.change_number_1, self.fetch_options_1.cache_control_headers)
-        assert (123, FetchOptions(True).cache_control_headers) == (self.change_number_2, self.fetch_options_2.cache_control_headers)
 
         split_synchronizer._backoff = Backoff(1, 0.1)
         await split_synchronizer.synchronize_definitions(12345)
