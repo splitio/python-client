@@ -851,7 +851,7 @@ def _build_recorder(threading_mode, synchronizer, cfg, imp_manager, storages, te
                 storages['impressions'],
                 storages['telemetry'],
                 data_sampling,
-                _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
+                _wrap_impression_listener_async(cfg['impressionListener'], sdk_metadata),
                 imp_counter=imp_counter,
                 unique_keys_tracker=unique_keys_tracker
             )
@@ -1177,7 +1177,7 @@ async def _build_pluggable_factory_async(api_key, cfg):
         storages['impressions'],
         telemetry_producer.get_telemetry_evaluation_producer(),
         telemetry_runtime_producer,
-        _wrap_impression_listener(cfg['impressionListener'], sdk_metadata),
+        _wrap_impression_listener_async(cfg['impressionListener'], sdk_metadata),
         imp_counter=imp_counter,
         unique_keys_tracker=unique_keys_tracker
     )
