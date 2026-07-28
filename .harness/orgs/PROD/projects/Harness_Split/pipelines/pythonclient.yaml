@@ -50,6 +50,7 @@ pipeline:
                   spec:
                     shell: Sh
                     command: |-
+                      apt-get update -qq
                       apt-get install -y redis-server -qq
                       redis-server --daemonize yes --port 6379
                       redis-cli ping
