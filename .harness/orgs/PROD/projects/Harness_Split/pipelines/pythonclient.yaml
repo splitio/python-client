@@ -3,147 +3,175 @@ pipeline:
   identifier: pythonclient
   projectIdentifier: Harness_Split
   orgIdentifier: PROD
-  tags:
-    ai_generated: "true"
+  tags: {}
   properties:
     ci:
       codebase:
         connectorRef: <+input>
         repoName: <+input>
         build: <+input>
-  variables:
-    - name: sonarqube_token
-      type: Secret
-      value: <+secrets.getValue('sonarqube-token')>
-    - name: github_token
-      type: Secret
-      value: <+secrets.getValue('github-devops-token')>
   stages:
     - stage:
         name: Build and Test
-        identifier: ci_stage
+        identifier: Build_and_Test
+        description: ""
         type: CI
         spec:
           cloneCodebase: true
-          runtime:
-            type: Cloud
-            spec:
-              size: medium
-              nestedVirtualization: true
+          caching:
+            enabled: true
+            override: true
           platform:
             os: Linux
             arch: Amd64
+          runtime:
+            type: Cloud
+            spec:
+              size: flex
           execution:
             steps:
               - step:
-                  timeout: 30m
-                  type: Test
-                  name: Run Python Tests
-                  identifier: run_tests
+                  type: Run
+                  name: Install Python
+                  identifier: Install_Python
                   spec:
-                    connectorRef: account.harnessImage
-                    image: python:3.7.16-alpine
-                    shell: Sh
+                    shell: Bash
                     command: |-
-                      apk update
-                      apk add --no-cache krb5-dev musl-dev libffi-dev build-base
-
-                      # Run pytest with JUnit XML report output
-                      cd /harness
-                      pip install --upgrade pip
-                      pip install -U setuptools pip wheel
-                      pip install Cython==3.0.12
-                      pip install aiohttp==3.8.4
-                      pip install cryptography==45.0.7
-                      pip install pycparser==2.21
-
-                      apk add redis 
-                      redis-server /etc/redis.conf &
-
-                      pip install redis==5.0.8
-                      python setup.py test 
-                    envVariables:
-                      PYTHONPATH: ${PYTHONPATH}:.
-                      PYTEST_ADDOPTS: "--verbose"
+                      curl https://mise.run | sh
+                      export PATH="$HOME/.local/bin:$PATH"
+                      mise use --global python@<+matrix.pythonVersion>
+                      eval "$(mise activate bash)"
+                      python --version
+                      pip --version
               - step:
                   type: Run
-                  name: Install and Run SonarQube Scanner
-                  identifier: install_sonarqube_scanner
+                  name: Start Redis
+                  identifier: Start_Redis
                   spec:
-                    connectorRef: account.harnessImage
-                    image: sonarsource/sonar-scanner-cli
+                    shell: Sh
+                    command: |-
+                      apt-get update -qq
+                      apt-get install -y redis-server -qq
+                      redis-server --daemonize yes --port 6379
+                      redis-cli ping
+              - step:
+                  type: Run
+                  name: Wait for Redis
+                  identifier: Wait_for_Redis
+                  spec:
+                    shell: Sh
+                    command: |-
+                      for i in $(seq 1 15); do
+                        redis-cli ping && break
+                        echo "Waiting for Redis... attempt $i"
+                        sleep 1
+                      done
+              - step:
+                  type: Run
+                  name: Install Dependencies
+                  identifier: Install_Dependencies
+                  spec:
                     shell: Bash
-                    command: |
-                      cd /harness
+                    command: |-
+                      export PATH="$HOME/.local/bin:$PATH"
+                      eval "$(mise activate bash)"
+                      apt-get install -y libkrb5-dev musl-dev libffi-dev build-essential -qq
+                      pip install --upgrade pip setuptools wheel
+                      pip install Cython
+                      pip install aiohttp
+                      pip install cryptography
+                      pip install pycparser
+                      pip install redis
+                      pip install -e .
+              - step:
+                  type: Run
+                  name: Run Tests
+                  identifier: Run_Tests
+                  spec:
+                    shell: Bash
+                    command: |-
+                      export PATH="$HOME/.local/bin:$PATH"
+                      eval "$(mise activate bash)"
+                      python setup.py test
+              - step:
+                  type: Run
+                  name: SonarQube Scan
+                  identifier: SonarQube_Scan
+                  when:
+                    stageStatus: Success
+                    condition: <+matrix.pythonVersion> == "3.7.16"
+                  spec:
+                    shell: Sh
+                    command: |-
                       if [ "<+codebase.prNumber>" != "" ]; then
-                        echo "Pull Request Analysis"
-                        sonar-scanner -X \
-                          -Dsonar.host.url=https://sonar.harness.io \
-                          -Dsonar.token=<+secrets.getValue('sonarqube-token')> \
+                        docker run --rm \
+                          -e SONAR_HOST_URL="https://sonar.harness.io" \
+                          -e SONAR_TOKEN="<+secrets.getValue("sonarqube-token")>" \
+                          -v "$(pwd):/usr/src" \
+                          sonarsource/sonar-scanner-cli \
                           -Dsonar.projectKey=python-client \
-                          -Dsonar.scanner.skipJreProvisioning=true \
+                          -Dsonar.sources=splitio \
+                          -Dsonar.tests=tests \
+                          -Dsonar.python.coverage.reportPaths=coverage.xml \
                           -Dsonar.pullrequest.key=<+codebase.prNumber> \
                           -Dsonar.pullrequest.branch=<+codebase.sourceBranch> \
-                          -Dsonar.pullrequest.base=<+codebase.targetBranch> \
-                          -Dsonar.scanner.skipSystemTruststore=true
+                          -Dsonar.pullrequest.base=<+codebase.targetBranch>
                       else
-                        echo "Branch Analysis"
-                        sonar-scanner \
-                          -Dsonar.host.url=https://sonar.harness.io \
-                          -Dsonar.token=<+secrets.getValue('sonarqube-token')> \
+                        docker run --rm \
+                          -e SONAR_HOST_URL="https://sonar.harness.io" \
+                          -e SONAR_TOKEN="<+secrets.getValue("sonarqube-token")>" \
+                          -v "$(pwd):/usr/src" \
+                          sonarsource/sonar-scanner-cli \
                           -Dsonar.projectKey=python-client \
-                          -Dsonar.scanner.skipJreProvisioning=true \
-                          -Dsonar.branch.name=<+codebase.branch> \
-                          -Dsonar.scanner.skipSystemTruststore=true
+                          -Dsonar.sources=splitio \
+                          -Dsonar.tests=tests \
+                          -Dsonar.python.coverage.reportPaths=coverage.xml \
+                          -Dsonar.branch.name=<+codebase.branch>
                       fi
-                    envVariables:
-                      SONAR_TOKEN: <+pipeline.variables.sonarqube_token>
-                    outputVariables:
-                      - name: SONAR_SCANNER_PATH
-                  timeout: 10m
               - step:
                   type: Run
-                  name: Post Quality Gate to GitHub
-                  identifier: Post_Quality_Gate_to_GitHub
+                  name: Post Quality Gate
+                  identifier: Post_Quality_Gate
+                  when:
+                    stageStatus: Success
+                    condition: <+matrix.pythonVersion> == "3.7.16"
                   spec:
-                    shell: Sh
+                    shell: Bash
                     command: |-
-                      # Get SonarQube quality gate status
-                       curl -u <+secrets.getValue('sonarqube-token')>: \
-                         -s "https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}"
+                      #!/bin/bash
+                      set -e
 
-                       curl -u <+secrets.getValue('sonarqube-token')>: -s 'https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}' | jq -r .projectStatus.status
+                      SONAR_TOKEN="<+secrets.getValue("sonarqube-token")>"
+                      SONAR_URL="https://sonar.harness.io"
+                      SONAR_PROJECT_KEY="python-client"
+                      GITHUB_TOKEN="<+secrets.getValue("github-devops-token")>"
+                      GITHUB_REPO="python-client"
+                      COMMIT_SHA="<+codebase.commitSha>"
 
-                       QUALITY_GATE_STATUS=$(curl -u <+secrets.getValue('sonarqube-token')>: -s 'https://sonar.harness.io/api/qualitygates/project_status?projectKey=python-client&pullRequest=${<+codebase.prNumber>}' | jq -r .projectStatus.status)
+                      STATUS_JSON=$(curl -sf \
+                        -H "Authorization: Bearer ${SONAR_TOKEN}" \
+                        "${SONAR_URL}/api/qualitygates/project_status?projectKey=${SONAR_PROJECT_KEY}")
 
-                       echo "QUALITY_GATE_STATUS: $QUALITY_GATE_STATUS"
+                      QG_STATUS=$(echo "$STATUS_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin)['projectStatus']['status'])")
 
-                       # Set GitHub status based on quality gate
-                       if [ "$QUALITY_GATE_STATUS" = "OK" ]; then
-                         STATE="success"
-                         DESCRIPTION="SonarQube Quality Gate passed"
-                       else
-                         STATE="failure"
-                         DESCRIPTION="SonarQube Quality Gate failed"
-                       fi
+                      case "$QG_STATUS" in
+                        OK)    GH_STATE="success"; DESCRIPTION="Quality gate passed" ;;
+                        ERROR) GH_STATE="failure"; DESCRIPTION="Quality gate failed" ;;
+                        WARN)  GH_STATE="success"; DESCRIPTION="Quality gate passed with warnings" ;;
+                        *)     GH_STATE="pending"; DESCRIPTION="Quality gate status unknown" ;;
+                      esac
 
-                       # Post status to GitHub
-                       curl -X POST \
-                         -H "Authorization: token ${<+secrets.getValue('github-devops-token')>}" \
-                         -H "Content-Type: application/json" \
-                         -d "{
-                           \"state\": \"${STATE}\",
-                           \"description\": \"${DESCRIPTION}\",
-                           \"context\": \"sonarqube/qualitygate\",
-                           \"target_url\": \"https://sonar.harness.io/dashboard?id=python-client&pullRequest=${<+codebase.prNumber>}\"
-                         }" \
-                         "https://api.github.com/repos/splitio/python-client/statuses/<+codebase.commitSha>"
-            rollbackSteps: []
-          rollbackSteps: []
-          caching:
-            enabled: false
-            paths: []
-          buildIntelligence:
-            enabled: false
-        description: ""
-  description: This pipeline was updated by Harness AI on 2026-02-04 05:22:48 UTC by Bilal Al-Shahwany.
+                      TARGET_URL="${SONAR_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
+
+                      curl -sf -X POST \
+                        -H "Authorization: token ${GITHUB_TOKEN}" \
+                        -H "Accept: application/vnd.github.v3+json" \
+                        -H "Content-Type: application/json" \
+                        -d "{\"state\":\"${GH_STATE}\",\"description\":\"${DESCRIPTION}\",\"context\":\"sonarqube/quality-gate\",\"target_url\":\"${TARGET_URL}\"}" \
+                        "https://api.github.com/repos/splitio/${GITHUB_REPO}/statuses/${COMMIT_SHA}"
+
+                      echo "Posted SonarQube quality gate status: ${GH_STATE}"
+        strategy:
+          matrix:
+            pythonVersion:
+              - "3.7.16"
