@@ -103,19 +103,31 @@ pipeline:
                   spec:
                     shell: Sh
                     command: |-
-                      docker run --rm \
-                        -e SONAR_HOST_URL="https://sonar.harness.io" \
-                        -e SONAR_TOKEN="<+secrets.getValue("sonarqube-token")>" \
-                        -v "$(pwd):/usr/src" \
-                        sonarsource/sonar-scanner-cli \
-                        -Dsonar.projectKey=python-client \
-                        -Dsonar.sources=splitio \
-                        -Dsonar.tests=tests \
-                        -Dsonar.python.coverage.reportPaths=coverage.xml \
-                        -Dsonar.pullrequest.key=<+codebase.prNumber> \
-                        -Dsonar.pullrequest.branch=<+codebase.branch> \
-                        -Dsonar.pullrequest.base=development \
-                        -Dsonar.branch.name=<+codebase.branch>
+                      if [ "<+codebase.prNumber>" != "" ]; then
+                        docker run --rm \
+                          -e SONAR_HOST_URL="https://sonar.harness.io" \
+                          -e SONAR_TOKEN="<+secrets.getValue("sonarqube-token")>" \
+                          -v "$(pwd):/usr/src" \
+                          sonarsource/sonar-scanner-cli \
+                          -Dsonar.projectKey=python-client \
+                          -Dsonar.sources=splitio \
+                          -Dsonar.tests=tests \
+                          -Dsonar.python.coverage.reportPaths=coverage.xml \
+                          -Dsonar.pullrequest.key=<+codebase.prNumber> \
+                          -Dsonar.pullrequest.branch=<+codebase.sourceBranch> \
+                          -Dsonar.pullrequest.base=<+codebase.targetBranch>
+                      else
+                        docker run --rm \
+                          -e SONAR_HOST_URL="https://sonar.harness.io" \
+                          -e SONAR_TOKEN="<+secrets.getValue("sonarqube-token")>" \
+                          -v "$(pwd):/usr/src" \
+                          sonarsource/sonar-scanner-cli \
+                          -Dsonar.projectKey=python-client \
+                          -Dsonar.sources=splitio \
+                          -Dsonar.tests=tests \
+                          -Dsonar.python.coverage.reportPaths=coverage.xml \
+                          -Dsonar.branch.name=<+codebase.branch>
+                      fi
               - step:
                   type: Run
                   name: Post Quality Gate
