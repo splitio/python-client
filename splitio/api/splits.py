@@ -104,24 +104,27 @@ class SplitsAPI(SplitsAPIBase):  # pylint: disable=too-few-public-methods
             if 200 <= response.status_code < 300:
                 if self._spec_version == _SPEC_1_1:
                     return util.convert_to_new_spec(json.loads(response.body))
-                
+
                 self.clear_storage = self._last_proxy_check_timestamp != 0
                 self._last_proxy_check_timestamp = 0
-                return json.loads(response.body)
+                parsed = json.loads(response.body)
+                if 'rbs' not in parsed:
+                    parsed['rbs'] = {"d": [], "s": -1, "t": -1}
+                return parsed
 
             else:
                 if response.status_code == 414:
                     _LOGGER.error('Error fetching feature flags; the amount of flag sets provided are too big, causing uri length error.')
-                    
+
                 if self._client.is_sdk_endpoint_overridden() and response.status_code == 400 and self._spec_version == SPEC_VERSION:
                     _LOGGER.warning('Detected proxy response error, changing spec version from %s to %s and re-fetching.', self._spec_version, _SPEC_1_1)
                     self._spec_version = _SPEC_1_1
-                    self._last_proxy_check_timestamp = utctime_ms()                    
+                    self._last_proxy_check_timestamp = utctime_ms()
                     return self.fetch_splits(change_number, None, FetchOptions(fetch_options.cache_control_headers, fetch_options.change_number,
                                                                                None, fetch_options.sets, self._spec_version))
-                    
+
                 raise APIException(response.body, response.status_code)
-            
+
         except HttpClientException as exc:
             _LOGGER.error('Error fetching feature flags because an exception was raised by the HTTPClient')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -178,24 +181,27 @@ class SplitsAPIAsync(SplitsAPIBase):  # pylint: disable=too-few-public-methods
             if 200 <= response.status_code < 300:
                 if self._spec_version == _SPEC_1_1:
                     return util.convert_to_new_spec(json.loads(response.body))
-                
+
                 self.clear_storage = self._last_proxy_check_timestamp != 0
                 self._last_proxy_check_timestamp = 0
-                return json.loads(response.body)
+                parsed = json.loads(response.body)
+                if 'rbs' not in parsed:
+                    parsed['rbs'] = {"d": [], "s": -1, "t": -1}
+                return parsed
 
             else:
                 if response.status_code == 414:
                     _LOGGER.error('Error fetching feature flags; the amount of flag sets provided are too big, causing uri length error.')
-                    
+
                 if self._client.is_sdk_endpoint_overridden() and response.status_code == 400 and self._spec_version == SPEC_VERSION:
                     _LOGGER.warning('Detected proxy response error, changing spec version from %s to %s and re-fetching.', self._spec_version, _SPEC_1_1)
                     self._spec_version = _SPEC_1_1
-                    self._last_proxy_check_timestamp = utctime_ms()                    
+                    self._last_proxy_check_timestamp = utctime_ms()
                     return await self.fetch_splits(change_number, None, FetchOptions(fetch_options.cache_control_headers, fetch_options.change_number,
                                                                                None, fetch_options.sets, self._spec_version))
 
                 raise APIException(response.body, response.status_code)
-            
+
         except HttpClientException as exc:
             _LOGGER.error('Error fetching feature flags because an exception was raised by the HTTPClient')
             _LOGGER.debug('Error: ', exc_info=True)

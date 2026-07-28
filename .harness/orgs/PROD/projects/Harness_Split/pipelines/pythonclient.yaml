@@ -1,0 +1,177 @@
+pipeline:
+  name: python-client
+  identifier: pythonclient
+  projectIdentifier: Harness_Split
+  orgIdentifier: PROD
+  tags: {}
+  properties:
+    ci:
+      codebase:
+        connectorRef: <+input>
+        repoName: <+input>
+        build: <+input>
+  stages:
+    - stage:
+        name: Build and Test
+        identifier: Build_and_Test
+        description: ""
+        type: CI
+        spec:
+          cloneCodebase: true
+          caching:
+            enabled: true
+            override: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec:
+              size: flex
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Install Python
+                  identifier: Install_Python
+                  spec:
+                    shell: Bash
+                    command: |-
+                      curl https://mise.run | sh
+                      export PATH="$HOME/.local/bin:$PATH"
+                      mise use --global python@<+matrix.pythonVersion>
+                      eval "$(mise activate bash)"
+                      python --version
+                      pip --version
+              - step:
+                  type: Run
+                  name: Start Redis
+                  identifier: Start_Redis
+                  spec:
+                    shell: Sh
+                    command: |-
+                      apt-get update -qq
+                      apt-get install -y redis-server -qq
+                      redis-server --daemonize yes --port 6379
+                      redis-cli ping
+              - step:
+                  type: Run
+                  name: Wait for Redis
+                  identifier: Wait_for_Redis
+                  spec:
+                    shell: Sh
+                    command: |-
+                      for i in $(seq 1 15); do
+                        redis-cli ping && break
+                        echo "Waiting for Redis... attempt $i"
+                        sleep 1
+                      done
+              - step:
+                  type: Run
+                  name: Install Dependencies
+                  identifier: Install_Dependencies
+                  spec:
+                    shell: Bash
+                    command: |-
+                      export PATH="$HOME/.local/bin:$PATH"
+                      eval "$(mise activate bash)"
+                      apt-get install -y libkrb5-dev musl-dev libffi-dev build-essential -qq
+                      pip install --upgrade pip setuptools wheel
+                      pip install Cython
+                      pip install aiohttp
+                      pip install cryptography
+                      pip install pycparser
+                      pip install redis
+                      pip install -e .
+              - step:
+                  type: Run
+                  name: Run Tests
+                  identifier: Run_Tests
+                  spec:
+                    shell: Bash
+                    command: |-
+                      export PATH="$HOME/.local/bin:$PATH"
+                      eval "$(mise activate bash)"
+                      python setup.py test
+              - step:
+                  type: Run
+                  name: SonarQube Scan
+                  identifier: SonarQube_Scan
+                  when:
+                    stageStatus: Success
+                    condition: <+matrix.pythonVersion> == "3.7.16"
+                  spec:
+                    shell: Sh
+                    command: |-
+                      if [ "<+codebase.prNumber>" != "" ]; then
+                        docker run --rm \
+                          -e SONAR_HOST_URL="https://sonar.harness.io" \
+                          -e SONAR_TOKEN="<+secrets.getValue("sonarqube-token")>" \
+                          -v "$(pwd):/usr/src" \
+                          sonarsource/sonar-scanner-cli \
+                          -Dsonar.projectKey=python-client \
+                          -Dsonar.sources=splitio \
+                          -Dsonar.tests=tests \
+                          -Dsonar.python.coverage.reportPaths=coverage.xml \
+                          -Dsonar.pullrequest.key=<+codebase.prNumber> \
+                          -Dsonar.pullrequest.branch=<+codebase.sourceBranch> \
+                          -Dsonar.pullrequest.base=<+codebase.targetBranch>
+                      else
+                        docker run --rm \
+                          -e SONAR_HOST_URL="https://sonar.harness.io" \
+                          -e SONAR_TOKEN="<+secrets.getValue("sonarqube-token")>" \
+                          -v "$(pwd):/usr/src" \
+                          sonarsource/sonar-scanner-cli \
+                          -Dsonar.projectKey=python-client \
+                          -Dsonar.sources=splitio \
+                          -Dsonar.tests=tests \
+                          -Dsonar.python.coverage.reportPaths=coverage.xml \
+                          -Dsonar.branch.name=<+codebase.branch>
+                      fi
+              - step:
+                  type: Run
+                  name: Post Quality Gate
+                  identifier: Post_Quality_Gate
+                  when:
+                    stageStatus: Success
+                    condition: <+matrix.pythonVersion> == "3.7.16"
+                  spec:
+                    shell: Bash
+                    command: |-
+                      #!/bin/bash
+                      set -e
+
+                      SONAR_TOKEN="<+secrets.getValue("sonarqube-token")>"
+                      SONAR_URL="https://sonar.harness.io"
+                      SONAR_PROJECT_KEY="python-client"
+                      GITHUB_TOKEN="<+secrets.getValue("github-devops-token")>"
+                      GITHUB_REPO="python-client"
+                      COMMIT_SHA="<+codebase.commitSha>"
+
+                      STATUS_JSON=$(curl -sf \
+                        -H "Authorization: Bearer ${SONAR_TOKEN}" \
+                        "${SONAR_URL}/api/qualitygates/project_status?projectKey=${SONAR_PROJECT_KEY}")
+
+                      QG_STATUS=$(echo "$STATUS_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin)['projectStatus']['status'])")
+
+                      case "$QG_STATUS" in
+                        OK)    GH_STATE="success"; DESCRIPTION="Quality gate passed" ;;
+                        ERROR) GH_STATE="failure"; DESCRIPTION="Quality gate failed" ;;
+                        WARN)  GH_STATE="success"; DESCRIPTION="Quality gate passed with warnings" ;;
+                        *)     GH_STATE="pending"; DESCRIPTION="Quality gate status unknown" ;;
+                      esac
+
+                      TARGET_URL="${SONAR_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
+
+                      curl -sf -X POST \
+                        -H "Authorization: token ${GITHUB_TOKEN}" \
+                        -H "Accept: application/vnd.github.v3+json" \
+                        -H "Content-Type: application/json" \
+                        -d "{\"state\":\"${GH_STATE}\",\"description\":\"${DESCRIPTION}\",\"context\":\"sonarqube/quality-gate\",\"target_url\":\"${TARGET_URL}\"}" \
+                        "https://api.github.com/repos/splitio/${GITHUB_REPO}/statuses/${COMMIT_SHA}"
+
+                      echo "Posted SonarQube quality gate status: ${GH_STATE}"
+        strategy:
+          matrix:
+            pythonVersion:
+              - "3.7.16"

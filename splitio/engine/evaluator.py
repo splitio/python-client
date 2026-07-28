@@ -64,7 +64,13 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
             else:
                 label, _treatment = self._check_prerequisites(feature, bucketing, key, attrs, ctx, label, _treatment)
                 label, _treatment = self._get_treatment(feature, bucketing, key, attrs, ctx, label, _treatment)
-            config = feature.get_configurations_for(_treatment)
+            if _treatment == CONTROL:
+                fallback_treatment = self._fallback_treatment_calculator.resolve(feature_name, label)
+                label = fallback_treatment.label
+                _treatment = fallback_treatment.treatment
+                config = fallback_treatment.config
+            else:
+                config = feature.get_configurations_for(_treatment)
                     
         return {
             'treatment': _treatment,
