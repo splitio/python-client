@@ -37,6 +37,7 @@ from splitio_commons.models import segments, rule_based_segments
 from splitio_commons.models.events import SdkEvent
 from splitio_commons.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
 from splitio_commons.models.fallback_treatment import FallbackTreatment
+from splitio.events.events_emitter import EventsEmitter
 from splitio_commons.recorder.recorder import StandardRecorder, PipelinedRecorder, StandardRecorderAsync, PipelinedRecorderAsync
 from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync
 from splitio_commons.storage.inmemmory import InMemoryEventStorage, InMemoryImpressionStorage, \
@@ -533,9 +534,10 @@ class InMemoryDebugIntegrationTests(object):
     def setup_method(self):
         """Prepare storages with test data."""
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        events_emitter = EventsEmitter(events_queue)
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
 
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
@@ -579,7 +581,7 @@ class InMemoryDebugIntegrationTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    events_queue,
+                                    events_emitter,
                                     events_manager,
                                     None,
                                     telemetry_producer=telemetry_producer,
@@ -702,9 +704,10 @@ class InMemoryOptimizedIntegrationTests(object):
     def setup_method(self):
         """Prepare storages with test data."""
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        events_emitter = EventsEmitter(events_queue)
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
             data = json.loads(flo.read())
@@ -744,7 +747,7 @@ class InMemoryOptimizedIntegrationTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    events_queue,
+                                    events_emitter,
                                     events_manager,
                                     None,
                                     telemetry_producer=telemetry_producer,
@@ -1043,11 +1046,12 @@ class RedisIntegrationTests(object):
                                     storages['impressions'], telemetry_redis_storage, imp_counter=ImpressionsCounter())
         events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
         events_queue = queue.Queue()
+        events_emitter = EventsEmitter(events_queue)
         self.factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
                                     recorder,
-                                    events_queue,
+                                    events_emitter,
                                     events_manager,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
@@ -1236,11 +1240,12 @@ class RedisWithCacheIntegrationTests(RedisIntegrationTests):
                                      storages['events'], storages['impressions'], telemetry_redis_storage, imp_counter=ImpressionsCounter())
         events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
         events_queue = queue.Queue()
+        events_emitter = EventsEmitter(events_queue)        
         self.factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
                                     recorder,
-                                    events_queue,
+                                    events_emitter,
                                     events_manager,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
@@ -1483,11 +1488,12 @@ class PluggableIntegrationTests(object):
 
         events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
         events_queue = queue.Queue()
+        events_emitter = EventsEmitter(events_queue)
         self.factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
                                     recorder,
-                                    events_queue,
+                                    events_emitter,
                                     events_manager,
                                     RedisManager(PluggableSynchronizer()),
                                     sdk_ready_flag=None,
@@ -1683,11 +1689,12 @@ class PluggableOptimizedIntegrationTests(object):
 
         events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
         events_queue = queue.Queue()
+        events_emitter = EventsEmitter(events_queue)
         self.factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
                                     recorder,
-                                    events_queue,
+                                    events_emitter,
                                     events_manager,
                                     RedisManager(PluggableSynchronizer()),
                                     sdk_ready_flag=None,
@@ -1882,11 +1889,12 @@ class PluggableNoneIntegrationTests(object):
         manager.start()
         events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
         events_queue = queue.Queue()
+        events_emitter = EventsEmitter(events_queue)
         self.factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
                                     recorder,
-                                    events_queue,
+                                    events_emitter,
                                     events_manager,
                                     manager,
                                     sdk_ready_flag=None,
@@ -2016,8 +2024,9 @@ class InMemoryImpressionsToggleIntegrationTests(object):
 
     def test_optimized(self):
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
+        events_emitter = EventsEmitter(events_queue)
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
 
         split_storage.update([splits.from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
                               splits.from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
@@ -2032,7 +2041,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
-            'rule_based_segments': InMemoryRuleBasedSegmentStorage(events_queue),
+            'rule_based_segments': InMemoryRuleBasedSegmentStorage(),
             'impressions': InMemoryImpressionStorage(50000, telemetry_runtime_producer),
             'events': InMemoryEventStorage(50000, telemetry_runtime_producer),
         }
@@ -2045,7 +2054,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    events_queue,
+                                    events_emitter,
                                     events_manager,
                                     None,
                                     telemetry_producer=telemetry_producer,
@@ -2078,8 +2087,9 @@ class InMemoryImpressionsToggleIntegrationTests(object):
 
     def test_debug(self):
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
+        events_emitter = EventsEmitter(events_queue)
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
 
         split_storage.update([splits.from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
                               splits.from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
@@ -2094,7 +2104,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
-            'rule_based_segments': InMemoryRuleBasedSegmentStorage(events_queue),
+            'rule_based_segments': InMemoryRuleBasedSegmentStorage(),
             'impressions': InMemoryImpressionStorage(50000, telemetry_runtime_producer),
             'events': InMemoryEventStorage(50000, telemetry_runtime_producer),
         }
@@ -2108,7 +2118,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    events_queue,
+                                    events_emitter,
                                     events_manager,
                                     None,
                                     telemetry_producer=telemetry_producer,
@@ -2142,8 +2152,9 @@ class InMemoryImpressionsToggleIntegrationTests(object):
 
     def test_none(self):
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
+        events_emitter = EventsEmitter(events_queue)
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
 
         split_storage.update([splits.from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
                               splits.from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
@@ -2158,7 +2169,7 @@ class InMemoryImpressionsToggleIntegrationTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
-            'rule_based_segments': InMemoryRuleBasedSegmentStorage(events_queue),
+            'rule_based_segments': InMemoryRuleBasedSegmentStorage(),
             'impressions': InMemoryImpressionStorage(50000, telemetry_runtime_producer),
             'events': InMemoryEventStorage(50000, telemetry_runtime_producer),
         }
@@ -2172,8 +2183,8 @@ class InMemoryImpressionsToggleIntegrationTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    events_queue,
-                                    events_queue,
+                                    events_emitter,
+                                    events_manager,
                                     None,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
@@ -2238,11 +2249,12 @@ class RedisImpressionsToggleIntegrationTests(object):
                                      storages['events'], storages['impressions'], telemetry_redis_storage, unique_keys_tracker=UniqueKeysTracker(), imp_counter=ImpressionsCounter())
         events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
         events_queue = queue.Queue()
+        events_emitter = EventsEmitter(events_queue)
         factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
                                     recorder,
-                                    events_queue,
+                                    events_emitter,
                                     events_manager,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
@@ -2308,11 +2320,12 @@ class RedisImpressionsToggleIntegrationTests(object):
         recorder = PipelinedRecorder(redis_client.pipeline, impmanager,
                                      storages['events'], storages['impressions'], telemetry_redis_storage, unique_keys_tracker=UniqueKeysTracker(), imp_counter=ImpressionsCounter())
         events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
+        events_emitter = EventsEmitter(queue.Queue())
         factory = SplitFactory('some_api_key',
                                     storages,
                                     True,
                                     recorder,
-                                    queue.Queue(),
+                                    events_emitter,
                                     events_manager,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
@@ -2382,7 +2395,7 @@ class RedisImpressionsToggleIntegrationTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    queue.Queue(),
+                                    EventsEmitter(queue.Queue()),
                                     events_manager,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
@@ -2445,9 +2458,10 @@ class InMemoryEventsNotificationTests(object):
     def test_sdk_ready(self):
         """Prepare storages with test data."""
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        events_emitter = EventsEmitter(events_queue)
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
 
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
@@ -2491,7 +2505,7 @@ class InMemoryEventsNotificationTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    events_queue,
+                                    events_emitter,
                                     events_manager,
                                     None,
                                     telemetry_producer=telemetry_producer,
@@ -2515,9 +2529,10 @@ class InMemoryEventsNotificationTests(object):
     def test_sdk_ready_fire_later(self):
         """Prepare storages with test data."""
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        events_emitter = EventsEmitter(events_queue)
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
 
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
@@ -2561,7 +2576,7 @@ class InMemoryEventsNotificationTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    events_queue,
+                                    events_emitter,
                                     events_manager,
                                     None,
                                     telemetry_producer=telemetry_producer,
@@ -2599,9 +2614,10 @@ class InMemoryEventsNotificationAsyncTests(object):
     async def test_sdk_ready(self):
         """Prepare storages with test data."""
         events_queue = asyncio.Queue()
-        split_storage = InMemorySplitStorageAsync(events_queue)
-        segment_storage = InMemorySegmentStorageAsync(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync(events_queue)
+        events_emitter = EventsEmitter(events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
 
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
@@ -2645,7 +2661,7 @@ class InMemoryEventsNotificationAsyncTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    events_queue,
+                                    events_emitter,
                                     events_manager,
                                     None,
                                     telemetry_producer=telemetry_producer,
@@ -2669,9 +2685,10 @@ class InMemoryEventsNotificationAsyncTests(object):
     async def test_sdk_ready_fire_later(self):
         """Prepare storages with test data."""
         events_queue = asyncio.Queue()
-        split_storage = InMemorySplitStorageAsync(events_queue)
-        segment_storage = InMemorySegmentStorageAsync(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync(events_queue)
+        events_emitter = EventsEmitter(events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
 
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
@@ -2715,7 +2732,7 @@ class InMemoryEventsNotificationAsyncTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    events_queue,
+                                    events_emitter,
                                     events_manager,
                                     None,
                                     telemetry_producer=telemetry_producer,
@@ -2746,11 +2763,12 @@ class InMemoryIntegrationAsyncTests(object):
     async def _setup_method(self):
         """Prepare storages with test data."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)
         events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
 
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
-        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
 
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
@@ -2791,7 +2809,7 @@ class InMemoryIntegrationAsyncTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    internal_events_queue,
+                                    events_emitter,
                                     events_manager,
                                     None,
                                     telemetry_producer=telemetry_producer,
@@ -2923,11 +2941,12 @@ class InMemoryOptimizedIntegrationAsyncTests(object):
     async def _setup_method(self):
         """Prepare storages with test data."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)
         events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
 
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
-        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
         split_fn = os.path.join(os.path.dirname(__file__), 'files', 'splitChanges.json')
         with open(split_fn, 'r') as flo:
             data = json.loads(flo.read())
@@ -2968,7 +2987,7 @@ class InMemoryOptimizedIntegrationAsyncTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    internal_events_queue,
+                                    events_emitter,
                                     events_manager,
                                     None,
                                     telemetry_producer=telemetry_producer,
@@ -3273,6 +3292,7 @@ class RedisIntegrationAsyncTests(object):
     async def _setup_method(self):
         """Prepare storages with test data."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
 
         metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
@@ -3327,7 +3347,7 @@ class RedisIntegrationAsyncTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    internal_events_queue,
+                                    events_emitter,
                                     events_manager,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
@@ -3501,6 +3521,7 @@ class RedisWithCacheIntegrationAsyncTests(RedisIntegrationAsyncTests):
     async def _setup_method(self):
         """Prepare storages with test data."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)
         events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
 
         metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
@@ -3555,7 +3576,7 @@ class RedisWithCacheIntegrationAsyncTests(RedisIntegrationAsyncTests):
                                     storages,
                                     True,
                                     recorder,
-                                    internal_events_queue,
+                                    events_emitter,
                                     events_manager,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
@@ -3565,7 +3586,6 @@ class RedisWithCacheIntegrationAsyncTests(RedisIntegrationAsyncTests):
         ready_property = mocker.PropertyMock()
         ready_property.return_value = True
         type(self.factory).ready = ready_property
-
 
 class LocalhostIntegrationAsyncTests(object):  # pylint: disable=too-few-public-methods
     """Client & Manager integration tests."""
@@ -3779,6 +3799,7 @@ class PluggableIntegrationAsyncTests(object):
     async def _setup_method(self):
         """Prepare storages with test data."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)
         events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
 
         metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
@@ -3811,7 +3832,7 @@ class PluggableIntegrationAsyncTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    internal_events_queue,
+                                    events_emitter,
                                     events_manager,
                                     RedisManagerAsync(PluggableSynchronizerAsync()),
                                     telemetry_producer=telemetry_producer,
@@ -4013,6 +4034,7 @@ class PluggableOptimizedIntegrationAsyncTests(object):
     async def _setup_method(self):
         """Prepare storages with test data."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)
         events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
 
         metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
@@ -4046,7 +4068,7 @@ class PluggableOptimizedIntegrationAsyncTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    internal_events_queue,
+                                    events_emitter,
                                     events_manager,
                                     RedisManagerAsync(PluggableSynchronizerAsync()),
                                     telemetry_producer=telemetry_producer,
@@ -4235,6 +4257,7 @@ class PluggableNoneIntegrationAsyncTests(object):
     async def _setup_method(self):
         """Prepare storages with test data."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)
         events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
 
         metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
@@ -4288,7 +4311,7 @@ class PluggableNoneIntegrationAsyncTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    internal_events_queue,
+                                    events_emitter,
                                     events_manager,
                                     manager,
                                     telemetry_producer=telemetry_producer,
@@ -4477,10 +4500,11 @@ class InMemoryImpressionsToggleIntegrationAsyncTests(object):
     @pytest.mark.asyncio
     async def test_optimized(self):
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)
         events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
 
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
-        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
 
         await split_storage.update([splits.from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
                               splits.from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
@@ -4495,7 +4519,7 @@ class InMemoryImpressionsToggleIntegrationAsyncTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
-            'rule_based_segments': InMemoryRuleBasedSegmentStorageAsync(internal_events_queue),
+            'rule_based_segments': InMemoryRuleBasedSegmentStorageAsync(),
             'impressions': InMemoryImpressionStorageAsync(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
         }
@@ -4507,7 +4531,7 @@ class InMemoryImpressionsToggleIntegrationAsyncTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    internal_events_queue,
+                                    events_emitter,
                                     events_manager,
                                     None,
                                     telemetry_producer=telemetry_producer,
@@ -4543,10 +4567,11 @@ class InMemoryImpressionsToggleIntegrationAsyncTests(object):
     @pytest.mark.asyncio
     async def test_debug(self):
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)
         events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
 
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
-        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
 
         await split_storage.update([splits.from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
                               splits.from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
@@ -4561,7 +4586,7 @@ class InMemoryImpressionsToggleIntegrationAsyncTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
-            'rule_based_segments': InMemoryRuleBasedSegmentStorageAsync(internal_events_queue),
+            'rule_based_segments': InMemoryRuleBasedSegmentStorageAsync(),
             'impressions': InMemoryImpressionStorageAsync(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
         }
@@ -4573,7 +4598,7 @@ class InMemoryImpressionsToggleIntegrationAsyncTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    internal_events_queue,
+                                    events_emitter,
                                     events_manager,
                                     None,
                                     telemetry_producer=telemetry_producer,
@@ -4609,10 +4634,11 @@ class InMemoryImpressionsToggleIntegrationAsyncTests(object):
     @pytest.mark.asyncio
     async def test_none(self):
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)
         events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
 
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
-        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
 
         await split_storage.update([splits.from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
                               splits.from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
@@ -4627,7 +4653,7 @@ class InMemoryImpressionsToggleIntegrationAsyncTests(object):
         storages = {
             'splits': split_storage,
             'segments': segment_storage,
-            'rule_based_segments': InMemoryRuleBasedSegmentStorageAsync(internal_events_queue),
+            'rule_based_segments': InMemoryRuleBasedSegmentStorageAsync(),
             'impressions': InMemoryImpressionStorageAsync(5000, telemetry_runtime_producer),
             'events': InMemoryEventStorageAsync(5000, telemetry_runtime_producer),
         }
@@ -4639,7 +4665,7 @@ class InMemoryImpressionsToggleIntegrationAsyncTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    internal_events_queue,
+                                    events_emitter,
                                     events_manager,
                                     None,
                                     telemetry_producer=telemetry_producer,
@@ -4680,6 +4706,7 @@ class RedisImpressionsToggleIntegrationAsyncTests(object):
     @pytest.mark.asyncio
     async def test_optimized(self):
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)
         events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
 
         """Prepare storages with test data."""
@@ -4713,7 +4740,7 @@ class RedisImpressionsToggleIntegrationAsyncTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    internal_events_queue,
+                                    events_emitter,
                                     events_manager,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
@@ -4756,6 +4783,7 @@ class RedisImpressionsToggleIntegrationAsyncTests(object):
     async def test_debug(self):
         """Prepare storages with test data."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)
         events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
 
         metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
@@ -4788,7 +4816,7 @@ class RedisImpressionsToggleIntegrationAsyncTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    internal_events_queue,
+                                    events_emitter,
                                     events_manager,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),
@@ -4831,6 +4859,7 @@ class RedisImpressionsToggleIntegrationAsyncTests(object):
     async def test_none(self):
         """Prepare storages with test data."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)
         events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
 
         metadata = SdkMetadata('python-1.2.3', 'some_ip', 'some_name')
@@ -4863,7 +4892,7 @@ class RedisImpressionsToggleIntegrationAsyncTests(object):
                                     storages,
                                     True,
                                     recorder,
-                                    internal_events_queue,
+                                    events_emitter,
                                     events_manager,
                                     telemetry_producer=telemetry_producer,
                                     telemetry_init_producer=telemetry_producer.get_telemetry_init_producer(),

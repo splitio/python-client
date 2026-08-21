@@ -111,9 +111,9 @@ class SplitStorage(object, metaclass=abc.ABCMeta):
 
 class InMemorySplitStorage(InMemoryDefinitionStorage):
     
-    def __init__(self, internal_event_queue, flag_sets=[]):
+    def __init__(self, flag_sets=[]):
         """Constructor."""
-        InMemoryDefinitionStorage.__init__(self, internal_event_queue, flag_sets)
+        InMemoryDefinitionStorage.__init__(self, flag_sets)
         
     def get_splits_count(self):
         return self.get_definitions_count()
@@ -129,9 +129,9 @@ class InMemorySplitStorage(InMemoryDefinitionStorage):
 
 class InMemorySplitStorageAsync(InMemoryDefinitionStorageAsync):
     
-    def __init__(self, internal_event_queue, flag_sets=[]):
+    def __init__(self, flag_sets=[]):
         """Constructor."""
-        InMemoryDefinitionStorageAsync.__init__(self, internal_event_queue, flag_sets)
+        InMemoryDefinitionStorageAsync.__init__(self, flag_sets)
         
     async def get_splits_count(self):
         return await self.get_definitions_count()

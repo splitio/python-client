@@ -20,7 +20,7 @@ class SplitManagerTests(object):  # pylint: disable=too-few-public-methods
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         events_queue = queue.Queue()
-        storage = InMemorySplitStorage(events_queue)
+        storage = InMemorySplitStorage()
 
         factory = mocker.Mock(spec=SplitFactory)
         factory._storages = {'split': storage}
@@ -95,7 +95,7 @@ class SplitManagerAsyncTests(object):  # pylint: disable=too-few-public-methods
         internal_events_queue = asyncio.Queue()
         telemetry_storage = InMemoryTelemetryStorageAsync()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        storage = InMemorySplitStorageAsync(internal_events_queue)
+        storage = InMemorySplitStorageAsync()
 
         factory = mocker.Mock(spec=SplitFactory)
         factory._storages = {'split': storage}

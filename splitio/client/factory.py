@@ -19,14 +19,18 @@ from splitio_commons.events.events_manager_config import EventsManagerConfig
 from splitio_commons.events.events_task import EventsTask, EventsTaskAsync
 from splitio_commons.events.events_delivery import EventsDelivery
 from splitio_commons.models.fallback_config import FallbackTreatmentCalculator
-from splitio_commons.models.notification import SdkInternalEventNotification
 from splitio_commons.models.events import SdkInternalEvent
+from splitio.events.events_emitter import EventsEmitter
 
 # push
 from splitio_commons.push.manager import PushManager, PushManagerAsync
 from splitio_commons.push.processor import MessageProcessor, MessageProcessorAsync
-from splitio_commons.push.parser import UpdateType
 from splitio.push.workers import SplitWorker, SplitWorkerAsync
+from splitio_commons.push.update_event_type_util import UpdateEventTypeUtil, UpdateEventTypeUtilAsync
+from splitio_commons.push.parser import SegmentChangeUpdate
+from splitio_commons.push.workers import SegmentWorker, SegmentWorkerAsync
+from splitio.push.models import EventUpdateType, SplitChangeUpdate, SplitKillUpdate, RBSChangeUpdate
+
 
 # Storage
 from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync
@@ -200,7 +204,7 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
             storages,
             labels_enabled,
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             sync_manager=None,
             sdk_ready_flag=None,
@@ -240,7 +244,7 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
         _LOGGER.debug("Running in threading mode")
         self._sdk_internal_ready_flag = sdk_ready_flag
         self._fallback_treatment_calculator = fallback_treatment_calculator
-        self._internal_events_queue = internal_events_queue
+        self._events_emitter = events_emitter
         self._events_manager = events_manager
         self._start_status_updater()
 
@@ -262,14 +266,14 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
             ready_updater.start()
         else:
             self._status = Status.READY
-            self._internal_events_queue.put(SdkInternalEventNotification(SdkInternalEvent.SDK_READY, None))
+            self._events_emitter.emit(SdkInternalEvent.SDK_READY, None)
             
     def _update_status_when_ready(self):
         """Wait until the sdk is ready and update the status."""
         self._sdk_internal_ready_flag.wait()
         self._status = Status.READY
         self._sdk_ready_flag.set()
-        self._internal_events_queue.put(SdkInternalEventNotification(SdkInternalEvent.SDK_READY, None))
+        self._events_emitter.emit(SdkInternalEvent.SDK_READY, None)
 
         self._telemetry_init_producer.record_ready_time(get_current_epoch_time_ms() - self._ready_time)
         redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
@@ -378,7 +382,7 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
             storages,
             labels_enabled,
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             sync_manager=None,
             telemetry_producer=None,
@@ -415,7 +419,7 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
         self._telemetry_submitter = telemetry_submitter
         self._ready_time = get_current_epoch_time_ms()
         _LOGGER.debug("Running in asyncio mode")
-        self._internal_events_queue = internal_events_queue
+        self._events_emitter = events_emitter
         self._events_manager = events_manager
         self._manager_start_task = manager_start_task
         self._status = Status.NOT_INITIALIZED
@@ -439,7 +443,7 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
             _LOGGER.debug(str(e))
         self._status = Status.READY
         self._sdk_ready_flag.set()
-        await self._internal_events_queue.put(SdkInternalEventNotification(SdkInternalEvent.SDK_READY, None))
+        await self._events_emitter.emit_async(SdkInternalEvent.SDK_READY, None)
 
     def manager(self):
         """
@@ -624,15 +628,17 @@ def _build_events_manager_classes(threading_mode):
     if threading_mode == ThreadingMode.ASYNC:    
         internal_events_queue = asyncio.Queue()
         events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
+        events_emitter = EventsEmitter(internal_events_queue)
         internal_events_task = EventsTaskAsync(events_manager.notify_internal_event, internal_events_queue)
-        return internal_events_queue, events_manager, internal_events_task
+        return events_emitter, events_manager, internal_events_task
     
     internal_events_queue = queue.Queue()
     events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
+    events_emitter = EventsEmitter(internal_events_queue)
     internal_events_task = EventsTask(events_manager.notify_internal_event, internal_events_queue)
-    return internal_events_queue, events_manager, internal_events_task
+    return events_emitter, events_manager, internal_events_task
 
-def _build_storage_classes(threading_mode, internal_events_queue, telemetry_runtime_producer, cfg, sdk_metadata=None, db_adapter=None, storage_prefix=None):
+def _build_storage_classes(threading_mode, telemetry_runtime_producer, cfg, sdk_metadata=None, db_adapter=None, storage_prefix=None):
     if cfg['storageType'] == 'redis':
         cache_enabled = cfg.get('redisLocalCacheEnabled', False)
         cache_ttl = cfg.get('redisLocalCacheTTL', 5)        
@@ -676,17 +682,17 @@ def _build_storage_classes(threading_mode, internal_events_queue, telemetry_runt
         
     if threading_mode == ThreadingMode.ASYNC:
         return {
-            'splits': InMemorySplitStorageAsync(internal_events_queue, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
-            'segments': InMemorySegmentStorageAsync(internal_events_queue),
-            'rule_based_segments': InMemoryRuleBasedSegmentStorageAsync(internal_events_queue),
+            'splits': InMemorySplitStorageAsync(cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
+            'segments': InMemorySegmentStorageAsync(),
+            'rule_based_segments': InMemoryRuleBasedSegmentStorageAsync(),
             'impressions': InMemoryImpressionStorageAsync(cfg['impressionsQueueSize'], telemetry_runtime_producer),
             'events': InMemoryEventStorageAsync(cfg['eventsQueueSize'], telemetry_runtime_producer),
         }
         
     return {
-        'splits': InMemorySplitStorage(internal_events_queue, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
-        'segments': InMemorySegmentStorage(internal_events_queue),
-        'rule_based_segments': InMemoryRuleBasedSegmentStorage(internal_events_queue),
+        'splits': InMemorySplitStorage(cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
+        'segments': InMemorySegmentStorage(),
+        'rule_based_segments': InMemoryRuleBasedSegmentStorage(),
         'impressions': InMemoryImpressionStorage(cfg['impressionsQueueSize'], telemetry_runtime_producer),
         'events': InMemoryEventStorage(cfg['eventsQueueSize'], telemetry_runtime_producer),
     }
@@ -703,7 +709,7 @@ def _build_engine_classes(impressions_mode, telemetry_runtime_producer):
     imp_manager = ImpressionsManager(imp_strategy, none_strategy, telemetry_runtime_producer)
     return imp_counter, imp_manager
 
-def _build_synchronizer_classes(threading_mode, storages, apis, cfg, telemetry_submitter, unique_keys_tracker, imp_counter, sender_adapter):
+def _build_synchronizer_classes(threading_mode, storages, apis, cfg, telemetry_submitter, unique_keys_tracker, imp_counter, sender_adapter, events_emitter):
     if cfg['storageType'] in ['redis', 'pluggable']:
         if threading_mode == ThreadingMode.ASYNC:
             return HarnessSynchronizers(None, None, None, None,
@@ -723,7 +729,7 @@ def _build_synchronizer_classes(threading_mode, storages, apis, cfg, telemetry_s
     if threading_mode == ThreadingMode.ASYNC:
         return HarnessSynchronizers(
             SplitSynchronizerAsync(apis['splits'], storages['splits'], storages['rule_based_segments']),
-            SegmentSynchronizerAsync(apis['segments'], storages['splits'], storages['segments'], storages['rule_based_segments']),
+            SegmentSynchronizerAsync(apis['segments'], storages['splits'], storages['segments'], storages['rule_based_segments'], events_emitter),
             ImpressionSynchronizerAsync(apis['impressions'], storages['impressions'],
                                 cfg['impressionsBulkSize']),
             EventSynchronizerAsync(apis['events'], storages['events'], cfg['eventsBulkSize']),
@@ -735,7 +741,7 @@ def _build_synchronizer_classes(threading_mode, storages, apis, cfg, telemetry_s
 
     return HarnessSynchronizers(
         SplitSynchronizer(apis['splits'], storages['splits'], storages['rule_based_segments']),
-        SegmentSynchronizer(apis['segments'], storages['splits'], storages['segments'], storages['rule_based_segments']),
+        SegmentSynchronizer(apis['segments'], storages['splits'], storages['segments'], storages['rule_based_segments'], events_emitter),
         ImpressionSynchronizer(apis['impressions'], storages['impressions'],
                                cfg['impressionsBulkSize']),
         EventSynchronizer(apis['events'], storages['events'], cfg['eventsBulkSize']),
@@ -804,34 +810,48 @@ def _build_sync_tasks(threading_mode, synchronizers, cfg, internal_events_task):
         ClearFilterSyncTask(synchronizers.clear_filter_sync.clear_all),
         internal_events_task
     )
-    
-def _build_push_classes(threading_mode, synchronizer, cfg, telemetry_runtime_producer, apis, sdk_metadata, streaming_api_base_url, api_key):
+
+async def _build_push_classes_async(synchronizer, cfg, telemetry_runtime_producer, apis, sdk_metadata, streaming_api_base_url, api_key, events_emitter):
     push_queue = None
     push_manager = None
     if cfg['streamingEnabled']:
-        if threading_mode == ThreadingMode.ASYNC:
-            push_queue = asyncio.Queue()
-            split_worker = SplitWorkerAsync(synchronizer.synchronize_definitions, synchronizer.synchronize_segment, asyncio.Queue(), synchronizer.definition_sync, synchronizer.definition_sync.definition_storage, synchronizer.segment_storage, telemetry_runtime_producer, synchronizer.definition_sync.rule_based_segment_storage)
-            split_handlers = {
-                UpdateType.SPLIT_UPDATE: split_worker.handle_feature_flag_update,
-                UpdateType.SPLIT_KILL: split_worker.handle_feature_flag_kill,
-                UpdateType.RB_SEGMENT_UPDATE: split_worker.handle_feature_flag_update
-            }
-            auth_synchronizer = AuthSynchronizerAsync(apis['auth'], telemetry_runtime_producer, push_queue)
-            processor = MessageProcessorAsync(synchronizer, split_worker, split_handlers)
-            push_manager = PushManagerAsync(apis['auth'], push_queue, sdk_metadata, telemetry_runtime_producer, processor, auth_synchronizer, streaming_api_base_url, api_key[-4:])
-            return push_manager, push_queue
+        update_event_util = UpdateEventTypeUtilAsync()
+        push_queue = asyncio.Queue()
+        split_worker_queue = asyncio.Queue()
+        split_worker = SplitWorkerAsync(synchronizer.synchronize_definitions, synchronizer.synchronize_segment, split_worker_queue, synchronizer.definition_sync, synchronizer.definition_sync.definition_storage, synchronizer.segment_storage, telemetry_runtime_producer, synchronizer.definition_sync.rule_based_segment_storage, events_emitter)
+        await update_event_util.add_update_event(EventUpdateType.SPLIT_UPDATE, SplitChangeUpdate, split_worker.handle_feature_flag_update, split_worker, split_worker_queue)
+        await update_event_util.add_update_event(EventUpdateType.SPLIT_KILL, SplitKillUpdate, split_worker.handle_feature_flag_kill, split_worker, split_worker_queue)
+        await update_event_util.add_update_event(EventUpdateType.RB_SEGMENT_UPDATE, RBSChangeUpdate, split_worker.handle_feature_flag_update, split_worker, split_worker_queue)
+    
+        segment_worker_queue = asyncio.Queue()
+        segment_worker = SegmentWorkerAsync(synchronizer.synchronize_segment, segment_worker_queue)
+        await update_event_util.add_update_event(EventUpdateType.SEGMENT_UPDATE, SegmentChangeUpdate, segment_worker.handle_segment_change, segment_worker, segment_worker_queue)
 
+        auth_synchronizer = AuthSynchronizerAsync(apis['auth'], telemetry_runtime_producer, push_queue)
+        processor = MessageProcessorAsync(update_event_util, EventUpdateType)
+        push_manager = PushManagerAsync(apis['auth'], push_queue, sdk_metadata, telemetry_runtime_producer, processor, auth_synchronizer, update_event_util, EventUpdateType, streaming_api_base_url, api_key[-4:])
+
+    return push_manager, push_queue
+
+def _build_push_classes(synchronizer, cfg, telemetry_runtime_producer, apis, sdk_metadata, streaming_api_base_url, api_key, events_emitter):
+    push_queue = None
+    push_manager = None
+    if cfg['streamingEnabled']:
+        update_event_util = UpdateEventTypeUtil()
         push_queue = queue.Queue()
-        split_worker = SplitWorker(synchronizer.synchronize_definitions, synchronizer.synchronize_segment, queue.Queue(), synchronizer.definition_sync, synchronizer.definition_sync.definition_storage, synchronizer.segment_storage, telemetry_runtime_producer, synchronizer.definition_sync.rule_based_segment_storage)
-        split_handlers = {
-            UpdateType.SPLIT_UPDATE: split_worker.handle_feature_flag_update,
-            UpdateType.SPLIT_KILL: split_worker.handle_feature_flag_kill,
-            UpdateType.RB_SEGMENT_UPDATE: split_worker.handle_feature_flag_update
-        }
+        split_worker_queue = queue.Queue()
+        split_worker = SplitWorker(synchronizer.synchronize_definitions, synchronizer.synchronize_segment, split_worker_queue, synchronizer.definition_sync, synchronizer.definition_sync.definition_storage, synchronizer.segment_storage, telemetry_runtime_producer, synchronizer.definition_sync.rule_based_segment_storage, events_emitter)
+        update_event_util.add_update_event(EventUpdateType.SPLIT_UPDATE, SplitChangeUpdate, split_worker.handle_feature_flag_update, split_worker, split_worker_queue)
+        update_event_util.add_update_event(EventUpdateType.SPLIT_KILL, SplitKillUpdate, split_worker.handle_feature_flag_kill, split_worker, split_worker_queue)
+        update_event_util.add_update_event(EventUpdateType.RB_SEGMENT_UPDATE, RBSChangeUpdate, split_worker.handle_feature_flag_update, split_worker, split_worker_queue)
+    
+        segment_worker_queue = queue.Queue()
+        segment_worker = SegmentWorker(synchronizer.synchronize_segment, segment_worker_queue)
+        update_event_util.add_update_event(EventUpdateType.SEGMENT_UPDATE, SegmentChangeUpdate, segment_worker.handle_segment_change, segment_worker, segment_worker_queue)
+    
         auth_synchronizer = AuthSynchronizer(apis['auth'], telemetry_runtime_producer, push_queue)
-        processor = MessageProcessor(synchronizer, split_worker, split_handlers)
-        push_manager = PushManager(apis['auth'], push_queue, sdk_metadata, telemetry_runtime_producer, processor, auth_synchronizer, streaming_api_base_url, api_key[-4:])
+        processor = MessageProcessor(update_event_util, EventUpdateType)
+        push_manager = PushManager(apis['auth'], push_queue, sdk_metadata, telemetry_runtime_producer, processor, auth_synchronizer, update_event_util, EventUpdateType, streaming_api_base_url, api_key[-4:])
     
     return push_manager, push_queue
 
@@ -921,23 +941,24 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     _, apis = _build_api_classes(ThreadingMode.THREADED, cfg, sdk_url, events_url, auth_api_base_url, telemetry_api_base_url, api_key,
                        telemetry_runtime_producer, sdk_metadata)
   
-    internal_events_queue, events_manager, internal_events_task = _build_events_manager_classes(ThreadingMode.THREADED)
-    storages = _build_storage_classes(ThreadingMode.THREADED, internal_events_queue, telemetry_runtime_producer, cfg)
+    events_emitter, events_manager, internal_events_task = _build_events_manager_classes(ThreadingMode.THREADED)
+    storages = _build_storage_classes(ThreadingMode.THREADED, telemetry_runtime_producer, cfg)
 
     telemetry_submitter = InMemoryTelemetrySubmitter(telemetry_consumer, storages['splits'], storages['segments'], apis['telemetry'])
     unique_keys_tracker = UniqueKeysTracker(_UNIQUE_KEYS_CACHE_SIZE)
     imp_counter, imp_manager = _build_engine_classes(cfg['impressionsMode'], telemetry_runtime_producer)
 
     sender_adapter = InMemorySenderAdapter(apis['telemetry'])
-    synchronizers = _build_synchronizer_classes(ThreadingMode.THREADED, storages, apis, cfg, telemetry_submitter, unique_keys_tracker, imp_counter, sender_adapter)
+    synchronizers = _build_synchronizer_classes(ThreadingMode.THREADED, storages, apis, cfg, telemetry_submitter, unique_keys_tracker, imp_counter, sender_adapter, events_emitter)
     tasks = _build_sync_tasks(ThreadingMode.THREADED, synchronizers, cfg, internal_events_task)
-    synchronizer = Synchronizer(synchronizers, tasks)
+    synchronizer = Synchronizer(synchronizers, tasks, events_emitter)
+    synchronizer._harness_tasks._definition_task._task._main = synchronizer.synchronize_definitions
 
     preforked_initialization = cfg.get('preforkedInitialization', False)
 
     sdk_ready_flag = threading.Event() if not preforked_initialization else None
     
-    push_manager, push_queue = _build_push_classes(ThreadingMode.THREADED, synchronizer, cfg, telemetry_runtime_producer, apis, sdk_metadata, streaming_api_base_url, api_key)    
+    push_manager, push_queue = _build_push_classes(synchronizer, cfg, telemetry_runtime_producer, apis, sdk_metadata, streaming_api_base_url, api_key, events_emitter)
     manager = Manager(sdk_ready_flag, synchronizer, apis['auth'], cfg['streamingEnabled'],
                       sdk_metadata, telemetry_runtime_producer, streaming_api_base_url, api_key[-4:], push_manager, push_queue)
     recorder = _build_recorder(ThreadingMode.THREADED, synchronizer, cfg, imp_manager, storages, telemetry_evaluation_producer, telemetry_runtime_producer, sdk_metadata, imp_counter, unique_keys_tracker)
@@ -950,14 +971,14 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         synchronizer._harness_synchronizers._segment_sync.shutdown()
 
         return SplitFactory(api_key, storages, cfg['labelsEnabled'],
-                            recorder, internal_events_queue, events_manager, manager, None, telemetry_producer, telemetry_init_producer, telemetry_submitter, preforked_initialization=preforked_initialization,
+                            recorder, events_emitter, events_manager, manager, None, telemetry_producer, telemetry_init_producer, telemetry_submitter, preforked_initialization=preforked_initialization,
                             fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments']))
 
     initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
     initialization_thread.start()
 
     return SplitFactory(api_key, storages, cfg['labelsEnabled'],
-                        recorder, internal_events_queue, events_manager, manager, sdk_ready_flag,
+                        recorder, events_emitter, events_manager, manager, sdk_ready_flag,
                         telemetry_producer, telemetry_init_producer,
                         telemetry_submitter, fallback_treatment_calculator = FallbackTreatmentCalculator(cfg['fallbackTreatments']))
             
@@ -978,19 +999,19 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
     http_client, apis = _build_api_classes(ThreadingMode.ASYNC, cfg, sdk_url, events_url, auth_api_base_url, telemetry_api_base_url, api_key,
                        telemetry_runtime_producer, sdk_metadata)
 
-    internal_events_queue, events_manager, internal_events_task = _build_events_manager_classes(ThreadingMode.ASYNC)
-    storages = _build_storage_classes(ThreadingMode.ASYNC, internal_events_queue, telemetry_runtime_producer, cfg)
+    events_emitter, events_manager, internal_events_task = _build_events_manager_classes(ThreadingMode.ASYNC)
+    storages = _build_storage_classes(ThreadingMode.ASYNC, telemetry_runtime_producer, cfg)
 
     telemetry_submitter = InMemoryTelemetrySubmitterAsync(telemetry_consumer, storages['splits'], storages['segments'], apis['telemetry'])
     unique_keys_tracker = UniqueKeysTrackerAsync(_UNIQUE_KEYS_CACHE_SIZE)
     imp_counter, imp_manager = _build_engine_classes(cfg['impressionsMode'], telemetry_runtime_producer)
     
     sender_adapter = InMemorySenderAdapterAsync(apis['telemetry'])
-    synchronizers = _build_synchronizer_classes(ThreadingMode.ASYNC, storages, apis, cfg, telemetry_submitter, unique_keys_tracker, imp_counter, sender_adapter)
+    synchronizers = _build_synchronizer_classes(ThreadingMode.ASYNC, storages, apis, cfg, telemetry_submitter, unique_keys_tracker, imp_counter, sender_adapter, events_emitter)
     tasks = _build_sync_tasks(ThreadingMode.ASYNC, synchronizers, cfg, internal_events_task)
-    synchronizer = SynchronizerAsync(synchronizers, tasks)
+    synchronizer = SynchronizerAsync(synchronizers, tasks, events_emitter)
 
-    push_manager, push_queue = _build_push_classes(ThreadingMode.ASYNC, synchronizer, cfg, telemetry_runtime_producer, apis, sdk_metadata, streaming_api_base_url, api_key)    
+    push_manager, push_queue = await _build_push_classes_async(synchronizer, cfg, telemetry_runtime_producer, apis, sdk_metadata, streaming_api_base_url, api_key, events_emitter)
     manager = ManagerAsync(synchronizer, apis['auth'], cfg['streamingEnabled'],
                       sdk_metadata, telemetry_runtime_producer, streaming_api_base_url, api_key[-4:], push_manager, push_queue)
 
@@ -1002,7 +1023,7 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
     manager_start_task = asyncio.get_running_loop().create_task(manager.start())
 
     return SplitFactoryAsync(api_key, storages, cfg['labelsEnabled'],
-                        recorder, internal_events_queue, events_manager, manager,
+                        recorder, events_emitter, events_manager, manager,
                         telemetry_producer, telemetry_init_producer,
                         telemetry_submitter, manager_start_task=manager_start_task,
                         api_client=http_client, fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments']))
@@ -1011,14 +1032,15 @@ def _build_redis_factory(api_key, cfg):
     """Build and return a split factory with redis-based storage."""
     sdk_metadata = util.get_metadata(cfg)
     redis_adapter = redis.build(cfg)
-    storages = _build_storage_classes(ThreadingMode.THREADED, None, None, cfg, sdk_metadata, redis_adapter)
+    storages = _build_storage_classes(ThreadingMode.THREADED, None, cfg, sdk_metadata, redis_adapter)
 
     telemetry_producer, telemetry_runtime_producer, telemetry_init_producer, telemetry_submitter = _build_telemetry_classes(cfg['storageType'], ThreadingMode.THREADED, storages['telemetry'])
     unique_keys_tracker = UniqueKeysTracker(_UNIQUE_KEYS_CACHE_SIZE)
     imp_counter, imp_manager = _build_engine_classes(cfg['impressionsMode'], telemetry_runtime_producer)
 
     sender_adapter = RedisSenderAdapter(redis_adapter)
-    synchronizers = _build_synchronizer_classes(ThreadingMode.THREADED, storages, None, cfg, None, unique_keys_tracker, imp_counter, sender_adapter)
+    events_emitter, events_manager, _ = _build_events_manager_classes(ThreadingMode.THREADED)
+    synchronizers = _build_synchronizer_classes(ThreadingMode.THREADED, storages, None, cfg, None, unique_keys_tracker, imp_counter, sender_adapter, events_emitter)
     tasks = _build_sync_tasks(ThreadingMode.THREADED, synchronizers, cfg, None)
     synchronizer = RedisSynchronizer(synchronizers, tasks)
 
@@ -1028,14 +1050,13 @@ def _build_redis_factory(api_key, cfg):
     initialization_thread.start()
 
     telemetry_init_producer.record_config(cfg, {}, 0, 0)
-    internal_events_queue, events_manager, _ = _build_events_manager_classes(ThreadingMode.THREADED)
 
     split_factory = SplitFactory(
         api_key,
         storages,
         cfg['labelsEnabled'],
         recorder,
-        internal_events_queue,
+        events_emitter,
         events_manager,
         manager,
         sdk_ready_flag=None,
@@ -1053,7 +1074,7 @@ async def _build_redis_factory_async(api_key, cfg):
     """Build and return a split factory with redis-based storage."""
     sdk_metadata = util.get_metadata(cfg)
     redis_adapter = await redis.build_async(cfg)
-    storages = _build_storage_classes(ThreadingMode.ASYNC, None, None, cfg, sdk_metadata, redis_adapter)
+    storages = _build_storage_classes(ThreadingMode.ASYNC, None, cfg, sdk_metadata, redis_adapter)
     storages['telemetry'] = await RedisTelemetryStorageAsync.create(redis_adapter, sdk_metadata)
 
     telemetry_producer, telemetry_runtime_producer, telemetry_init_producer, telemetry_submitter = _build_telemetry_classes(cfg['storageType'], ThreadingMode.ASYNC, storages['telemetry'])
@@ -1061,7 +1082,8 @@ async def _build_redis_factory_async(api_key, cfg):
     imp_counter, imp_manager = _build_engine_classes(cfg['impressionsMode'], telemetry_runtime_producer)
 
     sender_adapter = RedisSenderAdapterAsync(redis_adapter)
-    synchronizers = _build_synchronizer_classes(ThreadingMode.ASYNC, storages, None, cfg, None, unique_keys_tracker, imp_counter, sender_adapter)
+    events_emitter, events_manager, _ = _build_events_manager_classes(ThreadingMode.ASYNC)
+    synchronizers = _build_synchronizer_classes(ThreadingMode.ASYNC, storages, None, cfg, None, unique_keys_tracker, imp_counter, sender_adapter, events_emitter)
     tasks = _build_sync_tasks(ThreadingMode.ASYNC, synchronizers, cfg, None)
     synchronizer = RedisSynchronizerAsync(synchronizers, tasks)
     
@@ -1069,14 +1091,13 @@ async def _build_redis_factory_async(api_key, cfg):
     manager = RedisManagerAsync(synchronizer)
     await telemetry_init_producer.record_config(cfg, {}, 0, 0)
     manager.start()
-    internal_events_queue, events_manager, _ = _build_events_manager_classes(ThreadingMode.ASYNC)
 
     split_factory = SplitFactoryAsync(
         api_key,
         storages,
         cfg['labelsEnabled'],
         recorder,
-        internal_events_queue,
+        events_emitter,
         events_manager,
         manager,
         telemetry_producer=telemetry_producer,
@@ -1098,14 +1119,15 @@ def _build_pluggable_factory(api_key, cfg):
 
     pluggable_adapter = cfg.get('storageWrapper')
     storage_prefix = cfg.get('storagePrefix')
-    storages = _build_storage_classes(ThreadingMode.THREADED, None, None, cfg, sdk_metadata, pluggable_adapter, storage_prefix)
+    storages = _build_storage_classes(ThreadingMode.THREADED, None, cfg, sdk_metadata, pluggable_adapter, storage_prefix)
 
     telemetry_producer, telemetry_runtime_producer, telemetry_init_producer, telemetry_submitter = _build_telemetry_classes(cfg['storageType'], ThreadingMode.THREADED, storages['telemetry'])
     unique_keys_tracker = UniqueKeysTracker(_UNIQUE_KEYS_CACHE_SIZE)
     imp_counter, imp_manager = _build_engine_classes(cfg['impressionsMode'], telemetry_runtime_producer)
 
     sender_adapter = PluggableSenderAdapter(pluggable_adapter, storage_prefix)
-    synchronizers = _build_synchronizer_classes(ThreadingMode.THREADED, storages, None, cfg, None, unique_keys_tracker, imp_counter, sender_adapter)
+    events_emitter, events_manager, _ = _build_events_manager_classes(ThreadingMode.THREADED)
+    synchronizers = _build_synchronizer_classes(ThreadingMode.THREADED, storages, None, cfg, None, unique_keys_tracker, imp_counter, sender_adapter, events_emitter)
     tasks = _build_sync_tasks(ThreadingMode.THREADED, synchronizers, cfg, None)
     synchronizer = RedisSynchronizer(synchronizers, tasks)
 
@@ -1128,14 +1150,13 @@ def _build_pluggable_factory(api_key, cfg):
     initialization_thread.start()
 
     telemetry_init_producer.record_config(cfg, {}, 0, 0)
-    internal_events_queue, events_manager, _ = _build_events_manager_classes(ThreadingMode.THREADED)
 
     split_factory = SplitFactory(
         api_key,
         storages,
         cfg['labelsEnabled'],
         recorder,
-        internal_events_queue,
+        events_emitter,
         events_manager,
         manager,
         sdk_ready_flag=None,
@@ -1157,7 +1178,7 @@ async def _build_pluggable_factory_async(api_key, cfg):
 
     pluggable_adapter = cfg.get('storageWrapper')
     storage_prefix = cfg.get('storagePrefix')
-    storages = _build_storage_classes(ThreadingMode.ASYNC, None, None, cfg, sdk_metadata, pluggable_adapter, storage_prefix)
+    storages = _build_storage_classes(ThreadingMode.ASYNC, None, cfg, sdk_metadata, pluggable_adapter, storage_prefix)
     storages['telemetry'] = await PluggableTelemetryStorageAsync.create(pluggable_adapter, sdk_metadata, storage_prefix)
 
     telemetry_producer, telemetry_runtime_producer, telemetry_init_producer, telemetry_submitter = _build_telemetry_classes(cfg['storageType'], ThreadingMode.ASYNC, storages['telemetry'])
@@ -1165,7 +1186,8 @@ async def _build_pluggable_factory_async(api_key, cfg):
     imp_counter, imp_manager = _build_engine_classes(cfg['impressionsMode'], telemetry_runtime_producer)
 
     sender_adapter = PluggableSenderAdapterAsync(pluggable_adapter, storage_prefix)
-    synchronizers = _build_synchronizer_classes(ThreadingMode.ASYNC, storages, None, cfg, None, unique_keys_tracker, imp_counter, sender_adapter)
+    events_emitter, events_manager, _ = _build_events_manager_classes(ThreadingMode.ASYNC)
+    synchronizers = _build_synchronizer_classes(ThreadingMode.ASYNC, storages, None, cfg, None, unique_keys_tracker, imp_counter, sender_adapter, events_emitter)
     tasks = _build_sync_tasks(ThreadingMode.ASYNC, synchronizers, cfg, None)
     synchronizer = RedisSynchronizerAsync(synchronizers, tasks)
 
@@ -1186,14 +1208,13 @@ async def _build_pluggable_factory_async(api_key, cfg):
     manager = RedisManagerAsync(synchronizer)
     manager.start()
     await telemetry_init_producer.record_config(cfg, {}, 0, 0)
-    internal_events_queue, events_manager, _ = _build_events_manager_classes(ThreadingMode.ASYNC)
 
     split_factory = SplitFactoryAsync(
         api_key,
         storages,
         cfg['labelsEnabled'],
         recorder,
-        internal_events_queue,
+        events_emitter,
         events_manager,
         manager,
         telemetry_producer=telemetry_producer,
@@ -1215,10 +1236,11 @@ def _build_localhost_factory(cfg):
     telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
 
     internal_events_queue = queue.Queue()
+    events_emitter = EventsEmitter(internal_events_queue)
     storages = {
-        'splits': InMemorySplitStorage(internal_events_queue, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
-        'segments': InMemorySegmentStorage(internal_events_queue),  # not used, just to avoid possible future errors.
-        'rule_based_segments': InMemoryRuleBasedSegmentStorage(internal_events_queue),   
+        'splits': InMemorySplitStorage(cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
+        'segments': InMemorySegmentStorage(),  # not used, just to avoid possible future errors.
+        'rule_based_segments': InMemoryRuleBasedSegmentStorage(),   
         'impressions': LocalhostImpressionsStorage(),
         'events': LocalhostEventsStorage(),
     }
@@ -1280,7 +1302,7 @@ def _build_localhost_factory(cfg):
         storages,
         False,
         recorder,
-        internal_events_queue,
+        events_emitter,
         events_manager,
         manager,
         ready_event,
@@ -1298,13 +1320,14 @@ async def _build_localhost_factory_async(cfg):
     telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
 
     internal_events_queue = asyncio.Queue()
+    events_emitter = EventsEmitter(internal_events_queue)
     events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
     internal_events_task = EventsTaskAsync(events_manager.notify_internal_event, internal_events_queue)
 
     storages = {
-        'splits': InMemorySplitStorageAsync(internal_events_queue),
-        'segments': InMemorySegmentStorageAsync(internal_events_queue),  # not used, just to avoid possible future errors.
-        'rule_based_segments': InMemoryRuleBasedSegmentStorageAsync(internal_events_queue),
+        'splits': InMemorySplitStorageAsync(),
+        'segments': InMemorySegmentStorageAsync(),  # not used, just to avoid possible future errors.
+        'rule_based_segments': InMemoryRuleBasedSegmentStorageAsync(),
         'impressions': LocalhostImpressionsStorageAsync(),
         'events': LocalhostEventsStorageAsync(),
     }
@@ -1363,7 +1386,7 @@ async def _build_localhost_factory_async(cfg):
         storages,
         False,
         recorder,
-        internal_events_queue,
+        events_emitter,
         events_manager,
         manager,
         telemetry_producer=telemetry_producer,

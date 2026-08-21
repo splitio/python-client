@@ -399,9 +399,9 @@ class SplitsSynchronizerTests(object):
     def test_sync_flag_sets_with_config_sets(self, mocker):
         """Test split sync with flag sets."""
         events_queue = queue.Queue()
-        storage = InMemorySplitStorage(events_queue, ['set1', 'set2'])
+        storage = InMemorySplitStorage(['set1', 'set2'])
         events_queue = queue.Queue()
-        rbs_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        rbs_storage = InMemoryRuleBasedSegmentStorage()
         
         split = copy.deepcopy(self.splits[0])
         split['name'] = 'second'
@@ -447,8 +447,8 @@ class SplitsSynchronizerTests(object):
     def test_sync_flag_sets_without_config_sets(self, mocker):
         """Test split sync with flag sets."""
         events_queue = queue.Queue()
-        storage = InMemorySplitStorage(events_queue)
-        rbs_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        storage = InMemorySplitStorage()
+        rbs_storage = InMemoryRuleBasedSegmentStorage()
         split = copy.deepcopy(self.splits[0])
         split['name'] = 'second'
         splits1 = [self.splits[0].copy(), split]
@@ -787,8 +787,8 @@ class SplitsSynchronizerAsyncTests(object):
     async def test_sync_flag_sets_with_config_sets(self, mocker):
         """Test split sync with flag sets."""
         internal_events_queue = asyncio.Queue()
-        storage = InMemorySplitStorageAsync(internal_events_queue, ['set1', 'set2'])
-        rbs_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        storage = InMemorySplitStorageAsync(['set1', 'set2'])
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
         
         split = self.splits[0].copy()
         split['name'] = 'second'
@@ -836,8 +836,8 @@ class SplitsSynchronizerAsyncTests(object):
     async def test_sync_flag_sets_without_config_sets(self, mocker):
         """Test split sync with flag sets."""
         internal_events_queue = asyncio.Queue()
-        storage = InMemorySplitStorageAsync(internal_events_queue)
-        rbs_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        storage = InMemorySplitStorageAsync()
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
         split = self.splits[0].copy()
         split['name'] = 'second'
         splits1 = [self.splits[0].copy(), split]
@@ -896,8 +896,8 @@ class LocalSplitsSynchronizerTests(object):
     def test_synchronize_definitions(self, mocker):
         """Test split sync."""
         events_queue = queue.Queue()
-        storage = InMemorySplitStorage(events_queue)
-        rbs_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        storage = InMemorySplitStorage()
+        rbs_storage = InMemoryRuleBasedSegmentStorage()
 
         def read_splits_from_json_file(*args, **kwargs):
                 return self.payload
@@ -941,8 +941,8 @@ class LocalSplitsSynchronizerTests(object):
     def test_sync_flag_sets_with_config_sets(self, mocker):
         """Test split sync with flag sets."""
         events_queue = queue.Queue()
-        storage = InMemorySplitStorage(events_queue, ['set1', 'set2'])
-        rbs_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        storage = InMemorySplitStorage(['set1', 'set2'])
+        rbs_storage = InMemoryRuleBasedSegmentStorage()
         
         split = self.payload["ff"]["d"][0].copy()
         split['name'] = 'second'
@@ -984,8 +984,8 @@ class LocalSplitsSynchronizerTests(object):
     def test_sync_flag_sets_without_config_sets(self, mocker):
         """Test split sync with flag sets."""
         events_queue = queue.Queue()
-        storage = InMemorySplitStorage(events_queue)
-        rbs_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        storage = InMemorySplitStorage()
+        rbs_storage = InMemoryRuleBasedSegmentStorage()
 
         split = self.payload["ff"]["d"][0].copy()
         split['name'] = 'second'
@@ -1030,8 +1030,8 @@ class LocalSplitsSynchronizerTests(object):
         f.write(json.dumps(self.payload))
         f.close()
         events_queue = queue.Queue()
-        storage = InMemorySplitStorage(events_queue)
-        rbs_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        storage = InMemorySplitStorage()
+        rbs_storage = InMemoryRuleBasedSegmentStorage()
         split_synchronizer = LocalSplitSynchronizer("./splits.json", storage, rbs_storage, LocalhostMode.JSON)
         split_synchronizer.synchronize_definitions()
 
@@ -1258,8 +1258,8 @@ class LocalSplitsSynchronizerAsyncTests(object):
     async def test_synchronize_definitions(self, mocker):
         """Test split sync."""
         internal_events_queue = asyncio.Queue()
-        storage = InMemorySplitStorageAsync(internal_events_queue)
-        rbs_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        storage = InMemorySplitStorageAsync()
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
 
         async def read_splits_from_json_file(*args, **kwargs):
             return self.payload
@@ -1304,8 +1304,8 @@ class LocalSplitsSynchronizerAsyncTests(object):
     async def test_sync_flag_sets_with_config_sets(self, mocker):
         """Test split sync with flag sets."""
         internal_events_queue = asyncio.Queue()
-        storage = InMemorySplitStorageAsync(internal_events_queue, ['set1', 'set2'])
-        rbs_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        storage = InMemorySplitStorageAsync(['set1', 'set2'])
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
         
         split = self.payload["ff"]["d"][0].copy()
         split['name'] = 'second'
@@ -1348,8 +1348,8 @@ class LocalSplitsSynchronizerAsyncTests(object):
     async def test_sync_flag_sets_without_config_sets(self, mocker):
         """Test split sync with flag sets."""
         internal_events_queue = asyncio.Queue()
-        storage = InMemorySplitStorageAsync(internal_events_queue)
-        rbs_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        storage = InMemorySplitStorageAsync()
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
         
         split = self.payload["ff"]["d"][0].copy()
         split['name'] = 'second'
@@ -1393,8 +1393,8 @@ class LocalSplitsSynchronizerAsyncTests(object):
         async with aiofiles.open("./splits.json", "w") as f:
             await f.write(json.dumps(self.payload))
         internal_events_queue = asyncio.Queue()
-        storage = InMemorySplitStorageAsync(internal_events_queue)
-        rbs_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        storage = InMemorySplitStorageAsync()
+        rbs_storage = InMemoryRuleBasedSegmentStorageAsync()
         split_synchronizer = LocalSplitSynchronizerAsync("./splits.json", storage, rbs_storage, LocalhostMode.JSON)
         await split_synchronizer.synchronize_definitions()
 
