@@ -1,24 +1,18 @@
-"""Segment changes processing worker."""
+"""Feature Flag changes processing worker."""
 import logging
 import threading
-import abc
-import gzip
-import zlib
-import base64
 import json
-from enum import Enum
-from queue import Queue
 
 from splitio.optional.loaders import asyncio
 from splitio.models.splits import from_raw
-from splitio_commons.models.rule_based_segments import from_raw as rbs_from_raw
 from splitio_commons.models.telemetry import UpdateFromSSE
 from splitio_commons.push import SplitStorageException
-from splitio_commons.push.parser import UpdateType
+from splitio.push.models import EventUpdateType
+from splitio_commons.models.events import SdkInternalEvent
+from splitio_commons.events.events_metadata import SdkEventType
 from splitio_commons.push.workers import WorkerBase
 from splitio_commons.optional.loaders import asyncio
-from splitio_commons.util.storage_helper import update_definition_storage, update_definition_storage_async, \
-    update_rule_based_segment_storage, update_rule_based_segment_storage_async
+from splitio_commons.util.storage_helper import update_definition_storage, update_definition_storage_async
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,7 +21,7 @@ class SplitWorker(WorkerBase):
 
     _centinel = object()
 
-    def __init__(self, synchronize_feature_flag, synchronize_segment, feature_flag_queue, split_synchronizer, feature_flag_storage, segment_storage, telemetry_runtime_producer, rule_based_segment_storage):
+    def __init__(self, synchronize_feature_flag, synchronize_segment, feature_flag_queue, split_synchronizer, feature_flag_storage, segment_storage, telemetry_runtime_producer, rule_based_segment_storage, events_emitter):
         """
         Class constructor.
 
@@ -56,6 +50,7 @@ class SplitWorker(WorkerBase):
         self._telemetry_runtime_producer = telemetry_runtime_producer
         self._rule_based_segment_storage = rule_based_segment_storage
         self._synchronizer = split_synchronizer
+        self._events_emitter = events_emitter
 
     def is_running(self):
         """Return whether the working is running."""
@@ -64,29 +59,25 @@ class SplitWorker(WorkerBase):
     def _apply_iff_if_needed(self, event):
         if not self._check_instant_ff_update(event):
             return False
+        
         try:
-            if event.update_type == UpdateType.SPLIT_UPDATE:                
-                new_feature_flag = from_raw(json.loads(self._get_object_definition(event)))                
-                segment_list = update_definition_storage(self._feature_flag_storage, [new_feature_flag], event.change_number)
-                for segment_name in segment_list:
-                    if self._segment_storage.get(segment_name) is None:
-                        _LOGGER.debug(self._fetching_segment.format(segment_name=segment_name))
-                        self._segment_handler(segment_name, event.change_number)
+            new_feature_flag = from_raw(json.loads(self._get_object_definition(event)))
+            segment_list = update_definition_storage(self._feature_flag_storage, [new_feature_flag], event.change_number)
+            for segment_name in segment_list:
+                if self._segment_storage.get(segment_name) is None:
+                    _LOGGER.debug(self._fetching_segment.format(segment_name=segment_name))
+                    self._segment_handler(segment_name, event.change_number)
 
-                referenced_rbs = self._get_referenced_rbs(new_feature_flag)
-                self._fetch_rbs_segment_if_needed(referenced_rbs, event)
-                self._telemetry_runtime_producer.record_update_from_sse(UpdateFromSSE.SPLIT_UPDATE)
-            else:
-                new_rbs = rbs_from_raw(json.loads(self._get_object_definition(event)))
-                segment_list = update_rule_based_segment_storage(self._rule_based_segment_storage, [new_rbs], event.change_number)
-                for segment_name in segment_list:
-                    if self._segment_storage.get(segment_name) is None:
-                        _LOGGER.debug(self._fetching_segment.format(segment_name=segment_name))
-                        self._segment_handler(segment_name, event.change_number)
-                self._telemetry_runtime_producer.record_update_from_sse(UpdateFromSSE.RBS_UPDATE)
+            referenced_rbs = self._get_referenced_rbs(new_feature_flag)
+            self._fetch_rbs_segment_if_needed(referenced_rbs, event)
+            self._telemetry_runtime_producer.record_update_from_sse(UpdateFromSSE.SPLIT_UPDATE)
+            self._events_emitter.emit(SdkInternalEvent.FLAGS_UPDATED,
+                                        SdkEventType.FLAG_UPDATE,
+                                        [new_feature_flag.name])
             return True
                 
         except Exception as e:
+            _LOGGER.error(str(e))
             raise SplitStorageException(e)
 
     def _fetch_rbs_segment_if_needed(self, referenced_rbs, event):
@@ -95,34 +86,28 @@ class SplitWorker(WorkerBase):
             self._handler(None, event.change_number)
         
     def _check_instant_ff_update(self, event):
-        if event.update_type == UpdateType.SPLIT_UPDATE and event.compression is not None and event.previous_change_number == self._feature_flag_storage.get_change_number():
-            return True
-
-        if event.update_type == UpdateType.RB_SEGMENT_UPDATE and event.compression is not None and event.previous_change_number == self._rule_based_segment_storage.get_change_number():
+        if event.update_type == EventUpdateType.SPLIT_UPDATE and event.compression is not None and event.previous_change_number == self._feature_flag_storage.get_change_number():
             return True
 
         return False
 
     def _run(self):
         """Run worker handler."""
-        _LOGGER.error("Run worker handler")
         while self.is_running():
             event = self._feature_flag_queue.get()
-            _LOGGER.error(event)
             if not self.is_running():
                 break
+            
             if event == self._centinel:
                 continue
             
-            _LOGGER.debug('Processing feature flag update %d', event.change_number)
+            _LOGGER.error('Processing feature flag update %d', event.change_number)
             try:
                 if self._apply_iff_if_needed(event):
                     continue
                 
-                till = None
                 rbs_till = None
-                till, rbs_till = self._check_update_type(till, rbs_till, event)
-                _LOGGER.error("synching")
+                till = event.change_number
                 sync_result = self._handler(till, rbs_till)
                 if not sync_result.success and sync_result.error_code is not None and sync_result.error_code == 414:
                     _LOGGER.error("URI too long exception caught, sync failed")
@@ -135,15 +120,7 @@ class SplitWorker(WorkerBase):
                 _LOGGER.debug('Exception information: ', exc_info=True)
             except Exception as e:  # pylint: disable=broad-except
                 _LOGGER.error('Exception raised in feature flag synchronization')
-                _LOGGER.debug('Exception information: ', exc_info=True)
-
-    def _check_update_type(self, till, rbs_till, event):
-        if event.update_type == UpdateType.SPLIT_UPDATE:
-            till = event.change_number
-        else:
-            rbs_till = event.change_number
-
-        return till, rbs_till
+                _LOGGER.error('Exception information: ', exc_info=True)
 
     def start(self):
         """Start worker."""
@@ -181,7 +158,7 @@ class SplitWorker(WorkerBase):
         :param event: Incoming feature flag kill event
         :type event: splitio.push.parser.SplitKillUpdate
         """
-        self._synchronizer.kill_definition(event.definition_name, event.default_treatment,
+        self._synchronizer.kill_definition(event.feature_flag_name, event.default_treatment,
                                       event.change_number)
         self._feature_flag_queue.put(event)
 
@@ -190,7 +167,7 @@ class SplitWorkerAsync(WorkerBase):
 
     _centinel = object()
 
-    def __init__(self, synchronize_feature_flag, synchronize_segment, feature_flag_queue, split_synchronizer, feature_flag_storage, segment_storage, telemetry_runtime_producer, rule_based_segment_storage):
+    def __init__(self, synchronize_feature_flag, synchronize_segment, feature_flag_queue, split_synchronizer, feature_flag_storage, segment_storage, telemetry_runtime_producer, rule_based_segment_storage, events_emitter):
         """
         Class constructor.
 
@@ -218,6 +195,7 @@ class SplitWorkerAsync(WorkerBase):
         self._telemetry_runtime_producer = telemetry_runtime_producer
         self._rule_based_segment_storage = rule_based_segment_storage
         self._synchronizer = split_synchronizer
+        self._events_emitter = events_emitter
         
     def is_running(self):
         """Return whether the working is running."""
@@ -226,29 +204,25 @@ class SplitWorkerAsync(WorkerBase):
     async def _apply_iff_if_needed(self, event):
         if not await self._check_instant_ff_update(event):
             return False
+        
         try:
-            if event.update_type == UpdateType.SPLIT_UPDATE:                
-                new_feature_flag = from_raw(json.loads(self._get_object_definition(event)))
-                segment_list = await update_definition_storage_async(self._feature_flag_storage, [new_feature_flag], event.change_number)
-                for segment_name in segment_list:
-                    if await self._segment_storage.get(segment_name) is None:
-                        _LOGGER.debug(self._fetching_segment.format(segment_name=segment_name))
-                        await self._segment_handler(segment_name, event.change_number)
+            new_feature_flag = from_raw(json.loads(self._get_object_definition(event)))
+            segment_list = await update_definition_storage_async(self._feature_flag_storage, [new_feature_flag], event.change_number)
+            for segment_name in segment_list:
+                if await self._segment_storage.get(segment_name) is None:
+                    _LOGGER.debug(self._fetching_segment.format(segment_name=segment_name))
+                    await self._segment_handler(segment_name, event.change_number)
 
-                referenced_rbs = self._get_referenced_rbs(new_feature_flag)
-                await self._fetch_rbs_segment_if_needed(referenced_rbs, event)
-                await self._telemetry_runtime_producer.record_update_from_sse(UpdateFromSSE.SPLIT_UPDATE)
-            else:
-                new_rbs = rbs_from_raw(json.loads(self._get_object_definition(event)))                
-                segment_list = await update_rule_based_segment_storage_async(self._rule_based_segment_storage, [new_rbs], event.change_number)
-                for segment_name in segment_list:
-                    if await self._segment_storage.get(segment_name) is None:
-                        _LOGGER.debug(self._fetching_segment.format(segment_name=segment_name))
-                        await self._segment_handler(segment_name, event.change_number)
-                await self._telemetry_runtime_producer.record_update_from_sse(UpdateFromSSE.RBS_UPDATE)                        
+            referenced_rbs = self._get_referenced_rbs(new_feature_flag)
+            await self._fetch_rbs_segment_if_needed(referenced_rbs, event)
+            await self._telemetry_runtime_producer.record_update_from_sse(UpdateFromSSE.SPLIT_UPDATE)
+            await self._events_emitter.emit(SdkInternalEvent.FLAGS_UPDATED,
+                                        SdkEventType.FLAG_UPDATE,
+                                        [new_feature_flag.name])
             return True
 
         except Exception as e:
+            _LOGGER.error(exc_info=True)
             raise SplitStorageException(e)
 
     async def _fetch_rbs_segment_if_needed(self, referenced_rbs, event):
@@ -257,12 +231,9 @@ class SplitWorkerAsync(WorkerBase):
             await self._handler(None, event.change_number)
 
     async def _check_instant_ff_update(self, event):
-        if event.update_type == UpdateType.SPLIT_UPDATE and event.compression is not None and event.previous_change_number == await self._feature_flag_storage.get_change_number():
+        if event.update_type == EventUpdateType.SPLIT_UPDATE and event.compression is not None and event.previous_change_number == await self._feature_flag_storage.get_change_number():
             return True
 
-        if event.update_type == UpdateType.RB_SEGMENT_UPDATE and event.compression is not None and event.previous_change_number == await self._rule_based_segment_storage.get_change_number():
-            return True
-        
         return False
 
     async def _run(self):
@@ -271,18 +242,17 @@ class SplitWorkerAsync(WorkerBase):
             event = await self._feature_flag_queue.get()
             if not self.is_running():
                 break
+            
             if event == self._centinel:
                 continue
+            
             _LOGGER.debug('Processing split_update %d', event.change_number)
             try:
                 if await self._apply_iff_if_needed(event):
                     continue
-                till = None
+
                 rbs_till = None
-                if event.update_type == UpdateType.SPLIT_UPDATE:
-                    till = event.change_number
-                else:
-                    rbs_till = event.change_number                
+                till = event.change_number
                 await self._handler(till, rbs_till)
             except SplitStorageException as e:  # pylint: disable=broad-except
                 _LOGGER.error('Exception Updating Feature Flag')
@@ -326,6 +296,6 @@ class SplitWorkerAsync(WorkerBase):
         :param event: Incoming feature_flag kill event
         :type event: splitio.push.parser.SplitKillUpdate
         """
-        await self._synchronizer.kill_definition(event.definition_name, event.default_treatment,
+        await self._synchronizer.kill_definition(event.feature_flag_name, event.default_treatment,
                                       event.change_number)
         await self._feature_flag_queue.put(event)

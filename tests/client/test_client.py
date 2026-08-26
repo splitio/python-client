@@ -13,6 +13,7 @@ from splitio_commons.models.fallback_config import FallbackTreatmentsConfigurati
 from splitio_commons.models.fallback_treatment import FallbackTreatment
 from splitio_commons.models.impressions import Impression, Label
 from splitio_commons.models.events import Event, EventWrapper, SdkEvent
+from splitio.events.events_emitter import EventsEmitter
 from splitio_commons.storage import SegmentStorage, ImpressionStorage, EventStorage, RuleBasedSegmentsStorage
 from splitio.storage.inmemory import InMemorySplitStorage, InMemorySplitStorageAsync, SplitStorage
 from splitio_commons.storage.inmemmory import InMemorySegmentStorage, \
@@ -38,9 +39,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        events_emitter = EventsEmitter(events_queue)        
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(100000, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
@@ -66,7 +68,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            events_queue,
+            events_emitter,
             mocker.Mock(),
             mocker.Mock(),
             mocker.Mock(),
@@ -118,9 +120,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        events_emitter = EventsEmitter(events_queue)        
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10000, telemetry_runtime_producer)
         impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
@@ -138,7 +141,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            events_queue,
+            events_emitter,
             mocker.Mock(),
             mocker.Mock(),
             mocker.Mock(),
@@ -198,9 +201,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        events_emitter = EventsEmitter(events_queue)        
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10000, telemetry_runtime_producer)
         impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
@@ -219,7 +223,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            events_queue,
+            events_emitter,
             mocker.Mock(),
             mocker.Mock(),
             mocker.Mock(),
@@ -281,9 +285,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        events_emitter = EventsEmitter(events_queue)        
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10000, telemetry_runtime_producer)
         impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
@@ -302,7 +307,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            events_queue,
+            events_emitter,
             mocker.Mock(),
             mocker.Mock(),
             mocker.Mock(),
@@ -363,9 +368,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        events_emitter = EventsEmitter(events_queue)        
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10000, telemetry_runtime_producer)
         impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
@@ -384,7 +390,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            events_queue,
+            events_emitter,
             mocker.Mock(),
             mocker.Mock(),
             mocker.Mock(),
@@ -445,9 +451,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        events_emitter = EventsEmitter(events_queue)        
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10000, telemetry_runtime_producer)
         impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
@@ -465,7 +472,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            events_queue,
+            events_emitter,
             mocker.Mock(),
             mocker.Mock(),
             mocker.Mock(),
@@ -531,9 +538,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        events_emitter = EventsEmitter(events_queue)        
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10000, telemetry_runtime_producer)
         impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
@@ -552,7 +560,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            events_queue,
+            events_emitter,
             mocker.Mock(),
             mocker.Mock(),
             mocker.Mock(),
@@ -615,9 +623,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        events_emitter = EventsEmitter(events_queue)        
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10000, telemetry_runtime_producer)
         impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
@@ -635,7 +644,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            events_queue,
+            events_emitter,
             mocker.Mock(),
             mocker.Mock(),
             mocker.Mock(),
@@ -698,9 +707,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        events_emitter = EventsEmitter(events_queue)        
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10000, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
@@ -725,7 +735,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            events_queue,
+            events_emitter,
             mocker.Mock(),
             mocker.Mock(),
             mocker.Mock(),
@@ -765,9 +775,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        events_emitter = EventsEmitter(events_queue)        
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10000, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
@@ -792,7 +803,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            events_queue,
+            events_emitter,
             mocker.Mock(),
             mocker.Mock(),
             mocker.Mock(),
@@ -832,9 +843,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        events_emitter = EventsEmitter(events_queue)        
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10000, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
@@ -859,7 +871,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            events_queue,
+            events_emitter,
             mocker.Mock(),
             mocker.Mock(),
             mocker.Mock(),
@@ -898,6 +910,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         recorder = StandardRecorder(None, None, impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         events_queue = queue.Queue()
+        events_emitter = EventsEmitter(events_queue)        
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -906,7 +919,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            events_queue,
+            events_emitter,
             mocker.Mock(),
             mocker.Mock(),
             mocker.Mock(),
@@ -941,6 +954,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         recorder = StandardRecorder(None, None, impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         events_queue = queue.Queue()
+        events_emitter = EventsEmitter(events_queue)        
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -949,7 +963,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            events_queue,
+            events_emitter,
             mocker.Mock(),
             mocker.Mock(),
             mocker.Mock(),
@@ -984,9 +998,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         impression_storage = InMemoryImpressionStorage(10000, telemetry_runtime_producer)
         impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)        
+        events_emitter = EventsEmitter(events_queue)        
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()        
         split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
         destroyed_property = mocker.PropertyMock()
         destroyed_property.return_value = False
@@ -1002,7 +1017,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': mocker.Mock()},
             mocker.Mock(),
             recorder,
-            events_queue,
+            events_emitter,
             mocker.Mock(),
             mocker.Mock(),
             mocker.Mock(),
@@ -1069,9 +1084,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         impression_storage = InMemoryImpressionStorage(10000, telemetry_runtime_producer)
         impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)        
+        events_emitter = EventsEmitter(events_queue)        
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()        
         split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
         recorder = StandardRecorder(None, None, impmanager, mocker.Mock(), mocker.Mock(), telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory('localhost',
@@ -1082,7 +1098,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': mocker.Mock()},
             mocker.Mock(),
             recorder,
-            events_queue,
+            events_emitter,
             mocker.Mock(),
             mocker.Mock(),
             mocker.Mock(),
@@ -1105,10 +1121,11 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
     def test_telemetry_record_treatment_exception(self, mocker):
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
+        events_emitter = EventsEmitter(events_queue)        
+        split_storage = InMemorySplitStorage()
         split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
         segment_storage = mocker.Mock(spec=SegmentStorage)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
         destroyed_property = mocker.PropertyMock()
@@ -1129,7 +1146,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            events_queue,
+            events_emitter,
             mocker.Mock(),
             impmanager,
             mocker.Mock(),
@@ -1213,9 +1230,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         event_storage = mocker.Mock(spec=EventStorage)
         impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)        
+        events_emitter = EventsEmitter(events_queue)        
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()        
         split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
         recorder = StandardRecorder(None, None, impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         destroyed_property = mocker.PropertyMock()
@@ -1232,7 +1250,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            events_queue,
+            events_emitter,
             mocker.Mock(),
             impmanager,
             mocker.Mock(),
@@ -1297,6 +1315,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         recorder = StandardRecorder(None, None, impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         events_queue = queue.Queue()
+        events_emitter = EventsEmitter(events_queue)        
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -1305,7 +1324,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            events_queue,
+            events_emitter,
             mocker.Mock(),
             impmanager,
             mocker.Mock(),
@@ -1331,9 +1350,10 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         events_queue = queue.Queue()
-        split_storage = InMemorySplitStorage(events_queue)
-        segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
+        events_emitter = EventsEmitter(events_queue)        
+        split_storage = InMemorySplitStorage()
+        segment_storage = InMemorySegmentStorage()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorage(10000, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
@@ -1360,7 +1380,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            events_queue,
+            events_emitter,
             mocker.Mock(),
             mocker.Mock(),
             mocker.Mock(),
@@ -1467,6 +1487,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         impmanager = ImpressionManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_producer.get_telemetry_runtime_producer())
         recorder = StandardRecorder(None, None, impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         internal_events_queue = queue.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -1475,7 +1496,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             mocker.Mock(),
             impmanager,
             mocker.Mock(),
@@ -1608,6 +1629,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         impmanager = ImpressionManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_producer.get_telemetry_runtime_producer())
         recorder = StandardRecorder(None, None, impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         internal_events_queue = queue.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -1616,7 +1638,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             mocker.Mock(),
             impmanager,
             mocker.Mock(),
@@ -1679,6 +1701,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         impmanager = ImpressionManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_producer.get_telemetry_runtime_producer())
         recorder = StandardRecorder(None, None, impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         internal_events_queue = queue.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         factory = SplitFactory(mocker.Mock(),
             {'splits': split_storage,
             'segments': segment_storage,
@@ -1687,7 +1710,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             mocker.Mock(),
             impmanager,
             mocker.Mock(),
@@ -1758,6 +1781,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     async def test_get_treatment_async(self, mocker):
         """Test get_treatment_async execution paths."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = mocker.Mock(EventsManagerAsync)
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
@@ -1765,9 +1789,9 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
-        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
@@ -1793,7 +1817,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             mocker.Mock(),
             telemetry_producer,
@@ -1838,6 +1862,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     async def test_get_treatment_with_config_async(self, mocker):
         """Test get_treatment execution paths."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = mocker.Mock(EventsManagerAsync)
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
@@ -1845,9 +1870,9 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
-        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
@@ -1866,7 +1891,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             mocker.Mock(),
             telemetry_producer,
@@ -1923,6 +1948,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     async def test_get_treatments_async(self, mocker):
         """Test get_treatment execution paths."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = mocker.Mock(EventsManagerAsync)
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
@@ -1930,9 +1956,9 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
                 
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
-        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
@@ -1951,7 +1977,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             mocker.Mock(),
             telemetry_producer,
@@ -2011,6 +2037,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     async def test_get_treatments_by_flag_set_async(self, mocker):
         """Test get_treatment execution paths."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = mocker.Mock(EventsManagerAsync)
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
@@ -2018,9 +2045,9 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
                 
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
-        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
@@ -2039,7 +2066,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             mocker.Mock(),
             telemetry_producer,
@@ -2099,6 +2126,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     async def test_get_treatments_by_flag_sets_async(self, mocker):
         """Test get_treatment execution paths."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = mocker.Mock(EventsManagerAsync)
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
@@ -2106,9 +2134,9 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
-        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
@@ -2127,7 +2155,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             mocker.Mock(),
             telemetry_producer,
@@ -2187,6 +2215,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     async def test_get_treatments_with_config(self, mocker):
         """Test get_treatment execution paths."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = mocker.Mock(EventsManagerAsync)
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
@@ -2194,9 +2223,9 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
                 
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
-        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
@@ -2214,7 +2243,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             mocker.Mock(),
             telemetry_producer,
@@ -2279,6 +2308,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     async def test_get_treatments_with_config_by_flag_set(self, mocker):
         """Test get_treatment execution paths."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = mocker.Mock(EventsManagerAsync)
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
@@ -2286,9 +2316,9 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
-        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
@@ -2306,7 +2336,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             mocker.Mock(),
             telemetry_producer,
@@ -2371,6 +2401,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     async def test_get_treatments_with_config_by_flag_sets(self, mocker):
         """Test get_treatment execution paths."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = mocker.Mock(EventsManagerAsync)
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
@@ -2378,9 +2409,9 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
-        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
@@ -2398,7 +2429,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             mocker.Mock(),
             telemetry_producer,
@@ -2463,6 +2494,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     async def test_impression_toggle_optimized(self, mocker):
         """Test get_treatment execution paths."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = mocker.Mock(EventsManagerAsync)
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
@@ -2470,9 +2502,9 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
-        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
@@ -2493,7 +2525,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             mocker.Mock(),
             telemetry_producer,
@@ -2534,6 +2566,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     async def test_impression_toggle_debug(self, mocker):
         """Test get_treatment execution paths."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = mocker.Mock(EventsManagerAsync)
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
@@ -2541,9 +2574,9 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
                 
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
-        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
@@ -2564,7 +2597,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             mocker.Mock(),
             telemetry_producer,
@@ -2602,6 +2635,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     async def test_impression_toggle_none(self, mocker):
         """Test get_treatment execution paths."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = mocker.Mock(EventsManagerAsync)
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
@@ -2609,9 +2643,9 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
-        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
@@ -2632,7 +2666,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             mocker.Mock(),
             telemetry_producer,
@@ -2660,12 +2694,13 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     async def test_track_async(self, mocker):
         """Test that destroy/destroyed calls are forwarded to the factory."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = mocker.Mock(EventsManagerAsync)
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
         
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
         segment_storage = mocker.Mock(spec=SegmentStorage)
         rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
@@ -2691,7 +2726,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             mocker.Mock(),
             telemetry_producer,
@@ -2720,6 +2755,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     @pytest.mark.asyncio
     async def test_telemetry_not_ready_async(self, mocker):
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = mocker.Mock(EventsManagerAsync)
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
@@ -2727,9 +2763,9 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
-        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = InMemoryEventStorageAsync(10, telemetry_runtime_producer)
@@ -2744,7 +2780,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'events': mocker.Mock()},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             mocker.Mock(),
             telemetry_producer,
@@ -2771,6 +2807,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     @pytest.mark.asyncio
     async def test_telemetry_record_treatment_exception_async(self, mocker):
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = mocker.Mock(EventsManagerAsync)
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
@@ -2778,9 +2815,9 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
-        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = InMemoryEventStorageAsync(10, telemetry_runtime_producer)
@@ -2801,7 +2838,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             mocker.Mock(),
             telemetry_producer,
@@ -2853,6 +2890,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     @pytest.mark.asyncio
     async def test_telemetry_method_latency_async(self, mocker):
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = mocker.Mock(EventsManagerAsync)
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
@@ -2860,9 +2898,9 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
                 
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
-        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = InMemoryEventStorageAsync(10, telemetry_runtime_producer)
@@ -2883,7 +2921,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             mocker.Mock(),
             telemetry_producer,
@@ -2936,12 +2974,13 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     @pytest.mark.asyncio
     async def test_telemetry_track_exception_async(self, mocker):
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = mocker.Mock(EventsManagerAsync)
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
         
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
         segment_storage = mocker.Mock(spec=SegmentStorage)
         rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
@@ -2964,7 +3003,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             mocker.Mock(),
             telemetry_producer,
@@ -2993,6 +3032,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     async def test_impressions_properties_async(self, mocker):
         """Test get_treatment_async execution paths."""
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = mocker.Mock(EventsManagerAsync)
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
@@ -3000,9 +3040,9 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
                 
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
-        split_storage = InMemorySplitStorageAsync(internal_events_queue)
-        segment_storage = InMemorySegmentStorageAsync(internal_events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync(internal_events_queue)
+        split_storage = InMemorySplitStorageAsync()
+        segment_storage = InMemorySegmentStorageAsync()
+        rb_segment_storage = InMemoryRuleBasedSegmentStorageAsync()
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impression_storage = InMemoryImpressionStorageAsync(10, telemetry_runtime_producer)
         event_storage = mocker.Mock(spec=EventStorage)
@@ -3027,7 +3067,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             mocker.Mock(),
             telemetry_producer,
@@ -3110,6 +3150,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     async def test_fallback_treatment_eval_exception(self, mocker):
         # using fallback when the evaluator has RuntimeError exception
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = mocker.Mock(EventsManagerAsync)
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
@@ -3147,7 +3188,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             impmanager,
             telemetry_producer,
@@ -3277,6 +3318,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     async def test_fallback_treatment_exception(self, mocker):
         # using fallback when the evaluator has RuntimeError exception
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = mocker.Mock(EventsManagerAsync)
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
@@ -3310,7 +3352,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             impmanager,
             telemetry_producer,
@@ -3381,6 +3423,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     async def test_fallback_treatment_not_ready_impressions(self, mocker):
         # using fallback when the evaluator has RuntimeError exception
         internal_events_queue = asyncio.Queue()
+        events_emitter = EventsEmitter(internal_events_queue)        
         events_manager = mocker.Mock(EventsManagerAsync)
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
@@ -3414,7 +3457,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             'events': event_storage},
             mocker.Mock(),
             recorder,
-            internal_events_queue,
+            events_emitter,
             events_manager,
             impmanager,
             telemetry_producer,
