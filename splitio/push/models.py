@@ -9,7 +9,6 @@ class EventUpdateType(Enum):
 
     SPLIT_UPDATE = 'SPLIT_UPDATE'
     SPLIT_KILL = 'SPLIT_KILL'
-    RB_SEGMENT_UPDATE = 'RB_SEGMENT_UPDATE'
 
 EventUpdateType = Enum('EventUpdateType', [(m.name, m.value) for m in chain(EventUpdateType, BaseUpdateType)])
 
@@ -110,55 +109,3 @@ class SplitKillUpdate(BaseUpdate):
         """Return string representation."""
         return "SplitKill - changeNumber=%d, name=%s, defaultTreatment=%s" % \
             (self.change_number, self.feature_flag_name, self.default_treatment)
-
-class RBSChangeUpdate(BaseUpdate):
-    """rbs Change notification."""
-
-    def __init__(self, channel, timestamp, change_number, data, update_type_class):
-        """Class constructor."""
-        BaseUpdate.__init__(self, channel, timestamp, change_number)
-        self._previous_change_number = data.get('pcn')
-        self._object_definition = data.get('d')
-        self._compression = data.get('c')
-        self._update_type_class = update_type_class
-
-    @property
-    def update_type(self):  # pylint:disable=no-self-use
-        """
-        Return the message type.
-
-        :returns: The type of this parsed Update.
-        :rtype: UpdateType
-        """
-        return self._update_type_class.RB_SEGMENT_UPDATE
-
-    @property
-    def previous_change_number(self):  # pylint:disable=no-self-use
-        """
-        Return previous change number
-        :returns: The previous change number
-        :rtype: int
-        """
-        return self._previous_change_number
-
-    @property
-    def object_definition(self):  # pylint:disable=no-self-use
-        """
-        Return rbs definition
-        :returns: The new rbs definition
-        :rtype: str
-        """
-        return self._object_definition
-
-    @property
-    def compression(self):  # pylint:disable=no-self-use
-        """
-        Return previous compression type
-        :returns: The compression type
-        :rtype: int
-        """
-        return self._compression
-
-    def __str__(self):
-        """Return string representation."""
-        return "RBSChange - changeNumber=%d" % (self.change_number)

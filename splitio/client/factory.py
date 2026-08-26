@@ -27,9 +27,9 @@ from splitio_commons.push.manager import PushManager, PushManagerAsync
 from splitio_commons.push.processor import MessageProcessor, MessageProcessorAsync
 from splitio.push.workers import SplitWorker, SplitWorkerAsync
 from splitio_commons.push.update_event_type_util import UpdateEventTypeUtil, UpdateEventTypeUtilAsync
-from splitio_commons.push.parser import SegmentChangeUpdate
-from splitio_commons.push.workers import SegmentWorker, SegmentWorkerAsync
-from splitio.push.models import EventUpdateType, SplitChangeUpdate, SplitKillUpdate, RBSChangeUpdate
+from splitio_commons.push.parser import SegmentChangeUpdate, RBSChangeUpdate
+from splitio_commons.push.workers import SegmentWorker, SegmentWorkerAsync, RuleBasedSegmentWorker, RuleBasedSegmentWorkerAsync
+from splitio.push.models import EventUpdateType, SplitChangeUpdate, SplitKillUpdate
 
 
 # Storage
@@ -821,7 +821,10 @@ async def _build_push_classes_async(synchronizer, cfg, telemetry_runtime_produce
         split_worker = SplitWorkerAsync(synchronizer.synchronize_definitions, synchronizer.synchronize_segment, split_worker_queue, synchronizer.definition_sync, synchronizer.definition_sync.definition_storage, synchronizer.segment_storage, telemetry_runtime_producer, synchronizer.definition_sync.rule_based_segment_storage, events_emitter)
         await update_event_util.add_update_event(EventUpdateType.SPLIT_UPDATE, SplitChangeUpdate, split_worker.handle_feature_flag_update, split_worker, split_worker_queue)
         await update_event_util.add_update_event(EventUpdateType.SPLIT_KILL, SplitKillUpdate, split_worker.handle_feature_flag_kill, split_worker, split_worker_queue)
-        await update_event_util.add_update_event(EventUpdateType.RB_SEGMENT_UPDATE, RBSChangeUpdate, split_worker.handle_feature_flag_update, split_worker, split_worker_queue)
+
+        rb_segment_worker_queue = asyncio.Queue()
+        rb_segment_worker = RuleBasedSegmentWorkerAsync(synchronizer.synchronize_definitions, synchronizer.synchronize_segment, rb_segment_worker_queue, synchronizer.definition_sync, synchronizer.segment_storage, telemetry_runtime_producer, synchronizer.definition_sync.rule_based_segment_storage, events_emitter)
+        await update_event_util.add_update_event(EventUpdateType.RB_SEGMENT_UPDATE, RBSChangeUpdate, rb_segment_worker.handle_rb_segment_update, rb_segment_worker, rb_segment_worker)
     
         segment_worker_queue = asyncio.Queue()
         segment_worker = SegmentWorkerAsync(synchronizer.synchronize_segment, segment_worker_queue)
@@ -843,7 +846,10 @@ def _build_push_classes(synchronizer, cfg, telemetry_runtime_producer, apis, sdk
         split_worker = SplitWorker(synchronizer.synchronize_definitions, synchronizer.synchronize_segment, split_worker_queue, synchronizer.definition_sync, synchronizer.definition_sync.definition_storage, synchronizer.segment_storage, telemetry_runtime_producer, synchronizer.definition_sync.rule_based_segment_storage, events_emitter)
         update_event_util.add_update_event(EventUpdateType.SPLIT_UPDATE, SplitChangeUpdate, split_worker.handle_feature_flag_update, split_worker, split_worker_queue)
         update_event_util.add_update_event(EventUpdateType.SPLIT_KILL, SplitKillUpdate, split_worker.handle_feature_flag_kill, split_worker, split_worker_queue)
-        update_event_util.add_update_event(EventUpdateType.RB_SEGMENT_UPDATE, RBSChangeUpdate, split_worker.handle_feature_flag_update, split_worker, split_worker_queue)
+
+        rb_segment_worker_queue = queue.Queue()
+        rb_segment_worker = RuleBasedSegmentWorker(synchronizer.synchronize_definitions, synchronizer.synchronize_segment, rb_segment_worker_queue, synchronizer.definition_sync, synchronizer.segment_storage, telemetry_runtime_producer, synchronizer.definition_sync.rule_based_segment_storage, events_emitter)
+        update_event_util.add_update_event(EventUpdateType.RB_SEGMENT_UPDATE, RBSChangeUpdate, rb_segment_worker.handle_rb_segment_update, rb_segment_worker, rb_segment_worker_queue)
     
         segment_worker_queue = queue.Queue()
         segment_worker = SegmentWorker(synchronizer.synchronize_segment, segment_worker_queue)

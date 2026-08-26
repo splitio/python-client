@@ -8,7 +8,7 @@ from splitio_commons.api import APIException
 from splitio.push.workers import SplitWorker, SplitWorkerAsync
 from splitio_commons.models.notification import SplitChangeNotification
 from splitio_commons.optional.loaders import asyncio
-from splitio.push.models import SplitChangeUpdate, RBSChangeUpdate, EventUpdateType
+from splitio.push.models import SplitChangeUpdate, EventUpdateType
 from splitio_commons.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio_commons.storage.inmemmory import InMemoryTelemetryStorage, InMemoryDefinitionStorage, InMemorySegmentStorage, \
     InMemoryTelemetryStorageAsync, InMemoryDefinitionStorageAsync, InMemorySegmentStorageAsync
@@ -97,30 +97,12 @@ class SplitWorkerTests(object):
             self._rbs_added = rbs_add
             self._rbs_deleted = rbs_delete           
         split_worker._rule_based_segment_storage.update = update
-        
-        # should not call the handler
-        rbs_change_number_received = 0
-        rbs1 = str(rbs)
-        rbs1 = rbs1.replace("'", "\"")
-        rbs1 = rbs1.replace("False", "false")
-        encoded = base64.b64encode(bytes(rbs1, "utf-8"))
-        q.put(RBSChangeUpdate('some', 'RB_SEGMENT_UPDATE', 123456790, {'pcn': 2345, 'd': encoded, 'c': 0}, EventUpdateType))
-        time.sleep(0.1)
-        assert rbs_change_number_received == 0
-        assert self._rbs_added[0].name == "sample_rule_based_segment"
-        
+                
         # should call the handler
         q.put(SplitChangeUpdate('some', 'SPLIT_UPDATE', 123456789, {'pcn': None, 'd':  None, 'c': None}, EventUpdateType))
         time.sleep(0.1)
         assert change_number_received == 123456789
         assert rbs_change_number_received == None
-
-        # should call the handler
-        q.put(RBSChangeUpdate('some', 'RB_SEGMENT_UPDATE', 123456789, {'pcn': None, 'd':  None, 'c': None}, EventUpdateType))
-        time.sleep(0.1)
-        assert rbs_change_number_received == 123456789
-        assert change_number_received == None
-
 
         # should call the handler
         q.put(SplitChangeUpdate('some', 'SPLIT_UPDATE', 123456790, {'pcn': 12345, 'd': "{}", 'c': 1}, EventUpdateType))
@@ -369,17 +351,6 @@ class SplitWorkerAsyncTests(object):
             self._rbs_deleted = rbs_delete           
         split_worker._rule_based_segment_storage.update = update_rbs
         
-        # should not call the handler
-        rbs_change_number_received = 0
-        rbs1 = str(rbs)
-        rbs1 = rbs1.replace("'", "\"")
-        rbs1 = rbs1.replace("False", "false")
-        encoded = base64.b64encode(bytes(rbs1, "utf-8"))
-        await q.put(RBSChangeUpdate('some', 'RB_SEGMENT_UPDATE', 123456790, {'pcn': 2345, 'd': encoded, 'c': 0}, EventUpdateType))
-        await asyncio.sleep(0.1)
-        assert rbs_change_number_received == 0
-        assert self._rbs_added[0].name == "sample_rule_based_segment"
-
         # should call the handler
         await q.put(SplitChangeUpdate('some', 'SPLIT_UPDATE', 123456790, {'pcn': 12345, 'd': "{}", 'c': 1}, EventUpdateType))
         await asyncio.sleep(0.1)
