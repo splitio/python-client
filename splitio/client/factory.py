@@ -827,7 +827,7 @@ async def _build_push_classes_async(synchronizer, cfg, telemetry_runtime_produce
         await update_event_util.add_update_event(EventUpdateType.RB_SEGMENT_UPDATE, RBSChangeUpdate, rb_segment_worker.handle_rb_segment_update, rb_segment_worker, rb_segment_worker)
     
         segment_worker_queue = asyncio.Queue()
-        segment_worker = SegmentWorkerAsync(synchronizer.synchronize_segment, segment_worker_queue)
+        segment_worker = SegmentWorkerAsync(synchronizer._harness_synchronizers.segment_sync.synchronize_segment, segment_worker_queue)
         await update_event_util.add_update_event(EventUpdateType.SEGMENT_UPDATE, SegmentChangeUpdate, segment_worker.handle_segment_change, segment_worker, segment_worker_queue)
 
         auth_synchronizer = AuthSynchronizerAsync(apis['auth'], telemetry_runtime_producer, push_queue)
@@ -852,7 +852,7 @@ def _build_push_classes(synchronizer, cfg, telemetry_runtime_producer, apis, sdk
         update_event_util.add_update_event(EventUpdateType.RB_SEGMENT_UPDATE, RBSChangeUpdate, rb_segment_worker.handle_rb_segment_update, rb_segment_worker, rb_segment_worker_queue)
     
         segment_worker_queue = queue.Queue()
-        segment_worker = SegmentWorker(synchronizer.synchronize_segment, segment_worker_queue)
+        segment_worker = SegmentWorker(synchronizer._harness_synchronizers.segment_sync.synchronize_segment, segment_worker_queue)
         update_event_util.add_update_event(EventUpdateType.SEGMENT_UPDATE, SegmentChangeUpdate, segment_worker.handle_segment_change, segment_worker, segment_worker_queue)
     
         auth_synchronizer = AuthSynchronizer(apis['auth'], telemetry_runtime_producer, push_queue)
