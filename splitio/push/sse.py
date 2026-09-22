@@ -94,7 +94,7 @@ class SSEClient(object):
 
         return self._shutdown_requested
 
-    def start(self, url, extra_headers=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT):  # pylint:disable=protected-access
+    def start(self, url, extra_headers=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, proxy_host=None, proxy_port=None):  # pylint:disable=protected-access
         """
         Connect and start listening for events.
 
@@ -115,9 +115,15 @@ class SSEClient(object):
 
         self._shutdown_requested = False
         url, headers = urlparse(url), get_headers(extra_headers)
-        self._conn = (HTTPSConnection(url.hostname, url.port, timeout=timeout)
-                      if url.scheme == 'https'
-                      else HTTPConnection(url.hostname, port=url.port, timeout=timeout))
+        if proxy_host is not None:
+            self._conn = (HTTPSConnection(proxy_host, proxy_port, timeout=timeout)
+                        if url.scheme == 'https'
+                        else HTTPConnection(proxy_host, proxy_port, timeout=timeout))
+            self._conn.set_tunnel(url.hostname, url.port)
+        else:    
+            self._conn = (HTTPSConnection(url.hostname, url.port, timeout=timeout)
+                        if url.scheme == 'https'
+                        else HTTPConnection(url.hostname, port=url.port, timeout=timeout))
 
         self._conn.request('GET', '%s?%s' % (url.path, url.query), headers=headers)
         return self._read_events()
@@ -155,10 +161,10 @@ class SSEClientAsync(object):
         self._socket_read_timeout = socket_read_timeout + socket_read_timeout * .3
         self._response = None
         self._done = asyncio.Event()
-        client_timeout = aiohttp.ClientTimeout(total=0, sock_read=self._socket_read_timeout)
-        self._sess = aiohttp.ClientSession(timeout=client_timeout)
+        self._client_timeout = aiohttp.ClientTimeout(total=0, sock_read=self._socket_read_timeout)
+        self._sess = aiohttp.ClientSession(timeout=self._client_timeout)
 
-    async def start(self, url, extra_headers=None):  # pylint:disable=protected-access
+    async def start(self, url, extra_headers=None, proxy_url=None):  # pylint:disable=protected-access
         """
         Connect and start listening for events.
 
@@ -171,7 +177,14 @@ class SSEClientAsync(object):
 
         self._done.clear()
         try:
-            async with self._sess.get(url, headers=get_headers(extra_headers)) as response:
+            _LOGGER.debug(proxy_url)
+            _LOGGER.debug(self._socket_read_timeout)
+            async with self._sess.get(
+                url,
+                headers=get_headers(extra_headers),
+                timeout=60*40, # setting to 1 hour
+                proxy=proxy_url,
+            ) as response:
                 self._response = response
                 event_builder = EventBuilder()
                 async for line in response.content:

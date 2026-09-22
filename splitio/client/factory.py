@@ -550,12 +550,17 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
             authentication_params = authentication_params
         )
     else:
+        proxies = {}
+        if cfg.get('proxyHost'):
+            proxies['https'] = cfg.get('proxyProtocol') + '://' + cfg.get('proxyHost') + ':' + str(cfg.get('proxyPort'))
+            
         http_client = HttpClient(
             sdk_url=sdk_url,
             events_url=events_url,
             auth_url=auth_api_base_url,
             telemetry_url=telemetry_api_base_url,
             timeout=cfg.get('connectionTimeout'),
+            proxies=proxies
         )
 
     sdk_metadata = util.get_metadata(cfg)
@@ -629,7 +634,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
 
     sdk_ready_flag = threading.Event() if not preforked_initialization else None
     manager = Manager(sdk_ready_flag, synchronizer, apis['auth'], cfg['streamingEnabled'],
-                      sdk_metadata, telemetry_runtime_producer, streaming_api_base_url, api_key[-4:])
+                      sdk_metadata, telemetry_runtime_producer, streaming_api_base_url, api_key[-4:], cfg.get('proxyHost'), cfg.get('proxyPort'))
 
     storages['events'].set_queue_full_hook(tasks.events_task.flush)
     storages['impressions'].set_queue_full_hook(tasks.impressions_task.flush)
@@ -684,13 +689,17 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
     telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
     telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
     telemetry_init_producer = telemetry_producer.get_telemetry_init_producer()
+    proxies = {}
+    if cfg.get('proxyHost'):
+        proxies['https'] = cfg.get('proxyProtocol') + '://' + cfg.get('proxyHost') + ':' + str(cfg.get('proxyPort'))
 
     http_client = HttpClientAsync(
         sdk_url=sdk_url,
         events_url=events_url,
         auth_url=auth_api_base_url,
         telemetry_url=telemetry_api_base_url,
-        timeout=cfg.get('connectionTimeout')
+        timeout=cfg.get('connectionTimeout'),
+        proxies=proxies
     )
 
     sdk_metadata = util.get_metadata(cfg)
@@ -761,7 +770,7 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
     synchronizer = SynchronizerAsync(synchronizers, tasks)
 
     manager = ManagerAsync(synchronizer, apis['auth'], cfg['streamingEnabled'],
-                      sdk_metadata, telemetry_runtime_producer, streaming_api_base_url, api_key[-4:])
+                      sdk_metadata, telemetry_runtime_producer, streaming_api_base_url, api_key[-4:], proxy=proxies.get('https'))
 
     storages['events'].set_queue_full_hook(tasks.events_task.flush)
     storages['impressions'].set_queue_full_hook(tasks.impressions_task.flush)

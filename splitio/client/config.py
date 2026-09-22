@@ -71,7 +71,10 @@ DEFAULT_CONFIG = {
     'httpAuthenticateScheme': AuthenticateScheme.NONE,
     'kerberosPrincipalUser': None,
     'kerberosPrincipalPassword': None,
-    'fallbackTreatments': FallbackTreatmentsConfiguration(None)
+    'fallbackTreatments': FallbackTreatmentsConfiguration(None),
+    'proxyHost': None,
+    'proxyPort': None,
+    'proxyProtocol': None
 }
 
 def _parse_operation_mode(sdk_key, config):
@@ -175,10 +178,29 @@ def sanitize(sdk_key, config):
     if config.get("redisErrors") is not None:
         _LOGGER.warning('Parameter `redisErrors` is deprecated as it is no longer supported in redis lib.' \
                         ' Will ignore this value.')
-
         processed["redisErrors"] = None
+
+    processed = _sanitize_proxy(config, processed)
+                        
     return processed
 
+def _sanitize_proxy(config, processed):
+    if config.get("proxyHost") is None:
+        return processed
+    
+    if config.get("proxyProtocol") is None or config.get("proxyPort") is None \
+        or not isinstance(config.get("proxyProtocol"), str) or not isinstance(config.get("proxyPort"), int) \
+            or not isinstance(config.get("proxyHost"), str):
+        _LOGGER.warning('To use proxy, parameters `proxyHost`, `proxyPort` and `proxyProtocol` must be set as str, int and str instances respectively.')
+        processed["proxyHost"] = None
+        return processed
+                
+    if config.get("proxyProtocol") not in ['http', 'https']:
+        _LOGGER.warning('Parameter `proxyProtocol` should be either `http` or `https`, defaulting to `https`')
+        processed["proxyProtocol"] = 'https'
+
+    return processed    
+    
 def _sanitize_fallback_config(config, processed):
     if config.get('fallbackTreatments') is None:
         return processed

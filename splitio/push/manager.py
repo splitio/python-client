@@ -45,7 +45,7 @@ class PushManagerBase(object, metaclass=abc.ABCMeta):
 class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attributes
     """Push notifications susbsytem manager."""
 
-    def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None):
+    def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_host=None, proxy_port=None):
         """
         Class constructor.
 
@@ -87,7 +87,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
 
         kwargs = {} if sse_url is None else {'base_url': sse_url}
         self._sse_client = SplitSSEClient(self._event_handler, sdk_metadata, self._handle_connection_ready,
-                                          self._handle_connection_end, client_key, **kwargs)
+                                          self._handle_connection_end, client_key, **kwargs, proxy_host=proxy_host, proxy_port=proxy_port)
         self._running = False
         self._next_refresh = Timer(0, lambda: 0)
         self._telemetry_runtime_producer = telemetry_runtime_producer
@@ -278,7 +278,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
 class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-attributes
     """Push notifications susbsytem manager."""
 
-    def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None):
+    def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy=None):
         """
         Class constructor.
 
@@ -319,7 +319,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         }
 
         kwargs = {} if sse_url is None else {'base_url': sse_url}
-        self._sse_client = SplitSSEClientAsync(sdk_metadata, client_key, **kwargs)
+        self._sse_client = SplitSSEClientAsync(sdk_metadata, client_key, **kwargs, proxy=proxy)
         self._running = False
         self._telemetry_runtime_producer = telemetry_runtime_producer
         self._token_task = None
