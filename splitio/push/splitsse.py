@@ -81,7 +81,7 @@ class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-a
 
     def __init__(self, event_callback, sdk_metadata, first_event_callback=None,
                  connection_closed_callback=None, client_key=None,
-                 base_url='https://streaming.split.io'):
+                 base_url='https://streaming.split.io', proxy_host=None, proxy_port=None):
         """
         Construct a split sse client.
 
@@ -112,6 +112,8 @@ class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-a
         self._sse_first_event = None
         self._sse_connection_closed = None
         self._metadata = headers_from_metadata(sdk_metadata, client_key)
+        self._proxy_host = proxy_host
+        self._proxy_port = proxy_port
 
     def _raw_event_handler(self, event):
         """
@@ -153,7 +155,7 @@ class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-a
             """Connect to sse in a blocking manner."""
             try:
                 self._client.start(url, timeout=self.KEEPALIVE_TIMEOUT,
-                                   extra_headers=self._metadata)
+                                   extra_headers=self._metadata, proxy_host=self._proxy_host, proxy_port=self._proxy_port)
             finally:
                 self._status = SplitSSEClient._Status.IDLE
                 self._sse_connection_closed.set()
@@ -178,7 +180,7 @@ class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-a
 class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-instance-attributes
     """Split streaming endpoint SSE client."""
 
-    def __init__(self, sdk_metadata, client_key=None, base_url='https://streaming.split.io'):
+    def __init__(self, sdk_metadata, client_key=None, base_url='https://streaming.split.io', proxy=None):
         """
         Construct a split sse client.
 
@@ -197,6 +199,7 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         self._client = SSEClientAsync(self.KEEPALIVE_TIMEOUT)
         self._event_source = None
         self._event_source_ended = asyncio.Event()
+        self._proxy = proxy
 
     async def start(self, token):
         """
@@ -216,7 +219,7 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         url = self._build_url(token)
         try:
             self._event_source_ended.clear()
-            self._event_source = self._client.start(url, extra_headers=self._metadata)
+            self._event_source = self._client.start(url, extra_headers=self._metadata, proxy_url=self._proxy)
             first_event = await anext(self._event_source)
             if first_event.event == SSE_EVENT_ERROR:
                 return
