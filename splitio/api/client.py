@@ -298,7 +298,7 @@ class HttpClientAsync(HttpClientBase):
             _LOGGER.debug("GET request: %s", url)
             _LOGGER.debug("query params: %s", query)
             _LOGGER.debug("headers: %s", headers)
-            _LOGGER.debug(self._proxy)
+            _LOGGER.debug("proxy: %s", self._proxy)
             async with self._session.get(
                 url,
                 params=query,
