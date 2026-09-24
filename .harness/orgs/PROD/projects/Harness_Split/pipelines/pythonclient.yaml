@@ -163,7 +163,7 @@ pipeline:
 
                       TARGET_URL="${SONAR_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
 
-                      curl -sf -X POST \
+                      curl -v -sf -X POST \
                         -H "Authorization: token ${GITHUB_TOKEN}" \
                         -H "Accept: application/vnd.github.v3+json" \
                         -H "Content-Type: application/json" \
