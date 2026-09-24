@@ -144,7 +144,7 @@ pipeline:
                       SONAR_TOKEN="<+secrets.getValue("sonarqube-token")>"
                       SONAR_URL="https://sonar.harness.io"
                       SONAR_PROJECT_KEY="python-client"
-                      GITHUB_TOKEN="<+secrets.getValue("github-devops-token")>"
+                      GITHUB_TOKEN="<+secrets.getValue("github-splitio-token")>"
                       GITHUB_REPO="python-client"
                       COMMIT_SHA="<+codebase.commitSha>"
 
@@ -174,4 +174,4 @@ pipeline:
         strategy:
           matrix:
             pythonVersion:
-              - "3.7.16"
+              - 3.7.16
