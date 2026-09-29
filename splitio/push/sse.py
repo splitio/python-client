@@ -1,6 +1,8 @@
 """Low-level SSE Client."""
 import logging
+import os
 import socket
+from urllib.parse import urlsplit
 from collections import namedtuple
 from http.client import HTTPConnection, HTTPSConnection
 from urllib.parse import urlparse
@@ -16,9 +18,6 @@ _EVENT_SEPARATORS = set([b'\n', b'\r\n'])
 _DEFAULT_SOCKET_READ_TIMEOUT = 70
 
 SSEEvent = namedtuple('SSEEvent', ['event_id', 'event', 'retry', 'data'])
-
-
-__ENDING_CHARS = set(['\n', ''])
 
 class EventBuilder(object):
     """Event builder class."""
@@ -115,7 +114,13 @@ class SSEClient(object):
 
         self._shutdown_requested = False
         url, headers = urlparse(url), get_headers(extra_headers)
+        if proxy_host is None:
+            proxy_url = os.getenv("HTTPS_PROXY")
+            proxy_host = urlsplit(proxy_url).hostname
+            proxy_port = urlsplit(proxy_url).port if urlsplit(proxy_url).port is not None else 80
+            
         if proxy_host is not None:
+            _LOGGER.debug("Using Proxy server %s and port %s", proxy_host, proxy_port)
             self._conn = (HTTPSConnection(proxy_host, proxy_port, timeout=timeout)
                         if url.scheme == 'https'
                         else HTTPConnection(proxy_host, proxy_port, timeout=timeout))
