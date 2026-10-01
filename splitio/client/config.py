@@ -2,6 +2,7 @@
 import os.path
 import logging
 from enum import Enum
+from urllib.parse import urlparse
 
 from splitio.engine.impressions import ImpressionsMode
 from splitio.client.input_validator import validate_flag_sets, validate_fallback_treatment, validate_regex_name
@@ -72,9 +73,7 @@ DEFAULT_CONFIG = {
     'kerberosPrincipalUser': None,
     'kerberosPrincipalPassword': None,
     'fallbackTreatments': FallbackTreatmentsConfiguration(None),
-    'proxyHost': None,
-    'proxyPort': None,
-    'proxyProtocol': None
+    'proxyUrl': None,
 }
 
 def _parse_operation_mode(sdk_key, config):
@@ -185,21 +184,16 @@ def sanitize(sdk_key, config):
     return processed
 
 def _sanitize_proxy(config, processed):
-    if config.get("proxyHost") is None:
+    if config.get("proxyUrl") is None:
         return processed
-    
-    if config.get("proxyProtocol") is None or config.get("proxyPort") is None \
-        or not isinstance(config.get("proxyProtocol"), str) or not isinstance(config.get("proxyPort"), int) \
-            or not isinstance(config.get("proxyHost"), str):
-        _LOGGER.warning('To use proxy, parameters `proxyHost`, `proxyPort` and `proxyProtocol` must be set as str, int and str instances respectively.')
-        processed["proxyHost"] = None
-        return processed
-                
-    if config.get("proxyProtocol") not in ['http', 'https']:
-        _LOGGER.warning('Parameter `proxyProtocol` should be either `http` or `https`, defaulting to `https`')
-        processed["proxyProtocol"] = 'https'
 
-    return processed    
+    try:
+        urlparse(config.get("proxyUrl"))
+    except ValueError:
+        _LOGGER.warning("Invalid URL in `proxyURL` param")
+        processed["proxyUrl"] = None
+
+    return processed
     
 def _sanitize_fallback_config(config, processed):
     if config.get('fallbackTreatments') is None:

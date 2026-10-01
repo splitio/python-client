@@ -81,7 +81,7 @@ class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-a
 
     def __init__(self, event_callback, sdk_metadata, first_event_callback=None,
                  connection_closed_callback=None, client_key=None,
-                 base_url='https://streaming.split.io', proxy_host=None, proxy_port=None):
+                 base_url='https://streaming.split.io', proxy_url=None):
         """
         Construct a split sse client.
 
@@ -102,6 +102,9 @@ class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-a
 
         :param client_key: client key.
         :type client_key: str
+
+        :param proxy_url: proxy url.
+        :type proxy_url: str
         """
         SplitSSEClientBase.__init__(self, base_url)
         self._client = SSEClient(self._raw_event_handler)
@@ -112,8 +115,7 @@ class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-a
         self._sse_first_event = None
         self._sse_connection_closed = None
         self._metadata = headers_from_metadata(sdk_metadata, client_key)
-        self._proxy_host = proxy_host
-        self._proxy_port = proxy_port
+        self._proxy_url = proxy_url
 
     def _raw_event_handler(self, event):
         """
@@ -155,7 +157,7 @@ class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-a
             """Connect to sse in a blocking manner."""
             try:
                 self._client.start(url, timeout=self.KEEPALIVE_TIMEOUT,
-                                   extra_headers=self._metadata, proxy_host=self._proxy_host, proxy_port=self._proxy_port)
+                                   extra_headers=self._metadata, proxy_url=self._proxy_url)
             finally:
                 self._status = SplitSSEClient._Status.IDLE
                 self._sse_connection_closed.set()

@@ -447,7 +447,7 @@ class Synchronizer(SynchronizerInMemoryBase):
                 return
             except Exception as exc:  # pylint:disable=broad-except
                 _LOGGER.error("Exception caught when trying to sync all data: %s", str(exc))
-                _LOGGER.debug('Error: ', exc_info=True)
+                _LOGGER.error('Error: ', exc_info=True)
                 if max_retry_attempts != _SYNC_ALL_NO_RETRIES:
                     retry_attempts += 1
                     if retry_attempts > max_retry_attempts:

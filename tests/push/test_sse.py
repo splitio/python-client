@@ -127,7 +127,7 @@ class SSEClientTests(object):
         assert client._conn is None
 
     def test_sse_client_uses_explicit_proxy(self, monkeypatch):
-        """Explicit proxy_host/proxy_port args tunnel through the given proxy."""
+        """Explicit proxy_url tunnels through the given proxy."""
         monkeypatch.delenv('HTTPS_PROXY', raising=False)
         captured = {}
 
@@ -137,9 +137,10 @@ class SSEClientTests(object):
                 captured['port'] = port
                 self.sock = None
 
-            def set_tunnel(self, host, port):
+            def set_tunnel(self, host, port, headers=None):
                 captured['tunnel_host'] = host
                 captured['tunnel_port'] = port
+                captured['tunnel_headers'] = headers
 
             def request(self, *args, **kwargs):
                 captured['request_args'] = args
@@ -156,8 +157,7 @@ class SSEClientTests(object):
         client = SSEClient(lambda e: None)
         client.start(
             'http://target-host:9999/path?token=abc',
-            proxy_host='proxyhost',
-            proxy_port=8080,
+            proxy_url='http://proxyhost:8080',
         )
 
         assert captured['host'] == 'proxyhost'
@@ -177,7 +177,7 @@ class SSEClientTests(object):
                 captured['port'] = port
                 self.sock = None
 
-            def set_tunnel(self, host, port):
+            def set_tunnel(self, host, port, headers=None):
                 captured['tunnel_host'] = host
                 captured['tunnel_port'] = port
 
@@ -211,7 +211,7 @@ class SSEClientTests(object):
                 captured['port'] = port
                 self.sock = None
 
-            def set_tunnel(self, host, port):
+            def set_tunnel(self, host, port, headers=None):
                 pass
 
             def request(self, *args, **kwargs):
