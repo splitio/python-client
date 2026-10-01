@@ -2,6 +2,7 @@
 import logging
 import os
 import socket
+import base64
 from urllib.parse import urlsplit
 from collections import namedtuple
 from http.client import HTTPConnection, HTTPSConnection
@@ -93,7 +94,7 @@ class SSEClient(object):
 
         return self._shutdown_requested
 
-    def start(self, url, extra_headers=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, proxy_host=None, proxy_port=None):  # pylint:disable=protected-access
+    def start(self, url, extra_headers=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, proxy_url=None):  # pylint:disable=protected-access
         """
         Connect and start listening for events.
 
@@ -114,17 +115,16 @@ class SSEClient(object):
 
         self._shutdown_requested = False
         url, headers = urlparse(url), get_headers(extra_headers)
-        if proxy_host is None:
+        if proxy_url is None:
             proxy_url = os.getenv("HTTPS_PROXY")
-            proxy_host = urlsplit(proxy_url).hostname
-            proxy_port = urlsplit(proxy_url).port if urlsplit(proxy_url).port is not None else 80
             
-        if proxy_host is not None:
-            _LOGGER.debug("Using Proxy server %s and port %s", proxy_host, proxy_port)
+        if proxy_url is not None:
+            _LOGGER.debug("Using Proxy url %s", proxy_url)
+            proxy_host, proxy_port, proxy_headers = self._get_proxy_info(proxy_url)
             self._conn = (HTTPSConnection(proxy_host, proxy_port, timeout=timeout)
                         if url.scheme == 'https'
                         else HTTPConnection(proxy_host, proxy_port, timeout=timeout))
-            self._conn.set_tunnel(url.hostname, url.port)
+            self._conn.set_tunnel(url.hostname, url.port, headers=proxy_headers)
         else:    
             self._conn = (HTTPSConnection(url.hostname, url.port, timeout=timeout)
                         if url.scheme == 'https'
@@ -133,6 +133,23 @@ class SSEClient(object):
         self._conn.request('GET', '%s?%s' % (url.path, url.query), headers=headers)
         return self._read_events()
 
+    def _get_proxy_info(self, proxy_url):
+        proxy_host = urlsplit(proxy_url).hostname
+        proxy_port = urlsplit(proxy_url).port if urlsplit(proxy_url).port is not None else 80
+        proxy_user = urlsplit(proxy_url).username
+        proxy_pass = urlsplit(proxy_url).password
+        proxy_headers = {}
+        
+        if proxy_user is not None:
+            auth_str = f"{proxy_user}:{proxy_pass}"
+            b64_auth = base64.b64encode(auth_str.encode("utf-8")).decode("ascii")
+
+            proxy_headers = {
+                "Proxy-Authorization": f"Basic {b64_auth}"
+            }
+        
+        return proxy_host, proxy_port, proxy_headers
+        
     def shutdown(self):
         """Shutdown the current connection."""
         if self._conn is None or self._conn.sock is None:

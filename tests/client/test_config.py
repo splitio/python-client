@@ -125,114 +125,18 @@ class ConfigSanitizationTests(object):
         assert _logger.warning.mock_calls[1] == mocker.call('Config: fallback treatment parameter for feature flag %s is discarded.', 'flag#%')
 
     def test_sanitize_defaults_proxy_to_none(self):
-        """Proxy fields default to None when not supplied."""
+        """proxyUrl defaults to None when not supplied."""
         processed = config.sanitize('some', {})
-        assert processed['proxyHost'] is None
-        assert processed['proxyPort'] is None
-        assert processed['proxyProtocol'] is None
+        assert processed['proxyUrl'] is None
 
     def test_sanitize_proxy_valid(self):
-        """A fully valid proxy config is preserved as-is."""
+        """A valid proxyUrl is preserved as-is."""
         processed = config.sanitize('some', {
-            'proxyHost': 'proxy.example.com',
-            'proxyPort': 8080,
-            'proxyProtocol': 'http',
+            'proxyUrl': 'http://proxy.example.com:8080',
         })
-        assert processed['proxyHost'] == 'proxy.example.com'
-        assert processed['proxyPort'] == 8080
-        assert processed['proxyProtocol'] == 'http'
+        assert processed['proxyUrl'] == 'http://proxy.example.com:8080'
 
         processed = config.sanitize('some', {
-            'proxyHost': 'proxy.example.com',
-            'proxyPort': 443,
-            'proxyProtocol': 'https',
+            'proxyUrl': 'https://proxy.example.com:443',
         })
-        assert processed['proxyHost'] == 'proxy.example.com'
-        assert processed['proxyPort'] == 443
-        assert processed['proxyProtocol'] == 'https'
-
-    def test_sanitize_proxy_host_only_disables_proxy(self, mocker):
-        """If proxyHost is set but port/protocol are missing, proxyHost is cleared."""
-        _logger = mocker.Mock()
-        mocker.patch('splitio.client.config._LOGGER', new=_logger)
-
-        processed = config.sanitize('some', {'proxyHost': 'proxy.example.com'})
-        assert processed['proxyHost'] is None
-        assert processed['proxyPort'] is None
-        assert processed['proxyProtocol'] is None
-        _logger.warning.assert_any_call(
-            'To use proxy, parameters `proxyHost`, `proxyPort` and `proxyProtocol` must be set as str, int and str instances respectively.'
-        )
-
-    def test_sanitize_proxy_missing_protocol_disables_proxy(self, mocker):
-        """Missing proxyProtocol invalidates the proxy config."""
-        _logger = mocker.Mock()
-        mocker.patch('splitio.client.config._LOGGER', new=_logger)
-
-        processed = config.sanitize('some', {
-            'proxyHost': 'proxy.example.com',
-            'proxyPort': 8080,
-        })
-        assert processed['proxyHost'] is None
-        _logger.warning.assert_any_call(
-            'To use proxy, parameters `proxyHost`, `proxyPort` and `proxyProtocol` must be set as str, int and str instances respectively.'
-        )
-
-    def test_sanitize_proxy_missing_port_disables_proxy(self, mocker):
-        """Missing proxyPort invalidates the proxy config."""
-        _logger = mocker.Mock()
-        mocker.patch('splitio.client.config._LOGGER', new=_logger)
-
-        processed = config.sanitize('some', {
-            'proxyHost': 'proxy.example.com',
-            'proxyProtocol': 'https',
-        })
-        assert processed['proxyHost'] is None
-        _logger.warning.assert_any_call(
-            'To use proxy, parameters `proxyHost`, `proxyPort` and `proxyProtocol` must be set as str, int and str instances respectively.'
-        )
-
-    def test_sanitize_proxy_wrong_types_disables_proxy(self, mocker):
-        """Wrong types for proxy fields invalidate the proxy config."""
-        _logger = mocker.Mock()
-        mocker.patch('splitio.client.config._LOGGER', new=_logger)
-
-        processed = config.sanitize('some', {
-            'proxyHost': 'proxy.example.com',
-            'proxyPort': '8080',  # str, not int
-            'proxyProtocol': 'https',
-        })
-        assert processed['proxyHost'] is None
-
-        _logger.reset_mock()
-        processed = config.sanitize('some', {
-            'proxyHost': 'proxy.example.com',
-            'proxyPort': 8080,
-            'proxyProtocol': 123,  # int, not str
-        })
-        assert processed['proxyHost'] is None
-
-        _logger.reset_mock()
-        processed = config.sanitize('some', {
-            'proxyHost': 12345,  # int, not str
-            'proxyPort': 8080,
-            'proxyProtocol': 'https',
-        })
-        assert processed['proxyHost'] is None
-
-    def test_sanitize_proxy_invalid_protocol_defaults_to_https(self, mocker):
-        """An unrecognized proxyProtocol falls back to 'https'."""
-        _logger = mocker.Mock()
-        mocker.patch('splitio.client.config._LOGGER', new=_logger)
-
-        processed = config.sanitize('some', {
-            'proxyHost': 'proxy.example.com',
-            'proxyPort': 8080,
-            'proxyProtocol': 'ftp',
-        })
-        assert processed['proxyHost'] == 'proxy.example.com'
-        assert processed['proxyPort'] == 8080
-        assert processed['proxyProtocol'] == 'https'
-        _logger.warning.assert_any_call(
-            'Parameter `proxyProtocol` should be either `http` or `https`, defaulting to `https`'
-        )
+        assert processed['proxyUrl'] == 'https://proxy.example.com:443'

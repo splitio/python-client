@@ -198,6 +198,7 @@ class HttpClient(HttpClientBase):
         :rtype: HttpResponse
         """
         start = get_current_epoch_time_ms()
+        _LOGGER.debug("proxy %s", self._proxies)
         try:
             response = requests.get(
                 _build_url(server, path, self._urls),

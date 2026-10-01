@@ -45,7 +45,7 @@ class PushManagerBase(object, metaclass=abc.ABCMeta):
 class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attributes
     """Push notifications susbsytem manager."""
 
-    def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_host=None, proxy_port=None):
+    def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_url=None):
         """
         Class constructor.
 
@@ -69,6 +69,9 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
 
         :param client_key: client key.
         :type client_key: str
+
+        :param proxy_url: proxy url.
+        :type proxy_url: str
         """
         self._auth_api = auth_api
         self._feedback_loop = feedback_loop
@@ -87,7 +90,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
 
         kwargs = {} if sse_url is None else {'base_url': sse_url}
         self._sse_client = SplitSSEClient(self._event_handler, sdk_metadata, self._handle_connection_ready,
-                                          self._handle_connection_end, client_key, **kwargs, proxy_host=proxy_host, proxy_port=proxy_port)
+                                          self._handle_connection_end, client_key, **kwargs, proxy_url=proxy_url)
         self._running = False
         self._next_refresh = Timer(0, lambda: 0)
         self._telemetry_runtime_producer = telemetry_runtime_producer
