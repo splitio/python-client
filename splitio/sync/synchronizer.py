@@ -447,7 +447,7 @@ class Synchronizer(SynchronizerInMemoryBase):
                 return
             except Exception as exc:  # pylint:disable=broad-except
                 _LOGGER.error("Exception caught when trying to sync all data: %s", str(exc))
-                _LOGGER.error('Error: ', exc_info=True)
+                _LOGGER.debug('Error: ', exc_info=True)
                 if max_retry_attempts != _SYNC_ALL_NO_RETRIES:
                     retry_attempts += 1
                     if retry_attempts > max_retry_attempts:
@@ -948,7 +948,7 @@ class LocalhostSynchronizer(LocalhostSynchronizerBase):
                 return self.synchronize_splits()
             except APIException as exc:
                 _LOGGER.error('Failed syncing all')
-                _LOGGER.error(str(exc))
+                _LOGGER.debug(str(exc))
 
             how_long = self._backoff.get()
             time.sleep(how_long)
@@ -1025,7 +1025,7 @@ class LocalhostSynchronizerAsync(LocalhostSynchronizerBase):
                 return await self.synchronize_splits()
             except APIException as exc:
                 _LOGGER.error('Failed syncing all')
-                _LOGGER.error(str(exc))
+                _LOGGER.debug(str(exc))
 
             how_long = self._backoff.get()
             await asyncio.sleep(how_long)
