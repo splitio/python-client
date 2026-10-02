@@ -125,7 +125,7 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
 
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add mtks to redis')
-            _LOGGER.error('Error: ', exc_info=True)
+            _LOGGER.debug('Error: ', exc_info=True)
             return False
 
     def flush_counters(self, to_send):
@@ -152,7 +152,7 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
 
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add counters to redis')
-            _LOGGER.error('Error: ', exc_info=True)
+            _LOGGER.debug('Error: ', exc_info=True)
             return False
 
     def _expire_keys(self, queue_key, key_default_ttl, total_keys, inserted):
@@ -198,7 +198,7 @@ class RedisSenderAdapterAsync(ImpressionsSenderAdapter):
 
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add mtks to redis')
-            _LOGGER.error('Error: ', exc_info=True)
+            _LOGGER.debug('Error: ', exc_info=True)
             return False
 
     async def flush_counters(self, to_send):
@@ -225,7 +225,7 @@ class RedisSenderAdapterAsync(ImpressionsSenderAdapter):
 
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add counters to redis')
-            _LOGGER.error('Error: ', exc_info=True)
+            _LOGGER.debug('Error: ', exc_info=True)
             return False
 
     async def _expire_keys(self, queue_key, key_default_ttl, total_keys, inserted):
@@ -274,7 +274,7 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
 
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add mtks to storage adapter')
-            _LOGGER.error('Error: ', exc_info=True)
+            _LOGGER.debug('Error: ', exc_info=True)
             return False
 
     def flush_counters(self, to_send):
@@ -297,7 +297,7 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
 
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add counters to storage adapter')
-            _LOGGER.error('Error: ', exc_info=True)
+            _LOGGER.debug('Error: ', exc_info=True)
             return False
 
     def _expire_keys(self, queue_key, key_default_ttl, total_keys, inserted):
@@ -346,7 +346,7 @@ class PluggableSenderAdapterAsync(ImpressionsSenderAdapter):
 
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add mtks to storage adapter')
-            _LOGGER.error('Error: ', exc_info=True)
+            _LOGGER.debug('Error: ', exc_info=True)
             return False
 
     async def flush_counters(self, to_send):
@@ -369,7 +369,7 @@ class PluggableSenderAdapterAsync(ImpressionsSenderAdapter):
 
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add counters to storage adapter')
-            _LOGGER.error('Error: ', exc_info=True)
+            _LOGGER.debug('Error: ', exc_info=True)
             return False
 
     async def _expire_keys(self, queue_key, key_default_ttl, total_keys, inserted):

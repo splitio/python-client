@@ -948,7 +948,7 @@ class LocalhostSynchronizer(LocalhostSynchronizerBase):
                 return self.synchronize_splits()
             except APIException as exc:
                 _LOGGER.error('Failed syncing all')
-                _LOGGER.error(str(exc))
+                _LOGGER.debug(str(exc))
 
             how_long = self._backoff.get()
             time.sleep(how_long)
@@ -1025,7 +1025,7 @@ class LocalhostSynchronizerAsync(LocalhostSynchronizerBase):
                 return await self.synchronize_splits()
             except APIException as exc:
                 _LOGGER.error('Failed syncing all')
-                _LOGGER.error(str(exc))
+                _LOGGER.debug(str(exc))
 
             how_long = self._backoff.get()
             await asyncio.sleep(how_long)

@@ -20,7 +20,7 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
 
     _CENTINEL_EVENT = object()
 
-    def __init__(self, ready_flag, synchronizer, auth_api, streaming_enabled, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None):  # pylint:disable=too-many-arguments
+    def __init__(self, ready_flag, synchronizer, auth_api, streaming_enabled, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_url=None):  # pylint:disable=too-many-arguments
         """
         Construct Manager.
 
@@ -44,6 +44,9 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
 
         :param client_key: client key.
         :type client_key: str
+
+        :param proxy_url: proxy url.
+        :type proxy_url: str
         """
         self._streaming_enabled = streaming_enabled
         self._ready_flag = ready_flag
@@ -53,7 +56,7 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
             self._push_status_handler_active = True
             self._backoff = Backoff()
             self._queue = Queue()
-            self._push = PushManager(auth_api, synchronizer, self._queue, sdk_metadata, telemetry_runtime_producer, sse_url, client_key)
+            self._push = PushManager(auth_api, synchronizer, self._queue, sdk_metadata, telemetry_runtime_producer, sse_url, client_key, proxy_url)
             self._push_status_handler = Thread(target=self._streaming_feedback_handler,
                                                name='PushStatusHandler', daemon=True)
 
@@ -141,7 +144,7 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
 
     _CENTINEL_EVENT = object()
 
-    def __init__(self, synchronizer, auth_api, streaming_enabled, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None):  # pylint:disable=too-many-arguments
+    def __init__(self, synchronizer, auth_api, streaming_enabled, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy=None):  # pylint:disable=too-many-arguments
         """
         Construct Manager.
 
@@ -170,7 +173,7 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
             self._push_status_handler_active = True
             self._backoff = Backoff()
             self._queue = asyncio.Queue()
-            self._push = PushManagerAsync(auth_api, synchronizer, self._queue, sdk_metadata, telemetry_runtime_producer, sse_url, client_key)
+            self._push = PushManagerAsync(auth_api, synchronizer, self._queue, sdk_metadata, telemetry_runtime_producer, sse_url, client_key, proxy=proxy)
         self._stopped = False
 
     async def start(self, max_retry_attempts=_SYNC_ALL_NO_RETRIES):

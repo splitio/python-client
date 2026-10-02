@@ -1212,7 +1212,7 @@ class RedisImpressionsStorage(RedisImpressionsStorageBase):
 
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add impression to redis')
-            _LOGGER.error('Error: ', exc_info=True)
+            _LOGGER.debug('Error: ', exc_info=True)
             return False
 
 
@@ -1263,7 +1263,7 @@ class RedisImpressionsStorageAsync(RedisImpressionsStorageBase):
 
         except RedisAdapterException:
             _LOGGER.error('Something went wrong when trying to add impression to redis')
-            _LOGGER.error('Error: ', exc_info=True)
+            _LOGGER.debug('Error: ', exc_info=True)
             return False
 
 

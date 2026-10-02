@@ -76,7 +76,7 @@ class SplitFactoryTests(object):
     def test_inmemory_client_creation_streaming_false(self, mocker):
         """Test that a client with in-memory storage is created correctly."""
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None):
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_host=None, proxy_port=None, proxy=None):
             synchronizer = mocker.Mock(spec=Synchronizer)
             synchronizer.sync_all.return_values = None
             self._ready_flag = ready_flag
@@ -268,7 +268,7 @@ class SplitFactoryTests(object):
                            evt_async_task_mock, imp_count_async_task_mock, telemetry_async_task_mock)
 
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None):
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_host=None, proxy_port=None, proxy=None):
             synchronizer = Synchronizer(syncs, tasks)
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
@@ -373,7 +373,7 @@ class SplitFactoryTests(object):
                            evt_async_task_mock, imp_count_async_task_mock, telemetry_async_task_mock, None, None, internal_event_task_mock)
 
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None):
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_host=None, proxy_port=None, proxy=None):
             synchronizer = Synchronizer(syncs, tasks)
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
@@ -713,7 +713,7 @@ class SplitFactoryTests(object):
     def test_internal_ready_event_notification(self, mocker):
         """Test that a client with in-memory storage is sending internal events correctly."""
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None):
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_host=None, proxy_port=None, proxy=None):
             synchronizer = mocker.Mock(spec=Synchronizer)
             synchronizer.sync_all.return_values = None
             self._ready_flag = ready_flag
@@ -834,7 +834,7 @@ class SplitFactoryAsyncTests(object):
     async def test_inmemory_client_creation_streaming_false_async(self, mocker):
         """Test that a client with in-memory storage is created correctly for async."""
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None):
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_host=None, proxy_port=None, proxy=None):
             synchronizer = mocker.Mock(spec=SynchronizerAsync)
             async def sync_all(*_):
                 return None
@@ -955,7 +955,7 @@ class SplitFactoryAsyncTests(object):
                            evt_async_task_mock, imp_count_async_task_mock, telemetry_async_task_mock)
 
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None):
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_host=None, proxy_port=None, proxy=None):
             synchronizer = SynchronizerAsync(syncs, tasks)
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
@@ -1064,7 +1064,7 @@ class SplitFactoryAsyncTests(object):
     async def test_internal_ready_event_notification(self, mocker):
         """Test that a client with in-memory storage is sending internal events correctly."""
         # Setup synchronizer
-        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None):
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_host=None, proxy_port=None, proxy=None):
             synchronizer = mocker.Mock(spec=SynchronizerAsync)
             async def sync_all(*_):
                 return None

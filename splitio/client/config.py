@@ -2,6 +2,7 @@
 import os.path
 import logging
 from enum import Enum
+from urllib.parse import urlparse
 
 from splitio.engine.impressions import ImpressionsMode
 from splitio.client.input_validator import validate_flag_sets, validate_fallback_treatment, validate_regex_name
@@ -71,7 +72,8 @@ DEFAULT_CONFIG = {
     'httpAuthenticateScheme': AuthenticateScheme.NONE,
     'kerberosPrincipalUser': None,
     'kerberosPrincipalPassword': None,
-    'fallbackTreatments': FallbackTreatmentsConfiguration(None)
+    'fallbackTreatments': FallbackTreatmentsConfiguration(None),
+    'proxyUrl': None,
 }
 
 def _parse_operation_mode(sdk_key, config):
@@ -175,10 +177,24 @@ def sanitize(sdk_key, config):
     if config.get("redisErrors") is not None:
         _LOGGER.warning('Parameter `redisErrors` is deprecated as it is no longer supported in redis lib.' \
                         ' Will ignore this value.')
-
         processed["redisErrors"] = None
+
+    processed = _sanitize_proxy(config, processed)
+                        
     return processed
 
+def _sanitize_proxy(config, processed):
+    if config.get("proxyUrl") is None:
+        return processed
+
+    try:
+        urlparse(config.get("proxyUrl"))
+    except ValueError:
+        _LOGGER.warning("Invalid URL in `proxyURL` param")
+        processed["proxyUrl"] = None
+
+    return processed
+    
 def _sanitize_fallback_config(config, processed):
     if config.get('fallbackTreatments') is None:
         return processed

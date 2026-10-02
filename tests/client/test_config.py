@@ -123,3 +123,20 @@ class ConfigSanitizationTests(object):
         assert len(processed['fallbackTreatments'].by_flag_fallback_treatment) == 1
         assert processed['fallbackTreatments'].by_flag_fallback_treatment.get("flag2") == fb.by_flag_fallback_treatment["flag2"]
         assert _logger.warning.mock_calls[1] == mocker.call('Config: fallback treatment parameter for feature flag %s is discarded.', 'flag#%')
+
+    def test_sanitize_defaults_proxy_to_none(self):
+        """proxyUrl defaults to None when not supplied."""
+        processed = config.sanitize('some', {})
+        assert processed['proxyUrl'] is None
+
+    def test_sanitize_proxy_valid(self):
+        """A valid proxyUrl is preserved as-is."""
+        processed = config.sanitize('some', {
+            'proxyUrl': 'http://proxy.example.com:8080',
+        })
+        assert processed['proxyUrl'] == 'http://proxy.example.com:8080'
+
+        processed = config.sanitize('some', {
+            'proxyUrl': 'https://proxy.example.com:443',
+        })
+        assert processed['proxyUrl'] == 'https://proxy.example.com:443'
