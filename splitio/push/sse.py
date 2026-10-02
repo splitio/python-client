@@ -117,7 +117,7 @@ class SSEClient(object):
         self._shutdown_requested = False
         url, headers = urlparse(url), get_headers(extra_headers)
         if proxy_url is None:
-            proxy_url = os.getenv("HTTPS_PROXY")
+            proxy_url = os.getenv("HTTPS_PROXY") if os.getenv("HTTPS_PROXY") else None
             
         if proxy_url is not None:
             _LOGGER.debug("Using Proxy url %s", proxy_url)
@@ -205,7 +205,7 @@ class SSEClientAsync(object):
             async with self._sess.get(
                 url,
                 headers=get_headers(extra_headers),
-                timeout=60*40, # setting to 1 hour
+                timeout=60*60, # setting to 1 hour
                 proxy=proxy_url,
             ) as response:
                 self._response = response

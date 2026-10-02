@@ -189,8 +189,8 @@ def _sanitize_proxy(config, processed):
 
     try:
         urlparse(config.get("proxyUrl"))
-    except ValueError:
-        _LOGGER.warning("Invalid URL in `proxyURL` param")
+    except Exception:
+        _LOGGER.warning("Invalid URL in `proxyUrl` param")
         processed["proxyUrl"] = None
 
     return processed

@@ -198,7 +198,8 @@ class HttpClient(HttpClientBase):
         :rtype: HttpResponse
         """
         start = get_current_epoch_time_ms()
-        _LOGGER.debug("proxy %s", self._proxies)
+        if self._proxies.get('https'):
+            _LOGGER.debug("proxy %s", urllib.parse.urlsplit(self._proxies['https']).hostname)
         try:
             response = requests.get(
                 _build_url(server, path, self._urls),
@@ -299,7 +300,7 @@ class HttpClientAsync(HttpClientBase):
             _LOGGER.debug("GET request: %s", url)
             _LOGGER.debug("query params: %s", query)
             _LOGGER.debug("headers: %s", headers)
-            _LOGGER.debug("proxy: %s", self._proxy)
+            _LOGGER.debug("proxy: %s", urllib.parse.urlsplit(self._proxy).hostname)
             async with self._session.get(
                 url,
                 params=query,
