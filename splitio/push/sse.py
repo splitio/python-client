@@ -87,7 +87,8 @@ class SSEClient(object):
                     event_builder.process_line(line)
         except Exception:  # pylint:disable=broad-except
             _LOGGER.debug('sse connection ended.')
-            _LOGGER.debug('stack trace: ', exc_info=True)
+            if not self._shutdown_requested:
+                _LOGGER.debug('stack trace: ', exc_info=True)
         finally:
             self._conn.close()
             self._conn = None  # clear so it can be started again
