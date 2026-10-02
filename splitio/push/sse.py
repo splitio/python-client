@@ -226,7 +226,7 @@ class SSEClientAsync(object):
                 return
 
             _LOGGER.error('http client is throwing exceptions')
-            _LOGGER.error('stack trace: ', exc_info=True)
+            _LOGGER.debug('stack trace: ', exc_info=True)
 
         finally:
             self._response = None
