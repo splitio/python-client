@@ -192,17 +192,17 @@ def _sanitize_proxy(config, processed):
         processed["proxyUrl"] = None
         return processed
         
-    parsed = urlsplit(config.get("proxyUrl"))
-    if parsed.hostname is None:
-        _LOGGER.warning('Config: could not parse hostname from proxyUrl parameter.')
-        processed["proxyUrl"] = None
-        return processed
+    try:    
+        parsed = urlsplit(config.get("proxyUrl"))
+        if parsed.hostname is None:
+            _LOGGER.warning('Config: could not parse hostname from proxyUrl parameter.')
+            processed["proxyUrl"] = None
+            return processed
 
-    try:
         if parsed.port is not None:
             p = int(parsed.port)
     except Exception:
-        _LOGGER.warning('Config: proxy port should be of int type.')
+        _LOGGER.warning('Config: proxy hostname should be a valid hostname and proxy port should be of int type.')
         processed["proxyUrl"] = None
         return processed
 
