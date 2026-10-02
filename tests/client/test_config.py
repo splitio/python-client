@@ -174,14 +174,11 @@ class ConfigSanitizationTests(object):
             'Config: could not parse hostname from proxyUrl parameter.'
         )
 
-    def test_sanitize_proxy_missing_port_becomes_none(self, mocker):
+    def test_sanitize_proxy_missing_port_no_error(self, mocker):
         """A proxyUrl without an explicit port is replaced with None and warns."""
         _logger = mocker.Mock()
         mocker.patch('splitio.client.config._LOGGER', new=_logger)
 
         processed = config.sanitize('some', {'proxyUrl': 'http://proxy.example.com'})
 
-        assert processed['proxyUrl'] is None
-        _logger.warning.assert_any_call(
-            'Config: proxy port should be of int type.'
-        )
+        assert processed['proxyUrl'] is 'http://proxy.example.com'

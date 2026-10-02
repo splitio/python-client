@@ -198,13 +198,13 @@ def _sanitize_proxy(config, processed):
         processed["proxyUrl"] = None
         return processed
 
-    if parsed.port is not None:
-        try:
+    try:
+        if parsed.port is not None:
             p = int(parsed.port)
-        except Exception:
-            _LOGGER.warning('Config: proxy port should be of int type.')
-            processed["proxyUrl"] = None
-            return processed
+    except Exception:
+        _LOGGER.warning('Config: proxy port should be of int type.')
+        processed["proxyUrl"] = None
+        return processed
 
     return processed
     
