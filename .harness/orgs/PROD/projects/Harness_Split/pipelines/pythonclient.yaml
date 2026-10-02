@@ -144,7 +144,7 @@ pipeline:
                       SONAR_TOKEN="<+secrets.getValue("sonarqube-token")>"
                       SONAR_URL="https://sonar.harness.io"
                       SONAR_PROJECT_KEY="python-client"
-                      GITHUB_TOKEN="<+secrets.getValue("github-devops-token")>"
+                      GITHUB_TOKEN="<+secrets.getValue("github-splitio-token")>"
                       GITHUB_REPO="python-client"
                       COMMIT_SHA="<+codebase.commitSha>"
 
@@ -163,7 +163,7 @@ pipeline:
 
                       TARGET_URL="${SONAR_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
 
-                      curl -sf -X POST \
+                      curl -v -sf -X POST \
                         -H "Authorization: token ${GITHUB_TOKEN}" \
                         -H "Accept: application/vnd.github.v3+json" \
                         -H "Content-Type: application/json" \
@@ -174,4 +174,4 @@ pipeline:
         strategy:
           matrix:
             pythonVersion:
-              - "3.7.16"
+              - 3.7.16
