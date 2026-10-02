@@ -2,7 +2,7 @@
 import os.path
 import logging
 from enum import Enum
-from urllib.parse import urlparse
+from urllib.parse import urlsplit
 
 from splitio.engine.impressions import ImpressionsMode
 from splitio.client.input_validator import validate_flag_sets, validate_fallback_treatment, validate_regex_name
@@ -187,10 +187,20 @@ def _sanitize_proxy(config, processed):
     if config.get("proxyUrl") is None:
         return processed
 
+    if not isinstance(config.get("proxyUrl"), str):
+        _LOGGER.warning('Config: proxyUrl parameter must be of type str.')
+        processed["proxyUrl"] = None
+        return processed
+        
+    parsed = urlsplit(config.get("proxyUrl"))
+    if parsed.hostname is None:
+        _LOGGER.warning('Config: could not parse hostname from proxyUrl parameter.')
+        processed["proxyUrl"] = None
+
     try:
-        urlparse(config.get("proxyUrl"))
-    except Exception:
-        _LOGGER.warning("Invalid URL in `proxyUrl` param")
+        p = int(parsed.port)
+    except TypeError:
+        _LOGGER.warning('Config: proxy port should be of int type.')
         processed["proxyUrl"] = None
 
     return processed
