@@ -1,4 +1,4 @@
-10.7.0 (Oct 2, 2026)
+10.7.0 (Oct 5, 2026)
 - Added ability to use proxy url for all http connections.
 
 10.6.1 (Jun 23, 2026)
