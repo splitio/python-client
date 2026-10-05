@@ -123,3 +123,62 @@ class ConfigSanitizationTests(object):
         assert len(processed['fallbackTreatments'].by_flag_fallback_treatment) == 1
         assert processed['fallbackTreatments'].by_flag_fallback_treatment.get("flag2") == fb.by_flag_fallback_treatment["flag2"]
         assert _logger.warning.mock_calls[1] == mocker.call('Config: fallback treatment parameter for feature flag %s is discarded.', 'flag#%')
+
+    def test_sanitize_defaults_proxy_to_none(self):
+        """proxyUrl defaults to None when not supplied."""
+        processed = config.sanitize('some', {})
+        assert processed['proxyUrl'] is None
+
+    def test_sanitize_proxy_valid(self):
+        """A valid proxyUrl is preserved as-is."""
+        processed = config.sanitize('some', {
+            'proxyUrl': 'http://proxy.example.com:8080',
+        })
+        assert processed['proxyUrl'] == 'http://proxy.example.com:8080'
+
+        processed = config.sanitize('some', {
+            'proxyUrl': 'https://proxy.example.com:443',
+        })
+        assert processed['proxyUrl'] == 'https://proxy.example.com:443'
+
+    @pytest.mark.parametrize('bad_value', [123, True, ['http://proxy:8080'], {'url': 'http://proxy:8080'}])
+    def test_sanitize_proxy_non_string_becomes_none(self, mocker, bad_value):
+        """Non-string proxyUrl is replaced with None and a warning is logged."""
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.config._LOGGER', new=_logger)
+
+        processed = config.sanitize('some', {'proxyUrl': bad_value})
+
+        assert processed['proxyUrl'] is None
+        _logger.warning.assert_any_call(
+            'Config: proxyUrl parameter must be of type str.'
+        )
+
+    def test_sanitize_proxy_valid_with_credentials(self):
+        """A proxyUrl with user:pass and an explicit port is preserved."""
+        processed = config.sanitize('some', {
+            'proxyUrl': 'http://alice:s3cret@proxy.example.com:8080',
+        })
+        assert processed['proxyUrl'] == 'http://alice:s3cret@proxy.example.com:8080'
+
+    @pytest.mark.parametrize('bad_url', ['', 'notaurl', '://nohost:8080'])
+    def test_sanitize_proxy_invalid_url_becomes_none(self, mocker, bad_url):
+        """A proxyUrl that can't be parsed into a hostname is replaced with None."""
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.config._LOGGER', new=_logger)
+
+        processed = config.sanitize('some', {'proxyUrl': bad_url})
+
+        assert processed['proxyUrl'] is None
+        _logger.warning.assert_any_call(
+            'Config: could not parse hostname from proxyUrl parameter.'
+        )
+
+    def test_sanitize_proxy_missing_port_no_error(self, mocker):
+        """A proxyUrl without an explicit port is replaced with None and warns."""
+        _logger = mocker.Mock()
+        mocker.patch('splitio.client.config._LOGGER', new=_logger)
+
+        processed = config.sanitize('some', {'proxyUrl': 'http://proxy.example.com'})
+
+        assert processed['proxyUrl'] is 'http://proxy.example.com'

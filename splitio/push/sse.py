@@ -1,6 +1,10 @@
 """Low-level SSE Client."""
 import logging
+import os
 import socket
+import base64
+import urllib
+from urllib.parse import urlsplit
 from collections import namedtuple
 from http.client import HTTPConnection, HTTPSConnection
 from urllib.parse import urlparse
@@ -16,9 +20,6 @@ _EVENT_SEPARATORS = set([b'\n', b'\r\n'])
 _DEFAULT_SOCKET_READ_TIMEOUT = 70
 
 SSEEvent = namedtuple('SSEEvent', ['event_id', 'event', 'retry', 'data'])
-
-
-__ENDING_CHARS = set(['\n', ''])
 
 class EventBuilder(object):
     """Event builder class."""
@@ -87,14 +88,15 @@ class SSEClient(object):
                     event_builder.process_line(line)
         except Exception:  # pylint:disable=broad-except
             _LOGGER.debug('sse connection ended.')
-            _LOGGER.debug('stack trace: ', exc_info=True)
+            if not self._shutdown_requested:
+                _LOGGER.debug('stack trace: ', exc_info=True)
         finally:
             self._conn.close()
             self._conn = None  # clear so it can be started again
 
         return self._shutdown_requested
 
-    def start(self, url, extra_headers=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT):  # pylint:disable=protected-access
+    def start(self, url, extra_headers=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, proxy_url=None):  # pylint:disable=protected-access
         """
         Connect and start listening for events.
 
@@ -115,13 +117,43 @@ class SSEClient(object):
 
         self._shutdown_requested = False
         url, headers = urlparse(url), get_headers(extra_headers)
-        self._conn = (HTTPSConnection(url.hostname, url.port, timeout=timeout)
-                      if url.scheme == 'https'
-                      else HTTPConnection(url.hostname, port=url.port, timeout=timeout))
+        if proxy_url is None:
+            proxy_url = os.getenv("HTTPS_PROXY") if os.getenv("HTTPS_PROXY") else None
+            
+        if proxy_url is not None:
+            proxy_host, proxy_port, proxy_headers = self._get_proxy_info(proxy_url)
+            self._conn = (HTTPSConnection(proxy_host, proxy_port, timeout=timeout)
+                        if url.scheme == 'https'
+                        else HTTPConnection(proxy_host, proxy_port, timeout=timeout))
+            self._conn.set_tunnel(url.hostname, url.port, headers=proxy_headers)
+        else:    
+            self._conn = (HTTPSConnection(url.hostname, url.port, timeout=timeout)
+                        if url.scheme == 'https'
+                        else HTTPConnection(url.hostname, port=url.port, timeout=timeout))
 
         self._conn.request('GET', '%s?%s' % (url.path, url.query), headers=headers)
         return self._read_events()
 
+    def _get_proxy_info(self, proxy_url):
+        proxy_host = urlsplit(proxy_url).hostname
+        proxy_port = urlsplit(proxy_url).port
+        if proxy_port is None:
+            proxy_port = 443 if urlsplit(proxy_url).scheme == 'https' else 80
+            
+        proxy_user = urllib.parse.unquote(urlsplit(proxy_url).username) if urlsplit(proxy_url).username is not None else None
+        proxy_pass = urllib.parse.unquote(urlsplit(proxy_url).password) if urlsplit(proxy_url).password is not None else ''
+        proxy_headers = {}
+        
+        if proxy_user is not None:
+            auth_str = f"{proxy_user}:{proxy_pass}"
+            b64_auth = base64.b64encode(auth_str.encode("utf-8")).decode("ascii")
+
+            proxy_headers = {
+                "Proxy-Authorization": f"Basic {b64_auth}"
+            }
+        
+        return proxy_host, proxy_port, proxy_headers
+        
     def shutdown(self):
         """Shutdown the current connection."""
         if self._conn is None or self._conn.sock is None:
@@ -155,10 +187,10 @@ class SSEClientAsync(object):
         self._socket_read_timeout = socket_read_timeout + socket_read_timeout * .3
         self._response = None
         self._done = asyncio.Event()
-        client_timeout = aiohttp.ClientTimeout(total=0, sock_read=self._socket_read_timeout)
-        self._sess = aiohttp.ClientSession(timeout=client_timeout)
+        self._client_timeout = aiohttp.ClientTimeout(total=60*60, sock_read=self._socket_read_timeout)
+        self._sess = aiohttp.ClientSession(timeout=self._client_timeout)
 
-    async def start(self, url, extra_headers=None):  # pylint:disable=protected-access
+    async def start(self, url, extra_headers=None, proxy_url=None):  # pylint:disable=protected-access
         """
         Connect and start listening for events.
 
@@ -171,7 +203,13 @@ class SSEClientAsync(object):
 
         self._done.clear()
         try:
-            async with self._sess.get(url, headers=get_headers(extra_headers)) as response:
+            _LOGGER.debug(self._socket_read_timeout)
+            async with self._sess.get(
+                url,
+                headers=get_headers(extra_headers),
+                timeout=self._client_timeout,
+                proxy=proxy_url,
+            ) as response:
                 self._response = response
                 event_builder = EventBuilder()
                 async for line in response.content:
@@ -191,7 +229,7 @@ class SSEClientAsync(object):
                 return
 
             _LOGGER.error('http client is throwing exceptions')
-            _LOGGER.error('stack trace: ', exc_info=True)
+            _LOGGER.debug('stack trace: ', exc_info=True)
 
         finally:
             self._response = None

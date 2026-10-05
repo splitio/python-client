@@ -28,7 +28,8 @@ class HttpClientTests(object):
             client.SDK_URL + '/test1',
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            proxies={}
         )
         assert response.status_code == 200
         assert response.body == 'ok'
@@ -40,7 +41,8 @@ class HttpClientTests(object):
             client.EVENTS_URL + '/test1',
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            proxies={}
         )
         assert get_mock.mock_calls == [call]
         assert response.status_code == 200
@@ -62,7 +64,8 @@ class HttpClientTests(object):
             'https://sdk.com/test1',
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            proxies={}
         )
         assert get_mock.mock_calls == [call]
         assert response.status_code == 200
@@ -74,7 +77,8 @@ class HttpClientTests(object):
             'https://events.com/test1',
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            proxies={}
         )
         assert response.status_code == 200
         assert response.body == 'ok'
@@ -98,7 +102,8 @@ class HttpClientTests(object):
             json={'p1': 'a'},
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            proxies={}
         )
         assert response.status_code == 200
         assert response.body == 'ok'
@@ -111,7 +116,8 @@ class HttpClientTests(object):
             json={'p1': 'a'},
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            proxies={}
         )
         assert response.status_code == 200
         assert response.body == 'ok'
@@ -134,7 +140,8 @@ class HttpClientTests(object):
             json={'p1': 'a'},
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            proxies={}
         )
         assert response.status_code == 200
         assert response.body == 'ok'
@@ -147,7 +154,8 @@ class HttpClientTests(object):
             json={'p1': 'a'},
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            proxies={}
         )
         assert response.status_code == 200
         assert response.body == 'ok'
@@ -219,6 +227,56 @@ class HttpClientTests(object):
         httpclient.get('sdk', 'test1', 'some_api_key', {'param1': 123}, {'h1': 'abc'})
         assert (self.metric3 == "metric")
         assert (self.status == 400)
+
+    def test_get_with_proxies(self, mocker):
+        """Proxies passed to HttpClient are forwarded to requests.get."""
+        response_mock = mocker.Mock()
+        response_mock.status_code = 200
+        response_mock.headers = {}
+        response_mock.text = 'ok'
+        get_mock = mocker.Mock()
+        get_mock.return_value = response_mock
+        mocker.patch('splitio.api.client.requests.get', new=get_mock)
+
+        proxies = {'https': 'https://proxy.example.com:8080'}
+        httpclient = client.HttpClient(proxies=proxies)
+        httpclient.set_telemetry_data("metric", mocker.Mock())
+        assert httpclient._proxies == proxies
+
+        httpclient.get('sdk', 'test1', 'some_api_key', {'param1': 123}, {'h1': 'abc'})
+        call = mocker.call(
+            client.SDK_URL + '/test1',
+            headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
+            params={'param1': 123},
+            timeout=None,
+            proxies=proxies
+        )
+        assert get_mock.mock_calls == [call]
+
+    def test_post_with_proxies(self, mocker):
+        """Proxies passed to HttpClient are forwarded to requests.post."""
+        response_mock = mocker.Mock()
+        response_mock.status_code = 200
+        response_mock.headers = {}
+        response_mock.text = 'ok'
+        post_mock = mocker.Mock()
+        post_mock.return_value = response_mock
+        mocker.patch('splitio.api.client.requests.post', new=post_mock)
+
+        proxies = {'https': 'https://proxy.example.com:8080'}
+        httpclient = client.HttpClient(proxies=proxies)
+        httpclient.set_telemetry_data("metric", mocker.Mock())
+
+        httpclient.post('sdk', 'test1', 'some_api_key', {'p1': 'a'}, {'param1': 123}, {'h1': 'abc'})
+        call = mocker.call(
+            client.SDK_URL + '/test1',
+            json={'p1': 'a'},
+            headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
+            params={'param1': 123},
+            timeout=None,
+            proxies=proxies
+        )
+        assert post_mock.mock_calls == [call]
 
 class HttpClientKerberosTests(object):
     """Http Client test cases."""
@@ -541,7 +599,8 @@ class HttpClientAsyncTests(object):
             client.SDK_URL + '/test1',
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            proxy=None
         )
         assert get_mock.mock_calls == [call]
         get_mock.reset_mock()
@@ -551,7 +610,8 @@ class HttpClientAsyncTests(object):
             client.EVENTS_URL + '/test1',
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            proxy=None
         )
         assert get_mock.mock_calls == [call]
         assert response.status_code == 200
@@ -574,7 +634,8 @@ class HttpClientAsyncTests(object):
             'https://sdk.com/test1',
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            proxy=None
         )
         assert get_mock.mock_calls == [call]
         assert response.status_code == 200
@@ -586,7 +647,8 @@ class HttpClientAsyncTests(object):
             'https://events.com/test1',
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            proxy=None
         )
         assert response.status_code == 200
         assert response.body == 'ok'
@@ -610,7 +672,8 @@ class HttpClientAsyncTests(object):
             json={"p1": "a"},
             headers={'Content-Type': 'application/json', 'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Accept-Encoding': 'gzip'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            proxy=None
         )
         assert response.status_code == 200
         assert response.body == 'ok'
@@ -623,7 +686,8 @@ class HttpClientAsyncTests(object):
             json={'p1': 'a'},
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json', 'Accept-Encoding': 'gzip'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            proxy=None
         )
         assert response.status_code == 200
         assert response.body == 'ok'
@@ -647,7 +711,8 @@ class HttpClientAsyncTests(object):
             json={"p1": "a"},
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json', 'Accept-Encoding': 'gzip'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            proxy=None
         )
         assert response.status_code == 200
         assert response.body == 'ok'
@@ -660,7 +725,8 @@ class HttpClientAsyncTests(object):
             json={"p1": "a"},
             headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json', 'Accept-Encoding': 'gzip'},
             params={'param1': 123},
-            timeout=None
+            timeout=None,
+            proxy=None
         )
         assert response.status_code == 200
         assert response.body == 'ok'
@@ -733,3 +799,62 @@ class HttpClientAsyncTests(object):
         await httpclient.get('sdk', 'test1', 'some_api_key', {'param1': 123}, {'h1': 'abc'})
         assert (self.metric3 == "metric")
         assert (self.status == 400)
+
+    @pytest.mark.asyncio
+    async def test_get_with_proxy(self, mocker):
+        """Proxies passed to HttpClientAsync are forwarded as `proxy=` to aiohttp."""
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        response_mock = MockResponse('ok', 200, {})
+        get_mock = mocker.Mock()
+        get_mock.return_value = response_mock
+        mocker.patch('splitio.optional.loaders.aiohttp.ClientSession.get', new=get_mock)
+
+        proxies = {'https': 'https://proxy.example.com:8080'}
+        httpclient = client.HttpClientAsync(proxies=proxies)
+        httpclient.set_telemetry_data("metric", telemetry_runtime_producer)
+        assert httpclient._proxy == 'https://proxy.example.com:8080'
+
+        await httpclient.get('sdk', 'test1', 'some_api_key', {'param1': 123}, {'h1': 'abc'})
+        call = mocker.call(
+            client.SDK_URL + '/test1',
+            headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'},
+            params={'param1': 123},
+            timeout=None,
+            proxy='https://proxy.example.com:8080'
+        )
+        assert get_mock.mock_calls == [call]
+
+    @pytest.mark.asyncio
+    async def test_post_with_proxy(self, mocker):
+        """Proxies passed to HttpClientAsync are forwarded as `proxy=` to aiohttp on POST."""
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
+        response_mock = MockResponse('ok', 200, {})
+        post_mock = mocker.Mock()
+        post_mock.return_value = response_mock
+        mocker.patch('splitio.optional.loaders.aiohttp.ClientSession.post', new=post_mock)
+
+        proxies = {'https': 'https://proxy.example.com:8080'}
+        httpclient = client.HttpClientAsync(proxies=proxies)
+        httpclient.set_telemetry_data("metric", telemetry_runtime_producer)
+
+        await httpclient.post('sdk', 'test1', 'some_api_key', {'p1': 'a'}, {'param1': 123}, {'h1': 'abc'})
+        call = mocker.call(
+            client.SDK_URL + '/test1',
+            json={'p1': 'a'},
+            headers={'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json', 'Accept-Encoding': 'gzip'},
+            params={'param1': 123},
+            timeout=None,
+            proxy='https://proxy.example.com:8080'
+        )
+        assert post_mock.mock_calls == [call]
+
+    @pytest.mark.asyncio
+    async def test_no_proxy_by_default(self, mocker):
+        """When no proxies dict is provided, HttpClientAsync._proxy stays None."""
+        httpclient = client.HttpClientAsync()
+        assert httpclient._proxy is None
+        assert httpclient._proxies == {}

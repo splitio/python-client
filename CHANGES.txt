@@ -1,3 +1,6 @@
+10.7.0 (Oct 5, 2026)
+- Added ability to use proxy url for all http connections.
+
 10.6.1 (Jun 23, 2026)
 - Updated splitChanges parsing to handle responses without the 'rbs' field.
 - Fixed fallback treatment not being applied when a feature flag has an unsupported matcher type.

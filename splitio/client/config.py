@@ -2,6 +2,7 @@
 import os.path
 import logging
 from enum import Enum
+from urllib.parse import urlsplit
 
 from splitio.engine.impressions import ImpressionsMode
 from splitio.client.input_validator import validate_flag_sets, validate_fallback_treatment, validate_regex_name
@@ -71,7 +72,8 @@ DEFAULT_CONFIG = {
     'httpAuthenticateScheme': AuthenticateScheme.NONE,
     'kerberosPrincipalUser': None,
     'kerberosPrincipalPassword': None,
-    'fallbackTreatments': FallbackTreatmentsConfiguration(None)
+    'fallbackTreatments': FallbackTreatmentsConfiguration(None),
+    'proxyUrl': None,
 }
 
 def _parse_operation_mode(sdk_key, config):
@@ -175,10 +177,37 @@ def sanitize(sdk_key, config):
     if config.get("redisErrors") is not None:
         _LOGGER.warning('Parameter `redisErrors` is deprecated as it is no longer supported in redis lib.' \
                         ' Will ignore this value.')
-
         processed["redisErrors"] = None
+
+    processed = _sanitize_proxy(config, processed)
+                        
     return processed
 
+def _sanitize_proxy(config, processed):
+    if config.get("proxyUrl") is None:
+        return processed
+
+    if not isinstance(config.get("proxyUrl"), str):
+        _LOGGER.warning('Config: proxyUrl parameter must be of type str.')
+        processed["proxyUrl"] = None
+        return processed
+        
+    try:    
+        parsed = urlsplit(config.get("proxyUrl"))
+        if parsed.hostname is None:
+            _LOGGER.warning('Config: could not parse hostname from proxyUrl parameter.')
+            processed["proxyUrl"] = None
+            return processed
+
+        if parsed.port is not None:
+            p = int(parsed.port)
+    except Exception:
+        _LOGGER.warning('Config: proxy hostname should be a valid hostname and proxy port should be of int type.')
+        processed["proxyUrl"] = None
+        return processed
+
+    return processed
+    
 def _sanitize_fallback_config(config, processed):
     if config.get('fallbackTreatments') is None:
         return processed

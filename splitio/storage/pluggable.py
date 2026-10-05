@@ -164,9 +164,6 @@ class PluggableRuleBasedSegmentsStorage(PluggableRuleBasedSegmentsStorageBase):
         :rtype: list(str)
         """
         try:
-            _LOGGER.error(self._rb_segment_name_length)
-            _LOGGER.error(self._prefix)
-            _LOGGER.error(self._prefix[:self._rb_segment_name_length])
             keys = []
             for key in self._pluggable_adapter.get_keys_by_prefix(self._prefix[:self._rb_segment_name_length]):
                 if key[-self._TILL_LENGTH:] != 'till':
@@ -1310,7 +1307,7 @@ class PluggableImpressionsStorage(PluggableImpressionsStorageBase):
 
         except Exception:
             _LOGGER.error('Something went wrong when trying to add impression to storage')
-            _LOGGER.error('Error: ', exc_info=True)
+            _LOGGER.debug('Error: ', exc_info=True)
             return False
 
     def expire_key(self, total_keys, inserted):
@@ -1360,7 +1357,7 @@ class PluggableImpressionsStorageAsync(PluggableImpressionsStorageBase):
 
         except Exception:
             _LOGGER.error('Something went wrong when trying to add impression to storage')
-            _LOGGER.error('Error: ', exc_info=True)
+            _LOGGER.debug('Error: ', exc_info=True)
             return False
 
     async def expire_key(self, total_keys, inserted):

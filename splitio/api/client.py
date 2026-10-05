@@ -92,7 +92,7 @@ class HTTPAdapterWithProxyKerberosAuth(requests.adapters.HTTPAdapter):
 class HttpClientBase(object, metaclass=abc.ABCMeta):
     """HttpClient wrapper template."""
 
-    def __init__(self, timeout=None, sdk_url=None, events_url=None, auth_url=None, telemetry_url=None):
+    def __init__(self, timeout=None, sdk_url=None, events_url=None, auth_url=None, telemetry_url=None, proxies={}):
         """
         Class constructor.
 
@@ -110,6 +110,7 @@ class HttpClientBase(object, metaclass=abc.ABCMeta):
         _LOGGER.debug("Initializing httpclient")
         self._timeout = timeout/1000 if timeout else None # Convert ms to seconds.
         self._urls = _construct_urls(sdk_url, events_url, auth_url, telemetry_url)
+        self._proxies = proxies
 
     @abc.abstractmethod
     def get(self, server, path, apikey):
@@ -161,7 +162,7 @@ class HttpClientBase(object, metaclass=abc.ABCMeta):
 class HttpClient(HttpClientBase):
     """HttpClient wrapper."""
 
-    def __init__(self, timeout=None, sdk_url=None, events_url=None, auth_url=None, telemetry_url=None):
+    def __init__(self, timeout=None, sdk_url=None, events_url=None, auth_url=None, telemetry_url=None, proxies={}):
         """
         Class constructor.
 
@@ -176,7 +177,7 @@ class HttpClient(HttpClientBase):
         :param telemetry_url: Optional alternative telemetry URL.
         :type telemetry_url: str
         """
-        HttpClientBase.__init__(self, timeout, sdk_url, events_url, auth_url, telemetry_url)
+        HttpClientBase.__init__(self, timeout, sdk_url, events_url, auth_url, telemetry_url, proxies)
 
     def get(self, server, path, sdk_key, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
@@ -197,12 +198,15 @@ class HttpClient(HttpClientBase):
         :rtype: HttpResponse
         """
         start = get_current_epoch_time_ms()
+        if self._proxies.get('https'):
+            _LOGGER.debug("proxy %s", urllib.parse.urlsplit(self._proxies['https']).hostname)
         try:
             response = requests.get(
                 _build_url(server, path, self._urls),
                 params=query,
                 headers=self._get_headers(extra_headers, sdk_key),
-                timeout=self._timeout
+                timeout=self._timeout,
+                proxies=self._proxies
             )
             self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
             return HttpResponse(response.status_code, response.text, response.headers)
@@ -242,6 +246,7 @@ class HttpClient(HttpClientBase):
                 params=query,
                 headers=self._get_headers(extra_headers, sdk_key),
                 timeout=self._timeout,
+                proxies=self._proxies
             )
             self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
             return HttpResponse(response.status_code, response.text, response.headers)
@@ -251,7 +256,7 @@ class HttpClient(HttpClientBase):
 class HttpClientAsync(HttpClientBase):
     """HttpClientAsync wrapper."""
 
-    def __init__(self, timeout=None, sdk_url=None, events_url=None, auth_url=None, telemetry_url=None):
+    def __init__(self, timeout=None, sdk_url=None, events_url=None, auth_url=None, telemetry_url=None, proxies={}):
         """
         Class constructor.
         :param timeout: How many milliseconds to wait until the server responds.
@@ -265,8 +270,12 @@ class HttpClientAsync(HttpClientBase):
         :param telemetry_url: Optional alternative telemetry URL.
         :type telemetry_url: str
         """
-        HttpClientBase.__init__(self, timeout, sdk_url, events_url, auth_url, telemetry_url)
+        HttpClientBase.__init__(self, timeout, sdk_url, events_url, auth_url, telemetry_url, proxies)
         self._session = aiohttp.ClientSession()
+        self._proxy = None
+        if len(self._proxies) > 0:
+            http_key = next(iter(self._proxies))
+            self._proxy = self._proxies[http_key]
 
     async def get(self, server, path, apikey, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
@@ -291,11 +300,13 @@ class HttpClientAsync(HttpClientBase):
             _LOGGER.debug("GET request: %s", url)
             _LOGGER.debug("query params: %s", query)
             _LOGGER.debug("headers: %s", headers)
+            _LOGGER.debug("proxy: %s", urllib.parse.urlsplit(self._proxy).hostname)
             async with self._session.get(
                 url,
                 params=query,
                 headers=headers,
-                timeout=self._timeout
+                timeout=self._timeout,
+                proxy=self._proxy
             ) as response:
                 body = await response.text()
                 _LOGGER.debug("Response:")
@@ -343,7 +354,8 @@ class HttpClientAsync(HttpClientBase):
                 params=query,
                 headers=headers,
                 json=body,
-                timeout=self._timeout
+                timeout=self._timeout,
+                proxy=self._proxy
             ) as response:
                 body = await response.text()
                 _LOGGER.debug("Response:")

@@ -126,6 +126,284 @@ class SSEClientTests(object):
 
         assert client._conn is None
 
+    def test_sse_client_uses_explicit_proxy(self, monkeypatch):
+        """Explicit proxy_url tunnels through the given proxy."""
+        monkeypatch.delenv('HTTPS_PROXY', raising=False)
+        captured = {}
+
+        class FakeConn:
+            def __init__(self, host, port, timeout=None):
+                captured['host'] = host
+                captured['port'] = port
+                self.sock = None
+
+            def set_tunnel(self, host, port, headers=None):
+                captured['tunnel_host'] = host
+                captured['tunnel_port'] = port
+                captured['tunnel_headers'] = headers
+
+            def request(self, *args, **kwargs):
+                captured['request_args'] = args
+                captured['request_headers'] = kwargs.get('headers')
+
+            def getresponse(self):
+                raise RuntimeError('stop reading')
+
+            def close(self):
+                captured['closed'] = True
+
+        monkeypatch.setattr('splitio.push.sse.HTTPConnection', FakeConn)
+
+        client = SSEClient(lambda e: None)
+        client.start(
+            'http://target-host:9999/path?token=abc',
+            proxy_url='http://proxyhost:8080',
+        )
+
+        assert captured['host'] == 'proxyhost'
+        assert captured['port'] == 8080
+        assert captured['tunnel_host'] == 'target-host'
+        assert captured['tunnel_port'] == 9999
+        assert captured.get('closed') is True
+
+    def test_sse_client_uses_https_proxy_env_var(self, monkeypatch):
+        """When no proxy is passed, HTTPS_PROXY env var is used to configure the proxy."""
+        monkeypatch.setenv('HTTPS_PROXY', 'http://envproxy:3128')
+        captured = {}
+
+        class FakeConn:
+            def __init__(self, host, port, timeout=None):
+                captured['host'] = host
+                captured['port'] = port
+                self.sock = None
+
+            def set_tunnel(self, host, port, headers=None):
+                captured['tunnel_host'] = host
+                captured['tunnel_port'] = port
+
+            def request(self, *args, **kwargs):
+                pass
+
+            def getresponse(self):
+                raise RuntimeError('stop reading')
+
+            def close(self):
+                pass
+
+        monkeypatch.setattr('splitio.push.sse.HTTPConnection', FakeConn)
+
+        client = SSEClient(lambda e: None)
+        client.start('http://target-host:9999/path?token=abc')
+
+        assert captured['host'] == 'envproxy'
+        assert captured['port'] == 3128
+        assert captured['tunnel_host'] == 'target-host'
+        assert captured['tunnel_port'] == 9999
+
+    def test_sse_client_env_proxy_defaults_port_80(self, monkeypatch):
+        """HTTPS_PROXY without an explicit port falls back to port 80."""
+        monkeypatch.setenv('HTTPS_PROXY', 'http://envproxy')
+        captured = {}
+
+        class FakeConn:
+            def __init__(self, host, port, timeout=None):
+                captured['host'] = host
+                captured['port'] = port
+                self.sock = None
+
+            def set_tunnel(self, host, port, headers=None):
+                pass
+
+            def request(self, *args, **kwargs):
+                pass
+
+            def getresponse(self):
+                raise RuntimeError('stop reading')
+
+            def close(self):
+                pass
+
+        monkeypatch.setattr('splitio.push.sse.HTTPConnection', FakeConn)
+
+        client = SSEClient(lambda e: None)
+        client.start('http://target-host:9999/path?token=abc')
+
+        assert captured['host'] == 'envproxy'
+        assert captured['port'] == 80
+
+    def test_sse_client_env_proxy_https_defaults_port_443(self, monkeypatch):
+        """HTTPS_PROXY with https scheme and no explicit port falls back to port 443."""
+        monkeypatch.setenv('HTTPS_PROXY', 'https://envproxy')
+        captured = {}
+
+        class FakeConn:
+            def __init__(self, host, port, timeout=None):
+                captured['host'] = host
+                captured['port'] = port
+                self.sock = None
+
+            def set_tunnel(self, host, port, headers=None):
+                pass
+
+            def request(self, *args, **kwargs):
+                pass
+
+            def getresponse(self):
+                raise RuntimeError('stop reading')
+
+            def close(self):
+                pass
+
+        monkeypatch.setattr('splitio.push.sse.HTTPConnection', FakeConn)
+
+        client = SSEClient(lambda e: None)
+        client.start('http://target-host:9999/path?token=abc')
+
+        assert captured['host'] == 'envproxy'
+        assert captured['port'] == 443
+
+    def test_sse_client_proxy_with_basic_auth(self, monkeypatch):
+        """Proxy URL with user:pass produces a Basic Proxy-Authorization header."""
+        import base64
+
+        monkeypatch.delenv('HTTPS_PROXY', raising=False)
+        captured = {}
+
+        class FakeConn:
+            def __init__(self, host, port, timeout=None):
+                captured['host'] = host
+                captured['port'] = port
+                self.sock = None
+
+            def set_tunnel(self, host, port, headers=None):
+                captured['tunnel_headers'] = headers
+
+            def request(self, *args, **kwargs):
+                pass
+
+            def getresponse(self):
+                raise RuntimeError('stop reading')
+
+            def close(self):
+                pass
+
+        monkeypatch.setattr('splitio.push.sse.HTTPConnection', FakeConn)
+
+        client = SSEClient(lambda e: None)
+        client.start(
+            'http://target-host:9999/path?token=abc',
+            proxy_url='http://alice:s3cret@proxyhost:8080',
+        )
+
+        expected = base64.b64encode(b'alice:s3cret').decode('ascii')
+        assert captured['tunnel_headers'] == {
+            'Proxy-Authorization': f'Basic {expected}'
+        }
+
+    def test_sse_client_proxy_user_without_password(self, monkeypatch):
+        """Proxy URL with a user but no password uses an empty password without erroring."""
+        import base64
+
+        monkeypatch.delenv('HTTPS_PROXY', raising=False)
+        captured = {}
+
+        class FakeConn:
+            def __init__(self, host, port, timeout=None):
+                captured['host'] = host
+                captured['port'] = port
+                self.sock = None
+
+            def set_tunnel(self, host, port, headers=None):
+                captured['tunnel_headers'] = headers
+
+            def request(self, *args, **kwargs):
+                pass
+
+            def getresponse(self):
+                raise RuntimeError('stop reading')
+
+            def close(self):
+                pass
+
+        monkeypatch.setattr('splitio.push.sse.HTTPConnection', FakeConn)
+
+        client = SSEClient(lambda e: None)
+        client.start(
+            'http://target-host:9999/path?token=abc',
+            proxy_url='http://alice@proxyhost:8080',
+        )
+
+        expected = base64.b64encode(b'alice:').decode('ascii')
+        assert captured['tunnel_headers'] == {
+            'Proxy-Authorization': f'Basic {expected}'
+        }
+
+    def test_sse_client_proxy_without_auth_sends_no_auth_header(self, monkeypatch):
+        """Proxy URL without credentials results in an empty tunnel headers dict."""
+        monkeypatch.delenv('HTTPS_PROXY', raising=False)
+        captured = {}
+
+        class FakeConn:
+            def __init__(self, host, port, timeout=None):
+                captured['host'] = host
+                captured['port'] = port
+                self.sock = None
+
+            def set_tunnel(self, host, port, headers=None):
+                captured['tunnel_headers'] = headers
+
+            def request(self, *args, **kwargs):
+                pass
+
+            def getresponse(self):
+                raise RuntimeError('stop reading')
+
+            def close(self):
+                pass
+
+        monkeypatch.setattr('splitio.push.sse.HTTPConnection', FakeConn)
+
+        client = SSEClient(lambda e: None)
+        client.start(
+            'http://target-host:9999/path?token=abc',
+            proxy_url='http://proxyhost:8080',
+        )
+
+        assert captured['tunnel_headers'] == {}
+
+    def test_sse_client_no_proxy_direct_connection(self, monkeypatch):
+        """Without proxy args or env var, connect directly to target host."""
+        monkeypatch.delenv('HTTPS_PROXY', raising=False)
+        captured = {}
+
+        class FakeConn:
+            def __init__(self, host, port=None, timeout=None):
+                captured['host'] = host
+                captured['port'] = port
+                captured['tunneled'] = False
+                self.sock = None
+
+            def set_tunnel(self, host, port):
+                captured['tunneled'] = True
+
+            def request(self, *args, **kwargs):
+                pass
+
+            def getresponse(self):
+                raise RuntimeError('stop reading')
+
+            def close(self):
+                pass
+
+        monkeypatch.setattr('splitio.push.sse.HTTPConnection', FakeConn)
+
+        client = SSEClient(lambda e: None)
+        client.start('http://target-host:9999/path?token=abc')
+
+        assert captured['host'] == 'target-host'
+        assert captured['port'] == 9999
+        assert captured['tunneled'] is False
+
 class SSEClientAsyncTests(object):
     """SSEClient test cases."""
 
