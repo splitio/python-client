@@ -3,6 +3,7 @@ import logging
 import os
 import socket
 import base64
+import urllib
 from urllib.parse import urlsplit
 from collections import namedtuple
 from http.client import HTTPConnection, HTTPSConnection
@@ -87,7 +88,8 @@ class SSEClient(object):
                     event_builder.process_line(line)
         except Exception:  # pylint:disable=broad-except
             _LOGGER.debug('sse connection ended.')
-            _LOGGER.debug('stack trace: ', exc_info=True)
+            if not self._shutdown_requested:
+                _LOGGER.debug('stack trace: ', exc_info=True)
         finally:
             self._conn.close()
             self._conn = None  # clear so it can be started again
@@ -116,10 +118,9 @@ class SSEClient(object):
         self._shutdown_requested = False
         url, headers = urlparse(url), get_headers(extra_headers)
         if proxy_url is None:
-            proxy_url = os.getenv("HTTPS_PROXY")
+            proxy_url = os.getenv("HTTPS_PROXY") if os.getenv("HTTPS_PROXY") else None
             
         if proxy_url is not None:
-            _LOGGER.debug("Using Proxy url %s", proxy_url)
             proxy_host, proxy_port, proxy_headers = self._get_proxy_info(proxy_url)
             self._conn = (HTTPSConnection(proxy_host, proxy_port, timeout=timeout)
                         if url.scheme == 'https'
@@ -135,9 +136,12 @@ class SSEClient(object):
 
     def _get_proxy_info(self, proxy_url):
         proxy_host = urlsplit(proxy_url).hostname
-        proxy_port = urlsplit(proxy_url).port if urlsplit(proxy_url).port is not None else 80
-        proxy_user = urlsplit(proxy_url).username
-        proxy_pass = urlsplit(proxy_url).password
+        proxy_port = urlsplit(proxy_url).port
+        if proxy_port is None:
+            proxy_port = 443 if urlsplit(proxy_url).scheme == 'https' else 80
+            
+        proxy_user = urllib.parse.unquote(urlsplit(proxy_url).username) if urlsplit(proxy_url).username is not None else None
+        proxy_pass = urllib.parse.unquote(urlsplit(proxy_url).password) if urlsplit(proxy_url).password is not None else ''
         proxy_headers = {}
         
         if proxy_user is not None:
@@ -183,7 +187,7 @@ class SSEClientAsync(object):
         self._socket_read_timeout = socket_read_timeout + socket_read_timeout * .3
         self._response = None
         self._done = asyncio.Event()
-        self._client_timeout = aiohttp.ClientTimeout(total=0, sock_read=self._socket_read_timeout)
+        self._client_timeout = aiohttp.ClientTimeout(total=60*60, sock_read=self._socket_read_timeout)
         self._sess = aiohttp.ClientSession(timeout=self._client_timeout)
 
     async def start(self, url, extra_headers=None, proxy_url=None):  # pylint:disable=protected-access
@@ -199,12 +203,11 @@ class SSEClientAsync(object):
 
         self._done.clear()
         try:
-            _LOGGER.debug(proxy_url)
             _LOGGER.debug(self._socket_read_timeout)
             async with self._sess.get(
                 url,
                 headers=get_headers(extra_headers),
-                timeout=60*40, # setting to 1 hour
+                timeout=self._client_timeout,
                 proxy=proxy_url,
             ) as response:
                 self._response = response
