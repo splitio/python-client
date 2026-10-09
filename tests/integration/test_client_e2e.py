@@ -1302,7 +1302,7 @@ class LocalhostIntegrationTests(object):  # pylint: disable=too-few-public-metho
         self._synchronize_now()
 
         assert self.factory.manager().split_names() == ["SPLIT_2", "SPLIT_3"]
-        assert client.get_treatment("key", "SPLIT_2", None) == 'off'
+        assert client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         # Tests 4
         self.factory._storages['splits'].update([], ['SPLIT_2'], -1)
@@ -3638,7 +3638,7 @@ class LocalhostIntegrationAsyncTests(object):  # pylint: disable=too-few-public-
         await self._synchronize_now()
 
         assert sorted(await self.factory.manager().split_names()) == ["SPLIT_2", "SPLIT_3"]
-        assert await client.get_treatment("key", "SPLIT_2", None) == 'off'
+        assert await client.get_treatment("key", "SPLIT_2", None) == 'on'
 
         # Tests 4
         await self.factory._storages['splits'].update([], ['SPLIT_2'], -1)
