@@ -336,6 +336,8 @@ class LocalSplitSynchronizerBase(object):
     def _check_exit_conditions(self, storage_cn, parsed_till, default_till):
         if storage_cn > parsed_till and parsed_till != default_till:
             return True
+        
+        return False
 
 class LocalSplitSynchronizer(LocalSplitSynchronizerBase):
     """Localhost mode feature_flag synchronizer."""

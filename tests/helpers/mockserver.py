@@ -65,7 +65,7 @@ class SSEHandler(BaseHTTPRequestHandler):
     def do_GET(self):  #pylint:disable=invalid-name
         """Respond to a GET request."""
         self.send_response(200)
-        self.send_header("Content-type", "text/event-stream")
+        self.send_header("Content-type", "text/sse")
         self.send_header("Transfer-Encoding", "chunked")
         self.send_header("Connection", "keep-alive")
         self.end_headers()
