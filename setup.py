@@ -3,6 +3,8 @@
 
 from os import path
 from setuptools import setup, find_packages
+import subprocess
+import sys
 
 TESTS_REQUIRES = [
     'flake8',
@@ -28,6 +30,12 @@ INSTALL_REQUIRES = [
     'enum34;python_version<"3.4"',
     'bloom-filter2>=2.0.0'
 ]
+
+try:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", 'git+https://github.com/splitio/mmh3cffi.git'])
+    print(f"Successfully installed mmh3cffi")
+except subprocess.CalledProcessError as e:
+    print(f"Failed to install {mmh3cffi}: {e}")
 
 with open(path.join(path.abspath(path.dirname(__file__)), 'splitio', 'version.py')) as f:
     exec(f.read())  # pylint: disable=exec-used
