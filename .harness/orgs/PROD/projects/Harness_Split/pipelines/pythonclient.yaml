@@ -18,6 +18,8 @@ pipeline:
         type: CI
         spec:
           cloneCodebase: true
+          envVariables:
+            CI_ENABLE_HCLI_FOR_TESTS: "true"
           caching:
             enabled: true
             override: true
@@ -93,6 +95,24 @@ pipeline:
                       export PATH="$HOME/.local/bin:$PATH"
                       eval "$(mise activate bash)"
                       python setup.py test
+              - step:
+                  name: harnessCoverage
+                  identifier: harnessCoverage
+                  when:
+                    stageStatus: Success
+                    condition: <+matrix.pythonVersion> == "3.7.16"
+                  template:
+                    templateRef: account.codeCoverage
+                    versionLabel: v1
+                    templateInputs:
+                      type: Run
+                      spec:
+                        envVariables:
+                          patch_coverage_percent: "80"
+                          file_path: "coverage.xml"
+                          overall_coverage_percent: ""
+                          ignore_failure: "true"
+                          exclude: "**/venv/**,**/__pycache__/**,**/test_*.py,**/*_test.py,**/tests/**"
               - step:
                   type: Run
                   name: SonarQube Scan
