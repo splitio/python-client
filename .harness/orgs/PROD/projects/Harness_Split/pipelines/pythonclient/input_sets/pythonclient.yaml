@@ -8,7 +8,6 @@ inputSet:
     properties:
       ci:
         codebase:
-          connectorRef: fmegithubharnessgitops
           repoName: python-client
           build:
             type: PR

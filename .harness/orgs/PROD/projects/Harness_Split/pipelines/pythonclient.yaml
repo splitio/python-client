@@ -7,8 +7,7 @@ pipeline:
   properties:
     ci:
       codebase:
-        connectorRef: <+input>
-        repoName: <+input>
+        repoName: python-client
         build: <+input>
   stages:
     - stage:
@@ -18,6 +17,8 @@ pipeline:
         type: CI
         spec:
           cloneCodebase: true
+          envVariables:
+            CI_ENABLE_HCLI_FOR_TESTS: "true"
           caching:
             enabled: true
             override: true
@@ -94,83 +95,23 @@ pipeline:
                       eval "$(mise activate bash)"
                       python setup.py test
               - step:
-                  type: Run
-                  name: SonarQube Scan
-                  identifier: SonarQube_Scan
+                  name: harnessCoverage
+                  identifier: harnessCoverage
                   when:
                     stageStatus: Success
                     condition: <+matrix.pythonVersion> == "3.7.16"
-                  spec:
-                    shell: Sh
-                    command: |-
-                      if [ "<+codebase.prNumber>" != "" ]; then
-                        docker run --rm \
-                          -e SONAR_HOST_URL="https://sonar.harness.io" \
-                          -e SONAR_TOKEN="<+secrets.getValue("sonarqube-token")>" \
-                          -v "$(pwd):/usr/src" \
-                          sonarsource/sonar-scanner-cli \
-                          -Dsonar.projectKey=python-client \
-                          -Dsonar.sources=splitio \
-                          -Dsonar.tests=tests \
-                          -Dsonar.python.coverage.reportPaths=coverage.xml \
-                          -Dsonar.pullrequest.key=<+codebase.prNumber> \
-                          -Dsonar.pullrequest.branch=<+codebase.sourceBranch> \
-                          -Dsonar.pullrequest.base=<+codebase.targetBranch>
-                      else
-                        docker run --rm \
-                          -e SONAR_HOST_URL="https://sonar.harness.io" \
-                          -e SONAR_TOKEN="<+secrets.getValue("sonarqube-token")>" \
-                          -v "$(pwd):/usr/src" \
-                          sonarsource/sonar-scanner-cli \
-                          -Dsonar.projectKey=python-client \
-                          -Dsonar.sources=splitio \
-                          -Dsonar.tests=tests \
-                          -Dsonar.python.coverage.reportPaths=coverage.xml \
-                          -Dsonar.branch.name=<+codebase.branch>
-                      fi
-              - step:
-                  type: Run
-                  name: Post Quality Gate
-                  identifier: Post_Quality_Gate
-                  when:
-                    stageStatus: Success
-                    condition: <+matrix.pythonVersion> == "3.7.16"
-                  spec:
-                    shell: Bash
-                    command: |-
-                      #!/bin/bash
-                      set -e
-
-                      SONAR_TOKEN="<+secrets.getValue("sonarqube-token")>"
-                      SONAR_URL="https://sonar.harness.io"
-                      SONAR_PROJECT_KEY="python-client"
-                      GITHUB_TOKEN="<+secrets.getValue("github-devops-token")>"
-                      GITHUB_REPO="python-client"
-                      COMMIT_SHA="<+codebase.commitSha>"
-
-                      STATUS_JSON=$(curl -sf \
-                        -H "Authorization: Bearer ${SONAR_TOKEN}" \
-                        "${SONAR_URL}/api/qualitygates/project_status?projectKey=${SONAR_PROJECT_KEY}")
-
-                      QG_STATUS=$(echo "$STATUS_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin)['projectStatus']['status'])")
-
-                      case "$QG_STATUS" in
-                        OK)    GH_STATE="success"; DESCRIPTION="Quality gate passed" ;;
-                        ERROR) GH_STATE="failure"; DESCRIPTION="Quality gate failed" ;;
-                        WARN)  GH_STATE="success"; DESCRIPTION="Quality gate passed with warnings" ;;
-                        *)     GH_STATE="pending"; DESCRIPTION="Quality gate status unknown" ;;
-                      esac
-
-                      TARGET_URL="${SONAR_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
-
-                      curl -sf -X POST \
-                        -H "Authorization: token ${GITHUB_TOKEN}" \
-                        -H "Accept: application/vnd.github.v3+json" \
-                        -H "Content-Type: application/json" \
-                        -d "{\"state\":\"${GH_STATE}\",\"description\":\"${DESCRIPTION}\",\"context\":\"sonarqube/quality-gate\",\"target_url\":\"${TARGET_URL}\"}" \
-                        "https://api.github.com/repos/splitio/${GITHUB_REPO}/statuses/${COMMIT_SHA}"
-
-                      echo "Posted SonarQube quality gate status: ${GH_STATE}"
+                  template:
+                    templateRef: account.codeCoverage
+                    versionLabel: v1
+                    templateInputs:
+                      type: Run
+                      spec:
+                        envVariables:
+                          patch_coverage_percent: "80"
+                          file_path: "coverage.xml"
+                          overall_coverage_percent: ""
+                          ignore_failure: "true"
+                          exclude: "**/venv/**,**/__pycache__/**,**/test_*.py,**/*_test.py,**/tests/**"
         strategy:
           matrix:
             pythonVersion:

@@ -1,0 +1,118 @@
+pipeline:
+  name: python-client hc
+  identifier: pythonclient_hc
+  projectIdentifier: Harness_Split
+  orgIdentifier: PROD
+  tags: {}
+  properties:
+    ci:
+      codebase:
+        repoName: python-client
+        build: <+input>
+  stages:
+    - stage:
+        name: Build and Test
+        identifier: Build_and_Test
+        description: ""
+        type: CI
+        spec:
+          cloneCodebase: true
+          envVariables:
+            CI_ENABLE_HCLI_FOR_TESTS: "true"
+          caching:
+            enabled: true
+            override: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec:
+              size: flex
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Install Python
+                  identifier: Install_Python
+                  spec:
+                    shell: Bash
+                    command: |-
+                      curl https://mise.run | sh
+                      export PATH="$HOME/.local/bin:$PATH"
+                      mise use --global python@<+matrix.pythonVersion>
+                      eval "$(mise activate bash)"
+                      python --version
+                      pip --version
+              - step:
+                  type: Run
+                  name: Start Redis
+                  identifier: Start_Redis
+                  spec:
+                    shell: Sh
+                    command: |-
+                      apt-get update -qq
+                      apt-get install -y redis-server -qq
+                      redis-server --daemonize yes --port 6379
+                      redis-cli ping
+              - step:
+                  type: Run
+                  name: Wait for Redis
+                  identifier: Wait_for_Redis
+                  spec:
+                    shell: Sh
+                    command: |-
+                      for i in $(seq 1 15); do
+                        redis-cli ping && break
+                        echo "Waiting for Redis... attempt $i"
+                        sleep 1
+                      done
+              - step:
+                  type: Run
+                  name: Install Dependencies
+                  identifier: Install_Dependencies
+                  spec:
+                    shell: Bash
+                    command: |-
+                      export PATH="$HOME/.local/bin:$PATH"
+                      eval "$(mise activate bash)"
+                      apt-get install -y libkrb5-dev musl-dev libffi-dev build-essential -qq
+                      pip install --upgrade pip setuptools wheel
+                      pip install Cython
+                      pip install aiohttp
+                      pip install cryptography
+                      pip install pycparser
+                      pip install redis
+                      pip install -e .
+              - step:
+                  type: Run
+                  name: Run Tests
+                  identifier: Run_Tests
+                  spec:
+                    shell: Bash
+                    command: |-
+                      export PATH="$HOME/.local/bin:$PATH"
+                      eval "$(mise activate bash)"
+                      python setup.py test
+              - step:
+                  name: harnessCoverage
+                  identifier: harnessCoverage
+                  when:
+                    stageStatus: Success
+                    condition: <+matrix.pythonVersion> == "3.7.16"
+                  template:
+                    templateRef: account.codeCoverage
+                    versionLabel: v1
+                    templateInputs:
+                      type: Run
+                      spec:
+                        envVariables:
+                          patch_coverage_percent: "80"
+                          file_path: "coverage.xml"
+                          overall_coverage_percent: ""
+                          ignore_failure: "true"
+                          exclude: "**/venv/**,**/__pycache__/**,**/test_*.py,**/*_test.py,**/tests/**"
+        strategy:
+          matrix:
+            pythonVersion:
+              - "3.7.16"
