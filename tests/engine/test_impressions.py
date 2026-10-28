@@ -147,13 +147,13 @@ class ImpressionManagerTests(object):
             (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, None, None), False), None),
             (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, None, None), False), None)
         ])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3, None),
+        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-2, None),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1, None)]
         assert deduped == 0
         assert for_unique_keys_tracker == []
 
         assert len(manager._strategy._observer._cache._data) == 3  # distinct impressions seen
-        assert for_counter == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3, None),
+        assert for_counter == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-2, None),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1, None)]
 
         # Test counting only from the second impression
@@ -221,7 +221,7 @@ class ImpressionManagerTests(object):
             (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, None, None), False), None),
             (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, None, None), False), None)
         ])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3, None),
+        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-2, None),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1, None)]
         assert for_counter == []
         assert for_unique_keys_tracker == []
@@ -340,17 +340,17 @@ class ImpressionManagerTests(object):
             (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, None, None), False), None),
             (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, None, None), False), None)
         ])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3, None),
+        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-2, None),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1, None)]
         assert deduped == 0
         assert listen == [
-            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3, None), None),
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-2, None), None),
             (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1, None), None),
         ]
         assert for_unique_keys_tracker == []
         assert len(manager._strategy._observer._cache._data) == 3  # distinct impressions seen
         assert for_counter == [
-            Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3, None),
+            Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-2, None),
             Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1, None)
         ]
 
@@ -425,10 +425,10 @@ class ImpressionManagerTests(object):
             (ImpressionDecorated(Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, None, None), False), None),
             (ImpressionDecorated(Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, None, None), False), None)
         ])
-        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3, None),
+        assert imps == [Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-2, None),
                         Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1, None)]
         assert listen == [
-            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-3, None), None),
+            (Impression('k1', 'f1', 'on', 'l1', 123, None, utc_now-1, old_utc-2, None), None),
             (Impression('k2', 'f1', 'on', 'l1', 123, None, utc_now-2, old_utc-1, None), None)
         ]
         assert len(manager._strategy._observer._cache._data) == 3  # distinct impressions seen

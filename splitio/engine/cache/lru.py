@@ -60,6 +60,8 @@ class SimpleLruCache(object):  # pylint: disable=too-many-instance-attributes
             to_return = node.value if node else None
             if node is None:
                 node = SimpleLruCache._Node(key, value, None, None)
+            else:
+                node.value = value
             node = self._bubble_up(node)
             self._data[key] = node
             self._rollover()
