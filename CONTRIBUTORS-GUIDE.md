@@ -14,7 +14,7 @@ Split SDK is an open source project and we welcome feedback and contribution. Th
 6. Run all tests and make sure there are no failures.
 7. `git push` your changes to GitHub within your topic branch.
 8. Open a Pull Request(PR) from your forked repo and into the `development` branch of the original repository.
-9. When creating your PR, please fill out all the fields of the PR template, as applicable, for the project.
+9. When creating your PR, please describe what you accomplished, how to test your changes, and any extra notes reviewers should know about.
 10. Check for conflicts once the pull request is created to make sure your PR can be merged cleanly into `development`.
 11. Keep an eye out for any feedback or comments from Split's SDK team.
 
