@@ -1,5 +1,5 @@
 # Split Python SDK
-![Build Status](https://github.com/splitio/python-client/actions/workflows/ci.yml/badge.svg?branch=master)
+[![PyPI version](https://badge.fury.io/py/splitio_client.svg)](https://badge.fury.io/py/splitio_client)
 
 ## Overview
 This SDK is designed to work with Split, the platform for controlled rollouts, which serves features to your users via a Split feature flag to manage your complete customer experience.
