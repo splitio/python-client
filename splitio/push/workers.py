@@ -72,7 +72,7 @@ class SplitWorker(WorkerBase):
             for segment_name in segment_list:
                 if self._segment_storage.get(segment_name) is None:
                     _LOGGER.debug(self._fetching_segment.format(segment_name=segment_name))
-                    self._segment_handler(segment_name, event.change_number)
+                    self._segment_handler(segment_name, event.change_number, emit_event=False)
 
             referenced_rbs = self._get_referenced_rbs(new_feature_flag)
             self._fetch_rbs_segment_if_needed(referenced_rbs, event)
@@ -217,7 +217,7 @@ class SplitWorkerAsync(WorkerBase):
             for segment_name in segment_list:
                 if await self._segment_storage.get(segment_name) is None:
                     _LOGGER.debug(self._fetching_segment.format(segment_name=segment_name))
-                    await self._segment_handler(segment_name, event.change_number)
+                    await self._segment_handler(segment_name, event.change_number, emit_event=False)
 
             referenced_rbs = self._get_referenced_rbs(new_feature_flag)
             await self._fetch_rbs_segment_if_needed(referenced_rbs, event)
