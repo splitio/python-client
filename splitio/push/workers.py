@@ -16,6 +16,12 @@ from splitio_commons.util.storage_helper import update_definition_storage, updat
 
 _LOGGER = logging.getLogger(__name__)
 
+def _parse_definition(raw):
+    """Parse an IFFU definition; non-active (archived) ones only carry name, changeNumber and status."""
+    if raw.get('status') != 'ACTIVE':
+        raw = {'seed': 0, 'killed': False, 'defaultTreatment': 'off', 'trafficTypeName': 'user', 'conditions': [], **raw}
+    return from_raw(raw)
+
 class SplitWorker(WorkerBase):
     """Feature Flag Worker for processing updates."""
 
@@ -61,7 +67,7 @@ class SplitWorker(WorkerBase):
             return False
         
         try:
-            new_feature_flag = from_raw(json.loads(self._get_object_definition(event)))
+            new_feature_flag = _parse_definition(json.loads(self._get_object_definition(event)))
             segment_list = update_definition_storage(self._feature_flag_storage, [new_feature_flag], event.change_number)
             for segment_name in segment_list:
                 if self._segment_storage.get(segment_name) is None:
@@ -77,8 +83,8 @@ class SplitWorker(WorkerBase):
             return True
                 
         except Exception as e:
-            _LOGGER.error(str(e))
-            raise SplitStorageException(e)
+            _LOGGER.error('Instant feature flag update failed, falling back to fetch: %s', str(e))
+            return False
 
     def _fetch_rbs_segment_if_needed(self, referenced_rbs, event):
         if len(referenced_rbs) > 0 and not self._rule_based_segment_storage.contains(referenced_rbs):
@@ -206,7 +212,7 @@ class SplitWorkerAsync(WorkerBase):
             return False
         
         try:
-            new_feature_flag = from_raw(json.loads(self._get_object_definition(event)))
+            new_feature_flag = _parse_definition(json.loads(self._get_object_definition(event)))
             segment_list = await update_definition_storage_async(self._feature_flag_storage, [new_feature_flag], event.change_number)
             for segment_name in segment_list:
                 if await self._segment_storage.get(segment_name) is None:
@@ -216,14 +222,14 @@ class SplitWorkerAsync(WorkerBase):
             referenced_rbs = self._get_referenced_rbs(new_feature_flag)
             await self._fetch_rbs_segment_if_needed(referenced_rbs, event)
             await self._telemetry_runtime_producer.record_update_from_sse(UpdateFromSSE.SPLIT_UPDATE)
-            await self._events_emitter.emit(SdkInternalEvent.FLAGS_UPDATED,
+            await self._events_emitter.emit_async(SdkInternalEvent.FLAGS_UPDATED,
                                         SdkEventType.FLAG_UPDATE,
                                         [new_feature_flag.name])
             return True
 
         except Exception as e:
-            _LOGGER.error(exc_info=True)
-            raise SplitStorageException(e)
+            _LOGGER.error('Instant feature flag update failed, falling back to fetch: %s', str(e))
+            return False
 
     async def _fetch_rbs_segment_if_needed(self, referenced_rbs, event):
         if len(referenced_rbs) > 0 and not await self._rule_based_segment_storage.contains(referenced_rbs):

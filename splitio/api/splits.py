@@ -110,7 +110,10 @@ class SplitsAPI(SplitsAPIBase):  # pylint: disable=too-few-public-methods
                 
                 self.clear_storage = self._last_proxy_check_timestamp != 0
                 self._last_proxy_check_timestamp = 0
-                return json.loads(response.body)
+                parsed = json.loads(response.body)
+                if 'rbs' not in parsed:
+                    parsed['rbs'] = {"d": [], "s": -1, "t": -1}
+                return parsed
 
             else:
                 if response.status_code == 414:
@@ -187,7 +190,10 @@ class SplitsAPIAsync(SplitsAPIBase):  # pylint: disable=too-few-public-methods
                 
                 self.clear_storage = self._last_proxy_check_timestamp != 0
                 self._last_proxy_check_timestamp = 0
-                return json.loads(response.body)
+                parsed = json.loads(response.body)
+                if 'rbs' not in parsed:
+                    parsed['rbs'] = {"d": [], "s": -1, "t": -1}
+                return parsed
 
             else:
                 if response.status_code == 414:

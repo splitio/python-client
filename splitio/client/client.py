@@ -288,6 +288,12 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
             return
         
         self._events_manager.register(sdk_event, callback_handle)
+
+    def off(self, sdk_event, callback_handle=None):
+        if not self._check_sdk_event(sdk_event):
+            return
+
+        self._events_manager.unregister(sdk_event, callback_handle)
         
     def get_treatment(self, key, feature_flag_name, attributes=None, evaluation_options=None):
         """
@@ -799,6 +805,12 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
             return
         
         await self._events_manager.register(sdk_event, callback_handle)
+
+    async def off(self, sdk_event, callback_handle=None):
+        if not self._check_sdk_event(sdk_event):
+            return
+
+        await self._events_manager.unregister(sdk_event, callback_handle)
 
     async def get_treatment(self, key, feature_flag_name, attributes=None, evaluation_options=None):
         """
