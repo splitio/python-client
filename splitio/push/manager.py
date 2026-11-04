@@ -16,23 +16,33 @@ class PushManagerWithAuthRefresh(PushManager):
     def __init__(self, *args, **kwargs):
         PushManager.__init__(self, *args, manage_auth_sync=False, **kwargs)
         self._auth_started = False
+        self._stopped = False  # set by stop(), to not connect if stopped while authenticating
 
     def start(self):
         """Fetch the first token (once), and connect."""
+        self._stopped = False
         if not self._auth_started:
             self._auth_synchronizer.start()
             self._auth_started = True
+        if self._stopped:
+            return
         PushManager.start(self)
+
+    def restart(self):
+        """Fetch a new token and reconnect (see `reconnect`)."""
+        self._stopped = False
+        PushManager.restart(self)
 
     def stop(self, blocking=False):
         """Stop the connection and the token refresh."""
+        self._stopped = True
         self._auth_synchronizer.stop()
         PushManager.stop(self, blocking)
 
     def reconnect(self):
         """Auth synchronizer's refresh callback: reopen SSE with the new token, or fall back to polling if push is now disabled."""
         token = self._auth_synchronizer.token
-        if token is None:
+        if token is None or self._stopped:
             return
         self.update_workers_status(False)
         PushManager.stop(self, True)
