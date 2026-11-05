@@ -1112,3 +1112,39 @@ class SplitFactoryAsyncTests(object):
         assert event.internal_event == SdkInternalEvent.SDK_READY
         assert event.metadata == None
         await factory.destroy()
+
+    @pytest.mark.asyncio
+    async def test_ready_not_blocked_by_telemetry_config_async(self, mocker):
+        """Test that a slow telemetry config post does not delay SDK readiness."""
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_host=None, proxy_port=None, proxy=None):
+            synchronizer = mocker.Mock(spec=SynchronizerAsync)
+            async def sync_all(*_):
+                return None
+            synchronizer.sync_all = sync_all
+
+            def start_periodic_fetching():
+                pass
+            synchronizer.start_periodic_fetching = start_periodic_fetching
+
+            def start_periodic_data_recording():
+                pass
+            synchronizer.start_periodic_data_recording = start_periodic_data_recording
+
+            self._ready_flag = ready_flag
+            self._synchronizer = synchronizer
+            self._streaming_enabled = False
+            self._telemetry_runtime_producer = telemetry_runtime_producer
+
+        mocker.patch('splitio.sync.manager.ManagerAsync.__init__', new=_split_synchronizer)
+
+        config_posted = asyncio.Event()
+        async def synchronize_config(*_):
+            await asyncio.sleep(5)
+            config_posted.set()
+        mocker.patch('splitio.sync.telemetry.InMemoryTelemetrySubmitterAsync.synchronize_config', new=synchronize_config)
+
+        factory = await get_factory_async('some_api_key', config={'streamingEnabled': False})
+        await factory.block_until_ready(1)  # would raise TimeoutException if ready waited for telemetry
+        assert factory.ready
+        assert not config_posted.is_set()
+        await factory.destroy()

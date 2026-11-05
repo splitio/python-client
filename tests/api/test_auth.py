@@ -48,9 +48,8 @@ class AuthAPITests(object):
             raise client.HttpClientException('some_message')
         httpclient.get.side_effect = raise_exception
         with pytest.raises(APIException) as exc_info:
-            response = auth_api.authenticate()
-            assert exc_info.type == APIException
-            assert exc_info.value.message == 'some_message'
+            auth_api.authenticate()
+        assert str(exc_info.value.__cause__) == 'some_message'  # original HTTP error is chained
 
 
 class AuthAPIAsyncTests(object):
@@ -103,6 +102,5 @@ class AuthAPIAsyncTests(object):
 
         httpclient.get = raise_exception
         with pytest.raises(APIException) as exc_info:
-            response = await auth_api.authenticate()
-            assert exc_info.type == APIException
-            assert exc_info.value.message == 'some_message'
+            await auth_api.authenticate()
+        assert str(exc_info.value.__cause__) == 'some_message'  # original HTTP error is chained

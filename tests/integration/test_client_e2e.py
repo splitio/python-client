@@ -860,6 +860,7 @@ class InMemoryOldSpecIntegrationTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
             'config': {'connectTimeout': 10000, 
@@ -1021,6 +1022,7 @@ class InMemoryProxyIntegrationTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
             'config': {'connectTimeout': 10000, 
@@ -3266,6 +3268,7 @@ class InMemoryOldSpecIntegrationAsyncTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
             'config': {'connectTimeout': 10000, 
@@ -3462,6 +3465,7 @@ class InMemoryProxyIntegrationAsyncTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
             'config': {'connectTimeout': 10000, 

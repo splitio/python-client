@@ -145,6 +145,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
+        factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -226,6 +227,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
+        factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -309,6 +311,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
+        factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -391,6 +394,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
+        factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -472,6 +476,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
+        factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -559,6 +564,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
+        factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -642,6 +648,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
+        factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -1236,6 +1243,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
+        factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -1471,6 +1479,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
+        factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
         
         self.imps = None
         def put(impressions):
@@ -1612,6 +1621,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
+        factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
         
         self.imps = None
         def put(impressions):

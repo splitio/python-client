@@ -403,17 +403,22 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
         if self._manager_start_task is not None:
             await self._manager_start_task
             self._manager_start_task = None
-        await self._telemetry_init_producer.record_ready_time(get_current_epoch_time_ms() - self._ready_time)
+        ready_time = get_current_epoch_time_ms() - self._ready_time
+        self._status = Status.READY
+        self._sdk_ready_flag.set()
+        await self._internal_events_queue.put(
+            SdkInternalEventNotification(SdkInternalEvent.SDK_READY, None))
+
+        # Telemetry is posted after the SDK is ready, so its latency doesn't delay readiness.
+        await self._telemetry_init_producer.record_ready_time(ready_time)
         redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
-        await self._telemetry_init_producer.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+        await self._telemetry_init_producer.record_active_and_redundant_factories(
+            active_factory_count, redundant_factory_count)
         try:
             await self._telemetry_submitter.synchronize_config()
         except Exception as e:
             _LOGGER.error("Failed to post Telemetry config")
             _LOGGER.debug(str(e))
-        self._status = Status.READY
-        self._sdk_ready_flag.set()
-        await self._internal_events_queue.put(SdkInternalEventNotification(SdkInternalEvent.SDK_READY, None))
 
     def manager(self):
         """

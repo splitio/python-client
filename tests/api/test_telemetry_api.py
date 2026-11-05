@@ -49,9 +49,8 @@ class TelemetryAPITests(object):
             raise client.HttpClientException('some_message')
         httpclient.post.side_effect = raise_exception
         with pytest.raises(APIException) as exc_info:
-            response = telemetry_api.record_unique_keys(uniques)
-            assert exc_info.type == APIException
-            assert exc_info.value.message == 'some_message'
+            telemetry_api.record_unique_keys(uniques)
+        assert str(exc_info.value.__cause__) == 'some_message'  # original HTTP error is chained
 
     def test_record_init(self, mocker):
         """Test telemetry posting init configs."""
@@ -116,9 +115,8 @@ class TelemetryAPITests(object):
             raise client.HttpClientException('some_message')
         httpclient.post.side_effect = raise_exception
         with pytest.raises(APIException) as exc_info:
-            response = telemetry_api.record_stats(uniques)
-            assert exc_info.type == APIException
-            assert exc_info.value.message == 'some_message'
+            telemetry_api.record_stats(uniques)
+        assert str(exc_info.value.__cause__) == 'some_message'  # original HTTP error is chained
 
 
 class TelemetryAPIAsyncTests(object):
@@ -170,9 +168,8 @@ class TelemetryAPIAsyncTests(object):
             raise client.HttpClientException('some_message')
         httpclient.post = raise_exception
         with pytest.raises(APIException) as exc_info:
-            response = await telemetry_api.record_unique_keys(uniques)
-            assert exc_info.type == APIException
-            assert exc_info.value.message == 'some_message'
+            await telemetry_api.record_unique_keys(uniques)
+        assert str(exc_info.value.__cause__) == 'some_message'  # original HTTP error is chained
 
     @pytest.mark.asyncio
     async def test_record_init(self, mocker):
@@ -261,6 +258,5 @@ class TelemetryAPIAsyncTests(object):
             raise client.HttpClientException('some_message')
         httpclient.post = raise_exception
         with pytest.raises(APIException) as exc_info:
-            response = await telemetry_api.record_stats(uniques)
-            assert exc_info.type == APIException
-            assert exc_info.value.message == 'some_message'
+            await telemetry_api.record_stats(uniques)
+        assert str(exc_info.value.__cause__) == 'some_message'  # original HTTP error is chained
