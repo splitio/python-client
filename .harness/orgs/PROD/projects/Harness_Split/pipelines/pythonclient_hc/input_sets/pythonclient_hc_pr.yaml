@@ -1,0 +1,14 @@
+inputSet:
+  name: "python-client hc pr "
+  identifier: pythonclient_hc_pr
+  orgIdentifier: PROD
+  projectIdentifier: Harness_Split
+  pipeline:
+    identifier: pythonclient_hc
+    properties:
+      ci:
+        codebase:
+          build:
+            type: PR
+            spec:
+              number: <+trigger.prNumber>
