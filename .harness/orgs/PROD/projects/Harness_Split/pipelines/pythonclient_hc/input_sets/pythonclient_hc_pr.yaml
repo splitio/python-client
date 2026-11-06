@@ -1,6 +1,6 @@
 inputSet:
-  name: Baseline
-  identifier: Baseline
+  name: python-client hc pr
+  identifier: pythonclient_hc_pr
   orgIdentifier: PROD
   projectIdentifier: Harness_Split
   pipeline:
@@ -8,7 +8,8 @@ inputSet:
     properties:
       ci:
         codebase:
+          repoName: python-client
           build:
-            type: branch
+            type: PR
             spec:
-              branch: <+trigger.branch>
+              number: <+trigger.prNumber>

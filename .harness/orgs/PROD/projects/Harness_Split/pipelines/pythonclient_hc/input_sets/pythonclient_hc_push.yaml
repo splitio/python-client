@@ -1,15 +1,15 @@
 inputSet:
-  name: python-client
-  identifier: pythonclient
+  name: python-client hc push
+  identifier: pythonclient_hc_push
   orgIdentifier: PROD
   projectIdentifier: Harness_Split
   pipeline:
-    identifier: pythonclient
+    identifier: pythonclient_hc
     properties:
       ci:
         codebase:
           repoName: python-client
           build:
-            type: PR
+            type: branch
             spec:
-              number: <+trigger.prNumber>
+              branch: <+trigger.branch>

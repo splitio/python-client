@@ -54,7 +54,6 @@ pipeline:
                       apt-get update -qq
                       apt-get install -y redis-server -qq
                       redis-server --daemonize yes --port 6379
-                      redis-cli ping
               - step:
                   type: Run
                   name: Wait for Redis
@@ -63,10 +62,11 @@ pipeline:
                     shell: Sh
                     command: |-
                       for i in $(seq 1 15); do
-                        redis-cli ping && break
+                        redis-cli ping && exit 0
                         echo "Waiting for Redis... attempt $i"
                         sleep 1
                       done
+                      echo "Redis did not start"; exit 1
               - step:
                   type: Run
                   name: Install Dependencies
@@ -79,11 +79,9 @@ pipeline:
                       apt-get install -y libkrb5-dev musl-dev libffi-dev build-essential -qq
                       pip install --upgrade pip setuptools wheel
                       pip install Cython
-                      pip install aiohttp
                       pip install cryptography
                       pip install pycparser
-                      pip install redis
-                      pip install -e .
+                      pip install -e ".[test,redis,asyncio,kerberos]"
               - step:
                   type: Run
                   name: Run Tests
@@ -93,7 +91,7 @@ pipeline:
                     command: |-
                       export PATH="$HOME/.local/bin:$PATH"
                       eval "$(mise activate bash)"
-                      python setup.py test
+                      python -m pytest
               - step:
                   name: harnessCoverage
                   identifier: harnessCoverage
@@ -116,3 +114,4 @@ pipeline:
           matrix:
             pythonVersion:
               - "3.7.16"
+              - "latest"
