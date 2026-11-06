@@ -369,8 +369,10 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         kwargs = {} if sse_url is None else {'base_url': sse_url}
         self._sse_client = SplitSSEClientAsync(sdk_metadata, client_key, **kwargs, proxy=proxy)
         self._running = False
+        self._stop_requested = False  # set by stop() to abort an ongoing connection flow
         self._telemetry_runtime_producer = telemetry_runtime_producer
         self._token_task = None
+        self._running_task = None
 
     async def update_workers_status(self, enabled):
         """
@@ -387,6 +389,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             _LOGGER.warning('Push manager already has a connection running. Ignoring')
             return
 
+        self._stop_requested = False
         self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
 
     async def stop(self, blocking=False):
@@ -396,6 +399,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         :param blocking: whether to wait for the connection to be successfully closed or not
         :type blocking: bool
         """
+        self._stop_requested = True
         if not self._running:
             _LOGGER.warning('Push manager does not have an open SSE connection. Ignoring')
             return
@@ -449,6 +453,10 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         self._token_task = None
         try:
             await self._stop_current_conn()
+            if self._stop_requested:
+                # stop() can't cancel this task once detached: don't reconnect after it.
+                _LOGGER.debug('push manager stopped while refreshing token. not reconnecting.')
+                return
             self._running_task = asyncio.get_running_loop().create_task(
                 self._trigger_connection_flow())
         except asyncio.CancelledError:  # subclass of Exception in python 3.7
@@ -484,6 +492,9 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
 
         try:
             token = await self._get_auth_token()
+            if self._stop_requested:
+                _LOGGER.debug('push manager stopped while authenticating. not connecting.')
+                return
             events_source = self._sse_client.start(token)
             self._running = True
 

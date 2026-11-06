@@ -10,7 +10,7 @@
    - The streaming connection is now considered established once the SSE connection opens, instead of waiting for the first event. Previously, the token refresh and the reconnection after a retryable error waited for an incoming event to resume streaming.
    - Fixed the SSE connection not being closed on token refresh or SDK destroy when the server response is not chunked, which could block the token refresh.
    - An auth response with a malformed token is now handled as a retryable error instead of disabling streaming.
-   - Destroying the SDK while authenticating or waiting to retry streaming no longer opens a new SSE connection or retries the authentication.
+   - Destroying the SDK while authenticating, refreshing the streaming token or waiting to retry streaming no longer opens a new SSE connection or retries the authentication.
    - Fixed asyncio HTTP and SSE requests being silently re-sent when the server closes the connection, bypassing the streaming retry backoff.
 
 10.7.0 (Oct 5, 2026)

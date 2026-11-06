@@ -649,6 +649,52 @@ class PushManagerAsyncTests(object):
         assert await asyncio.wait_for(feedback_loop.get(), 1) == Status.PUSH_RETRYABLE_ERROR
 
     @pytest.mark.asyncio
+    async def test_stop_during_token_refresh(self, mocker):
+        """Test a stop while the refresh closes the connection doesn't reconnect."""
+        feedback_loop = asyncio.Queue()
+        manager = await self._build_refresh_manager(mocker, feedback_loop)
+        manager._running = True
+        stop_tasks = []
+        async def sse_stop():  # stop() arrives while the refresh is closing the connection
+            if not stop_tasks:
+                stop_tasks.append(asyncio.get_running_loop().create_task(manager.stop(True)))
+            await asyncio.sleep(0)
+        manager._sse_client.stop = sse_stop
+        flows = []
+        async def connection_flow():
+            flows.append(1)
+        manager._trigger_connection_flow = connection_flow
+
+        await asyncio.wait_for(manager._token_refresh(Token(True, 'abc', {}, 2000000, 1000000)), 1)
+        await asyncio.gather(*stop_tasks)
+        await asyncio.sleep(0)
+        assert flows == []  # no new connection flow after stop
+        assert manager._running_task is None
+        assert feedback_loop.empty()
+
+    @pytest.mark.asyncio
+    async def test_stop_while_authenticating(self, mocker):
+        """Test a stop during the auth request doesn't open the SSE connection."""
+        feedback_loop = asyncio.Queue()
+        manager = await self._build_refresh_manager(mocker, feedback_loop)
+        auth_started = asyncio.Event()
+        release_auth = asyncio.Event()
+        async def get_token():
+            auth_started.set()
+            await release_auth.wait()
+            return Token(True, 'abc', {}, 2000000, 1000000)
+        manager._get_auth_token = get_token
+
+        manager.start()
+        await asyncio.wait_for(auth_started.wait(), 1)
+        await manager.stop(True)  # not running yet: only flags the stop
+        release_auth.set()
+        await asyncio.sleep(0.1)
+        assert manager._sse_client.start.mock_calls == []
+        assert not manager._running
+        assert feedback_loop.empty()
+
+    @pytest.mark.asyncio
     async def test_split_change(self, mocker):
         """Test update-type messages are properly forwarded to the processor."""
         sse_event = SSEEvent('1', EventType.MESSAGE, '', '{}')
