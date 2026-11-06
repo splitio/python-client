@@ -600,6 +600,54 @@ class PushManagerAsyncTests(object):
         await manager.stop(True)
         assert not manager._running
 
+    async def _build_refresh_manager(self, mocker, feedback_loop):
+        async def noop(*_args, **_kwargs):
+            pass
+        telemetry_storage = await InMemoryTelemetryStorageAsync.create()
+        telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
+        manager = PushManagerAsync(mocker.Mock(), mocker.Mock(), feedback_loop, mocker.Mock(),
+                                   telemetry_producer.get_telemetry_runtime_producer())
+        manager._processor = mocker.Mock()
+        manager._processor.update_workers_status = noop
+        manager._sse_client = mocker.Mock()
+        manager._sse_client.stop = noop
+        manager._get_time_period = lambda token: 0
+        return manager
+
+    @pytest.mark.asyncio
+    async def test_token_refresh_connection_task_pending(self, mocker):
+        """Test the refresh reconnects when the connection task is still ending when cancelled."""
+        feedback_loop = asyncio.Queue()
+        manager = await self._build_refresh_manager(mocker, feedback_loop)
+        async def ending_connection():  # e.g. still running its cleanup
+            await asyncio.sleep(1)
+        manager._running_task = asyncio.get_running_loop().create_task(ending_connection())
+        await asyncio.sleep(0)
+        flows = []
+        async def connection_flow():
+            flows.append(1)
+        manager._trigger_connection_flow = connection_flow
+
+        refresh = asyncio.get_running_loop().create_task(
+            manager._token_refresh(Token(True, 'abc', {}, 2000000, 1000000)))
+        await asyncio.wait_for(refresh, 1)
+        assert not refresh.cancelled()
+        await asyncio.sleep(0)
+        assert flows == [1]  # new connection flow started
+        assert feedback_loop.empty()
+
+    @pytest.mark.asyncio
+    async def test_token_refresh_stop_exception(self, mocker):
+        """Test an error while closing the connection during a token refresh is reported."""
+        feedback_loop = asyncio.Queue()
+        manager = await self._build_refresh_manager(mocker, feedback_loop)
+        async def stop():
+            raise OSError('Transport endpoint is not connected')
+        manager._sse_client.stop = stop
+
+        await manager._token_refresh(Token(True, 'abc', {}, 2000000, 1000000))
+        assert await asyncio.wait_for(feedback_loop.get(), 1) == Status.PUSH_RETRYABLE_ERROR
+
     @pytest.mark.asyncio
     async def test_split_change(self, mocker):
         """Test update-type messages are properly forwarded to the processor."""

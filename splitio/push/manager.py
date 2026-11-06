@@ -447,8 +447,17 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         # otherwise the connection task's cleanup cancels it and the new connection is never
         # started, leaving the SDK without streaming and without polling.
         self._token_task = None
-        await self._stop_current_conn()
-        self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
+        try:
+            await self._stop_current_conn()
+            self._running_task = asyncio.get_running_loop().create_task(
+                self._trigger_connection_flow())
+        except asyncio.CancelledError:  # subclass of Exception in python 3.7
+            raise
+        except Exception:  # pylint:disable=broad-except
+            # If this task ends here, streaming stays stopped and polling is never started.
+            _LOGGER.error('unexpected error refreshing streaming token.')
+            _LOGGER.debug('stack trace: ', exc_info=True)
+            await self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
 
     async def _get_auth_token(self):
         """Get new auth token"""
@@ -593,7 +602,10 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         await self._processor.update_workers_status(False)
         self._status_tracker.notify_sse_shutdown_expected()
         await self._sse_client.stop()
-        self._running_task.cancel()
-        await self._running_task
-        self._running_task = None
+        task, self._running_task = self._running_task, None
+        if task is not None:
+            task.cancel()
+            # Wait for the connection task to end. gather() keeps its cancellation from being
+            # raised here (only a cancellation of this coroutine is)
+            await asyncio.gather(task, return_exceptions=True)
         _LOGGER.debug("SplitSSE tasks are stopped")
