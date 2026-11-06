@@ -12,9 +12,10 @@ from tests.helpers.mockserver import SSEMockServer
 class SSEClientTests(object):
     """SSEClient test cases."""
 
-    def test_sse_client_disconnects(self):
-        """Test correct initialization. Client ends the connection."""
-        server = SSEMockServer()
+    @pytest.mark.parametrize('chunked', [True, False])
+    def test_sse_client_disconnects(self, chunked):
+        """Test correct initialization. Client ends the connection, chunked or close-delimited."""
+        server = SSEMockServer(chunked=chunked)
         server.start()
 
         events = []
@@ -42,6 +43,7 @@ class SSEClientTests(object):
         time.sleep(1)
 
         assert events == [
+            SSEEvent(None, None, None, None),  # connection open
             SSEEvent('1', None, None, None),
             SSEEvent('2', 'message', None, 'abc'),
             SSEEvent('3', 'message', None, 'def'),
@@ -81,6 +83,7 @@ class SSEClientTests(object):
         time.sleep(1)
 
         assert events == [
+            SSEEvent(None, None, None, None),  # connection open
             SSEEvent('1', None, None, None),
             SSEEvent('2', 'message', None, 'abc'),
             SSEEvent('3', 'message', None, 'def'),
@@ -118,6 +121,7 @@ class SSEClientTests(object):
         time.sleep(1)
 
         assert events == [
+            SSEEvent(None, None, None, None),  # connection open
             SSEEvent('1', None, None, None),
             SSEEvent('2', 'message', None, 'abc'),
             SSEEvent('3', 'message', None, 'def'),
@@ -408,6 +412,14 @@ class SSEClientAsyncTests(object):
     """SSEClient test cases."""
 
     @pytest.mark.asyncio
+    async def test_no_hidden_retry(self):
+        """Test aiohttp doesn't re-send the request on a dropped connection: SDK backoff retries it."""
+        client = SSEClientAsync()
+        if hasattr(client._sess, '_retry_connection'):
+            assert client._sess._retry_connection is False
+        await client.close_session()
+
+    @pytest.mark.asyncio
     async def test_sse_client_disconnects(self):
         """Test correct initialization. Client ends the connection."""
         server = SSEMockServer()
@@ -420,6 +432,8 @@ class SSEClientAsyncTests(object):
         server.publish({'id': '3', 'event': 'message', 'data': 'def'})
         server.publish({'id': '4', 'event': 'message', 'data': 'ghi'})
 
+        open_event = await sse_events_loop.__anext__()
+        assert open_event == SSEEvent(None, None, None, None)
         event1 = await sse_events_loop.__anext__()
         event2 = await sse_events_loop.__anext__()
         event3 = await sse_events_loop.__anext__()
@@ -453,6 +467,8 @@ class SSEClientAsyncTests(object):
         server.publish({'id': '3', 'event': 'message', 'data': 'def'})
         server.publish({'id': '4', 'event': 'message', 'data': 'ghi'})
 
+        open_event = await sse_events_loop.__anext__()
+        assert open_event == SSEEvent(None, None, None, None)
         event1 = await sse_events_loop.__anext__()
         event2 = await sse_events_loop.__anext__()
         event3 = await sse_events_loop.__anext__()
@@ -488,6 +504,8 @@ class SSEClientAsyncTests(object):
         server.publish({'id': '3', 'event': 'message', 'data': 'def'})
         server.publish({'id': '4', 'event': 'message', 'data': 'ghi'})
 
+        open_event = await sse_events_loop.__anext__()
+        assert open_event == SSEEvent(None, None, None, None)
         event1 = await sse_events_loop.__anext__()
         event2 = await sse_events_loop.__anext__()
         event3 = await sse_events_loop.__anext__()

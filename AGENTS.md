@@ -7,12 +7,31 @@ Split.io Python SDK — a feature flag evaluation client for the [Split platform
 - GitHub: https://github.com/splitio/python-client
 - Compatible with Python 3.7+
 - Published to PyPI as `splitio_client`
+- **Release candidate versions**: `X.Y.ZrcN` (for example `10.7.0rc1`). This is the PEP 440 form this package publishes. `X.Y.Z-rcN` and `X.Y.Z.rcN` normalize to the same version, but write the version without a separator.
+
+## Prerequisites
+
+- **Python**: 3.7+ is supported (3.7 to latest stable). Develop on 3.12 (see `.python-version`); CI runs 3.7.16 and latest stable.
+- **Redis**: local `redis-server` on `localhost:6379` for the Redis-backed tests.
+- **Kerberos extra**: only needed for Kerberos proxy auth, but installed by the test extras. Builds `gssapi` from source: on Debian/Ubuntu install `libkrb5-dev` + `build-essential` first; macOS needs nothing extra (`brew install krb5` only if the build fails).
+- **Optional**: a virtual environment (`python -m venv .venv` or uv) and pyenv/uv to switch Python versions.
 
 ## Build System
 
 - **Build tool**: setuptools / pip
 - **Install (dev + test deps)**: `pip install -e ".[test]"`
 - **Install with extras**: `pip install -e ".[redis,asyncio,kerberos]"`
+
+### Optional: uv
+
+[uv](https://docs.astral.sh/uv/) is optional; plain `pip`/`pytest` keep working. The repo has no `pyproject.toml`
+or `uv.lock`, so don't add them (that would make uv mandatory).
+
+- **Setup uv (one time)**: `brew install uv`, then in the repo root:
+  `uv venv --seed --python 3.12` (`--seed` adds `pip` to `.venv`) and
+  `uv pip install -e ".[test,redis,asyncio,kerberos]"`
+- **Using uv**: prefix commands with `uv run` to use `.venv` without activating it:
+  `uv run pytest`, `uv run flake8 splitio/`. Re-run the `uv pip install` command when `setup.py` dependencies change.
 
 ## Testing
 
@@ -23,7 +42,7 @@ Split.io Python SDK — a feature flag evaluation client for the [Split platform
 - **Run async tests**: `pytest tests/ -k "async"`
 - **Test file pattern**: `tests/<module>/test_<name>.py`, classes named `*Tests`
 - **Redis tests**: `tests/integration/test_redis_integration.py` and other Redis-backed tests need a local `redis-server` on `localhost:6379`
-- **CI**: Harness pipeline (`.harness/orgs/PROD/projects/Harness_Split/pipelines/pythonclient.yaml`) installs with `pip install -e .`, starts `redis-server`, runs `python setup.py test` on Python 3.7.16, then runs SonarQube using `coverage.xml`
+- **CI**: Harness pipeline (`.harness/orgs/PROD/projects/Harness_Split/pipelines/pythonclient.yaml`) installs with `pip install -e ".[test,redis,asyncio,kerberos]"`, starts `redis-server`, runs `python -m pytest` on Python 3.7.16 and latest stable, and reports coverage (`coverage.xml`)
 
 ## Linting & Formatting
 
@@ -35,15 +54,19 @@ Split.io Python SDK — a feature flag evaluation client for the [Split platform
 ## Git Workflow
 
 - **Default branch**: `main`
-- **Development branch**: `development` (integration branch; target of all PRs)
+- **Development branch**: `development` (integration branch; target of feature and refactor PRs)
 - **Branch naming**: `short-description` or `ticket-short-description`
 - **Commit format**: Free-form, descriptive (e.g., `"fixed typo for segment event type"`, `"added support for rule-based segments"`)
 - **PR title format (required)**: PR title must follow the expected format: `<type>: [PROJECT-123]: <Description>`
   - Example: `feat: [BT-100]: Add new dashboard endpoint`
   - Valid types: `feat`, `fix`, `techdebt`, `hotfixpreqa`, `chore`
-- **PR target branch**: Always open PRs against `development`, never `main`. `main` is the default
-  branch and holds released code; it is only updated by merging `development` during a release.
-  The PR creation UI preselects `main`, so set the target branch explicitly.
+- **Branching model (GitFlow)**:
+  - `main`: stable release history. Every stable release is tagged with its version, but not every commit on `main` necessarily maps to a release (e.g. chores on metadata or CI files have no tag).
+  - `development`: integration branch for new features and ongoing development.
+  - Other branches: features, refactors, hotfixes, and optional `release-x.x.x` (to prepare stable releases).
+  - RC releases can be done from any branch and don't require a tag.
+- **PR target branch**: Open PRs against `development`, including `release-x.x.x` branches; `development` is then merged into `main` for stable releases. Hotfixes may target `main` directly, bypassing `development`.
+  The PR creation UI preselects `main`, so always set the target branch explicitly.
 - **PR description**: No PR template in the repo — describe what you accomplished, how to test it, and any extra notes.
 
 ## DOs

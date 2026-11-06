@@ -101,7 +101,7 @@ class  CacheTraitTests(object):
         assert cache.get('other') == 5  # cached key retains value until it's expired
         assert cache.get('kkk') == 4  # non-cached key calls function anyway and gets new result.
 
-        time.sleep(1)
+        time.sleep(1.2)
         assert cache.get('key') == 4
         assert cache.get('other') == 6
 
@@ -137,5 +137,5 @@ class  CacheTraitTests(object):
         cache = cache_trait.LocalMemoryCacheAsync(None, None, 1, 1)
         await cache.add_key('split', {'split_name': 'split'})
         assert await cache.get_key('split') == {'split_name': 'split'}
-        await asyncio.sleep(1)
+        await asyncio.sleep(1.2)
         assert await cache.get_key('split') == None

@@ -19,11 +19,17 @@ class SSEMockServer(object):
     GRACEFUL_REQUEST_END = 'REQ-END'
     VIOLENT_REQUEST_END = 'REQ-KILL'
 
-    def __init__(self, req_queue=None):
-        """Consruct a mock server."""
+    def __init__(self, req_queue=None, chunked=True):
+        """
+        Consruct a mock server.
+
+        :param chunked: if False, the response body is delimited by the connection close
+            (no Transfer-Encoding nor Content-Length headers), instead of chunked.
+        """
         self._queue = queue.Queue()
         self._server = HTTPServer(('localhost', 0),
-                                  lambda *xs: SSEHandler(self._queue, *xs, req_queue=req_queue))
+                                  lambda *xs: SSEHandler(self._queue, *xs, req_queue=req_queue,
+                                                         chunked=chunked))
         self._server_thread = threading.Thread(target=self._blocking_run, daemon=True)
         self._done_event = threading.Event()
 
@@ -60,14 +66,16 @@ class SSEHandler(BaseHTTPRequestHandler):
         """Construct a handler."""
         self._queue = event_queue
         self._req_queue = kwargs.get('req_queue')
+        self._chunked = kwargs.get('chunked', True)
         BaseHTTPRequestHandler.__init__(self, *args)
 
     def do_GET(self):  #pylint:disable=invalid-name
         """Respond to a GET request."""
         self.send_response(200)
         self.send_header("Content-type", "text/event-stream")
-        self.send_header("Transfer-Encoding", "chunked")
-        self.send_header("Connection", "keep-alive")
+        if self._chunked:
+            self.send_header("Transfer-Encoding", "chunked")
+            self.send_header("Connection", "keep-alive")
         self.end_headers()
 
         if self._req_queue is not None:
@@ -76,7 +84,7 @@ class SSEHandler(BaseHTTPRequestHandler):
 
         def write_chunk(chunk):
             """Write an event/chunk."""
-            tosend = '%X\r\n%s\r\n'%(len(chunk), chunk)
+            tosend = '%X\r\n%s\r\n'%(len(chunk), chunk) if self._chunked else chunk
             self.wfile.write(tosend.encode('utf-8'))
 
         while True:
@@ -94,7 +102,8 @@ class SSEHandler(BaseHTTPRequestHandler):
             if chunk != '':
                 write_chunk(chunk + '\r\n')
 
-        self.wfile.write('0\r\n\r\n'.encode('utf-8'))
+        if self._chunked:
+            self.wfile.write('0\r\n\r\n'.encode('utf-8'))
 
 
 class SplitMockServer(object):

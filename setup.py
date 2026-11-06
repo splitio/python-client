@@ -6,15 +6,21 @@ from setuptools import setup, find_packages
 
 TESTS_REQUIRES = [
     'flake8',
-    'pytest==7.0.1',
-    'pytest-mock==3.11.1',
-    'coverage==7.0.0',
-    'pytest-cov==4.1.0',
+    # Python 3.7/3.8 keep the original pins; newer Pythons need newer test tools (pytest 7 fails on 3.14+)
+    'pytest==7.0.1;python_version<"3.9"',
+    'pytest>=8.4,<9;python_version>="3.9"',
+    'pytest-mock==3.11.1;python_version<"3.9"',
+    'pytest-mock>=3.14;python_version>="3.9"',
+    'coverage==7.0.0;python_version<"3.9"',
+    'coverage>=7.6;python_version>="3.9"',
+    'pytest-cov==4.1.0;python_version<"3.9"',
+    'pytest-cov>=6;python_version>="3.9"',
     'importlib-metadata==6.7',
     'tomli==1.2.3',
     'iniconfig==1.1.1',
     'attrs==22.1.0',
-    'pytest-asyncio==0.21.0',
+    'pytest-asyncio==0.21.0;python_version<"3.9"',
+    'pytest-asyncio==0.21.2;python_version>="3.9"',
     'aiohttp>=3.8.4',
     'aiofiles>=23.1.0',
     'requests-kerberos>=0.15.0',
@@ -41,6 +47,7 @@ setup(
     url='https://github.com/splitio/python-client',
     download_url=('https://github.com/splitio/python-client/tarball/' + __version__),  # pylint: disable=undefined-variable
     license='Apache License 2.0',
+    python_requires='>=3.7',
     install_requires=INSTALL_REQUIRES,
     tests_require=TESTS_REQUIRES,
     extras_require={
@@ -56,8 +63,17 @@ setup(
         'Environment :: Console',
         'Intended Audience :: Developers',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3 :: Only',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
+        'Programming Language :: Python :: 3.14',
+        'Programming Language :: Python :: 3.15',
         'Topic :: Software Development :: Libraries'
     ],
     packages=find_packages(exclude=('tests', 'tests.*'))

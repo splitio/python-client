@@ -47,3 +47,12 @@ class TokenTests(object):
         assert parsed.channels['NzM2MDI5Mzc0_MTgyNTg1MTgwNg==_splits'] == ['subscribe']
         assert parsed.channels['control_pri'] == ['subscribe', 'channel-metadata:publishers']
         assert parsed.channels['control_sec'] == ['subscribe', 'channel-metadata:publishers']
+
+    def test_from_raw_invalid_token(self):
+        """Test a token that cannot be decoded raises, so that the caller retries."""
+        for raw_token in ['not-a-valid-jwt', 'not.a-jwt', 'a.%s.c' % 'eyJleHAiOjF9']:  # last: missing claims
+            try:
+                token.from_raw({'pushEnabled': True, 'token': raw_token})
+                assert False, 'ValueError expected for %s' % raw_token
+            except ValueError:
+                pass

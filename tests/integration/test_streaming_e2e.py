@@ -17,6 +17,39 @@ from urllib.parse import parse_qs
 from splitio.models.telemetry import StreamingEventTypes, SSESyncMode
 
 
+def _wait_until(predicate, timeout=10, interval=0.1):
+    """Poll predicate until it's truthy or timeout (seconds) expires. Returns its last result."""
+    deadline = time.time() + timeout
+    while True:
+        result = predicate()
+        if result or time.time() >= deadline:
+            return result
+        time.sleep(interval)
+
+
+async def _wait_until_async(predicate, timeout=10, interval=0.1):
+    """Async version of _wait_until: yields to the event loop between polls."""
+    deadline = time.time() + timeout
+    while True:
+        result = predicate()
+        if result or time.time() >= deadline:
+            return result
+        await asyncio.sleep(interval)
+
+
+def _switched_to_streaming(factory):
+    """
+    Whether the SDK recorded a SYNC_MODE_UPDATE=STREAMING telemetry event.
+
+    Checks any position, not the last one: the push status handler records SYNC_MODE_UPDATE
+    while the SSE connection records OCCUPANCY_PRI/SEC concurrently, so their order varies.
+    Re-reads the list each call because telemetry replaces it when popping events.
+    """
+    events = factory._telemetry_evaluation_producer._telemetry_storage._streaming_events._streaming_events
+    return any(e._type == StreamingEventTypes.SYNC_MODE_UPDATE.value and e._data == SSESyncMode.STREAMING.value
+               for e in events)
+
+
 class StreamingIntegrationTests(object):
     """Test streaming operation and failover."""
 
@@ -68,6 +101,7 @@ class StreamingIntegrationTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'streaming_api_base_url': 'http://localhost:%d' % sse_server.port(),
@@ -80,9 +114,7 @@ class StreamingIntegrationTests(object):
         assert factory.ready
         assert factory.client().get_treatment('maldo', 'split1') == 'on'
 
-        time.sleep(1)
-        assert(factory._telemetry_evaluation_producer._telemetry_storage._streaming_events._streaming_events[len(factory._telemetry_evaluation_producer._telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.SYNC_MODE_UPDATE.value)
-        assert(factory._telemetry_evaluation_producer._telemetry_storage._streaming_events._streaming_events[len(factory._telemetry_evaluation_producer._telemetry_storage._streaming_events._streaming_events)-1]._data == SSESyncMode.STREAMING.value)
+        assert _wait_until(lambda: _switched_to_streaming(factory))
         split_changes[1] = {
             'ff': {
             's': 1,
@@ -287,6 +319,7 @@ class StreamingIntegrationTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'streaming_api_base_url': 'http://localhost:%d' % sse_server.port(),
@@ -506,6 +539,7 @@ class StreamingIntegrationTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'streaming_api_base_url': 'http://localhost:%d' % sse_server.port(),
@@ -654,6 +688,7 @@ class StreamingIntegrationTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'streaming_api_base_url': 'http://localhost:%d' % sse_server.port(),
@@ -729,7 +764,8 @@ class StreamingIntegrationTests(object):
         time.sleep(2)
         assert factory.client().get_treatment('maldo', 'split1') == 'on'
         assert task.running()
-        assert 'PushStatusHandler' not in [t.name for t in threading.enumerate()]
+        # Check this factory's handler thread exits (not by name: other tests may leave theirs alive)
+        assert _wait_until(lambda: not factory._sync_manager._push_status_handler.is_alive())
 
         # Validate the SSE request
         sse_request = sse_requests.get()
@@ -880,6 +916,7 @@ class StreamingIntegrationTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'streaming_api_base_url': 'http://localhost:%d' % sse_server.port(),
@@ -1058,13 +1095,6 @@ class StreamingIntegrationTests(object):
 
     def test_ably_errors_handling(self):
         """Test incoming ably errors and validate its handling."""
-        import logging
-        logger = logging.getLogger('splitio')
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        logger.setLevel(logging.DEBUG)
         auth_server_response = {
             'pushEnabled': True,
             'token': ('eyJhbGciOiJIUzI1NiIsImtpZCI6IjVZOU05US45QnJtR0EiLCJ0eXAiOiJKV1QifQ.'
@@ -1104,6 +1134,7 @@ class StreamingIntegrationTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'streaming_api_base_url': 'http://localhost:%d' % sse_server.port(),
@@ -1139,16 +1170,18 @@ class StreamingIntegrationTests(object):
 
         sse_server.publish(make_ably_error_event(40145, 401))
         sse_server.publish(sse_server.GRACEFUL_REQUEST_END)
-        time.sleep(3)
+        # Falls back to polling while waiting for the retry (1st backoff: 1 second)
+        time.sleep(0.5)
         assert task.running()
-        assert factory.client().get_treatment('maldo', 'split1') == 'off'
 
-        # Re-publish initial events so that the retry succeeds
+        # The retry reconnects: streaming is up once the SSE connection opens, before any event
         sse_server.publish(make_initial_event())
         sse_server.publish(make_occupancy('control_pri', 2))
         sse_server.publish(make_occupancy('control_sec', 2))
         time.sleep(3)
         assert not task.running()
+        # The change was fetched when falling back to polling or when streaming reconnected
+        assert factory.client().get_treatment('maldo', 'split1') == 'off'
 
         # Assert streaming is working properly
         split_changes[2] = {'ff': {
@@ -1171,7 +1204,8 @@ class StreamingIntegrationTests(object):
 
         # Assert sync-task is running and the streaming status handler thread is over
         assert task.running()
-        assert 'PushStatusHandler' not in [t.name for t in threading.enumerate()]
+        # Check this factory's handler thread exits (not by name: other tests may leave theirs alive)
+        assert _wait_until(lambda: not factory._sync_manager._push_status_handler.is_alive())
 
         # Validate the SSE requests
         sse_request = sse_requests.get()
@@ -1334,6 +1368,7 @@ class StreamingIntegrationTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'streaming_api_base_url': 'http://localhost:%d' % sse_server.port(),
@@ -1416,6 +1451,7 @@ class StreamingIntegrationAsyncTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'streaming_api_base_url': 'http://localhost:%d' % sse_server.port(),
@@ -1428,9 +1464,7 @@ class StreamingIntegrationAsyncTests(object):
         assert factory.ready
         assert await factory.client().get_treatment('maldo', 'split1') == 'on'
 
-        await asyncio.sleep(1)
-        assert(factory._telemetry_evaluation_producer._telemetry_storage._streaming_events._streaming_events[len(factory._telemetry_evaluation_producer._telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.SYNC_MODE_UPDATE.value)
-        assert(factory._telemetry_evaluation_producer._telemetry_storage._streaming_events._streaming_events[len(factory._telemetry_evaluation_producer._telemetry_storage._streaming_events._streaming_events)-1]._data == SSESyncMode.STREAMING.value)
+        assert await _wait_until_async(lambda: _switched_to_streaming(factory))
         split_changes[1] = {'ff': {
             's': 1,
             't': 2,
@@ -1613,6 +1647,7 @@ class StreamingIntegrationAsyncTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'streaming_api_base_url': 'http://localhost:%d' % sse_server.port(),
@@ -1828,6 +1863,7 @@ class StreamingIntegrationAsyncTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'streaming_api_base_url': 'http://localhost:%d' % sse_server.port(),
@@ -1976,6 +2012,7 @@ class StreamingIntegrationAsyncTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'streaming_api_base_url': 'http://localhost:%d' % sse_server.port(),
@@ -2200,6 +2237,7 @@ class StreamingIntegrationAsyncTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'streaming_api_base_url': 'http://localhost:%d' % sse_server.port(),
@@ -2376,13 +2414,6 @@ class StreamingIntegrationAsyncTests(object):
     @pytest.mark.asyncio
     async def test_ably_errors_handling(self):
         """Test incoming ably errors and validate its handling."""
-        import logging
-        logger = logging.getLogger('splitio')
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        logger.setLevel(logging.DEBUG)
         auth_server_response = {
             'pushEnabled': True,
             'token': ('eyJhbGciOiJIUzI1NiIsImtpZCI6IjVZOU05US45QnJtR0EiLCJ0eXAiOiJKV1QifQ.'
@@ -2421,6 +2452,7 @@ class StreamingIntegrationAsyncTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'streaming_api_base_url': 'http://localhost:%d' % sse_server.port(),
@@ -2458,17 +2490,18 @@ class StreamingIntegrationAsyncTests(object):
 
         sse_server.publish(make_ably_error_event(40145, 401))
         sse_server.publish(sse_server.GRACEFUL_REQUEST_END)
-        await asyncio.sleep(3)
-
+        # Falls back to polling while waiting for the retry (1st backoff: 1 second)
+        await asyncio.sleep(0.5)
         assert task.running()
-        assert await factory.client().get_treatment('maldo', 'split1') == 'off'
 
-        # Re-publish initial events so that the retry succeeds
+        # The retry reconnects: streaming is up once the SSE connection opens, before any event
         sse_server.publish(make_initial_event())
         sse_server.publish(make_occupancy('control_pri', 2))
         sse_server.publish(make_occupancy('control_sec', 2))
         await asyncio.sleep(3)
         assert not task.running()
+        # The change was fetched when falling back to polling or when streaming reconnected
+        assert await factory.client().get_treatment('maldo', 'split1') == 'off'
 
         # Assert streaming is working properly
         split_changes[2] = {'ff': {
@@ -2650,6 +2683,7 @@ class StreamingIntegrationAsyncTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % split_backend.port(),
             'streaming_api_base_url': 'http://localhost:%d' % sse_server.port(),

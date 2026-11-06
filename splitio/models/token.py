@@ -73,11 +73,17 @@ def from_raw(raw_token):
 
     token = raw_token['token']
     push_enabled = raw_token['pushEnabled']
-    token_parts = token.strip().split('.')
 
-    if not push_enabled or len(token_parts) < 2:
+    if not push_enabled or not token:  # empty token when streaming is disabled
         return Token(False, None, None, None, None)
 
-    to_decode = token_parts[1]
-    decoded_token = json.loads(base64.b64decode(to_decode + '='*(-len(to_decode) % 4)))
-    return Token(push_enabled, token, json.loads(decoded_token['x-ably-capability']), decoded_token['exp'], decoded_token['iat'])
+    # A token that cannot be decoded is an error (retried by the caller), not streaming disabled
+    try:
+        to_decode = token.strip().split('.')[1]
+        decoded_token = json.loads(base64.b64decode(to_decode + '='*(-len(to_decode) % 4)))
+        channels = json.loads(decoded_token['x-ably-capability'])
+        exp, iat = decoded_token['exp'], decoded_token['iat']
+    except Exception as exc:  # pylint:disable=broad-except
+        raise ValueError('Invalid auth token') from exc
+
+    return Token(push_enabled, token, channels, exp, iat)
