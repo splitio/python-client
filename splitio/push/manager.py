@@ -1,6 +1,6 @@
 """Push subsystem manager class and helpers."""
 import logging
-from threading import Timer
+from threading import Timer, Event
 import abc
 import sys
 
@@ -92,6 +92,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         self._sse_client = SplitSSEClient(self._event_handler, sdk_metadata, self._handle_connection_ready,
                                           self._handle_connection_end, client_key, **kwargs, proxy_url=proxy_url)
         self._running = False
+        self._stop_requested = Event()  # set by stop() to abort an ongoing connection flow
         self._next_refresh = Timer(0, lambda: 0)
         self._telemetry_runtime_producer = telemetry_runtime_producer
 
@@ -111,11 +112,25 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
             _LOGGER.warning('Push manager already has a connection running. Ignoring')
             return
 
+        self._stop_requested.clear()
         self._trigger_connection_flow()
 
     def stop(self, blocking=False):
         """
         Stop the current ongoing connection.
+
+        If called while connecting (e.g. waiting for the auth response), the connection flow is
+        aborted and no streaming connection is opened.
+
+        :param blocking: whether to wait for the connection to be successfully closed or not
+        :type blocking: bool
+        """
+        self._stop_requested.set()
+        self._stop_connection(blocking)
+
+    def _stop_connection(self, blocking):
+        """
+        Close the current connection, if any.
 
         :param blocking: whether to wait for the connection to be successfully closed or not
         :type blocking: bool
@@ -161,8 +176,15 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
     def _token_refresh(self):
         """Refresh auth token."""
         _LOGGER.info("retriggering authentication flow.")
-        self.stop(True)
-        self._trigger_connection_flow()
+        try:
+            self._stop_connection(True)
+            self._trigger_connection_flow()
+        except Exception:  # pylint:disable=broad-except
+            # This runs in the TokenRefresh timer thread. If it dies here, streaming stays
+            # stopped and polling is never started, so the SDK would stop receiving updates.
+            _LOGGER.error('unexpected error refreshing streaming token.')
+            _LOGGER.debug('stack trace: ', exc_info=True)
+            self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
 
     def _trigger_connection_flow(self):
         """Authenticate and start a connection."""
@@ -173,6 +195,16 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
             _LOGGER.debug('stack trace: ', exc_info=True)
             self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
             return
+        except Exception:  # pylint:disable=broad-except
+            # e.g. a non-JSON 200 response or a malformed token.
+            _LOGGER.error('unexpected error performing sse auth request.')
+            _LOGGER.debug('stack trace: ', exc_info=True)
+            self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
+            return
+
+        if self._stop_requested.is_set():
+            _LOGGER.debug('push manager stopped while authenticating. not connecting to streaming.')
+            return
 
         if token is None or not token.push_enabled:
             self._feedback_loop.put(Status.PUSH_NONRETRYABLE_ERROR)
@@ -180,7 +212,20 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         self._telemetry_runtime_producer.record_token_refreshes()
         _LOGGER.debug("auth token fetched. connecting to streaming.")
         self._status_tracker.reset()
-        if self._sse_client.start(token):
+        try:
+            connected = self._sse_client.start(token)
+        except Exception:  # pylint:disable=broad-except
+            _LOGGER.error('unexpected error connecting to streaming.')
+            _LOGGER.debug('stack trace: ', exc_info=True)
+            self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
+            return
+
+        if connected and self._stop_requested.is_set():
+            _LOGGER.debug('push manager stopped while connecting. closing streaming connection.')
+            self._sse_client.stop()
+            return
+
+        if connected:
             _LOGGER.debug("connected to streaming, scheduling next refresh")
             self._setup_next_token_refresh(token)
             self._running = True
@@ -324,8 +369,10 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         kwargs = {} if sse_url is None else {'base_url': sse_url}
         self._sse_client = SplitSSEClientAsync(sdk_metadata, client_key, **kwargs, proxy=proxy)
         self._running = False
+        self._stop_requested = False  # set by stop() to abort an ongoing connection flow
         self._telemetry_runtime_producer = telemetry_runtime_producer
         self._token_task = None
+        self._running_task = None
 
     async def update_workers_status(self, enabled):
         """
@@ -342,6 +389,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             _LOGGER.warning('Push manager already has a connection running. Ignoring')
             return
 
+        self._stop_requested = False
         self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
 
     async def stop(self, blocking=False):
@@ -351,6 +399,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         :param blocking: whether to wait for the connection to be successfully closed or not
         :type blocking: bool
         """
+        self._stop_requested = True
         if not self._running:
             _LOGGER.warning('Push manager does not have an open SSE connection. Ignoring')
             return
@@ -398,8 +447,25 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         """
         _LOGGER.debug("Next token refresh in " + str(self._get_time_period(current_token)) + " seconds")
         await asyncio.sleep(self._get_time_period(current_token))
-        await self._stop_current_conn()
-        self._running_task = asyncio.get_running_loop().create_task(self._trigger_connection_flow())
+        # This task is self._token_task. Detach it before closing the current connection,
+        # otherwise the connection task's cleanup cancels it and the new connection is never
+        # started, leaving the SDK without streaming and without polling.
+        self._token_task = None
+        try:
+            await self._stop_current_conn()
+            if self._stop_requested:
+                # stop() can't cancel this task once detached: don't reconnect after it.
+                _LOGGER.debug('push manager stopped while refreshing token. not reconnecting.')
+                return
+            self._running_task = asyncio.get_running_loop().create_task(
+                self._trigger_connection_flow())
+        except asyncio.CancelledError:  # subclass of Exception in python 3.7
+            raise
+        except Exception:  # pylint:disable=broad-except
+            # If this task ends here, streaming stays stopped and polling is never started.
+            _LOGGER.error('unexpected error refreshing streaming token.')
+            _LOGGER.debug('stack trace: ', exc_info=True)
+            await self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
 
     async def _get_auth_token(self):
         """Get new auth token"""
@@ -426,6 +492,9 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
 
         try:
             token = await self._get_auth_token()
+            if self._stop_requested:
+                _LOGGER.debug('push manager stopped while authenticating. not connecting.')
+                return
             events_source = self._sse_client.start(token)
             self._running = True
 
@@ -445,6 +514,14 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             _LOGGER.error("error getting auth token: " + str(e))
             _LOGGER.debug("trace: ", exc_info=True)
         except StopAsyncIteration: # will enter here if there was an error
+            await self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
+        except asyncio.CancelledError:  # subclass of Exception in python 3.7
+            raise
+        except Exception:  # pylint:disable=broad-except
+            # e.g. a non-JSON 200 auth response, a malformed token or an sse client error.
+            # Without this the task ends silently and polling is never started.
+            _LOGGER.error('unexpected error in streaming connection flow.')
+            _LOGGER.debug('stack trace: ', exc_info=True)
             await self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
         finally:
             if self._token_task is not None:
@@ -536,7 +613,10 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         await self._processor.update_workers_status(False)
         self._status_tracker.notify_sse_shutdown_expected()
         await self._sse_client.stop()
-        self._running_task.cancel()
-        await self._running_task
-        self._running_task = None
+        task, self._running_task = self._running_task, None
+        if task is not None:
+            task.cancel()
+            # Wait for the connection task to end. gather() keeps its cancellation from being
+            # raised here (only a cancellation of this coroutine is)
+            await asyncio.gather(task, return_exceptions=True)
         _LOGGER.debug("SplitSSE tasks are stopped")

@@ -86,6 +86,7 @@ pipeline:
                   type: Run
                   name: Run Tests
                   identifier: Run_Tests
+                  timeout: 15m
                   spec:
                     shell: Bash
                     command: |-

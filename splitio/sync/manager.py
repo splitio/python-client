@@ -1,7 +1,6 @@
 """Synchronization manager module."""
 import logging
-import time
-from threading import Thread
+from threading import Thread, Event
 from queue import Queue
 
 from splitio.optional.loaders import asyncio
@@ -54,6 +53,7 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
         self._telemetry_runtime_producer = telemetry_runtime_producer
         if self._streaming_enabled:
             self._push_status_handler_active = True
+            self._stop_event = Event()  # interrupts the backoff between streaming retries
             self._backoff = Backoff()
             self._queue = Queue()
             self._push = PushManager(auth_api, synchronizer, self._queue, sdk_metadata, telemetry_runtime_producer, sse_url, client_key, proxy_url)
@@ -91,6 +91,7 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
         _LOGGER.info('Stopping manager tasks')
         if self._streaming_enabled:
             self._push_status_handler_active = False
+            self._stop_event.set()
             self._queue.put(self._CENTINEL_EVENT)
             self._push.stop()
         self._synchronizer.shutdown(blocking)
@@ -107,36 +108,64 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
             if status == self._CENTINEL_EVENT:
                 continue
 
-            if status == Status.PUSH_SUBSYSTEM_UP:
-                self._synchronizer.stop_periodic_fetching()
-                self._synchronizer.sync_all()
-                self._push.update_workers_status(True)
-                self._backoff.reset()
-                _LOGGER.info('streaming up and running. disabling periodic fetching.')
-                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.STREAMING.value,  get_current_epoch_time_ms()))
-            elif status == Status.PUSH_SUBSYSTEM_DOWN:
-                self._push.update_workers_status(False)
-                self._synchronizer.sync_all()
-                self._synchronizer.start_periodic_fetching()
-                _LOGGER.info('streaming temporarily down. starting periodic fetching')
-                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time_ms()))
-            elif status == Status.PUSH_RETRYABLE_ERROR:
-                self._push.update_workers_status(False)
-                self._push.stop(True)
-                self._synchronizer.sync_all()
-                self._synchronizer.start_periodic_fetching()
+            try:
+                if status == Status.PUSH_SUBSYSTEM_UP:
+                    self._synchronizer.stop_periodic_fetching()
+                    self._synchronizer.sync_all()
+                    self._push.update_workers_status(True)
+                    self._backoff.reset()
+                    _LOGGER.info('streaming up and running. disabling periodic fetching.')
+                    self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.STREAMING.value,  get_current_epoch_time_ms()))
+                elif status == Status.PUSH_SUBSYSTEM_DOWN:
+                    self._push.update_workers_status(False)
+                    self._synchronizer.sync_all()
+                    self._synchronizer.start_periodic_fetching()
+                    _LOGGER.info('streaming temporarily down. starting periodic fetching')
+                    self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time_ms()))
+                elif status == Status.PUSH_RETRYABLE_ERROR:
+                    self._push.update_workers_status(False)
+                    self._push.stop(True)
+                    self._synchronizer.sync_all()
+                    self._synchronizer.start_periodic_fetching()
+                    how_long = self._backoff.get()
+                    _LOGGER.info('error in streaming. restarting flow in %d seconds', how_long)
+                    if self._stop_event.wait(how_long):
+                        return  # manager stopped while waiting: don't restart streaming
+                    self._push.start()
+                elif status == Status.PUSH_NONRETRYABLE_ERROR:
+                    self._push.update_workers_status(False)
+                    self._push.stop(False)
+                    self._synchronizer.sync_all()
+                    self._synchronizer.start_periodic_fetching()
+                    _LOGGER.info('non-recoverable error in streaming. switching to polling.')
+                    self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time_ms()))
+                    return
+            except Exception:  # pylint:disable=broad-except
+                # Keep this thread alive: if it dies, no further streaming status change is
+                # handled and the SDK can be left without streaming and without polling.
+                _LOGGER.error('unexpected error handling streaming status %s. '
+                              'falling back to periodic fetching.', status)
+                _LOGGER.debug('Exception information: ', exc_info=True)
+                self._fall_back_to_polling()
+                if status == Status.PUSH_NONRETRYABLE_ERROR:
+                    # streaming was being disabled for good: stay in polling mode.
+                    return
+
+                # A local error has no streaming error code, so it is handled as retryable:
+                # restart the streaming flow with backoff.
                 how_long = self._backoff.get()
-                _LOGGER.info('error in streaming. restarting flow in %d seconds', how_long)
-                time.sleep(how_long)
-                self._push.start()
-            elif status == Status.PUSH_NONRETRYABLE_ERROR:
-                self._push.update_workers_status(False)
-                self._push.stop(False)
-                self._synchronizer.sync_all()
-                self._synchronizer.start_periodic_fetching()
-                _LOGGER.info('non-recoverable error in streaming. switching to polling.')
-                self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time_ms()))
-                return
+                _LOGGER.info('retrying streaming in %d seconds', how_long)
+                if self._stop_event.wait(how_long):
+                    return  # manager stopped while waiting: don't restart streaming
+                self._queue.put(Status.PUSH_RETRYABLE_ERROR)
+
+    def _fall_back_to_polling(self):
+        """Start periodic fetching after an unexpected error in the streaming status handler."""
+        try:
+            self._synchronizer.start_periodic_fetching()
+        except Exception:  # pylint:disable=broad-except
+            _LOGGER.error('could not start periodic fetching.')
+            _LOGGER.debug('Exception information: ', exc_info=True)
 
 
 class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
@@ -220,36 +249,68 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
             status = await self._queue.get()
             if status == self._CENTINEL_EVENT:
                 continue
-            if status == Status.PUSH_SUBSYSTEM_UP:
-                await self._synchronizer.stop_periodic_fetching()
-                await self._synchronizer.sync_all()
-                await self._push.update_workers_status(True)
-                self._backoff.reset()
-                _LOGGER.info('streaming up and running. disabling periodic fetching.')
-                await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.STREAMING.value,  get_current_epoch_time_ms()))
-            elif status == Status.PUSH_SUBSYSTEM_DOWN:
-                await self._push.update_workers_status(False)
-                await self._synchronizer.sync_all()
-                self._synchronizer.start_periodic_fetching()
-                _LOGGER.info('streaming temporarily down. starting periodic fetching')
-                await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time_ms()))
-            elif status == Status.PUSH_RETRYABLE_ERROR:
-                await self._push.update_workers_status(False)
-                await self._push.stop(True)
-                await self._synchronizer.sync_all()
-                self._synchronizer.start_periodic_fetching()
+            try:
+                if status == Status.PUSH_SUBSYSTEM_UP:
+                    await self._synchronizer.stop_periodic_fetching()
+                    await self._synchronizer.sync_all()
+                    await self._push.update_workers_status(True)
+                    self._backoff.reset()
+                    _LOGGER.info('streaming up and running. disabling periodic fetching.')
+                    await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.STREAMING.value,  get_current_epoch_time_ms()))
+                elif status == Status.PUSH_SUBSYSTEM_DOWN:
+                    await self._push.update_workers_status(False)
+                    await self._synchronizer.sync_all()
+                    self._synchronizer.start_periodic_fetching()
+                    _LOGGER.info('streaming temporarily down. starting periodic fetching')
+                    await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time_ms()))
+                elif status == Status.PUSH_RETRYABLE_ERROR:
+                    await self._push.update_workers_status(False)
+                    await self._push.stop(True)
+                    await self._synchronizer.sync_all()
+                    self._synchronizer.start_periodic_fetching()
+                    how_long = self._backoff.get()
+                    _LOGGER.info('error in streaming. restarting flow in %d seconds', how_long)
+                    await asyncio.sleep(how_long)
+                    if not self._push_status_handler_active:
+                        return  # manager stopped while waiting: don't restart streaming
+                    self._push.start()
+                elif status == Status.PUSH_NONRETRYABLE_ERROR:
+                    await self._push.update_workers_status(False)
+                    await self._push.stop(False)
+                    await self._synchronizer.sync_all()
+                    self._synchronizer.start_periodic_fetching()
+                    _LOGGER.info('non-recoverable error in streaming. switching to polling.')
+                    await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time_ms()))
+                    return
+            except asyncio.CancelledError:  # subclass of Exception in python 3.7
+                raise
+            except Exception:  # pylint:disable=broad-except
+                # Keep this task alive: if it ends, no further streaming status change is
+                # handled and the SDK can be left without streaming and without polling.
+                _LOGGER.error('unexpected error handling streaming status %s. '
+                              'falling back to periodic fetching.', status)
+                _LOGGER.debug('Exception information: ', exc_info=True)
+                self._fall_back_to_polling()
+                if status == Status.PUSH_NONRETRYABLE_ERROR:
+                    # streaming was being disabled for good: stay in polling mode.
+                    return
+
+                # A local error has no streaming error code, so it is handled as retryable:
+                # restart the streaming flow with backoff.
                 how_long = self._backoff.get()
-                _LOGGER.info('error in streaming. restarting flow in %d seconds', how_long)
+                _LOGGER.info('retrying streaming in %d seconds', how_long)
                 await asyncio.sleep(how_long)
-                self._push.start()
-            elif status == Status.PUSH_NONRETRYABLE_ERROR:
-                await self._push.update_workers_status(False)
-                await self._push.stop(False)
-                await self._synchronizer.sync_all()
-                self._synchronizer.start_periodic_fetching()
-                _LOGGER.info('non-recoverable error in streaming. switching to polling.')
-                await self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time_ms()))
-                return
+                if not self._push_status_handler_active:
+                    return  # manager stopped while waiting: don't restart streaming
+                await self._queue.put(Status.PUSH_RETRYABLE_ERROR)
+
+    def _fall_back_to_polling(self):
+        """Start periodic fetching after an unexpected error in the streaming status handler."""
+        try:
+            self._synchronizer.start_periodic_fetching()
+        except Exception:  # pylint:disable=broad-except
+            _LOGGER.error('could not start periodic fetching.')
+            _LOGGER.debug('Exception information: ', exc_info=True)
 
 
 class RedisManagerBase(object):  # pylint:disable=too-many-instance-attributes

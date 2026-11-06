@@ -104,8 +104,12 @@ class SSESplitClientTests(object):
         token = Token(True, 'some', {'chan1': ['subscribe'], 'chan2': ['subscribe', 'channel-metadata:publishers']},
                       1, 2)
 
-        server.publish({'event': 'error'})  # send an error event early to unblock start
-        assert not client.start(token)
+        # Connection is open before any event is read; the error event is then passed to the handler
+        assert client.start(token)
+        server.publish({'event': 'error', 'data': 'a'})
+        time.sleep(1)
+        assert events == [SSEEvent(None, 'error', None, 'a')]
+        client.stop(True)
 
         request = request_queue.get(1)
         assert request.path == '/event-stream?v=1.1&accessToken=some&channels=chan1,[?occupancy=metrics.publishers]chan2'
@@ -191,9 +195,15 @@ class SSESplitClientAsyncTests(object):
                       1, 2)
 
         events_source = client.start(token)
-        server.publish({'event': 'error'})  # send an error event early to unblock start
+        server.publish({'event': 'error', 'data': 'a'})
 
+        # Connection is open before any event is read; the error event is then yielded to be handled
+        first_event = await events_source.__anext__()
+        assert first_event == SSEEvent(None, None, None, None)
+        error_event = await events_source.__anext__()
+        assert error_event.event == SSE_EVENT_ERROR
 
+        server.publish(SSEMockServer.VIOLENT_REQUEST_END)
         with pytest.raises(StopAsyncIteration): await events_source.__anext__()
 
         assert client.status == SplitSSEClient._Status.IDLE
@@ -206,5 +216,4 @@ class SSESplitClientAsyncTests(object):
         assert request.headers['SplitSDKMachineName'] == 'some'
         assert request.headers['SplitSDKClientKey'] == 'abcd'
 
-        server.publish(SSEMockServer.VIOLENT_REQUEST_END)
         server.stop()
