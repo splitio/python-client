@@ -1,0 +1,14 @@
+inputSet:
+  name: Baseline
+  identifier: Baseline
+  orgIdentifier: PROD
+  projectIdentifier: Harness_Split
+  pipeline:
+    identifier: pythonclient_hc
+    properties:
+      ci:
+        codebase:
+          build:
+            type: branch
+            spec:
+              branch: <+trigger.branch>
