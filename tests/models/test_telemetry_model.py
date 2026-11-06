@@ -14,28 +14,21 @@ class TelemetryModelTests(object):
     """Telemetry model test cases."""
 
     def test_latency_bucket_index(self):
-        for i in range(50000):
-            latency = random.randint(10, 9987885)
-            old_bucket = 0
-            result_bucket = 0
-            counter = -1
-            for j in ModelTelemetry.BUCKETS:
-                counter += 1
-                if old_bucket == 0:
-                    if latency < j:
-                        old_bucket = 0
-                        break
-                    old_bucket = j
-                    continue
-                if counter == ModelTelemetry.MAX_LATENCY_BUCKET_COUNT - 1:
-                    result_bucket = 22
-                    break
-                if latency > old_bucket and latency <= j:
-                    result_bucket = counter
-                    break
-                old_bucket = j
-            print(latency, old_bucket, j)
-            assert(result_bucket == ModelTelemetry.get_latency_bucket_index(latency))
+        """Bucket i holds latencies in (BUCKETS[i-1], BUCKETS[i]]; bucket 0 starts at 0; above MAX_LATENCY is the last bucket."""
+        get_index = ModelTelemetry.get_latency_bucket_index
+        buckets = ModelTelemetry.BUCKETS
+        last = ModelTelemetry.MAX_LATENCY_BUCKET_COUNT - 1
+
+        assert get_index(0) == 0
+        assert get_index(1) == 0
+        for i, upper in enumerate(buckets):
+            lower = buckets[i - 1] if i > 0 else 0
+            assert get_index(lower + 1) == i      # first value of the bucket
+            assert get_index((lower + upper) // 2) == i
+            assert get_index(upper) == i          # upper bound is inclusive
+            assert get_index(upper + 1) == min(i + 1, last)
+        assert get_index(ModelTelemetry.MAX_LATENCY) == last
+        assert get_index(ModelTelemetry.MAX_LATENCY * 10) == last
 
     def test_storage_type_and_operation_mode(self, mocker):
         assert(StorageType.MEMORY.value == 'memory')

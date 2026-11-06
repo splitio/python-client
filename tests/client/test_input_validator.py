@@ -60,6 +60,7 @@ class ClientInputValidationTests(object):
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
+        factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
 
         client = Client(factory, mocker.Mock(), mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         _logger = mocker.Mock()
@@ -303,6 +304,7 @@ class ClientInputValidationTests(object):
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
+        factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
 
         client = Client(factory, mocker.Mock(), mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         _logger = mocker.Mock()
@@ -1012,6 +1014,7 @@ class ClientInputValidationTests(object):
             telemetry_producer.get_telemetry_init_producer(),
             mocker.Mock()
         )
+        factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
         split_mock.name = 'some_feature'
 
         def _configs(treatment):
@@ -2732,6 +2735,7 @@ class ClientInputValidationAsyncTests(object):
             mocker.Mock(),
             None
         )
+        mocker.patch.object(SplitFactoryAsync, 'ready', new_callable=mocker.PropertyMock, return_value=True)
         split_mock.name = 'some_feature'
 
         def _configs(treatment):
@@ -3631,6 +3635,7 @@ class ManagerInputValidationAsyncTests(object):  #pylint: disable=too-few-public
             mocker.Mock()
         )
 
+        mocker.patch.object(SplitFactoryAsync, 'ready', new_callable=mocker.PropertyMock, return_value=True)
         manager = SplitManagerAsync(factory)
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
@@ -3750,59 +3755,59 @@ class PluggableInputValidationTests(object):  #pylint: disable=too-few-public-me
 
     class mock_adapter0():
         def set(self, key, value):
-            print(key)
+            pass
 
     class mock_adapter1(object):
         def set(self, key, value):
-            print(key)
+            pass
 
     class mock_adapter2(mock_adapter1):
         def get(self, key):
-            print(key)
+            pass
 
         def get_items(self, key):
-            print(key)
+            pass
 
         def get_many(self, keys):
-            print(keys)
+            pass
 
         def push_items(self, key, *value):
-            print(key)
+            pass
 
         def delete(self, key):
-            print(key)
+            pass
 
         def increment(self, key, value):
-            print(key)
+            pass
 
         def decrement(self, key, value):
-            print(key)
+            pass
 
         def get_keys_by_prefix(self, prefix):
-            print(prefix)
+            pass
 
         def get_many(self, keys):
-            print(keys)
+            pass
 
         def add_items(self, key, added_items):
-            print(key)
+            pass
 
         def remove_items(self, key, removed_items):
-            print(key)
+            pass
 
         def item_contains(self, key, item):
-            print(key)
+            pass
 
         def get_items_count(self, key):
-            print(key)
+            pass
 
     class mock_adapter3(mock_adapter2):
         def expire(self, key):
-            print(key)
+            pass
 
     class mock_adapter4(mock_adapter2):
         def expire(self, key, value, till):
-            print(key)
+            pass
 
     def test_validate_pluggable_adapter(self):
         # missing storageWrapper config parameter

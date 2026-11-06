@@ -29,6 +29,12 @@ from splitio.api import APIException
 from splitio.client.util import SdkMetadata
 
 
+@pytest.fixture(autouse=True)
+def _no_backoff_wait(mocker):
+    """Retry loops back off 1, 2, 4... seconds; don't actually wait in tests."""
+    mocker.patch('splitio.util.backoff.Backoff.get', return_value=0)
+
+
 class SyncManagerTests(object):
     """Synchronizer Manager tests."""
 

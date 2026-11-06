@@ -265,7 +265,6 @@ class PushManagerAsyncTests(object):
 
         self.token = None
         def timer_mock(token):
-            print("timer_mock")
             self.token = token
             return (token.exp - token.iat) - _TOKEN_REFRESH_GRACE_PERIOD
 

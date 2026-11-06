@@ -56,9 +56,9 @@ class SplitAPITests(object):
             raise client.HttpClientException('some_message')
         httpclient.get.side_effect = raise_exception
         with pytest.raises(APIException) as exc_info:
-            response = split_api.fetch_splits(123, 12, FetchOptions())
-            assert exc_info.type == APIException
-            assert exc_info.value.message == 'some_message'
+            split_api.fetch_splits(123, 12, FetchOptions())
+        assert str(exc_info.value) == 'Feature flags not fetched correctly.'
+        assert str(exc_info.value.__cause__) == 'some_message'  # original HTTP error is chained
 
     def test_old_spec(self, mocker):
         """Test old split changes fetching API call."""
@@ -77,11 +77,11 @@ class SplitAPITests(object):
         split_api = splits.SplitsAPI(httpclient, 'some_api_key', SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
 
         httpclient.is_sdk_endpoint_overridden.return_value = False
-        try: 
-            response = split_api.fetch_splits(123, -1, FetchOptions(False, None, None, None))
-        except Exception as e:
-            print(e)
-            
+        # new spec fails with 400 and the endpoint isn't overridden: raise, don't retry with the old spec
+        with pytest.raises(APIException) as exc_info:
+            split_api.fetch_splits(123, -1, FetchOptions(False, None, None, None))
+        assert exc_info.value.status_code == 400
+
         # no attempt to fetch old spec
         assert self.query == [{'s': '1.3', 'since': 123, 'rbSince': -1}]
         
@@ -225,9 +225,9 @@ class SplitAPIAsyncTests(object):
             raise client.HttpClientException('some_message')
         httpclient.get = raise_exception
         with pytest.raises(APIException) as exc_info:
-            response = await split_api.fetch_splits(123, 12, FetchOptions())
-            assert exc_info.type == APIException
-            assert exc_info.value.message == 'some_message'
+            await split_api.fetch_splits(123, 12, FetchOptions())
+        assert str(exc_info.value) == 'Feature flags not fetched correctly.'
+        assert str(exc_info.value.__cause__) == 'some_message'  # original HTTP error is chained
 
     @pytest.mark.asyncio
     async def test_old_spec(self, mocker):
@@ -248,11 +248,11 @@ class SplitAPIAsyncTests(object):
         split_api = splits.SplitsAPIAsync(httpclient, 'some_api_key', SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
 
         httpclient.is_sdk_endpoint_overridden.return_value = False
-        try: 
-            response = await split_api.fetch_splits(123, -1, FetchOptions(False, None, None, None))
-        except Exception as e:
-            print(e)
-            
+        # new spec fails with 400 and the endpoint isn't overridden: raise, don't retry with the old spec
+        with pytest.raises(APIException) as exc_info:
+            await split_api.fetch_splits(123, -1, FetchOptions(False, None, None, None))
+        assert exc_info.value.status_code == 400
+
         # no attempt to fetch old spec
         assert self.query == [{'s': '1.3', 'since': 123, 'rbSince': -1}]
         

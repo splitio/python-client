@@ -1,3 +1,8 @@
+10.7.1 (Nov 6, 2026)
+- Fixed async factory readiness being delayed by the telemetry config post: SplitFactoryAsync now becomes ready before posting telemetry, as the sync factory does.
+- Updated package metadata: declared python_requires>=3.7, updated the trove classifiers (3.7 to latest stable, Python 2 removed) and removed the universal wheel setting (wheels are now tagged py3).
+- Updated CI, tests and test dependencies to improve reliability and to validate the SDK on Python 3.7 and latest stable.
+
 10.7.0 (Oct 5, 2026)
 - Added ability to use proxy url for all http connections.
 

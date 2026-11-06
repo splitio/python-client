@@ -84,9 +84,8 @@ class ImpressionsAPITests(object):
             raise client.HttpClientException('some_message')
         httpclient.post.side_effect = raise_exception
         with pytest.raises(APIException) as exc_info:
-            response = impressions_api.flush_impressions(impressions_mock)
-            assert exc_info.type == APIException
-            assert exc_info.value.message == 'some_message'
+            impressions_api.flush_impressions(impressions_mock)
+        assert str(exc_info.value.__cause__) == 'some_message'  # original HTTP error is chained
 
     def test_post_impressions_ip_address_disabled(self, mocker):
         """Test impressions posting API call."""
@@ -143,9 +142,8 @@ class ImpressionsAPITests(object):
             raise client.HttpClientException('some_message')
         httpclient.post.side_effect = raise_exception
         with pytest.raises(APIException) as exc_info:
-            response = impressions_api.flush_counters(counters)
-            assert exc_info.type == APIException
-            assert exc_info.value.message == 'some_message'
+            impressions_api.flush_counters(counters)
+        assert str(exc_info.value.__cause__) == 'some_message'  # original HTTP error is chained
 
 
 class ImpressionsAPIAsyncTests(object):
@@ -200,9 +198,8 @@ class ImpressionsAPIAsyncTests(object):
             raise client.HttpClientException('some_message')
         httpclient.post = raise_exception
         with pytest.raises(APIException) as exc_info:
-            response = await impressions_api.flush_impressions(impressions_mock)
-            assert exc_info.type == APIException
-            assert exc_info.value.message == 'some_message'
+            await impressions_api.flush_impressions(impressions_mock)
+        assert str(exc_info.value.__cause__) == 'some_message'  # original HTTP error is chained
 
     @pytest.mark.asyncio
     async def test_post_impressions_ip_address_disabled(self, mocker):
@@ -289,6 +286,5 @@ class ImpressionsAPIAsyncTests(object):
             raise client.HttpClientException('some_message')
         httpclient.post = raise_exception
         with pytest.raises(APIException) as exc_info:
-            response = await impressions_api.flush_counters(counters)
-            assert exc_info.type == APIException
-            assert exc_info.value.message == 'some_message'
+            await impressions_api.flush_counters(counters)
+        assert str(exc_info.value.__cause__) == 'some_message'  # original HTTP error is chained

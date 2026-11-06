@@ -9,6 +9,7 @@ import pytest
 import queue
 
 from splitio.optional.loaders import asyncio
+from splitio.api.client import HttpResponse
 from splitio.client.factory import get_factory, get_factory_async, SplitFactory, _INSTANTIATED_FACTORIES, Status,\
     _LOGGER as _logger, SplitFactoryAsync
 from splitio.client.config import DEFAULT_CONFIG
@@ -43,6 +44,23 @@ from tests.integration import splits_json
 
 class SplitFactoryTests(object):
     """Split factory test cases."""
+
+    @pytest.fixture(autouse=True)
+    def _offline(self, mocker):
+        """Factories built here start real sync threads: answer their HTTP calls locally, never reach split.io."""
+        def get(server, path, sdk_key, query=None, extra_headers=None):
+            if server == 'auth':
+                return HttpResponse(200, '{"pushEnabled": false}', {})
+            return HttpResponse(200, '{"ff": {"d": [], "s": -1, "t": -1}, "rbs": {"d": [], "s": -1, "t": -1}}', {})
+
+        mocker.patch('splitio.api.client.HttpClient.get', side_effect=get)
+        mocker.patch('splitio.api.client.HttpClient.post', return_value=HttpResponse(200, '', {}))
+        before = set(threading.enumerate())
+        yield
+        # let the factory's status threads finish while the patches are still active
+        for thread in set(threading.enumerate()) - before:
+            if thread.name in ('SDKInitializer', 'SDKReadyFlagUpdater'):
+                thread.join(2)
 
     def test_flag_sets_counts(self):      
         factory = get_factory("none", config={
@@ -772,10 +790,12 @@ class SplitFactoryTests(object):
         assert event.metadata == None
         factory.destroy()
         
-    def test_uwsgi_forked_client_creation(self):
+    def test_uwsgi_forked_client_creation(self, mocker):
         """Test client with preforked initialization."""
-        # Invalid API Key with preforked should exit after 3 attempts.
+        # No real network: the initial sync is stubbed (it would retry against sdk.split.io with backoff).
+        sync_all = mocker.patch('splitio.sync.synchronizer.Synchronizer.sync_all')
         factory = get_factory('some_api_key', config={'preforkedInitialization': True})
+        sync_all.assert_called_once()
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -1111,4 +1131,40 @@ class SplitFactoryAsyncTests(object):
         event = await factory._internal_events_queue.get()
         assert event.internal_event == SdkInternalEvent.SDK_READY
         assert event.metadata == None
+        await factory.destroy()
+
+    @pytest.mark.asyncio
+    async def test_ready_not_blocked_by_telemetry_config_async(self, mocker):
+        """Test that a slow telemetry config post does not delay SDK readiness."""
+        def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_host=None, proxy_port=None, proxy=None):
+            synchronizer = mocker.Mock(spec=SynchronizerAsync)
+            async def sync_all(*_):
+                return None
+            synchronizer.sync_all = sync_all
+
+            def start_periodic_fetching():
+                pass
+            synchronizer.start_periodic_fetching = start_periodic_fetching
+
+            def start_periodic_data_recording():
+                pass
+            synchronizer.start_periodic_data_recording = start_periodic_data_recording
+
+            self._ready_flag = ready_flag
+            self._synchronizer = synchronizer
+            self._streaming_enabled = False
+            self._telemetry_runtime_producer = telemetry_runtime_producer
+
+        mocker.patch('splitio.sync.manager.ManagerAsync.__init__', new=_split_synchronizer)
+
+        config_posted = asyncio.Event()
+        async def synchronize_config(*_):
+            await asyncio.sleep(5)
+            config_posted.set()
+        mocker.patch('splitio.sync.telemetry.InMemoryTelemetrySubmitterAsync.synchronize_config', new=synchronize_config)
+
+        factory = await get_factory_async('some_api_key', config={'streamingEnabled': False})
+        await factory.block_until_ready(1)  # would raise TimeoutException if ready waited for telemetry
+        assert factory.ready
+        assert not config_posted.is_set()
         await factory.destroy()

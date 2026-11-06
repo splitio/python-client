@@ -860,6 +860,7 @@ class InMemoryOldSpecIntegrationTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
             'config': {'connectTimeout': 10000, 
@@ -1021,6 +1022,7 @@ class InMemoryProxyIntegrationTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
             'config': {'connectTimeout': 10000, 
@@ -2653,6 +2655,10 @@ class InMemoryEventsNotificationTests(object):
         client = factory.client()
         client.on(SdkEvent.SDK_READY, self._ready_callback)
         factory.block_until_ready(5)
+        for _ in range(50):  # the callback is delivered by the events task, not by block_until_ready
+            if self.ready_flag:
+                break
+            time.sleep(0.1)
         assert self.ready_flag
 
         """Shut down the factory."""
@@ -2810,6 +2816,10 @@ class InMemoryEventsNotificationAsyncTests(object):
         client = factory.client()
         await client.on(SdkEvent.SDK_READY, self._ready_callback)
         await factory.block_until_ready(5)
+        for _ in range(50):  # the callback is delivered by the events task, not by block_until_ready
+            if self.ready_flag:
+                break
+            await asyncio.sleep(0.1)
         assert self.ready_flag
 
         """Shut down the factory."""
@@ -3266,6 +3276,7 @@ class InMemoryOldSpecIntegrationAsyncTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
             'config': {'connectTimeout': 10000, 
@@ -3462,6 +3473,7 @@ class InMemoryProxyIntegrationAsyncTests(object):
 
         kwargs = {
             'sdk_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
+            'telemetry_api_base_url': 'http://localhost:1/api',  # unused port: never hit the real endpoint
             'events_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
             'auth_api_base_url': 'http://localhost:%d/api' % self.split_backend.port(),
             'config': {'connectTimeout': 10000, 

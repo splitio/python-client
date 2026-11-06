@@ -113,7 +113,6 @@ class StandardRecorderTests(object):
 
         for _ in range(100):
             recorder.record_treatment_stats(impressions, 1, 'some', 'get_treatment')
-        print(recorder._impression_storage.put.call_count)
         assert recorder._impression_storage.put.call_count < 80
         assert recorder._imp_counter.track.mock_calls == []
         assert recorder._unique_keys_tracker.track.mock_calls == []
@@ -269,7 +268,6 @@ class StandardRecorderAsyncTests(object):
 
         for _ in range(100):
             await recorder.record_treatment_stats(impressions, 1, 'some', 'get_treatment')
-        print(recorder._impression_storage.put.call_count)
         assert recorder._impression_storage.put.call_count < 80
         assert self.count == []
         assert self.unique_keys == []

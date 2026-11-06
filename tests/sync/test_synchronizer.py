@@ -51,6 +51,12 @@ splits = [{
     }]
 }]
 
+@pytest.fixture(autouse=True)
+def _no_backoff_wait(mocker):
+    """Retry loops back off 1, 2, 4... seconds; don't actually wait in tests."""
+    mocker.patch('splitio.util.backoff.Backoff.get', return_value=0)
+
+
 class SynchronizerTests(object):
     def test_sync_all_failed_splits(self, mocker):
         api = mocker.Mock()

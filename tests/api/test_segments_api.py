@@ -55,9 +55,8 @@ class SegmentAPITests(object):
             raise client.HttpClientException('some_message')
         httpclient.get.side_effect = raise_exception
         with pytest.raises(APIException) as exc_info:
-            response = segment_api.fetch_segment('some_segment', 123, FetchOptions())
-            assert exc_info.type == APIException
-            assert exc_info.value.message == 'some_message'
+            segment_api.fetch_segment('some_segment', 123, FetchOptions())
+        assert str(exc_info.value.__cause__) == 'some_message'  # original HTTP error is chained
 
 
 class SegmentAPIAsyncTests(object):
@@ -128,6 +127,5 @@ class SegmentAPIAsyncTests(object):
             raise client.HttpClientException('some_message')
         httpclient.get = raise_exception
         with pytest.raises(APIException) as exc_info:
-            response = await segment_api.fetch_segment('some_segment', 123, FetchOptions(None, None, None, None, None))
-            assert exc_info.type == APIException
-            assert exc_info.value.message == 'some_message'
+            await segment_api.fetch_segment('some_segment', 123, FetchOptions(None, None, None, None, None))
+        assert str(exc_info.value.__cause__) == 'some_message'  # original HTTP error is chained
