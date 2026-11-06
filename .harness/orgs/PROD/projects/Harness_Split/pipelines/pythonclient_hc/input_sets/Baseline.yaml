@@ -8,6 +8,7 @@ inputSet:
     properties:
       ci:
         codebase:
+          repoName: python-client
           build:
             type: branch
             spec:

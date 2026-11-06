@@ -54,7 +54,6 @@ pipeline:
                       apt-get update -qq
                       apt-get install -y redis-server -qq
                       redis-server --daemonize yes --port 6379
-                      redis-cli ping
               - step:
                   type: Run
                   name: Wait for Redis
@@ -63,10 +62,11 @@ pipeline:
                     shell: Sh
                     command: |-
                       for i in $(seq 1 15); do
-                        redis-cli ping && break
+                        redis-cli ping && exit 0
                         echo "Waiting for Redis... attempt $i"
                         sleep 1
                       done
+                      echo "Redis did not start"; exit 1
               - step:
                   type: Run
                   name: Install Dependencies

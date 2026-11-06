@@ -74,7 +74,7 @@ class RedisSplitStorageTests(object):
         # Still cached
         result = storage.get('some_split')
         assert result is not None
-        time.sleep(1)  # wait for expiration
+        time.sleep(1.2)  # wait for expiration
         result = storage.get('some_split')
         assert result is None
         assert adapter.get.mock_calls == [mocker.call('SPLITIO.split.some_split')]
@@ -171,11 +171,11 @@ class RedisSplitStorageTests(object):
 
         adapter.get.return_value = '0'
         assert storage.is_valid_traffic_type('any') is True
-        time.sleep(1)
+        time.sleep(1.2)
         assert storage.is_valid_traffic_type('any') is False
 
         adapter.get.return_value = None
-        time.sleep(1)
+        time.sleep(1.2)
         assert storage.is_valid_traffic_type('any') is False
 
     @mock.patch('splitio.storage.adapters.redis.RedisPipelineAdapter.execute', return_value = [{'split1', 'split2'}])
@@ -275,7 +275,7 @@ class RedisSplitStorageAsyncTests(object):
         result = await storage.get('some_split')
         assert result is not None
         assert self.name == None
-        await asyncio.sleep(1)  # wait for expiration
+        await asyncio.sleep(1.2)  # wait for expiration
         result = await storage.get('some_split')
         assert self.name == 'SPLITIO.split.some_split'
         assert result is None
@@ -317,7 +317,7 @@ class RedisSplitStorageAsyncTests(object):
         assert self.name == None
 
         # wait for expire
-        await asyncio.sleep(1)
+        await asyncio.sleep(1.2)
         self.name = None
         result = await storage.fetch_many(['split1', 'split2', 'split3'])
         assert self.name == ['SPLITIO.split.split1', 'SPLITIO.split.split2', 'SPLITIO.split.split3']
@@ -438,13 +438,13 @@ class RedisSplitStorageAsyncTests(object):
             return '0'
         mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.get', new=get2)
         assert await storage.is_valid_traffic_type('any') is True
-        await asyncio.sleep(1)
+        await asyncio.sleep(1.2)
         assert await storage.is_valid_traffic_type('any') is False
 
         async def get3(sel, name):
             return None
         mocker.patch('splitio.storage.adapters.redis.RedisAdapterAsync.get', new=get3)
-        await asyncio.sleep(1)
+        await asyncio.sleep(1.2)
         assert await storage.is_valid_traffic_type('any') is False
 
 

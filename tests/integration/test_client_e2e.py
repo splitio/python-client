@@ -2655,6 +2655,10 @@ class InMemoryEventsNotificationTests(object):
         client = factory.client()
         client.on(SdkEvent.SDK_READY, self._ready_callback)
         factory.block_until_ready(5)
+        for _ in range(50):  # the callback is delivered by the events task, not by block_until_ready
+            if self.ready_flag:
+                break
+            time.sleep(0.1)
         assert self.ready_flag
 
         """Shut down the factory."""
@@ -2812,6 +2816,10 @@ class InMemoryEventsNotificationAsyncTests(object):
         client = factory.client()
         await client.on(SdkEvent.SDK_READY, self._ready_callback)
         await factory.block_until_ready(5)
+        for _ in range(50):  # the callback is delivered by the events task, not by block_until_ready
+            if self.ready_flag:
+                break
+            await asyncio.sleep(0.1)
         assert self.ready_flag
 
         """Shut down the factory."""
