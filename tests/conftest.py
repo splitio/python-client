@@ -3,8 +3,6 @@ import faulthandler
 import socket
 import sys
 import threading
-import time
-import traceback
 import weakref
 
 import pytest
@@ -84,59 +82,21 @@ def _restore_factory_ready_property():
 
 def pytest_sessionfinish(session, exitstatus):
     """
-    Fail fast if the process doesn't exit after the tests end.
+    Safety net against a process that never exits after the tests end.
 
-    A leaked non-daemon thread would keep the interpreter alive forever (and the CI step until its
-    timeout). If still alive after 120s, dump every thread's stack to stderr and exit with code 1.
-    The timer is cancelled when the interpreter exits normally.
+    A leaked non-daemon thread keeps the interpreter alive forever (and the CI step until its
+    timeout). Name those threads, and if the process is still alive after 120s dump every stack to
+    stderr and exit with code 1. The timer is cancelled when the interpreter exits normally.
     """
-    _report_leaked_threads()
     # Timers (e.g. the push manager's TokenRefresh) are non-daemon: a leaked one blocks exit until it fires.
     for thread in threading.enumerate():
         if isinstance(thread, threading.Timer):
             thread.cancel()
-    threading.Thread(target=_report_blocking_threads, args=(60,), daemon=True, name='exit-watchdog').start()
-    faulthandler.dump_traceback_later(120, exit=True)
-
-
-def _report_blocking_threads(delay):
-    """
-    If the interpreter is still alive `delay` seconds after the session, say what blocks it.
-
-    faulthandler only prints the first 100 threads (all idle daemon workers here), so print the
-    main thread and every non-worker thread explicitly, with their stacks.
-    """
-    time.sleep(delay)
-    frames = sys._current_frames()
-    me = threading.current_thread()
-    main = threading.main_thread()
-    others = [t for t in threading.enumerate()
-              if t is not me and t is not main and not t.name.startswith('pool_worker_')]
-    lines = ['\nPROCESS DID NOT EXIT %ds after the session.' % delay]
-    lines.append('main thread alive: %s' % main.is_alive())
-    for thread in [main] + others[:40]:
-        lines.append('  %s (%s, daemon=%s)' % (thread.name, type(thread).__name__, thread.daemon))
-        if thread.ident in frames:
-            lines.extend('    ' + l for l in ''.join(traceback.format_stack(frames[thread.ident])).splitlines())
-    lines.append('non-daemon threads: %s' % [t.name for t in threading.enumerate() if not t.daemon])
-    sys.stderr.write('\n'.join(lines) + '\n')
-    sys.stderr.flush()
-
-
-def _report_leaked_threads():
-    """Print the SDK threads still running after the last test, grouped by the test that started them."""
-    leaked = {}
-    for thread in threading.enumerate():
-        if thread is threading.main_thread() or thread.name.startswith('pool_worker_'):
-            continue
-        if thread.name == 'exit-watchdog':
-            continue
-        leaked.setdefault(getattr(thread, '_created_by_test', None), []).append(thread.name)
-    if leaked:
-        sys.stderr.write('\nTHREADS STILL ALIVE AFTER THE SESSION (factory/client not destroyed?):\n')
-        for test, names in sorted(leaked.items(), key=lambda kv: str(kv[0])):
-            sys.stderr.write('  %s\n    %s\n' % (test, ', '.join(sorted(set(names)))))
+    blocking = [t.name for t in threading.enumerate() if not t.daemon and t is not threading.main_thread()]
+    if blocking:
+        sys.stderr.write('\nNon-daemon threads still alive, they may block the process exit: %s\n' % blocking)
         sys.stderr.flush()
+    faulthandler.dump_traceback_later(120, exit=True)
 
 
 def _destroy_leaked_factories():
