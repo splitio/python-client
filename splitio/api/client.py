@@ -272,6 +272,10 @@ class HttpClientAsync(HttpClientBase):
         """
         HttpClientBase.__init__(self, timeout, sdk_url, events_url, auth_url, telemetry_url, proxies)
         self._session = aiohttp.ClientSession()
+        # aiohttp silently re-sends an idempotent request once if the server drops a persistent
+        # connection: disable it so that failures are retried with the SDK backoff
+        if hasattr(self._session, '_retry_connection'):
+            self._session._retry_connection = False  # pylint: disable=protected-access
         self._proxy = None
         if len(self._proxies) > 0:
             http_key = next(iter(self._proxies))

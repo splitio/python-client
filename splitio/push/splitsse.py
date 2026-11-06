@@ -223,9 +223,6 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
             self._event_source_ended.clear()
             self._event_source = self._client.start(url, extra_headers=self._metadata, proxy_url=self._proxy)
             first_event = await anext(self._event_source)
-            if first_event.event == SSE_EVENT_ERROR:
-                return
-
             yield first_event
             self.status = SplitSSEClient._Status.CONNECTED
             _LOGGER.debug("Split SSE client started")

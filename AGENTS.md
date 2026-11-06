@@ -7,6 +7,7 @@ Split.io Python SDK — a feature flag evaluation client for the [Split platform
 - GitHub: https://github.com/splitio/python-client
 - Compatible with Python 3.7+
 - Published to PyPI as `splitio_client`
+- **Release candidate versions**: `X.Y.ZrcN` (for example `10.7.0rc1`). This is the PEP 440 form this package publishes. `X.Y.Z-rcN` and `X.Y.Z.rcN` normalize to the same version, but write the version without a separator.
 
 ## Prerequisites
 

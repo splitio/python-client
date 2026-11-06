@@ -581,6 +581,14 @@ class HttpClientAsyncTests(object):
     """Http Client test cases."""
 
     @pytest.mark.asyncio
+    async def test_no_hidden_retry(self):
+        """Test aiohttp doesn't re-send a request on a dropped connection: SDK backoff retries it."""
+        httpclient = client.HttpClientAsync()
+        if hasattr(httpclient._session, '_retry_connection'):
+            assert httpclient._session._retry_connection is False
+        await httpclient.close_session()
+
+    @pytest.mark.asyncio
     async def test_get(self, mocker):
         """Test HTTP GET verb requests."""
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()

@@ -1,7 +1,17 @@
 10.7.1 (Nov 6, 2026)
-- Fixed async factory readiness being delayed by the telemetry config post: SplitFactoryAsync now becomes ready before posting telemetry, as the sync factory does.
 - Updated package metadata: declared python_requires>=3.7, updated the trove classifiers (3.7 to latest stable, Python 2 removed) and removed the universal wheel setting (wheels are now tagged py3).
 - Updated CI, tests and test dependencies to improve reliability and to validate the SDK on Python 3.7 and latest stable.
+- Fixed async factory readiness being delayed by the telemetry config post: SplitFactoryAsync now becomes ready before posting telemetry, as the sync factory does.
+- Fixed an issue where the SDK could stop applying feature flag updates when streaming is enabled, serving stale definitions until restart:
+   - Unexpected errors during the streaming authentication or connection (e.g. a non-JSON response or a malformed token) are now handled as retryable errors: the SDK switches to polling and retries streaming with backoff.
+   - Unexpected errors in the streaming status handler no longer stop it; the SDK switches to polling and retries streaming with backoff.
+   - Fixed the asyncio token refresh being cancelled by the cleanup of the connection it closes, which could leave the SDK without streaming and without polling.
+- Fixed several streaming (SSE) connection issues:
+   - The streaming connection is now considered established once the SSE connection opens, instead of waiting for the first event. Previously, the token refresh and the reconnection after a retryable error waited for an incoming event to resume streaming.
+   - Fixed the SSE connection not being closed on token refresh or SDK destroy when the server response is not chunked, which could block the token refresh.
+   - An auth response with a malformed token is now handled as a retryable error instead of disabling streaming.
+   - Destroying the SDK while authenticating or waiting to retry streaming no longer opens a new SSE connection or retries the authentication.
+   - Fixed asyncio HTTP and SSE requests being silently re-sent when the server closes the connection, bypassing the streaming retry backoff.
 
 10.7.0 (Oct 5, 2026)
 - Added ability to use proxy url for all http connections.

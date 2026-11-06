@@ -59,6 +59,7 @@ class SSEClient(object):
         :type callback: callable
         """
         self._conn = None
+        self._sock = None
         self._event_callback = callback
         self._shutdown_requested = False
 
@@ -71,6 +72,12 @@ class SSEClient(object):
         """
         try:
             response = self._conn.getresponse()
+            if response.status != 200:
+                _LOGGER.error('sse request status code: %d', response.status)
+                return self._shutdown_requested
+
+            # Signal the connection is open before reading events (like EventSource `open`)
+            self._event_callback(SSEEvent(None, None, None, None))
             event_builder = EventBuilder()
             while True:
                 line = response.readline()
@@ -91,7 +98,10 @@ class SSEClient(object):
             if not self._shutdown_requested:
                 _LOGGER.debug('stack trace: ', exc_info=True)
         finally:
+            sock, self._sock = self._sock, None
             self._conn.close()
+            if sock is not None:
+                sock.close()
             self._conn = None  # clear so it can be started again
 
         return self._shutdown_requested
@@ -132,6 +142,9 @@ class SSEClient(object):
                         else HTTPConnection(url.hostname, port=url.port, timeout=timeout))
 
         self._conn.request('GET', '%s?%s' % (url.path, url.query), headers=headers)
+        # Keep the socket: for responses delimited by connection close (no chunked encoding nor
+        # content-length), getresponse() clears self._conn.sock while the response keeps reading.
+        self._sock = self._conn.sock
         return self._read_events()
 
     def _get_proxy_info(self, proxy_url):
@@ -156,7 +169,8 @@ class SSEClient(object):
         
     def shutdown(self):
         """Shutdown the current connection."""
-        if self._conn is None or self._conn.sock is None:
+        sock = self._sock
+        if self._conn is None or sock is None:
             _LOGGER.warning("no sse connection has been started on this SSEClient instance. Ignoring")
             return
 
@@ -165,7 +179,10 @@ class SSEClient(object):
             return
 
         self._shutdown_requested = True
-        self._conn.sock.shutdown(socket.SHUT_RDWR)
+        try:
+            sock.shutdown(socket.SHUT_RDWR)
+        except OSError:  # connection ended (and socket closed) concurrently
+            _LOGGER.debug('sse connection already ended.')
 
 
 class SSEClientAsync(object):
@@ -189,6 +206,10 @@ class SSEClientAsync(object):
         self._done = asyncio.Event()
         self._client_timeout = aiohttp.ClientTimeout(total=60*60, sock_read=self._socket_read_timeout)
         self._sess = aiohttp.ClientSession(timeout=self._client_timeout)
+        # aiohttp silently re-sends an idempotent request once if the server drops the connection,
+        # which would hide a failed attempt from the push manager's retry/backoff logic.
+        if hasattr(self._sess, '_retry_connection'):
+            self._sess._retry_connection = False  # pylint: disable=protected-access
 
     async def start(self, url, extra_headers=None, proxy_url=None):  # pylint:disable=protected-access
         """
@@ -210,7 +231,13 @@ class SSEClientAsync(object):
                 timeout=self._client_timeout,
                 proxy=proxy_url,
             ) as response:
+                if response.status != 200:
+                    _LOGGER.error('sse request status code: %d', response.status)
+                    return
+
                 self._response = response
+                # Signal the connection is open before reading events (like EventSource `open`)
+                yield SSEEvent(None, None, None, None)
                 event_builder = EventBuilder()
                 async for line in response.content:
                     if line.startswith(b':'):

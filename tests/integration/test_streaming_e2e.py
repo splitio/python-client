@@ -1170,16 +1170,18 @@ class StreamingIntegrationTests(object):
 
         sse_server.publish(make_ably_error_event(40145, 401))
         sse_server.publish(sse_server.GRACEFUL_REQUEST_END)
-        time.sleep(3)
+        # Falls back to polling while waiting for the retry (1st backoff: 1 second)
+        time.sleep(0.5)
         assert task.running()
-        assert factory.client().get_treatment('maldo', 'split1') == 'off'
 
-        # Re-publish initial events so that the retry succeeds
+        # The retry reconnects: streaming is up once the SSE connection opens, before any event
         sse_server.publish(make_initial_event())
         sse_server.publish(make_occupancy('control_pri', 2))
         sse_server.publish(make_occupancy('control_sec', 2))
         time.sleep(3)
         assert not task.running()
+        # The change was fetched when falling back to polling or when streaming reconnected
+        assert factory.client().get_treatment('maldo', 'split1') == 'off'
 
         # Assert streaming is working properly
         split_changes[2] = {'ff': {
@@ -2488,17 +2490,18 @@ class StreamingIntegrationAsyncTests(object):
 
         sse_server.publish(make_ably_error_event(40145, 401))
         sse_server.publish(sse_server.GRACEFUL_REQUEST_END)
-        await asyncio.sleep(3)
-
+        # Falls back to polling while waiting for the retry (1st backoff: 1 second)
+        await asyncio.sleep(0.5)
         assert task.running()
-        assert await factory.client().get_treatment('maldo', 'split1') == 'off'
 
-        # Re-publish initial events so that the retry succeeds
+        # The retry reconnects: streaming is up once the SSE connection opens, before any event
         sse_server.publish(make_initial_event())
         sse_server.publish(make_occupancy('control_pri', 2))
         sse_server.publish(make_occupancy('control_sec', 2))
         await asyncio.sleep(3)
         assert not task.running()
+        # The change was fetched when falling back to polling or when streaming reconnected
+        assert await factory.client().get_treatment('maldo', 'split1') == 'off'
 
         # Assert streaming is working properly
         split_changes[2] = {'ff': {
