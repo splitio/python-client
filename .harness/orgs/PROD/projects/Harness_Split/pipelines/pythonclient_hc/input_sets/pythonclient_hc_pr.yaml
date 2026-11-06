@@ -1,6 +1,6 @@
 inputSet:
-  name: python-client hc
-  identifier: pythonclient_hc
+  name: python-client hc pr
+  identifier: pythonclient_hc_pr
   orgIdentifier: PROD
   projectIdentifier: Harness_Split
   pipeline:

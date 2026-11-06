@@ -1,6 +1,6 @@
 inputSet:
-  name: Baseline
-  identifier: Baseline
+  name: python-client hc push
+  identifier: pythonclient_hc_push
   orgIdentifier: PROD
   projectIdentifier: Harness_Split
   pipeline:
